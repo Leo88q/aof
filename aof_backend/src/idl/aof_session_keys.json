@@ -1,0 +1,571 @@
+{
+  "address": "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+  "metadata": {
+    "name": "aof_session_keys",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "init_config",
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  107,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "oracle_authority"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "session_check_and_spend",
+      "discriminator": [
+        27,
+        163,
+        9,
+        159,
+        176,
+        244,
+        234,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "session_signer",
+          "signer": true
+        },
+        {
+          "name": "session",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "ix_bit",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "session_create",
+      "discriminator": [
+        247,
+        94,
+        152,
+        31,
+        7,
+        243,
+        58,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "session_signer"
+        },
+        {
+          "name": "target_program"
+        },
+        {
+          "name": "trust",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  117,
+                  115,
+                  116,
+                  95,
+                  115,
+                  110,
+                  97,
+                  112,
+                  115,
+                  104,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "allowed_ixs",
+          "type": "u64"
+        },
+        {
+          "name": "requested_max_per_tx",
+          "type": "u64"
+        },
+        {
+          "name": "ttl_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "session_pause",
+      "discriminator": [
+        53,
+        57,
+        200,
+        223,
+        50,
+        78,
+        8,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "session_revoke",
+      "discriminator": [
+        217,
+        206,
+        23,
+        89,
+        181,
+        55,
+        117,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "trust_snapshot_update",
+      "discriminator": [
+        39,
+        191,
+        77,
+        254,
+        8,
+        109,
+        129,
+        106
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  107,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "user"
+        },
+        {
+          "name": "trust",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  117,
+                  115,
+                  116,
+                  95,
+                  115,
+                  110,
+                  97,
+                  112,
+                  115,
+                  104,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "score",
+          "type": "u16"
+        },
+        {
+          "name": "tier",
+          "type": "u8"
+        },
+        {
+          "name": "epoch",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "SessionToken",
+      "discriminator": [
+        233,
+        4,
+        115,
+        14,
+        46,
+        21,
+        1,
+        15
+      ]
+    },
+    {
+      "name": "SkConfig",
+      "discriminator": [
+        232,
+        209,
+        4,
+        223,
+        149,
+        140,
+        80,
+        249
+      ]
+    },
+    {
+      "name": "TrustSnapshot",
+      "discriminator": [
+        78,
+        249,
+        207,
+        192,
+        21,
+        78,
+        69,
+        201
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6001,
+      "name": "ForbiddenIxRequested",
+      "msg": "allowed_ixs includes a forbidden withdraw/transfer/payout bit"
+    },
+    {
+      "code": 6002,
+      "name": "ExceedsTrustCap",
+      "msg": "max_amount_per_tx exceeds trust-tier cap"
+    },
+    {
+      "code": 6003,
+      "name": "SessionExpired",
+      "msg": "Session has expired"
+    },
+    {
+      "code": 6004,
+      "name": "SessionRevoked",
+      "msg": "Session has been revoked"
+    },
+    {
+      "code": 6005,
+      "name": "IxNotAllowed",
+      "msg": "Requested ix bit not in allowed_ixs"
+    },
+    {
+      "code": 6006,
+      "name": "AmountExceedsLimit",
+      "msg": "Amount exceeds max_amount_per_tx"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidTtl",
+      "msg": "TTL out of allowed range"
+    },
+    {
+      "code": 6008,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "SessionToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "session_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowed_ixs",
+            "type": "u64"
+          },
+          {
+            "name": "max_amount_per_tx",
+            "type": "u64"
+          },
+          {
+            "name": "spent_today",
+            "type": "u64"
+          },
+          {
+            "name": "day_start",
+            "type": "i64"
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SkConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TrustSnapshot",
+      "docs": [
+        "[ФАКТ, спека v5 §4.1]: снапшот трасткора, живёт в этой же программе,",
+        "что и session-keys — session_create ЧИТАЕТ его для лимитов, а не",
+        "принимает лимит от клиента напрямую."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "score",
+            "type": "u16"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "computed_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "oracle_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}

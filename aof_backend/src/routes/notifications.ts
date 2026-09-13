@@ -1,0 +1,64 @@
+import { Router } from "express";
+import { db } from "../lib/db";
+
+const r = Router();
+
+// Зарегистрировать токен устройства (вызывается фронтом через Capacitor)
+r.post("/device/register", async (req, res) => {
+  try {
+    const { user, platform, token } = req.body;
+    if (!["ios", "android", "web"].includes(platform)) {
+      return res.status(400).json({ error: "Invalid platform" });
+    }
+
+    const device = await db.deviceToken.upsert({
+      where: { token },
+      update: { user, platform, enabled: true },
+      create: { user, platform, token },
+    });
+    res.json({ device });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Отписаться от пушей
+r.post("/device/unregister", async (req, res) => {
+  try {
+    const { token } = req.body;
+    await db.deviceToken.update({ where: { token }, data: { enabled: false } });
+    res.json({ disabled: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Добавить уведомление в очередь (вызывается другими сервисами)
+r.post("/queue", async (req, res) => {
+  try {
+    const { user, type, title, body, payload } = req.body;
+    const notification = await db.notificationQueue.create({
+      data: { user, type, title, body, payload: payload ? JSON.stringify(payload) : null },
+    });
+    res.json({ queued: notification.id });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// История уведомлений пользователя
+r.get("/:user", async (req, res) => {
+  try {
+    const user = req.params.user;
+    const notifications = await db.notificationQueue.findMany({
+      where: { user },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    res.json({ notifications });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+export default r;

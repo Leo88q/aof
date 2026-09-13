@@ -1,0 +1,206 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
+  },
+});
+
+===== tsconfig =====
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
+
+===== tailwind.config =====
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        // Дизайн-система MANOR (см. src/theme/manor.css). Старые имена оставлены,
+        // чтобы не менять TSX: soil = дерево, wheat = золото/янтарь, sprout = изумруд, water = стекло.
+        soil: {
+          950: "#1A1A2E", // ночное небо — фон приложения
+          900: "#2C1810", // тёмный дуб
+          850: "#3E2723", // орех — поверхности карточек
+          800: "#43291a",
+          700: "#5a3a26",
+          600: "#6b501a", // тёмная бронза (линии)
+        },
+        wheat: {
+          500: "#FFBF00", // янтарь (свечение, легенда)
+          600: "#D4AF37", // золото (акцент, кнопки)
+          700: "#8B6919", // бронза
+          800: "#6B1F1F", // бордо
+        },
+        sprout: { 500: "#50C878", 600: "#3aa66e", 700: "#2D4A3E" },
+        water: { 500: "#5aa0e6", 600: "#3d7fc4" },
+        parchment: "#F5E6D3",
+        straw: "#c9b08a",
+        gold: "#D4AF37",
+        ember: "#E0115F",
+        manor: {
+          bordeaux: "#6B1F1F", forest: "#2D4A3E", walnut: "#3E2723", bronze: "#8B6919",
+          gold: "#D4AF37", amber: "#FFBF00", emerald: "#50C878", ruby: "#E0115F",
+          parchment: "#F5E6D3", oak: "#2C1810", night: "#1A1A2E",
+        },
+      },
+      fontFamily: {
+        sans: ["Cormorant Garamond", "EB Garamond", "Georgia", "serif"],
+        display: ["Cinzel", "Trajan Pro", "Georgia", "serif"],
+        title: ["Cinzel Decorative", "Cinzel", "Georgia", "serif"],
+      },
+      boxShadow: {
+        card: "0 18px 34px -14px rgba(96,64,160,0.55), 0 6px 14px -8px rgba(0,0,0,0.7)",
+        glow: "0 0 22px rgba(255,191,0,0.35)",
+      },
+      animation: {
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "fill-up": "fillUp 1.2s ease-out forwards",
+        shimmer: "shimmer 2s linear infinite",
+      },
+      keyframes: {
+        fillUp: {
+          "0%": { height: "0%", opacity: 0.5 },
+          "100%": { height: "100%", opacity: 1 },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
+        },
+      },
+    },
+  },
+  plugins: [],
+};
+
+===== main.tsx =====
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import "./theme/globals.css";
+import "./theme/manor.css";
+import { initManorFx } from "./lib/manorFx";
+
+initManorFx();
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+);
+
+===== App.tsx (первые 80 строк) =====
+import { Toast } from "./components/ui/Toast";
+import React from "react";
+import { NavProvider } from "./nav/NavContext";
+import { TabPager } from "./nav/TabPager";
+import { TabBar } from "./nav/TabBar";
+import { AppWalletProvider } from "./wallet/WalletProvider";
+import { useVipStatus } from "./lib/useVipStatus";
+
+// Импортируем наши существующие страницы
+import { FarmDashboard } from "./pages/farm/FarmDashboard";
+import { ToolsHome } from "./pages/tools/ToolsHome";
+import { EconomyHome } from "./pages/economy";
+import { MarketHome } from "./pages/market/MarketHome";
+import { QuestsHome } from "./pages/quests/QuestsHome";
+import { PrivilegesPage } from "./pages/PrivilegesPage";
+import { ProfileHome } from "./pages/profile/ProfileHome";
+import { FriendFarmPage } from "./pages/friend/FriendFarmPage";
+
+const ROOTS = {
+  // farm объединён с buildings (см. ниже)
+  farm: { key: "root", el: <FarmDashboard /> },
+  tools: { key: "root", el: <ToolsHome /> },
+  economy: { key: "root", el: <EconomyHome /> },
+  market: { key: "root", el: <MarketHome /> },
+  quests: { key: "root", el: <QuestsHome /> },
+  // portfolio перенесено внутрь ProfileHome
+  // privileges перенесено внутрь ProfileHome
+  profile: { key: "root", el: <ProfileHome /> },
+};
+
+
+// Глобальная загрузка VIP-статуса при подключении кошелька
+function VipLoader() {
+  useVipStatus();
+  return null;
+}
+
+export default function App() {
+  return (
+    <AppWalletProvider>
+      <VipLoader />
+      <NavProvider tabs={["farm", "tools", "economy", "market", "quests", "profile"]} roots={ROOTS}>
+        <div className="app-shell">
+        <Toast />
+          <TabPager />
+          <TabBar />
+        </div>
+      </NavProvider>
+    </AppWalletProvider>
+  );
+}
+
+===== дерево компонентов =====
+src/components/.DS_Store
+src/components/ActionForm.tsx
+src/components/ActiveBuffs.tsx
+src/components/animations/RewardBurst.tsx
+src/components/charts/Candlestick.tsx
+src/components/charts/DepthChart.tsx
+src/components/charts/PriceHeader.tsx
+src/components/charts/TradeTape.tsx
+src/components/ComebackModal.tsx
+src/components/DailyRewardButton.tsx
+src/components/DrumSpin.tsx
+src/components/farm/WeatherOverlay.tsx
+src/components/ListRow.tsx
+src/components/NavHeader.tsx
+src/components/PlayerRating.tsx
+src/components/PrivilegesPanel.tsx
+src/components/ProgressRing.tsx
+src/components/ToolMiningCard.tsx
+src/components/ui/AnimatedCounter.tsx
+src/components/ui/Card.tsx
+src/components/ui/LiquidBar.tsx
+src/components/ui/ResourceBar.tsx
+src/components/ui/StatChip.tsx
+src/components/ui/Toast.tsx
+src/components/ui/TrustRing.tsx
+src/components/ui/VipGate.tsx
+src/components/ui/WalletButton.tsx
+src/components/ui/WeatherWidget.tsx
+src/theme/globals.css
+src/theme/manor.css

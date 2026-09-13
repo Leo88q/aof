@@ -1,0 +1,306 @@
+use anchor_lang::prelude::*;
+
+/// Seeds for PDAs
+pub const CONFIG_SEED: &[u8] = b"config";
+pub const AUTH_SEED: &[u8] = b"auth";
+pub const VAULT_SEED: &[u8] = b"vault";
+pub const PLAYER_SEED: &[u8] = b"player";
+pub const GASTANK_SEED: &[u8] = b"gastank";
+pub const TOOL_SEED: &[u8] = b"tool";
+// [НОВОЕ] seeds для добавленных PDA (см. AUDIT_AND_CHANGES.md / AUDIT_V2 / AUDIT_V3)
+pub const RARITY_COUNTER_SEED: &[u8] = b"rarity_counter";
+pub const CRAFT_ECONOMY_SEED: &[u8] = b"craft_economy";
+pub const COLLECTOR_SEED: &[u8] = b"collector";
+
+/// Account space allocations
+// [ИЗМЕНЕНО]: +2 байта (historian_count:u8, medallion_count:u8) относительно
+// присланного PLAYER_SPACE — см. state::Player, комментарий у новых полей.
+// [НОВОЕ]
+// ===== [НОВОЕ] SKR-привилегия =====
+pub const SKR_MIN_BALANCE: u64 = 3_000_000_000_000; // 3000 SKR (с 9 decimals)
+pub const SKR_CRAFT_DISCOUNT_BPS: u16 = 1500; // 15% скидка на POTATO
+ // 6 ресурсов // 4 массива по 4 x u64 + bump
+
+/// Migration authority for migrate_tool instruction
+pub const MIGRATION_AUTHORITY: Pubkey = pubkey!("4AjNMokXxHPR6YbbsSyqEvBE2BZ6QJq9DedYrEDwpytq");
+
+/// Fee constants (in micros, 1 SOL = 1e6 micros)
+pub const FEE_PER_CRAFT_MICROS: u64 = 100_000;
+pub const FEE_PER_NFT_MICROS: u64 = 10_000;
+pub const FEE_PER_PACK_MICROS: u64 = 10_000;
+// [НОВОЕ]: в присланных файлах отдельной комиссии за reroll не было вообще
+// (ни константы, ни поля в Config) — reroll был бесплатным. Добавляю константой
+// по аналогии с остальными FEE_PER_*, а не полем Config — чтобы не менять
+// CONFIG_SPACE и не трогать layout уже описанного вами аккаунта.
+pub const FEE_PER_REROLL_MICROS: u64 = 60_000;
+
+/// Max mining hours by rarity
+pub const MAX_HOURS_COMMON: u8 = 8;
+pub const MAX_HOURS_UNCOMMON: u8 = 12;
+pub const MAX_HOURS_RARE: u8 = 14;
+pub const MAX_HOURS_EPIC: u8 = 20;
+pub const MAX_HOURS_LEGENDARY: u8 = 20;
+
+/// Gas tank cooldown (12 hours in seconds)
+pub const GASTANK_COOLDOWN_SECONDS: i64 = 12 * 3600;
+
+/// Max durability
+pub const MAX_DURABILITY: u8 = 20;
+
+/// Collectors lock seconds (3 days)
+pub const COLLECTORS_LOCK_SECONDS: i64 = 3 * 86400;
+
+/// Conversion: micros -> lamports (1e9 / 1e6 = 1000)
+pub const MICROS_TO_LAMPORTS: u64 = 1000;
+
+// [НОВОЕ] Стартовое число жителей — [ФАКТ, подтверждено в index.js]:
+// `villagers_available: 6, villagers: 6` при создании пользователя.
+pub const DEFAULT_VILLAGERS: u32 = 6;
+
+// [НОВОЕ] Стоимость ремонта (STONE за 1 юнит прочности), по редкости —
+// используется через Rarity::repair_stone_cost_per_unit() в state.rs,
+// тем же паттерном, что MAX_HOURS_* + Rarity::max_hours().
+pub const REPAIR_STONE_COMMON: u64 = 2;
+pub const REPAIR_STONE_UNCOMMON: u64 = 4;
+pub const REPAIR_STONE_RARE: u64 = 9;
+pub const REPAIR_STONE_EPIC: u64 = 20;
+pub const REPAIR_STONE_LEGENDARY: u64 = 45;
+
+// [НОВОЕ] Стоимость ремонта в WOOD за единицу прочности
+pub const REPAIR_WOOD_COMMON: u64 = 3;
+pub const REPAIR_WOOD_UNCOMMON: u64 = 6;
+pub const REPAIR_WOOD_RARE: u64 = 14;
+pub const REPAIR_WOOD_EPIC: u64 = 30;
+pub const REPAIR_WOOD_LEGENDARY: u64 = 70;
+
+// [НОВОЕ] Дефолты bonding-curve цены крафта (см. CraftEconomy в state.rs).
+// Индекс массива = rarity.craft_index() (Uncommon=0..Legendary=3).
+// Задаются здесь только как значения при первой инициализации CraftEconomy —
+// далее меняются владельцем через set_craft_economy, без редеплоя программы.
+
+// =====================================================================
+// [НОВОЕ] Полная реализация TOR v4 — паки, честный reroll, exploration,
+// рефералы, кузница риска, лотерея, рынок, ордербук, крафт-под-заказ,
+// сезонный пасс. См. AUDIT_V4_FULL_IMPLEMENTATION.md.
+// =====================================================================
+
+// ----- Seeds -----
+// ===== [НОВОЕ] Сбалансированная экономика крафта (6 ресурсов) =====
+// Индексы: [0=Uncommon, 1=Rare, 2=Epic, 3=Legendary]
+// Base = ~1 час гринда, Mult = рост цены при массовом крафте
+
+pub const CRAFT_WOOD_BASE: [u64; 4] = [100, 150, 500, 2000];
+pub const CRAFT_STONE_BASE: [u64; 4] = [100, 120, 400, 1500];
+pub const CRAFT_FOOD_BASE: [u64; 4] = [50, 80, 300, 1000];
+pub const CRAFT_SEEDS_BASE: [u64; 4] = [20, 40, 150, 500];
+pub const CRAFT_WATER_BASE: [u64; 4] = [10, 30, 100, 400];
+pub const CRAFT_POTATO_BASE: [u64; 4] = [10, 20, 100, 500];
+
+pub const CRAFT_WOOD_MULT: [u64; 4] = [1, 2, 10, 50];
+pub const CRAFT_STONE_MULT: [u64; 4] = [1, 2, 10, 50];
+pub const CRAFT_FOOD_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
+pub const CRAFT_SEEDS_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
+pub const CRAFT_WATER_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
+pub const CRAFT_POTATO_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильная утилити-валюта
+pub const PACK_CONFIG_SEED: &[u8] = b"pack_config";
+pub const PACK_COMMIT_SEED: &[u8] = b"pack_commit";
+pub const REROLL_CONFIG_SEED: &[u8] = b"reroll_config";
+pub const REROLL_COMMIT_SEED: &[u8] = b"reroll_commit";
+pub const EXPLORATION_STATE_SEED: &[u8] = b"exploration_state";
+pub const EXPLORATION_COMMIT_SEED: &[u8] = b"exploration_commit";
+pub const REFERRAL_LINK_SEED: &[u8] = b"referral_link";
+pub const REFERRER_STATS_SEED: &[u8] = b"referrer_stats";
+pub const ENCHANT_SLOT_SEED: &[u8] = b"enchant_slot";
+pub const FORGE_COMMIT_SEED: &[u8] = b"forge_commit";
+pub const LOTTERY_ROUND_SEED: &[u8] = b"lottery_round";
+pub const LOTTERY_TICKET_SEED: &[u8] = b"lottery_ticket";
+pub const LISTING_SEED: &[u8] = b"listing";
+pub const AUCTION_SEED: &[u8] = b"auction";
+pub const OFFER_SEED: &[u8] = b"offer";
+pub const RENTAL_LISTING_SEED: &[u8] = b"rental_listing";
+pub const RENTAL_AGREEMENT_SEED: &[u8] = b"rental_agreement";
+pub const RESOURCE_ORDER_SEED: &[u8] = b"resource_order";
+pub const CRAFT_ORDER_SEED: &[u8] = b"craft_order";
+pub const SEASON_SEED: &[u8] = b"season";
+pub const SEASON_PASS_SEED: &[u8] = b"season_pass";
+
+// ----- Паки: цена (в lamports, реальные деньги) и дефолтные шансы (bps, сумма=10000) -----
+// [ФАКТ, из аудита реального Ronin index.js]: 3 пака, 4 редкости в луте
+// (Legendary из паков не выпадает никогда — только крафтом). Цены — новое
+// продуктовое решение из TOR v4 §5.1 (1 SOL = $100, опорная точка).
+pub const PACK_SMALL_PRICE_LAMPORTS: u64 = 100_000_000;    // 0.1 SOL
+pub const PACK_MEDIUM_PRICE_LAMPORTS: u64 = 300_000_000;   // 0.3 SOL
+pub const PACK_BIG_PRICE_LAMPORTS: u64 = 1_000_000_000;    // 1.0 SOL
+// [Common, Uncommon, Rare, Epic, Legendary] bps
+pub const PACK_SMALL_ODDS_BPS: [u16; 5] = [6_000, 3_200, 700, 100, 0];
+pub const PACK_MEDIUM_ODDS_BPS: [u16; 5] = [5_000, 3_500, 1_000, 500, 0];
+pub const PACK_BIG_ODDS_BPS: [u16; 5] = [3_500, 4_000, 1_500, 1_000, 0];
+// [ФАКТ]: из паков выпадают только Axe/Pick/Spear (3 типа, без Bow).
+pub const PACK_TOOL_TYPES: [&str; 3] = ["axe", "pick", "spear"];
+
+// ----- Reroll (честный, RNG) — своя таблица шансов, настраиваемая отдельно -----
+pub const REROLL_ODDS_BPS_DEFAULT: [u16; 5] = [5_500, 3_000, 1_100, 400, 0];
+
+// ----- Exploration: 10 тиров -----
+// [ФАКТ, из аудита index.js]: EXP_TIERS, TRIP_COST = {food:75, wood:35, stone:35}
+pub const TRIP_COST_FOOD: u64 = 75;
+pub const TRIP_COST_WOOD: u64 = 35;
+pub const TRIP_COST_STONE: u64 = 35;
+pub const TRIP_COST_MEAT: u64 = 50; // [НОВОЕ] Мясо для исследования
+pub const EXPLORATION_COOLDOWN_HOURS: [u8; 10] = [24, 22, 20, 18, 16, 14, 12, 10, 9, 8];
+pub const EXPLORATION_SUCCESS_BPS: [u16; 10] =
+    [3_000, 4_000, 5_000, 5_500, 6_000, 6_000, 6_500, 7_000, 7_500, 8_000];
+pub const EXPLORATION_SHARDS_MIN: [u8; 10] = [2, 2, 3, 3, 4, 4, 4, 5, 5, 6];
+pub const EXPLORATION_SHARDS_MAX: [u8; 10] = [3, 3, 4, 5, 5, 5, 6, 6, 7, 8];
+pub const EXPLORATION_TRIPS_PER_DAY: [u8; 10] = [1, 1, 1, 1, 1, 2, 2, 2, 2, 3];
+pub const EXPLORATION_UPGRADE_COST_PER_TIER: [u64; 10] =
+    [1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000, 9_000, 10_000];
+pub const MAX_EXPLORATION_TIER: u8 = 10;
+// [ДИЗАЙН-РЕШЕНИЕ, задокументировано]: в отличие от Ronin, где exploration
+// давал отдельные "шарды" (сырьё для отдельной Foundry-плавки), в этой
+// программе крафт устроен иначе — сжигает целый инструмент N-1, шардов
+// как отдельной сущности craft не использует (см. AUDIT_V4). Чтобы не
+// city вводить параллельную неиспользуемую экономику, exploration здесь
+// выдаёт бонусные WOOD/STONE вместо шардов — тем же диапазоном "штук".
+
+// ----- Рефералы: 7 тиров -----
+pub const REFERRAL_PCT_BPS: [u16; 7] = [10, 50, 100, 170, 250, 350, 500]; // 0.1%..5.0%
+pub const REFERRAL_UPGRADE_WOOD: [u64; 7] = [0, 1_000, 3_000, 7_000, 12_000, 20_000, 50_000];
+pub const REFERRAL_UPGRADE_STONE: [u64; 7] = [0, 1_000, 3_000, 7_000, 12_000, 20_000, 50_000];
+pub const REFERRAL_UPGRADE_FOOD: [u64; 7] = [0, 500, 2_000, 4_000, 7_000, 13_000, 25_000];
+pub const REFERRAL_BASE_CAP: u32 = 5;
+pub const REFERRAL_MEDALLION_BONUS_CAP: u32 = 5;
+pub const REFERRAL_HISTORIAN_BONUS_CAP: u32 = 25;
+
+// ----- Кузница риска (Enchant) -----
+pub const ENCHANT_MAX_LEVEL: u8 = 5;
+// индекс = level-1 (апгрейд level->level+1), для level 1..5
+pub const FORGE_SUCCESS_BPS: [u16; 5] = [10_000, 9_000, 7_500, 5_500, 3_500];
+pub const FORGE_PARTIAL_FAIL_BPS: [u16; 5] = [0, 800, 2_000, 3_500, 4_500];
+// остальное — полная потеря (сброс уровня в 0)
+pub const ENCHANT_WOOD_COST: [u64; 5] = [200, 500, 1_200, 2_400, 4_000];
+pub const ENCHANT_STONE_COST: [u64; 5] = [200, 500, 1_200, 2_400, 4_000];
+pub const ENCHANT_FEE_LAMPORTS: [u64; 5] = [
+    33_000_000, 66_000_000, 133_000_000, 266_000_000, 800_000_000,
+]; // ~$1/$2/$4/$8/$24 на референс-курсе 1 SOL=$100 (см. TOR v4 §5a.1)
+pub const FORGE_PROTECTOR_PRICE_LAMPORTS: u64 = 20_000_000; // ~$2
+
+// ----- Лотерея -----
+pub const LOTTERY_TICKET_PRICE_LAMPORTS: u64 = 800_000; // ~$0.08*100=$0.8? см. ниже
+pub const LOTTERY_POOL_BPS: u16 = 7_000;   // 70% в пул
+pub const LOTTERY_DEV_BPS: u16 = 3_000;    // 30% разработчику
+pub const LOTTERY_MAX_TICKETS_PER_DAY: u8 = 10;
+
+// ----- Рынок -----
+pub const MARKETPLACE_FEE_BPS: u16 = 300;   // 3%
+pub const AUCTION_FEE_BPS: u16 = 400;       // 3% + 1%
+pub const OFFER_FEE_BPS: u16 = 250;         // 2.5%
+pub const RENTAL_FEE_BPS: u16 = 500;        // 5%
+pub const AUCTION_ANTI_SNIPE_WINDOW_SECONDS: i64 = 5 * 60;
+pub const AUCTION_ANTI_SNIPE_EXTENSION_SECONDS: i64 = 5 * 60;
+pub const RENTAL_MIN_DURATION_SECONDS: i64 = 24 * 3600;
+pub const RENTAL_MAX_DURATION_SECONDS: i64 = 30 * 86400;
+pub const RENTAL_REVOKE_GRACE_SECONDS: i64 = 12 * 3600;
+
+// ----- Ордербук ресурсов -----
+pub const ORDERBOOK_MAKER_FEE_BPS: u16 = 10;  // 0.1%
+pub const ORDERBOOK_TAKER_FEE_BPS: u16 = 40;  // 0.4%
+
+// ----- Крафт под заказ -----
+pub const CRAFT_ORDER_FEE_BPS: u16 = 200; // 2%
+
+// ----- Сезонный пасс -----
+pub const SEASON_LENGTH_SECONDS: i64 = 42 * 86400; // 42 дня
+pub const SEASON_PASS_PREMIUM_PRICE_LAMPORTS: u64 = 150_000_000; // 0.15 SOL
+pub const SEASON_PASS_MAX_LEVEL: u8 = 42;
+pub const SEASON_XP_PER_LEVEL: u32 = 1_000;
+
+// ----- Withdraw-fee (bps) на mint_resource, по перкам — [ФАКТ]-паттерн из
+// index.js `pickFeeBps` перенесён на materialization ресурсов on-chain -----
+pub const MINT_FEE_BASE_MIN_BPS: u16 = 700;
+pub const MINT_FEE_BASE_MAX_BPS: u16 = 1_000;
+pub const MINT_FEE_MEDALLION_MIN_BPS: u16 = 500;
+pub const MINT_FEE_MEDALLION_MAX_BPS: u16 = 800;
+pub const MINT_FEE_HISTORIAN_MIN_BPS: u16 = 300;
+pub const MINT_FEE_HISTORIAN_MAX_BPS: u16 = 600;
+pub const MINT_FEE_BOTH_MIN_BPS: u16 = 100;
+pub const MINT_FEE_BOTH_MAX_BPS: u16 = 300;
+
+// ----- Account space (manual, с +8 дискриминатором — тот же паттерн, что
+// уже используется в CONFIG_SPACE/PLAYER_SPACE и т.д.) -----
+
+// =====================================================================
+// [БЛОК L] Хлебная экономика: семена, space, базовые ставки
+// =====================================================================
+
+// Seeds для новых PDA
+pub const MATERIAL_MINTS_SEED: &[u8] = b"material_mints";
+pub const ENERGY_ACCOUNT_SEED: &[u8] = b"energy_account";
+pub const FARM_TILE_SEED: &[u8] = b"farm_tile";
+pub const WEATHER_STATE_SEED: &[u8] = b"weather_state";
+pub const WELL_STATE_SEED: &[u8] = b"well_state";
+pub const MILL_STATE_SEED: &[u8] = b"mill_state";
+pub const OVEN_STATE_SEED: &[u8] = b"oven_state";
+pub const LOVE_PROGRESS_SEED: &[u8] = b"love_progress";
+pub const FORTUNE_BOOST_SEED: &[u8] = b"fortune_boost";
+
+// Space для новых аккаунтов
+
+// Базовые ставки добычи (ресурс/час на common)
+pub const BASE_RATE_MINING: u64 = 10;
+pub const YIELD_BPS_COMMON: u16 = 10000;
+pub const YIELD_BPS_UNCOMMON: u16 = 11500;
+pub const YIELD_BPS_RARE: u16 = 13000;
+pub const YIELD_BPS_EPIC: u16 = 15000;
+pub const YIELD_BPS_LEGENDARY: u16 = 18000;
+
+// Ферма: рост пшеницы
+pub const WHEAT_GROW_DURATION: i64 = 6 * 3600; // 6 часов
+pub const WHEAT_YIELD_MULT_BPS: u16 = 15000; // ×1.5 от посева
+
+// Мельница: время помола по партиям (в секундах)
+pub const MILL_TIME_SMALL: i64 = 1 * 3600;   // 1 час
+pub const MILL_TIME_MEDIUM: i64 = 3 * 3600;  // 3 часа
+pub const MILL_TIME_LARGE: i64 = 6 * 3600;   // 6 часов
+
+// Печь: время выпечки по партиям
+pub const OVEN_TIME_SMALL: i64 = 2 * 3600;   // 2 часа
+pub const OVEN_TIME_MEDIUM: i64 = 5 * 3600;  // 5 часов
+pub const OVEN_TIME_LARGE: i64 = 10 * 3600;  // 10 часов
+
+// Энергия
+pub const ENERGY_CAP: u8 = 20;
+pub const ENERGY_REGEN_SECONDS: i64 = 30 * 60; // +1 за 30 минут
+pub const ENERGY_COST_PLANT: u8 = 1;
+pub const ENERGY_COST_HARVEST: u8 = 1;
+pub const ENERGY_COST_MILL: u8 = 2;
+pub const ENERGY_COST_OVEN: u8 = 2;
+
+// Погода (enum значения)
+pub const WEATHER_DROUGHT: u8 = 0;
+pub const WEATHER_SUNNY: u8 = 1;
+pub const WEATHER_RAIN: u8 = 2;
+pub const WEATHER_FESTIVAL: u8 = 3;
+
+// Ставки колодца (Water/час по погоде)
+pub const WELL_RATE_DROUGHT: u64 = 0;
+pub const WELL_RATE_SUNNY: u64 = 5;
+pub const WELL_RATE_RAIN: u64 = 15;
+pub const WELL_RATE_FESTIVAL: u64 = 20;
+
+// Шанс побочного дропа Coal у Шахтёра (15%)
+pub const COAL_DROP_CHANCE_BPS: u16 = 1500;
+
+// ===== [НОВОЕ] Инструкции #11 из аудита =====
+pub const BOW_COMMIT_SEED: &[u8] = b"bow_commit";
+pub const SKIN_SEED: &[u8] = b"skin";
+
+// Конверсия FOOD → энергия (1 FOOD = 10 энергии, максимум 100)
+pub const FOOD_TO_ENERGY_RATE: u64 = 10;
+pub const MAX_ENERGY: u32 = 100;
+
+// Эффекты фляг (энергия за тип)
+pub const FLASK_BLUE_ENERGY: u32 = 30;
+pub const FLASK_YELLOW_ENERGY: u32 = 50;
+
+pub const GASTANK_SPACE: usize = 57;

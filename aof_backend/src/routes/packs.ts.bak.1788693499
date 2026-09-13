@@ -1,0 +1,135 @@
+import { Router } from "express";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
+import { AUTHORITY } from "../config";
+import { program } from "../provider";
+import { authPda, configPda, packCommitPda, packConfigPda, toolPda } from "../lib/pda";
+import { authorityOnly, coSign, pk } from "../lib/tx";
+import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { newCommit, popSecret } from "../lib/secretStore";
+
+const r = Router();
+const packTypeMap: Record<string, any> = {
+  small: { small: {} },
+  medium: { medium: {} },
+  big: { big: {} },
+};
+
+r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async (req, res) => {
+  try {
+    const user = pk(req.body.user);
+    const mint = pk(req.body.mint);
+    const packType = req.body.packType;
+    const packTypeIdx = ["small", "medium", "big"].indexOf(packType);
+    const { hash } = newCommit(`pack:${mint.toBase58()}`);
+
+    const [config] = configPda();
+    const [packConfig] = packConfigPda(packTypeIdx);
+    const [packCommit] = packCommitPda(mint);
+    const treasury = pk(req.body.treasury);
+
+    const ix = await (program.methods as any)
+      .packOpenCommit(packTypeMap[packType], hash)
+      .accounts({
+        config,
+        authority: AUTHORITY.publicKey,
+        user,
+        treasury,
+        packConfig,
+        mint,
+        packCommit,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    const tx = await coSign([ix], user);
+    res.json({ tx });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+r.post("/reveal", requireCircuitOpen, requireWalletLimits("packs_reveal"), requireIdempotency, async (req, res) => {
+  try {
+    const mint = pk(req.body.mint);
+    const user = pk(req.body.user);
+    const packType = req.body.packType;
+    const packTypeIdx = ["small", "medium", "big"].indexOf(packType);
+    const secret = popSecret(`pack:${mint.toBase58()}`);
+
+    const [config] = configPda();
+    const [packCommit] = packCommitPda(mint);
+    const [packConfig] = packConfigPda(packTypeIdx);
+    const [toolData] = toolPda(mint);
+    const [auth] = authPda();
+    const userToken = getAssociatedTokenAddressSync(mint, user);
+
+    const ix = await (program.methods as any)
+      .packOpenReveal(secret)
+      .accounts({
+        config,
+        authority: AUTHORITY.publicKey,
+        packCommit,
+        user,
+        packConfig,
+        mint,
+        userToken,
+        toolData,
+        auth,
+        slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ sig });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+r.post("/config/init", async (req, res) => {
+  try {
+    const packType = Number(req.body.packType);
+    const priceLamports = new (require("bn.js"))(req.body.priceLamports);
+    const oddsBps = req.body.oddsBps;
+
+    const [config] = configPda();
+    const [packConfig] = packConfigPda(packType);
+
+    const ix = await (program.methods as any)
+      .initPackConfig(packType, priceLamports, oddsBps)
+      .accounts({
+        config,
+        authority: AUTHORITY.publicKey,
+        packConfig,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ sig });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+r.post("/config/set", async (req, res) => {
+  try {
+    const packType = Number(req.body.packType);
+    const priceLamports = new (require("bn.js"))(req.body.priceLamports);
+    const oddsBps = req.body.oddsBps;
+
+    const [config] = configPda();
+    const [packConfig] = packConfigPda(packType);
+
+    const ix = await (program.methods as any)
+      .setPackConfig(priceLamports, oddsBps)
+      .accounts({ config, authority: AUTHORITY.publicKey, packConfig })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ sig });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+export default r;

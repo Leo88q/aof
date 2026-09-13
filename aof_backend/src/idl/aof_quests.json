@@ -1,0 +1,1615 @@
+{
+  "address": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+  "metadata": {
+    "name": "aof_quests",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Age of Farming Quests, Achievements, Challenges, Drum of Luck"
+  },
+  "instructions": [
+    {
+      "name": "achievement_unlock",
+      "discriminator": [
+        247,
+        89,
+        21,
+        230,
+        66,
+        219,
+        174,
+        44
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "achievement_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  99,
+                  104,
+                  105,
+                  101,
+                  118,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "achievement_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "achievement_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "challenge_contribute",
+      "discriminator": [
+        10,
+        6,
+        141,
+        227,
+        11,
+        200,
+        32,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenge_round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  108,
+                  108,
+                  101,
+                  110,
+                  103,
+                  101,
+                  95,
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "week_number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contribution",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  108,
+                  108,
+                  101,
+                  110,
+                  103,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "week_number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "week_number",
+          "type": "u32"
+        },
+        {
+          "name": "medals",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "challenge_init",
+      "discriminator": [
+        106,
+        226,
+        63,
+        97,
+        156,
+        128,
+        73,
+        236
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenge_round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  108,
+                  108,
+                  101,
+                  110,
+                  103,
+                  101,
+                  95,
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "week_number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "week_number",
+          "type": "u32"
+        },
+        {
+          "name": "medals_pool",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "drum_commit",
+      "discriminator": [
+        43,
+        226,
+        137,
+        170,
+        29,
+        82,
+        145,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "drum_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  117,
+                  109,
+                  95,
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury_mascot",
+          "writable": true
+        },
+        {
+          "name": "user_mascot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quest_config.mascot_mint",
+                "account": "QuestConfig"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "drum_reveal",
+      "discriminator": [
+        12,
+        249,
+        95,
+        135,
+        214,
+        246,
+        31,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "drum_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  117,
+                  109,
+                  95,
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "treasury_mascot",
+          "writable": true
+        },
+        {
+          "name": "user_mascot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quest_config.mascot_mint",
+                "account": "QuestConfig"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "secret",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "init_quest_config",
+      "discriminator": [
+        40,
+        16,
+        70,
+        93,
+        203,
+        36,
+        183,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "mascot_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "treasury_mascot",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "quest_claim_reward",
+      "discriminator": [
+        59,
+        147,
+        176,
+        240,
+        143,
+        200,
+        196,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quest_template",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  116,
+                  101,
+                  109,
+                  112,
+                  108,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "quest_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quest_progress",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  101,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "quest_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury_mascot",
+          "writable": true
+        },
+        {
+          "name": "user_mascot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quest_config.mascot_mint",
+                "account": "QuestConfig"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "quest_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "quest_init",
+      "discriminator": [
+        5,
+        19,
+        107,
+        121,
+        82,
+        91,
+        53,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quest_template",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  116,
+                  101,
+                  109,
+                  112,
+                  108,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "quest_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "quest_id",
+          "type": "u32"
+        },
+        {
+          "name": "reward_mascot",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AchievementRecord",
+      "discriminator": [
+        29,
+        250,
+        170,
+        244,
+        20,
+        202,
+        134,
+        155
+      ]
+    },
+    {
+      "name": "ChallengeContribution",
+      "discriminator": [
+        136,
+        94,
+        74,
+        27,
+        190,
+        117,
+        151,
+        81
+      ]
+    },
+    {
+      "name": "ChallengeRound",
+      "discriminator": [
+        5,
+        96,
+        227,
+        248,
+        4,
+        8,
+        219,
+        76
+      ]
+    },
+    {
+      "name": "DrumCommit",
+      "discriminator": [
+        35,
+        182,
+        92,
+        2,
+        116,
+        24,
+        150,
+        10
+      ]
+    },
+    {
+      "name": "QuestConfig",
+      "discriminator": [
+        181,
+        88,
+        213,
+        44,
+        1,
+        15,
+        244,
+        70
+      ]
+    },
+    {
+      "name": "QuestProgress",
+      "discriminator": [
+        77,
+        66,
+        99,
+        169,
+        234,
+        177,
+        58,
+        162
+      ]
+    },
+    {
+      "name": "QuestTemplate",
+      "discriminator": [
+        171,
+        31,
+        117,
+        212,
+        201,
+        233,
+        31,
+        27
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AchievementUnlocked",
+      "discriminator": [
+        125,
+        160,
+        118,
+        30,
+        180,
+        209,
+        171,
+        62
+      ]
+    },
+    {
+      "name": "ChallengeContributed",
+      "discriminator": [
+        176,
+        33,
+        227,
+        216,
+        61,
+        244,
+        13,
+        21
+      ]
+    },
+    {
+      "name": "ChallengeCreated",
+      "discriminator": [
+        166,
+        178,
+        174,
+        178,
+        11,
+        172,
+        98,
+        243
+      ]
+    },
+    {
+      "name": "DrumCommitted",
+      "discriminator": [
+        164,
+        214,
+        144,
+        51,
+        36,
+        207,
+        245,
+        215
+      ]
+    },
+    {
+      "name": "DrumRevealed",
+      "discriminator": [
+        150,
+        169,
+        125,
+        76,
+        157,
+        251,
+        71,
+        251
+      ]
+    },
+    {
+      "name": "QuestConfigInitialized",
+      "discriminator": [
+        99,
+        91,
+        112,
+        209,
+        121,
+        44,
+        200,
+        165
+      ]
+    },
+    {
+      "name": "QuestCreated",
+      "discriminator": [
+        179,
+        90,
+        201,
+        178,
+        90,
+        69,
+        73,
+        67
+      ]
+    },
+    {
+      "name": "QuestRewardClaimed",
+      "discriminator": [
+        189,
+        67,
+        149,
+        106,
+        151,
+        4,
+        217,
+        25
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Paused",
+      "msg": "Quests paused"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6002,
+      "name": "QuestNotActive",
+      "msg": "Quest not active"
+    },
+    {
+      "code": 6003,
+      "name": "QuestNotCompleted",
+      "msg": "Quest not completed"
+    },
+    {
+      "code": 6004,
+      "name": "AlreadyClaimed",
+      "msg": "Reward already claimed"
+    },
+    {
+      "code": 6005,
+      "name": "AlreadyUnlocked",
+      "msg": "Achievement already unlocked"
+    },
+    {
+      "code": 6006,
+      "name": "ChallengeNotActive",
+      "msg": "Challenge not active"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidHash",
+      "msg": "Invalid hash"
+    },
+    {
+      "code": 6008,
+      "name": "CommitExpired",
+      "msg": "Commit expired"
+    },
+    {
+      "code": 6009,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AchievementRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "achievement_id",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "unlocked_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AchievementUnlocked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "achievement_id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeContributed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "week_number",
+            "type": "u32"
+          },
+          {
+            "name": "medals",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeContribution",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "week_number",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "medals",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "week_number",
+            "type": "u32"
+          },
+          {
+            "name": "medals_pool",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeRound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "week_number",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "medals_pool",
+            "type": "u64"
+          },
+          {
+            "name": "contributed_total",
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DrumCommit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DrumCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DrumRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "mascot_mint",
+            "docs": [
+              "Маскот-токен для наград (существующий официальный токен)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_mascot",
+            "docs": [
+              "SPL аккаунт казны с маскот-токенами (откуда выдаются награды)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mascot_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quest_id",
+            "type": "u32"
+          },
+          {
+            "name": "reward_mascot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestProgress",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "quest_id",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "completed",
+            "type": "bool"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestRewardClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "quest_id",
+            "type": "u32"
+          },
+          {
+            "name": "reward_mascot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestTemplate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quest_id",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reward_mascot",
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ]
+}

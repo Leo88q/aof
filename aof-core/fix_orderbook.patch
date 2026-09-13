@@ -1,0 +1,20 @@
+--- a/aof-core/src/instructions/orderbook.rs
++++ b/aof-core/src/instructions/orderbook.rs
+@@ -120,8 +120,10 @@
+     #[account(
+         mut,
+         seeds = [RESOURCE_ORDER_SEED, sell_order.maker.as_ref(), mint.key().as_ref()],
+-        bump
++        bump,
++        constraint = sell_order.mint == mint.key()
+     )]
+     pub sell_order: Account<'info, ResourceOrder>,
+     
+     #[account(
+         mut,
+-        seeds = [RESOURCE_ORDER_SEED, buy_order.maker.as_ref()]
++        seeds = [RESOURCE_ORDER_SEED, buy_order.maker.as_ref(), mint.key().as_ref()],
++        bump,
++        constraint = buy_order.mint == mint.key()
+     )]
+     pub buy_order: Account<'info, ResourceOrder>,

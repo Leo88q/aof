@@ -1,0 +1,41 @@
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum MarketError {
+    #[msg("Market is paused")]
+    Paused,
+    #[msg("Unauthorized")]
+    Unauthorized,
+    #[msg("Fee cannot exceed 1000 bps (10%)")]
+    FeeTooHigh,
+    #[msg("Invalid rarity: must be 1-4")]
+    InvalidRarity,
+    #[msg("Queue is empty")]
+    QueueEmpty,
+    #[msg("Queue is full (max 500)")]
+    QueueFull,
+    #[msg("Math overflow")]
+    MathOverflow,
+    #[msg("Invalid rarity or tier")]
+    InvalidRarity,
+    #[msg("Price changed beyond slippage tolerance")]
+    PriceChanged,
+    #[msg("Invalid currency")]
+    InvalidCurrency,
+    #[msg("Invalid mint address")]
+    InvalidMint,
+    #[msg("Wrong tool: not first in queue")]
+    WrongTool,
+    #[msg("Session expired")]
+    SessionExpired,
+    #[msg("Session revoked")]
+    SessionRevoked,
+    #[msg("Session TTL exceeds maximum (30 days)")]
+    SessionTtlTooLong,
+    #[msg("Invalid session signer")]
+    InvalidSessionSigner,
+    #[msg("Session max_amount_per_tx exceeds trust tier limit")]
+    SessionAmountExceedsTrustTier,
+    #[msg("Current pool price is below the seller min_price")]
+    MinPriceNotMet,
+}

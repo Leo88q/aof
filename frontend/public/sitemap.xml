@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>http://localhost:3000/site/guide</loc></url>
+  <url><loc>http://localhost:3000/site/strategies</loc></url>
+  <url><loc>http://localhost:3000/site/recipes</loc></url>
+  <url><loc>http://localhost:3000/site/trade</loc></url>
+  <url><loc>http://localhost:3000/site/potato</loc></url>
+  <url><loc>http://localhost:3000/site/resources/seeds</loc></url>
+  <url><loc>http://localhost:3000/site/resources/wheat</loc></url>
+  <url><loc>http://localhost:3000/site/resources/flour</loc></url>
+  <url><loc>http://localhost:3000/site/resources/bread</loc></url>
+  <url><loc>http://localhost:3000/site/resources/water</loc></url>
+  <url><loc>http://localhost:3000/site/resources/food</loc></url>
+  <url><loc>http://localhost:3000/site/resources/wood</loc></url>
+  <url><loc>http://localhost:3000/site/resources/stone</loc></url>
+  <url><loc>http://localhost:3000/site/resources/coal</loc></url>
+  <url><loc>http://localhost:3000/site/resources/meat</loc></url>
+  <url><loc>http://localhost:3000/site/resources/stone-blue</loc></url>
+  <url><loc>http://localhost:3000/site/resources/stone-purple</loc></url>
+  <url><loc>http://localhost:3000/site/resources/stone-red</loc></url>
+  <url><loc>http://localhost:3000/site/resources/sand-white</loc></url>
+  <url><loc>http://localhost:3000/site/resources/sand-pink</loc></url>
+  <url><loc>http://localhost:3000/site/resources/sand-yellow</loc></url>
+  <url><loc>http://localhost:3000/site/resources/gem-blue</loc></url>
+  <url><loc>http://localhost:3000/site/resources/gem-orange</loc></url>
+  <url><loc>http://localhost:3000/site/resources/gem-white</loc></url>
+  <url><loc>http://localhost:3000/site/resources/gem-green</loc></url>
+  <url><loc>http://localhost:3000/site/resources/flask-blue</loc></url>
+  <url><loc>http://localhost:3000/site/resources/flask-yellow</loc></url>
+  <url><loc>http://localhost:3000/site/resources/flask-green</loc></url>
+  <url><loc>http://localhost:3000/site/resources/flask-pink</loc></url>
+  <url><loc>http://localhost:3000/site/resources/flask-purple</loc></url>
+  <url><loc>http://localhost:3000/site/resources/skr</loc></url>
+  <url><loc>http://localhost:3000/site/resources/potato</loc></url>
+  <url><loc>http://localhost:3000/site/resources/love-heart</loc></url>
+</urlset>

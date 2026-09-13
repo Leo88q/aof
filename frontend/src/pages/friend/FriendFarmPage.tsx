@@ -1,0 +1,198 @@
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { api } from "../../lib/api";
+import { Card } from "../../components/ui/Card";
+import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { fmtNum, shortAddr } from "../../lib/marketUtils";
+import { useWalletStore } from "../../store/walletStore";
+import { useFlash } from "../../lib/marketUtils";
+import { useNav } from "../../nav/NavContext";
+
+const MAX_DURABILITY = 20;
+
+interface FriendFarmPageProps {
+  address: string;
+}
+
+export function FriendFarmPage({ address }: FriendFarmPageProps) {
+  const { address: myAddress } = useWalletStore();
+  const { pop } = useNav();
+  const [farm, setFarm] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [visitsLeft, setVisitsLeft] = useState<number>(5);
+  const [txStatus, flash] = useFlash();
+
+  useEffect(() => {
+    if (!address) {
+      setLoading(false);
+      return;
+    }
+    api.query.friendFarm(address)
+      .then((data: any) => setFarm(data))
+      .catch(() => setFarm(null))
+      .finally(() => setLoading(false));
+
+    // Загружаем лимит визитов
+    if (myAddress) {
+      api.neighbors.list(myAddress)
+        .then((data: any) => setVisitsLeft(data?.visitsLeftToday ?? 5))
+        .catch(() => {});
+    }
+  }, [address, myAddress]);
+
+  async function doWater() {
+    if (!myAddress) return flash("❌ Подключите кошелёк");
+    if (!address) return;
+    try {
+      flash("Поливаем ферму…");
+      const resp = await api.friend.water({ owner: address, waterer: myAddress });
+      if (resp.success) {
+        flash("✅ Ферма полита! Хозяин получит +1% к урожаю, вы +5 trust");
+        setVisitsLeft((v) => Math.max(0, v - 1));
+      } else {
+        flash(`❌ ${resp.error || "Не удалось полить"}`);
+      }
+    } catch (e: any) {
+      flash(`❌ ${e.message}`);
+    }
+  }
+
+  async function doHelpRepair() {
+    if (!myAddress) return flash("❌ Подключите кошелёк");
+    if (!address) return;
+    try {
+      flash("Помогаем с ремонтом…");
+      const resp = await api.neighbors.visit({ visitor: myAddress, host: address, action: "help_repair" });
+      if (resp.visit) {
+        flash("✅ Помощь оказана! Хозяин получит ускорение ремонта, вы +3 trust");
+        setVisitsLeft((v) => Math.max(0, v - 1));
+      } else {
+        flash(`❌ ${resp.error || "Не удалось помочь"}`);
+      }
+    } catch (e: any) {
+      flash(`❌ ${e.message}`);
+    }
+  }
+
+  if (loading) return (
+    <div className="p-4">
+      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад на свою ферму</button>
+      <p className="text-straw text-sm">Загрузка фермы {address}…</p>
+    </div>
+  );
+
+  if (!farm) return (
+    <div className="p-4">
+      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад на свою ферму</button>
+      <Card className="text-center py-8">
+        <div className="text-4xl mb-2">🚫</div>
+        <p className="text-parchment text-sm">Ферма не найдена</p>
+      </Card>
+    </div>
+  );
+
+  const { tools, balances } = farm;
+
+  return (
+    <div className="p-4 pt-2 pb-24 space-y-4">
+      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-2">← Назад на свою ферму</button>
+
+      {txStatus && (
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
+          {txStatus}
+        </motion.div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-4xl">🌾</div>
+          <div>
+            <h1 className="text-parchment font-bold text-lg">Ферма {shortAddr(address)}</h1>
+            <p className="text-straw text-xs">Просмотр (только чтение)</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-gold">{visitsLeft}</div>
+          <div className="text-xs text-straw">визитов</div>
+        </div>
+      </div>
+
+      {/* Кладовка (упрощённо) */}
+      <Card>
+        <h2 className="text-parchment font-semibold text-sm mb-3">💰 Кладовка</h2>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p className="text-parchment font-bold text-xl">{fmtNum(balances.FOOD || 0)}</p>
+            <p className="text-straw text-xs">🌾 Зерно</p>
+          </div>
+          <div>
+            <p className="text-parchment font-bold text-xl">{fmtNum(balances.WOOD || 0)}</p>
+            <p className="text-straw text-xs">🪵 Дерево</p>
+          </div>
+          <div>
+            <p className="text-parchment font-bold text-xl">{fmtNum(balances.STONE || 0)}</p>
+            <p className="text-straw text-xs">🪨 Камень</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Инструменты (только список) */}
+      <Card>
+        <h2 className="text-parchment font-semibold text-sm mb-3">🛠️ Инструменты ({tools.length})</h2>
+        {tools.length === 0 ? (
+          <p className="text-straw text-xs text-center py-4">Инструментов нет</p>
+        ) : (
+          <div className="space-y-2">
+            {tools.map((t: any) => {
+              const rk = rarityKey(t.rarity);
+              const durability = Number(t.durability);
+              const pct = (durability / MAX_DURABILITY) * 100;
+              return (
+                <div key={t.mint} className="flex items-center gap-3 p-2 rounded-xl bg-soil-800/60 border border-straw/10">
+                  <span className="text-2xl">{TOOL_ICON[t.toolType] || "🛠️"}</span>
+                  <div className="flex-1">
+                    <p className="text-parchment text-sm">
+                      {t.toolType} <span style={{ color: RARITY_META[rk]?.color }}>({RARITY_META[rk]?.label})</span>
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-2 rounded-full bg-soil-800 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#6bbf59" }} />
+                      </div>
+                      <span className="text-straw text-xs">{durability}/{MAX_DURABILITY}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Помочь другу */}
+      <Card>
+        <h2 className="text-parchment font-semibold text-sm mb-2">🤝 Помочь другу</h2>
+        <p className="text-straw text-xs mb-3">
+          Помогайте друзьям — получайте trust points, хозяин получает бонусы.
+          Лимит: <span className="text-wheat-500 font-semibold">{visitsLeft} визитов сегодня</span>.
+        </p>
+        <div className="space-y-2">
+          <button onClick={doWater} disabled={!myAddress || myAddress === address || visitsLeft === 0}
+            className="w-full py-2.5 rounded-xl bg-sprout-600 text-white font-semibold text-sm disabled:opacity-40">
+            💧 Полить ферму (+1% урожай хозяину, +5 trust вам)
+          </button>
+          <button onClick={doHelpRepair} disabled={!myAddress || myAddress === address || visitsLeft === 0}
+            className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+            🔧 Помочь с ремонтом (+ускорение хозяину, +3 trust вам)
+          </button>
+        </div>
+        {myAddress === address && (
+          <p className="text-straw text-xs text-center mt-2">Нельзя помогать самому себе</p>
+        )}
+        {visitsLeft === 0 && (
+          <p className="text-straw text-xs text-center mt-2">Лимит визитов исчерпан. Приходите завтра!</p>
+        )}
+      </Card>
+    </div>
+  );
+}

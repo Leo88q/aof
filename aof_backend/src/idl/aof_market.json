@@ -1,0 +1,1201 @@
+{
+  "address": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+  "metadata": {
+    "name": "aof_market",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Age of Farming Hot Market + Session Keys"
+  },
+  "instructions": [
+    {
+      "name": "cancel_limit_order",
+      "discriminator": [
+        132,
+        156,
+        132,
+        31,
+        67,
+        40,
+        232,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "currency_mint",
+          "writable": true
+        },
+        {
+          "name": "order_vault",
+          "writable": true
+        },
+        {
+          "name": "maker_currency",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "crank_market",
+      "discriminator": [
+        36,
+        224,
+        156,
+        55,
+        74,
+        248,
+        135,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "hot_market_buy",
+      "discriminator": [
+        170,
+        30,
+        106,
+        129,
+        68,
+        255,
+        84,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "currency_mint",
+          "writable": true
+        },
+        {
+          "name": "buyer_currency",
+          "writable": true
+        },
+        {
+          "name": "treasury_currency",
+          "writable": true
+        },
+        {
+          "name": "new_tool_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        },
+        {
+          "name": "currency",
+          "type": {
+            "defined": {
+              "name": "Currency"
+            }
+          }
+        },
+        {
+          "name": "max_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "hot_market_sell_into_queue",
+      "discriminator": [
+        55,
+        14,
+        217,
+        220,
+        22,
+        78,
+        140,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "currency_mint",
+          "writable": true
+        },
+        {
+          "name": "seller_currency",
+          "writable": true
+        },
+        {
+          "name": "pool_currency",
+          "writable": true
+        },
+        {
+          "name": "sold_tool_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        },
+        {
+          "name": "currency",
+          "type": {
+            "defined": {
+              "name": "Currency"
+            }
+          }
+        },
+        {
+          "name": "min_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "hot_market_skip",
+      "discriminator": [
+        169,
+        182,
+        94,
+        107,
+        172,
+        89,
+        241,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "pool"
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "init_market_config",
+      "discriminator": [
+        104,
+        110,
+        64,
+        33,
+        5,
+        69,
+        91,
+        239
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "core_mint"
+        },
+        {
+          "name": "gem_mint"
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "init_pool",
+      "discriminator": [
+        116,
+        233,
+        199,
+        204,
+        115,
+        159,
+        171,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        },
+        {
+          "name": "target_price_core",
+          "type": "u64"
+        },
+        {
+          "name": "target_price_gem",
+          "type": "u64"
+        },
+        {
+          "name": "target_rate_per_hour",
+          "type": "u64"
+        },
+        {
+          "name": "decay_bps_per_hour",
+          "type": "u16"
+        },
+        {
+          "name": "growth_bps_per_sale",
+          "type": "u16"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "place_limit_order",
+      "discriminator": [
+        108,
+        176,
+        33,
+        186,
+        146,
+        229,
+        1,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "currency_mint",
+          "writable": true
+        },
+        {
+          "name": "maker_currency",
+          "writable": true
+        },
+        {
+          "name": "order_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        },
+        {
+          "name": "currency",
+          "type": {
+            "defined": {
+              "name": "Currency"
+            }
+          }
+        },
+        {
+          "name": "is_buy",
+          "type": "bool"
+        },
+        {
+          "name": "limit_price",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_fees",
+      "discriminator": [
+        137,
+        178,
+        49,
+        58,
+        0,
+        245,
+        242,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "start_market_event",
+      "discriminator": [
+        84,
+        146,
+        83,
+        249,
+        129,
+        71,
+        6,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "rarity",
+          "type": "u8"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        },
+        {
+          "name": "multiplier_bps",
+          "type": "u16"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "HotLimitOrder",
+      "discriminator": [
+        197,
+        198,
+        219,
+        217,
+        218,
+        149,
+        161,
+        23
+      ]
+    },
+    {
+      "name": "HotMarketPool",
+      "discriminator": [
+        179,
+        137,
+        185,
+        189,
+        70,
+        137,
+        153,
+        120
+      ]
+    },
+    {
+      "name": "MarketConfig",
+      "discriminator": [
+        119,
+        255,
+        200,
+        88,
+        252,
+        82,
+        128,
+        24
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "HotMarketBought",
+      "discriminator": [
+        160,
+        169,
+        117,
+        60,
+        32,
+        147,
+        113,
+        56
+      ]
+    },
+    {
+      "name": "HotMarketCranked",
+      "discriminator": [
+        39,
+        208,
+        51,
+        166,
+        25,
+        63,
+        22,
+        38
+      ]
+    },
+    {
+      "name": "HotMarketEventStarted",
+      "discriminator": [
+        93,
+        184,
+        21,
+        20,
+        13,
+        158,
+        84,
+        137
+      ]
+    },
+    {
+      "name": "HotMarketSkipped",
+      "discriminator": [
+        124,
+        50,
+        120,
+        145,
+        93,
+        97,
+        225,
+        216
+      ]
+    },
+    {
+      "name": "HotMarketSold",
+      "discriminator": [
+        123,
+        89,
+        167,
+        101,
+        192,
+        5,
+        151,
+        237
+      ]
+    },
+    {
+      "name": "LimitOrderMatched",
+      "discriminator": [
+        11,
+        163,
+        116,
+        110,
+        238,
+        93,
+        229,
+        28
+      ]
+    },
+    {
+      "name": "LimitOrderPlaced",
+      "discriminator": [
+        104,
+        46,
+        231,
+        29,
+        78,
+        174,
+        107,
+        112
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "Program or pool is paused"
+    },
+    {
+      "code": 6002,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6003,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6004,
+      "name": "SlippageExceeded",
+      "msg": "Slippage: price moved past max_price/min_price"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidWindowDuration",
+      "msg": "Hot window duration out of range"
+    },
+    {
+      "code": 6006,
+      "name": "OrderNotActive",
+      "msg": "Order is not active"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientReserve",
+      "msg": "Insufficient reserve in pool"
+    }
+  ],
+  "types": [
+    {
+      "name": "Currency",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Gem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotLimitOrder",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "currency",
+            "type": {
+              "defined": {
+                "name": "Currency"
+              }
+            }
+          },
+          {
+            "name": "is_buy",
+            "type": "bool"
+          },
+          {
+            "name": "limit_price",
+            "type": "u64"
+          },
+          {
+            "name": "amount_escrowed",
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotMarketBought",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "currency",
+            "type": {
+              "defined": {
+                "name": "Currency"
+              }
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "sold_since_start",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotMarketCranked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "new_price_core",
+            "type": "u64"
+          },
+          {
+            "name": "new_price_gem",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotMarketEventStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "multiplier_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotMarketPool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "target_price_core",
+            "type": "u64"
+          },
+          {
+            "name": "target_price_gem",
+            "type": "u64"
+          },
+          {
+            "name": "target_rate_per_hour",
+            "type": "u64"
+          },
+          {
+            "name": "decay_bps_per_hour",
+            "type": "u16"
+          },
+          {
+            "name": "growth_bps_per_sale",
+            "type": "u16"
+          },
+          {
+            "name": "sold_since_start",
+            "type": "u64"
+          },
+          {
+            "name": "purchases_in_window",
+            "type": "u64"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "last_trade_ts",
+            "type": "i64"
+          },
+          {
+            "name": "hot_window_end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "hot_multiplier_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotMarketSkipped",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HotMarketSold",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "currency",
+            "type": {
+              "defined": {
+                "name": "Currency"
+              }
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitOrderMatched",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitOrderPlaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "is_buy",
+            "type": "bool"
+          },
+          {
+            "name": "limit_price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "core_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "gem_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,411 @@
+{
+  "address": "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
+  "metadata": {
+    "name": "aof_rebirth",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Age of Farming Rebirth (prestige/endgame)"
+  },
+  "instructions": [
+    {
+      "name": "do_rebirth",
+      "discriminator": [
+        76,
+        11,
+        54,
+        198,
+        197,
+        72,
+        21,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "rebirth_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  98,
+                  105,
+                  114,
+                  116,
+                  104,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rebirth_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  98,
+                  105,
+                  114,
+                  116,
+                  104,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_rebirth_config",
+      "discriminator": [
+        229,
+        39,
+        46,
+        209,
+        189,
+        19,
+        97,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "rebirth_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  98,
+                  105,
+                  114,
+                  116,
+                  104,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bonus_per_rebirth_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_bonus_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_rebirths",
+          "type": "u8"
+        },
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "rebirth_cost_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "cooldown_seconds",
+          "type": "i64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "RebirthConfig",
+      "discriminator": [
+        163,
+        97,
+        101,
+        44,
+        92,
+        155,
+        196,
+        202
+      ]
+    },
+    {
+      "name": "RebirthRecord",
+      "discriminator": [
+        13,
+        62,
+        153,
+        64,
+        16,
+        153,
+        206,
+        166
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "RebirthConfigInitialized",
+      "discriminator": [
+        74,
+        134,
+        191,
+        16,
+        28,
+        202,
+        33,
+        105
+      ]
+    },
+    {
+      "name": "RebirthPerformed",
+      "discriminator": [
+        94,
+        120,
+        197,
+        142,
+        164,
+        203,
+        113,
+        43
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Paused",
+      "msg": "Rebirth paused"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6002,
+      "name": "MaxRebirthsReached",
+      "msg": "Max rebirths reached"
+    },
+    {
+      "code": 6003,
+      "name": "BonusCapReached",
+      "msg": "Bonus cap reached"
+    },
+    {
+      "code": 6004,
+      "name": "NotEligible",
+      "msg": "Not eligible for rebirth"
+    },
+    {
+      "code": 6005,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6006,
+      "name": "CooldownActive",
+      "msg": "Rebirth cooldown still active"
+    }
+  ],
+  "types": [
+    {
+      "name": "RebirthConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "bonus_per_rebirth_bps",
+            "docs": [
+              "Бонус за каждый ребёрт в bps (200 = +2%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_bonus_bps",
+            "docs": [
+              "Кап суммарного бонуса в bps (2000 = +20%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_rebirths",
+            "docs": [
+              "Максимум ребёртов"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "rebirth_cost_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "cooldown_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RebirthConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bonus_per_rebirth_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_bonus_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_rebirths",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RebirthPerformed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "generation",
+            "type": "u16"
+          },
+          {
+            "name": "rebirth_count",
+            "type": "u8"
+          },
+          {
+            "name": "permanent_bonus_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RebirthRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "generation",
+            "docs": [
+              "Текущее поколение (начинается с 1)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "rebirth_count",
+            "docs": [
+              "Сколько ребёртов совершено"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "permanent_bonus_bps",
+            "docs": [
+              "Накопленный постоянный бонус в bps"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "last_rebirth_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

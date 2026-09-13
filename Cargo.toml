@@ -1,0 +1,7 @@
+[workspace]
+members = ["aof-core", "programs/aof-market", "programs/aof-quests", "programs/aof-rebirth",
+    "programs/aof-session-keys", "programs/aof-liquidity"]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true

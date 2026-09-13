@@ -1,0 +1,13 @@
+@media (prefers-reduced-motion: reduce) {
+  .aof-ui {
+    --aof-dur-press: 0ms; --aof-dur-release: 0ms; --aof-dur-panel: 0ms;
+    --aof-dur-tooltip: 0ms; --aof-dur-tab: 0ms; --aof-dur-toast-in: 0ms;
+    --aof-dur-page: 0ms;
+  }
+  .aof-ui, .aof-ui *, .aof-ui *::before, .aof-ui *::after {
+    animation-duration: 0ms; animation-delay: 0ms;
+    animation-iteration-count: 1;
+    transition-duration: 0ms; transition-delay: 0ms;
+    scroll-behavior: auto;
+  }
+}

@@ -1,0 +1,106 @@
+import { useEffect as __seoEffect } from 'react';
+import { useLocation as __seoLocation } from 'react-router-dom';
+import { pages as __seoPages, resourcesBySlug as __seoRes } from '../content/game';
+import { useState } from 'react';
+import { Link, NavLink, Outlet } from 'react-router-dom';
+import { pages } from '../content/pages';
+import { ScrollFlask } from '../ui/Components';
+
+const navGroups = [...new Set(pages.map(p => p.group))].map(title => ({
+  title,
+  items: pages.filter(p => p.group === title).map(p => ({ path: p.id, label: p.title })),
+}));
+
+export function SiteLayout() {
+  const __seoLoc = __seoLocation();
+  __seoEffect(() => {
+    const parts = __seoLoc.pathname.split('/').filter(Boolean);
+    const id = parts[1] || 'home';
+    const res = parts[0] === 'site' && parts[1] === 'resources' ? __seoRes.get(parts[2]) : undefined;
+    const page = __seoPages.find((p) => p.id === id);
+    const title = res ? res.name + ' · AOF Мастерская' : page ? page.title + ' · AOF Мастерская' : 'AOF Мастерская';
+    const desc = res ? res.lead : page ? page.lead : 'Информационный сайт игры-мастерской AOF на Solana.';
+    document.title = title;
+    const setMeta = (attr: string, key: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>('meta[' + attr + '="' + key + '"]');
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
+      el.setAttribute('content', content);
+    };
+    setMeta('name', 'description', desc);
+    setMeta('property', 'og:title', title);
+    setMeta('property', 'og:description', desc);
+    setMeta('property', 'og:type', 'website');
+    setMeta('property', 'og:locale', 'ru_RU');
+  }, [__seoLoc.pathname]); {
+  const [mobile, setMobile] = useState(false);
+
+  return (
+    <div className="aof-ui aof-site" lang="ru">
+      <a className="site-skip" href="#site-main">Перейти к содержимому</a>
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Link className="site-logo" to="/site/home">
+            <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M20 2l16 9v18L20 38 4 29V11z" fill="var(--aof-copper)" />
+              <path d="M20 9v23M11 15l9 8 9-8" stroke="var(--aof-forest)" strokeWidth="3" fill="none" />
+            </svg>
+            <span>AOF<span className="site-logo-sub">Мастерская</span></span>
+          </Link>
+          <nav className="site-desktop-nav" aria-label="Основная">
+            {navGroups.map(g => (
+              <details key={g.title}>
+                <summary>{g.title}</summary>
+                <div className="site-nav-panel">
+                  {g.items.map(it => (
+                    <NavLink key={it.path} to={'/site/' + it.path}>{it.label}</NavLink>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </nav>
+          <div className="site-header-tools">
+            <ScrollFlask />
+            <button className="site-small-button" type="button" aria-expanded={mobile} onClick={() => setMobile(!mobile)}>Меню</button>
+          </div>
+        </div>
+        {mobile && (
+          <div className="site-mobile-menu">
+            {navGroups.map(g => (
+              <section key={g.title}>
+                <h2>{g.title}</h2>
+                <ul>
+                  {g.items.map(it => (
+                    <li key={it.path}>
+                      <NavLink to={'/site/' + it.path} onClick={() => setMobile(false)}>{it.label}</NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+      </header>
+      <main id="site-main" className="site-main" tabIndex={-1}>
+        <Outlet />
+      </main>
+      <footer className="site-footer">
+        <div className="site-footer-intro">
+          <h2>Оставь после себя полезную вещь.</h2>
+          <p>Информационная мастерская AOF.</p>
+        </div>
+        <div className="site-footer-grid">
+          {navGroups.map(g => (
+            <nav key={g.title} aria-label={g.title}>
+              <h3>{g.title}</h3>
+              <ul>{g.items.map(it => <li key={it.path}><Link to={'/site/' + it.path}>{it.label}</Link></li>)}</ul>
+            </nav>
+          ))}
+        </div>
+        <div className="site-footer-bottom">
+          <span>AOF · {new Date().getFullYear()}</span>
+          <Link to="/site/rules">Правила</Link>
+        </div>
+      </footer>
+    </div>
+  );
+}

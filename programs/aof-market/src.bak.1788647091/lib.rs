@@ -1,0 +1,70 @@
+use anchor_lang::prelude::*;
+
+pub mod errors;
+pub mod events;
+pub mod instructions;
+pub mod state;
+
+pub use errors::*;
+pub use instructions::*;
+pub use state::*;
+
+declare_id!("HHirMmDRAgAVFPAYaQCMarkyu9Vy5DVUf5aXyKvkfyW6");
+
+#[program]
+pub mod aof_market {
+    use super::*;
+
+    pub fn init_market_config(
+        ctx: Context<InitMarketConfig>,
+        treasury_mascot: Pubkey,
+        treasury_sol: Pubkey,
+        fee_bps: u16,
+    ) -> Result<()> {
+        instructions::config::init_market_config::handler(ctx, treasury_mascot, treasury_sol, fee_bps)
+    }
+
+    pub fn hot_market_init_pool(
+        ctx: Context<InitPool>,
+        rarity: u8,
+        params: PoolParams,
+    ) -> Result<()> {
+        instructions::hot_market::init_pool::handler(ctx, rarity, params)
+    }
+
+    pub fn hot_market_buy(
+        ctx: Context<BuyFromPool>,
+        rarity: u8,
+        currency: PaymentCurrency,
+        price_snapshot: u64,
+        slippage_bps: u16,
+    ) -> Result<()> {
+        instructions::hot_market::buy::handler(ctx, rarity, currency, price_snapshot, slippage_bps)
+    }
+
+    pub fn hot_market_sell_into_queue(
+        ctx: Context<SellIntoQueue>,
+        rarity: u8,
+        min_price: u64,
+    ) -> Result<()> {
+        instructions::hot_market::sell_into_queue::handler(ctx, rarity, min_price)
+    }
+
+    pub fn hot_market_skip(ctx: Context<SkipLot>, rarity: u8) -> Result<()> {
+        instructions::hot_market::skip::handler(ctx, rarity)
+    }
+
+    pub fn hot_market_start_event(
+        ctx: Context<StartEvent>,
+        rarity: u8,
+        duration_seconds: i64,
+        multiplier_bps: u16,
+    ) -> Result<()> {
+        instructions::hot_market::start_event::handler(ctx, rarity, duration_seconds, multiplier_bps)
+    }
+
+    pub fn hot_market_crank(ctx: Context<HotMarketCrank>, rarity: u8) -> Result<()> {
+        instructions::hot_market::crank::handler(ctx, rarity)
+    }
+
+}

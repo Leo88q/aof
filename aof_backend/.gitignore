@@ -1,0 +1,25 @@
+# Секреты
+.env
+.env.*
+*.env
+keys/*.json
+solana/keys/*.json
+**/keys/*.json
+*_keypair.json
+*-keypair.json
+
+# Билды
+dist/
+build/
+target/
+node_modules/
+
+# Solana
+test-ledger/
+.anchor/
+
+# OS
+.DS_Store
+*.log
+data/session-keys/
+.env.bak

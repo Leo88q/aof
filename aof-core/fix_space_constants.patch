@@ -1,0 +1,23 @@
+--- a/aof-core/src/constants.rs
++++ b/aof-core/src/constants.rs
+@@ -14,20 +14,6 @@
+ pub const MINT_FEE_WOOD: u64 = 70_000_000;
+ pub const MINT_FEE_STONE: u64 = 100_000_000;
+ 
+-// УДАЛИТЬ: эти константы устарели, используем 8 + T::INIT_SPACE
+-pub const CONFIG_SPACE: usize = 186;
+-pub const CRAFT_ECONOMY_SPACE: usize = 201;
+-pub const PACK_CONFIG_SPACE: usize = 28;
+-pub const REROLL_CONFIG_SPACE: usize = 19;
+-pub const SEASON_SPACE: usize = 21;
+-pub const MATERIAL_MINTS_SPACE: usize = 745;
+-pub const ENERGY_ACCOUNT_SPACE: usize = 58;
+-pub const FARM_TILE_SPACE: usize = 58;
+-pub const WEATHER_STATE_SPACE: usize = 22;
+-pub const WELL_STATE_SPACE: usize = 57;
+-pub const MILL_STATE_SPACE: usize = 58;
+-pub const OVEN_STATE_SPACE: usize = 59;
+-
+ // Цены крафта (базовые)
+ pub const CRAFT_WOOD_COMMON: u64 = 500;
+ pub const CRAFT_STONE_COMMON: u64 = 300;

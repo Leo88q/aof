@@ -1,0 +1,39 @@
+:root {
+  --aof-concrete: #8B8680;
+  --aof-oak: #6B4E3D;
+  --aof-oak-light: #7D5F4A;
+  --aof-oak-dark: #5A4030;
+  --aof-copper: #A8763E;
+  --aof-copper-bright: #C8963E;
+  --aof-copper-dark: #8A6630;
+  --aof-terracotta: #C97D60;
+  --aof-sage: #8A9A7B;
+  --aof-golden: #E8B98A;
+  --aof-forest: #2D4A3E;
+  --aof-parchment: #F4EDE4;
+  --aof-ember: #A85A3E;
+
+  --aof-font-display: 'Playfair Display', Georgia, serif;
+  --aof-font-body: 'Inter', system-ui, sans-serif;
+  --aof-font-mono: 'JetBrains Mono', monospace;
+
+  --aof-shadow-sm: 0 2px 4px rgba(45, 42, 38, 0.18);
+  --aof-shadow-md: 0 4px 8px rgba(45, 42, 38, 0.25);
+  --aof-shadow-lg: 0 8px 16px rgba(45, 42, 38, 0.32);
+  --aof-shadow-xl: 0 16px 48px rgba(45, 42, 38, 0.45);
+  --aof-shadow-inset: inset 0 2px 4px rgba(45, 42, 38, 0.35);
+
+  --aof-radius-sm: 4px;
+  --aof-radius-md: 8px;
+  --aof-radius-lg: 12px;
+
+  --aof-unit: 8px;
+
+  --aof-dur-press: 80ms;
+  --aof-dur-release: 120ms;
+  --aof-dur-panel: 300ms;
+  --aof-dur-tooltip: 100ms;
+  --aof-dur-tab: 200ms;
+  --aof-dur-toast-in: 250ms;
+  --aof-dur-page: 400ms;
+}

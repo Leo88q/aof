@@ -1,0 +1,184 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { RARITY_META, TOOL_ICON, rarityKey } from "../lib/toolMeta";
+import { useCountdown } from "../lib/useCountdown";
+import { api } from "../lib/api";
+import { handleTxResponse } from "../lib/txFlow";
+import { useWalletStore } from "../store/walletStore";
+import { toNum } from "../lib/marketUtils";
+
+interface ToolMiningCardProps {
+  tool: any;
+  onAction?: (action: string, payload: any) => Promise<any>;
+  onChanged?: () => void;
+}
+
+/**
+ * Живая карточка инструмента (ТЗ v3 §2.4–2.5):
+ * стейк = «уехать в сарай», майнинг = вагонетка, сбор = сундук.
+ * Реальные вызовы /tools/stake|start-mining|collect-mining|unstake + подпись кошелька.
+ */
+export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
+  const { address } = useWalletStore();
+  const rk = rarityKey(tool.rarity);
+  const meta = RARITY_META[rk] || RARITY_META.common;
+  const icon = TOOL_ICON[tool.toolType?.toLowerCase?.()] || "🛠️";
+
+  const [hours, setHours] = useState(4);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const miningEnd = tool.isMining ? toNum(tool.miningEnd) : 0;
+  const { label, done } = useCountdown(miningEnd || null);
+
+  const flashMsg = (m: string) => {
+    setMsg(m);
+    setTimeout(() => setMsg(null), 6000);
+  };
+
+  async function run(kind: "stake" | "start" | "collect" | "unstake") {
+    if (!address) return flashMsg("❌ Подключите кошелёк (кнопка вверху)");
+    setBusy(true);
+    try {
+      let resp: any;
+      if (kind === "stake") {
+        flashMsg("Инструмент уезжает в сарай…");
+        resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(86400) });
+      } else if (kind === "unstake") {
+        flashMsg("Инструмент возвращается…");
+        resp = await api.tools.unstake({ user: address, mint: tool.mint });
+      } else if (kind === "start") {
+        flashMsg("Вагонетка поехала в забой…");
+        resp = await api.tools.startMining({ user: address, mint: tool.mint, hours });
+      } else {
+        flashMsg("Открываем сундук…");
+        resp = await api.tools.collectMining({ user: address, mint: tool.mint });
+      }
+      const r = await handleTxResponse(resp);
+      flashMsg(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      if (r.success) {
+        window.dispatchEvent(new CustomEvent("aof:refresh"));
+        setTimeout(() => onChanged?.(), 2500);
+      }
+    } catch (e: any) {
+      flashMsg(`❌ ${e?.response?.data?.error || e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const durability = Number(tool.durability || 0);
+  const durabilityPct = Math.max(0, Math.min(100, (durability / 20) * 100));
+  const maxHours = Math.max(1, Math.min(20, durability));
+
+  const state =
+    durabilityPct > 75
+      ? { icon: "🌱", label: "Рост", color: "#6bbf59" }
+      : durabilityPct > 40
+      ? { icon: "⚙️", label: "Норма", color: "#c9a24a" }
+      : durabilityPct > 15
+      ? { icon: "🪨", label: "Износ", color: "#b0653a" }
+      : { icon: "💀", label: "Сломан", color: "#c2703d" };
+
+  // Прогресс вагонетки: оставшееся время от общего срока текущей добычи
+  const totalSec = Math.max(1, toNum(tool.lastMinedHours) * 3600 || hours * 3600);
+  const remainSec = Math.max(0, miningEnd - Date.now() / 1000);
+  const progress = tool.isMining ? Math.max(0, Math.min(1, 1 - remainSec / totalSec)) : 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className={`rounded-2xl bg-soil-850/80 border p-3 mb-3 ${tool.isMining && done ? "border-gold/60" : "border-straw/10"}`}
+    >
+      {/* Шапка */}
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+          style={{ background: meta.color + "26" }}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-parchment font-semibold text-sm">{String(tool.toolType || "tool").toUpperCase()}</div>
+          <div className="text-xs font-medium" style={{ color: meta.color }}>{meta.label}</div>
+          <div className="text-straw text-xs">{tool.mint?.slice(0, 4)}…{tool.mint?.slice(-4)}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-xl">{state.icon}</div>
+          <div className="text-xs" style={{ color: state.color }}>{state.label}</div>
+        </div>
+      </div>
+
+      {/* Прочность */}
+      <div className="flex justify-between text-xs text-straw mt-3 mb-1">
+        <span>Прочность — {state.label}</span>
+        <span>{durability} / 20</span>
+      </div>
+      <div className="h-2 rounded-full bg-soil-800 overflow-hidden">
+        <motion.div className="h-full rounded-full" initial={{ width: 0 }}
+          animate={{ width: `${durabilityPct}%` }} transition={{ duration: 0.6 }}
+          style={{ background: state.color }} />
+      </div>
+
+      {/* Зона действий */}
+      {!tool.staked && !tool.isMining && (
+        <div className="mt-3">
+          <button onClick={() => run("stake")} disabled={busy}
+            className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+            🏚️ Отправить в сарай (стейк)
+          </button>
+          <p className="text-straw text-xs mt-1.5 text-center">Добыча работает только из сарая</p>
+        </div>
+      )}
+
+      {tool.staked && !tool.isMining && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-straw text-xs">Часы добычи (прочность −1 за час)</span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setHours((h) => Math.max(1, h - 1))}
+                className="w-8 h-8 rounded-lg bg-soil-700 border border-straw/20 text-parchment">−</button>
+              <span className="text-parchment font-bold w-7 text-center">{hours}ч</span>
+              <button onClick={() => setHours((h) => Math.min(maxHours, h + 1))}
+                className="w-8 h-8 rounded-lg bg-soil-700 border border-straw/20 text-parchment">+</button>
+            </div>
+          </div>
+          <button onClick={() => run("start")} disabled={busy || durability < 1}
+            className="w-full py-2.5 rounded-xl bg-sprout-500 text-white font-semibold text-sm disabled:opacity-40">
+            ⛏️ Начать добычу ({hours}ч)
+          </button>
+          <button onClick={() => run("unstake")} disabled={busy || durability < 20}
+            className="w-full py-2 rounded-xl bg-soil-700 border border-straw/20 text-straw text-xs disabled:opacity-40">
+            ↩️ Вернуть в инвентарь {durability < 20 && "(нужна прочность 20)"}
+          </button>
+        </div>
+      )}
+
+      {tool.isMining && (
+        <div className="mt-3">
+          {done ? (
+            <motion.button onClick={() => run("collect")} disabled={busy}
+              animate={{ scale: [1, 1.03, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}
+              className="w-full py-2.5 rounded-xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40">
+              🧰 Добыча готова — открыть сундук!
+            </motion.button>
+          ) : (
+            <div>
+              <div className="flex justify-between text-xs text-straw mb-1">
+                <span>⛏️ Вагонетка в забое…</span>
+                <span>{label}</span>
+              </div>
+              <div className="relative h-3 rounded-full bg-soil-800 overflow-hidden">
+                <div className="absolute inset-y-0 left-0 rounded-full bg-wheat-600/40"
+                  style={{ width: `${progress * 100}%` }} />
+                <span className="absolute text-xs" style={{ left: `calc(${progress * 100}% - 8px)`, top: -3 }}>🛒</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {msg && <p className="text-xs text-parchment mt-2 text-center">{msg}</p>}
+    </motion.div>
+  );
+}

@@ -1,0 +1,191 @@
+use anchor_lang::prelude::*;
+use anchor_spl::token;
+use crate::constants::*;
+use crate::errors::*;
+use crate::events::*;
+use crate::state::Rarity;
+use crate::Craft;
+
+pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {
+    require!(tool_type.len() <= 32, AofError::ToolTypeTooLong);
+    require!(rarity != Rarity::Common, AofError::InvalidRarityForCraft);
+
+    let idx = rarity.craft_index().ok_or(AofError::InvalidRarityForCraft)?;
+    require!(
+        ctx.accounts.rarity_counter.rarity == rarity.to_u8(),
+        AofError::RarityCounterMismatch
+    );
+
+    let minted = ctx.accounts.rarity_counter.minted_count;
+    let econ = &*ctx.accounts.craft_economy;
+
+    let wood_cost = econ.wood_base[idx].checked_add(minted.checked_mul(econ.wood_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    let stone_cost = econ.stone_base[idx].checked_add(minted.checked_mul(econ.stone_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    let food_cost = econ.food_base[idx].checked_add(minted.checked_mul(econ.food_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    let seeds_cost = econ.seeds_base[idx].checked_add(minted.checked_mul(econ.seeds_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    let water_cost = econ.water_base[idx].checked_add(minted.checked_mul(econ.water_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    let mut potato_cost = econ.potato_base[idx].checked_add(minted.checked_mul(econ.potato_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    
+    // [НОВОЕ] Применяем скидку 15% если у игрока >= 3000 SKR
+    let has_skr = ctx.accounts.user_skr.amount >= SKR_MIN_BALANCE;
+    if has_skr {
+        let discount = potato_cost
+            .checked_mul(SKR_CRAFT_DISCOUNT_BPS as u64)
+            .ok_or(AofError::MathOverflow)?
+            .checked_div(10000)
+            .ok_or(AofError::MathOverflow)?;
+        potato_cost = potato_cost.checked_sub(discount).ok_or(AofError::MathOverflow)?;
+        msg!("SKR Holder: applied {}% discount on POTATO (-{})", SKR_CRAFT_DISCOUNT_BPS as u64 / 100, discount);
+    }
+
+    require!(
+        ctx.accounts.gastank.balance_micros >= ctx.accounts.config.craft_fee,
+        AofError::InsufficientBalance
+    );
+    ctx.accounts.gastank.balance_micros = ctx
+        .accounts
+        .gastank
+        .balance_micros
+        .checked_sub(ctx.accounts.config.craft_fee)
+        .ok_or(AofError::MathOverflow)?;
+
+    // Сжигаем WOOD
+    require!(ctx.accounts.user_wood.amount >= wood_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.wood_mint.to_account_info(),
+                from: ctx.accounts.user_wood.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        wood_cost,
+    )?;
+
+    // Сжигаем STONE
+    require!(ctx.accounts.user_stone.amount >= stone_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.stone_mint.to_account_info(),
+                from: ctx.accounts.user_stone.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        stone_cost,
+    )?;
+
+    // Сжигаем FOOD [НОВОЕ]
+    require!(ctx.accounts.user_food.amount >= food_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.food_mint.to_account_info(),
+                from: ctx.accounts.user_food.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        food_cost,
+    )?;
+
+    // Сжигаем SEEDS [НОВОЕ]
+    require!(ctx.accounts.user_seeds.amount >= seeds_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.seeds_mint.to_account_info(),
+                from: ctx.accounts.user_seeds.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        seeds_cost,
+    )?;
+
+    // Сжигаем WATER [НОВОЕ]
+    require!(ctx.accounts.user_water.amount >= water_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.water_mint.to_account_info(),
+                from: ctx.accounts.user_water.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        water_cost,
+    )?;
+
+    // Сжигаем POTATO [НОВОЕ]
+    require!(ctx.accounts.user_potato.amount >= potato_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.potato_mint.to_account_info(),
+                from: ctx.accounts.user_potato.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        potato_cost,
+    )?;
+
+    // Сжигаем предыдущий инструмент
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Burn {
+                mint: ctx.accounts.prev_mint.to_account_info(),
+                from: ctx.accounts.prev_token.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        1,
+    )?;
+
+    token::close_account(CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        token::CloseAccount {
+            account: ctx.accounts.prev_token.to_account_info(),
+            destination: ctx.accounts.user.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        },
+    ))?;
+
+    // Минтим новый инструмент
+    let auth_bump = ctx.bumps.auth;
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+
+    token::mint_to(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            token::MintTo {
+                mint: ctx.accounts.new_mint.to_account_info(),
+                to: ctx.accounts.new_token.to_account_info(),
+                authority: ctx.accounts.auth.to_account_info(),
+            },
+            signer_seeds,
+        ),
+        1,
+    )?;
+
+    ctx.accounts.rarity_counter.minted_count =
+        minted.checked_add(1).ok_or(AofError::MathOverflow)?;
+
+    emit!(CraftEvent {
+        user: ctx.accounts.user.key(),
+        tool_type,
+        rarity: rarity.to_u8(),
+        wood_cost,
+        stone_cost,
+        food_cost,
+        seeds_cost,
+        water_cost,
+        potato_cost,
+    });
+
+    Ok(())
+}

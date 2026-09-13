@@ -1,0 +1,89 @@
+# === СЕКРЕТЫ (НИКОГДА НЕ КОММИТИТЬ) ===
+.env
+.env.*
+*.env
+.env.local
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ключи и credentials
+keys/
+**/keys/
+**/*-keypair.json
+**/*_keypair.json
+*.pem
+*.key
+*.p12
+*.pfx
+auth.json
+credentials.json
+serviceAccountKey.json
+firebase-adminsdk.json
+
+# Solana специфика
+.anchor/
+test-ledger/
+target/deploy/*.json
+
+# === СБОРКА И ЗАВИСИМОСТИ ===
+node_modules/
+.pnp
+.pnp.js
+dist/
+build/
+target/
+*.tsbuildinfo
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# === IDE И ОС ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# === ВРЕМЕННЫЕ ФАЙЛЫ ===
+*.bak
+*.backup
+*.tmp
+*.temp
+coverage/
+.nyc_output/
+storybook-static/
+
+# === AIDER И ДРУГИЕ ИИ-ТУЛЫ ===
+.aider*
+.claude/
+.cursor/
+
+# === FIREBASE (если не нужен) ===
+.firebase/
+.firebase.hosting.*
+
+# === BACKEND СПЕЦИФИКА ===
+aof_backend/node_modules/
+aof_backend/dist/
+aof_backend/*.log
+aof_backend/.env*
+
+# === АРХИВЫ И ЛОКАЛЬНЫЙ CLI ===
+*.zip
+*.tar.zst
+solana/
+
+# === КРИТИЧЕСКИЕ ИСКЛЮЧЕНИЯ ===
+test-ledger/
+frontend.zip
+frontend.zip.*

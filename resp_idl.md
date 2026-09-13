@@ -1,0 +1,1436 @@
+```json
+{
+  "address": "2dQsHg3oVKwyKHjemS2CbWkczv6sCRAY5r2WrGBv4vgC",
+  "metadata": {
+    "name": "aof_core",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        { "name": "config", "writable": true, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "setFees",
+      "accounts": [
+        { "name": "config", "writable": true, "signer": false },
+        { "name": "authority", "writable": false, "signer": true }
+      ],
+      "args": [
+        { "name": "craft_fee", "type": "u64" },
+        { "name": "unstake_fee", "type": "u64" }
+      ]
+    },
+    {
+      "name": "setPaused",
+      "accounts": [
+        { "name": "config", "writable": true, "signer": false },
+        { "name": "authority", "writable": false, "signer": true }
+      ],
+      "args": [{ "name": "paused", "type": "bool" }]
+    },
+    {
+      "name": "setResourceMints",
+      "accounts": [
+        { "name": "config", "writable": true, "signer": false },
+        { "name": "authority", "writable": false, "signer": true }
+      ],
+      "args": [
+        { "name": "food_mint", "type": "pubkey" },
+        { "name": "wood_mint", "type": "pubkey" },
+        { "name": "stone_mint", "type": "pubkey" }
+      ]
+    },
+    {
+      "name": "initCraftEconomy",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "craft_economy", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "setCraftEconomy",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "craft_economy", "writable": true, "signer": false }
+      ],
+      "args": [
+        { "name": "wood_base", "type": { "array": ["u64", 4] } },
+        { "name": "stone_base", "type": { "array": ["u64", 4] } },
+        { "name": "wood_mult", "type": { "array": ["u64", 4] } },
+        { "name": "stone_mult", "type": { "array": ["u64", 4] } }
+      ]
+    },
+    {
+      "name": "initRarityCounter",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "rarity_counter", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "rarity", "type": { "defined": { "name": "Rarity" } } }]
+    },
+    {
+      "name": "depositGas",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "withdrawGas",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "gastank", "writable": true, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "sweepGasFees",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "mintResource",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "token_account", "writable": true, "signer": false },
+        { "name": "treasury_token", "writable": true, "signer": false },
+        { "name": "player", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "kind", "type": { "defined": { "name": "ResourceKind" } } },
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "burnResource",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "token_account", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "kind", "type": { "defined": { "name": "ResourceKind" } } },
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "mintTool",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "token_account", "writable": true, "signer": false },
+        { "name": "tool_data", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "tool_type", "type": "string" },
+        { "name": "rarity", "type": { "defined": { "name": "Rarity" } } }
+      ]
+    },
+    {
+      "name": "burnTool",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "token_account", "writable": true, "signer": false },
+        { "name": "tool_data", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrateTool",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "migration_authority", "writable": true, "signer": true },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "vault_token_account", "writable": true, "signer": false },
+        { "name": "tool_data", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "tool_type", "type": "string" },
+        { "name": "rarity", "type": { "defined": { "name": "Rarity" } } },
+        { "name": "durability", "type": "u8" }
+      ]
+    },
+    {
+      "name": "craft",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "prev_tool", "writable": true, "signer": false },
+        { "name": "prev_mint", "writable": true, "signer": false },
+        { "name": "prev_token", "writable": true, "signer": false },
+        { "name": "new_mint", "writable": true, "signer": false },
+        { "name": "new_token", "writable": true, "signer": false },
+        { "name": "new_tool_data", "writable": true, "signer": false },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "rarity_counter", "writable": true, "signer": false },
+        { "name": "craft_economy", "writable": false, "signer": false },
+        { "name": "wood_mint", "writable": true, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": true, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "tool_type", "type": "string" },
+        { "name": "rarity", "type": { "defined": { "name": "Rarity" } } }
+      ]
+    },
+    {
+      "name": "reroll",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "tool_a", "writable": true, "signer": false },
+        { "name": "mint_a", "writable": true, "signer": false },
+        { "name": "token_a", "writable": true, "signer": false },
+        { "name": "tool_b", "writable": true, "signer": false },
+        { "name": "mint_b", "writable": true, "signer": false },
+        { "name": "token_b", "writable": true, "signer": false },
+        { "name": "new_mint", "writable": true, "signer": false },
+        { "name": "new_token", "writable": true, "signer": false },
+        { "name": "new_tool_data", "writable": true, "signer": false },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "new_type", "type": "string" }]
+    },
+    {
+      "name": "stake",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "vault_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "lock_seconds", "type": "i64" }]
+    },
+    {
+      "name": "unstake",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "vault_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "startMining",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "player", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "hours", "type": "u8" }]
+    },
+    {
+      "name": "collectMining",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "player", "writable": true, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "repair",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": true, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u8" }]
+    },
+    {
+      "name": "burnNft",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "token_account", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "payOut",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "vault_token", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "collectorStake",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "vault_token", "writable": true, "signer": false },
+        { "name": "staked_collector", "writable": true, "signer": false },
+        { "name": "player", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "kind", "type": { "defined": { "name": "CollectorKind" } } }]
+    },
+    {
+      "name": "collectorUnstake",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "vault_token", "writable": true, "signer": false },
+        { "name": "staked_collector", "writable": true, "signer": false },
+        { "name": "player", "writable": true, "signer": false },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "adjustPlayerCapacity",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "player", "writable": true, "signer": false }
+      ],
+      "args": [
+        { "name": "delta", "type": "i32" },
+        { "name": "has_tent", "type": "bool" }
+      ]
+    },
+    {
+      "name": "initPackConfig",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "pack_config", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "pack_type", "type": "u8" },
+        { "name": "price_lamports", "type": "u64" },
+        { "name": "odds_bps", "type": { "array": ["u16", 5] } }
+      ]
+    },
+    {
+      "name": "setPackConfig",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "pack_config", "writable": true, "signer": false }
+      ],
+      "args": [
+        { "name": "price_lamports", "type": "u64" },
+        { "name": "odds_bps", "type": { "array": ["u16", 5] } }
+      ]
+    },
+    {
+      "name": "packOpenCommit",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "pack_config", "writable": false, "signer": false },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "pack_commit", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "pack_type", "type": { "defined": { "name": "PackType" } } },
+        { "name": "commit_hash", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "packOpenReveal",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "pack_commit", "writable": true, "signer": false },
+        { "name": "user", "writable": true, "signer": false },
+        { "name": "pack_config", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "tool_data", "writable": true, "signer": false },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "slot_hashes", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "secret", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "initRerollConfig",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "reroll_config", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "odds_bps", "type": { "array": ["u16", 5] } }]
+    },
+    {
+      "name": "setRerollConfig",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "reroll_config", "writable": true, "signer": false }
+      ],
+      "args": [{ "name": "odds_bps", "type": { "array": ["u16", 5] } }]
+    },
+    {
+      "name": "rerollRandomCommit",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "gastank", "writable": true, "signer": false },
+        { "name": "burn_tool", "writable": true, "signer": false },
+        { "name": "burn_mint", "writable": true, "signer": false },
+        { "name": "burn_token", "writable": true, "signer": false },
+        { "name": "new_mint", "writable": false, "signer": false },
+        { "name": "reroll_commit", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "commit_hash", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "rerollRandomReveal",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "reroll_config", "writable": false, "signer": false },
+        { "name": "reroll_commit", "writable": true, "signer": false },
+        { "name": "payer", "writable": true, "signer": false },
+        { "name": "new_mint", "writable": true, "signer": false },
+        { "name": "new_token", "writable": true, "signer": false },
+        { "name": "new_tool_data", "writable": true, "signer": false },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "slot_hashes", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "secret", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "startExplorationCommit",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "exploration_state", "writable": true, "signer": false },
+        { "name": "tool_mint", "writable": false, "signer": false },
+        { "name": "exploration_commit", "writable": true, "signer": false },
+        { "name": "food_mint", "writable": false, "signer": false },
+        { "name": "user_food", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": false, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": false, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "commit_hash", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "exploreReveal",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "exploration_state", "writable": true, "signer": false },
+        { "name": "exploration_commit", "writable": true, "signer": false },
+        { "name": "payer", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": true, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": true, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "slot_hashes", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "secret", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "upgradeExplorationTier",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "exploration_state", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": false, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": false, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "food_mint", "writable": false, "signer": false },
+        { "name": "user_food", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "referralBind",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "referred", "writable": true, "signer": true },
+        { "name": "referrer", "writable": false, "signer": false },
+        { "name": "referrer_player", "writable": false, "signer": false },
+        { "name": "referrer_stats", "writable": true, "signer": false },
+        { "name": "referral_link", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "referralUpgrade",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "referral_link", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": false, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": false, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "food_mint", "writable": false, "signer": false },
+        { "name": "user_food", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "payOutWithReferral",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "vault_token", "writable": true, "signer": false },
+        { "name": "user_token", "writable": true, "signer": false },
+        { "name": "referral_link", "writable": false, "signer": false },
+        { "name": "referrer_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "forgeAttemptCommit",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "tool", "writable": false, "signer": false },
+        { "name": "tool_mint", "writable": false, "signer": false },
+        { "name": "enchant_slot", "writable": true, "signer": false },
+        { "name": "forge_commit", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": false, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": false, "signer": false },
+        { "name": "user_stone", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "slot_type", "type": "u8" },
+        { "name": "commit_hash", "type": { "array": ["u8", 32] } },
+        { "name": "use_protector", "type": "bool" }
+      ]
+    },
+    {
+      "name": "forgeAttemptReveal",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "enchant_slot", "writable": true, "signer": false },
+        { "name": "forge_commit", "writable": true, "signer": false },
+        { "name": "payer", "writable": true, "signer": false },
+        { "name": "slot_hashes", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "secret", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "initLotteryRound",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "lottery_round", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "round_id", "type": "u64" }]
+    },
+    {
+      "name": "buyLotteryTicket",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "buyer", "writable": true, "signer": true },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "lottery_round", "writable": true, "signer": false },
+        { "name": "lottery_ticket", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "drawLottery",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "lottery_round", "writable": true, "signer": false },
+        { "name": "slot_hashes", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimLotteryPrize",
+      "accounts": [
+        { "name": "lottery_round", "writable": true, "signer": false },
+        { "name": "lottery_ticket", "writable": false, "signer": false },
+        { "name": "winner", "writable": true, "signer": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "marketplaceList",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "seller", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "seller_token", "writable": true, "signer": false },
+        { "name": "listing", "writable": true, "signer": false },
+        { "name": "listing_vault", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "price_lamports", "type": "u64" }]
+    },
+    {
+      "name": "marketplaceBuy",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "buyer", "writable": true, "signer": true },
+        { "name": "seller", "writable": true, "signer": false },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "listing", "writable": true, "signer": false },
+        { "name": "listing_vault", "writable": true, "signer": false },
+        { "name": "buyer_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "marketplaceCancel",
+      "accounts": [
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "listing", "writable": true, "signer": false },
+        { "name": "seller", "writable": true, "signer": true },
+        { "name": "listing_vault", "writable": true, "signer": false },
+        { "name": "seller_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "auctionCreate",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "seller", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "seller_token", "writable": true, "signer": false },
+        { "name": "auction", "writable": true, "signer": false },
+        { "name": "auction_vault", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "min_bid", "type": "u64" },
+        { "name": "duration_seconds", "type": "i64" }
+      ]
+    },
+    {
+      "name": "auctionBid",
+      "accounts": [
+        { "name": "bidder", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "auction", "writable": true, "signer": false },
+        { "name": "previous_bidder", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "auctionSettle",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "auction", "writable": true, "signer": false },
+        { "name": "seller", "writable": true, "signer": false },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "auction_vault", "writable": true, "signer": false },
+        { "name": "winner_token", "writable": true, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "offerCreate",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "buyer", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "offer", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "price_lamports", "type": "u64" }]
+    },
+    {
+      "name": "offerAccept",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "seller", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "offer", "writable": true, "signer": false },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "seller_token", "writable": true, "signer": false },
+        { "name": "buyer_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "offerCancel",
+      "accounts": [
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "offer", "writable": true, "signer": false },
+        { "name": "buyer", "writable": true, "signer": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "rentalList",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "owner", "writable": true, "signer": true },
+        { "name": "mint", "writable": true, "signer": false },
+        { "name": "tool", "writable": false, "signer": false },
+        { "name": "rental_listing", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "owner_split_bps", "type": "u16" },
+        { "name": "min_duration", "type": "i64" },
+        { "name": "max_duration", "type": "i64" }
+      ]
+    },
+    {
+      "name": "rentalStart",
+      "accounts": [
+        { "name": "renter", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "rental_listing", "writable": true, "signer": false },
+        { "name": "rental_agreement", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "duration_seconds", "type": "i64" }]
+    },
+    {
+      "name": "rentalEnd",
+      "accounts": [
+        { "name": "caller", "writable": false, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "rental_agreement", "writable": true, "signer": false },
+        { "name": "renter_refund", "writable": true, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "rentalRevoke",
+      "accounts": [
+        { "name": "owner", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "tool", "writable": true, "signer": false },
+        { "name": "rental_agreement", "writable": true, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "placeBuyOrder",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "maker", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "order", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "kind", "type": "u8" },
+        { "name": "price_lamports_per_unit", "type": "u64" },
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "placeSellOrder",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "maker", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "maker_token", "writable": true, "signer": false },
+        { "name": "order", "writable": true, "signer": false },
+        { "name": "order_vault", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "kind", "type": "u8" },
+        { "name": "price_lamports_per_unit", "type": "u64" },
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "cancelBuyOrder",
+      "accounts": [
+        { "name": "maker", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "order", "writable": true, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancelSellOrder",
+      "accounts": [
+        { "name": "maker", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "order", "writable": true, "signer": false },
+        { "name": "order_vault", "writable": true, "signer": false },
+        { "name": "maker_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "matchResourceOrders",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "buy_order", "writable": true, "signer": false },
+        { "name": "sell_order", "writable": true, "signer": false },
+        { "name": "seller", "writable": true, "signer": false },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "sell_vault", "writable": true, "signer": false },
+        { "name": "buyer_token", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "craftOrderCreate",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "creator", "writable": true, "signer": true },
+        { "name": "craft_order", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "wood_needed", "type": "u64" },
+        { "name": "stone_needed", "type": "u64" },
+        { "name": "premium_lamports", "type": "u64" }
+      ]
+    },
+    {
+      "name": "craftOrderFulfill",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "fulfiller", "writable": true, "signer": true },
+        { "name": "craft_order", "writable": true, "signer": false },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": false, "signer": false },
+        { "name": "fulfiller_wood", "writable": true, "signer": false },
+        { "name": "creator_wood", "writable": true, "signer": false },
+        { "name": "stone_mint", "writable": false, "signer": false },
+        { "name": "fulfiller_stone", "writable": true, "signer": false },
+        { "name": "creator_stone", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "craftOrderCancel",
+      "accounts": [
+        { "name": "creator", "writable": true, "signer": true },
+        { "name": "craft_order", "writable": true, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "initSeason",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "season", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "season_id", "type": "u32" }]
+    },
+    {
+      "name": "purchaseSeasonPass",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "treasury", "writable": true, "signer": false },
+        { "name": "season", "writable": false, "signer": false },
+        { "name": "season_pass", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "grantSeasonXp",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "user", "writable": false, "signer": false },
+        { "name": "season", "writable": false, "signer": false },
+        { "name": "season_pass", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
+      ],
+      "args": [{ "name": "amount", "type": "u32" }]
+    },
+    {
+      "name": "claimSeasonReward",
+      "accounts": [
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "authority", "writable": false, "signer": true },
+        { "name": "season", "writable": false, "signer": false },
+        { "name": "season_pass", "writable": true, "signer": false },
+        { "name": "wood_mint", "writable": false, "signer": false },
+        { "name": "user_wood", "writable": true, "signer": false },
+        { "name": "auth", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
+      ],
+      "args": [
+        { "name": "level", "type": "u8" },
+        { "name": "premium_track", "type": "bool" }
+      ]
+    }
+  ],
+  "accounts": [
+    { "name": "Config" },
+    { "name": "Player" },
+    { "name": "ToolData" },
+    { "name": "GasTank" },
+    { "name": "RarityCounter" },
+    { "name": "CraftEconomy" },
+    { "name": "StakedCollector" },
+    { "name": "PackConfig" },
+    { "name": "PackCommit" },
+    { "name": "RerollConfig" },
+    { "name": "RerollCommit" },
+    { "name": "ExplorationState" },
+    { "name": "ExplorationCommit" },
+    { "name": "ReferralLink" },
+    { "name": "ReferrerStats" },
+    { "name": "EnchantSlot" },
+    { "name": "ForgeCommit" },
+    { "name": "LotteryRound" },
+    { "name": "LotteryTicket" },
+    { "name": "Listing" },
+    { "name": "Auction" },
+    { "name": "Offer" },
+    { "name": "RentalListing" },
+    { "name": "RentalAgreement" },
+    { "name": "ResourceOrder" },
+    { "name": "CraftOrder" },
+    { "name": "Season" },
+    { "name": "SeasonPass" }
+  ],
+  "types": [
+    {
+      "name": "ResourceKind",
+      "type": {
+        "kind": "enum",
+        "variants": [{ "name": "Food" }, { "name": "Wood" }, { "name": "Stone" }]
+      }
+    },
+    {
+      "name": "Rarity",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Common" },
+          { "name": "Uncommon" },
+          { "name": "Rare" },
+          { "name": "Epic" },
+          { "name": "Legendary" }
+        ]
+      }
+    },
+    {
+      "name": "CollectorKind",
+      "type": {
+        "kind": "enum",
+        "variants": [{ "name": "Historian" }, { "name": "Medallion" }]
+      }
+    },
+    {
+      "name": "PackType",
+      "type": {
+        "kind": "enum",
+        "variants": [{ "name": "Small" }, { "name": "Medium" }, { "name": "Big" }]
+      }
+    },
+    {
+      "name": "EnchantSlotType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Speed" },
+          { "name": "Durability" },
+          { "name": "EnergyEfficiency" }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "pubkey" },
+          { "name": "treasury", "type": "pubkey" },
+          { "name": "food_mint", "type": "pubkey" },
+          { "name": "wood_mint", "type": "pubkey" },
+          { "name": "stone_mint", "type": "pubkey" },
+          { "name": "craft_fee", "type": "u64" },
+          { "name": "unstake_fee", "type": "u64" },
+          { "name": "paused", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "Player",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "pubkey" },
+          { "name": "cooldown_until", "type": "i64" },
+          { "name": "has_tent", "type": "bool" },
+          { "name": "villagers", "type": "u32" },
+          { "name": "villagers_available", "type": "u32" },
+          { "name": "historian_count", "type": "u8" },
+          { "name": "medallion_count", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "ToolData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "mint", "type": "pubkey" },
+          { "name": "owner", "type": "pubkey" },
+          { "name": "tool_type", "type": "string" },
+          { "name": "rarity", "type": { "defined": { "name": "Rarity" } } },
+          { "name": "durability", "type": "u8" },
+          { "name": "is_mining", "type": "bool" },
+          { "name": "mining_end", "type": "i64" },
+          { "name": "last_mined_hours", "type": "u8" },
+          { "name": "staked", "type": "bool" },
+          { "name": "unlock_at", "type": "i64" },
+          { "name": "operator", "type": "pubkey" }
+        ]
+      }
+    },
+    {
+      "name": "GasTank",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "pubkey" },
+          { "name": "balance_micros", "type": "u64" },
+          { "name": "cooldown_until", "type": "i64" }
+        ]
+      }
+    },
+    {
+      "name": "RarityCounter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "rarity", "type": "u8" },
+          { "name": "minted_count", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "CraftEconomy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "wood_base", "type": { "array": ["u64", 4] } },
+          { "name": "stone_base", "type": { "array": ["u64", 4] } },
+          { "name": "wood_mult", "type": { "array": ["u64", 4] } },
+          { "name": "stone_mult", "type": { "array": ["u64", 4] } },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "StakedCollector",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "kind", "type": { "defined": { "name": "CollectorKind" } } },
+          { "name": "unlock_at", "type": "i64" }
+        ]
+      }
+    },
+    {
+      "name": "PackConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "pack_type", "type": "u8" },
+          { "name": "price_lamports", "type": "u64" },
+          { "name": "odds_bps", "type": { "array": ["u16", 5] } },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "PackCommit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "user", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "pack_type", "type": "u8" },
+          { "name": "commit_hash", "type": { "array": ["u8", 32] } },
+          { "name": "commit_slot", "type": "u64" },
+          { "name": "revealed", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "RerollConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "odds_bps", "type": { "array": ["u16", 5] } },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "RerollCommit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "user", "type": "pubkey" },
+          { "name": "burn_mint", "type": "pubkey" },
+          { "name": "new_mint", "type": "pubkey" },
+          { "name": "commit_hash", "type": { "array": ["u8", 32] } },
+          { "name": "commit_slot", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "ExplorationState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "pubkey" },
+          { "name": "tier", "type": "u8" },
+          { "name": "last_trip_at", "type": "i64" },
+          { "name": "trips_today", "type": "u8" },
+          { "name": "day_start", "type": "i64" }
+        ]
+      }
+    },
+    {
+      "name": "ExplorationCommit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "user", "type": "pubkey" },
+          { "name": "tool_mint", "type": "pubkey" },
+          { "name": "commit_hash", "type": { "array": ["u8", 32] } },
+          { "name": "commit_slot", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "ReferralLink",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "referred", "type": "pubkey" },
+          { "name": "referrer", "type": "pubkey" },
+          { "name": "tier", "type": "u8" },
+          { "name": "bound_at", "type": "i64" }
+        ]
+      }
+    },
+    {
+      "name": "ReferrerStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "referrer", "type": "pubkey" },
+          { "name": "active_count", "type": "u32" }
+        ]
+      }
+    },
+    {
+      "name": "EnchantSlot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "tool_mint", "type": "pubkey" },
+          { "name": "slot_type", "type": "u8" },
+          { "name": "level", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "ForgeCommit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "user", "type": "pubkey" },
+          { "name": "tool_mint", "type": "pubkey" },
+          { "name": "slot_type", "type": "u8" },
+          { "name": "commit_hash", "type": { "array": ["u8", 32] } },
+          { "name": "commit_slot", "type": "u64" },
+          { "name": "use_protector", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "LotteryRound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "round_id", "type": "u64" },
+          { "name": "pool_lamports", "type": "u64" },
+          { "name": "tickets_sold", "type": "u64" },
+          { "name": "draw_slot", "type": "u64" },
+          { "name": "drawn", "type": "bool" },
+          { "name": "winning_ticket", "type": "u64" },
+          { "name": "claimed", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "LotteryTicket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "round_id", "type": "u64" },
+          { "name": "ticket_number", "type": "u64" },
+          { "name": "buyer", "type": "pubkey" }
+        ]
+      }
+    },
+    {
+      "name": "Listing",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "seller", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "price_lamports", "type": "u64" },
+          { "name": "active", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "Auction",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "seller", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "min_bid", "type": "u64" },
+          { "name": "current_bid", "type": "u64" },
+          { "name": "current_bidder", "type": "pubkey" },
+          { "name": "end_time", "type": "i64" },
+          { "name": "active", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "Offer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "buyer", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "price_lamports", "type": "u64" },
+          { "name": "active", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "RentalListing",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "owner_split_bps", "type": "u16" },
+          { "name": "min_duration", "type": "i64" },
+          { "name": "max_duration", "type": "i64" },
+          { "name": "active", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "RentalAgreement",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "mint", "type": "pubkey" },
+          { "name": "owner", "type": "pubkey" },
+          { "name": "renter", "type": "pubkey" },
+          { "name": "start", "type": "i64" },
+          { "name": "end", "type": "i64" },
+          { "name": "revoke_requested_at", "type": "i64" }
+        ]
+      }
+    },
+    {
+      "name": "ResourceOrder",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "maker", "type": "pubkey" },
+          { "name": "kind", "type": "u8" },
+          { "name": "is_buy", "type": "bool" },
+          { "name": "price_lamports_per_unit", "type": "u64" },
+          { "name": "amount_remaining", "type": "u64" },
+          { "name": "mint", "type": "pubkey" }
+        ]
+      }
+    },
+    {
+      "name": "CraftOrder",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "creator", "type": "pubkey" },
+          { "name": "wood_needed", "type": "u64" },
+          { "name": "stone_needed", "type": "u64" },
+          { "name": "premium_lamports", "type": "u64" },
+          { "name": "active", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "Season",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "season_id", "type": "u32" },
+          { "name": "start_time", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "SeasonPass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "pubkey" },
+          { "name": "season_id", "type": "u32" },
+          { "name": "xp", "type": "u32" },
+          { "name": "premium", "type": "bool" },
+          { "name": "claimed_bitmap", "type": "u64" }
+        ]
+      }
+    }
+  ],
+  "errors": []
+}
+```
