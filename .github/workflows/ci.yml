@@ -176,12 +176,38 @@ jobs:
           ls -l "$CI_WALLET_PATH"
 
       - name: Anchor build (programs/*)
+        # Anchor generates the IDL with a second cargo invocation:
+        #   cargo +$RUSTUP_TOOLCHAIN test __anchor_private_print_idl --features idl-build
+        # falling back to `+nightly` when RUSTUP_TOOLCHAIN is unset
+        # (anchor-lang-idl/src/build.rs). Whatever nightly happens to be on the
+        # runner image then decides whether Cargo.lock can even be parsed, so
+        # RUSTUP_TOOLCHAIN is pinned to the same toolchain that builds the SBPF
+        # artifacts. If that IDL step still fails, retry once with a freshly
+        # installed nightly before giving up.
         run: |
           set -uo pipefail
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           : > /tmp/anchor-build.log
+          {
+            echo "### toolchain diagnostics"
+            rustup toolchain list -v
+            echo "host rustc: $(rustc --version)"
+            echo "host cargo: $(cargo --version)"
+            echo "RUSTUP_TOOLCHAIN will be: ${RUST_VERSION}"
+            echo "### end diagnostics"
+          } 2>&1 | tee -a /tmp/anchor-build.log
+
           rc=0
-          anchor build 2>&1 | tee -a /tmp/anchor-build.log || rc=$?
+          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor build 2>&1 | tee -a /tmp/anchor-build.log || rc=$?
+
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::anchor build failed with RUSTUP_TOOLCHAIN=${RUST_VERSION}; installing a fresh nightly and retrying once"
+            rustup toolchain install nightly --profile minimal 2>&1 | tee -a /tmp/anchor-build.log
+            echo "nightly cargo: $(cargo +nightly --version 2>&1)" | tee -a /tmp/anchor-build.log
+            rc=0
+            RUSTUP_TOOLCHAIN=nightly anchor build 2>&1 | tee -a /tmp/anchor-build.log || rc=$?
+          fi
+
           exit "$rc"
 
       - name: Anchor build (aof-core, advisory)
@@ -212,7 +238,7 @@ jobs:
               print("injected [workspace] members for this advisory build only")
           PY
           rc=0
-          anchor build --program-name aof_core 2>&1 | tee -a /tmp/anchor-build-core.log || rc=$?
+          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor build --program-name aof_core 2>&1 | tee -a /tmp/anchor-build-core.log || rc=$?
           git checkout -- Anchor.toml
           echo "aof-core advisory build exit code: $rc"
           exit "$rc"
@@ -432,7 +458,7 @@ jobs:
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           : > /tmp/anchor-test.log
           rc=0
-          anchor test --skip-build 2>&1 | tee -a /tmp/anchor-test.log || rc=$?
+          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor test --skip-build 2>&1 | tee -a /tmp/anchor-test.log || rc=$?
           exit "$rc"
 
       - name: Publish failure log
