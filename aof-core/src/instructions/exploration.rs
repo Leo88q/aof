@@ -11,6 +11,11 @@ fn day_start_of(ts: i64) -> i64 {
 }
 
 pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [u8; 32]) -> Result<()> {
+    // Four resources are burned before reveal, while there is no on-chain
+    // expiry/refund/cancel path. The API is disabled, but direct program
+    // callers must be blocked as well.
+    require!(false, AofError::FeatureDisabled);
+
     let now = Clock::get()?.unix_timestamp;
     let state = &mut ctx.accounts.exploration_state;
     if state.owner == Pubkey::default() {
@@ -63,7 +68,10 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [
     ec.commit_slot = slot;
 
     state.last_trip_at = now;
-    state.trips_today += 1;
+    state.trips_today = state
+        .trips_today
+        .checked_add(1)
+        .ok_or(AofError::MathOverflow)?;
     Ok(())
 }
 
@@ -87,8 +95,8 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, secret: [u8; 32]) -> Result<(
         let amount = EXPLORATION_SHARDS_MIN[idx] as u64 + (u64::from_le_bytes(r2) % span);
         // [ДИЗАЙН-РЕШЕНИЕ, см. constants.rs]: вместо отдельных "шардов"
         // (которых нет в модели крафта этой программы) — бонусные WOOD/STONE.
-        wood_reward = amount;
-        stone_reward = amount;
+        wood_reward = amount.checked_mul(RESOURCE_UNIT).ok_or(AofError::MathOverflow)?;
+        stone_reward = amount.checked_mul(RESOURCE_UNIT).ok_or(AofError::MathOverflow)?;
 
         let auth_bump = ctx.bumps.auth;
         let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
@@ -152,6 +160,6 @@ pub fn upgrade_tier_handler(ctx: Context<UpgradeExplorationTier>) -> Result<()> 
         )?;
     }
 
-    state.tier += 1;
+    state.tier = state.tier.checked_add(1).ok_or(AofError::MathOverflow)?;
     Ok(())
 }

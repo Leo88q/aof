@@ -16,7 +16,10 @@ pub fn bind_handler(ctx: Context<ReferralBindCtx>) -> Result<()> {
         + if ctx.accounts.referrer_player.has_medallion() { REFERRAL_MEDALLION_BONUS_CAP } else { 0 }
         + if ctx.accounts.referrer_player.has_historian() { REFERRAL_HISTORIAN_BONUS_CAP } else { 0 };
     require!(stats.active_count < cap, AofError::ReferralCapReached);
-    stats.active_count += 1;
+    stats.active_count = stats
+        .active_count
+        .checked_add(1)
+        .ok_or(AofError::MathOverflow)?;
 
     let link = &mut ctx.accounts.referral_link;
     link.referred = ctx.accounts.referred.key();
@@ -56,7 +59,7 @@ pub fn upgrade_handler(ctx: Context<ReferralUpgradeCtx>) -> Result<()> {
         )?;
     }
 
-    link.tier += 1;
+    link.tier = link.tier.checked_add(1).ok_or(AofError::MathOverflow)?;
     Ok(())
 }
 
@@ -70,6 +73,10 @@ pub fn upgrade_handler(ctx: Context<ReferralUpgradeCtx>) -> Result<()> {
 /// не инфляционно по построению.
 pub fn pay_out_with_referral_handler(ctx: Context<PayOutWithReferral>, amount: u64) -> Result<()> {
     require!(amount > 0, AofError::ZeroAmount);
+    require!(
+        (ctx.accounts.referral_link.tier as usize) < REFERRAL_PCT_BPS.len(),
+        AofError::ReferralMaxTier
+    );
     let pct_bps = REFERRAL_PCT_BPS[ctx.accounts.referral_link.tier as usize] as u64;
     let referrer_cut = amount.checked_mul(pct_bps).ok_or(AofError::MathOverflow)? / 10_000;
     let user_cut = amount.checked_sub(referrer_cut).ok_or(AofError::MathOverflow)?;

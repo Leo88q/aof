@@ -11,7 +11,10 @@ pub fn handler(ctx: Context<WeatherCrank>) -> Result<()> {
     let day_id = (now / 86400) as u32;
 
     let weather = &mut ctx.accounts.weather_state;
-    
+    // init_if_needed creates the PDA with zeroed fields; persist the bump so
+    // later CollectWellWater seed validation can authenticate this account.
+    weather.bump = ctx.bumps.weather_state;
+
     // Уже обновлено на этот день?
     if weather.day_id == day_id {
         return Err(AofError::WeatherAlreadyUpdated.into());

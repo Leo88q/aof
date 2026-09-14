@@ -34,6 +34,16 @@ pub struct PaidOut {
     pub vault_balance_after: u64,
 }
 
+#[event]
+pub struct MiningCollected {
+    pub user: Pubkey,
+    pub tool_mint: Pubkey,
+    pub resource_mint: Pubkey,
+    pub hours: u8,
+    pub amount: u64,
+    pub durability_after: u8,
+}
+
 // ===== [НОВОЕ] для добавленной логики =====
 
 #[event]

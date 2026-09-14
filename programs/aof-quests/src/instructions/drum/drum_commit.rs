@@ -46,6 +46,11 @@ pub struct DrumCommitCtx<'info> {
 }
 
 pub fn handler(ctx: Context<DrumCommitCtx>, hash: [u8; 32]) -> Result<()> {
+    // The spin burns the user's mascot before reveal, while the contract has
+    // no expiry/refund path. The API is disabled; fail closed for direct
+    // program callers as well.
+    require!(false, QuestError::FeatureDisabled);
+
     // [ФИКС] Списание стоимости спина с пользователя в казну ДО розыгрыша.
     // Юзер подписывает перевод своих маскотов -> защита от бесплатного спина.
     token::transfer(
@@ -63,8 +68,10 @@ pub fn handler(ctx: Context<DrumCommitCtx>, hash: [u8; 32]) -> Result<()> {
     let commit = &mut ctx.accounts.drum_commit;
     commit.user = ctx.accounts.user.key();
     commit.bump = ctx.bumps.drum_commit;
+    let clock = Clock::get()?;
     commit.hash = hash;
-    commit.created_at = Clock::get()?.unix_timestamp;
+    commit.created_at = clock.unix_timestamp;
+    commit.commit_slot = clock.slot;
 
     emit!(DrumCommitted {
         user: ctx.accounts.user.key(),

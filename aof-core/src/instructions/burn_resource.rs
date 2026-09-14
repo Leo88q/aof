@@ -36,6 +36,7 @@ fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &Resourc
         ResourceKind::FlaskPink => material_mints.flask_pink,
         ResourceKind::FlaskPurple => material_mints.flask_purple,
         ResourceKind::LoveHeart => material_mints.love_heart,
+        ResourceKind::Potato => config.potato_mint,
     }
 }
 

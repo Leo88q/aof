@@ -8,6 +8,7 @@ use crate::events::*;
 
 pub fn create_handler(ctx: Context<AuctionCreateCtx>, min_bid: u64, duration_seconds: i64) -> Result<()> {
     require!(min_bid > 0, AofError::ZeroAmount);
+    require!(duration_seconds > 0, AofError::InvalidRentalDuration);
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -25,7 +26,10 @@ pub fn create_handler(ctx: Context<AuctionCreateCtx>, min_bid: u64, duration_sec
     a.mint = ctx.accounts.mint.key();
     a.min_bid = min_bid;
     a.current_bid = 0;
-    a.current_bidder = Pubkey::default();
+    // Keep a valid account key for the first bid. AuctionBidCtx always
+    // validates previous_bidder against current_bidder, even when there is
+    // no previous bid to refund.
+    a.current_bidder = ctx.accounts.seller.key();
     a.end_time = now.checked_add(duration_seconds).ok_or(AofError::MathOverflow)?;
     a.active = true;
     emit!(AuctionCreated {

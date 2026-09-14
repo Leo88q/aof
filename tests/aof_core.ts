@@ -13,7 +13,7 @@ describe("aof-core: security & core flows", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const idlJson = JSON.parse(fs.readFileSync(process.cwd() + "/target/idl/aof_core.json", "utf8"));
-  if (!idlJson.address) idlJson.address = "2dQsHg3oVKwyKHjemS2CbWkczv6sCRAY5r2WrGBv4vgC";
+  if (!idlJson.address) idlJson.address = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
   const program: any = new anchor.Program(idlJson as any, provider);
   const pid = program.programId as PublicKey;
   const authority = provider.wallet.publicKey;
@@ -21,14 +21,20 @@ describe("aof-core: security & core flows", () => {
   const pda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, pid)[0];
   const B = (s: string) => Buffer.from(s);
   const configPda = pda([B("config")]);
+  const programDataPda = PublicKey.findProgramAddressSync(
+    [pid.toBuffer()],
+    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
+  )[0];
   const authPda = pda([B("auth")]);
   const vaultPda = pda([B("vault")]);
+  const materialMintsPda = pda([B("material_mints")]);
   const toolPda = (m: PublicKey) => pda([B("tool"), m.toBuffer()]);
   const playerPda = (u: PublicKey) => pda([B("player"), u.toBuffer()]);
   const gastankPda = (u: PublicKey) => pda([B("gastank"), u.toBuffer()]);
 
   let setupPayer: Keypair;
-  let foodMint: PublicKey, woodMint: PublicKey, stoneMint: PublicKey;
+  let foodMint: PublicKey, woodMint: PublicKey, stoneMint: PublicKey, potatoMint: PublicKey;
+  let seedsMint: PublicKey, wheatMint: PublicKey;
 
   const airdrop = async (kp: Keypair, sol = 5) =>
     provider.connection.confirmTransaction(
@@ -52,10 +58,10 @@ describe("aof-core: security & core flows", () => {
     throw new Error(`expected ${code}, but call succeeded`);
   }
 
-  async function mintTool(to: PublicKey) {
+  async function mintTool(to: PublicKey, toolType = "axe") {
     const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
     const tokenAccount = await ensureAta(mint, to);
-    await program.methods.mintTool("axe", { common: {} }).accounts({
+    await program.methods.mintTool(toolType, { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount,
       toolData: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
@@ -66,23 +72,37 @@ describe("aof-core: security & core flows", () => {
     setupPayer = Keypair.generate();
     await airdrop(setupPayer, 100);
     try {
-      await program.methods.initialize().accounts({
+      await program.methods.initialize(authority).accounts({
         config: configPda, authority, auth: authPda, vault: vaultPda,
-        systemProgram: SystemProgram.programId }).rpc();
+        programData: programDataPda, systemProgram: SystemProgram.programId }).rpc();
     } catch (e) {}
-    foodMint  = await createMint(provider.connection, setupPayer, authPda, null, 0);
-    woodMint  = await createMint(provider.connection, setupPayer, authPda, null, 0);
-    stoneMint = await createMint(provider.connection, setupPayer, authPda, null, 0);
-    await program.methods.setResourceMints(foodMint, woodMint, stoneMint)
-      .accounts({ config: configPda, authority }).rpc();
+    // Resource mints use the production 9-decimal atomic unit. Tool/NFT
+    // mints created by mintTool below intentionally remain 0-decimal NFTs.
+    foodMint  = await createMint(provider.connection, setupPayer, authPda, null, 9);
+    woodMint  = await createMint(provider.connection, setupPayer, authPda, null, 9);
+    stoneMint = await createMint(provider.connection, setupPayer, authPda, null, 9);
+    potatoMint = await createMint(provider.connection, setupPayer, authPda, null, 9);
+    const materialArgs: PublicKey[] = [];
+    for (let i = 0; i < 23; i += 1) {
+      materialArgs.push(await createMint(provider.connection, setupPayer, authPda, null, 9));
+    }
+    seedsMint = materialArgs[0];
+    wheatMint = materialArgs[1];
+    try {
+      await (program.methods as any).initMaterialMints(...materialArgs)
+        .accounts({ config: configPda, authority, materialMints: materialMintsPda, systemProgram: SystemProgram.programId }).rpc();
+    } catch (e) {}
+    await program.methods.setResourceMints(
+      foodMint, woodMint, stoneMint, materialArgs[0], materialArgs[4], potatoMint,
+    ).accounts({ config: configPda, authority }).rpc();
   });
 
   it("initialize is singleton (повторный вызов падает)", async () => {
     let threw = false;
     try {
-      await program.methods.initialize().accounts({
+      await program.methods.initialize(authority).accounts({
         config: configPda, authority, auth: authPda, vault: vaultPda,
-        systemProgram: SystemProgram.programId }).rpc();
+        programData: programDataPda, systemProgram: SystemProgram.programId }).rpc();
     } catch (e) { threw = true; }
     expect(threw).to.be.true;
   });
@@ -92,13 +112,13 @@ describe("aof-core: security & core flows", () => {
     const ata = await ensureAta(woodMint, user.publicKey);
     const treasAta = await ensureAta(woodMint, authority);
     await program.methods.mintResource({ wood: {} }, new BN(10_000)).accounts({
-      config: configPda, authority, auth: authPda, mint: woodMint,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: woodMint,
       tokenAccount: ata, treasuryToken: treasAta, player: playerPda(user.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
-    const u = (await provider.connection.getTokenAccountBalance(ata)).value.uiAmount!;
-    const t = (await provider.connection.getTokenAccountBalance(treasAta)).value.uiAmount!;
+    const u = Number((await provider.connection.getTokenAccountBalance(ata)).value.amount);
+    const t = Number((await provider.connection.getTokenAccountBalance(treasAta)).value.amount);
     expect(u + t).to.equal(10_000);
-    expect(t).to.be.within(700, 1000); // база 7–10%
+    expect(t).to.be.within(700, 1000); // база 7–10% в atomic units
   });
 
   it("withdraw_gas: кулдаун взводится после вывода (H1)", async () => {
@@ -126,7 +146,12 @@ describe("aof-core: security & core flows", () => {
 
   it("start_mining: кап часов по редкости + житель занят", async () => {
     const user = Keypair.generate(); await airdrop(user);
-    const { mint } = await mintTool(user.publicKey);
+    const { mint, tokenAccount } = await mintTool(user.publicKey);
+    const vaultToken = await ensureAta(mint, vaultPda);
+    await program.methods.stake(new BN(3600)).accounts({
+      config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
+      userToken: tokenAccount, vault: vaultPda, vaultToken, tokenProgram: TOKEN_PROGRAM_ID,
+    }).signers([user]).rpc();
     const sm = (h: number) => program.methods.startMining(h).accounts({
       config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
       player: playerPda(user.publicKey), systemProgram: SystemProgram.programId }).signers([user]).rpc();
@@ -134,6 +159,83 @@ describe("aof-core: security & core flows", () => {
     await sm(2);
     const pl = await program.account.player.fetch(playerPda(user.publicKey));
     expect(pl.villagersAvailable).to.equal(5);
+
+    // The collect path must validate completion before minting or clearing
+    // mining state. This is the pre-completion half of the atomic settlement
+    // regression; a full payout assertion requires advancing validator time.
+    const payoutToken = await ensureAta(woodMint, user.publicKey);
+    await expectError(program.methods.collectMining().accounts({
+      config: configPda,
+      user: user.publicKey,
+      tool: toolPda(mint),
+      mint,
+      player: playerPda(user.publicKey),
+      materialMints: materialMintsPda,
+      auth: authPda,
+      payoutMint: woodMint,
+      payoutToken,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    }).signers([user]).rpc(), "MiningNotComplete");
+    const stillMining = await program.account.toolData.fetch(toolPda(mint));
+    expect(stillMining.isMining).to.equal(true);
+  });
+
+  it("harvest wheat: rental operator is accepted and owner is rejected", async () => {
+    const owner = Keypair.generate(); await airdrop(owner);
+    const renter = Keypair.generate(); await airdrop(renter);
+    const { mint, tokenAccount } = await mintTool(owner.publicKey, "Reaper");
+    const ownerSeeds = await ensureAta(seedsMint, owner.publicKey);
+    const ownerSeedsTreasury = await ensureAta(seedsMint, authority);
+    await program.methods.mintResource({ seeds: {} }, new BN(10_000_000_000)).accounts({
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: seedsMint,
+      tokenAccount: ownerSeeds, treasuryToken: ownerSeedsTreasury, player: playerPda(owner.publicKey),
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).rpc();
+    const ownerTile = pda([B("farm_tile"), owner.publicKey.toBuffer(), Buffer.from([0])]);
+    await program.methods.plantSeeds(1_000_000_000).accounts({
+      config: configPda, user: owner.publicKey, materialMints: materialMintsPda,
+      energyAccount: pda([B("energy_account"), owner.publicKey.toBuffer()]), farmTile: ownerTile,
+      seedsMint, userSeeds: ownerSeeds, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([owner]).rpc();
+
+    const rentalListing = pda([B("rental_listing"), mint.toBuffer()]);
+    await program.methods.rentalList(10_000, new BN(24 * 3600), new BN(24 * 3600), new BN(0)).accounts({
+      config: configPda, owner: owner.publicKey, mint, tool: toolPda(mint), rentalListing,
+      systemProgram: SystemProgram.programId,
+    }).signers([owner]).rpc();
+    const rentalAgreement = pda([B("rental_agreement"), mint.toBuffer()]);
+    await program.methods.rentalStart(new BN(24 * 3600)).accounts({
+      config: configPda, renter: renter.publicKey, mint, tool: toolPda(mint), rentalListing,
+      owner: owner.publicKey, treasury: authority, rentalAgreement, systemProgram: SystemProgram.programId,
+    }).signers([renter]).rpc();
+
+    const ownerWheat = await ensureAta(wheatMint, owner.publicKey);
+    await expectError(program.methods.harvestWheat(0).accounts({
+      config: configPda, user: owner.publicKey, materialMints: materialMintsPda,
+      energyAccount: pda([B("energy_account"), owner.publicKey.toBuffer()]), farmTile: ownerTile,
+      toolData: toolPda(mint), auth: authPda, wheatMint, userWheat: ownerWheat,
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([owner]).rpc(), "NotToolOperator");
+
+    const renterSeeds = await ensureAta(seedsMint, renter.publicKey);
+    await program.methods.mintResource({ seeds: {} }, new BN(10_000_000_000)).accounts({
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: seedsMint,
+      tokenAccount: renterSeeds, treasuryToken: ownerSeedsTreasury, player: playerPda(renter.publicKey),
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).rpc();
+    const renterTile = pda([B("farm_tile"), renter.publicKey.toBuffer(), Buffer.from([0])]);
+    await program.methods.plantSeeds(1_000_000_000).accounts({
+      config: configPda, user: renter.publicKey, materialMints: materialMintsPda,
+      energyAccount: pda([B("energy_account"), renter.publicKey.toBuffer()]), farmTile: renterTile,
+      seedsMint, userSeeds: renterSeeds, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([renter]).rpc();
+    const renterWheat = await ensureAta(wheatMint, renter.publicKey);
+    await expectError(program.methods.harvestWheat(0).accounts({
+      config: configPda, user: renter.publicKey, materialMints: materialMintsPda,
+      energyAccount: pda([B("energy_account"), renter.publicKey.toBuffer()]), farmTile: renterTile,
+      toolData: toolPda(mint), auth: authPda, wheatMint, userWheat: renterWheat,
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([renter]).rpc(), "FarmTileNotReady");
   });
 
   it("auction settle: чужой winner_token отклоняется (C1)", async () => {
@@ -142,7 +244,7 @@ describe("aof-core: security & core flows", () => {
     const auctionPda = pda([B("auction"), mint.toBuffer()]);
     const auctionVault = await ensureAta(mint, auctionPda);
     await program.methods.auctionCreate(new BN(1_000_000), new BN(2)).accounts({
-      config: configPda, seller: seller.publicKey, mint, sellerToken: tokenAccount,
+      config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint), sellerToken: tokenAccount,
       auction: auctionPda, auctionVault, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId
     }).signers([seller]).rpc();
     await sleep(2500);
@@ -161,28 +263,28 @@ describe("aof-core: security & core flows", () => {
     const auctionPda = pda([B("auction"), mint.toBuffer()]);
     const auctionVault = await ensureAta(mint, auctionPda);
     await program.methods.auctionCreate(new BN(1_000_000), new BN(600)).accounts({
-      config: configPda, seller: seller.publicKey, mint, sellerToken: tokenAccount,
+      config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint), sellerToken: tokenAccount,
       auction: auctionPda, auctionVault, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId
     }).signers([seller]).rpc();
     const b1 = Keypair.generate(); await airdrop(b1);
     const b2 = Keypair.generate(); await airdrop(b2);
-    // храним текущего биддера локально — это previous_bidder для следующей ставки
-    let currentBidder: PublicKey = PublicKey.default;
+    // AuctionCreate initializes current_bidder to the seller even before the
+    // first bid, so the address constraint must be respected on every bid.
+    let currentBidder: PublicKey = seller.publicKey;
     const bid = async (bidder: Keypair, amt: number) => {
-      const prev = currentBidder.equals(PublicKey.default)
-        ? SystemProgram.programId
-        : currentBidder;
       await program.methods.auctionBid(new BN(amt)).accounts({
-        bidder: bidder.publicKey, mint, auction: auctionPda,
-        previousBidder: prev, systemProgram: SystemProgram.programId
+        config: configPda, bidder: bidder.publicKey, mint, auction: auctionPda,
+        previousBidder: currentBidder, systemProgram: SystemProgram.programId
       }).signers([bidder]).rpc();
       currentBidder = bidder.publicKey;
     };
-    // первая ставка: previous_bidder = system program (current_bidder = default)
-    await program.methods.auctionBid(new BN(10_000_000)).accounts({
-      bidder: b1.publicKey, mint, auction: auctionPda,
-      previousBidder: SystemProgram.programId, systemProgram: SystemProgram.programId }).signers([b1]).rpc();
-    currentBidder = b1.publicKey;  // обновляем после первой ставки
+    await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
+    await expectError(program.methods.auctionBid(new BN(10_000_000)).accounts({
+      config: configPda, bidder: b1.publicKey, mint, auction: auctionPda,
+      previousBidder: currentBidder, systemProgram: SystemProgram.programId
+    }).signers([b1]).rpc(), "Paused");
+    await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+    await bid(b1, 10_000_000);
     const before = await provider.connection.getBalance(b1.publicKey);
     await bid(b2, 20_000_000);
     const after = await provider.connection.getBalance(b1.publicKey);
@@ -195,26 +297,31 @@ describe("aof-core: security & core flows", () => {
     const sellerWood = await ensureAta(woodMint, seller.publicKey);
     const treasAta = await ensureAta(woodMint, authority);
     await program.methods.mintResource({ wood: {} }, new BN(1_000)).accounts({
-      config: configPda, authority, auth: authPda, mint: woodMint, tokenAccount: sellerWood,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: woodMint, tokenAccount: sellerWood,
       treasuryToken: treasAta, player: playerPda(seller.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
     const buyerWood = await ensureAta(woodMint, buyer.publicKey);
     const price = 1_000, amount = 100;
     const buyOrder = pda([B("resource_order"), buyer.publicKey.toBuffer(), woodMint.toBuffer()]);
     await program.methods.placeBuyOrder(1, new BN(price), new BN(amount)).accounts({
-      config: configPda, maker: buyer.publicKey, mint: woodMint, order: buyOrder,
+      config: configPda, maker: buyer.publicKey, mint: woodMint, materialMints: materialMintsPda, order: buyOrder,
       systemProgram: SystemProgram.programId }).signers([buyer]).rpc();
     const sellOrder = pda([B("resource_order"), seller.publicKey.toBuffer(), woodMint.toBuffer()]);
     const orderVault = await ensureAta(woodMint, sellOrder);
     await program.methods.placeSellOrder(1, new BN(price), new BN(amount)).accounts({
-      config: configPda, maker: seller.publicKey, mint: woodMint, makerToken: sellerWood,
+      config: configPda, maker: seller.publicKey, mint: woodMint, materialMints: materialMintsPda, makerToken: sellerWood,
       order: sellOrder, orderVault, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId
     }).signers([seller]).rpc();
-    await program.methods.matchResourceOrders().accounts({
-      config: configPda, mint: woodMint, buyOrder, sellOrder, seller: seller.publicKey,
-      treasury: authority, sellVault: orderVault, buyerToken: buyerWood, tokenProgram: TOKEN_PROGRAM_ID }).rpc();
-    const bal = (await provider.connection.getTokenAccountBalance(buyerWood)).value.uiAmount!;
-    expect(bal).to.equal(100);
+    const matchAccounts = {
+      config: configPda, materialMints: materialMintsPda, mint: woodMint, buyOrder, sellOrder, seller: seller.publicKey,
+      treasury: authority, sellVault: orderVault, buyerToken: buyerWood, tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
+    await expectError(program.methods.matchResourceOrders().accounts(matchAccounts).rpc(), "Paused");
+    await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+    await program.methods.matchResourceOrders().accounts(matchAccounts).rpc();
+    const bal = (await provider.connection.getTokenAccountBalance(buyerWood)).value.amount;
+    expect(bal).to.equal("100");
   });
 
   it("pack commit-reveal: инструмент минтится игроку", async () => {
@@ -230,7 +337,7 @@ describe("aof-core: security & core flows", () => {
     const commitHash = crypto.createHash("sha256").update(secret).digest();
     await program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
       config: configPda, authority, user: user.publicKey, treasury: authority,
-      packConfig, mint, packCommit: pda([B("pack_commit"), mint.toBuffer()]),
+      packConfig, auth: authPda, mint, packCommit: pda([B("pack_commit"), mint.toBuffer()]),
       systemProgram: SystemProgram.programId }).signers([user]).rpc();
     await sleep(1500);
     await program.methods.packOpenReveal(Array.from(secret)).accounts({

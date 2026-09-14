@@ -30,6 +30,9 @@ pub fn set_config_handler(ctx: Context<SetRerollConfig>, odds_bps: [u16; 5]) -> 
 }
 
 pub fn commit_handler(ctx: Context<RerollRandomCommit>, commit_hash: [u8; 32]) -> Result<()> {
+    // The tool is burned before reveal and there is no expiry/refund path.
+    // Fail closed in the program, not only in the API route.
+    require!(false, AofError::FeatureDisabled);
     require!(
         ctx.accounts.gastank.balance_micros >= FEE_PER_REROLL_MICROS,
         AofError::InsufficientBalance

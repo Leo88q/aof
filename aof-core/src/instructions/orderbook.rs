@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::{self, Token, Transfer};
+use anchor_spl::token::{self, CloseAccount, Token, Transfer};
 use crate::constants::*;
 use crate::{
-    PlaceBuyOrder, PlaceSellOrder, CancelBuyOrder, CancelSellOrder, MatchResourceOrders,
+    Config, MaterialMints, PlaceBuyOrder, PlaceSellOrder, CancelBuyOrder, CancelSellOrder,
+    MatchResourceOrders,
 };
 use crate::errors::*;
 use crate::events::*;
@@ -16,12 +17,56 @@ use crate::events::*;
 /// чтобы не полагаться на Option<Account<>> в Anchor без возможности
 /// прогнать компилятор в этой среде — надёжнее двумя явными путями.
 
+fn expected_resource_mint(config: &Config, materials: &MaterialMints, kind: u8) -> Option<Pubkey> {
+    Some(match kind {
+        0 => config.food_mint,
+        1 => config.wood_mint,
+        2 => config.stone_mint,
+        3 => materials.seeds,
+        4 => materials.wheat,
+        5 => materials.flour,
+        6 => materials.bread,
+        7 => materials.water,
+        8 => materials.coal,
+        9 => materials.meat,
+        10 => materials.stone_blue,
+        11 => materials.stone_purple,
+        12 => materials.stone_red,
+        13 => materials.sand_white,
+        14 => materials.sand_pink,
+        15 => materials.sand_yellow,
+        16 => materials.gem_blue,
+        17 => materials.gem_orange,
+        18 => materials.gem_white,
+        19 => materials.gem_green,
+        20 => materials.flask_blue,
+        21 => materials.flask_yellow,
+        22 => materials.flask_green,
+        23 => materials.flask_pink,
+        24 => materials.flask_purple,
+        25 => materials.love_heart,
+        26 => config.potato_mint,
+        _ => return None,
+    })
+}
+
+fn require_canonical_mint(config: &Config, materials: &MaterialMints, mint: &Pubkey, kind: u8) -> Result<()> {
+    require!(expected_resource_mint(config, materials, kind) == Some(*mint), AofError::InvalidResourceKind);
+    Ok(())
+}
+
 pub fn place_buy_handler(
     ctx: Context<PlaceBuyOrder>,
     kind: u8,
     price_lamports_per_unit: u64,
     amount: u64,
 ) -> Result<()> {
+    require_canonical_mint(
+        &ctx.accounts.config,
+        &ctx.accounts.material_mints,
+        &ctx.accounts.mint.key(),
+        kind,
+    )?;
     require!(amount > 0 && price_lamports_per_unit > 0, AofError::ZeroAmount);
     let total = price_lamports_per_unit.checked_mul(amount).ok_or(AofError::MathOverflow)?;
     // [ФИКС C2]: эскроу покрывает и тейкер-комиссию, иначе match просядет ниже rent-exemption
@@ -57,6 +102,12 @@ pub fn place_sell_handler(
     price_lamports_per_unit: u64,
     amount: u64,
 ) -> Result<()> {
+    require_canonical_mint(
+        &ctx.accounts.config,
+        &ctx.accounts.material_mints,
+        &ctx.accounts.mint.key(),
+        kind,
+    )?;
     require!(amount > 0 && price_lamports_per_unit > 0, AofError::ZeroAmount);
     token::transfer(
         CpiContext::new(
@@ -82,34 +133,56 @@ pub fn place_sell_handler(
 
 pub fn cancel_buy_handler(ctx: Context<CancelBuyOrder>) -> Result<()> {
     let o = &mut ctx.accounts.order;
-    require!(o.amount_remaining > 0, AofError::OrderExhausted);
-    let refund = o.price_lamports_per_unit.checked_mul(o.amount_remaining).ok_or(AofError::MathOverflow)?;
-    o.amount_remaining = 0;
-    **ctx.accounts.order.to_account_info().try_borrow_mut_lamports()? -= refund;
-    **ctx.accounts.maker.try_borrow_mut_lamports()? += refund;
+    // A fully matched order still owns its rent and fee buffer. Allow the
+    // maker to close it; otherwise the final match permanently strands the
+    // account lamports because amount_remaining is already zero.
+    if o.amount_remaining > 0 {
+        let refund = o.price_lamports_per_unit.checked_mul(o.amount_remaining).ok_or(AofError::MathOverflow)?;
+        o.amount_remaining = 0;
+        **ctx.accounts.order.to_account_info().try_borrow_mut_lamports()? -= refund;
+        **ctx.accounts.maker.try_borrow_mut_lamports()? += refund;
+    }
     Ok(())
 }
 
 pub fn cancel_sell_handler(ctx: Context<CancelSellOrder>) -> Result<()> {
-    require!(ctx.accounts.order.amount_remaining > 0, AofError::OrderExhausted);
+    let remaining = ctx.accounts.order.amount_remaining;
+    if remaining > 0 {
+        let bump = ctx.bumps.order;
+        let maker_key = ctx.accounts.maker.key();
+        let mint_key = ctx.accounts.mint.key();
+        let seeds: &[&[u8]] = &[RESOURCE_ORDER_SEED, maker_key.as_ref(), mint_key.as_ref(), &[bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.order_vault.to_account_info(),
+                    to: ctx.accounts.maker_token.to_account_info(),
+                    authority: ctx.accounts.order.to_account_info(),
+                },
+                &[seeds],
+            ),
+            remaining,
+        )?;
+        ctx.accounts.order.amount_remaining = 0;
+    }
+
+    // The vault is an ATA owned by the order PDA. Close it after the final
+    // return so a sell order does not strand rent or leave a reusable PDA
+    // holding an unexpected token account.
     let bump = ctx.bumps.order;
     let maker_key = ctx.accounts.maker.key();
     let mint_key = ctx.accounts.mint.key();
     let seeds: &[&[u8]] = &[RESOURCE_ORDER_SEED, maker_key.as_ref(), mint_key.as_ref(), &[bump]];
-    let remaining = ctx.accounts.order.amount_remaining;
-    token::transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.order_vault.to_account_info(),
-                to: ctx.accounts.maker_token.to_account_info(),
-                authority: ctx.accounts.order.to_account_info(),
-            },
-            &[seeds],
-        ),
-        remaining,
-    )?;
-    ctx.accounts.order.amount_remaining = 0;
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        CloseAccount {
+            account: ctx.accounts.order_vault.to_account_info(),
+            destination: ctx.accounts.maker.to_account_info(),
+            authority: ctx.accounts.order.to_account_info(),
+        },
+        &[seeds],
+    ))?;
     Ok(())
 }
 
@@ -120,6 +193,12 @@ pub fn cancel_sell_handler(ctx: Context<CancelSellOrder>) -> Result<()> {
 /// возвращается построчно на каждый мэтч — покупатель получает её при
 /// финальной отмене/закрытии своего ордера (остаток эскроу).
 pub fn match_handler(ctx: Context<MatchResourceOrders>) -> Result<()> {
+    require_canonical_mint(
+        &ctx.accounts.config,
+        &ctx.accounts.material_mints,
+        &ctx.accounts.mint.key(),
+        ctx.accounts.buy_order.kind,
+    )?;
     require!(ctx.accounts.buy_order.kind == ctx.accounts.sell_order.kind, AofError::OrdersDoNotCross);
     require!(ctx.accounts.buy_order.is_buy && !ctx.accounts.sell_order.is_buy, AofError::OrdersDoNotCross);
     require!(

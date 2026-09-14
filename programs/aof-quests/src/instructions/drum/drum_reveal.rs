@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
+use anchor_lang::solana_program::hash::hashv;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 use crate::state::{DrumCommit, QuestConfig};
 use crate::errors::QuestError;
@@ -21,13 +21,15 @@ pub struct DrumReveal<'info> {
         mut,
         seeds = [b"drum_commit", user.key().as_ref()],
         bump = drum_commit.bump,
-        close = user
+        close = user,
+        constraint = drum_commit.user == user.key() @ QuestError::Unauthorized
     )]
     pub drum_commit: Account<'info, DrumCommit>,
 
     #[account(
         seeds = [b"quest_config"],
         bump = quest_config.bump,
+        has_one = authority @ QuestError::Unauthorized,
         constraint = !quest_config.paused @ QuestError::Paused
     )]
     pub quest_config: Account<'info, QuestConfig>,
@@ -38,6 +40,10 @@ pub struct DrumReveal<'info> {
     /// CHECK: пользователь-получатель награды, личность через seeds в drum_commit
     #[account(mut)]
     pub user: UncheckedAccount<'info>,
+
+    /// CHECK: validated against the canonical SlotHashes sysvar address.
+    #[account(address = anchor_lang::solana_program::sysvar::slot_hashes::ID)]
+    pub slot_hashes: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -55,23 +61,48 @@ pub struct DrumReveal<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+fn get_slot_hash(info: &AccountInfo, target_slot: u64) -> Result<[u8; 32]> {
+    let data = info.try_borrow_data()?;
+    require!(data.len() >= 8, QuestError::CommitExpired);
+    let entries = u64::from_le_bytes(data[0..8].try_into().unwrap()) as usize;
+    let mut offset = 8usize;
+    for _ in 0..entries {
+        if offset + 40 > data.len() {
+            break;
+        }
+        let slot = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+        if slot == target_slot {
+            let mut hash = [0u8; 32];
+            hash.copy_from_slice(&data[offset + 8..offset + 40]);
+            return Ok(hash);
+        }
+        offset += 40;
+    }
+    Err(QuestError::CommitExpired.into())
+}
+
 pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
     let commit = &ctx.accounts.drum_commit;
 
-    // Проверка что коммит не протух (10 минут)
+    // Проверка что коммит не протух (10 минут) и его slot hash ещё доступен.
     let now = Clock::get()?.unix_timestamp;
-    require!(now - commit.created_at < 600, QuestError::CommitExpired);
+    require!(now.saturating_sub(commit.created_at) < 600, QuestError::CommitExpired);
 
-    // Верификация хеша: sha256(secret) == hash
-    let computed = hash(&secret);
+    // Верификация коммит-секрета: sha256(secret) == hash.
+    let committed_hash = anchor_lang::solana_program::hash::hash(&secret);
     require!(
-        computed.to_bytes() == commit.hash,
+        committed_hash.to_bytes() == commit.hash,
         QuestError::InvalidHash
     );
+    let slot_hash = get_slot_hash(
+        &ctx.accounts.slot_hashes.to_account_info(),
+        commit.commit_slot,
+    )?;
 
-    // [ФИКС] Таблица шансов: детерминированный выбор приза из закоммиченного
-    // секрета. Ни сервер, ни игрок не могли подбрать исход — хеш был зафиксирован.
-    let hash_bytes = computed.to_bytes();
+    // Таблица шансов использует secret + blockhash from the commit slot. A
+    // server can no longer grind a winning secret before publishing the commit.
+    let entropy = hashv(&[&secret, &slot_hash]);
+    let hash_bytes = entropy.to_bytes();
     let roll = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap()) % 10_000;
     let mut acc: u64 = 0;
     let mut prize_amount: u64 = 0;

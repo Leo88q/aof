@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::state::QuestConfig;
 use crate::events::QuestConfigInitialized;
+use crate::errors::QuestError;
 
 #[derive(Accounts)]
 pub struct InitQuestConfig<'info> {
@@ -15,6 +16,12 @@ pub struct InitQuestConfig<'info> {
 
     #[account(mut)]
     pub authority: Signer<'info>,
+    /// Canonical upgrade authority for the one-time quest-config bootstrap.
+    #[account(address = Pubkey::find_program_address(
+        &[crate::ID.as_ref()],
+        &anchor_lang::solana_program::bpf_loader_upgradeable::id()
+    ).0)]
+    pub program_data: Account<'info, anchor_lang::ProgramData>,
     pub system_program: Program<'info, System>,
 }
 
@@ -23,6 +30,13 @@ pub fn handler(
     mascot_mint: Pubkey,
     treasury_mascot: Pubkey,
 ) -> Result<()> {
+    let upgrade_authority = ctx
+        .accounts
+        .program_data
+        .upgrade_authority_address
+        .ok_or(QuestError::Unauthorized)?;
+    require_keys_eq!(upgrade_authority, ctx.accounts.authority.key(), QuestError::Unauthorized);
+
     let config = &mut ctx.accounts.quest_config;
     config.authority = ctx.accounts.authority.key();
     config.bump = ctx.bumps.quest_config;

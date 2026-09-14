@@ -14,6 +14,10 @@ pub fn handler(
     _pack_type: PackType,
     commit_hash: [u8; 32],
 ) -> Result<()> {
+    // SOL is transferred before reveal, but there is no on-chain expiry,
+    // cancel, or refund path. The API is disabled; block direct callers too.
+    require!(false, AofError::FeatureDisabled);
+
     let price = ctx.accounts.pack_config.price_lamports;
     let cpi = system_program::Transfer {
         from: ctx.accounts.user.to_account_info(),

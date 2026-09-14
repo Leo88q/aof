@@ -16,7 +16,7 @@ pub struct LpDeposit<'info> {
     pub lp_config: Account<'info, LpConfig>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = user,
         space = LpPool::SIZE,
         seeds = [b"lp_pool".as_ref(), &[rarity]],

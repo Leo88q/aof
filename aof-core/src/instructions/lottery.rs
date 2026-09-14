@@ -24,8 +24,11 @@ pub fn init_round_handler(ctx: Context<InitLotteryRound>, round_id: u64) -> Resu
 }
 
 pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
+    // The published daily ticket cap is not represented by an on-chain
+    // per-wallet counter yet. Fail closed rather than letting direct program
+    // callers bypass the backend's off-chain limit.
+    require!(false, AofError::FeatureDisabled);
     require!(!ctx.accounts.lottery_round.drawn, AofError::LotteryRoundClosed);
-    // дневной кап решается офчейн-подсчётом сервера в реальном проде
 
     let price = LOTTERY_TICKET_PRICE_LAMPORTS;
     let pool_cut = price.checked_mul(LOTTERY_POOL_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
@@ -54,7 +57,10 @@ pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
 
     let round = &mut ctx.accounts.lottery_round;
     let ticket_number = round.tickets_sold;
-    round.tickets_sold += 1;
+    round.tickets_sold = round
+        .tickets_sold
+        .checked_add(1)
+        .ok_or(AofError::MathOverflow)?;
     round.pool_lamports = round.pool_lamports.checked_add(pool_cut).ok_or(AofError::MathOverflow)?;
 
     let t = &mut ctx.accounts.lottery_ticket;
@@ -77,6 +83,7 @@ pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
 pub fn commit_draw_handler(ctx: Context<CommitLotteryDraw>, commit_hash: [u8; 32]) -> Result<()> {
     let round = &mut ctx.accounts.lottery_round;
     require!(!round.drawn, AofError::LotteryRoundClosed);
+    require!(!round.draw_committed, AofError::LotteryDrawAlreadyCommitted);
     require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
     round.draw_committed = true;
     round.draw_commit_slot = Clock::get()?.slot;

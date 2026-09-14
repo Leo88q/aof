@@ -55,67 +55,67 @@ pub fn handler(ctx: Context<CraftRecipe>, recipe_id: u8) -> Result<()> {
         0 => {
             require!(ctx.accounts.input_1_mint.key() == mm.stone_blue, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.gem_blue, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 1 = GemOrange: 1 StoneRed → 1 GemOrange
         1 => {
             require!(ctx.accounts.input_1_mint.key() == mm.stone_red, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.gem_orange, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 2 = GemWhite: 1 SandWhite → 1 GemWhite
         2 => {
             require!(ctx.accounts.input_1_mint.key() == mm.sand_white, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.gem_white, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 3 = FlaskBlue: 2 GemBlue + 5 FOOD → 1
         3 => {
             require!(ctx.accounts.input_1_mint.key() == mm.gem_blue, AofError::MaterialNotRegistered);
             require!(ctx.accounts.input_2_mint.key() == cfg.food_mint, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.flask_blue, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 2);
-            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 2 * RESOURCE_UNIT);
+            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 4 = FlaskYellow: 2 GemOrange + 3 STONE → 1
         4 => {
             require!(ctx.accounts.input_1_mint.key() == mm.gem_orange, AofError::MaterialNotRegistered);
             require!(ctx.accounts.input_2_mint.key() == cfg.stone_mint, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.flask_yellow, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 2);
-            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 3);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 2 * RESOURCE_UNIT);
+            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 3 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 5 = FlaskGreen: 5 WOOD + 5 Seeds → 1
         5 => {
             require!(ctx.accounts.input_1_mint.key() == cfg.wood_mint, AofError::MaterialNotRegistered);
             require!(ctx.accounts.input_2_mint.key() == mm.seeds, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.flask_green, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 5);
-            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 5 * RESOURCE_UNIT);
+            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 6 = FlaskPink: 3 SandPink + 5 FOOD → 1
         6 => {
             require!(ctx.accounts.input_1_mint.key() == mm.sand_pink, AofError::MaterialNotRegistered);
             require!(ctx.accounts.input_2_mint.key() == cfg.food_mint, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.flask_pink, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 3);
-            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 3 * RESOURCE_UNIT);
+            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         // 7 = FlaskPurple: 1 StonePurple + 1 GemGreen → 1
         7 => {
             require!(ctx.accounts.input_1_mint.key() == mm.stone_purple, AofError::MaterialNotRegistered);
             require!(ctx.accounts.input_2_mint.key() == mm.gem_green, AofError::MaterialNotRegistered);
             require!(ctx.accounts.output_mint.key() == mm.flask_purple, AofError::MaterialNotRegistered);
-            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1);
-            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 1);
-            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1);
+            burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
+            burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 1 * RESOURCE_UNIT);
+            mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT);
         }
         _ => return Err(AofError::RecipeNotFound.into()),
     }

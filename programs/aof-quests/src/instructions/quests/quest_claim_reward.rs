@@ -10,6 +10,7 @@ pub struct QuestClaimReward<'info> {
     #[account(
         seeds = [b"quest_config"],
         bump = quest_config.bump,
+        has_one = authority @ QuestError::Unauthorized,
         constraint = !quest_config.paused @ QuestError::Paused
     )]
     pub quest_config: Account<'info, QuestConfig>,
@@ -17,7 +18,8 @@ pub struct QuestClaimReward<'info> {
     #[account(
         seeds = [b"quest_template", quest_id.to_le_bytes().as_ref()],
         bump = quest_template.bump,
-        constraint = quest_template.active @ QuestError::QuestNotActive
+        constraint = quest_template.active @ QuestError::QuestNotActive,
+        constraint = quest_template.quest_id == quest_id @ QuestError::Unauthorized
     )]
     pub quest_template: Account<'info, QuestTemplate>,
 
@@ -25,6 +27,8 @@ pub struct QuestClaimReward<'info> {
         mut,
         seeds = [b"quest_progress", user.key().as_ref(), quest_id.to_le_bytes().as_ref()],
         bump = quest_progress.bump,
+        constraint = quest_progress.user == user.key() @ QuestError::Unauthorized,
+        constraint = quest_progress.quest_id == quest_id @ QuestError::Unauthorized,
         constraint = quest_progress.completed @ QuestError::QuestNotCompleted,
         constraint = !quest_progress.claimed @ QuestError::AlreadyClaimed
     )]
@@ -33,9 +37,13 @@ pub struct QuestClaimReward<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
+    pub authority: Signer<'info>,
+
     #[account(
         mut,
-        address = quest_config.treasury_mascot @ QuestError::Unauthorized
+        address = quest_config.treasury_mascot @ QuestError::Unauthorized,
+        constraint = treasury_mascot.owner == quest_config.key() @ QuestError::Unauthorized,
+        constraint = treasury_mascot.mint == quest_config.mascot_mint @ QuestError::Unauthorized
     )]
     pub treasury_mascot: Account<'info, TokenAccount>,
 
@@ -51,18 +59,18 @@ pub struct QuestClaimReward<'info> {
 
 pub fn handler(ctx: Context<QuestClaimReward>, quest_id: u32) -> Result<()> {
     let reward = ctx.accounts.quest_template.reward_mascot;
+    let bump = [ctx.accounts.quest_config.bump];
+    let signer_seeds: &[&[&[u8]]] = &[&[b"quest_config", &bump]];
 
-    // Перевод награды из казны пользователю (казна подписывает через authority-контроль на бэкенде)
-    // В реальной схеме казна должна быть либо владельцем, либо delegate.
-    // Здесь упрощённо: награда идёт от казны, подпись обеспечивается на уровне доступа.
     token::transfer(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.treasury_mascot.to_account_info(),
                 to: ctx.accounts.user_mascot.to_account_info(),
-                authority: ctx.accounts.user.to_account_info(),
+                authority: ctx.accounts.quest_config.to_account_info(),
             },
+            signer_seeds,
         ),
         reward,
     )?;

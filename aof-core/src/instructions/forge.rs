@@ -13,7 +13,20 @@ pub fn commit_handler(
     commit_hash: [u8; 32],
     use_protector: bool,
 ) -> Result<()> {
-    let slot = &ctx.accounts.enchant_slot;
+    // The public instruction currently accepts a meat account but has no
+    // canonical meat cost/burn and no expiry/refund path. Fail closed here;
+    // disabling only the API route is insufficient because Solana callers can
+    // invoke this instruction directly.
+    require!(false, AofError::FeatureDisabled);
+    require!(slot_type < 3, AofError::InvalidAmount);
+
+    let slot = &mut ctx.accounts.enchant_slot;
+    if slot.tool_mint == Pubkey::default() {
+        slot.tool_mint = ctx.accounts.tool_mint.key();
+        slot.slot_type = slot_type;
+    }
+    require_keys_eq!(slot.tool_mint, ctx.accounts.tool_mint.key(), AofError::InvalidMint);
+    require!(slot.slot_type == slot_type, AofError::InvalidAmount);
     require!(slot.level < ENCHANT_MAX_LEVEL, AofError::EnchantMaxLevel);
     let idx = slot.level as usize; // level->level+1, индекс = текущий уровень
 
@@ -71,12 +84,13 @@ pub fn reveal_handler(ctx: Context<ForgeAttemptReveal>, secret: [u8; 32]) -> Res
     let roll = entropy_u64(&entropy) % 10_000;
 
     let slot = &mut ctx.accounts.enchant_slot;
+    require!(slot.level < ENCHANT_MAX_LEVEL, AofError::EnchantMaxLevel);
     let idx = slot.level as usize;
     let level_before = slot.level;
 
     let outcome: u8;
     if roll < FORGE_SUCCESS_BPS[idx] as u64 {
-        slot.level += 1;
+        slot.level = slot.level.checked_add(1).ok_or(AofError::MathOverflow)?;
         outcome = 0;
     } else if roll < (FORGE_SUCCESS_BPS[idx] as u64 + FORGE_PARTIAL_FAIL_BPS[idx] as u64) {
         slot.level = slot.level.saturating_sub(1);

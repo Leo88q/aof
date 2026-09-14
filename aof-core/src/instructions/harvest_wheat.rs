@@ -17,9 +17,10 @@ use crate::HarvestWheat;
 pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     require!(tile_index < 10, AofError::InvalidBatchSize);
 
-    // Проверка что инструмент — Reaper и не занят
+    // Проверка что инструмент — Reaper и не занят. Farm actions follow the
+    // rental/delegate model: the current operator, not only the owner, signs.
     let tool = &mut ctx.accounts.tool_data;
-    require!(tool.owner == ctx.accounts.user.key(), AofError::NotToolOwner);
+    require!(tool.operator == ctx.accounts.user.key(), AofError::NotToolOperator);
     require!(tool.tool_type == "Reaper", AofError::InvalidRarityForCraft); // переиспользуем ошибку
     require!(!tool.is_mining, AofError::ToolBusy);
 

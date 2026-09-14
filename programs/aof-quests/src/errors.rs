@@ -22,4 +22,6 @@ pub enum QuestError {
     CommitExpired,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Feature disabled until its economic proof is implemented")]
+    FeatureDisabled,
 }

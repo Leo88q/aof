@@ -24,19 +24,14 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
     let food_cost = econ.food_base[idx].checked_add(minted.checked_mul(econ.food_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
     let seeds_cost = econ.seeds_base[idx].checked_add(minted.checked_mul(econ.seeds_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
     let water_cost = econ.water_base[idx].checked_add(minted.checked_mul(econ.water_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
-    let mut potato_cost = econ.potato_base[idx].checked_add(minted.checked_mul(econ.potato_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
-    
-    // [НОВОЕ] Применяем скидку 15% если у игрока >= 3000 SKR
-    let has_skr = ctx.accounts.user_skr.amount >= SKR_MIN_BALANCE;
-    if has_skr {
-        let discount = potato_cost
-            .checked_mul(SKR_CRAFT_DISCOUNT_BPS as u64)
-            .ok_or(AofError::MathOverflow)?
-            .checked_div(10000)
-            .ok_or(AofError::MathOverflow)?;
-        potato_cost = potato_cost.checked_sub(discount).ok_or(AofError::MathOverflow)?;
-        msg!("SKR Holder: applied {}% discount on POTATO (-{})", SKR_CRAFT_DISCOUNT_BPS as u64 / 100, discount);
-    }
+    // SKR's canonical mint is not stored in Config/MaterialMints yet. Do not
+    // accept an arbitrary caller-supplied mint as proof of eligibility: that
+    // would let anyone manufacture the discount. The account remains in the
+    // context for IDL compatibility, but the discount is fail-closed until a
+    // canonical mint is configured.
+    let potato_cost = econ.potato_base[idx]
+        .checked_add(minted.checked_mul(econ.potato_mult[idx]).ok_or(AofError::MathOverflow)?)
+        .ok_or(AofError::MathOverflow)?;
 
     require!(
         ctx.accounts.gastank.balance_micros >= ctx.accounts.config.craft_fee,
@@ -171,6 +166,21 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
         ),
         1,
     )?;
+
+    // `init_if_needed` does not populate ToolData. Persist the canonical
+    // ownership/operator state in the same transaction as the NFT mint.
+    let new_tool = &mut ctx.accounts.new_tool_data;
+    new_tool.mint = ctx.accounts.new_mint.key();
+    new_tool.owner = ctx.accounts.user.key();
+    new_tool.tool_type = tool_type.clone();
+    new_tool.rarity = rarity;
+    new_tool.durability = MAX_DURABILITY;
+    new_tool.is_mining = false;
+    new_tool.mining_end = 0;
+    new_tool.last_mined_hours = 0;
+    new_tool.staked = false;
+    new_tool.unlock_at = 0;
+    new_tool.operator = ctx.accounts.user.key();
 
     ctx.accounts.rarity_counter.minted_count =
         minted.checked_add(1).ok_or(AofError::MathOverflow)?;

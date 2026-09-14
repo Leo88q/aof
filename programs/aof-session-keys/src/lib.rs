@@ -46,6 +46,8 @@ pub enum SkError {
     InvalidTtl,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Session spending is disabled until atomically bound to a target instruction")]
+    AtomicBindingRequired,
 }
 
 #[account]
@@ -105,6 +107,12 @@ pub struct InitSkConfig<'info> {
     pub authority: Signer<'info>,
     /// CHECK: ключ trust-worker
     pub oracle_authority: UncheckedAccount<'info>,
+    /// Canonical upgrade authority for the one-time session-config bootstrap.
+    #[account(address = Pubkey::find_program_address(
+        &[crate::ID.as_ref()],
+        &anchor_lang::solana_program::bpf_loader_upgradeable::id()
+    ).0)]
+    pub program_data: Account<'info, anchor_lang::ProgramData>,
     pub system_program: Program<'info, System>,
 }
 
@@ -165,6 +173,13 @@ pub mod aof_session_keys {
     use super::*;
 
     pub fn init_config(ctx: Context<InitSkConfig>) -> Result<()> {
+        let upgrade_authority = ctx
+            .accounts
+            .program_data
+            .upgrade_authority_address
+            .ok_or(SkError::Unauthorized)?;
+        require_keys_eq!(upgrade_authority, ctx.accounts.authority.key(), SkError::Unauthorized);
+
         let c = &mut ctx.accounts.config;
         c.authority = ctx.accounts.authority.key();
         c.oracle_authority = ctx.accounts.oracle_authority.key();
@@ -190,6 +205,10 @@ pub mod aof_session_keys {
         requested_max_per_tx: u64,
         ttl_seconds: i64,
     ) -> Result<()> {
+        // A preflight reservation is not cryptographically bound to the
+        // following target-program instruction. Do not expose it as a usable
+        // spend authorization until a wrapper/CPI path enforces that binding.
+        require!(false, SkError::AtomicBindingRequired);
         require!(allowed_ixs & FORBIDDEN_IXS_MASK == 0, SkError::ForbiddenIxRequested);
         require!(ttl_seconds > 0 && ttl_seconds <= 30 * 86400, SkError::InvalidTtl);
         let daily_cap = tier_daily_cap_lamports(ctx.accounts.trust.tier);
@@ -220,6 +239,10 @@ pub mod aof_session_keys {
     }
 
     pub fn session_check_and_spend(ctx: Context<SessionCheckAndSpend>, ix_bit: u64, amount: u64) -> Result<()> {
+        // This instruction only reserves a counter; it cannot prove which
+        // target instruction will execute next. Keep it disabled until the
+        // reservation and target CPI live in one atomic transaction path.
+        require!(false, SkError::AtomicBindingRequired);
         let s = &mut ctx.accounts.session;
         require!(!s.revoked, SkError::SessionRevoked);
         require!(!s.paused, SkError::SessionRevoked);

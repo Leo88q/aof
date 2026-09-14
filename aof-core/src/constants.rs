@@ -23,9 +23,6 @@ pub const SKR_MIN_BALANCE: u64 = 3_000_000_000_000; // 3000 SKR (с 9 decimals)
 pub const SKR_CRAFT_DISCOUNT_BPS: u16 = 1500; // 15% скидка на POTATO
  // 6 ресурсов // 4 массива по 4 x u64 + bump
 
-/// Migration authority for migrate_tool instruction
-pub const MIGRATION_AUTHORITY: Pubkey = pubkey!("4AjNMokXxHPR6YbbsSyqEvBE2BZ6QJq9DedYrEDwpytq");
-
 /// Fee constants (in micros, 1 SOL = 1e6 micros)
 pub const FEE_PER_CRAFT_MICROS: u64 = 100_000;
 pub const FEE_PER_NFT_MICROS: u64 = 10_000;
@@ -59,21 +56,25 @@ pub const MICROS_TO_LAMPORTS: u64 = 1000;
 // `villagers_available: 6, villagers: 6` при создании пользователя.
 pub const DEFAULT_VILLAGERS: u32 = 6;
 
+// Resource mints are deployed with 9 decimals. Keep all on-chain economy
+// amounts in atomic units; UI/backend divide by this scale for display.
+pub const RESOURCE_UNIT: u64 = 1_000_000_000;
+
 // [НОВОЕ] Стоимость ремонта (STONE за 1 юнит прочности), по редкости —
 // используется через Rarity::repair_stone_cost_per_unit() в state.rs,
 // тем же паттерном, что MAX_HOURS_* + Rarity::max_hours().
-pub const REPAIR_STONE_COMMON: u64 = 2;
-pub const REPAIR_STONE_UNCOMMON: u64 = 4;
-pub const REPAIR_STONE_RARE: u64 = 9;
-pub const REPAIR_STONE_EPIC: u64 = 20;
-pub const REPAIR_STONE_LEGENDARY: u64 = 45;
+pub const REPAIR_STONE_COMMON: u64 = 2 * RESOURCE_UNIT;
+pub const REPAIR_STONE_UNCOMMON: u64 = 4 * RESOURCE_UNIT;
+pub const REPAIR_STONE_RARE: u64 = 9 * RESOURCE_UNIT;
+pub const REPAIR_STONE_EPIC: u64 = 20 * RESOURCE_UNIT;
+pub const REPAIR_STONE_LEGENDARY: u64 = 45 * RESOURCE_UNIT;
 
 // [НОВОЕ] Стоимость ремонта в WOOD за единицу прочности
-pub const REPAIR_WOOD_COMMON: u64 = 3;
-pub const REPAIR_WOOD_UNCOMMON: u64 = 6;
-pub const REPAIR_WOOD_RARE: u64 = 14;
-pub const REPAIR_WOOD_EPIC: u64 = 30;
-pub const REPAIR_WOOD_LEGENDARY: u64 = 70;
+pub const REPAIR_WOOD_COMMON: u64 = 3 * RESOURCE_UNIT;
+pub const REPAIR_WOOD_UNCOMMON: u64 = 6 * RESOURCE_UNIT;
+pub const REPAIR_WOOD_RARE: u64 = 14 * RESOURCE_UNIT;
+pub const REPAIR_WOOD_EPIC: u64 = 30 * RESOURCE_UNIT;
+pub const REPAIR_WOOD_LEGENDARY: u64 = 70 * RESOURCE_UNIT;
 
 // [НОВОЕ] Дефолты bonding-curve цены крафта (см. CraftEconomy в state.rs).
 // Индекс массива = rarity.craft_index() (Uncommon=0..Legendary=3).
@@ -91,15 +92,15 @@ pub const REPAIR_WOOD_LEGENDARY: u64 = 70;
 // Индексы: [0=Uncommon, 1=Rare, 2=Epic, 3=Legendary]
 // Base = ~1 час гринда, Mult = рост цены при массовом крафте
 
-pub const CRAFT_WOOD_BASE: [u64; 4] = [100, 150, 500, 2000];
-pub const CRAFT_STONE_BASE: [u64; 4] = [100, 120, 400, 1500];
-pub const CRAFT_FOOD_BASE: [u64; 4] = [50, 80, 300, 1000];
-pub const CRAFT_SEEDS_BASE: [u64; 4] = [20, 40, 150, 500];
-pub const CRAFT_WATER_BASE: [u64; 4] = [10, 30, 100, 400];
-pub const CRAFT_POTATO_BASE: [u64; 4] = [10, 20, 100, 500];
+pub const CRAFT_WOOD_BASE: [u64; 4] = [100 * RESOURCE_UNIT, 150 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT];
+pub const CRAFT_STONE_BASE: [u64; 4] = [100 * RESOURCE_UNIT, 120 * RESOURCE_UNIT, 400 * RESOURCE_UNIT, 1_500 * RESOURCE_UNIT];
+pub const CRAFT_FOOD_BASE: [u64; 4] = [50 * RESOURCE_UNIT, 80 * RESOURCE_UNIT, 300 * RESOURCE_UNIT, 1_000 * RESOURCE_UNIT];
+pub const CRAFT_SEEDS_BASE: [u64; 4] = [20 * RESOURCE_UNIT, 40 * RESOURCE_UNIT, 150 * RESOURCE_UNIT, 500 * RESOURCE_UNIT];
+pub const CRAFT_WATER_BASE: [u64; 4] = [10 * RESOURCE_UNIT, 30 * RESOURCE_UNIT, 100 * RESOURCE_UNIT, 400 * RESOURCE_UNIT];
+pub const CRAFT_POTATO_BASE: [u64; 4] = [10 * RESOURCE_UNIT, 20 * RESOURCE_UNIT, 100 * RESOURCE_UNIT, 500 * RESOURCE_UNIT];
 
-pub const CRAFT_WOOD_MULT: [u64; 4] = [1, 2, 10, 50];
-pub const CRAFT_STONE_MULT: [u64; 4] = [1, 2, 10, 50];
+pub const CRAFT_WOOD_MULT: [u64; 4] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 50 * RESOURCE_UNIT];
+pub const CRAFT_STONE_MULT: [u64; 4] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 50 * RESOURCE_UNIT];
 pub const CRAFT_FOOD_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
 pub const CRAFT_SEEDS_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
 pub const CRAFT_WATER_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
@@ -145,10 +146,10 @@ pub const REROLL_ODDS_BPS_DEFAULT: [u16; 5] = [5_500, 3_000, 1_100, 400, 0];
 
 // ----- Exploration: 10 тиров -----
 // [ФАКТ, из аудита index.js]: EXP_TIERS, TRIP_COST = {food:75, wood:35, stone:35}
-pub const TRIP_COST_FOOD: u64 = 75;
-pub const TRIP_COST_WOOD: u64 = 35;
-pub const TRIP_COST_STONE: u64 = 35;
-pub const TRIP_COST_MEAT: u64 = 50; // [НОВОЕ] Мясо для исследования
+pub const TRIP_COST_FOOD: u64 = 75 * RESOURCE_UNIT;
+pub const TRIP_COST_WOOD: u64 = 35 * RESOURCE_UNIT;
+pub const TRIP_COST_STONE: u64 = 35 * RESOURCE_UNIT;
+pub const TRIP_COST_MEAT: u64 = 50 * RESOURCE_UNIT; // [НОВОЕ] Мясо для исследования
 pub const EXPLORATION_COOLDOWN_HOURS: [u8; 10] = [24, 22, 20, 18, 16, 14, 12, 10, 9, 8];
 pub const EXPLORATION_SUCCESS_BPS: [u16; 10] =
     [3_000, 4_000, 5_000, 5_500, 6_000, 6_000, 6_500, 7_000, 7_500, 8_000];
@@ -156,7 +157,7 @@ pub const EXPLORATION_SHARDS_MIN: [u8; 10] = [2, 2, 3, 3, 4, 4, 4, 5, 5, 6];
 pub const EXPLORATION_SHARDS_MAX: [u8; 10] = [3, 3, 4, 5, 5, 5, 6, 6, 7, 8];
 pub const EXPLORATION_TRIPS_PER_DAY: [u8; 10] = [1, 1, 1, 1, 1, 2, 2, 2, 2, 3];
 pub const EXPLORATION_UPGRADE_COST_PER_TIER: [u64; 10] =
-    [1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000, 9_000, 10_000];
+    [1_000 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT, 5_000 * RESOURCE_UNIT, 6_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 8_000 * RESOURCE_UNIT, 9_000 * RESOURCE_UNIT, 10_000 * RESOURCE_UNIT];
 pub const MAX_EXPLORATION_TIER: u8 = 10;
 // [ДИЗАЙН-РЕШЕНИЕ, задокументировано]: в отличие от Ronin, где exploration
 // давал отдельные "шарды" (сырьё для отдельной Foundry-плавки), в этой
@@ -167,9 +168,9 @@ pub const MAX_EXPLORATION_TIER: u8 = 10;
 
 // ----- Рефералы: 7 тиров -----
 pub const REFERRAL_PCT_BPS: [u16; 7] = [10, 50, 100, 170, 250, 350, 500]; // 0.1%..5.0%
-pub const REFERRAL_UPGRADE_WOOD: [u64; 7] = [0, 1_000, 3_000, 7_000, 12_000, 20_000, 50_000];
-pub const REFERRAL_UPGRADE_STONE: [u64; 7] = [0, 1_000, 3_000, 7_000, 12_000, 20_000, 50_000];
-pub const REFERRAL_UPGRADE_FOOD: [u64; 7] = [0, 500, 2_000, 4_000, 7_000, 13_000, 25_000];
+pub const REFERRAL_UPGRADE_WOOD: [u64; 7] = [0, 1_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 12_000 * RESOURCE_UNIT, 20_000 * RESOURCE_UNIT, 50_000 * RESOURCE_UNIT];
+pub const REFERRAL_UPGRADE_STONE: [u64; 7] = [0, 1_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 12_000 * RESOURCE_UNIT, 20_000 * RESOURCE_UNIT, 50_000 * RESOURCE_UNIT];
+pub const REFERRAL_UPGRADE_FOOD: [u64; 7] = [0, 500 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 13_000 * RESOURCE_UNIT, 25_000 * RESOURCE_UNIT];
 pub const REFERRAL_BASE_CAP: u32 = 5;
 pub const REFERRAL_MEDALLION_BONUS_CAP: u32 = 5;
 pub const REFERRAL_HISTORIAN_BONUS_CAP: u32 = 25;
@@ -180,8 +181,8 @@ pub const ENCHANT_MAX_LEVEL: u8 = 5;
 pub const FORGE_SUCCESS_BPS: [u16; 5] = [10_000, 9_000, 7_500, 5_500, 3_500];
 pub const FORGE_PARTIAL_FAIL_BPS: [u16; 5] = [0, 800, 2_000, 3_500, 4_500];
 // остальное — полная потеря (сброс уровня в 0)
-pub const ENCHANT_WOOD_COST: [u64; 5] = [200, 500, 1_200, 2_400, 4_000];
-pub const ENCHANT_STONE_COST: [u64; 5] = [200, 500, 1_200, 2_400, 4_000];
+pub const ENCHANT_WOOD_COST: [u64; 5] = [200 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 1_200 * RESOURCE_UNIT, 2_400 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT];
+pub const ENCHANT_STONE_COST: [u64; 5] = [200 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 1_200 * RESOURCE_UNIT, 2_400 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT];
 pub const ENCHANT_FEE_LAMPORTS: [u64; 5] = [
     33_000_000, 66_000_000, 133_000_000, 266_000_000, 800_000_000,
 ]; // ~$1/$2/$4/$8/$24 на референс-курсе 1 SOL=$100 (см. TOR v4 §5a.1)
@@ -286,9 +287,12 @@ pub const WEATHER_FESTIVAL: u8 = 3;
 
 // Ставки колодца (Water/час по погоде)
 pub const WELL_RATE_DROUGHT: u64 = 0;
-pub const WELL_RATE_SUNNY: u64 = 5;
-pub const WELL_RATE_RAIN: u64 = 15;
-pub const WELL_RATE_FESTIVAL: u64 = 20;
+pub const WELL_RATE_SUNNY: u64 = 5 * RESOURCE_UNIT;
+pub const WELL_RATE_RAIN: u64 = 15 * RESOURCE_UNIT;
+pub const WELL_RATE_FESTIVAL: u64 = 20 * RESOURCE_UNIT;
+/// Maximum accrual window per collection. Excess elapsed time is discarded,
+/// preventing an account from minting an unbounded backlog after a long absence.
+pub const WELL_MAX_ACCRUAL_SECONDS: u64 = 24 * 60 * 60;
 
 // Шанс побочного дропа Coal у Шахтёра (15%)
 pub const COAL_DROP_CHANCE_BPS: u16 = 1500;
@@ -299,7 +303,7 @@ pub const COAL_DROP_CHANCE_BPS: u16 = 1500;
 
 // Эффекты фляг (энергия за тип)
 
-pub const GASTANK_SPACE: usize = 57;
+pub const GASTANK_SPACE: usize = 8 + GasTank::INIT_SPACE;
 
 // ===== Размеры аккаунтов (auto-generated from InitSpace) =====
 pub const CONFIG_SPACE: usize = 8 + Config::INIT_SPACE;

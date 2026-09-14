@@ -23,6 +23,12 @@ pub struct InitConfig<'info> {
     pub gem_mint: Account<'info, Mint>,
     /// CHECK: казна
     pub treasury: UncheckedAccount<'info>,
+    /// Canonical upgrade authority for the one-time market-config bootstrap.
+    #[account(address = Pubkey::find_program_address(
+        &[crate::ID.as_ref()],
+        &anchor_lang::solana_program::bpf_loader_upgradeable::id()
+    ).0)]
+    pub program_data: Account<'info, anchor_lang::ProgramData>,
     pub system_program: Program<'info, System>,
 }
 
@@ -68,10 +74,26 @@ pub struct HotMarketBuy<'info> {
     pub currency_mint: Account<'info, Mint>,
     #[account(mut, constraint = buyer_currency.mint == currency_mint.key(), constraint = buyer_currency.owner == buyer.key())]
     pub buyer_currency: Account<'info, TokenAccount>,
-    #[account(mut, constraint = treasury_currency.mint == currency_mint.key())]
+    #[account(
+        mut,
+        constraint = treasury_currency.mint == currency_mint.key(),
+        constraint = treasury_currency.owner == config.treasury @ MarketError::Unauthorized
+    )]
     pub treasury_currency: Account<'info, TokenAccount>,
-    /// CHECK: новый mint инструмента, создаётся клиентом заранее
-    pub new_tool_mint: UncheckedAccount<'info>,
+    pub new_tool_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = pool_tool.mint == new_tool_mint.key(),
+        constraint = pool_tool.owner == pool.key(),
+        constraint = pool_tool.amount >= 1
+    )]
+    pub pool_tool: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = buyer_tool.mint == new_tool_mint.key(),
+        constraint = buyer_tool.owner == buyer.key()
+    )]
+    pub buyer_tool: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -88,10 +110,26 @@ pub struct HotMarketSell<'info> {
     pub currency_mint: Account<'info, Mint>,
     #[account(mut, constraint = seller_currency.mint == currency_mint.key(), constraint = seller_currency.owner == seller.key())]
     pub seller_currency: Account<'info, TokenAccount>,
-    #[account(mut, constraint = pool_currency.mint == currency_mint.key())]
+    #[account(
+        mut,
+        constraint = pool_currency.mint == currency_mint.key(),
+        constraint = pool_currency.owner == pool.key()
+    )]
     pub pool_currency: Account<'info, TokenAccount>,
-    /// CHECK: инструмент, который продаётся в очередь
-    pub sold_tool_mint: UncheckedAccount<'info>,
+    pub sold_tool_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = seller_tool.mint == sold_tool_mint.key(),
+        constraint = seller_tool.owner == seller.key(),
+        constraint = seller_tool.amount >= 1
+    )]
+    pub seller_tool: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = pool_tool.mint == sold_tool_mint.key(),
+        constraint = pool_tool.owner == pool.key()
+    )]
+    pub pool_tool: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -165,6 +203,13 @@ pub mod aof_market {
     use super::*;
 
     pub fn init_market_config(ctx: Context<InitConfig>, fee_bps: u16) -> Result<()> {
+        let upgrade_authority = ctx
+            .accounts
+            .program_data
+            .upgrade_authority_address
+            .ok_or(MarketError::Unauthorized)?;
+        require_keys_eq!(upgrade_authority, ctx.accounts.authority.key(), MarketError::Unauthorized);
+        require!(fee_bps <= 1_000, MarketError::InvalidFee);
         let c = &mut ctx.accounts.config;
         c.authority = ctx.accounts.authority.key();
         c.treasury = ctx.accounts.treasury.key();
@@ -177,6 +222,7 @@ pub mod aof_market {
     }
 
     pub fn set_fees(ctx: Context<SetFees>, fee_bps: u16) -> Result<()> {
+        require!(fee_bps <= 1_000, MarketError::InvalidFee);
         ctx.accounts.config.fee_bps = fee_bps;
         Ok(())
     }
@@ -197,6 +243,10 @@ pub mod aof_market {
         fee_bps: u16,
     ) -> Result<()> {
         rarity_index_ok(rarity)?;
+        require!(target_price_core > 0 && target_price_gem > 0, MarketError::ZeroPrice);
+        require!(fee_bps <= 1_000, MarketError::InvalidFee);
+        require!(decay_bps_per_hour <= 10_000, MarketError::InvalidRate);
+        require!(growth_bps_per_sale <= 10_000, MarketError::InvalidRate);
         let now = Clock::get()?.unix_timestamp;
         let p = &mut ctx.accounts.pool;
         p.rarity = rarity;
@@ -218,7 +268,15 @@ pub mod aof_market {
     }
 
     pub fn hot_market_buy(ctx: Context<HotMarketBuy>, rarity: u8, currency: Currency, max_price: u64) -> Result<()> {
+        // Fail closed: this program cannot yet atomically update the core
+        // ToolData owner together with the SPL transfer.
+        require!(false, MarketError::TradingDisabled);
         rarity_index_ok(rarity)?;
+        let expected_currency = match currency {
+            Currency::Core => ctx.accounts.config.core_mint,
+            Currency::Gem => ctx.accounts.config.gem_mint,
+        };
+        require!(ctx.accounts.currency_mint.key() == expected_currency, MarketError::Unauthorized);
         let now = Clock::get()?.unix_timestamp;
         let pool = &mut ctx.accounts.pool;
         let base = match currency {
@@ -253,7 +311,22 @@ pub mod aof_market {
             ),
             price,
         )?;
-        let _ = net;
+
+        let pool_bump = pool.bump;
+        let pool_seeds: &[&[u8]] = &[POOL_SEED, &[rarity], &[pool_bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.pool_tool.to_account_info(),
+                    to: ctx.accounts.buyer_tool.to_account_info(),
+                    authority: ctx.accounts.pool.to_account_info(),
+                },
+                &[pool_seeds],
+            ),
+            1,
+        )?;
+
         pool.purchases_in_window = pool.purchases_in_window.saturating_add(1);
         pool.sold_since_start = pool.sold_since_start.checked_add(1).ok_or(MarketError::MathOverflow)?;
         pool.last_trade_ts = now;
@@ -268,7 +341,15 @@ pub mod aof_market {
     }
 
     pub fn hot_market_sell_into_queue(ctx: Context<HotMarketSell>, rarity: u8, currency: Currency, min_price: u64) -> Result<()> {
+        // Fail closed: the current instruction does not prove that the mint
+        // is a canonical core ToolData account for this pool/rareness.
+        require!(false, MarketError::TradingDisabled);
         rarity_index_ok(rarity)?;
+        let expected_currency = match currency {
+            Currency::Core => ctx.accounts.config.core_mint,
+            Currency::Gem => ctx.accounts.config.gem_mint,
+        };
+        require!(ctx.accounts.currency_mint.key() == expected_currency, MarketError::Unauthorized);
         let now = Clock::get()?.unix_timestamp;
         let pool_info = ctx.accounts.pool.to_account_info();
         let pool = &mut ctx.accounts.pool;
@@ -300,6 +381,17 @@ pub mod aof_market {
             ),
             price,
         )?;
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.seller_tool.to_account_info(),
+                    to: ctx.accounts.pool_tool.to_account_info(),
+                    authority: ctx.accounts.seller.to_account_info(),
+                },
+            ),
+            1,
+        )?;
         pool.last_trade_ts = now;
         pool.purchases_in_window = pool.purchases_in_window.saturating_sub(1);
         emit!(HotMarketSold {
@@ -314,6 +406,7 @@ pub mod aof_market {
     pub fn start_market_event(ctx: Context<StartEvent>, rarity: u8, duration_seconds: i64, multiplier_bps: u16) -> Result<()> {
         rarity_index_ok(rarity)?;
         require!(duration_seconds > 0 && duration_seconds <= 24 * 3600, MarketError::InvalidWindowDuration);
+        require!(multiplier_bps <= 50_000, MarketError::InvalidRate);
         let now = Clock::get()?.unix_timestamp;
         let pool = &mut ctx.accounts.pool;
         pool.hot_window_end_ts = now.checked_add(duration_seconds).ok_or(MarketError::MathOverflow)?;
@@ -352,6 +445,9 @@ pub mod aof_market {
         limit_price: u64,
         amount: u64,
     ) -> Result<()> {
+        // No matching/settlement instruction exists yet; accepting orders
+        // would create misleading or permanently locked positions.
+        require!(false, MarketError::TradingDisabled);
         rarity_index_ok(rarity)?;
         require!(amount > 0, MarketError::ZeroAmount);
         if is_buy {
