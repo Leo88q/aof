@@ -28,7 +28,8 @@ max_annotations="${3:-6}"
 job_slug=$(printf '%s' "$job_name" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]\+/-/g' -e 's/^-//' -e 's/-$//')
 marker="<!-- aof-ci-failure-log:${job_slug} -->"
 max_annotation_chars=400
-tail_bytes=60000
+head_bytes=6000
+tail_bytes=54000
 
 if [ -z "$log_file" ] || [ ! -f "$log_file" ]; then
   echo "publish-failure-log: no captured log at '$log_file' - nothing to publish"
@@ -77,8 +78,17 @@ publish_pr_comment() {
     echo "- updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo
     echo '```text'
-    tail -c "$tail_bytes" "$log_file" | sed 's/```/` ` `/g'
-    echo '```'
+    {
+      if [ "$log_size" -gt $((head_bytes + tail_bytes)) ]; then
+        head -c "$head_bytes" "$log_file"
+        printf '\n\n... [%s bytes omitted: diagnostics at the top, errors at the bottom] ...\n\n' \
+          "$((log_size - head_bytes - tail_bytes))"
+        tail -c "$tail_bytes" "$log_file"
+      else
+        cat "$log_file"
+      fi
+    } | sed 's/```/` ` `/g'
+    echo '```' 
   } > "$tmp_dir/body.md"
 
   existing=$(gh api "repos/$GITHUB_REPOSITORY/issues/$pr_number/comments" --paginate \

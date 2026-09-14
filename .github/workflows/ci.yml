@@ -175,6 +175,47 @@ jobs:
           solana-keygen new --silent --no-bip39-passphrase --force -o "$CI_WALLET_PATH"
           ls -l "$CI_WALLET_PATH"
 
+      - name: Pin proc-macro2 so the Anchor IDL build can compile
+        # anchor-syn 0.30.1 calls `proc_macro2::Span::call_site().source_file()`
+        # (src/idl/defined.rs) behind the `procmacro2_semver_exempt` cfg. That
+        # semver-exempt API was REMOVED from proc-macro2 in 1.0.95: 1.0.94 is the
+        # last release that still defines `Span::source_file`, and 1.0.95/1.0.100
+        # have no such method at all.
+        #
+        # The committed Cargo.lock resolves proc-macro2 1.0.107, so the IDL step
+        # cannot compile no matter which toolchain or rustflags are used - the
+        # method simply does not exist. Hence the pin. `cargo update --precise`
+        # is used instead of editing Cargo.lock by hand because the registry
+        # checksum for the older version is not reproducible offline.
+        #
+        # The resulting diff is printed so the corrected Cargo.lock can be
+        # committed and this step reduced to a guard.
+        id: pin_procmacro2
+        run: |
+          set -uo pipefail
+          : > /tmp/lockfix.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/lockfix.log; }
+          current=$(awk '/^name = "proc-macro2"$/{f=1;next} f&&/^version/{gsub(/"/,"",$3); print $3; exit}' Cargo.lock)
+          log "proc-macro2 pinned in Cargo.lock: ${current:-unknown}"
+          if [ "$current" = "1.0.94" ]; then
+            log "already at 1.0.94 - nothing to do"
+            exit 0
+          fi
+          log "### cargo update -p proc-macro2 --precise 1.0.94"
+          if cargo update -p proc-macro2 --precise 1.0.94 2>&1 | tee -a /tmp/lockfix.log; then
+            log "### Cargo.lock diff (copy this into the repository to make the fix permanent)"
+            git --no-pager diff -U2 -- Cargo.lock 2>&1 | tee -a /tmp/lockfix.log
+          else
+            log "::error::could not pin proc-macro2 to 1.0.94 - another locked crate may require a newer version"
+            exit 1
+          fi
+
+      - name: Publish lock-fix log
+        if: always() && steps.pin_procmacro2.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/lockfix.log "Anchor build (on-chain programs)" 10
+
       - name: Anchor build (programs/*)
         # The SBPF compile of the programs works; the IDL step is the fragile
         # part. Anchor generates the IDL with a second, host-target cargo
@@ -206,6 +247,11 @@ jobs:
           : > /tmp/anchor-build.log
           log() { printf '%s\n' "$@" | tee -a /tmp/anchor-build.log; }
 
+          if [ -f /tmp/lockfix.log ]; then
+            log "### Cargo.lock pin step output"
+            cat /tmp/lockfix.log | tee -a /tmp/anchor-build.log >/dev/null
+            cat /tmp/lockfix.log
+          fi
           log "### toolchain diagnostics"
           log "host rustc: $(rustc --version)"
           log "host cargo: $(cargo --version)"
