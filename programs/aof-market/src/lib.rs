@@ -270,137 +270,19 @@ pub mod aof_market {
     pub fn hot_market_buy(ctx: Context<HotMarketBuy>, rarity: u8, currency: Currency, max_price: u64) -> Result<()> {
         // Fail closed: this program cannot yet atomically update the core
         // ToolData owner together with the SPL transfer.
-        require!(false, MarketError::TradingDisabled);
-        rarity_index_ok(rarity)?;
-        let expected_currency = match currency {
-            Currency::Core => ctx.accounts.config.core_mint,
-            Currency::Gem => ctx.accounts.config.gem_mint,
-        };
-        require!(ctx.accounts.currency_mint.key() == expected_currency, MarketError::Unauthorized);
-        let now = Clock::get()?.unix_timestamp;
-        let pool = &mut ctx.accounts.pool;
-        let base = match currency {
-            Currency::Core => pool.target_price_core,
-            Currency::Gem => pool.target_price_gem,
-        };
-        let raw = pricing::current_price(
-            base,
-            pool.growth_bps_per_sale,
-            pool.decay_bps_per_hour,
-            pool.purchases_in_window,
-            pool.last_trade_ts,
-            now,
-        )?;
-        let is_hot = pool.hot_window_end_ts > now;
-        let price = pricing::apply_hot_multiplier(raw, pool.hot_multiplier_bps, is_hot)?;
-        require!(price <= max_price, MarketError::SlippageExceeded);
-        let fee = (price as u128)
-            .checked_mul(pool.fee_bps as u128)
-            .ok_or(MarketError::MathOverflow)?
-            .checked_div(10_000)
-            .ok_or(MarketError::MathOverflow)? as u64;
-        let net = price.checked_sub(fee).ok_or(MarketError::MathOverflow)?;
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.buyer_currency.to_account_info(),
-                    to: ctx.accounts.treasury_currency.to_account_info(),
-                    authority: ctx.accounts.buyer.to_account_info(),
-                },
-            ),
-            price,
-        )?;
-
-        let pool_bump = pool.bump;
-        let pool_seeds: &[&[u8]] = &[POOL_SEED, &[rarity], &[pool_bump]];
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.pool_tool.to_account_info(),
-                    to: ctx.accounts.buyer_tool.to_account_info(),
-                    authority: ctx.accounts.pool.to_account_info(),
-                },
-                &[pool_seeds],
-            ),
-            1,
-        )?;
-
-        pool.purchases_in_window = pool.purchases_in_window.saturating_add(1);
-        pool.sold_since_start = pool.sold_since_start.checked_add(1).ok_or(MarketError::MathOverflow)?;
-        pool.last_trade_ts = now;
-        emit!(HotMarketBought {
-            buyer: ctx.accounts.buyer.key(),
-            rarity,
-            currency,
-            price,
-            sold_since_start: pool.sold_since_start,
-        });
-        Ok(())
+        // Argument names are preserved for IDL stability, so every argument is
+        // intentionally unused because the instruction is disabled.
+        let _ = (ctx, rarity, currency, max_price);
+        err!(MarketError::TradingDisabled)
     }
 
     pub fn hot_market_sell_into_queue(ctx: Context<HotMarketSell>, rarity: u8, currency: Currency, min_price: u64) -> Result<()> {
         // Fail closed: the current instruction does not prove that the mint
         // is a canonical core ToolData account for this pool/rareness.
-        require!(false, MarketError::TradingDisabled);
-        rarity_index_ok(rarity)?;
-        let expected_currency = match currency {
-            Currency::Core => ctx.accounts.config.core_mint,
-            Currency::Gem => ctx.accounts.config.gem_mint,
-        };
-        require!(ctx.accounts.currency_mint.key() == expected_currency, MarketError::Unauthorized);
-        let now = Clock::get()?.unix_timestamp;
-        let pool_info = ctx.accounts.pool.to_account_info();
-        let pool = &mut ctx.accounts.pool;
-        let base = match currency {
-            Currency::Core => pool.target_price_core,
-            Currency::Gem => pool.target_price_gem,
-        };
-        let price = pricing::current_price(
-            base,
-            pool.growth_bps_per_sale,
-            pool.decay_bps_per_hour,
-            pool.purchases_in_window,
-            pool.last_trade_ts,
-            now,
-        )?;
-        require!(price >= min_price, MarketError::SlippageExceeded);
-        require!(ctx.accounts.pool_currency.amount >= price, MarketError::InsufficientReserve);
-        let pool_bump = pool.bump;
-        let seeds: &[&[u8]] = &[POOL_SEED, &[rarity], &[pool_bump]];
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.pool_currency.to_account_info(),
-                    to: ctx.accounts.seller_currency.to_account_info(),
-                    authority: pool_info.clone(),
-                },
-                &[seeds],
-            ),
-            price,
-        )?;
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.seller_tool.to_account_info(),
-                    to: ctx.accounts.pool_tool.to_account_info(),
-                    authority: ctx.accounts.seller.to_account_info(),
-                },
-            ),
-            1,
-        )?;
-        pool.last_trade_ts = now;
-        pool.purchases_in_window = pool.purchases_in_window.saturating_sub(1);
-        emit!(HotMarketSold {
-            seller: ctx.accounts.seller.key(),
-            rarity,
-            currency,
-            price,
-        });
-        Ok(())
+        // Argument names are preserved for IDL stability, so every argument is
+        // intentionally unused because the instruction is disabled.
+        let _ = (ctx, rarity, currency, min_price);
+        err!(MarketError::TradingDisabled)
     }
 
     pub fn start_market_event(ctx: Context<StartEvent>, rarity: u8, duration_seconds: i64, multiplier_bps: u16) -> Result<()> {
@@ -447,32 +329,10 @@ pub mod aof_market {
     ) -> Result<()> {
         // No matching/settlement instruction exists yet; accepting orders
         // would create misleading or permanently locked positions.
-        require!(false, MarketError::TradingDisabled);
-        rarity_index_ok(rarity)?;
-        require!(amount > 0, MarketError::ZeroAmount);
-        if is_buy {
-            token::transfer(
-                CpiContext::new(
-                    ctx.accounts.token_program.to_account_info(),
-                    Transfer {
-                        from: ctx.accounts.maker_currency.to_account_info(),
-                        to: ctx.accounts.order_vault.to_account_info(),
-                        authority: ctx.accounts.maker.to_account_info(),
-                    },
-                ),
-                limit_price.checked_mul(amount).ok_or(MarketError::MathOverflow)?,
-            )?;
-        }
-        let o = &mut ctx.accounts.order;
-        o.maker = ctx.accounts.maker.key();
-        o.rarity = rarity;
-        o.currency = currency;
-        o.is_buy = is_buy;
-        o.limit_price = limit_price;
-        o.amount_escrowed = amount;
-        o.active = true;
-        emit!(LimitOrderPlaced { maker: ctx.accounts.maker.key(), rarity, is_buy, limit_price });
-        Ok(())
+        // Argument names are preserved for IDL stability, so every argument is
+        // intentionally unused because the instruction is disabled.
+        let _ = (ctx, rarity, currency, is_buy, limit_price, amount);
+        err!(MarketError::TradingDisabled)
     }
 
     pub fn cancel_limit_order(ctx: Context<CancelLimitOrder>, rarity: u8) -> Result<()> {
