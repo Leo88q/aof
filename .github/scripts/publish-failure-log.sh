@@ -23,7 +23,10 @@ set -uo pipefail
 log_file="${1:-}"
 job_name="${2:-unknown job}"
 max_annotations="${3:-6}"
-marker="<!-- aof-ci-failure-log -->"
+# One comment per job: the marker carries a slug of the job name so jobs
+# running in parallel do not overwrite each other's log.
+job_slug=$(printf '%s' "$job_name" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]\+/-/g' -e 's/^-//' -e 's/-$//')
+marker="<!-- aof-ci-failure-log:${job_slug} -->"
 max_annotation_chars=400
 tail_bytes=60000
 
@@ -108,9 +111,15 @@ if publish_pr_comment; then pr_published=1; fi
 # ---------------------------------------------------------------------------
 # 2) Annotations: recognised diagnostics first, otherwise the raw tail
 # ---------------------------------------------------------------------------
+# Tier 1: real error lines plus the two lines that follow them (the source
+# location and the offending code), which is what actually identifies a failure.
+# Warning-only lines are deliberately excluded: a previous run annotated ten
+# `-->` locations from warnings and hid the single real error.
 error_lines=$(
-  grep -E "^error(\[[A-Za-z0-9_]+\])?:|^error: |^[[:space:]]*--> |^Error: |^error\[|Failed to compile|^Caused by:|panicked at|cannot borrow|not found in this scope|mismatched types|no method named|no field |unresolved import|failed to (run|compile|load|download|resolve)|Module not found|Type error|SyntaxError|signal: [0-9]+, SIG|Killed|out of memory|Cannot find|ENOENT|Segmentation fault" \
-    "$log_file" 2>/dev/null | head -n "$max_annotations"
+  grep -A2 -E "^error(\[[A-Za-z0-9_:]+\])?:|^error: |^Error: |^Caused by: |Building IDL failed|panicked at|signal: [0-9]+, SIG|Killed|out of memory|failed to parse (manifest|lock file)" \
+    "$log_file" 2>/dev/null \
+    | grep -v "^--$" \
+    | head -n "$max_annotations"
 )
 
 if [ -n "$error_lines" ]; then

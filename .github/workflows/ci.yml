@@ -176,38 +176,85 @@ jobs:
           ls -l "$CI_WALLET_PATH"
 
       - name: Anchor build (programs/*)
-        # Anchor generates the IDL with a second cargo invocation:
-        #   cargo +$RUSTUP_TOOLCHAIN test __anchor_private_print_idl --features idl-build
-        # falling back to `+nightly` when RUSTUP_TOOLCHAIN is unset
-        # (anchor-lang-idl/src/build.rs). Whatever nightly happens to be on the
-        # runner image then decides whether Cargo.lock can even be parsed, so
-        # RUSTUP_TOOLCHAIN is pinned to the same toolchain that builds the SBPF
-        # artifacts. If that IDL step still fails, retry once with a freshly
-        # installed nightly before giving up.
+        # The SBPF compile of the programs works; the IDL step is the fragile
+        # part. Anchor generates the IDL with a second, host-target cargo
+        # invocation (anchor-lang-idl/src/build.rs):
+        #
+        #   cargo +$RUSTUP_TOOLCHAIN test __anchor_private_print_idl \
+        #         --features idl-build
+        #   env RUSTFLAGS=--cfg procmacro2_semver_exempt
+        #
+        # Measured on this repository (run 34890381941):
+        #   * RUSTUP_TOOLCHAIN unset means `+nightly`, and the runner image's
+        #     nightly can be too old to parse Cargo.lock v4 ("lock file version
+        #     4 requires -Znext-lockfile-bump"). So a fresh nightly is installed
+        #     explicitly instead of relying on whatever is on the image.
+        #   * The IDL host build with stable 1.89.0 fails in ark-bn254 0.4.0
+        #     with 53 x "error: proc macro panicked" (its `derivative` proc
+        #     macro predates modern rustc). Nightly gets past that.
+        #   * Nightly then fails in anchor-syn with
+        #     "no method named `source_file` found for proc_macro2::Span", i.e.
+        #     the `--cfg procmacro2_semver_exempt` that Anchor passes through
+        #     RUSTFLAGS did not reach the proc-macro2 unit. Cargo does not apply
+        #     RUSTFLAGS to host/proc-macro units, so the cfg is also set through
+        #     target.<host-triple>.rustflags and build.rustflags.
+        # Attempts are ordered by measured likelihood of success and stop at the
+        # first one that works; each writes a banner into the captured log.
         run: |
           set -uo pipefail
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           : > /tmp/anchor-build.log
-          {
-            echo "### toolchain diagnostics"
-            rustup toolchain list -v
-            echo "host rustc: $(rustc --version)"
-            echo "host cargo: $(cargo --version)"
-            echo "RUSTUP_TOOLCHAIN will be: ${RUST_VERSION}"
-            echo "### end diagnostics"
-          } 2>&1 | tee -a /tmp/anchor-build.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/anchor-build.log; }
 
-          rc=0
-          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor build 2>&1 | tee -a /tmp/anchor-build.log || rc=$?
+          log "### toolchain diagnostics"
+          log "host rustc: $(rustc --version)"
+          log "host cargo: $(cargo --version)"
+          rustup toolchain list -v 2>&1 | tee -a /tmp/anchor-build.log
+          log "### cargo config in effect (rustflags and where they come from)"
+          for f in "$HOME/.cargo/config.toml" "$HOME/.cargo/config" .cargo/config.toml .cargo/config; do
+            if [ -f "$f" ]; then log "--- $f ---"; cat "$f" | tee -a /tmp/anchor-build.log; fi
+          done
+          log "env RUSTFLAGS=[${RUSTFLAGS:-}] CARGO_BUILD_RUSTFLAGS=[${CARGO_BUILD_RUSTFLAGS:-}]"
+          cargo config get build.rustflags --show-origin 2>&1 | tee -a /tmp/anchor-build.log || true
+          log "### end diagnostics"
 
-          if [ "$rc" -ne 0 ]; then
-            echo "::warning::anchor build failed with RUSTUP_TOOLCHAIN=${RUST_VERSION}; installing a fresh nightly and retrying once"
-            rustup toolchain install nightly --profile minimal 2>&1 | tee -a /tmp/anchor-build.log
-            echo "nightly cargo: $(cargo +nightly --version 2>&1)" | tee -a /tmp/anchor-build.log
-            rc=0
-            RUSTUP_TOOLCHAIN=nightly anchor build 2>&1 | tee -a /tmp/anchor-build.log || rc=$?
-          fi
+          rustup toolchain install nightly --profile minimal 2>&1 | tee -a /tmp/anchor-build.log
+          log "nightly: $(cargo +nightly --version 2>&1) / $(rustc +nightly --version 2>&1)"
 
+          # cfg_mode host  -> [target.x86_64-unknown-linux-gnu] rustflags
+          # cfg_mode build -> the above plus [build] rustflags
+          set_cfg_mode() {
+            mkdir -p .cargo
+            if [ "$1" = "build" ]; then
+              printf '[build]\nrustflags = ["--cfg", "procmacro2_semver_exempt"]\n\n' > .cargo/config.toml
+              export CARGO_BUILD_RUSTFLAGS="--cfg procmacro2_semver_exempt"
+            else
+              : > .cargo/config.toml
+            fi
+            printf '[target.x86_64-unknown-linux-gnu]\nrustflags = ["--cfg", "procmacro2_semver_exempt"]\n' >> .cargo/config.toml
+            export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="--cfg procmacro2_semver_exempt"
+            log "cargo config for this attempt:"
+            cat .cargo/config.toml | tee -a /tmp/anchor-build.log
+          }
+
+          attempt() { # $1 toolchain, $2 cfg mode, $3 label
+            log ""
+            log "################ attempt: $3 (toolchain=$1, cfg=$2) ################"
+            set_cfg_mode "$2"
+            local rc=0
+            RUSTUP_TOOLCHAIN="$1" anchor build 2>&1 | tee -a /tmp/anchor-build.log || rc=$?
+            log "################ attempt '$3' exit code: $rc ################"
+            return "$rc"
+          }
+
+          rc=1
+          attempt nightly host  "nightly + target.<host>.rustflags" && rc=0
+          if [ "$rc" -ne 0 ]; then attempt nightly build "nightly + build.rustflags" && rc=0; fi
+          if [ "$rc" -ne 0 ]; then attempt "$RUST_VERSION" build "stable ${RUST_VERSION} + build.rustflags" && rc=0; fi
+
+          rm -rf .cargo
+          unset CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS CARGO_BUILD_RUSTFLAGS
+          log "final anchor build exit code: $rc"
           exit "$rc"
 
       - name: Anchor build (aof-core, advisory)
@@ -237,8 +284,14 @@ jobs:
               p.write_text(s)
               print("injected [workspace] members for this advisory build only")
           PY
+          mkdir -p .cargo
+          printf '[build]\nrustflags = ["--cfg", "procmacro2_semver_exempt"]\n\n[target.x86_64-unknown-linux-gnu]\nrustflags = ["--cfg", "procmacro2_semver_exempt"]\n' > .cargo/config.toml
           rc=0
-          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor build --program-name aof_core 2>&1 | tee -a /tmp/anchor-build-core.log || rc=$?
+          RUSTUP_TOOLCHAIN=nightly \
+          CARGO_BUILD_RUSTFLAGS="--cfg procmacro2_semver_exempt" \
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="--cfg procmacro2_semver_exempt" \
+            anchor build --program-name aof_core 2>&1 | tee -a /tmp/anchor-build-core.log || rc=$?
+          rm -rf .cargo
           git checkout -- Anchor.toml
           echo "aof-core advisory build exit code: $rc"
           exit "$rc"
