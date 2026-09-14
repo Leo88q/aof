@@ -9,7 +9,7 @@
 
 ### ✅ Часть 1: On-chain программа — ЗАВЕРШЕНА
 - **Commit:** `8893ac8` (part-1.1)
-- **PID:** `2dQsHg3oVKwyKHjemS2CbWkczv6sCRAY5r2WrGBv4vgC` (localnet)
+- **PID:** `HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq` (canonical ID in `aof-core`, `Anchor.toml`, backend IDL; deployment status must still be verified)
 - **IDL:** 19 инструкций + событие `PaidOut` (критично для серверной верификации)
 - **Архитектура:** модульная (lib.rs агрегатор → instructions.rs/state.rs/errors.rs/events.rs/constants.rs)
 - **solana-program:** `=1.18.27` (обязательно, иначе SBPF mismatch)

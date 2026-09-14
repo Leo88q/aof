@@ -11,6 +11,9 @@
 # Ключи и credentials
 keys/
 **/keys/
+# Devnet setup writes mint authority keypairs outside a source directory.
+tokens/*.json
+**/tokens/*.json
 **/*-keypair.json
 **/*_keypair.json
 *.pem
