@@ -6,22 +6,38 @@ name: CI
 #   engine. Those are large binary downloads, so builds belong on CI runners
 #   rather than on every developer machine.
 #
-# Toolchain pins (do not bump casually):
-#   * Solana CLI 1.18.26 matches Cargo.lock (solana-program 1.18.26).
-#   * Rust 1.79.0 is the last toolchain that builds solana-program 1.18.x
-#     cleanly; rustc >= 1.80 breaks the frozen-abi/OnceCell code paths.
-#   * Anchor.toml declares anchor_version = "0.30.1". The CLI is installed from
-#     source at exactly that tag so the declared toolchain and the binary agree.
-#     If the source build fails, the job falls back to the prebuilt 0.30.2
-#     binary plus an `avm` stub, because Anchor handles a version mismatch by
-#     shelling out to `avm install <version>` and hard-fails when `avm` is
-#     missing.
+# Toolchain pins - these mirror the documented project environment in CLAUDE.md
+# ("Solana CLI 4.2.1 (Agave), Anchor 0.30.1, rustc 1.89.0, platform-tools
+# v1.56"). CLAUDE.md also forbids toolchain downgrades and rust-toolchain files
+# in the repo, so the pins live here only.
+#
+#   Do NOT downgrade these to match the `solana-program = 1.18.26` entry in
+#   Cargo.lock. The committed lock file resolves 2025-era transitive crates
+#   (toml_datetime 1.1.1+spec-1.1.0, serde_core 1.0.229, toml_edit 0.25.13)
+#   that require the Cargo `edition2024` feature, i.e. Cargo >= 1.85. A Rust
+#   1.79 host therefore fails in `cargo metadata` before compiling anything:
+#       error: failed to parse manifest at .../toml_datetime-1.1.1/Cargo.toml
+#       Caused by: feature `edition2024` is required
+#
+#   * Anchor.toml declares anchor_version = "0.30.1", so anchor-cli is built
+#     from source at exactly that tag. If that build fails, the job falls back
+#     to the prebuilt 0.30.2 binary plus an `avm` stub, because Anchor handles a
+#     version mismatch by shelling out to `avm install <version>` and aborts
+#     with a raw io error when `avm` is missing (anchor-cli/src/lib.rs:522).
+#
+# Frontend layout:
+#   The React app lives in frontend/ (Vite + React 18 + TS). The root
+#   package.json is a stale create-react-app shell with no src/ or public/ at
+#   the repository root - `npm run build` there fails with "Could not find a
+#   required file. Name: index.html". It is kept only for the Anchor test
+#   devDependencies used by tests/aof_core.ts. Build frontend/, not the root.
 #
 # Failure reporting:
-#   Build output is tee'd into a log file and, on failure, republished as
-#   workflow annotations and check-run output by
-#   .github/scripts/publish-failure-log.sh. That keeps failures diagnosable in
-#   environments that cannot reach the Actions log endpoint.
+#   Build output is tee'd into a log file and, on failure, republished by
+#   .github/scripts/publish-failure-log.sh as a pull request comment, workflow
+#   annotations and check-run output. That keeps failures diagnosable in
+#   environments that cannot reach the Actions log endpoint
+#   (results-receiver.actions.githubusercontent.com).
 
 on:
   push:
@@ -43,10 +59,10 @@ permissions:
   pull-requests: write
 
 env:
-  SOLANA_VERSION: "1.18.26"
+  AGAVE_VERSION: "4.2.1"
   ANCHOR_LANG_VERSION: "0.30.1"
   ANCHOR_FALLBACK_CLI_VERSION: "0.30.2"
-  RUST_VERSION: "1.79.0"
+  RUST_VERSION: "1.89.0"
   NODE_VERSION: "20"
   # Anchor.toml points the provider at a gitignored devnet keypair. CI generates a
   # throwaway one so builds and tests never depend on a developer's secrets.
@@ -69,15 +85,15 @@ jobs:
             ~/.cargo/git
             ~/.cargo/bin
             target
-          key: ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.AGAVE_VERSION }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.SOLANA_VERSION }}-
+            ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.AGAVE_VERSION }}-
 
-      - name: Cache Solana CLI
+      - name: Cache Agave release
         uses: actions/cache@v4
         with:
           path: ~/.local/share/solana/install/active_release
-          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
+          key: ${{ runner.os }}-agave-${{ env.AGAVE_VERSION }}
 
       - name: Install Rust ${{ env.RUST_VERSION }}
         run: |
@@ -87,13 +103,24 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Install Solana CLI ${{ env.SOLANA_VERSION }}
+      - name: Install Agave (Solana CLI) ${{ env.AGAVE_VERSION }}
         run: |
-          set -euo pipefail
-          if [ ! -x "$HOME/.local/share/solana/install/active_release/bin/solana" ]; then
-            sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          set -uo pipefail
+          release_dir="$HOME/.local/share/solana/install/active_release"
+          if [ -x "$release_dir/bin/solana" ]; then
+            echo "Reusing cached Agave release"
+          elif sh -c "$(curl -sSfL https://release.anza.xyz/v${AGAVE_VERSION}/install)"; then
+            echo "Installed via release.anza.xyz"
+          else
+            echo "::warning::release.anza.xyz install failed, falling back to the GitHub release tarball"
+            url="https://github.com/anza-xyz/agave/releases/download/v${AGAVE_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+            curl -sSfL --retry 3 -o /tmp/solana-release.tar.bz2 "$url"
+            rm -rf /tmp/solana-release "$release_dir"
+            tar xjf /tmp/solana-release.tar.bz2 -C /tmp
+            mkdir -p "$(dirname "$release_dir")"
+            mv /tmp/solana-release "$release_dir"
           fi
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+          echo "$release_dir/bin" >> "$GITHUB_PATH"
 
       - name: Install Anchor CLI ${{ env.ANCHOR_LANG_VERSION }}
         run: |
@@ -323,11 +350,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Solana CLI
+      - name: Cache Agave release
         uses: actions/cache@v4
         with:
           path: ~/.local/share/solana/install/active_release
-          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
+          key: ${{ runner.os }}-agave-${{ env.AGAVE_VERSION }}
 
       - name: Install Rust ${{ env.RUST_VERSION }}
         run: |
@@ -335,13 +362,24 @@ jobs:
           rustup toolchain install "${RUST_VERSION}" --profile minimal
           rustup default "${RUST_VERSION}"
 
-      - name: Install Solana CLI ${{ env.SOLANA_VERSION }}
+      - name: Install Agave (Solana CLI) ${{ env.AGAVE_VERSION }}
         run: |
-          set -euo pipefail
-          if [ ! -x "$HOME/.local/share/solana/install/active_release/bin/solana" ]; then
-            sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          set -uo pipefail
+          release_dir="$HOME/.local/share/solana/install/active_release"
+          if [ -x "$release_dir/bin/solana" ]; then
+            echo "Reusing cached Agave release"
+          elif sh -c "$(curl -sSfL https://release.anza.xyz/v${AGAVE_VERSION}/install)"; then
+            echo "Installed via release.anza.xyz"
+          else
+            echo "::warning::release.anza.xyz install failed, falling back to the GitHub release tarball"
+            url="https://github.com/anza-xyz/agave/releases/download/v${AGAVE_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+            curl -sSfL --retry 3 -o /tmp/solana-release.tar.bz2 "$url"
+            rm -rf /tmp/solana-release "$release_dir"
+            tar xjf /tmp/solana-release.tar.bz2 -C /tmp
+            mkdir -p "$(dirname "$release_dir")"
+            mv /tmp/solana-release "$release_dir"
           fi
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+          echo "$release_dir/bin" >> "$GITHUB_PATH"
 
       - name: Install Anchor CLI
         run: |
@@ -404,12 +442,12 @@ jobs:
         run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-test.log "Anchor test (local validator)" 10
 
   frontend:
-    name: Frontend build
+    name: Frontend build (frontend/)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    # Advisory: react-scripts fails the build on ESLint warnings when CI=true, so
-    # warnings are downgraded until the lint debt is cleared.
-    continue-on-error: true
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -419,15 +457,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Build
+      - name: Build (tsc + vite build)
         id: fe_build
-        env:
-          CI: "false"
         run: |
           set -uo pipefail
           : > /tmp/frontend-build.log
@@ -435,8 +471,14 @@ jobs:
           npm run build 2>&1 | tee -a /tmp/frontend-build.log || rc=$?
           exit "$rc"
 
+      - name: Stylelint rule self-test
+        run: npm run test:aof-stylelint
+
+      - name: Design token lint (no raw colors)
+        run: npm run lint:aof-colors
+
       - name: Publish failure log
         if: always() && steps.fe_build.outcome != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/publish-failure-log.sh /tmp/frontend-build.log "Frontend build" 10
+        run: bash ../.github/scripts/publish-failure-log.sh /tmp/frontend-build.log "Frontend build (frontend/)" 10
