@@ -1,10 +1,147 @@
-const BASE = (import.meta as any).env?.VITE_API_URL || "http://localhost:8080";
+import { createWalletProof } from "./wallet";
+
+// Production uses the same-origin reverse-proxy path. A fully qualified URL
+// remains available for a separately hosted backend via VITE_API_URL.
+const BASE = (import.meta as any).env?.VITE_API_URL || "/api";
+
+type WalletProofRoute = { path: string; subject: string; field: string };
+
+// Keep this allowlist explicit: quote/read-like POSTs and admin endpoints must
+// not unexpectedly trigger a wallet popup. Every listed route gets a fresh,
+// one-time proof bound to its backend subject before it is sent.
+const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
+  { path: "/friend/water", subject: "friend_water", field: "waterer" },
+  { path: "/neighbors/visit", subject: "neighbors_visit", field: "visitor" },
+  { path: "/profile/register", subject: "profile_register", field: "address" },
+  { path: "/streaks/check-in", subject: "streak_check_in", field: "user" },
+  { path: "/onboarding/step/complete", subject: "onboarding_step", field: "user" },
+  { path: "/compendium/mark-seen", subject: "compendium_mark_seen", field: "user" },
+  { path: "/lore/node/complete", subject: "lore_node_complete", field: "user" },
+  { path: "/rating/submit", subject: "rating_submit", field: "fromUser" },
+  { path: "/notifications/device/register", subject: "notifications_device_register", field: "user" },
+  { path: "/notifications/device/unregister", subject: "notifications_device_unregister", field: "user" },
+  { path: "/comeback/check", subject: "comeback_check", field: "user" },
+  { path: "/comeback/claim", subject: "comeback_claim", field: "user" },
+  { path: "/inbox/read", subject: "inbox_read", field: "user" },
+  { path: "/inbox/claim", subject: "inbox_claim", field: "user" },
+  { path: "/inbox/archive", subject: "inbox_archive", field: "user" },
+  { path: "/alerts/create", subject: "alerts_create", field: "user" },
+  { path: "/alerts/", subject: "alerts_delete", field: "user" },
+  { path: "/antifraud/device/register", subject: "antifraud_device_register", field: "user" },
+  { path: "/chain/farm/plant", subject: "chain_farm_plant", field: "user" },
+  { path: "/chain/farm/harvest", subject: "chain_farm_harvest", field: "user" },
+  { path: "/chain/mill/start", subject: "chain_mill_start", field: "user" },
+  { path: "/chain/mill/collect", subject: "chain_mill_collect", field: "user" },
+  { path: "/chain/oven/start", subject: "chain_oven_start", field: "user" },
+  { path: "/chain/oven/collect", subject: "chain_oven_collect", field: "user" },
+  { path: "/chain/weather/crank", subject: "chain_weather_crank", field: "cranker" },
+  { path: "/chain/well/collect", subject: "chain_well_collect", field: "user" },
+  { path: "/chain/recipe/craft", subject: "chain_recipe_craft", field: "user" },
+  { path: "/craft-order/create", subject: "craft_order_create", field: "creator" },
+  { path: "/craft-order/fulfill", subject: "craft_order_fulfill", field: "fulfiller" },
+  { path: "/craft-order/cancel", subject: "craft_order_cancel", field: "creator" },
+  { path: "/energy/spend", subject: "energy_spend", field: "user" },
+  { path: "/farm/building/place", subject: "farm_building_place", field: "user" },
+  { path: "/guild/create", subject: "guild_create", field: "leaderId" },
+  { path: "/guild/join", subject: "guild_join", field: "user" },
+  { path: "/guild/set-role", subject: "guild_set_role", field: "user" },
+  { path: "/guild-wars/capture", subject: "guild_wars_capture", field: "actor" },
+  { path: "/lottery/ticket/buy", subject: "lottery_ticket_buy", field: "buyer" },
+  { path: "/lottery/claim", subject: "lottery_claim", field: "winner" },
+  { path: "/marketplace/list", subject: "marketplace_list", field: "seller" },
+  { path: "/marketplace/buy", subject: "marketplace_buy", field: "buyer" },
+  { path: "/marketplace/cancel", subject: "marketplace_cancel", field: "seller" },
+  { path: "/auction/create", subject: "auction_create", field: "seller" },
+  { path: "/auction/bid", subject: "auction_bid", field: "bidder" },
+  { path: "/auction/settle", subject: "auction_settle", field: "caller" },
+  { path: "/hot-market/skip", subject: "hot_market_skip", field: "player" },
+  { path: "/offer/create", subject: "offer_create", field: "buyer" },
+  { path: "/offer/accept", subject: "offer_accept", field: "seller" },
+  { path: "/offer/cancel", subject: "offer_cancel", field: "buyer" },
+  { path: "/rental/list", subject: "rental_list", field: "owner" },
+  { path: "/rental/start", subject: "rental_start", field: "renter" },
+  { path: "/rental/end", subject: "rental_end", field: "caller" },
+  { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
+  { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
+  { path: "/orderbook/sell/place", subject: "orderbook_sell_place", field: "maker" },
+  { path: "/orderbook/buy/cancel", subject: "orderbook_buy_cancel", field: "maker" },
+  { path: "/orderbook/sell/cancel", subject: "orderbook_sell_cancel", field: "maker" },
+  { path: "/orderbook/match", subject: "orderbook_match", field: "caller" },
+  { path: "/packs/commit", subject: "packs_commit", field: "user" },
+  { path: "/packs/reveal", subject: "packs_reveal", field: "user" },
+  { path: "/quests/quest/claim", subject: "quests_claim", field: "user" },
+  { path: "/quests/achievement/unlock", subject: "quests_achievement", field: "user" },
+  { path: "/referral/bind", subject: "referral_bind", field: "referred" },
+  { path: "/referral/upgrade", subject: "referral_upgrade", field: "user" },
+  { path: "/reroll/fuse", subject: "reroll_fuse", field: "user" },
+  { path: "/reroll/random/commit", subject: "reroll_commit", field: "user" },
+  { path: "/reroll/random/reveal", subject: "reroll_reveal", field: "user" },
+  { path: "/resources/burn", subject: "resources_burn", field: "owner" },
+  { path: "/resources/exchange-energy", subject: "resources_exchange_energy", field: "user" },
+  { path: "/season/pass/purchase", subject: "season_pass_purchase", field: "user" },
+  { path: "/tools/craft", subject: "tools_craft", field: "user" },
+  { path: "/tools/repair", subject: "tools_repair", field: "user" },
+  { path: "/tools/stake", subject: "tools_stake", field: "user" },
+  { path: "/tools/unstake", subject: "tools_unstake", field: "user" },
+  { path: "/tools/start-mining", subject: "tools_start_mining", field: "user" },
+  { path: "/tools/collect-mining", subject: "tools_collect_mining", field: "user" },
+  { path: "/tools/burn", subject: "tools_burn", field: "user" },
+  { path: "/trader-rules/create", subject: "trader_rules_create", field: "user" },
+  { path: "/trader-rules/toggle", subject: "trader_rules_toggle", field: "user" },
+  { path: "/trader-rules/", subject: "trader_rules_delete", field: "user" },
+  { path: "/gastank/deposit", subject: "gastank_deposit", field: "user" },
+  { path: "/gastank/withdraw", subject: "gastank_withdraw", field: "user" },
+  { path: "/liquidity/deposit", subject: "liquidity_deposit", field: "user" },
+  { path: "/liquidity/withdraw", subject: "liquidity_withdraw", field: "user" },
+  { path: "/forge/commit", subject: "forge_commit", field: "user" },
+  { path: "/forge/reveal", subject: "forge_reveal", field: "user" },
+  { path: "/forge/bow/commit", subject: "forge_bow_commit", field: "user" },
+  { path: "/forge/bow/reveal", subject: "forge_bow_reveal", field: "user" },
+  { path: "/drum/commit", subject: "drum_commit", field: "user" },
+  { path: "/drum/reveal", subject: "drum_reveal", field: "user" },
+  { path: "/exploration/start/commit", subject: "exploration_commit", field: "user" },
+  { path: "/exploration/reveal", subject: "exploration_reveal", field: "user" },
+  { path: "/exploration/upgrade-tier", subject: "exploration_upgrade_tier", field: "user" },
+];
 
 async function post(path: string, body: Record<string, any> = {}): Promise<any> {
+  const requestBody = { ...body };
+  const proofRoute = WALLET_PROOF_ROUTES.find((route) =>
+    route.path === path || (route.path.endsWith("/") && path.startsWith(route.path))
+  );
+  if (proofRoute && !requestBody.walletProof) {
+    const wallet = requestBody[proofRoute.field];
+    if (typeof wallet === "string" && wallet.length > 0) {
+      requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody);
+    }
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function del(path: string, body: Record<string, any> = {}): Promise<any> {
+  const requestBody = { ...body };
+  const proofRoute = WALLET_PROOF_ROUTES.find((route) =>
+    route.path === path || (route.path.endsWith("/") && path.startsWith(route.path))
+  );
+  if (proofRoute && !requestBody.walletProof) {
+    const wallet = requestBody[proofRoute.field];
+    if (typeof wallet === "string" && wallet.length > 0) {
+      requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody);
+    }
+  }
+
+  const res = await fetch(`${BASE}${path}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
+    body: JSON.stringify(requestBody),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -19,6 +156,15 @@ async function get(path: string): Promise<any> {
 }
 
 export const api = {
+  alerts: {
+    create: (v: any) => post("/alerts/create", v),
+    remove: (id: string, v: any) => del(`/alerts/${encodeURIComponent(id)}`, v),
+  },
+
+  traderRules: {
+    remove: (id: string, v: any) => del(`/trader-rules/${encodeURIComponent(id)}`, v),
+  },
+
   friend: {
     water: (v: any) => post("/friend/water", v),
   },
@@ -34,6 +180,10 @@ export const api = {
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
     player: (owner: string) => get(`/query/player/${owner}`),
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
+    weatherState: () => get("/query/weather-state"),
+    wellState: (owner: string) => get(`/query/well-state/${owner}`),
+    millState: (owner: string) => get(`/query/mill-state/${owner}`),
+    ovenState: (owner: string) => get(`/query/oven-state/${owner}`),
     tool: (mint: string) => get(`/query/tool/${mint}`),
     myTools: (owner: string) => get(`/query/my-tools/${owner}`),
     friendFarm: (address: string) => get(`/query/friend-farm/${address}`),
