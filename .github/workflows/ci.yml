@@ -216,6 +216,147 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-failure-log.sh /tmp/lockfix.log "Anchor build (on-chain programs)" 10
 
+      - name: Generate program keypairs and sync ids for the test run
+        # The repository carries no program keypairs: .gitignore excludes keys/
+        # and target/deploy/*.json. On a fresh checkout `anchor build` therefore
+        # invents random keypairs while declare_id! and Anchor.toml still name
+        # the real devnet ids (HtJg3R3K..., 4BhD6spJ..., ...), so the .so files
+        # deploy to addresses that match neither - which is exactly why
+        # `anchor test` could never run in CI.
+        #
+        # Fix: create the keypairs first and let Anchor sync declare_id! and
+        # Anchor.toml to them, the same thing `anchor init` does for a new
+        # project. Nothing is committed - the runner is throwaway - and the
+        # synced Anchor.toml is handed to the anchor-test job through the build
+        # artifact. Program identity on devnet is untouched; this only makes the
+        # local-validator run internally consistent.
+        id: keys_sync
+        run: |
+          set -uo pipefail
+          set +e
+          : > /tmp/keys-sync.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/keys-sync.log; }
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+
+          mkdir -p target/deploy
+          for name in aof_core aof_liquidity aof_market aof_quests aof_rebirth aof_session_keys; do
+            kp="target/deploy/${name}-keypair.json"
+            if [ -f "$kp" ]; then
+              log "reusing   $kp -> $(solana-keygen pubkey "$kp" 2>&1)"
+            else
+              solana-keygen new --silent --no-bip39-passphrase --force -o "$kp" >/dev/null 2>&1
+              log "generated $kp -> $(solana-keygen pubkey "$kp" 2>&1)"
+            fi
+          done
+
+          log "### anchor keys list (before sync)"
+          anchor keys list 2>&1 | tee -a /tmp/keys-sync.log || true
+          log "### anchor keys sync"
+          rc=0
+          anchor keys sync 2>&1 | tee -a /tmp/keys-sync.log || rc=$?
+          log "anchor keys sync exit code: $rc"
+
+          if [ "$rc" -ne 0 ] || ! grep -qE "Synced|synced|Updated|updated" /tmp/keys-sync.log; then
+            log "### CLI sync did not report success - syncing declare_id!/Anchor.toml directly"
+            python3 - <<'PY' 2>&1 | tee -a /tmp/keys-sync.log
+          import json, pathlib, re, sys
+
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+          def b58(raw):
+              n = int.from_bytes(raw, "big")
+              out = ""
+              while n:
+                  n, r = divmod(n, 58)
+                  out = ALPHABET[r] + out
+              return "1" * (len(raw) - len(raw.lstrip(b"\x00"))) + (out or "1")
+
+          programs = {
+              "aof_core": "aof-core/src/lib.rs",
+              "aof_liquidity": "programs/aof-liquidity/src/lib.rs",
+              "aof_market": "programs/aof-market/src/lib.rs",
+              "aof_quests": "programs/aof-quests/src/lib.rs",
+              "aof_rebirth": "programs/aof-rebirth/src/lib.rs",
+              "aof_session_keys": "programs/aof-session-keys/src/lib.rs",
+          }
+
+          ids = {}
+          for name in programs:
+              kp = pathlib.Path("target/deploy/%s-keypair.json" % name)
+              arr = json.loads(kp.read_text())
+              if len(arr) != 64:
+                  print("::error::%s: expected a 64-byte keypair, got %d bytes" % (kp, len(arr)))
+                  sys.exit(1)
+              ids[name] = b58(bytes(arr[32:]))
+              print("%s -> %s" % (name, ids[name]))
+
+          for name, src in programs.items():
+              f = pathlib.Path(src)
+              new, n = re.subn(r'declare_id!\("[^"]+"\)', 'declare_id!("%s")' % ids[name], f.read_text(), count=1)
+              if n == 0:
+                  print("::error::%s: no declare_id! to sync" % src)
+                  sys.exit(1)
+              f.write_text(new)
+
+          # Line-based rewrite of Anchor.toml. An earlier regex version silently matched
+          # nothing here and still reported success, so every edit is verified below and
+          # the step fails closed instead of letting the test job deploy to ids that do
+          # not match the artifacts.
+          cfg = pathlib.Path("Anchor.toml")
+          lines = cfg.read_text().splitlines(keepends=True)
+          section = None
+          replaced = {}
+          for i, line in enumerate(lines):
+              head = re.match(r"^\[([^\]]+)\]", line)
+              if head:
+                  section = head.group(1)
+                  continue
+              if section in ("programs.localnet", "programs.devnet"):
+                  entry = re.match(r'^(\s*)(\w+)(\s*=\s*)"([^"]+)"(.*)$', line)
+                  if entry and entry.group(2) in ids:
+                      lines[i] = '%s%s%s"%s"%s\n' % (entry.group(1), entry.group(2), entry.group(3),
+                                                     ids[entry.group(2)], entry.group(5))
+                      replaced.setdefault(section, set()).add(entry.group(2))
+          cfg.write_text("".join(lines))
+
+          text = cfg.read_text()
+          bad = False
+          for section in ("programs.localnet", "programs.devnet"):
+              missing = sorted(set(ids) - replaced.get(section, set()))
+              if missing:
+                  print("::error::Anchor.toml [%s] was not updated for: %s" % (section, missing))
+                  bad = True
+          for name, pid in ids.items():
+              if '%s = "%s"' % (name, pid) not in text:
+                  print("::error::Anchor.toml does not carry the synced id for %s" % name)
+                  bad = True
+          for name, src in programs.items():
+              if 'declare_id!("%s")' % ids[name] not in pathlib.Path(src).read_text():
+                  print("::error::%s: declare_id! was not synced" % src)
+                  bad = True
+          if bad:
+              sys.exit(1)
+          print("declare_id! and Anchor.toml (localnet + devnet) synced and verified:")
+          for name in sorted(ids):
+              print("  %s = %s" % (name, ids[name]))
+          PY
+            rc2=$?
+            log "fallback sync exit code: $rc2"
+            [ "$rc2" -ne 0 ] && exit "$rc2"
+          fi
+
+          log "### resulting program ids"
+          anchor keys list 2>&1 | tee -a /tmp/keys-sync.log || true
+          grep -A8 '^\[programs.localnet\]' Anchor.toml | tee -a /tmp/keys-sync.log || true
+          log "### files changed by the sync (runner-local only, never committed)"
+          git --no-pager diff --stat 2>&1 | tee -a /tmp/keys-sync.log || true
+
+      - name: Publish key-sync log
+        if: always() && steps.keys_sync.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/keys-sync.log "Anchor build (on-chain programs)" 10
+
       - name: Anchor build --no-idl (SBPF compile gate, blocking)
         # This is the blocking half of the programs job. Every real regression in
         # the on-chain code - including the E0502 borrow error in
@@ -416,6 +557,11 @@ jobs:
           # not find them after download. This marker keeps the root at target/.
           mkdir -p target
           echo "artifact root marker for actions/upload-artifact@v4" > target/artifact-root.txt
+          # The anchor-test job must deploy with the same program ids the .so
+          # files were built with, so the synced Anchor.toml travels along. It is
+          # copied under target/ to keep the artifact root from moving to the
+          # repository root (upload-artifact@v4 uses the least common ancestor).
+          cp Anchor.toml target/artifact-Anchor.toml
           ls -l target/deploy/*.so target/idl/*.json 2>/dev/null || true
           echo "--- artifact contents ---"
           find target -maxdepth 2 \( -name '*.so' -o -name '*.json' -o -name '*.ts' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort || true
@@ -482,6 +628,7 @@ jobs:
           name: anchor-target
           path: |
             target/artifact-root.txt
+            target/artifact-Anchor.toml
             target/deploy/*.so
             target/deploy/*-keypair.json
             target/idl/*.json
@@ -630,6 +777,121 @@ jobs:
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           mkdir -p "$(dirname "$CI_WALLET_PATH")"
           solana-keygen new --silent --no-bip39-passphrase --force -o "$CI_WALLET_PATH"
+
+      - name: Restore the synced Anchor.toml from the build artifact
+        # Program ids in the checked-out Anchor.toml are the real devnet ids, but
+        # the .so files were built against CI-generated keypairs (see the
+        # "Generate program keypairs and sync ids" step in the programs job).
+        # Deploying with the checked-out config would target accounts that do not
+        # exist on the local validator.
+        run: |
+          set -uo pipefail
+          set +e
+          if [ -f target/artifact-Anchor.toml ]; then
+            echo "--- program ids the artifacts were built with ---"
+            grep -A8 '^\[programs.localnet\]' target/artifact-Anchor.toml || true
+            cp target/artifact-Anchor.toml Anchor.toml
+            echo "restored the synced Anchor.toml"
+          else
+            echo "::warning::the artifact carries no synced Anchor.toml; keeping the checked-out copy"
+          fi
+
+      - name: Seed target/idl from the committed backend IDLs
+        # Anchor's IDL builder cannot run on any toolchain this repository may use
+        # (see the advisory step in the programs job for the measured reasons), and
+        # tests/aof_core.ts reads target/idl/aof_core.json. The backend keeps a
+        # committed copy of all six IDLs under aof_backend/src/idl/, so seed from
+        # those and rewrite `address` to the id the artifacts were built with.
+        #
+        # The staleness warning is deliberate: these IDLs were generated from an
+        # older revision, so if an instruction set changed the suite exercises an
+        # outdated ABI. The programs job's drift report is the place that catches
+        # it once IDL generation works again.
+        id: idl_seed
+        run: |
+          set -uo pipefail
+          set +e
+          have=$(find target/idl -maxdepth 1 -name '*.json' 2>/dev/null | wc -l | tr -d ' ')
+          if [ "${have:-0}" -gt 0 ]; then
+            echo "seeded=no" >> "$GITHUB_OUTPUT"
+            echo "the IDL builder produced $have IDL file(s); not seeding"
+            exit 0
+          fi
+          mkdir -p target/idl
+          python3 - <<'PY'
+          import json, pathlib, re, sys
+
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+          def b58(raw):
+              n = int.from_bytes(raw, "big")
+              out = ""
+              while n:
+                  n, r = divmod(n, 58)
+                  out = ALPHABET[r] + out
+              return "1" * (len(raw) - len(raw.lstrip(b"\x00"))) + (out or "1")
+
+          # Ground truth for "which program ids were these artifacts built with" is the
+          # keypair files that travelled in the artifact, not Anchor.toml: if the synced
+          # Anchor.toml was not restored, Anchor.toml still names the real devnet ids and
+          # seeding from it would deploy to accounts that do not exist.
+          built = {}
+          for kp in sorted(pathlib.Path("target/deploy").glob("*-keypair.json")):
+              arr = json.loads(kp.read_text())
+              if len(arr) != 64:
+                  print("::error::%s: expected a 64-byte keypair, got %d bytes" % (kp, len(arr)))
+                  sys.exit(1)
+              built[kp.name[:-len("-keypair.json")]] = b58(bytes(arr[32:]))
+          print("ids the artifact keypairs correspond to:")
+          for name in sorted(built):
+              print("  %s = %s" % (name, built[name]))
+          if not built:
+              print("::error::no program keypairs were restored from the build artifact")
+              sys.exit(1)
+
+          cfg = pathlib.Path("Anchor.toml").read_text()
+          sec = re.search(r"^\[programs\.localnet\](.*?)(?=^\[|\Z)", cfg, re.M | re.S)
+          declared = dict(re.findall(r'^\s*(\w+)\s*=\s*"([^"]+)"', sec.group(1), re.M)) if sec else {}
+          wrong = sorted(n for n in built if declared.get(n) != built[n])
+          if wrong:
+              print("::error::Anchor.toml does not match the artifacts for: %s" % ", ".join(wrong))
+              print("        The synced Anchor.toml from the programs job was not restored, so")
+              print("        `anchor test --skip-build` would deploy to the wrong addresses.")
+              sys.exit(1)
+          print("Anchor.toml [programs.localnet] matches the artifact keypairs")
+
+          out_dir = pathlib.Path("target/idl")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          seeded = 0
+          for src in sorted(pathlib.Path("aof_backend/src/idl").glob("*.json")):
+              name = src.stem
+              if name not in built:
+                  print("::warning::%s: no keypair in the artifact, skipping" % name)
+                  continue
+              d = json.loads(src.read_text())
+              old = d.get("address") or (d.get("metadata") or {}).get("address")
+              if old != built[name]:
+                  print("[patch] %s: address %s -> %s" % (name, old, built[name]))
+                  if isinstance(d.get("metadata"), dict) and "address" in d["metadata"]:
+                      d["metadata"]["address"] = built[name]
+                  d["address"] = built[name]
+              dst = out_dir / src.name
+              dst.write_text(json.dumps(d, indent=2))
+              seeded += 1
+              print("[seed] %s: %d instructions, %d accounts, address %s"
+                    % (dst, len(d.get("instructions", [])), len(d.get("accounts", [])), built[name]))
+
+          if seeded == 0:
+              print("::error::aof_backend/src/idl contains no IDL matching the artifact keypairs")
+              sys.exit(1)
+          print("seeded %d IDL file(s) into target/idl" % seeded)
+          PY
+          rc=$?
+          if [ "$rc" -eq 0 ]; then
+            echo "seeded=yes" >> "$GITHUB_OUTPUT"
+            echo "::warning::target/idl was seeded from the committed copies in aof_backend/src/idl because the Anchor IDL builder is upstream-blocked; the suite runs against IDLs that may be stale relative to the programs just compiled."
+          fi
+          exit "$rc"
 
       - name: Check that the restored artifacts contain an IDL
         # anchor test --skip-build loads target/idl/*.json, so without a
