@@ -18,6 +18,10 @@ interface ToolMiningCardProps {
  * стейк = «уехать в сарай», майнинг = вагонетка, сбор = сундук.
  * Реальные вызовы /tools/stake|start-mining|collect-mining|unstake + подпись кошелька.
  */
+// Keep the feature fail-closed until the on-chain program has passed build and
+// validator tests. Enable explicitly only in a verified test environment.
+const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
+
 export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   const { address } = useWalletStore();
   const rk = rarityKey(tool.rarity);
@@ -37,6 +41,9 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   };
 
   async function run(kind: "stake" | "start" | "collect" | "unstake") {
+    if ((kind === "start" || kind === "collect") && !MINING_ENABLED) {
+      return flashMsg("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
+    }
     if (!address) return flashMsg("❌ Подключите кошелёк (кнопка вверху)");
     setBusy(true);
     try {
@@ -143,9 +150,9 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
                 className="w-8 h-8 rounded-lg bg-soil-700 border border-straw/20 text-parchment">+</button>
             </div>
           </div>
-          <button onClick={() => run("start")} disabled={busy || durability < 1}
-            className="w-full py-2.5 rounded-xl bg-sprout-500 text-white font-semibold text-sm disabled:opacity-40">
-            ⛏️ Начать добычу ({hours}ч)
+          <button onClick={() => run("start")} disabled={!MINING_ENABLED || busy || durability < 1}
+            className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
+            {MINING_ENABLED ? "⛏️ Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
           </button>
           <button onClick={() => run("unstake")} disabled={busy || durability < 20}
             className="w-full py-2 rounded-xl bg-soil-700 border border-straw/20 text-straw text-xs disabled:opacity-40">
@@ -157,10 +164,11 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {tool.isMining && (
         <div className="mt-3">
           {done ? (
-            <motion.button onClick={() => run("collect")} disabled={busy}
-              animate={{ scale: [1, 1.03, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}
-              className="w-full py-2.5 rounded-xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40">
-              🧰 Добыча готова — открыть сундук!
+            <motion.button onClick={() => run("collect")} disabled={!MINING_ENABLED || busy}
+              animate={MINING_ENABLED ? { scale: [1, 1.03, 1] } : undefined}
+              transition={{ repeat: Infinity, duration: 1.4 }}
+              className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
+              {MINING_ENABLED ? "📦 Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
             </motion.button>
           ) : (
             <div>

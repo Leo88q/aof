@@ -46,9 +46,9 @@ export function ContentPage({ id }: { id: string }) {
         <>
           <Section title="Четыре числа, с которых стоит начать">
             <div className="site-grid site-grid--four">
-              <Counter value={100} label="максимум энергии" />
+              <Counter value={20} label="максимум энергии" />
               <Counter value={20} label="максимум прочности" />
-              <Counter value={4} label="редкости инструмента" />
+              <Counter value={5} label="редкости инструмента" />
               <Counter value={5} label="тиров доверия" />
             </div>
           </Section>

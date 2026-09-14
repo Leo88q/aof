@@ -197,31 +197,44 @@ export function ExtraSections({ id }: { id: string }) {
           <div key={station} className="site-recipe-group">
             <h3>{stationNames[station] ?? station}</h3>
             <div className="site-grid">
-              {list.map((r) => (
-                <article key={r.id} className="site-card site-paper site-recipe">
-                  <h4>{r.name}</h4>
-                  <ul className="site-recipe-io">
-                    {r.inputs.map((i) => {
-                      const res = resourcesById.get(i.resourceId);
-                      return <li key={i.resourceId} className="site-recipe-in">{res ? res.name : i.resourceId} ×{i.amount}</li>;
-                    })}
-                  </ul>
-                  <p className="site-recipe-arrow" aria-hidden="true">↓</p>
-                  <ul className="site-recipe-io">
-                    {r.outputs.length > 0
-                      ? r.outputs.map((o) => {
-                          const res = resourcesById.get(o.resourceId);
-                          return <li key={o.resourceId} className="site-recipe-out">{res ? res.name : o.resourceId} ×{o.amount}</li>;
-                        })
-                      : <li className="site-recipe-out">Эффект без предмета</li>}
-                  </ul>
-                  <p className="site-recipe-meta">
-                    Энергия: {r.energy}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на POTATO' : ''}{r.potatoCost ? ` · POTATO ×${r.potatoCost}` : ''}
-                  </p>
-                  <p>{r.description}</p>
-                  {r.narrative && <blockquote className="site-narrative">{r.narrative}</blockquote>}
-                </article>
-              ))}
+              {list.map((r) => {
+                const missingResources = [...r.inputs, ...r.outputs]
+                  .map((item) => item.resourceId)
+                  .filter((resourceId, index, ids) => !resourcesById.has(resourceId) && ids.indexOf(resourceId) === index);
+                return (
+                  <article key={r.id} className="site-card site-paper site-recipe">
+                    <span className="site-badge">
+                      {r.verification === 'on-chain-verified'
+                        ? 'On-chain проверено'
+                        : 'Редакционный пример · on-chain не подтверждён'}
+                    </span>
+                    <h4>{r.name}</h4>
+                    <ul className="site-recipe-io">
+                      {r.inputs.map((i) => {
+                        const res = resourcesById.get(i.resourceId);
+                        return <li key={i.resourceId} className="site-recipe-in">{res ? res.name : i.resourceId} ×{i.amount}</li>;
+                      })}
+                    </ul>
+                    <p className="site-recipe-arrow" aria-hidden="true">↓</p>
+                    <ul className="site-recipe-io">
+                      {r.outputs.length > 0
+                        ? r.outputs.map((o) => {
+                            const res = resourcesById.get(o.resourceId);
+                            return <li key={o.resourceId} className="site-recipe-out">{res ? res.name : o.resourceId} ×{o.amount}</li>;
+                          })
+                        : <li className="site-recipe-out">Эффект без предмета</li>}
+                    </ul>
+                    <p className="site-recipe-meta">
+                      Энергия: {r.energy}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на POTATO' : ''}{r.potatoCost ? ` · POTATO ×${r.potatoCost}` : ''}
+                    </p>
+                    <p>{r.description}</p>
+                    {missingResources.length > 0 && (
+                      <p className="site-guide-warn">В каталоге сайта не найдено: {missingResources.join(', ')}. Сначала проверь live UI и on-chain состояние.</p>
+                    )}
+                    {r.narrative && <blockquote className="site-narrative">{r.narrative}</blockquote>}
+                  </article>
+                );
+              })}
             </div>
           </div>
         ))}

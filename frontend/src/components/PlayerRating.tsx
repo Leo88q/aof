@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../lib/api";
+import { useWalletStr } from "../lib/useWalletStr";
 
 interface PlayerRatingProps {
   toUser: string;
@@ -10,6 +11,7 @@ interface PlayerRatingProps {
 }
 
 export function PlayerRating({ toUser, context, referenceId, onSubmitted }: PlayerRatingProps) {
+  const fromUser = useWalletStr();
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
@@ -17,12 +19,12 @@ export function PlayerRating({ toUser, context, referenceId, onSubmitted }: Play
   const [submitted, setSubmitted] = useState(false);
 
   async function handleSubmit() {
-    if (rating === 0) return;
+    if (rating === 0 || !fromUser) return;
     
     setLoading(true);
     try {
       await api.rating.submit({
-        fromUser: "current_user", // TODO: get from wallet
+        fromUser,
         toUser,
         context,
         referenceId,

@@ -1,52 +1,44 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "./ui/Card";
+import { api } from "../lib/api";
+import { useWalletStr } from "../lib/useWalletStr";
 
-const BUFF_TYPES = {
-  1: { name: "Зелье энергии", icon: "🧪", color: "#3b82f6", effect: "+20% добыча" },
-  2: { name: "Зелье газа", icon: "🧪", color: "#eab308", effect: "+100 газа" },
-  3: { name: "Зелье роста", icon: "🧪", color: "#10b981", effect: "×2 скорость" },
-  4: { name: "Зелье любви", icon: "🧪", color: "#ec4899", effect: "+3 ❤️" },
-  5: { name: "Зелье удачи", icon: "🧪", color: "#a855f7", effect: "+50% Forge" },
-};
-
+/** Displays only perks that are present in the player's on-chain PDA. */
 export function ActiveBuffs() {
-  const [activeBuffs, setActiveBuffs] = useState<Array<{type: number, expiresAt: number}>>([]);
+  const user = useWalletStr();
+  const [perks, setPerks] = useState<{ historian: number; medallion: number } | null>(null);
 
-  // Mock данные — в реальности нужно получать из player_state
   useEffect(() => {
-    // Пример: имитация активного баффа
-    const mockBuffs = [
-      { type: 3, expiresAt: Date.now() + 1800_000 }, // 30 минут
-    ];
-    setActiveBuffs(mockBuffs);
-  }, []);
+    setPerks(null);
+    if (!user) return;
+    api.query.player(user)
+      .then((player: any) => setPerks({
+        historian: Number(player?.historianCount || 0),
+        medallion: Number(player?.medallionCount || 0),
+      }))
+      .catch(() => setPerks({ historian: 0, medallion: 0 }));
+  }, [user]);
 
-  if (activeBuffs.length === 0) return null;
+  if (!perks || (perks.historian === 0 && perks.medallion === 0)) return null;
 
   return (
     <Card className="p-3 mb-3">
-      <h4 className="text-parchment text-sm font-bold mb-2">✨ Активные баффы</h4>
+      <h4 className="text-parchment text-sm font-bold mb-2">✨ Активные перки стейкинга</h4>
       <div className="space-y-2">
-        {activeBuffs.map((buff, idx) => {
-          const b = BUFF_TYPES[buff.type as keyof typeof BUFF_TYPES];
-          const timeLeft = Math.max(0, buff.expiresAt - Date.now());
-          const minutes = Math.floor(timeLeft / 60_000);
-          
-          return (
-            <div
-              key={idx}
-              className="flex items-center gap-2 p-2 rounded-lg"
-              style={{ background: b.color + "20", border: `1px solid ${b.color}40` }}
-            >
-              <span className="text-xl">{b.icon}</span>
-              <div className="flex-1">
-                <div className="text-parchment text-xs font-bold">{b.name}</div>
-                <div className="text-straw text-[10px]">{b.effect}</div>
-              </div>
-              <div className="text-parchment text-xs font-mono">{minutes}м</div>
-            </div>
-          );
-        })}
+        {perks.historian > 0 && (
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-wheat-500/10 border border-wheat-500/30">
+            <span className="text-xl">📜</span>
+            <div className="flex-1 text-parchment text-xs font-bold">Историк</div>
+            <div className="text-straw text-xs">×{perks.historian}</div>
+          </div>
+        )}
+        {perks.medallion > 0 && (
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-gold/10 border border-gold/30">
+            <span className="text-xl">🏅</span>
+            <div className="flex-1 text-parchment text-xs font-bold">Медальон</div>
+            <div className="text-straw text-xs">×{perks.medallion}</div>
+          </div>
+        )}
       </div>
     </Card>
   );

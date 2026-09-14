@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../lib/api";
 import { useFlash } from "../lib/marketUtils";
+import { useWalletStr } from "../lib/useWalletStr";
 
 interface ComebackModalProps {
   bonus: {
@@ -15,13 +16,18 @@ interface ComebackModalProps {
 }
 
 export function ComebackModal({ bonus, onClose }: ComebackModalProps) {
+  const user = useWalletStr();
   const [txStatus, flash] = useFlash();
   const [claiming, setClaiming] = useState(false);
 
   async function handleClaim() {
+    if (!user) {
+      flash("❌ Подключите кошелёк");
+      return;
+    }
     setClaiming(true);
     try {
-      const resp = await api.comeback.claim({ id: bonus.id });
+      const resp = await api.comeback.claim({ id: bonus.id, user });
       if (resp.success) {
         flash("🎉 Подарок отправлен в вашу почту!");
         onClose();

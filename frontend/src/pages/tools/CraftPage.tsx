@@ -52,21 +52,24 @@ export function CraftPage() {
 
   useEffect(() => { loadTools(); }, [address]);
 
-  // Загружаем минты всех 6 ресурсов из конфига
+  // Legacy resources live in Config; the bread-chain resources live in the
+  // canonical MaterialMints account. Do not read missing mints from a local
+  // placeholder map.
   useEffect(() => {
-    api.query.config().then((c: any) => {
-      if (c) {
+    Promise.all([api.query.config(), api.query.materialMints()])
+      .then(([c, material]) => {
+        const mints = material?.mints || {};
         setResMints({
-          wood: c.woodMint || "",
-          stone: c.stoneMint || "",
-          food: c.foodMint || "",
-          seeds: c.seedsMint || "",
-          water: c.waterMint || "",
-          potato: c.potatoMint || "",
-          skr: c.skrMint || "",
+          wood: c?.woodMint || mints.WOOD || "",
+          stone: c?.stoneMint || mints.STONE || "",
+          food: c?.foodMint || mints.FOOD || "",
+          seeds: mints.SEEDS || "",
+          water: mints.WATER || "",
+          potato: c?.potatoMint || mints.POTATO || "",
+          skr: "",
         });
-      }
-    }).catch(() => {});
+      })
+      .catch(() => setResMints({ wood: "", stone: "", food: "", seeds: "", water: "", potato: "", skr: "" }));
     api.query.craftEconomy().then((e: any) => setEcon(e)).catch(() => setEcon(null));
   }, []);
 
@@ -155,7 +158,7 @@ export function CraftPage() {
       for (const res of requiredMints) {
         const needed = craftQuote[res] || 0;
         if (balances[res] < needed) {
-          return flash(`❌ Недостаточно ${RES_META[res].label}: нужно ${fmtNum(needed / 1e9)}, есть ${fmtNum(balances[res] / 1e9)}`);
+          return flash(`❌ Недостаточно ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
         }
       }
     }
@@ -181,7 +184,7 @@ export function CraftPage() {
       if (r.success) {
         const q = craftQuote;
         if (q) {
-          setCraftReceipt(`Списано: ${fmtNum(q.wood/1e9)} 🪵 + ${fmtNum(q.stone/1e9)} 🪨 + ${fmtNum(q.food/1e9)} 🌾 + ${fmtNum(q.seeds/1e9)} 🌱 + ${fmtNum(q.water/1e9)} 💧 + ${fmtNum(q.potato/1e9)} 🥔`);
+          setCraftReceipt(`Списано: ${fmtNum(q.wood)} 🪵 + ${fmtNum(q.stone)} 🪨 + ${fmtNum(q.food)} 🌾 + ${fmtNum(q.seeds)} 🌱 + ${fmtNum(q.water)} 💧 + ${fmtNum(q.potato)} 🥔`);
         }
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setNewMint("");
@@ -305,10 +308,10 @@ export function CraftPage() {
                     </div>
                     <div className="text-right">
                       <span className="text-parchment text-xs font-bold">
-                        {fmtNum(needed / 1e9)}
+                        {fmtNum(needed)}
                       </span>
                       <span className="text-straw text-[10px] ml-1">
-                        / {fmtNum(have / 1e9)}
+                        / {fmtNum(have)}
                       </span>
                     </div>
                   </div>
@@ -334,25 +337,15 @@ export function CraftPage() {
             })}
           </div>
 
-          {/* [НОВОЕ] Индикатор SKR-скидки */}
-          {balances.skr >= 3000 * 1e9 && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-3 rounded-xl bg-gradient-to-r from-purple-600/20 to-purple-500/20 border border-purple-500/40"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">📱</span>
-                <div className="flex-1">
-                  <p className="text-parchment text-xs font-bold">SKR Holder активен</p>
-                  <p className="text-purple-300 text-[10px]">-15% на POTATO применяется автоматически</p>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-purple-500/30 text-purple-200 font-bold">
-                  ACTIVE
-                </span>
-              </div>
-            </motion.div>
-          )}
+          {/* SKR discount is intentionally not displayed as active: no
+              canonical SKR mint is configured on-chain, so craft charges the
+              full POTATO amount. */}
+          <div className="p-3 rounded-xl bg-soil-800/60 border border-straw/10">
+            <p className="text-straw text-[10px]">
+              SKR-скидка отключена: канонический mint SKR ещё не настроен в контракте.
+              Крафт списывает полную стоимость POTATO.
+            </p>
+          </div>
           
           {/* Кнопка крафта */}
           <button

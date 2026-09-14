@@ -10,6 +10,9 @@ import { WeatherOverlay } from "../../components/farm/WeatherOverlay";
 import { toNum, useFlash } from "../../lib/marketUtils";
 
 const GRID = 8;
+// Keep the feature fail-closed until the on-chain program has passed build and
+// validator tests. Enable explicitly only in a verified test environment.
+const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
 
 // Постройки по типу инструмента (ТЗ v4 §1: топор — лесопилка, кирка — шахта, лук — вышка)
 const BUILDING: Record<string, { emoji: string; name: string }> = {
@@ -53,6 +56,7 @@ export function FarmPlot() {
   });
 
   async function quick(action: "start" | "collect") {
+    if (!MINING_ENABLED) return flash("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
     if (!address) return flash("❌ Подключите кошелёк");
     if (!selected) return;
     setBusy(true);
@@ -78,7 +82,7 @@ export function FarmPlot() {
     <div className="p-4 pt-6 pb-24">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-parchment">Моя ферма</h1>
-        <span className="text-straw text-sm">Участок 8×8</span>
+        <span className="text-straw text-sm">Визуализация участка</span>
       </div>
 
       {txStatus && (
@@ -170,17 +174,17 @@ export function FarmPlot() {
               </p>
               {selected.isMining ? (
                 toNum(selected.miningEnd) <= Date.now() / 1000 ? (
-                  <button onClick={() => quick("collect")} disabled={busy}
-                    className="w-full mt-2 py-2.5 rounded-xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40">
-                    🧰 Открыть сундук
+                  <button onClick={() => quick("collect")} disabled={!MINING_ENABLED || busy}
+                    className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
+                    {MINING_ENABLED ? "📦 Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
                   </button>
                 ) : (
                   <p className="text-straw text-xs mt-1">⛏️ Идёт добыча — вернись, когда вагонетка доедет</p>
                 )
               ) : (
-                <button onClick={() => quick("start")} disabled={busy || Number(selected.durability) < 1}
-                  className="w-full mt-2 py-2.5 rounded-xl bg-sprout-500 text-white font-semibold text-sm disabled:opacity-40">
-                  ⛏️ Запустить добычу на 4ч
+                <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}
+                  className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
+                  {MINING_ENABLED ? "⛏️ Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
                 </button>
               )}
               <p className="text-straw text-xs mt-2 text-center">Тонкая настройка — во вкладке «Инструменты»</p>

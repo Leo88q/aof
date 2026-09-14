@@ -1,5 +1,3 @@
-import { useToast } from "../../components/ui/Toast";
-import { handleTxResponse } from "../../lib/txFlow";
 import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
@@ -18,6 +16,7 @@ const FILTERS = [
       { key: "SAND_YELLOW", label: "Янтарный песок", icon: "🟡" },
       { key: "COAL", label: "Уголь", icon: "⬛" },
       { key: "MEAT", label: "Мясо", icon: "🍖" },
+      { key: "POTATO", label: "POTATO", icon: "🥔" },
     ],
   },
   {
@@ -48,65 +47,24 @@ const FILTERS = [
   },
 ];
 
-// Маппинг флаконов к типам (для контракта)
-const FLASK_TYPE_MAP: Record<string, number> = {
-  FLASK_BLUE: 1,    // Энергия
-  FLASK_YELLOW: 2,  // Газ
-  FLASK_GREEN: 3,   // Рост
-  FLASK_PINK: 4,    // Любовь
-  FLASK_PURPLE: 5,  // Удача
-};
-
-const FLASK_EFFECTS: Record<string, string> = {
-  FLASK_BLUE: "+20% к добыче ресурсов на 1 час",
-  FLASK_YELLOW: "+100 газа в GasTank",
-  FLASK_GREEN: "×2 скорость таймеров (печь/мельница) на 1 час",
-  FLASK_PINK: "+3 ❤️ к соседу (бонус дружбы)",
-  FLASK_PURPLE: "+50% шанс успеха Forge на 1 час",
-};
-
-
 export function Pantry() {
-  const toast = useToast();
   const { address } = useWalletStore();
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<string, number> | null>(null);
   const [filter, setFilter] = useState("raw");
-  const [usingFlask, setUsingFlask] = useState<string | null>(null);
 
   useEffect(() => {
     if (!address) return;
-    api.query.balances(address).then((b: any) => setBalances(b || {})).catch(() => {});
+    api.query.balances(address).then((b: any) => setBalances(b || null)).catch(() => setBalances(null));
   }, [address]);
 
   const activeFilter = FILTERS.find((f) => f.key === filter) || FILTERS[0];
 
-
-  async function handleUseFlask(flaskKey: string) {
-    if (!address) return;
-    const flaskType = FLASK_TYPE_MAP[flaskKey];
-    if (!flaskType) return;
-    
-    setUsingFlask(flaskKey);
-    try {
-      // TODO: Получить реальный mint из MaterialMints PDA
-      // Пока используем placeholder
-      const flaskMint = "11111111111111111111111111111111";
-      
-      const resp = await api.tools.useFlask({
-        user: address,
-        flaskType,
-        flaskMint,
-      });
-      
-      const result = await handleTxResponse(resp);
-      if (result.success) {
-        toast.show(`✨ ${FLASK_EFFECTS[flaskKey]}\n\nБафф активен 1 час!`);
-      }
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setUsingFlask(null);
-    }
+  if (!balances) {
+    return (
+      <div className="economy-empty">
+        <p className="text-amber-400">Балансы ресурсов недоступны из канонической сети</p>
+      </div>
+    );
   }
 
   return (

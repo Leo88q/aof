@@ -25,6 +25,8 @@ export interface Recipe {
   time?: string;
   description: string;
   narrative?: string;
+  /** Recipe prose is editorial unless an on-chain verification is explicitly recorded. */
+  verification?: 'editorial' | 'on-chain-verified';
   skrDiscount?: boolean;
   potatoCost?: number;
 }

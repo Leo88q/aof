@@ -4,6 +4,7 @@ export const recipes: Recipe[] = [
   // === ЦЕПОЧКА ХЛЕБА ===
   {
     id: 'mill_flour',
+    verification: 'editorial',
     name: 'Перемол пшеницы',
     station: 'mill',
     inputs: [{ resourceId: 'wheat', amount: 5 }],
@@ -15,19 +16,21 @@ export const recipes: Recipe[] = [
   },
   {
     id: 'bake_bread',
+    verification: 'editorial',
     name: 'Выпечка хлеба',
     station: 'oven',
     inputs: [{ resourceId: 'flour', amount: 2 }, { resourceId: 'water', amount: 1 }, { resourceId: 'coal', amount: 1 }],
     outputs: [{ resourceId: 'bread', amount: 1 }],
     energy: 12,
     time: '~8 минут игрового времени',
-    description: 'Полная цепочка выпечки: мука + вода + уголь для жара. Один хлеб восстанавливает ~25 энергии.',
+    description: 'Редакционное описание цепочки выпечки: мука + вода + уголь для жара. Эффект хлеба не подтверждён on-chain.',
     narrative: 'Печь топится углём, а не дровами — дуб жалко жечь на хлеб. Тесто поднимается в тишине, пока жар равномерно пропекает корку. Когда хлеб ломается с паром — работа закончена.'
   },
   
   // === ИНСТРУМЕНТЫ ===
   {
     id: 'craft_common_axe',
+    verification: 'editorial',
     name: 'Обычный топор',
     station: 'workbench',
     inputs: [{ resourceId: 'wood', amount: 3 }, { resourceId: 'stone', amount: 2 }],
@@ -36,10 +39,10 @@ export const recipes: Recipe[] = [
     toolRequired: undefined,
     description: 'Базовый инструмент common-редкости. 20 единиц прочности. Подходит для простых работ.',
     narrative: 'Первый топор ученика: грубое железо, берёзовая рукоять, проволочная обмотка. Он не красив, но работает. Каждый мастер начинал с такого.',
-    skrDiscount: true
   },
   {
     id: 'craft_uncommon_axe',
+    verification: 'editorial',
     name: 'Необычный топор',
     station: 'forge',
     inputs: [{ resourceId: 'wood', amount: 5 }, { resourceId: 'stone', amount: 4 }, { resourceId: 'coal', amount: 3 }],
@@ -47,10 +50,10 @@ export const recipes: Recipe[] = [
     energy: 25,
     description: 'Инструмент uncommon-редкости. Кованая сталь, дубовая рукоять, кожаная обмотка. 20 прочности.',
     narrative: 'Кузнец нагревает сталь до соломенного цвета, бьёт ровно, закаляет в масле. Рукоять пропитана льняным маслом — она переживёт три сезона работы.',
-    skrDiscount: true
   },
   {
     id: 'craft_rare_axe',
+    verification: 'editorial',
     name: 'Редкий топор',
     station: 'forge',
     inputs: [{ resourceId: 'wood', amount: 8 }, { resourceId: 'stone_blue', amount: 2 }, { resourceId: 'coal', amount: 5 }, { resourceId: 'copper', amount: 1 }],
@@ -58,10 +61,10 @@ export const recipes: Recipe[] = [
     energy: 40,
     description: 'Редкий инструмент. Булатная сталь с медным ошейником. 20 прочности + бонус к определённым действиям.',
     narrative: 'Булат виден невооружённым глазом: узор на стали, как волны на воде. Медный ошейник зеленеет со временем — это не дефект, это патина времени.',
-    skrDiscount: true
   },
   {
     id: 'craft_legendary_axe',
+    verification: 'editorial',
     name: 'Легендарный топор',
     station: 'forge',
     inputs: [
@@ -79,6 +82,7 @@ export const recipes: Recipe[] = [
   // === ФЛЯГИ ===
   {
     id: 'craft_flask_blue',
+    verification: 'editorial',
     name: 'Синяя фляга',
     station: 'glassworks',
     inputs: [
@@ -88,12 +92,12 @@ export const recipes: Recipe[] = [
     ],
     outputs: [{ resourceId: 'flask_blue', amount: 1 }],
     energy: 20,
-    description: 'Стеклодувная фляга, +30 энергии. Одна доза.',
+    description: 'Редакционное описание стеклодувной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
     narrative: 'Стеклодув выдувает флягу одним дыханием. Синий цвет — от гема, растворённого в расплаве. Жидкость внутри прохладная даже в жару.',
-    skrDiscount: true
   },
   {
     id: 'craft_flask_yellow',
+    verification: 'editorial',
     name: 'Жёлтая фляга',
     station: 'glassworks',
     inputs: [
@@ -103,11 +107,12 @@ export const recipes: Recipe[] = [
     ],
     outputs: [{ resourceId: 'flask_yellow', amount: 1 }],
     energy: 25,
-    description: 'Янтарная фляга, +50 энергии. Одна доза.',
+    description: 'Редакционное описание янтарной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
     narrative: 'Янтарное стекло гуще, тяжелее. Жидкость внутри вязкая, как мёд. Стеклодув говорит: эта фляга для дней, когда нужно сделать невозможное.'
   },
   {
     id: 'craft_flask_green',
+    verification: 'editorial',
     name: 'Зелёная фляга',
     station: 'alchemist',
     inputs: [
@@ -117,13 +122,14 @@ export const recipes: Recipe[] = [
     ],
     outputs: [{ resourceId: 'flask_green', amount: 1 }],
     energy: 35,
-    description: 'Полное восстановление энергии до 100. Одна доза. Редкий рецепт.',
+    description: 'Редакционное описание полного восстановления энергии. Точный эффект и рецепт не подтверждены on-chain.',
     narrative: 'Алхимик работает в тишине, без помощников. Зелёная жидкость светится изнутри слабо, но этого достаточно, чтобы читать при ней. Говорят, в ней растворён лист первого дерева мастерской.'
   },
   
   // === POTATO-РЕЦЕПТЫ (кросс-игровые) ===
   {
     id: 'potato_feast',
+    verification: 'editorial',
     name: 'Картофельный пир',
     station: 'oven',
     inputs: [
@@ -139,6 +145,7 @@ export const recipes: Recipe[] = [
   },
   {
     id: 'potato_ritual',
+    verification: 'editorial',
     name: 'Ритуал обмена',
     station: 'workbench',
     inputs: [
@@ -153,6 +160,7 @@ export const recipes: Recipe[] = [
   },
   {
     id: 'potato_boost',
+    verification: 'editorial',
     name: 'Ускорение сезона',
     station: 'alchemist',
     inputs: [

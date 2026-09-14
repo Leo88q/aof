@@ -14,15 +14,15 @@ export function RepairPage() {
   const { address } = useWalletStore();
   const [tools, setTools] = useState<any[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [mints, setMints] = useState({ food: "", wood: "", stone: "" });
+  const [mints, setMints] = useState({ wood: "", stone: "" });
   const [amount, setAmount] = useState(1);
-  const [quote, setQuote] = useState<{ stone: number; wood: number; food: number } | null>(null);
+  const [quote, setQuote] = useState<{ stone: number; wood: number } | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
   const [txStatus, flash] = useFlash();
 
   useEffect(() => {
     api.query.config()
-      .then((c: any) => setMints({ food: c?.foodMint || "", wood: c?.woodMint || "", stone: c?.stoneMint || "" }))
+      .then((c: any) => setMints({ wood: c?.woodMint || "", stone: c?.stoneMint || "" }))
       .catch(() => {});
   }, []);
 
@@ -56,21 +56,21 @@ export function RepairPage() {
   async function doRepair() {
     if (!address) return flash("❌ Подключите кошелёк (кнопка вверху)");
     if (!tool) return flash("❌ Выберите инструмент");
-    if (!mints.stone || !mints.wood || !mints.food) return flash("❌ Минты ресурсов не загружены");
+    if (!mints.stone || !mints.wood) return flash("❌ Минты ресурсов не загружены");
     if (amt <= 0) return flash("❌ Прочность уже полная");
     const q = quote;
     try {
       flash("Чиним…");
       const resp = await api.tools.repair({
         user: address, mint: tool.mint,
-        stoneMint: mints.stone, woodMint: mints.wood, foodMint: mints.food,
+        stoneMint: mints.stone, woodMint: mints.wood,
         amount: amt,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
         flash(`✅ Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
         setReceipt(
-          `Списано: ${fmtNum((q?.stone ?? 0) / D9)} 🪨  +  ${fmtNum((q?.wood ?? 0) / D9)} 🪵  +  ${fmtNum((q?.food ?? 0) / D9)} 🌾`
+          `Списано: ${fmtNum((q?.stone ?? 0) / D9)} 🪨  +  ${fmtNum((q?.wood ?? 0) / D9)} 🪵`
         );
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(loadTools, 2500);
@@ -85,7 +85,7 @@ export function RepairPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        Прочность тратится майнингом. Ремонт жжёт три ресурса: камень, дерево и зерно. Чем реже инструмент — тем дороже.
+        Прочность тратится майнингом. Ремонт атомарно списывает камень и дерево. Чем реже инструмент — тем дороже.
       </p>
 
       {txStatus && (
@@ -170,11 +170,11 @@ export function RepairPage() {
                 </div>
               </div>
 
-              {/* Калькулятор стоимости: три ресурса */}
+              {/* Калькулятор стоимости: два ресурса */}
               <div className="mt-4 rounded-xl bg-soil-800/70 border border-straw/15 p-3">
                 <p className="text-straw text-[10px] uppercase tracking-wide mb-2">Стоимость ремонта</p>
                 {quote ? (
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-2 gap-2 text-center">
                     <div>
                       <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.stone / D9)}</p>
                       <p className="text-straw text-[10px]">🪨 Камень</p>
@@ -182,10 +182,6 @@ export function RepairPage() {
                     <div>
                       <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.wood / D9)}</p>
                       <p className="text-straw text-[10px]">🪵 Дерево</p>
-                    </div>
-                    <div>
-                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.food / D9)}</p>
-                      <p className="text-straw text-[10px]">🌾 Зерно</p>
                     </div>
                   </div>
                 ) : (

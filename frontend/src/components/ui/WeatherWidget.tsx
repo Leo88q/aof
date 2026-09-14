@@ -55,13 +55,21 @@ export function WeatherWidget() {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading || !current) {
+  if (loading) {
     return (
       <Card className="p-4 bg-soil-800 border border-straw/10">
         <div className="animate-pulse space-y-2">
           <div className="h-6 bg-soil-700 rounded"></div>
           <div className="h-4 bg-soil-700 rounded"></div>
         </div>
+      </Card>
+    );
+  }
+
+  if (!current) {
+    return (
+      <Card className="p-4 bg-soil-800 border border-amber-500/20">
+        <p className="text-amber-400 text-xs">Погода недоступна из канонической сети</p>
       </Card>
     );
   }

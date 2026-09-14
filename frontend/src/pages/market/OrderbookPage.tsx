@@ -9,6 +9,7 @@ import { DepthChart } from "../../components/charts/DepthChart";
 import {
   ALL_TRADE_RESOURCES, fmtSol, shortAddr, toNum, useTreasury, useFlash,
 } from "../../lib/marketUtils";
+import { loadMints } from "../../lib/mints";
 
 // Ресурсы — SPL 9 decimals: 1 единица = 1e9 базовых
 const fmtRes = (v: any) => (toNum(v) / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -17,6 +18,7 @@ export function OrderbookPage() {
   const { address } = useWalletStore();
   const treasury = useTreasury();
   const [res, setRes] = useState(ALL_TRADE_RESOURCES[0]);
+  const [resources, setResources] = useState(ALL_TRADE_RESOURCES.filter((r) => r.mint));
   const [book, setBook] = useState<{ buy: any[]; sell: any[] }>({ buy: [], sell: [] });
   const [loading, setLoading] = useState(false);
   const [txStatus, flash] = useFlash();
@@ -37,7 +39,20 @@ export function OrderbookPage() {
     }
   }, []);
 
-  useEffect(() => { load(res.mint); }, [res, load]);
+  useEffect(() => {
+    loadMints().then((mints) => {
+      const loaded = ALL_TRADE_RESOURCES
+        .map((resource) => ({ ...resource, mint: mints[resource.key as keyof typeof mints] || "" }))
+        .filter((resource) => resource.mint);
+      setResources(loaded);
+      if (loaded.length > 0) setRes((current) => loaded.find((r) => r.key === current.key) || loaded[0]);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (res.mint) load(res.mint);
+    else setBook({ buy: [], sell: [] });
+  }, [res, load]);
 
   // Спрос (покупка) — семечки 🌱, предложение (продажа) — корзины 🧺 (предметный язык ТЗ §0)
   const bids = useMemo(
@@ -55,6 +70,7 @@ export function OrderbookPage() {
 
   async function place(side: "buy" | "sell") {
     if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!res.mint) return flash("❌ Mint ресурсов ещё не инициализирован");
     const priceLam = Math.round(parseFloat(pricePerUnit) * 1e9);
     const amt = Math.round(parseFloat(amount) * 1e9);
     if (!isFinite(priceLam) || priceLam <= 0) return flash("❌ Укажите цену за единицу в SOL");
@@ -143,14 +159,16 @@ export function OrderbookPage() {
           }}
           className="w-full bg-soil-800 text-parchment text-sm rounded-xl border border-straw/20 px-4 py-3 focus:border-wheat-500 focus:outline-none transition"
         >
-          {ALL_TRADE_RESOURCES.map((r) => (
+          {resources.map((r) => (
             <option key={r.key} value={r.key}>
               {r.icon} {r.label}
             </option>
           ))}
         </select>
         <div className="mt-2 text-xs text-straw">
-          Выбрано: <span className="text-parchment font-bold">{res.icon} {res.label}</span>
+          {resources.length === 0
+            ? "Ресурсные mint-ы не инициализированы — торговля отключена."
+            : <>Выбрано: <span className="text-parchment font-bold">{res.icon} {res.label}</span></>}
         </div>
       </div>
 

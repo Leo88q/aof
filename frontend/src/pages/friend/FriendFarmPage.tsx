@@ -19,8 +19,8 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
   const { pop } = useNav();
   const [farm, setFarm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [visitsLeft, setVisitsLeft] = useState<number>(5);
-  const [txStatus, flash] = useFlash();
+  const [visitsLeft, setVisitsLeft] = useState<number | null>(null);
+  const [txStatus] = useFlash();
 
   useEffect(() => {
     if (!address) {
@@ -35,44 +35,10 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
     // Загружаем лимит визитов
     if (myAddress) {
       api.neighbors.list(myAddress)
-        .then((data: any) => setVisitsLeft(data?.visitsLeftToday ?? 5))
+        .then((data: any) => setVisitsLeft(data?.visitsLeftToday ?? null))
         .catch(() => {});
     }
   }, [address, myAddress]);
-
-  async function doWater() {
-    if (!myAddress) return flash("❌ Подключите кошелёк");
-    if (!address) return;
-    try {
-      flash("Поливаем ферму…");
-      const resp = await api.friend.water({ owner: address, waterer: myAddress });
-      if (resp.success) {
-        flash("✅ Ферма полита! Хозяин получит +1% к урожаю, вы +5 trust");
-        setVisitsLeft((v) => Math.max(0, v - 1));
-      } else {
-        flash(`❌ ${resp.error || "Не удалось полить"}`);
-      }
-    } catch (e: any) {
-      flash(`❌ ${e.message}`);
-    }
-  }
-
-  async function doHelpRepair() {
-    if (!myAddress) return flash("❌ Подключите кошелёк");
-    if (!address) return;
-    try {
-      flash("Помогаем с ремонтом…");
-      const resp = await api.neighbors.visit({ visitor: myAddress, host: address, action: "help_repair" });
-      if (resp.visit) {
-        flash("✅ Помощь оказана! Хозяин получит ускорение ремонта, вы +3 trust");
-        setVisitsLeft((v) => Math.max(0, v - 1));
-      } else {
-        flash(`❌ ${resp.error || "Не удалось помочь"}`);
-      }
-    } catch (e: any) {
-      flash(`❌ ${e.message}`);
-    }
-  }
 
   if (loading) return (
     <div className="p-4">
@@ -113,7 +79,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-gold">{visitsLeft}</div>
+          <div className="text-2xl font-bold text-gold">{visitsLeft ?? "—"}</div>
           <div className="text-xs text-straw">визитов</div>
         </div>
       </div>
@@ -172,26 +138,10 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
       {/* Помочь другу */}
       <Card>
         <h2 className="text-parchment font-semibold text-sm mb-2">🤝 Помочь другу</h2>
-        <p className="text-straw text-xs mb-3">
-          Помогайте друзьям — получайте trust points, хозяин получает бонусы.
-          Лимит: <span className="text-wheat-500 font-semibold">{visitsLeft} визитов сегодня</span>.
+        <p className="text-amber-400 text-xs">
+          Социальные бонусы временно недоступны: канонические on-chain эффекты
+          полива и ремонта ещё не развернуты.
         </p>
-        <div className="space-y-2">
-          <button onClick={doWater} disabled={!myAddress || myAddress === address || visitsLeft === 0}
-            className="w-full py-2.5 rounded-xl bg-sprout-600 text-white font-semibold text-sm disabled:opacity-40">
-            💧 Полить ферму (+1% урожай хозяину, +5 trust вам)
-          </button>
-          <button onClick={doHelpRepair} disabled={!myAddress || myAddress === address || visitsLeft === 0}
-            className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
-            🔧 Помочь с ремонтом (+ускорение хозяину, +3 trust вам)
-          </button>
-        </div>
-        {myAddress === address && (
-          <p className="text-straw text-xs text-center mt-2">Нельзя помогать самому себе</p>
-        )}
-        {visitsLeft === 0 && (
-          <p className="text-straw text-xs text-center mt-2">Лимит визитов исчерпан. Приходите завтра!</p>
-        )}
       </Card>
     </div>
   );

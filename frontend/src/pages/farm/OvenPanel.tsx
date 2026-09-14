@@ -6,10 +6,11 @@ import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
 
+// Must match aof-core/src/instructions/start_baking.rs and constants.rs.
 const OVEN_SIZES = {
-  small:  { label: "Малая",  batchSize: 1, flour: 3,  water: 1, wood: 2, coal: 0, bread: 2,  time: 1800, icon: "🔥" },
-  medium: { label: "Средняя", batchSize: 2, flour: 10, water: 3, wood: 0, coal: 2, bread: 8,  time: 3000, icon: "🔥🔥" },
-  large:  { label: "Большая", batchSize: 4, flour: 24, water: 6, wood: 0, coal: 5, bread: 20, time: 4800, icon: "🔥🔥🔥" },
+  small:  { label: "Малая",  batchSize: 1, flour: 4,  water: 3, wood: 5,  coal: 2,  bread: 2,  time: 7200,  icon: "🔥" },
+  medium: { label: "Средняя", batchSize: 2, flour: 12, water: 8, wood: 12, coal: 5,  bread: 7,  time: 18000, icon: "🔥🔥" },
+  large:  { label: "Большая", batchSize: 3, flour: 28, water: 18, wood: 25, coal: 10, bread: 18, time: 36000, icon: "🔥🔥🔥" },
 };
 
 const FUEL_KIND = { wood: 0, coal: 1 };
@@ -40,6 +41,30 @@ export function OvenPanel() {
     return () => clearInterval(interval);
   }, [ovenState]);
 
+  async function loadState() {
+    if (!walletAddr) return;
+    try {
+      const state: any = await api.query.ovenState(walletAddr);
+      if (!state?.inProgress) {
+        setOvenState(null);
+        setTimeLeft(0);
+        return;
+      }
+      const readyAt = Number(state.readyAt || 0) * 1000;
+      setOvenState({ active: true, readyAt, breadReady: Number(state.outputBread || 0) });
+      setTimeLeft(Math.max(0, Math.floor((readyAt - Date.now()) / 1000)));
+    } catch {
+      setOvenState(null);
+      setTimeLeft(0);
+    }
+  }
+
+  useEffect(() => {
+    loadState();
+    const interval = setInterval(loadState, 5000);
+    return () => clearInterval(interval);
+  }, [walletAddr]);
+
   async function startBaking() {
     if (!walletAddr) return;
     const m = OVEN_SIZES[size];
@@ -65,12 +90,7 @@ export function OvenPanel() {
       const r = await handleTxResponse(resp);
       if (r.success) {
         toast.show(`🔥 Печь запущена! ${m.flour} муки → ${m.bread} хлеба`);
-        setOvenState({
-          active: true,
-          readyAt: Date.now() + m.time * 1000,
-          breadReady: m.bread,
-        });
-        setTimeLeft(m.time);
+        await loadState();
       } else {
         toast.show(`❌ ${r.error || "Ошибка"}`);
       }
@@ -94,8 +114,7 @@ export function OvenPanel() {
       const r = await handleTxResponse(resp);
       if (r.success) {
         toast.show(`🍞 Собрано ${ovenState.breadReady} хлеба!`);
-        setOvenState(null);
-        setTimeLeft(0);
+        await loadState();
       } else {
         toast.show(`❌ ${r.error || "Ошибка"}`);
       }

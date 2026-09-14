@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
-import { handleTxResponse } from "../../lib/txFlow";
 import { Card } from "../../components/ui/Card";
 import { TrustRing } from "../../components/ui/TrustRing";
 import { useWalletStr } from "../../lib/useWalletStr";
@@ -77,10 +76,8 @@ function computeBadges(playerData: any): string[] {
 export function ProfileHome() {
   const user = useWalletStr();
   const { push } = useNav();
-  const [trust, setTrust] = useState<any>({ score: 0, tier: 1 });
+  const [trust, setTrust] = useState<any>(null);
   const [playerData, setPlayerData] = useState<any>(null);
-  const [showRebirth, setShowRebirth] = useState(false);
-  const [rebirthStatus, setRebirthStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -89,9 +86,9 @@ export function ProfileHome() {
     api.trust
       .get(user)
       .then((t: any) => {
-        setTrust({ score: t?.score ?? 0, tier: t?.tier ?? 1 });
+        setTrust({ score: t.score, tier: t.tier });
       })
-      .catch(() => {});
+      .catch(() => setTrust(null));
     
     // Загружаем данные игрока (для ветерана/поколения/бейджей)
     api.query
@@ -101,30 +98,8 @@ export function ProfileHome() {
   }, [user]);
 
   // Вычисляем статус ветерана и бейджи на основе реальных данных
-  const veteranStatus = computeVeteranStatus(playerData);
-  const badges = computeBadges(playerData);
-
-  async function handleRebirth() {
-    if (!user) {
-      setRebirthStatus("❌ Подключи кошелёк (кнопка вверху)");
-      setTimeout(() => setRebirthStatus(null), 4000);
-      return;
-    }
-    try {
-      setRebirthStatus("Готовим транзакцию...");
-      const resp = await api.rebirth.do({ user });
-      const result = await handleTxResponse(resp);
-      if (result.success) {
-        setRebirthStatus(`✅ Перерождение выполнено: ${result.signature?.slice(0, 8)}...`);
-        setShowRebirth(false);
-      } else {
-        setRebirthStatus(`❌ ${result.error}`);
-      }
-    } catch (e: any) {
-      setRebirthStatus(`❌ ${e.message}`);
-    }
-    setTimeout(() => setRebirthStatus(null), 5000);
-  }
+  const veteranStatus = playerData ? computeVeteranStatus(playerData) : null;
+  const badges = playerData ? computeBadges(playerData) : [];
 
   return (
     <div className="p-4 pt-6 pb-24">
@@ -138,17 +113,21 @@ export function ProfileHome() {
       {/* Шапка: аватар + имя + титул + бейджи (на основе реальных данных) */}
       <Card className="mb-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-wheat-600 to-soil-700 flex items-center justify-center text-3xl">
-          {veteranStatus.emoji}
+          {veteranStatus?.emoji ?? "❔"}
         </div>
         <div className="flex-1">
           <h2 className="text-parchment font-semibold">
             {user ? `${user.slice(0, 4)}...${user.slice(-4)}` : "Гость"}
           </h2>
-          <p className="text-wheat-500 text-sm">
-            {veteranStatus.title} • Поколение {veteranStatus.generation}
-          </p>
+          {veteranStatus ? (
+            <p className="text-wheat-500 text-sm">
+              {veteranStatus.title} • Поколение {veteranStatus.generation}
+            </p>
+          ) : (
+            <p className="text-amber-400 text-sm">Статус игрока недоступен</p>
+          )}
           <div className="flex gap-1 mt-2">
-            {badges.length > 0 ? (
+            {playerData ? (badges.length > 0 ? (
               badges.map((b, i) => (
                 <motion.span
                   key={i}
@@ -163,6 +142,8 @@ export function ProfileHome() {
               ))
             ) : (
               <span className="text-straw text-xs">Пока нет достижений</span>
+            )) : (
+              <span className="text-straw text-xs">Достижения недоступны</span>
             )}
           </div>
         </div>
@@ -194,18 +175,28 @@ export function ProfileHome() {
           <TrustPage />
         </>
       ))}>
-        <div className="flex items-center gap-4">
-          <TrustRing score={trust.score} tier={trust.tier} />
-          <div className="flex-1">
-            <h3 className="text-parchment font-semibold text-sm mb-2">Индекс доверия</h3>
-            <div className="space-y-2 text-xs text-straw">
-              <p>🎯 Тир: <span className="text-wheat-500">{trust.tier}</span></p>
-              <p>💰 Лимит сессии: <span className="text-parchment">по тиру (1–100 SOL)</span></p>
-              <p>🤖 Автоторговля: <span className="text-sprout-500">через сессионный ключ</span></p>
+        {trust ? (
+          <div className="flex items-center gap-4">
+            <TrustRing score={trust.score} tier={trust.tier} />
+            <div className="flex-1">
+              <h3 className="text-parchment font-semibold text-sm mb-2">Индекс доверия</h3>
+              <div className="space-y-2 text-xs text-straw">
+                <p>🎯 Тир: <span className="text-wheat-500">{trust.tier}</span></p>
+                <p>💰 Лимит сессии: <span className="text-parchment">недоступен</span></p>
+                <p>🤖 Автоторговля: <span className="text-straw">недоступна до проверки индекса</span></p>
+              </div>
             </div>
+            <span className="text-2xl text-straw">→</span>
           </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-parchment font-semibold text-sm mb-1">Индекс доверия</h3>
+              <p className="text-amber-400 text-xs">Недоступен до развёртывания канонического индексатора</p>
+            </div>
+            <span className="text-2xl text-straw">→</span>
+          </div>
+        )}
       </Card>
 
       {/* === ПОРЯДОК: Сезон пасс → Привилегии → Перерождение === */}
@@ -380,65 +371,16 @@ export function ProfileHome() {
             <h3 className="text-gold font-semibold">🔄 Перерождение</h3>
             <p className="text-straw text-xs mt-1">Сброс прогресса за постоянный бонус +2%</p>
           </div>
-          <button
-            onClick={() => setShowRebirth(true)}
-            className="px-4 py-2 rounded-2xl bg-gold text-soil-950 font-semibold text-sm active:scale-95 transition-transform"
-          >
-            Возродиться
-          </button>
+          <span className="px-4 py-2 rounded-2xl bg-soil-800 text-straw text-sm">
+            Временно отключено
+          </span>
         </div>
       </Card>
 
-      {/* Модалка подтверждения ребёрта */}
-      <AnimatePresence>
-        {showRebirth && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowRebirth(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="bg-soil-850 rounded-3xl p-6 max-w-sm w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center mb-4">
-                <span className="text-5xl">🔄</span>
-                <h3 className="text-parchment font-bold text-lg mt-3">Перерождение</h3>
-                <p className="text-straw text-sm mt-2">
-                  Ребёрт платный (цена и кулдаун проверяются контрактом).
-                  Ты получишь постоянный бонус +2% ко всем доходам.
-                </p>
-              </div>
-              {rebirthStatus && (
-                <p className="text-xs text-center mb-3 text-parchment">{rebirthStatus}</p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowRebirth(false)}
-                  className="flex-1 py-3 rounded-2xl bg-soil-800 text-parchment active:scale-95 transition-transform"
-                >
-                  Отмена
-                </button>
-                <button
-                  onClick={handleRebirth}
-                  className="flex-1 py-3 rounded-2xl bg-gold text-soil-950 font-semibold active:scale-95 transition-transform"
-                >
-                  Возродиться
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {rebirthStatus && !showRebirth && (
-        <p className="text-xs text-center mt-3 text-parchment">{rebirthStatus}</p>
-      )}
-
+      <p className="text-xs text-straw mt-3">
+        Rebirth отключён до реализации атомарного сброса сезонного прогресса и
+        всех заявленных списаний в контракте. Подпись и списание SOL недоступны.
+      </p>
     </div>
   );
 }
