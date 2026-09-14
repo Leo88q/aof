@@ -367,60 +367,58 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-idl.log "Anchor build (on-chain programs)" 10
 
-      - name: Anchor build (aof-core, advisory)
-        # aof-core lives outside programs/, so Anchor only picks it up when
-        # [workspace] members is declared. It is not declared yet, which means
-        # `anchor build` has been silently skipping the program that
-        # tests/aof_core.ts loads (target/idl/aof_core.json). Build it here with
-        # a runner-local Anchor.toml override to learn whether it still compiles
-        # before making that config change permanent.
-        id: core_build
-        continue-on-error: true
+      - name: Verify [workspace] members covers every program crate
+        # aof-core lives outside programs/, so Anchor only built it once
+        # [workspace] members was committed. That happened after the advisory
+        # build proved aof-core still compiles (run 34900235208). This step keeps
+        # the list honest: a new program crate that is not registered would
+        # silently escape the build gate, which is exactly how aof-core went
+        # uncompiled while tests/aof_core.ts kept loading its IDL.
+        id: members_check
         run: |
           set -uo pipefail
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          : > /tmp/anchor-build-core.log
-          python3 - <<'PY' 2>&1 | tee -a /tmp/anchor-build-core.log
-          import pathlib
-          p = pathlib.Path("Anchor.toml")
-          s = p.read_text()
-          if "[workspace]" in s:
-              print("Anchor.toml already declares [workspace]")
-          else:
-              members = ('members = ["aof-core", "programs/aof-liquidity", '
-                         '"programs/aof-market", "programs/aof-quests", '
-                         '"programs/aof-rebirth", "programs/aof-session-keys"]')
-              s = s.replace("[features]", "[workspace]\n" + members + "\n\n[features]", 1)
-              p.write_text(s)
-              print("injected [workspace] members for this advisory build only")
-          PY
-          # --no-idl on purpose: the question this advisory answers is "does
-          # aof-core still compile?", which is what decides whether
-          # [workspace] members can be committed to Anchor.toml. IDL generation
-          # is blocked upstream (see the IDL step) and would hide the answer.
-          anchor build --help 2>&1 | tee -a /tmp/anchor-build-core.log || true
-          rc=0
-          RUSTUP_TOOLCHAIN="${RUST_VERSION}" anchor build --program-name aof_core --no-idl --skip-lint 2>&1 \
-            | tee -a /tmp/anchor-build-core.log || rc=$?
-          if [ "$rc" -ne 0 ] && grep -qE "unexpected argument|error: Found argument|unrecognized|unknown option" /tmp/anchor-build-core.log; then
-            echo "--skip-lint not supported by this CLI - retrying with --no-idl only" | tee -a /tmp/anchor-build-core.log
-            rc=0
-            RUSTUP_TOOLCHAIN="${RUST_VERSION}" anchor build --program-name aof_core --no-idl 2>&1 \
-              | tee -a /tmp/anchor-build-core.log || rc=$?
-          fi
-          git checkout -- Anchor.toml
-          echo "aof-core advisory build exit code: $rc"
-          exit "$rc"
+          python3 - <<'PY'
+          import pathlib, re, sys
 
-      - name: Publish aof-core advisory log
-        if: always() && steps.core_build.outcome != 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-build-core.log "Anchor build (on-chain programs)" 10
+          cfg = pathlib.Path("Anchor.toml").read_text()
+          m = re.search(r"^\[workspace\][^\[]*?members\s*=\s*\[(.*?)\]", cfg, re.M | re.S)
+          if not m:
+              print("::error::Anchor.toml has no [workspace] members - aof-core, which lives "
+                    "outside programs/, would never be built")
+              sys.exit(1)
+
+          members = set(re.findall(r'"([^"]+)"', m.group(1)))
+          on_disk = {"aof-core"} | {
+              f"programs/{d.name}" for d in sorted(pathlib.Path("programs").iterdir())
+              if (d / "Cargo.toml").exists()
+          }
+          print(f"declared members     : {sorted(members)}")
+          print(f"program crates on disk: {sorted(on_disk)}")
+
+          bad = False
+          for missing in sorted(on_disk - members):
+              print(f"::error::{missing} has a Cargo.toml but is not in [workspace] members - "
+                    "it would never be built or tested")
+              bad = True
+          for stale in sorted(members - on_disk):
+              print(f"::warning::{stale} is listed in [workspace] members but has no Cargo.toml")
+          if not bad:
+              print("[ok] every program crate on disk is built by `anchor build`")
+          sys.exit(1 if bad else 0)
+          PY
 
       - name: Build artifacts
         run: |
+          # actions/upload-artifact@v4 derives the artifact root from the least
+          # common ancestor of the files that actually matched. When the IDL
+          # step produced nothing, only target/deploy/* matched and the .so files
+          # ended up at the artifact root, so `anchor test --skip-build` could
+          # not find them after download. This marker keeps the root at target/.
+          mkdir -p target
+          echo "artifact root marker for actions/upload-artifact@v4" > target/artifact-root.txt
           ls -l target/deploy/*.so target/idl/*.json 2>/dev/null || true
+          echo "--- artifact contents ---"
+          find target -maxdepth 2 \( -name '*.so' -o -name '*.json' -o -name '*.ts' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort || true
 
       - name: Report IDL drift vs committed backend IDL
         # Advisory only: the backend ships its own copy of the market IDL under
@@ -483,6 +481,7 @@ jobs:
         with:
           name: anchor-target
           path: |
+            target/artifact-root.txt
             target/deploy/*.so
             target/deploy/*-keypair.json
             target/idl/*.json
@@ -617,10 +616,13 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Restore build artifacts
+        # Download into the workspace root: the artifact's root is target/ (kept
+        # there by the marker file the programs job uploads), so restoring into
+        # `target` would produce target/target/deploy/*.so.
         uses: actions/download-artifact@v4
         with:
           name: anchor-target
-          path: target
+          path: .
 
       - name: Create throwaway provider wallet
         run: |
@@ -635,9 +637,15 @@ jobs:
         # Report the real reason instead and skip; the whole job is advisory.
         id: idl_check
         run: |
+          # `set +e` matters here: GitHub Actions invokes run steps with
+          # `bash -e {0}`, and `find target/idl` fails when the advisory IDL
+          # build produced nothing. Under -e that aborted this step with exit
+          # code 1 instead of reporting the reason and skipping cleanly.
           set -uo pipefail
+          set +e
           ls -lR target 2>/dev/null | head -60 || true
           count=$(find target/idl -maxdepth 1 -name '*.json' 2>/dev/null | wc -l | tr -d ' ')
+          count=${count:-0}
           echo "restored IDL files: $count"
           if [ "$count" -eq 0 ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"

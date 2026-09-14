@@ -1,6 +1,15 @@
 [toolchain]
 anchor_version = "0.30.1"
 
+[workspace]
+# aof-core lives outside programs/, so Anchor only builds it when it is
+# listed here. Committed after CI proved `anchor build --program-name aof_core
+# --no-idl` succeeds on the documented toolchain (Agave 4.2.1 / rustc 1.89.0 /
+# Anchor 0.30.1, run 34900235208). The CI job `programs` verifies that this
+# list keeps covering every program crate on disk.
+members = ["aof-core", "programs/aof-liquidity", "programs/aof-market",
+           "programs/aof-quests", "programs/aof-rebirth", "programs/aof-session-keys"]
+
 [features]
 resolution = true
 skip-lint = false
