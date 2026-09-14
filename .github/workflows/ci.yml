@@ -1,0 +1,313 @@
+name: CI
+
+# Why this workflow exists:
+#   The on-chain programs can only be compiled with the Solana SBPF toolchain
+#   (cargo-build-sbf) and the Anchor CLI, and the backend needs the Prisma query
+#   engine. Both are large binary downloads, so builds must run on CI runners
+#   instead of every developer machine / sandbox.
+#
+# Toolchain pins (do not bump casually):
+#   * Solana CLI 1.18.26 matches Cargo.lock (solana-program 1.18.26).
+#   * Rust 1.79.0 is the last toolchain that builds solana-program 1.18.x
+#     cleanly; rustc >= 1.80 breaks the frozen-abi/OnceCell code paths.
+#   * Anchor CLI 0.30.2 is used because coral-xyz/anchor published no binary
+#     asset for v0.30.1; the crates stay on anchor-lang 0.30.1 as declared in
+#     Anchor.toml. The job falls back to a source build of exactly 0.30.1 if the
+#     prebuilt binary cannot be fetched.
+
+on:
+  push:
+    branches:
+      - main
+      - "arena/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SOLANA_VERSION: "1.18.26"
+  ANCHOR_CLI_VERSION: "0.30.2"
+  ANCHOR_LANG_VERSION: "0.30.1"
+  RUST_VERSION: "1.79.0"
+  NODE_VERSION: "20"
+  # Anchor.toml points the provider at a gitignored devnet keypair. CI creates a
+  # throwaway one so anchor build/test never depend on a developer's secrets.
+  CI_WALLET_PATH: "solana/keys/aof-authority-devnet.json"
+
+jobs:
+  programs:
+    name: Anchor build (on-chain programs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache cargo + SBPF target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.SOLANA_VERSION }}-
+
+      - name: Cache Solana CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana/install/active_release
+          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install Rust ${{ env.RUST_VERSION }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install "${RUST_VERSION}" --profile minimal --component rustfmt
+          rustup default "${RUST_VERSION}"
+          rustc --version
+          cargo --version
+
+      - name: Install Solana CLI ${{ env.SOLANA_VERSION }}
+        run: |
+          set -euo pipefail
+          if [ ! -x "$HOME/.local/share/solana/install/active_release/bin/solana" ]; then
+            sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          fi
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor CLI
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          url="https://github.com/coral-xyz/anchor/releases/download/v${ANCHOR_CLI_VERSION}/anchor-${ANCHOR_CLI_VERSION}-x86_64-unknown-linux-gnu"
+          if curl -sSfL --retry 3 -o /tmp/anchor "$url"; then
+            chmod +x /tmp/anchor
+            sudo mv /tmp/anchor /usr/local/bin/anchor
+          else
+            echo "Prebuilt Anchor CLI unavailable, building v${ANCHOR_LANG_VERSION} from source"
+            cargo install --git https://github.com/coral-xyz/anchor \
+              --tag "v${ANCHOR_LANG_VERSION}" anchor-cli --locked
+          fi
+          anchor --version
+          cargo-build-sbf --version
+
+      - name: Create throwaway provider wallet
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          mkdir -p "$(dirname "$CI_WALLET_PATH")"
+          solana-keygen new --silent --no-bip39-passphrase --force -o "$CI_WALLET_PATH"
+          ls -l "$CI_WALLET_PATH"
+
+      - name: Anchor build
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build
+
+      - name: Build artifacts
+        run: |
+          ls -l target/deploy/*.so target/idl/*.json 2>/dev/null || true
+
+      - name: Report IDL drift vs committed backend IDL
+        # Advisory only: the backend ships its own copy of the market IDL under
+        # aof_backend/src/idl/. If the generated IDL diverges, the backend can be
+        # calling instructions/accounts that no longer exist. Kept non-blocking
+        # until the copies are re-synced deliberately.
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sys
+
+          generated_dir = pathlib.Path("target/idl")
+          committed_dir = pathlib.Path("aof_backend/src/idl")
+          drift = False
+
+          for gen in sorted(generated_dir.glob("*.json")):
+              ref = committed_dir / gen.name
+              g = json.loads(gen.read_text())
+              g_ix = {i["name"]: [(a["name"], json.dumps(a["type"], sort_keys=True)) for a in i.get("args", [])]
+                      for i in g.get("instructions", [])}
+              if not ref.exists():
+                  print(f"[drift] {gen.name}: generated but no committed copy at {ref}")
+                  drift = True
+                  continue
+              r = json.loads(ref.read_text())
+              r_ix = {i["name"]: [(a["name"], json.dumps(a["type"], sort_keys=True)) for a in i.get("args", [])]
+                      for i in r.get("instructions", [])}
+              added = sorted(set(g_ix) - set(r_ix))
+              removed = sorted(set(r_ix) - set(g_ix))
+              changed = sorted(n for n in set(g_ix) & set(r_ix) if g_ix[n] != r_ix[n])
+              if added or removed or changed:
+                  drift = True
+                  print(f"[drift] {gen.name}:")
+                  for n in added:
+                      print(f"    + instruction {n}{g_ix[n]}")
+                  for n in removed:
+                      print(f"    - instruction {n} (still referenced by committed IDL)")
+                  for n in changed:
+                      print(f"    ~ instruction {n}\n        generated: {g_ix[n]}\n        committed: {r_ix[n]}")
+              else:
+                  print(f"[ok] {gen.name}: instruction names and arg types match the committed IDL")
+
+          if drift:
+              print("::warning::IDL drift detected between target/idl and aof_backend/src/idl")
+              sys.exit(1)
+          PY
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: anchor-target
+          path: |
+            target/deploy/*.so
+            target/deploy/*-keypair.json
+            target/idl/*.json
+            target/types/*.ts
+          if-no-files-found: error
+          retention-days: 7
+
+  backend:
+    name: Backend build + self-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: aof_backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: aof_backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build (prisma generate + tsc)
+        run: npm run build
+
+      - name: Self-test - wallet proof
+        run: npm run test:wallet-proof
+
+      - name: Self-test - resource registry
+        run: npm run test:resource-registry
+
+      - name: Self-test - security invariants
+        run: npm run test:security-invariants
+
+  anchor-test:
+    name: Anchor test (local validator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: programs
+    # Informational for now: the aof-core suite predates the hardening work and
+    # may still fail on assertions unrelated to compilation. Promote to a
+    # blocking gate once it is green.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Solana CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana/install/active_release
+          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install Rust ${{ env.RUST_VERSION }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install "${RUST_VERSION}" --profile minimal
+          rustup default "${RUST_VERSION}"
+
+      - name: Install Solana CLI ${{ env.SOLANA_VERSION }}
+        run: |
+          set -euo pipefail
+          if [ ! -x "$HOME/.local/share/solana/install/active_release/bin/solana" ]; then
+            sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          fi
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor CLI
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          url="https://github.com/coral-xyz/anchor/releases/download/v${ANCHOR_CLI_VERSION}/anchor-${ANCHOR_CLI_VERSION}-x86_64-unknown-linux-gnu"
+          if curl -sSfL --retry 3 -o /tmp/anchor "$url"; then
+            chmod +x /tmp/anchor
+            sudo mv /tmp/anchor /usr/local/bin/anchor
+          else
+            cargo install --git https://github.com/coral-xyz/anchor \
+              --tag "v${ANCHOR_LANG_VERSION}" anchor-cli --locked
+          fi
+          anchor --version
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Restore build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: anchor-target
+          path: target
+
+      - name: Create throwaway provider wallet
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          mkdir -p "$(dirname "$CI_WALLET_PATH")"
+          solana-keygen new --silent --no-bip39-passphrase --force -o "$CI_WALLET_PATH"
+
+      - name: Anchor test
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor test --skip-build
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Informational: react-scripts fails the build on ESLint warnings when
+    # CI=true, so warnings are downgraded until the lint debt is cleared.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        env:
+          CI: "false"
+        run: npm run build
