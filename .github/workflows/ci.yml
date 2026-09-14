@@ -550,11 +550,13 @@ jobs:
 
       - name: Build artifacts
         run: |
-          # actions/upload-artifact@v4 derives the artifact root from the least
-          # common ancestor of the files that actually matched. When the IDL
-          # step produced nothing, only target/deploy/* matched and the .so files
-          # ended up at the artifact root, so `anchor test --skip-build` could
-          # not find them after download. This marker keeps the root at target/.
+          # actions/upload-artifact@v4 stores paths relative to the least common
+          # ancestor of the files that actually matched. When the IDL step
+          # produced nothing, only target/deploy/* matched, the ancestor became
+          # target/deploy and the .so files landed at the archive root. This
+          # marker (and the synced Anchor.toml below) pin the ancestor to
+          # target/, so the anchor-test job can extract straight back into
+          # target/ no matter which subdirectories exist.
           mkdir -p target
           echo "artifact root marker for actions/upload-artifact@v4" > target/artifact-root.txt
           # The anchor-test job must deploy with the same program ids the .so
@@ -763,13 +765,35 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Restore build artifacts
-        # Download into the workspace root: the artifact's root is target/ (kept
-        # there by the marker file the programs job uploads), so restoring into
-        # `target` would produce target/target/deploy/*.so.
+        # upload-artifact@v4 stores paths RELATIVE TO the least common ancestor of
+        # the files it uploaded. The programs job forces that ancestor to be
+        # target/ with a marker file, so the archive holds deploy/*.so,
+        # deploy/*-keypair.json and artifact-Anchor.toml - and extracting into
+        # `target` puts them back exactly where Anchor expects them. Extracting
+        # into `.` instead scatters them over the workspace root (measured in run
+        # 34904678609: "no program keypairs were restored from the build
+        # artifact" while the archive did contain them).
         uses: actions/download-artifact@v4
         with:
           name: anchor-target
-          path: .
+          path: target
+
+      - name: Verify the restored artifact layout
+        # Fail closed with the real listing instead of letting the suite run
+        # against a half-restored target/.
+        run: |
+          set -uo pipefail
+          set +e
+          echo "--- what the artifact restored ---"
+          find . -maxdepth 3 \( -name '*.so' -o -name '*-keypair.json' -o -name 'artifact-*.toml' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort
+          so=$(find target/deploy -maxdepth 1 -name '*.so' 2>/dev/null | wc -l | tr -d ' ')
+          kp=$(find target/deploy -maxdepth 1 -name '*-keypair.json' 2>/dev/null | wc -l | tr -d ' ')
+          echo "restored: ${so:-0} program binaries, ${kp:-0} keypairs"
+          bad=0
+          [ "${so:-0}" -eq 6 ] || { echo "::error::expected 6 program binaries in target/deploy, found ${so:-0} - the artifact layout changed"; bad=1; }
+          [ "${kp:-0}" -eq 6 ] || { echo "::error::expected 6 program keypairs in target/deploy, found ${kp:-0}"; bad=1; }
+          [ -f target/artifact-Anchor.toml ] || { echo "::error::target/artifact-Anchor.toml is missing from the artifact"; bad=1; }
+          exit "$bad"
 
       - name: Create throwaway provider wallet
         run: |
