@@ -452,6 +452,18 @@ jobs:
             RUSTUP_TOOLCHAIN="${RUST_VERSION}" anchor build --no-idl 2>&1 \
               | tee -a /tmp/anchor-build.log || rc=$?
           fi
+          # The SBPF verifier rejects any function whose stack frame exceeds 4096
+          # bytes, and the program then fails to LOAD - the build itself can stay
+          # green. That is exactly what happened in run 34906762097: aof_core's
+          # generated init_material_mints wrapper had a 4672-byte frame (23 Pubkey
+          # arguments plus a 23-element stack array) and the local validator
+          # refused the program, so the whole test suite died in its "before all"
+          # hook. Catch the message here when the build does emit it; the
+          # authoritative check remains the deploy in the anchor-test job.
+          if grep -nE "maximum allowed frame space" /tmp/anchor-build.log; then
+            log "::error::SBPF stack frame overflow in the build output - the loader would reject this program at deploy time"
+            rc=1
+          fi
           log "anchor build --no-idl exit code: $rc"
           exit "$rc"
 
