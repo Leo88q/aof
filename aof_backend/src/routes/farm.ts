@@ -22,10 +22,20 @@ r.get("/plot/:user", async (req, res) => {
 r.post("/building/place", async (req, res) => {
   try {
     const { user, tileX, tileY, toolMint, type } = req.body;
+    const x = Number(tileX);
+    const y = Number(tileY);
+    if (!user || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || !toolMint || !type) {
+      return res.status(400).json({ error: "Invalid building placement" });
+    }
+    const plot = await db.farmPlot.findUnique({ where: { user } });
+    if (!plot) return res.status(404).json({ error: "Plot not found" });
+    if (x >= plot.size || y >= plot.size) {
+      return res.status(400).json({ error: "Building must be placed inside the farm plot" });
+    }
     const building = await db.farmBuilding.upsert({
-      where: { user_tileX_tileY: { user, tileX, tileY } },
+      where: { user_tileX_tileY: { user, tileX: x, tileY: y } },
       update: { toolMint, type },
-      create: { user, tileX, tileY, toolMint, type },
+      create: { user, tileX: x, tileY: y, toolMint, type },
     });
     res.json({ building });
   } catch (e: any) {
@@ -34,22 +44,11 @@ r.post("/building/place", async (req, res) => {
 });
 
 // Расширить участок (за ресурсы — проверка на бэкенде)
-r.post("/plot/expand", async (req, res) => {
-  try {
-    const { user } = req.body;
-    const plot = await db.farmPlot.findUnique({ where: { user } });
-    if (!plot) {
-      return res.status(404).json({ error: "Plot not found" });
-    }
-    const newSize = plot.size + 2;
-    const updated = await db.farmPlot.update({
-      where: { user },
-      data: { size: newSize, expandedAt: new Date() },
-    });
-    res.json({ plot: updated });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.post("/plot/expand", async (_req, res) => {
+  // Expansion used to increase the off-chain plot size without charging the
+  // configured resource cost. Fail closed until the canonical resource debit
+  // and tile bounds are implemented together.
+  return res.status(503).json({ error: "Farm expansion is unavailable until canonical resource settlement is deployed" });
 });
 
 export default r;

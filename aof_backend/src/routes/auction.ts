@@ -1,6 +1,6 @@
 import { BN } from "bn.js";
 import { Router } from "express";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
 import { auctionPda, configPda, toolPda } from "../lib/pda";
@@ -26,6 +26,7 @@ r.post("/create", requireCircuitOpen, requireWalletLimits("auction__create"), re
         config,
         seller,
         mint,
+        tool: toolPda(mint)[0],
         sellerToken,
         auction,
         auctionVault,
@@ -34,7 +35,13 @@ r.post("/create", requireCircuitOpen, requireWalletLimits("auction__create"), re
       })
       .instruction();
 
-    const tx = await coSign([ix], seller);
+    const createVaultAta = createAssociatedTokenAccountIdempotentInstruction(
+      seller,
+      auctionVault,
+      auction,
+      mint,
+    );
+    const tx = await coSign([createVaultAta, ix], seller);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -47,11 +54,13 @@ r.post("/bid", requireCircuitOpen, requireWalletLimits("auction__bid"), requireI
     const mint = pk(req.body.mint);
     const amount = new BN(req.body.amount);
     const previousBidder = pk(req.body.previousBidder);
+    const [config] = configPda();
     const [auction] = auctionPda(mint);
 
     const ix = await (program.methods as any)
       .auctionBid(amount as any)
       .accounts({
+        config,
         bidder,
         mint,
         auction,

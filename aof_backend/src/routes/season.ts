@@ -6,10 +6,11 @@ import { AUTHORITY } from "../config";
 import { program } from "../provider";
 import { authPda, configPda, seasonPassPda, seasonPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
-r.post("/init", async (req, res) => {
+r.post("/init", requireAdmin, async (req, res) => {
   try {
     const seasonId = Number(req.body.seasonId);
     const [config] = configPda();
@@ -60,7 +61,7 @@ r.post("/pass/purchase", async (req, res) => {
   }
 });
 
-r.post("/xp/grant", async (req, res) => {
+r.post("/xp/grant", requireAdmin, async (req, res) => {
   try {
     const user = pk(req.body.user);
     const seasonId = Number(req.body.seasonId);
@@ -88,7 +89,7 @@ r.post("/xp/grant", async (req, res) => {
   }
 });
 
-r.post("/reward/claim", async (req, res) => {
+r.post("/reward/claim", requireAdmin, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const seasonId = Number(req.body.seasonId);

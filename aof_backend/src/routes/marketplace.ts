@@ -1,6 +1,6 @@
 import { BN } from "bn.js";
 import { Router } from "express";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
 import { configPda, listingPda, toolPda } from "../lib/pda";
@@ -25,6 +25,7 @@ r.post("/list", requireCircuitOpen, requireWalletLimits("marketplace__list"), re
         config,
         seller,
         mint,
+        tool: toolPda(mint)[0],
         sellerToken,
         listing,
         listingVault,
@@ -33,7 +34,13 @@ r.post("/list", requireCircuitOpen, requireWalletLimits("marketplace__list"), re
       })
       .instruction();
 
-    const tx = await coSign([ix], seller);
+    const createVaultAta = createAssociatedTokenAccountIdempotentInstruction(
+      seller,
+      listingVault,
+      listing,
+      mint,
+    );
+    const tx = await coSign([createVaultAta, ix], seller);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -69,7 +76,13 @@ r.post("/buy", requireCircuitOpen, requireWalletLimits("marketplace__buy"), requ
       })
       .instruction();
 
-    const tx = await coSign([ix], buyer);
+    const createBuyerAta = createAssociatedTokenAccountIdempotentInstruction(
+      buyer,
+      buyerToken,
+      buyer,
+      mint,
+    );
+    const tx = await coSign([createBuyerAta, ix], buyer);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });

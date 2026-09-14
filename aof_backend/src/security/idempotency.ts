@@ -12,10 +12,16 @@
  */
 import { db } from "../lib/db";
 
+const STALE_OPERATION_MS = 15 * 60 * 1000;
+
 export async function checkIdempotency(operationKey: string): Promise<{
   allowed: boolean;
   alreadyProcessed?: boolean;
 }> {
+  if (!operationKey || operationKey.length > 200) {
+    throw new Error("Invalid idempotency key");
+  }
+
   try {
     const existing = await db.idempotencyRecord.findUnique({
       where: { operationKey },
@@ -25,6 +31,27 @@ export async function checkIdempotency(operationKey: string): Promise<{
       if (existing.status === "completed") {
         return { allowed: false, alreadyProcessed: true };
       }
+
+      // Failed requests are retryable. Claim the row atomically so two
+      // retries cannot both execute the same operation.
+      if (existing.status === "failed" || Date.now() - existing.createdAt.getTime() > STALE_OPERATION_MS) {
+        const reclaimed = await db.idempotencyRecord.updateMany({
+          where: {
+            operationKey,
+            status: existing.status,
+          },
+          data: {
+            status: "in_progress",
+            result: null,
+            createdAt: new Date(),
+            completedAt: null,
+          },
+        });
+        return reclaimed.count === 1
+          ? { allowed: true }
+          : { allowed: false, alreadyProcessed: false };
+      }
+
       // Операция в процессе — возможно параллельный запрос
       return { allowed: false, alreadyProcessed: false };
     }

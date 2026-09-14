@@ -571,6 +571,10 @@
           "writable": true
         },
         {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
           "name": "treasury_mascot",
           "writable": true
         },
@@ -721,6 +725,9 @@
           "signer": true
         },
         {
+          "name": "program_data"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -841,6 +848,10 @@
         {
           "name": "user",
           "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
           "signer": true
         },
         {
@@ -1289,6 +1300,11 @@
       "code": 6009,
       "name": "MathOverflow",
       "msg": "Math overflow"
+    },
+    {
+      "code": 6010,
+      "name": "FeatureDisabled",
+      "msg": "Feature disabled until its economic proof is implemented"
     }
   ],
   "types": [

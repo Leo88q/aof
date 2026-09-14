@@ -39,31 +39,11 @@ r.get("/:user", async (req, res) => {
   }
 });
 
-// Зарегистрировать реферала (обновляет счётчики)
-r.post("/bind", async (req, res) => {
-  try {
-    const { referrer, referred } = req.body;
-
-    // Anti-sybil заглушка (в полной версии — device fingerprint из ТЗ §4.1)
-    const now = Date.now();
-    const isSuspicious = false; // TODO: реальная проверка
-
-    // Увеличиваем счётчик прямых рефералов
-    await db.referralStatsDb.upsert({
-      where: { user: referrer },
-      update: { directCount: { increment: 1 }, updatedAt: new Date() },
-      create: { user: referrer, directCount: 1 },
-    });
-
-    res.json({
-      referrer,
-      referred,
-      suspicious: isSuspicious,
-      holdingPeriodHours: isSuspicious ? 72 : 0, // anti-sybil holding
-    });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// The old endpoint incremented a referrer's count without recording a
+// canonical referred-wallet binding, so it could be called repeatedly to
+// inflate tiers. Use the on-chain /referral/bind flow instead.
+r.post("/bind", (_req, res) => {
+  res.status(503).json({ error: "REFERRAL_TIERS_BIND_DISABLED_USE_CANONICAL_REFERRAL_BIND" });
 });
 
 export default r;

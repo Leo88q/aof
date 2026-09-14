@@ -1,9 +1,9 @@
 import { BN } from "bn.js";
 import { Router } from "express";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
-import { configPda, resourceOrderPda } from "../lib/pda";
+import { configPda, materialMintsPda, resourceOrderPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
 
@@ -17,11 +17,12 @@ r.post("/buy/place", requireCircuitOpen, requireWalletLimits("orderbook__buy_pla
     const priceLamportsPerUnit = new BN(req.body.priceLamportsPerUnit);
     const amount = new BN(req.body.amount);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [order] = resourceOrderPda(maker, mint);
 
     const ix = await (program.methods as any)
       .placeBuyOrder(kind, priceLamportsPerUnit as any, amount as any)
-      .accounts({ config, maker, mint, order, systemProgram: SystemProgram.programId })
+      .accounts({ config, maker, mint, materialMints, order, systemProgram: SystemProgram.programId })
       .instruction();
 
     const tx = await coSign([ix], maker);
@@ -39,6 +40,7 @@ r.post("/sell/place", requireCircuitOpen, requireWalletLimits("orderbook__sell_p
     const priceLamportsPerUnit = new BN(req.body.priceLamportsPerUnit);
     const amount = new BN(req.body.amount);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [order] = resourceOrderPda(maker, mint);
     const makerToken = getAssociatedTokenAddressSync(mint, maker);
     const orderVault = getAssociatedTokenAddressSync(mint, order, true);
@@ -49,6 +51,7 @@ r.post("/sell/place", requireCircuitOpen, requireWalletLimits("orderbook__sell_p
         config,
         maker,
         mint,
+        materialMints,
         makerToken,
         order,
         orderVault,
@@ -57,7 +60,13 @@ r.post("/sell/place", requireCircuitOpen, requireWalletLimits("orderbook__sell_p
       })
       .instruction();
 
-    const tx = await coSign([ix], maker);
+    const createVaultAta = createAssociatedTokenAccountIdempotentInstruction(
+      maker,
+      orderVault,
+      order,
+      mint,
+    );
+    const tx = await coSign([createVaultAta, ix], maker);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -110,6 +119,7 @@ r.post("/match", requireCircuitOpen, requireWalletLimits("orderbook__match"), re
     const sellMaker = pk(req.body.sellMaker);
     const treasury = pk(req.body.treasury);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [buyOrder] = resourceOrderPda(buyMaker, mint);
     const [sellOrder] = resourceOrderPda(sellMaker, mint);
     const sellVault = getAssociatedTokenAddressSync(mint, sellOrder, true);
@@ -119,6 +129,7 @@ r.post("/match", requireCircuitOpen, requireWalletLimits("orderbook__match"), re
       .matchResourceOrders()
       .accounts({
         config,
+        materialMints,
         mint,
         buyOrder,
         sellOrder,

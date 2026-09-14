@@ -13,17 +13,20 @@ import {
   wellStatePda,
   millStatePda,
   ovenStatePda,
+  toolPda,
 } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 
 const r = Router();
+const RESOURCE_UNIT = new BN("1000000000");
 
 // ===== [БЛОК L] Ферма: посадка семян =====
 r.post("/farm/plant", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const tileIndex = Number(req.body.tileIndex);
-    const amount = new BN(req.body.amount);
+    // Public API amount is in display seeds; SPL burn uses atomic units.
+    const amount = new BN(req.body.amount).mul(RESOURCE_UNIT);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [energyAccount] = energyAccountPda(user);
@@ -66,7 +69,7 @@ r.post("/farm/harvest", async (req, res) => {
     const wheatMint = new PublicKey(req.body.wheatMint);
     const userWheat = getAssociatedTokenAddressSync(wheatMint, user);
     const toolMint = pk(req.body.toolMint);
-    const [toolData] = [new PublicKey(req.body.toolData || toolMint)]; // PDA tool
+    const [toolData] = toolPda(toolMint);
 
     const ix = await (program.methods as any)
       .harvestWheat(tileIndex)

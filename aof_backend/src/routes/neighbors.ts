@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireWalletProof } from "../security/walletProof";
 import { db } from "../lib/db";
 
 const r = Router();
@@ -6,7 +7,11 @@ const r = Router();
 const MAX_VISITS_PER_DAY = 5;
 
 // Список друзей с превью их участков
-r.get("/list/:user", async (req, res) => {
+r.get("/list/:user", async (_req, res) => {
+  return res.status(503).json({
+    error: "NEIGHBOR_LIMIT_UNAVAILABLE_UNTIL_CANONICAL_SOCIAL_INDEXING_IS_DEPLOYED",
+  });
+  /*
   try {
     const user = req.params.user;
     // Друзья = рефералы (упрощённо, потом свяжем с referral-системой)
@@ -23,52 +28,58 @@ r.get("/list/:user", async (req, res) => {
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
+  */
 });
 
 // Посетить ферму друга и выполнить действие (полить / помочь с ремонтом)
-r.post("/visit", async (req, res) => {
+r.post("/visit", requireWalletProof("neighbors_visit", "visitor"), async (_req, res) => {
+  // The old route charged local energy and returned unimplemented reward/
+  // boost promises. Do not acknowledge the action until canonical effects
+  // exist on-chain.
+  return res.status(503).json({
+    error: "NEIGHBOR_ACTIONS_UNAVAILABLE_UNTIL_CANONICAL_SOCIAL_EFFECTS_ARE_DEPLOYED",
+  });
+  /*
   try {
     const { visitor, host, action } = req.body;
     if (!["water", "help_repair"].includes(action)) {
       return res.status(400).json({ error: "Invalid action" });
     }
 
-    // Трата энергии на визит (по ТЗ: визит стоит 1 энергию)
-    const energy = await db.energy.findUnique({ where: { user: visitor } });
-    if (!energy || energy.amount < 1) {
-      return res.status(400).json({ error: "Not enough energy for visit" });
-    }
-    await db.energy.update({
-      where: { user: visitor },
-      data: { amount: energy.amount - 1 },
-    });
-
-    // Проверка дневного лимита
-    const visitedToday = await db.neighborVisit.count({
-      where: {
-        visitor,
-        ts: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
-    });
-    if (visitedToday >= MAX_VISITS_PER_DAY) {
-      return res.status(400).json({ error: "Daily visit limit reached" });
+    if (visitor === host) {
+      return res.status(400).json({ error: "Cannot visit your own farm" });
     }
 
-    // Проверка что не посещал этого друга сегодня с тем же действием
-    const alreadyVisited = await db.neighborVisit.findFirst({
-      where: {
-        visitor,
-        host,
-        action,
-        ts: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
-    });
-    if (alreadyVisited) {
-      return res.status(400).json({ error: "Already did this action for this friend today" });
-    }
+    // The energy debit, quota check and visit insert must be one transaction.
+    // The previous order charged energy before rejecting a duplicate/over-limit
+    // visit and allowed concurrent requests to bypass the daily quota.
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const visit = await db.$transaction(async (tx: any) => {
+      const energy = await tx.energy.findUnique({ where: { user: visitor } });
+      if (!energy || energy.amount < 1) {
+        throw new Error("Not enough energy for visit");
+      }
 
-    const visit = await db.neighborVisit.create({
-      data: { visitor, host, action },
+      const visitedToday = await tx.neighborVisit.count({
+        where: { visitor, ts: { gte: dayStart } },
+      });
+      if (visitedToday >= MAX_VISITS_PER_DAY) {
+        throw new Error("Daily visit limit reached");
+      }
+
+      const alreadyVisited = await tx.neighborVisit.findFirst({
+        where: { visitor, host, action, ts: { gte: dayStart } },
+      });
+      if (alreadyVisited) {
+        throw new Error("Already did this action for this friend today");
+      }
+
+      await tx.energy.update({
+        where: { user: visitor },
+        data: { amount: { decrement: 1 } },
+      });
+      return tx.neighborVisit.create({ data: { visitor, host, action } });
     });
 
     // Награда гостю (фиксированная из пула соц-наград) и буст хозяину
@@ -81,6 +92,7 @@ r.post("/visit", async (req, res) => {
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
+  */
 });
 
 // Лента визитов к моей ферме (для уведомлений хозяину)

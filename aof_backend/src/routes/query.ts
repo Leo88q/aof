@@ -9,9 +9,13 @@ import { pk } from "../lib/tx";
 import { auctionPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda,
-  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda } from "../lib/pda";
+  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda,
+  weatherStatePda, wellStatePda, millStatePda, ovenStatePda } from "../lib/pda";
+import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 
 const r = Router();
+const RESOURCE_UNIT = 1_000_000_000;
+const resourceDisplay = (value: any) => Number(value?.toString?.() ?? value ?? 0) / RESOURCE_UNIT;
 
 // Нормализация: PublicKey → base58, BN → number, рекурсивно
 const num = (v: any) => (v && v.toString ? v.toString() : v);
@@ -45,56 +49,35 @@ r.get("/balances/:owner", async (req, res) => {
     const [mmAddr] = materialMintsPda();
     const cfg: any = await fetchOne("config", cfgAddr);
     const mm: any = await fetchOne("materialMints", mmAddr);
+    const registry = await validateCanonicalResourceRegistry(connection, cfg, mm);
+    if (!registry.mints) {
+      return res.status(503).json({
+        error: "RESOURCE_REGISTRY_UNAVAILABLE_OR_INVALID_FROM_CANONICAL_CHAIN",
+        details: registry.errors,
+      });
+    }
 
-    // Все минты: базовые из Config + новые из MaterialMints
-    const mints: Record<string, any> = {
-      FOOD: cfg?.foodMint,
-      WOOD: cfg?.woodMint,
-      STONE: cfg?.stoneMint,
-      // [БЛОК L] Хлебная цепочка
-      SEEDS: mm?.seeds,
-      WHEAT: mm?.wheat,
-      FLOUR: mm?.flour,
-      BREAD: mm?.bread,
-      WATER: mm?.water,
-      COAL: mm?.coal,
-      MEAT: mm?.meat,
-      // Камни
-      STONE_BLUE: mm?.stoneBlue,
-      STONE_PURPLE: mm?.stonePurple,
-      STONE_RED: mm?.stoneRed,
-      // Песок
-      SAND_WHITE: mm?.sandWhite,
-      SAND_PINK: mm?.sandPink,
-      SAND_YELLOW: mm?.sandYellow,
-      // Гемы
-      GEM_BLUE: mm?.gemBlue,
-      GEM_ORANGE: mm?.gemOrange,
-      GEM_WHITE: mm?.gemWhite,
-      GEM_GREEN: mm?.gemGreen,
-      // Баночки
-      FLASK_BLUE: mm?.flaskBlue,
-      FLASK_YELLOW: mm?.flaskYellow,
-      FLASK_GREEN: mm?.flaskGreen,
-      FLASK_PINK: mm?.flaskPink,
-      FLASK_PURPLE: mm?.flaskPurple,
-      // Особое
-      LOVE_HEART: mm?.loveHeart,
-    };
+    const mints = registry.mints;
     const balances: Record<string, number> = {};
     for (const key of Object.keys(mints)) balances[key] = 0;
+    let readError = false;
 
-    for (const [key, mint] of Object.entries(mints)) {
-      if (!mint) continue;
+    for (const [key, mintPk] of Object.entries(mints)) {
       try {
-        const mintPk = typeof mint === "string" ? new PublicKey(mint) : mint;
         const ata = getAssociatedTokenAddressSync(mintPk, owner, true);
         const info = await connection.getParsedAccountInfo(ata);
         const amt = (info.value?.data as any)?.parsed?.info?.tokenAmount?.uiAmount;
         if (typeof amt === "number") balances[key] = amt;
-      } catch {}
+      } catch {
+        readError = true;
+      }
     }
-    res.json(balances);
+    if (readError) {
+      return res.status(503).json({
+        error: "RESOURCE_BALANCES_UNAVAILABLE_FROM_CANONICAL_CHAIN",
+      });
+    }
+    res.json({ ...balances, source: "onchain" });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
@@ -127,6 +110,33 @@ r.get("/player/:owner", async (req, res) => {
 r.get("/gastank/:owner", async (req, res) => {
   const [addr] = gastankPda(new PublicKey(req.params.owner));
   res.json(deep(await fetchOne("gasTank", addr)));
+});
+
+// [БЛОК L] On-chain weather and production state
+r.get("/weather-state", async (_req, res) => {
+  const [addr] = weatherStatePda();
+  res.json(deep(await fetchOne("weatherState", addr)));
+});
+
+r.get("/well-state/:owner", async (req, res) => {
+  const [addr] = wellStatePda(new PublicKey(req.params.owner));
+  const state: any = await fetchOne("wellState", addr);
+  if (!state) return res.json(null);
+  res.json({ ...deep(state), waterBuffer: resourceDisplay(state.waterBuffer) });
+});
+
+r.get("/mill-state/:owner", async (req, res) => {
+  const [addr] = millStatePda(new PublicKey(req.params.owner));
+  const state: any = await fetchOne("millState", addr);
+  if (!state) return res.json(null);
+  res.json({ ...deep(state), outputFlour: resourceDisplay(state.outputFlour) });
+});
+
+r.get("/oven-state/:owner", async (req, res) => {
+  const [addr] = ovenStatePda(new PublicKey(req.params.owner));
+  const state: any = await fetchOne("ovenState", addr);
+  if (!state) return res.json(null);
+  res.json({ ...deep(state), outputBread: resourceDisplay(state.outputBread) });
 });
 
 // Данные инструмента по минту
@@ -277,14 +287,15 @@ r.get("/hot-market-pool/:rarity", async (req, res) => {
     }
     res.json({
       rarity,
-      currentPricePotato: Number(data.currentPricePotato),
-      currentPriceSolLamports: Number(data.currentPriceSolLamports),
-      basePricePotato: Number(data.basePricePotato),
-      growthPerPurchaseBps: Number(data.growthPerPurchaseBps),
-      decayPerHourBps: Number(data.decayPerHourBps),
+      targetPriceCore: Number(data.targetPriceCore),
+      targetPriceGem: Number(data.targetPriceGem),
+      targetRatePerHour: Number(data.targetRatePerHour),
+      growthBpsPerSale: Number(data.growthBpsPerSale),
+      decayBpsPerHour: Number(data.decayBpsPerHour),
       feeBps: Number(data.feeBps),
-      soldCount: Number(data.soldCount),
+      soldSinceStart: Number(data.soldSinceStart),
       purchasesInWindow: Number(data.purchasesInWindow),
+      paused: Boolean(data.paused),
     });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -321,6 +332,7 @@ r.get("/friend-farm/:address", async (req, res) => {
     const foodAta = ataFor(cfg?.foodMint);
     const woodAta = ataFor(cfg?.woodMint);
     const stoneAta = ataFor(cfg?.stoneMint);
+    const potatoAta = ataFor(cfg?.potatoMint);
 
     const readAmt = async (ata: any) => {
       if (!ata) return 0;
@@ -331,7 +343,12 @@ r.get("/friend-farm/:address", async (req, res) => {
       } catch { return 0; }
     };
 
-    const [FOOD, WOOD, STONE] = await Promise.all([readAmt(foodAta), readAmt(woodAta), readAmt(stoneAta)]);
+    const [FOOD, WOOD, STONE, POTATO] = await Promise.all([
+      readAmt(foodAta),
+      readAmt(woodAta),
+      readAmt(stoneAta),
+      readAmt(potatoAta),
+    ]);
 
     const activeMining = myTools.filter((t: any) => t.isMining);
 
@@ -339,7 +356,7 @@ r.get("/friend-farm/:address", async (req, res) => {
       address,
       player: player ? deep(player) : null,
       tools: myTools,
-      balances: { FOOD, WOOD, STONE },
+      balances: { FOOD, WOOD, STONE, POTATO },
       gastank: gastank ? deep(gastank) : null,
       activeMining,
       stats: {
@@ -393,47 +410,65 @@ r.get("/farm-tiles/:user", async (req, res) => {
   try {
     const user = new PublicKey(req.params.user);
     const tiles = [];
+    let readError = false;
     
-    // Читаем 6 тайлов (0-5) из блокчейна
-    for (let i = 0; i < 6; i++) {
+    // The on-chain instructions accept tile indexes 0..9.
+    // Read the full canonical ten-tile surface; returning six caused the
+    // frontend to hide valid tiles and disagree with the program bounds.
+    for (let i = 0; i < 10; i++) {
       try {
         const [farmTile] = farmTilePda(user, i);
         const account = await (program as any).account.farmTile.fetchNullable(farmTile);
         
         if (account) {
+          const state = Number(account.state || 0);
+          const plantedAt = Number(account.plantedAt || 0);
+          const readyAt = Number(account.readyAt || 0);
+          const now = Math.floor(Date.now() / 1000);
+          const planted = state !== 0;
+          const ready = planted && readyAt > 0 && now >= readyAt;
+          const duration = readyAt > plantedAt ? readyAt - plantedAt : 0;
+          const progress = !planted ? 0 : ready ? 100 : duration > 0
+            ? Math.max(0, Math.min(99, Math.floor(((now - plantedAt) / duration) * 100)))
+            : 0;
           tiles.push({
             index: i,
-            planted: account.planted || false,
-            ready: account.ready || false,
-            seedsAmount: Number(account.seedsAmount || 0),
-            progress: Number(account.progress || 0),
-            plantedAt: account.plantedAt ? Number(account.plantedAt) : 0,
-            cropType: account.cropType || null,
+            state,
+            planted,
+            ready,
+            // On-chain farm amounts are atomic SPL units; API exposes display units.
+            seedsAmount: resourceDisplay(account.seedsAmount),
+            progress,
+            plantedAt,
+            readyAt,
+            cropType: "wheat",
           });
         } else {
           tiles.push({
             index: i,
+            state: 0,
             planted: false,
             ready: false,
             seedsAmount: 0,
             progress: 0,
             plantedAt: 0,
-            cropType: null,
+            readyAt: 0,
+            cropType: "wheat",
           });
         }
       } catch (e) {
-        tiles.push({
-          index: i,
-          planted: false,
-          ready: false,
-          seedsAmount: 0,
-          progress: 0,
-          plantedAt: 0,
-          cropType: null,
-        });
+        // A failed RPC/account read is not an empty farm. Returning synthetic
+        // empty tiles would allow the UI to show stale/made-up state and could
+        // invite a user to overwrite a tile they do not actually see.
+        readError = true;
       }
     }
-    
+
+    if (readError) {
+      return res.status(503).json({
+        error: "FARM_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN",
+      });
+    }
     res.json({ tiles });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -442,45 +477,42 @@ r.get("/farm-tiles/:user", async (req, res) => {
 
 
 
-// ===== Material Mints: все mint-адреса ресурсов из блокчейна =====
-r.get("/material-mints", async (req, res) => {
+// ===== Material Mints: канонический registry из блокчейна =====
+r.get("/material-mints", async (_req, res) => {
   try {
     const [materialMints] = materialMintsPda();
-    const account = await (program as any).account.materialMints.fetchNullable(materialMints);
-    
-    if (!account) {
-      return res.json({ 
-        initialized: false,
-        mints: {}
+    const [configAddress] = configPda();
+    const [account, config] = await Promise.all([
+      fetchOne("materialMints", materialMints),
+      fetchOne("config", configAddress),
+    ]);
+
+    // Never return a partial HTTP 200. The frontend is allowed to use this
+    // registry only after every address, alias, SPL owner and decimal count
+    // has been checked against canonical chain state.
+    const registry = await validateCanonicalResourceRegistry(
+      connection,
+      config as Record<string, unknown> | null,
+      account as Record<string, unknown> | null,
+    );
+    if (!registry.mints) {
+      return res.status(503).json({
+        error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_OR_INVALID",
+        details: registry.errors,
       });
     }
-    
-    // Извлекаем mint-адреса из аккаунта
+
     const mints: Record<string, string> = {};
-    const fields = [
-      "seeds", "wheat", "flour", "bread", "wood", "stone", "coal", "meat", "water", "food",
-      "sandWhite", "sandPink", "sandYellow",
-      "stoneBlue", "stonePurple", "stoneRed",
-      "gemBlue", "gemOrange", "gemWhite", "gemGreen",
-      "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
-    ];
-    
-    for (const field of fields) {
-      const val = (account as any)[field];
-      if (val && typeof val.toBase58 === "function") {
-        // Конвертируем из camelCase в UPPER_CASE
-        const key = field.replace(/([A-Z])/g, "_$1").toUpperCase();
-        mints[key] = val.toBase58();
-      }
+    for (const [key, value] of Object.entries(registry.mints)) {
+      mints[key] = value.toBase58();
     }
-    
-    res.json({ 
+    res.json({
       initialized: true,
       address: materialMints.toBase58(),
-      mints
+      mints,
     });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(503).json({ error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
   }
 });
 

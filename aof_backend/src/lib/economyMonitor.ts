@@ -17,6 +17,8 @@ export interface EconomyMetrics {
   totalTxs24h: number;
   failedTxs24h: number;
   topHolders: { address: string; balance: bigint }[];
+  /** Explicitly surfaced because event/holder indexing is not complete yet. */
+  dataQuality: "partial" | "complete";
 }
 
 // Константы для алертов
@@ -41,7 +43,7 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     supplyData,
     burnEvents,
     mintEvents,
-    prevSnapshot,
+    baselineSnapshot,
     activeCrafters,
     activeTraders,
     totalTxs,
@@ -50,7 +52,13 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     getPOTATOSupply(),
     getBurnEvents(last24h),
     getMintEvents(last24h),
-    db.economySnapshot.findFirst({ orderBy: { timestamp: "desc" } }),
+    // Compare with a snapshot at least 24h old. The previous implementation
+    // compared to the latest five-minute snapshot while labelling the result
+    // "24h", which made the alert metric materially wrong.
+    db.economySnapshot.findFirst({
+      where: { timestamp: { lte: last24h } },
+      orderBy: { timestamp: "desc" },
+    }),
     db.auditLog.findMany({
       where: { 
         timestamp: { gte: last24h },
@@ -85,9 +93,11 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   const minted = mintEvents.reduce((sum, e) => sum + e.amount, 0n);
 
   // Считаем инфляцию
-  const prevSupply = prevSnapshot ? BigInt(prevSnapshot.potatoSupply.toString()) : supply;
-  const inflation = prevSupply > 0n 
-    ? Number((supply - prevSupply) * 10000n / prevSupply) / 100
+  const baselineSupply = baselineSnapshot
+    ? BigInt(baselineSnapshot.potatoSupply.toString())
+    : supply;
+  const inflation = baselineSupply > 0n
+    ? Number((supply - baselineSupply) * 10000n / baselineSupply) / 100
     : 0;
 
   // Топ холдеры (упрощённо — из audit logs)
@@ -103,6 +113,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     totalTxs24h: totalTxs,
     failedTxs24h: failedTxs,
     topHolders,
+    // Mint/burn event and holder indexing are still TODO; do not present the
+    // zero-valued breakdown as a complete economic accounting.
+    dataQuality: "partial",
   };
 
   // Сохраняем snapshot
@@ -151,9 +164,8 @@ async function checkAlerts(metrics: EconomyMetrics) {
       message: `🚨 Критическая инфляция POTATO: ${metrics.inflation24h.toFixed(2)}% за 24ч`,
       metadata: { inflation: metrics.inflation24h, supply: metrics.potatoSupply.toString() },
     });
-    
-    // Auto-balancing: увеличить craft cost
-    await autoIncreaseCraftCost();
+    // Automatic economic parameter changes are deliberately not performed:
+    // this monitor has no authority-signed, reviewed set_craft_economy path.
   } else if (metrics.inflation24h > THRESHOLDS.inflationWarning) {
     await createAlert({
       type: "inflation",
@@ -204,18 +216,6 @@ async function createAlert(data: {
   
   // TODO: отправка в Telegram
   // await sendTelegramAlert(data);
-}
-
-/**
- * Auto-balancing: увеличивает craft cost при инфляции
- */
-async function autoIncreaseCraftCost() {
-  try {
-    // TODO: вызвать set_craft_economy через authority
-    console.log("🤖 [OpenClaw] Auto-balancing: требуется увеличить craft cost");
-  } catch (e) {
-    console.error("Auto-balancing failed:", e);
-  }
 }
 
 // === Вспомогательные функции ===

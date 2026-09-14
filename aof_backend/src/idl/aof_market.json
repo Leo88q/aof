@@ -145,6 +145,14 @@
           "name": "new_tool_mint"
         },
         {
+          "name": "pool_tool",
+          "writable": true
+        },
+        {
+          "name": "buyer_tool",
+          "writable": true
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
@@ -229,6 +237,14 @@
         },
         {
           "name": "sold_tool_mint"
+        },
+        {
+          "name": "seller_tool",
+          "writable": true
+        },
+        {
+          "name": "pool_tool",
+          "writable": true
         },
         {
           "name": "token_program",
@@ -334,6 +350,9 @@
         },
         {
           "name": "treasury"
+        },
+        {
+          "name": "program_data"
         },
         {
           "name": "system_program",

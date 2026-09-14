@@ -1,37 +1,46 @@
 import { Router } from "express";
-import { validate } from "../middleware/validate";
-import { hotMarketBuySchema, hotMarketPoolInitSchema } from "../lib/validation";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { AUTHORITY } from "../config";
 import { marketProgram } from "../provider";
-import {
-  hotMarketPoolPda,
-  hotMarketQueuePda,
-  potatoConfigPda,
-} from "../lib/pda";
+import { marketConfigPda, marketProgramDataPda, hotMarketPoolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
-// Инициализация конфигурации рынка (маскот-токен, комиссии, казна)
-r.post("/config/init", async (req, res) => {
-  try {
-    const potatoMint = pk(req.body.potatoMint);
-    const treasuryPotato = pk(req.body.treasuryPotato);
-    const treasurySol = pk(req.body.treasurySol);
-    const feeBps = Number(req.body.feeBps);
+type CurrencyName = "core" | "gem";
 
-    const [potatoConfig] = potatoConfigPda();
+function currencyArg(value: unknown): { core: {} } | { gem: {} } {
+  return value === "gem" ? { gem: {} } : { core: {} };
+}
+
+function currencyMint(config: any, currency: CurrencyName) {
+  return currency === "gem" ? config.gemMint : config.coreMint;
+}
+
+// Инициализация конфигурации рынка. Все параметры и адреса соответствуют
+// текущей on-chain программе aof-market; старый potatoConfig API удалён.
+r.post("/config/init", requireAdmin, async (req, res) => {
+  try {
+    const coreMint = pk(req.body.coreMint || req.body.potatoMint);
+    const gemMint = pk(req.body.gemMint);
+    const treasury = pk(req.body.treasury);
+    const feeBps = Number(req.body.feeBps);
+    const [config] = marketConfigPda();
+    const [programData] = marketProgramDataPda();
 
     const ix = await (marketProgram.methods as any)
-      .initMarketConfig(treasuryPotato, treasurySol, feeBps)
+      .initMarketConfig(feeBps)
       .accounts({
-        potatoConfig,
-        potatoMint,
+        config,
         authority: AUTHORITY.publicKey,
+        coreMint,
+        gemMint,
+        treasury,
+        programData,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -42,30 +51,33 @@ r.post("/config/init", async (req, res) => {
   }
 });
 
-// Создание пула для редкости (1-4 = uncommon..legendary)
-r.post("/pool/init", validate(hotMarketPoolInitSchema), async (req, res) => {
+// Создание пула для редкости (0-3 = common..epic).
+r.post("/pool/init", requireAdmin, async (req, res) => {
   try {
     const rarity = Number(req.body.rarity);
-    const params = {
-      basePricePotato: new BN(req.body.basePricePotato),
-      basePriceSolLamports: new BN(req.body.basePriceSolLamports),
-      growthPerPurchaseBps: Number(req.body.growthPerPurchaseBps),
-      decayPerHourBps: Number(req.body.decayPerHourBps),
-      targetSalesPerHour: Number(req.body.targetSalesPerHour),
-      feeBps: Number(req.body.feeBps),
-    };
-
+    const targetPriceCore = new BN(req.body.targetPriceCore ?? req.body.basePriceCore ?? req.body.basePricePotato);
+    const targetPriceGem = new BN(req.body.targetPriceGem ?? req.body.basePriceGem ?? 0);
+    const targetRatePerHour = new BN(req.body.targetRatePerHour ?? req.body.targetSalesPerHour ?? 0);
+    const decayBpsPerHour = Number(req.body.decayBpsPerHour ?? req.body.decayPerHourBps);
+    const growthBpsPerSale = Number(req.body.growthBpsPerSale ?? req.body.growthPerPurchaseBps);
+    const feeBps = Number(req.body.feeBps);
+    const [config] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
-    const [queue] = hotMarketQueuePda(rarity);
-    const [potatoConfig] = potatoConfigPda();
 
     const ix = await (marketProgram.methods as any)
-      .hotMarketInitPool(rarity, params)
+      .initPool(
+        rarity,
+        targetPriceCore,
+        targetPriceGem,
+        targetRatePerHour,
+        decayBpsPerHour,
+        growthBpsPerSale,
+        feeBps,
+      )
       .accounts({
-        pool,
-        queue,
-        potatoConfig,
+        config,
         authority: AUTHORITY.publicKey,
+        pool,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -76,53 +88,45 @@ r.post("/pool/init", validate(hotMarketPoolInitSchema), async (req, res) => {
   }
 });
 
-// Покупка инструмента из очереди (за маскот-токен)
-r.post("/buy", validate(hotMarketBuySchema), async (req, res) => {
+// Trading stays fail-closed until the on-chain instruction verifies the
+// canonical ToolData and synchronizes its owner with the transferred NFT.
+r.post("/buy", (_req, res) => {
+  res.status(503).json({ error: "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER" });
+});
+
+/*
+// Покупка инструмента из фактически пополненного pool_tool ATA.
+r.post("/buy", requireCircuitOpen, requireWalletLimits("hotmarket_buy"), requireIdempotency, async (req, res) => {
   try {
     const buyer = pk(req.body.buyer);
     const rarity = Number(req.body.rarity);
-    const toolMint = pk(req.body.toolMint);
-    const priceSnapshot = new BN(req.body.priceSnapshot);
-    const slippageBps = Number(req.body.slippageBps || 100);
-
+    const currency = (req.body.currency === "gem" ? "gem" : "core") as CurrencyName;
+    const newToolMint = pk(req.body.newToolMint || req.body.toolMint);
+    const maxPrice = new BN(req.body.maxPrice ?? req.body.priceSnapshot);
+    const [configAddress] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
-    const [queue] = hotMarketQueuePda(rarity);
-    const [potatoConfig] = potatoConfigPda();
-
-    // Читаем конфиг чтобы взять адреса казны и минта
-    const config: any = await (marketProgram.account as any)["potatoConfig"].fetch(potatoConfig);
-    const potatoMint = config.potatoMint;
-    const treasuryPotato = config.treasuryPotato;
-    // [ФИКС] Берём и SOL-казну для ветки оплаты в SOL
-    const treasurySol = config.treasurySol;
-
-    const buyerPotato = getAssociatedTokenAddressSync(potatoMint, buyer);
-    const poolToolToken = getAssociatedTokenAddressSync(toolMint, pool, true);
-    const buyerToolToken = getAssociatedTokenAddressSync(toolMint, buyer);
-
-    // [ФИКС] Валюта оплаты теперь динамическая: req.body.currency = "sol" | "potato"
-    // Для SOL-оплаты клиент шлёт currency="sol"; buyerPotato для SOL не обязателен
-    // (контракт держит его как Option, пустой ATA резолвится в None).
-    const currency = req.body.currency === "sol" ? { sol: {} } : { potato: {} };
+    const config: any = await (marketProgram.account as any).marketConfig.fetch(configAddress);
+    const mint = currencyMint(config, currency);
+    const treasury = config.treasury;
+    const buyerCurrency = getAssociatedTokenAddressSync(mint, buyer);
+    const treasuryCurrency = getAssociatedTokenAddressSync(mint, treasury);
+    const poolTool = getAssociatedTokenAddressSync(newToolMint, pool, true);
+    const buyerTool = getAssociatedTokenAddressSync(newToolMint, buyer);
 
     const ix = await (marketProgram.methods as any)
-      .hotMarketBuy(rarity, currency, priceSnapshot, slippageBps)
+      .hotMarketBuy(rarity, currencyArg(currency), maxPrice)
       .accounts({
-        pool,
-        queue,
-        potatoConfig,
+        config: configAddress,
         buyer,
-        buyerPotato,
-        potatoMint,
-        treasuryPotato,
-        // [ФИКС] Новый аккаунт контракта: SOL-казна для ветки Sol
-        treasurySol,
-        toolMint,
-        poolToolToken,
-        buyerToolToken,
+        pool,
+        treasury,
+        currencyMint: mint,
+        buyerCurrency,
+        treasuryCurrency,
+        newToolMint,
+        poolTool,
+        buyerTool,
         tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
       })
       .instruction();
     const tx = await coSign([ix], buyer);
@@ -131,35 +135,46 @@ r.post("/buy", validate(hotMarketBuySchema), async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
-// Продажа своего инструмента в очередь пула
+// Selling is also disabled: the current program accepts a mint without
+// proving that it is the canonical ToolData for the selected rarity.
+r.post("/sell", (_req, res) => {
+  res.status(503).json({ error: "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER" });
+});
+
+/*
+// Продажа инструмента пулу. The instruction now transfers the NFT into the
+// pool before paying the seller; it cannot be used as a free-token faucet.
 r.post("/sell", requireCircuitOpen, requireWalletLimits("hotmarket_sell"), requireIdempotency, async (req, res) => {
   try {
     const seller = pk(req.body.seller);
     const rarity = Number(req.body.rarity);
-    const toolMint = pk(req.body.toolMint);
+    const currency = (req.body.currency === "gem" ? "gem" : "core") as CurrencyName;
+    const soldToolMint = pk(req.body.soldToolMint || req.body.toolMint);
     const minPrice = new BN(req.body.minPrice || "0");
-
+    const [config] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
-    const [queue] = hotMarketQueuePda(rarity);
-
-    const sellerToolToken = getAssociatedTokenAddressSync(toolMint, seller);
-    const poolToolToken = getAssociatedTokenAddressSync(toolMint, pool, true);
+    const configData: any = await (marketProgram.account as any).marketConfig.fetch(config);
+    const mint = currencyMint(configData, currency);
+    const sellerCurrency = getAssociatedTokenAddressSync(mint, seller);
+    const poolCurrency = getAssociatedTokenAddressSync(mint, pool, true);
+    const sellerTool = getAssociatedTokenAddressSync(soldToolMint, seller);
+    const poolTool = getAssociatedTokenAddressSync(soldToolMint, pool, true);
 
     const ix = await (marketProgram.methods as any)
-      .hotMarketSellIntoQueue(rarity, minPrice)
+      .hotMarketSellIntoQueue(rarity, currencyArg(currency), minPrice)
       .accounts({
-        pool,
-        queue,
+        config,
         seller,
-        signer: seller,        // [ФИКС] прямая продажа: продавец сам подписант
-        sessionToken: null,      // [ФИКС] для сессии передаётся токен сессии,
-        toolMint,
-        sellerToolToken,
-        poolToolToken,
+        pool,
+        currencyMint: mint,
+        sellerCurrency,
+        poolCurrency,
+        soldToolMint,
+        sellerTool,
+        poolTool,
         tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .instruction();
     const tx = await coSign([ix], seller);
@@ -168,31 +183,17 @@ r.post("/sell", requireCircuitOpen, requireWalletLimits("hotmarket_sell"), requi
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
-// Пропуск текущего лота (реролл)
+// Пропуск текущего окна (не transfer, только permissionless event).
 r.post("/skip", requireCircuitOpen, requireWalletLimits("hot_market_skip"), requireIdempotency, async (req, res) => {
   try {
-    const rarity = Number(req.body.rarity);
-    // [ФИКС] Скип теперь player-facing: игрок платит фис в SOL в казну
     const player = pk(req.body.player);
-
+    const rarity = Number(req.body.rarity);
     const [pool] = hotMarketPoolPda(rarity);
-    const [queue] = hotMarketQueuePda(rarity);
-    const [potatoConfig] = potatoConfigPda();
-
-    // Читаем конфиг чтобы взять адрес SOL-казны
-    const config: any = await (marketProgram.account as any)["potatoConfig"].fetch(potatoConfig);
-
     const ix = await (marketProgram.methods as any)
       .hotMarketSkip(rarity)
-      .accounts({
-        pool,
-        queue,
-        potatoConfig,
-        player,
-        treasurySol: config.treasurySol,
-        systemProgram: SystemProgram.programId,
-      })
+      .accounts({ user: player, pool })
       .instruction();
     const tx = await coSign([ix], player);
     res.json({ tx });
@@ -201,21 +202,17 @@ r.post("/skip", requireCircuitOpen, requireWalletLimits("hot_market_skip"), requ
   }
 });
 
-// Запуск горячего окна (ивент)
-r.post("/event/start", async (req, res) => {
+// Запуск горячего окна (только authority).
+r.post("/event/start", requireAdmin, async (req, res) => {
   try {
     const rarity = Number(req.body.rarity);
     const durationSeconds = new BN(req.body.durationSeconds);
     const multiplierBps = Number(req.body.multiplierBps);
-
+    const [config] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
-
     const ix = await (marketProgram.methods as any)
-      .hotMarketStartEvent(rarity, durationSeconds, multiplierBps)
-      .accounts({
-        pool,
-        authority: AUTHORITY.publicKey,
-      })
+      .startMarketEvent(rarity, durationSeconds, multiplierBps)
+      .accounts({ config, authority: AUTHORITY.publicKey, pool })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -224,19 +221,14 @@ r.post("/event/start", async (req, res) => {
   }
 });
 
-// Permissionless обновление цены (может вызываться keeper-ботом)
-r.post("/crank", async (req, res) => {
+// Permissionless on-chain price/counter crank, sent by the configured keeper.
+r.post("/crank", requireAdmin, async (req, res) => {
   try {
     const rarity = Number(req.body.rarity);
-
     const [pool] = hotMarketPoolPda(rarity);
-
     const ix = await (marketProgram.methods as any)
-      .hotMarketCrank(rarity)
-      .accounts({
-        pool,
-        caller: AUTHORITY.publicKey,
-      })
+      .crankMarket(rarity)
+      .accounts({ pool })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });

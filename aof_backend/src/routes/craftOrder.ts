@@ -49,6 +49,7 @@ r.post("/fulfill", async (req, res) => {
         config,
         fulfiller,
         craftOrder,
+        creatorRefund: creator,
         treasury,
         woodMint,
         fulfillerWood,

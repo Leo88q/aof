@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { db } from "../lib/db";
 import { issueApiKey } from "../middleware/apiKey";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
+r.use(requireAdmin);
 
 // Выпустить новый API-ключ (только админ в проде)
 r.post("/issue", async (req, res) => {

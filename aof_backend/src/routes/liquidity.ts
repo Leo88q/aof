@@ -4,24 +4,27 @@ import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { AUTHORITY } from "../config";
 import { liquidityProgram } from "../provider";
-import { lpConfigPda, lpPoolPda, lpPositionPda } from "../lib/pda";
+import { lpConfigPda, liquidityProgramDataPda, lpPoolPda, lpPositionPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
 // Инициализация конфигурации ликвидности
-r.post("/config/init", async (req, res) => {
+r.post("/config/init", requireAdmin, async (req, res) => {
   try {
-    const potatoMint = pk(req.body.potatoMint);
+    const mascotMint = pk(req.body.mascotMint || req.body.potatoMint);
 
     const [lpConfig] = lpConfigPda();
+    const [programData] = liquidityProgramDataPda();
 
     const ix = await (liquidityProgram.methods as any)
-      .initLpConfig(potatoMint)
+      .initLpConfig(mascotMint)
       .accounts({
         lpConfig,
         authority: AUTHORITY.publicKey,
+        programData,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -44,10 +47,10 @@ r.post("/deposit", requireCircuitOpen, requireWalletLimits("lp_deposit"), requir
     const [lpPosition] = lpPositionPda(user, rarity);
 
     const config: any = await (liquidityProgram.account as any)["lpConfig"].fetch(lpConfig);
-    const potatoMint = config.potatoMint;
+    const mascotMint = config.mascotMint;
 
-    const userPotato = getAssociatedTokenAddressSync(potatoMint, user);
-    const poolVault = getAssociatedTokenAddressSync(potatoMint, lpPool, true);
+    const userMascot = getAssociatedTokenAddressSync(mascotMint, user);
+    const poolVault = getAssociatedTokenAddressSync(mascotMint, lpPool, true);
 
     const ix = await (liquidityProgram.methods as any)
       .lpDeposit(rarity, amount)
@@ -56,8 +59,8 @@ r.post("/deposit", requireCircuitOpen, requireWalletLimits("lp_deposit"), requir
         lpPool,
         lpPosition,
         user,
-        potatoMint,
-        userPotato,
+        mascotMint,
+        userMascot,
         poolVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -83,10 +86,10 @@ r.post("/withdraw", requireCircuitOpen, requireWalletLimits("lp_withdraw"), requ
     const [lpPosition] = lpPositionPda(user, rarity);
 
     const config: any = await (liquidityProgram.account as any)["lpConfig"].fetch(lpConfig);
-    const potatoMint = config.potatoMint;
+    const mascotMint = config.mascotMint;
 
-    const userPotato = getAssociatedTokenAddressSync(potatoMint, user);
-    const poolVault = getAssociatedTokenAddressSync(potatoMint, lpPool, true);
+    const userMascot = getAssociatedTokenAddressSync(mascotMint, user);
+    const poolVault = getAssociatedTokenAddressSync(mascotMint, lpPool, true);
 
     const ix = await (liquidityProgram.methods as any)
       .lpWithdraw(rarity, shares)
@@ -95,8 +98,8 @@ r.post("/withdraw", requireCircuitOpen, requireWalletLimits("lp_withdraw"), requ
         lpPool,
         lpPosition,
         user,
-        potatoMint,
-        userPotato,
+        mascotMint,
+        userMascot,
         poolVault,
         tokenProgram: TOKEN_PROGRAM_ID,
       })

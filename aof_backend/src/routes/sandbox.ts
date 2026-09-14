@@ -2,6 +2,7 @@ import { Router } from "express";
 import { runSimulation } from "../lib/economySimulator";
 import { runSimulationV2 } from "../lib/economySimulatorV2";
 import { runSimulationV3 } from "../lib/economySimulatorV3";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -14,7 +15,7 @@ const r = Router();
  * - days: количество дней (по умолчанию 30)
  * - dailyMint: сколько POTATO минтится в день (по умолчанию 50000)
  */
-r.post("/run", async (req, res) => {
+r.post("/run", requireAdmin, async (req, res) => {
   try {
     const agents = Math.min(Number(req.body.agents) || 1000, 5000); // макс 5000
     const days = Math.min(Number(req.body.days) || 30, 90); // макс 90 дней
@@ -37,7 +38,7 @@ r.post("/run", async (req, res) => {
  * POST /sandbox/compare
  * Сравнение двух сценариев (до/после изменения)
  */
-r.post("/compare", async (req, res) => {
+r.post("/compare", requireAdmin, async (req, res) => {
   try {
     const scenarioA = {
       agents: Number(req.body.scenarioA?.agents) || 1000,
@@ -74,7 +75,7 @@ r.post("/compare", async (req, res) => {
  * POST /sandbox/run-v2
  * Расширенная симуляция со всеми игровыми механиками
  */
-r.post("/run-v2", async (req, res) => {
+r.post("/run-v2", requireAdmin, async (req, res) => {
   try {
     const agents = Math.min(Number(req.body.agents) || 1000, 5000);
     const days = Math.min(Number(req.body.days) || 30, 90);
@@ -100,7 +101,7 @@ r.post("/run-v2", async (req, res) => {
  * POST /sandbox/run-v3
  * ПОЛНАЯ симуляция: 26 ресурсов + инструменты до легендарки + миссии + танки
  */
-r.post("/run-v3", async (req, res) => {
+r.post("/run-v3", requireAdmin, async (req, res) => {
   try {
     const agents = Math.min(Number(req.body.agents) || 1000, 2000);
     const days = Math.min(Number(req.body.days) || 300, 365);

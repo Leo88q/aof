@@ -6,7 +6,8 @@ import { program } from "../provider";
 import { authPda, configPda, packCommitPda, packConfigPda, toolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { newCommit, popSecret } from "../lib/secretStore";
+import { requireAdmin } from "../middleware/adminAuth";
+import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
 
 const r = Router();
 const packTypeMap: Record<string, any> = {
@@ -16,6 +17,13 @@ const packTypeMap: Record<string, any> = {
 };
 
 r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async (req, res) => {
+  // A pack commit transfers SOL immediately, but the current on-chain
+  // programs have no typed expiry-refund instruction and the worker cannot
+  // safely reconstruct every reveal account. Do not accept new paid commits
+  // until reveal/refund recovery is implemented and tested.
+  return res.status(503).json({
+    error: "PACK_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
+  });
   try {
     const user = pk(req.body.user);
     const mint = pk(req.body.mint);
@@ -36,6 +44,7 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async
         user,
         treasury,
         packConfig,
+        auth: authPda()[0],
         mint,
         packCommit,
         systemProgram: SystemProgram.programId,
@@ -54,7 +63,8 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("packs_reveal"), requi
     const user = pk(req.body.user);
     const packType = req.body.packType;
     const packTypeIdx = ["small", "medium", "big"].indexOf(packType);
-    const secret = await popSecret(`pack:${mint.toBase58()}`);
+    const key = `pack:${mint.toBase58()}`;
+    const secret = await peekSecret(key);
 
     const [config] = configPda();
     const [packCommit] = packCommitPda(mint);
@@ -81,13 +91,14 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("packs_reveal"), requi
       })
       .instruction();
     const sig = await authorityOnly([ix]);
+    await markUsed(key);
     res.json({ sig });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-r.post("/config/init", async (req, res) => {
+r.post("/config/init", requireAdmin, async (req, res) => {
   try {
     const packType = Number(req.body.packType);
     const priceLamports = new (require("bn.js"))(req.body.priceLamports);
@@ -112,7 +123,7 @@ r.post("/config/init", async (req, res) => {
   }
 });
 
-r.post("/config/set", async (req, res) => {
+r.post("/config/set", requireAdmin, async (req, res) => {
   try {
     const packType = Number(req.body.packType);
     const priceLamports = new (require("bn.js"))(req.body.priceLamports);

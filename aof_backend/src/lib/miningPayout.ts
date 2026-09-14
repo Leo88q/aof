@@ -3,8 +3,10 @@ import BN from "bn.js";
 import { materialMintsPda, configPda } from "./pda";
 import { fetchOne } from "./decode";
 
-// Базовая ставка: 10 единиц ресурса в час для common
-const BASE_RATE = 10;
+// Resource mints use 9 decimals; all amounts passed to SPL instructions are
+// atomic units (10 display units per hour for common).
+export const RESOURCE_UNIT = 1_000_000_000;
+const BASE_RATE = 10 * RESOURCE_UNIT;
 
 // YIELD_BPS по редкости (basis points, 10000 = 100%)
 const YIELD_BPS: Record<string, number> = {
@@ -68,24 +70,13 @@ export function calculatePayoutAmount(hours: number, rarity: string): BN {
 }
 
 /**
- * Рассчитать coal drop для pick (15% шанс, floor(hours/2) Coal).
- * Возвращает { mint, amount } или null если не повезло.
+ * Coal drops are not part of the current canonical collect_mining
+ * instruction. Keep this legacy helper fail-closed instead of inventing a
+ * second, off-chain RNG/economic path that could diverge from the program.
  */
 export async function calculateCoalDrop(
-  toolType: string,
-  hours: number
+  _toolType: string,
+  _hours: number
 ): Promise<{ mint: PublicKey; amount: BN } | null> {
-  if (toolType.toLowerCase() !== "pick") return null;
-  if (Math.random() >= 0.15) return null; // 15% шанс
-
-  const coalAmount = Math.floor(hours / 2);
-  if (coalAmount <= 0) return null;
-
-  // Читаем COAL из MaterialMints PDA
-  const [mmAddr] = materialMintsPda();
-  const mm: any = await fetchOne("materialMints", mmAddr);
-  const mint = mm?.coal;
-  if (!mint) return null;
-
-  return { mint: new PublicKey(mint), amount: new BN(coalAmount) };
+  return null;
 }

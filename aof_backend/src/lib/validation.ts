@@ -26,6 +26,9 @@ export const setResourceMintsSchema = z.object({
   foodMint: pubkeySchema,
   woodMint: pubkeySchema,
   stoneMint: pubkeySchema,
+  seedsMint: pubkeySchema,
+  waterMint: pubkeySchema,
+  potatoMint: pubkeySchema,
 }).strict();
 
 export const gastankDepositSchema = z.object({

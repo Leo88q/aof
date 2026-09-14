@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -44,7 +45,7 @@ r.get("/:user", async (req, res) => {
 });
 
 // Получить текст ноды + отметить прочитанной
-r.post("/node/complete", async (req, res) => {
+r.post("/node/complete", requireWalletProof("lore_node_complete", "user"), async (req, res) => {
   try {
     const { user, arcId, nodeId } = req.body;
     const arc = LORE_ARCS[arcId];

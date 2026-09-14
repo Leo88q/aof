@@ -6,7 +6,8 @@ import { program } from "../provider";
 import { authPda, configPda, gastankPda, rerollCommitPda, rerollConfigPda, toolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { newCommit, popSecret } from "../lib/secretStore";
+import { requireAdmin } from "../middleware/adminAuth";
+import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
 
 const r = Router();
 
@@ -56,6 +57,12 @@ r.post("/fuse", async (req, res) => {
 });
 
 r.post("/random/commit", requireCircuitOpen, requireWalletLimits("reroll_commit"), async (req, res) => {
+  // The commit burns the user's tool immediately. There is currently no
+  // typed expiry refund path, so fail closed instead of accepting an
+  // unrecoverable paid/burned state.
+  return res.status(503).json({
+    error: "REROLL_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
+  });
   try {
     const user = pk(req.body.user);
     const burnMint = pk(req.body.burnMint);
@@ -94,7 +101,8 @@ r.post("/random/reveal", requireCircuitOpen, requireWalletLimits("reroll_reveal"
   try {
     const newMint = pk(req.body.newMint);
     const user = pk(req.body.user);
-    const secret = await popSecret(`reroll:${newMint.toBase58()}`);
+    const key = `reroll:${newMint.toBase58()}`;
+    const secret = await peekSecret(key);
 
     const [config] = configPda();
     const [rerollConfig] = rerollConfigPda();
@@ -117,16 +125,18 @@ r.post("/random/reveal", requireCircuitOpen, requireWalletLimits("reroll_reveal"
         auth,
         slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
     const sig = await authorityOnly([ix]);
+    await markUsed(key);
     res.json({ sig });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-r.post("/config/init", async (req, res) => {
+r.post("/config/init", requireAdmin, async (req, res) => {
   try {
     const oddsBps = req.body.oddsBps;
     const [config] = configPda();

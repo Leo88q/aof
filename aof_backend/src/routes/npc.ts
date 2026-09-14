@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMerchantStats, runMerchantCycle } from "../lib/npcMerchant";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -7,26 +7,22 @@ const r = Router();
  * GET /npc/stats
  * Статистика NPC торговцев
  */
-r.get("/stats", async (req, res) => {
-  try {
-    const stats = await getMerchantStats();
-    res.json(stats);
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.get("/stats", async (_req, res) => {
+  // Do not expose historical/random audit rows as live market activity.
+  res.json({
+    enabled: false,
+    reason: "NPC trading is unavailable until canonical orderbook settlement is deployed",
+  });
 });
 
 /**
  * POST /npc/run
  * Ручной запуск цикла NPC (для тестирования)
  */
-r.post("/run", async (req, res) => {
-  try {
-    const actions = await runMerchantCycle();
-    res.json({ success: true, actions });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.post("/run", requireAdmin, async (_req, res) => {
+  res.status(503).json({
+    error: "NPC trading is unavailable until canonical orderbook settlement is deployed",
+  });
 });
 
 export default r;

@@ -40,16 +40,11 @@ r.post("/join", async (req, res) => {
 });
 
 // Внести ресурсы в общий склад
-r.post("/deposit", async (req, res) => {
-  try {
-    const { guildId, user, amount } = req.body;
-    const activity = await db.guildActivity.create({
-      data: { guildId, actor: user, action: "deposit", amount },
-    });
-    res.json({ activity });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.post("/deposit", async (_req, res) => {
+  // This route previously recorded an arbitrary amount in SQLite without
+  // debiting a canonical resource. Do not expose a fake deposit until the
+  // on-chain treasury/account flow is implemented and tested.
+  return res.status(503).json({ error: "Guild deposits are unavailable until canonical resource settlement is deployed" });
 });
 
 // Лента активности гильдии

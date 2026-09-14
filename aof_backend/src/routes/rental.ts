@@ -103,10 +103,11 @@ r.post("/revoke", requireCircuitOpen, requireWalletLimits("rental__revoke"), req
     const mint = pk(req.body.mint);
     const [tool] = toolPda(mint);
     const [rentalAgreement] = rentalAgreementPda(mint);
+    const agreement: any = await (program.account as any)["rentalAgreement"].fetch(rentalAgreement);
 
     const ix = await (program.methods as any)
       .rentalRevoke()
-      .accounts({ owner, mint, tool, rentalAgreement })
+      .accounts({ owner, mint, tool, rentalAgreement, renterRefund: agreement.renter })
       .instruction();
 
     const tx = await coSign([ix], owner);

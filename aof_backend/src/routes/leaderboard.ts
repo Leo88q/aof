@@ -1,6 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { db } from "../lib/db";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -30,7 +31,7 @@ function buildMerkleTree(leaves: string[]): { root: string; proofs: string[][] }
 }
 
 // Создать снапшот лидерборда (вызывается воркером раз в неделю)
-r.post("/snapshot", async (req, res) => {
+r.post("/snapshot", requireAdmin, async (req, res) => {
   try {
     const { period, periodId } = req.body;
     const weekNumber = Number(periodId);

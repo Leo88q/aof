@@ -1,12 +1,10 @@
 import { takeEconomySnapshot } from "./economyMonitor";
-import { runMerchantCycle } from "./npcMerchant";
 
 /**
  * Cron jobs для фоновых задач OpenClaw
  */
 
 let economyInterval: NodeJS.Timeout | null = null;
-let merchantInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
   // Economy snapshot каждые 5 минут
@@ -23,21 +21,9 @@ export function startCronJobs() {
     
     console.log("✅ [Cron] Economy monitor started (every 5 min)");
   }
-
-  // NPC Merchant каждые 10 минут
-  if (!merchantInterval) {
-    merchantInterval = setInterval(async () => {
-      try {
-        console.log("🕐 [Cron] Running NPC merchant cycle...");
-        const actions = await runMerchantCycle();
-        console.log(`📊 [Cron] NPC completed: ${actions.length} trades`);
-      } catch (e) {
-        console.error("❌ [Cron] NPC merchant failed:", e);
-      }
-    }, 10 * 60 * 1000); // 10 минут
-    
-    console.log("✅ [Cron] NPC Merchant started (every 10 min)");
-  }
+  // NPC merchant is intentionally not started: the current contracts have
+  // no canonical NPC inventory, settlement or counterparty escrow. A random
+  // off-chain cycle would fabricate economic activity and audit records.
 
 }
 

@@ -23,3 +23,6 @@ test-ledger/
 *.log
 data/session-keys/
 .env.bak
+
+# Local database files; production uses a managed database and committed migrations.
+prisma/*.db

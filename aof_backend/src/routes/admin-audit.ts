@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { db } from "../lib/db";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
+r.use(requireAdmin);
 
 /**
  * GET /admin/audit/logs

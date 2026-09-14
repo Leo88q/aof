@@ -7,6 +7,7 @@ import { program } from "../provider";
 import { configPda, gastankPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -54,7 +55,7 @@ r.post("/withdraw", requireCircuitOpen, requireWalletLimits("gastank_withdraw"),
   }
 });
 
-r.post("/sweep", async (req, res) => {
+r.post("/sweep", requireAdmin, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const treasury = pk(req.body.treasury);

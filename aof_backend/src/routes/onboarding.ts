@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -31,7 +32,7 @@ r.get("/:user", async (req, res) => {
 });
 
 // Завершить шаг онбординга
-r.post("/step/complete", async (req, res) => {
+r.post("/step/complete", requireWalletProof("onboarding_step", "user"), async (req, res) => {
   try {
     const { user, step } = req.body;
     const state = await db.onboardingState.findUnique({ where: { user } });

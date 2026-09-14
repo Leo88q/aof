@@ -2,6 +2,8 @@ import { Router } from "express";
 import { validate } from "../middleware/validate";
 import { compendiumMarkSeenSchema } from "../lib/validation";
 import { db } from "../lib/db";
+import { requireAdmin } from "../middleware/adminAuth";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -10,7 +12,7 @@ const RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
 const TOTAL_ENTRIES = TOOL_TYPES.length * RARITIES.length; // 20
 
 // Отметить что инструмент "виден" (при получении/крафте/покупке)
-r.post("/mark-seen", validate(compendiumMarkSeenSchema), async (req, res) => {
+r.post("/mark-seen", requireWalletProof("compendium_mark_seen", "user"), validate(compendiumMarkSeenSchema), async (req, res) => {
   try {
     const { user, toolType, rarity } = req.body;
     if (!TOOL_TYPES.includes(toolType) || !RARITIES.includes(rarity)) {

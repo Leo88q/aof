@@ -2,7 +2,6 @@ import { Router } from "express";
 import { seasonPassPda, seasonPda } from "../lib/pda";
 import { program } from "../provider";
 import { pk } from "../lib/tx";
-import { db } from "../lib/db";
 
 const r = Router();
 
@@ -19,21 +18,27 @@ r.get("/:user", async (req, res) => {
     const seasonId = Number(req.query.seasonId || 1);
 
     const [seasonPass] = seasonPassPda(user, seasonId);
+    const [season] = seasonPda(seasonId);
 
-    // Читаем ончейн сезонный пасс (если контракты задеплоены)
+    // Читаем ончейн сезонный пасс и сам сезон (если контракты задеплоены)
     let seasonPassData: any = null;
+    let seasonData: any = null;
     let isVip = false;
-    let source = "fallback";
 
     try {
       seasonPassData = await (program.account as any)["seasonPass"].fetch(seasonPass);
-      isVip = Boolean(seasonPassData.premiumTrack) && Boolean(seasonPassData.active);
-      source = "onchain";
+      seasonData = await (program.account as any)["season"].fetch(season);
+      // SeasonPass stores `premium`; the pass is useful only while the
+      // canonical 42-day on-chain season is active.
+      const startedAt = Number(seasonData.startTime || 0);
+      const active = startedAt > 0 && Math.floor(Date.now() / 1000) < startedAt + 42 * 86400;
+      isVip = Boolean(seasonPassData.premium) && active;
     } catch {
-      // Контракты не задеплоены — читаем из БД как фоллбэк
-      const profile = await db.profile.findUnique({ where: { user: req.params.user } });
-      isVip = Boolean(profile?.title?.includes("VIP"));
-      source = "db_fallback";
+      // A profile title is not proof of a premium pass. Never grant VIP from
+      // a database fallback when canonical season accounts are unavailable.
+      return res.status(503).json({
+        error: "VIP_STATUS_UNAVAILABLE_FROM_CANONICAL_SEASON_ACCOUNTS",
+      });
     }
 
     // Что открывает этот статус (единый справочник для фронта)
@@ -41,7 +46,7 @@ r.get("/:user", async (req, res) => {
       user: req.params.user,
       seasonId,
       isVip,
-      source,
+      source: "onchain",
       privileges: {
         farmTrader: isVip
           ? { enabled: true, maxRules: 10, maxSpendPerDaySol: 4.0 }

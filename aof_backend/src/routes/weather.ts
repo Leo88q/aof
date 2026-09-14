@@ -1,91 +1,69 @@
 import { Router } from "express";
-import crypto from "crypto";
-import { db } from "../lib/db";
+import { program } from "../provider";
+import { weatherStatePda } from "../lib/pda";
 
 const r = Router();
-
-const DAYS_PER_SEASON = 42; // из constants.rs
+const DAYS_PER_SEASON = 42;
 const SEASONS = ["spring", "summer", "autumn", "winter"];
+const WEATHER_META: Record<number, { type: string; effect: string }> = {
+  0: { type: "drought", effect: "well_water_rate_zero" },
+  1: { type: "sunny", effect: "well_water_rate_5_per_hour" },
+  2: { type: "rain", effect: "well_water_rate_15_per_hour" },
+  3: { type: "harvest_festival", effect: "well_water_rate_20_per_hour" },
+};
 
-const WEATHER_TYPES = [
-  { type: "sunny", weight: 40, effect: "food_mining_+10pct" },
-  { type: "rain", weight: 30, effect: "wood_mining_+10pct" },
-  { type: "drought", weight: 20, effect: "all_-15pct_rare_loot_+50pct" },
-  { type: "harvest_festival", weight: 10, effect: "all_multiplier" },
-];
-
-// Детерминированный тип погоды по дате (одинаков для всех в один день)
-function weatherForDate(dateStr: string) {
-  const hash = crypto.createHash("sha256").update(`aof-weather:${dateStr}`).digest();
-  const roll = hash.readUInt32BE(0) % 100;
-  let cumulative = 0;
-  for (const w of WEATHER_TYPES) {
-    cumulative += w.weight;
-    if (roll < cumulative) return w;
-  }
-  return WEATHER_TYPES[0];
-}
-
-// Вычислить сезон из даты
-function seasonFromDate(dateStr: string) {
-  const epoch = new Date("2024-01-01").getTime();
-  const current = new Date(dateStr).getTime();
-  const dayId = Math.floor((current - epoch) / 86400000);
-  const seasonIndex = Math.floor((dayId / DAYS_PER_SEASON) % 4);
-  const dayOfSeason = dayId % DAYS_PER_SEASON;
-  const daysUntilNextSeason = DAYS_PER_SEASON - dayOfSeason;
-  
+function seasonFromDayId(dayId: number) {
+  const cycleDay = ((dayId % (DAYS_PER_SEASON * 4)) + DAYS_PER_SEASON * 4) % (DAYS_PER_SEASON * 4);
+  const seasonIndex = Math.floor(cycleDay / DAYS_PER_SEASON);
+  const dayOfSeason = cycleDay % DAYS_PER_SEASON;
   return {
     season: SEASONS[seasonIndex],
     seasonIndex,
     dayOfSeason,
-    daysUntilNextSeason,
+    daysUntilNextSeason: DAYS_PER_SEASON - dayOfSeason,
     dayId,
   };
 }
 
-// Текущая погода + сезон
-r.get("/current", async (req, res) => {
+// Current weather must come from the canonical WeatherState PDA. The old
+// route generated a different off-chain hash and could disagree with the
+// weather_crank instruction used by the program.
+r.get("/current", async (_req, res) => {
   try {
-    const today = new Date().toISOString().split("T")[0];
-    let weather = await db.weather.findUnique({ where: { date: today } });
-    if (!weather) {
-      const w = weatherForDate(today);
-      weather = await db.weather.create({ data: { date: today, type: w.type } });
+    const [address] = weatherStatePda();
+    const state: any = await (program.account as any).weatherState.fetchNullable(address);
+    if (!state) {
+      return res.status(503).json({
+        error: "WEATHER_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN",
+      });
     }
-    const meta = WEATHER_TYPES.find((w) => w.type === weather!.type);
-    const seasonData = seasonFromDate(today);
-    
-    res.json({ 
-      date: today, 
-      type: weather.type, 
-      effect: meta?.effect,
-      ...seasonData,
+
+    const dayId = Number(state.dayId?.toString?.() ?? state.dayId ?? 0);
+    const weather = Number(state.weather ?? 0);
+    const meta = WEATHER_META[weather];
+    if (!meta) {
+      return res.status(503).json({ error: "UNKNOWN_CANONICAL_WEATHER_VALUE" });
+    }
+
+    res.json({
+      date: new Date(dayId * 86400000).toISOString().slice(0, 10),
+      type: meta.type,
+      effect: meta.effect,
+      ...seasonFromDayId(dayId),
+      updatedAt: Number(state.updatedAt?.toString?.() ?? state.updatedAt ?? 0),
+      source: "onchain",
     });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
+  } catch (_e) {
+    res.status(503).json({ error: "WEATHER_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
   }
 });
 
-// Прогноз на 3 дня вперёд (детерминированный, без хранения)
-r.get("/forecast", async (req, res) => {
-  try {
-    const forecast = [];
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(Date.now() + i * 86400000).toISOString().split("T")[0];
-      const w = weatherForDate(d);
-      const s = seasonFromDate(d);
-      forecast.push({ 
-        date: d, 
-        type: w.type, 
-        effect: w.effect,
-        ...s,
-      });
-    }
-    res.json({ forecast });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// Future weather is not stored on-chain and must not be presented as a
+// forecast until a canonical forecast source exists.
+r.get("/forecast", (_req, res) => {
+  res.status(503).json({
+    error: "WEATHER_FORECAST_UNAVAILABLE_WITHOUT_CANONICAL_SOURCE",
+  });
 });
 
 export default r;

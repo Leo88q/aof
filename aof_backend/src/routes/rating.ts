@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -7,7 +8,7 @@ const r = Router();
  * POST /rating/submit
  * Отправить оценку другому игроку
  */
-r.post("/submit", async (req, res) => {
+r.post("/submit", requireWalletProof("rating_submit", "fromUser"), async (req, res) => {
   try {
     const { fromUser, toUser, context, referenceId, rating, comment } = req.body;
     
