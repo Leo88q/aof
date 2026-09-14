@@ -6,10 +6,11 @@ import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
 
+// Must match aof-core/src/instructions/start_milling.rs and constants.rs.
 const MILL_SIZES = {
-  small:  { label: "Малая",  batchSize: 1, wheat: 6,  stone: 1, flour: 3,  time: 1200, icon: "⚙️" },
-  medium: { label: "Средняя", batchSize: 2, wheat: 18, stone: 2, flour: 10, time: 2400, icon: "⚙️⚙️" },
-  large:  { label: "Большая", batchSize: 4, wheat: 40, stone: 4, flour: 24, time: 3600, icon: "⚙️⚙️⚙️" },
+  small:  { label: "Малая",  batchSize: 1, wheat: 6,  stone: 1, flour: 3,  time: 3600, icon: "⚙️" },
+  medium: { label: "Средняя", batchSize: 2, wheat: 18, stone: 2, flour: 10, time: 10800, icon: "⚙️⚙️" },
+  large:  { label: "Большая", batchSize: 3, wheat: 40, stone: 4, flour: 24, time: 21600, icon: "⚙️⚙️⚙️" },
 };
 
 interface MillState {
@@ -48,10 +49,23 @@ export function MillPanel() {
   async function loadState() {
     if (!walletAddr) return;
     try {
-      // TODO: добавить query endpoint для mill state
-      // Пока что просто сбрасываем через 30 секунд для теста
+      const state: any = await api.query.millState(walletAddr);
+      if (!state?.inProgress) {
+        setMillState(null);
+        setTimeLeft(0);
+        return;
+      }
+      const readyAt = Number(state.readyAt || 0) * 1000;
+      setMillState({
+        active: true,
+        readyAt,
+        flourReady: Number(state.outputFlour || 0),
+      });
+      setTimeLeft(Math.max(0, Math.floor((readyAt - Date.now()) / 1000)));
     } catch (e) {
-      console.error("loadState:", e);
+      // A missing PDA is an empty mill, not a fabricated local timer.
+      setMillState(null);
+      setTimeLeft(0);
     }
   }
 
@@ -77,12 +91,7 @@ export function MillPanel() {
       const r = await handleTxResponse(resp);
       if (r.success) {
         toast.show(`⚙️ Мельница запущена! Помол: ${m.wheat} пшеницы → ${m.flour} муки`);
-        setMillState({
-          active: true,
-          readyAt: Date.now() + m.time * 1000,
-          flourReady: m.flour,
-        });
-        setTimeLeft(m.time);
+        await loadState();
       } else {
         toast.show(`❌ ${r.error || "Ошибка запуска"}`);
       }
@@ -106,8 +115,7 @@ export function MillPanel() {
       const r = await handleTxResponse(resp);
       if (r.success) {
         toast.show(`🥣 Собрано ${millState.flourReady} муки!`);
-        setMillState(null);
-        setTimeLeft(0);
+        await loadState();
       } else {
         toast.show(`❌ ${r.error || "Ошибка сбора"}`);
       }

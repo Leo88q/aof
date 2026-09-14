@@ -1,5 +1,4 @@
 import { ActiveBuffs } from "../../components/ActiveBuffs";
-import { ComebackModal } from "../../components/ComebackModal";
 import { useEffect, useState } from "react";
 import { useNav } from "../../nav/NavContext";
 import { motion } from "framer-motion";
@@ -30,7 +29,6 @@ export function FarmDashboard() {
   const { user, setUser, weather, setWeather, energy, setEnergy } = useStore();
   const [streak, setStreak] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [comebackBonus, setComebackBonus] = useState<any>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("aof_onboarded") === "1");
   const [subTab, setSubTab] = useState<SubTab>("dashboard");
@@ -160,7 +158,7 @@ export function FarmDashboard() {
               label="Энергия"
               accent="water"
             />
-            <StatChip icon="🔥" value={streak?.current ?? 0} label="Стрик" accent="green" />
+            <StatChip icon="🔥" value={streak ? streak.current : "—"} label="Стрик" accent="green" />
           </div>
 
           {energy && (
@@ -179,7 +177,7 @@ export function FarmDashboard() {
             <div className="aspect-video bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden">
               <div className="text-center">
                 <span className="text-3xl tracking-widest">🌾 🪚 ⛏️ 🏹</span>
-                <p className="text-straw text-xs mt-2">Участок 8×8 · постройки из твоих инструментов</p>
+                <p className="text-straw text-xs mt-2">Визуализация построек из канонических инструментов</p>
               </div>
             </div>
           </Card>
@@ -204,15 +202,15 @@ export function FarmDashboard() {
             <div className="space-y-2">
               <div className="flex items-center gap-3 text-sm">
                 <span>🌱</span>
-                <span className="text-straw">Погода сегодня: {weather?.type}</span>
+                <span className="text-straw">Погода сегодня: {weather?.type || "недоступна"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <span>⛏️</span>
-                <span className="text-straw">Шахта произвела +120 WOOD</span>
+                <span className="text-straw">История добычи недоступна без канонического индексатора</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <span>📈</span>
-                <span className="text-straw">Рынок: редкость Rare выросла на 4%</span>
+                <span className="text-straw">Рыночная динамика недоступна без проверенных ценовых данных</span>
               </div>
             </div>
           </Card>
@@ -231,13 +229,6 @@ export function FarmDashboard() {
       {/* РЕНДЕР: ПЕЧЬ */}
       {subTab === "oven" && <OvenPanel />}
 
-      {/* Модалка comeback-бонуса */}
-      {comebackBonus && (
-        <ComebackModal
-          bonus={{ ...comebackBonus, id: "comeback-" + Date.now() }}
-          onClose={() => setComebackBonus(null)}
-        />
-      )}
     </div>
   );
 }

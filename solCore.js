@@ -29,7 +29,9 @@ function verifySolMessage(message, sigBase64, addrBase58) {
 /**
  * Derive Solana program PDAs.
  */
-const PROGRAM_ID = process.env.SOL_PROGRAM_ID || '2dQsHg3oVKwyKHjemS2CbWkczv6sCRAY5r2WrGBv4vgC';
+// Keep the legacy helper aligned with the canonical Anchor program ID. The
+// active backend uses src/lib/pda.ts; this file is not a deployment source.
+const PROGRAM_ID = process.env.SOL_PROGRAM_ID || 'HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq';
 const PROGRAM_ID_PK = new PublicKey(PROGRAM_ID);
 
 function deriveConfig() {

@@ -70,11 +70,26 @@ import adminAudit from "./routes/admin-audit";
 import adminEconomy from "./routes/admin-economy";
 import rating from "./routes/rating";
 import { sentinelAutoAudit } from "./middleware/audit";
+import { requireAdmin } from "./middleware/adminAuth";
 import { startCommitRevealer } from "./lib/commitRevealer";
+import { requireMappedWalletProof } from "./security/walletProof";
 
 const app = express();
-app.use(cors());
+const configuredOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+if (process.env.NODE_ENV === "production" && configuredOrigins.length === 0) {
+  throw new Error("CORS_ORIGIN is required in production");
+}
+app.use(cors({
+  origin: configuredOrigins.length > 0 ? configuredOrigins : true,
+  credentials: true,
+}));
 app.use(express.json());
+// Every mapped business mutation must carry a fresh wallet signature before
+// reaching a router. Admin routes and route-specific guards remain explicit.
+app.use(requireMappedWalletProof());
 app.use(sentinelAutoAudit());
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/health" } }));
 app.use("/admin", txLimiter);
@@ -115,7 +130,7 @@ app.use("/orderbook", orderbook);
 app.use("/craft-order", craftOrder);
 app.use("/season", season);
 app.use("/query", query);
-app.use("/security", security);
+app.use("/security", requireAdmin, security);
 app.use("/hot-market", hotMarket);
 app.use("/session", session);
 app.use("/quests", quests);
@@ -152,7 +167,6 @@ app.use("/leaderboard", leaderboard);
 app.use("/antifraud", antifraud);
 app.use("/api-keys", apiKeys);
 app.use("/public", publicApi);
-app
 app.use("/friend", friend);
 app.use("/chain", chain);
 app.use("/notifications", notifications);

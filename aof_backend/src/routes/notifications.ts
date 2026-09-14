@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { db } from "../lib/db";
+import { requireWalletProof } from "../security/walletProof";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
 // Зарегистрировать токен устройства (вызывается фронтом через Capacitor)
-r.post("/device/register", async (req, res) => {
+r.post("/device/register", requireWalletProof("notifications_device_register", "user"), async (req, res) => {
   try {
     const { user, platform, token } = req.body;
     if (!["ios", "android", "web"].includes(platform)) {
@@ -23,9 +25,11 @@ r.post("/device/register", async (req, res) => {
 });
 
 // Отписаться от пушей
-r.post("/device/unregister", async (req, res) => {
+r.post("/device/unregister", requireWalletProof("notifications_device_unregister", "user"), async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, user } = req.body;
+    const device = await db.deviceToken.findUnique({ where: { token } });
+    if (!device || device.user !== user) return res.status(403).json({ error: "Not your device token" });
     await db.deviceToken.update({ where: { token }, data: { enabled: false } });
     res.json({ disabled: true });
   } catch (e: any) {
@@ -34,7 +38,7 @@ r.post("/device/unregister", async (req, res) => {
 });
 
 // Добавить уведомление в очередь (вызывается другими сервисами)
-r.post("/queue", async (req, res) => {
+r.post("/queue", requireAdmin, async (req, res) => {
   try {
     const { user, type, title, body, payload } = req.body;
     const notification = await db.notificationQueue.create({

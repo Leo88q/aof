@@ -14,9 +14,12 @@ export const errorHandler = (
   const status = err.status || err.statusCode || 500;
   const message = err.expose ? err.message : "Internal server error";
 
+  // Never expose stack traces by default. A local developer can opt in
+  // explicitly; production must not depend on NODE_ENV being set correctly.
+  const exposeStack = process.env.NODE_ENV === "development" && process.env.EXPOSE_ERROR_STACK === "true";
   res.status(status).json({
     error: message,
-    ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
+    ...(exposeStack && { stack: err.stack }),
   });
 };
 

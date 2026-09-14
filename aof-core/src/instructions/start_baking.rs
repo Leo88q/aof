@@ -6,12 +6,12 @@ use crate::errors::*;
 use crate::StartBaking;
 
 /// Рецепты выпечки (индекс = batch_size - 1)
-const OVEN_FLOUR_COST: [u64; 3] = [4, 12, 28];
-const OVEN_WATER_COST: [u64; 3] = [3, 8, 18];
-const OVEN_WOOD_COST: [u64; 3] = [5, 12, 25];
-const OVEN_COAL_COST: [u64; 3] = [2, 5, 10];
-const OVEN_BREAD_WOOD: [u64; 3] = [2, 7, 18];
-const OVEN_BREAD_COAL: [u64; 3] = [3, 9, 22];
+const OVEN_FLOUR_COST: [u64; 3] = [4 * RESOURCE_UNIT, 12 * RESOURCE_UNIT, 28 * RESOURCE_UNIT];
+const OVEN_WATER_COST: [u64; 3] = [3 * RESOURCE_UNIT, 8 * RESOURCE_UNIT, 18 * RESOURCE_UNIT];
+const OVEN_WOOD_COST: [u64; 3] = [5 * RESOURCE_UNIT, 12 * RESOURCE_UNIT, 25 * RESOURCE_UNIT];
+const OVEN_COAL_COST: [u64; 3] = [2 * RESOURCE_UNIT, 5 * RESOURCE_UNIT, 10 * RESOURCE_UNIT];
+const OVEN_BREAD_WOOD: [u64; 3] = [2 * RESOURCE_UNIT, 7 * RESOURCE_UNIT, 18 * RESOURCE_UNIT];
+const OVEN_BREAD_COAL: [u64; 3] = [3 * RESOURCE_UNIT, 9 * RESOURCE_UNIT, 22 * RESOURCE_UNIT];
 const OVEN_TIME: [i64; 3] = [OVEN_TIME_SMALL, OVEN_TIME_MEDIUM, OVEN_TIME_LARGE];
 
 /// [БЛОК L] Запуск партии выпечки в печи.

@@ -124,10 +124,14 @@ pub fn end_handler(ctx: Context<RentalEndCtx>) -> Result<()> {
     let past_end = now >= ctx.accounts.rental_agreement.end;
     require!(is_renter || past_end, AofError::RentalGraceNotExpired);
 
-    ctx.accounts.tool.operator = ctx.accounts.rental_agreement.owner;
+    // Resolve to the current ToolData owner rather than trusting the owner
+    // snapshot in the agreement. This also repairs agreements created before
+    // an ownership transfer was blocked by the settlement constraints.
+    let current_owner = ctx.accounts.tool.owner;
+    ctx.accounts.tool.operator = current_owner;
     emit!(RentalEnded {
         mint: ctx.accounts.mint.key(),
-        owner: ctx.accounts.rental_agreement.owner,
+        owner: current_owner,
     });
     Ok(())
 }
@@ -138,19 +142,26 @@ pub fn end_handler(ctx: Context<RentalEndCtx>) -> Result<()> {
 /// повторный вызов после истечения grace.
 pub fn revoke_handler(ctx: Context<RentalRevokeCtx>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
-    let ra = &mut ctx.accounts.rental_agreement;
-    if ra.revoke_requested_at == 0 {
-        ra.revoke_requested_at = now;
+    let revoke_requested_at = ctx.accounts.rental_agreement.revoke_requested_at;
+    if revoke_requested_at == 0 {
+        ctx.accounts.rental_agreement.revoke_requested_at = now;
         return Ok(());
     }
     require!(
-        now >= ra.revoke_requested_at + RENTAL_REVOKE_GRACE_SECONDS,
+        now >= revoke_requested_at + RENTAL_REVOKE_GRACE_SECONDS,
         AofError::RentalGraceNotExpired
     );
-    ctx.accounts.tool.operator = ra.owner;
+    let current_owner = ctx.accounts.tool.owner;
+    ctx.accounts.tool.operator = current_owner;
+    // Do not put `close = renter_refund` on RentalRevokeCtx: Anchor would
+    // close the agreement even on the first call that only records the grace
+    // period. Close it only after the grace period has elapsed.
+    ctx.accounts
+        .rental_agreement
+        .close(ctx.accounts.renter_refund.to_account_info())?;
     emit!(RentalEnded {
         mint: ctx.accounts.mint.key(),
-        owner: ra.owner,
+        owner: current_owner,
     });
     Ok(())
 }

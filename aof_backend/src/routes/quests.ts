@@ -1,5 +1,3 @@
-import { db } from "../lib/db";
-import { generateDailyQuests } from "../lib/questGenerator";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
@@ -8,28 +6,31 @@ import { AUTHORITY } from "../config";
 import { questsProgram } from "../provider";
 import {
   questConfigPda,
+  questsProgramDataPda,
   questTemplatePda,
   questProgressPda,
-  achievementRecordPda,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
 // Инициализация конфигурации заданий
-r.post("/config/init", async (req, res) => {
+r.post("/config/init", requireAdmin, async (req, res) => {
   try {
-    const potatoMint = pk(req.body.potatoMint);
-    const treasuryPotato = pk(req.body.treasuryPotato);
+    const mascotMint = pk(req.body.mascotMint || req.body.potatoMint);
+    const treasuryMascot = pk(req.body.treasuryMascot || req.body.treasuryPotato);
 
     const [questConfig] = questConfigPda();
+    const [programData] = questsProgramDataPda();
 
     const ix = await (questsProgram.methods as any)
-      .initQuestConfig(potatoMint, treasuryPotato)
+      .initQuestConfig(mascotMint, treasuryMascot)
       .accounts({
         questConfig,
         authority: AUTHORITY.publicKey,
+        programData,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -41,7 +42,7 @@ r.post("/config/init", async (req, res) => {
 });
 
 // Создание шаблона квеста
-r.post("/quest/init", async (req, res) => {
+r.post("/quest/init", requireAdmin, async (req, res) => {
   try {
     const questId = Number(req.body.questId);
     const rewardPotato = new BN(req.body.rewardPotato);
@@ -77,7 +78,7 @@ r.post("/quest/claim", requireCircuitOpen, requireWalletLimits("quests_claim"), 
 
     // Читаем конфиг чтобы взять адреса казны и минта
     const config: any = await (questsProgram.account as any)["questConfig"].fetch(questConfig);
-    const userPotato = getAssociatedTokenAddressSync(config.potatoMint, user);
+    const userMascot = getAssociatedTokenAddressSync(config.mascotMint, user);
 
     const ix = await (questsProgram.methods as any)
       .questClaimReward(questId)
@@ -86,8 +87,9 @@ r.post("/quest/claim", requireCircuitOpen, requireWalletLimits("quests_claim"), 
         questTemplate,
         questProgress,
         user,
-        treasuryPotato: config.treasuryPotato,
-        userPotato,
+        authority: AUTHORITY.publicKey,
+        treasuryMascot: config.treasuryMascot,
+        userMascot,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
@@ -98,7 +100,15 @@ r.post("/quest/claim", requireCircuitOpen, requireWalletLimits("quests_claim"), 
   }
 });
 
-// Разблокировка достижения
+// Disabled until the contract verifies achievement criteria instead of accepting
+// an arbitrary self-attested id. The on-chain instruction is fail-closed too.
+r.post("/achievement/unlock", requireCircuitOpen, requireWalletLimits("quests_achievement"), (_req, res) => {
+  res.status(503).json({
+    error: "ACHIEVEMENT_UNLOCK_DISABLED_UNTIL_CRITERIA_VERIFIED",
+  });
+});
+
+/*
 r.post("/achievement/unlock", requireCircuitOpen, requireWalletLimits("quests_achievement"), async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -122,120 +132,28 @@ r.post("/achievement/unlock", requireCircuitOpen, requireWalletLimits("quests_ac
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
+// Daily quests, progress and achievement state are not currently indexed from
+// the quests program. Do not return template/demo rows with zero progress as
+// if they were live user state.
+r.get("/daily/:user", (_req, res) => {
+  res.status(503).json({
+    error: "QUEST_PROGRESS_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
+  });
+});
 
+// Active quests and achievements require the same canonical progress index.
+r.get("/list/:user", (_req, res) => {
+  res.status(503).json({
+    error: "QUEST_PROGRESS_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
+  });
+});
 
-
-// [Странник Джо] Получить ежедневные квесты (генерируются динамически)
-r.get("/daily/:user", async (req, res) => {
-  try {
-    const { user } = req.params;
-    const templates = generateDailyQuests(user);
-    
-    // Квесты генерируются на лету, прогресс пока не хранится в БД
-    // TODO: сохранять прогресс когда добавим on-chain квесты
-    const quests = templates.map((q) => ({
-      ...q,
-      progress: 0,
-      completed: false,
-    }));
-    
-    res.json({ quests });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.get("/achievements/:user", (_req, res) => {
+  res.status(503).json({
+    error: "ACHIEVEMENT_STATE_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
+  });
 });
 
 export default r;
-
-// Список активных квестов пользователя с прогрессом
-r.get("/list/:user", async (req, res) => {
-  try {
-    const user = req.params.user;
-    
-    // Определяем активные квесты на основе активности игрока
-    // (в полной версии это должно читаться из questProgress PDA)
-    const today = new Date().toISOString().split("T")[0];
-    
-    // Демо-квесты для MVP (в проде — из questTemplate PDA)
-    const activeQuests = [
-      {
-        id: 1,
-        title: "Добудь 500 WOOD",
-        description: "Используй топор для майнинга дерева",
-        type: "daily",
-        target: 500,
-        progress: 0, // TODO: вычислять из mining_activity
-        reward: { type: "CORE", amount: 100 },
-        claimable: false,
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-      },
-      {
-        id: 2,
-        title: "Скрафти инструмент",
-        description: "Создай новый инструмент через крафт",
-        type: "daily",
-        target: 1,
-        progress: 0, // TODO: вычислять из craft_activity
-        reward: { type: "CORE", amount: 50 },
-        claimable: false,
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-      },
-      {
-        id: 3,
-        title: "Посети ферму друга",
-        description: "Полей ферму соседа",
-        type: "daily",
-        target: 1,
-        progress: 0, // TODO: вычислять из neighbor_visits
-        reward: { type: "CORE", amount: 30 },
-        claimable: false,
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-      },
-    ];
-
-    // Проверяем прогресс для каждого квеста
-    // (в полной версии — читаем questProgress PDA)
-    const quests = activeQuests.map((quest) => {
-      const progress = Math.min(quest.progress, quest.target);
-      const claimable = progress >= quest.target;
-      return {
-        ...quest,
-        progress,
-        claimable,
-        pct: Math.round((progress / quest.target) * 100),
-      };
-    });
-
-    res.json({ quests, today });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// Список достижений пользователя
-r.get("/achievements/:user", async (req, res) => {
-  try {
-    const user = req.params.user;
-    
-    // Демо-достижения (в полной версии — из achievementRecord PDA)
-    const achievements = [
-      { id: 1, title: "Первый шаг", description: "Добудь первый ресурс", icon: "🪓", unlocked: false },
-      { id: 2, title: "Мастер крафта", description: "Скрафти 10 инструментов", icon: "⚒️", unlocked: false },
-      { id: 3, title: "Социальная бабочка", description: "Посети 5 ферм друзей", icon: "👥", unlocked: false },
-      { id: 4, title: "Коллекционер", description: "Собери 50% компендиума", icon: "📚", unlocked: false },
-      { id: 5, title: "Легенда", description: "Достигни 1000 Trust Index", icon: "👑", unlocked: false },
-    ];
-
-    // Проверяем какие достижения разблокированы
-    // (в полной версии — читаем achievementRecord PDA)
-    const unlockedAchievements = achievements.map((ach) => ({
-      ...ach,
-      unlocked: false, // TODO: проверять условия
-    }));
-
-    res.json({ achievements: unlockedAchievements });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});

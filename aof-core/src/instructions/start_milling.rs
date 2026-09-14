@@ -6,9 +6,9 @@ use crate::errors::*;
 use crate::StartMilling;
 
 /// Рецепты помола (индекс = batch_size - 1)
-const MILL_WHEAT_COST: [u64; 3] = [6, 18, 40];
-const MILL_STONE_COST: [u64; 3] = [1, 2, 4];
-const MILL_FLOUR_OUT: [u64; 3] = [3, 10, 24];
+const MILL_WHEAT_COST: [u64; 3] = [6 * RESOURCE_UNIT, 18 * RESOURCE_UNIT, 40 * RESOURCE_UNIT];
+const MILL_STONE_COST: [u64; 3] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 4 * RESOURCE_UNIT];
+const MILL_FLOUR_OUT: [u64; 3] = [3 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 24 * RESOURCE_UNIT];
 const MILL_TIME: [i64; 3] = [MILL_TIME_SMALL, MILL_TIME_MEDIUM, MILL_TIME_LARGE];
 
 /// [БЛОК L] Запуск партии помола на мельнице.

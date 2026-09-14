@@ -1,56 +1,56 @@
-import { guardTransaction } from "./txGuard";
-import { PublicKey } from "@solana/web3.js";
+import { getAofGuardConfig, guardTransaction } from "./txGuard";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { signAndSendTx } from "./wallet";
 import { useWalletStore } from "../store/walletStore";
+
+/** Decode a backend base64 transaction before it reaches guards or wallets. */
+export function decodeTransaction(base64: string): Transaction | VersionedTransaction {
+  const raw = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  try {
+    return Transaction.from(raw);
+  } catch {
+    return VersionedTransaction.deserialize(raw);
+  }
+}
 
 /**
  * Универсальный обработчик ответа бэкенда.
  * - Если пришёл `sig` (authorityOnly) — транзакция уже отправлена, показываем успех
- * - Если пришёл `tx` (coSign) — нужно подписать кошельком и отправить
- * 
- * [НОВОЕ] Перед подписанием вызывается guardTransaction для симуляции и проверки рисков
+ * - Если пришёл `tx` (coSign) — декодируем, проверяем и подписываем кошельком
  */
 export async function handleTxResponse(response: any): Promise<{
   success: boolean;
   signature?: string;
   error?: string;
 }> {
-  // authorityOnly: сервер уже отправил
   if (response.sig) {
     return { success: true, signature: response.sig };
   }
 
-  // coSign: подписываем кошельком
   if (response.tx) {
     try {
-      // === [НОВОЕ] PRE-SIGN GUARD ===
       const user = useWalletStore.getState().address;
       if (user) {
         console.log("🛡️ txGuard: начинаем симуляцию транзакции...");
+        const decoded = decodeTransaction(response.tx);
         const guard = await guardTransaction(
-          response.tx,
+          decoded,
           new PublicKey(user),
-          { 
-            maxLamportsSpent: 500_000, // 0.0005 SOL максимум
-          }
+          getAofGuardConfig()
         );
-        
+
         if (!guard.safe) {
           console.error("🛡️ ТРАНЗАКЦИЯ ЗАБЛОКИРОВАНА:", guard.reason);
-          return { 
-            success: false, 
-            error: `🛡️ Защита: ${guard.reason}` 
+          return {
+            success: false,
+            error: `🛡️ Защита: ${guard.reason}`,
           };
         }
-        
+
         if (guard.warnings.length > 0) {
           console.warn("⚠️ txGuard предупреждения:", guard.warnings);
-          // Можно показать toast, но не блокируем
         }
-        
-        console.log("✅ txGuard: транзакция безопасна, продолжаем");
       }
-      // === КОНЕЦ GUARD ===
 
       const signature = await signAndSendTx(response.tx);
       return { success: true, signature };
@@ -72,9 +72,6 @@ export async function handleTxResponse(response: any): Promise<{
   return { success: true };
 }
 
-/**
- * Обёртка: проверяет подключение кошелька перед действием
- */
 export function requireWallet(): boolean {
   const { connected } = useWalletStore.getState();
   return connected;

@@ -8,6 +8,12 @@ pub enum MarketError {
     Paused,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Price must be greater than zero")]
+    ZeroPrice,
+    #[msg("Fee or rate is outside the supported bounds")]
+    InvalidFee,
+    #[msg("Rate is outside the supported bounds")]
+    InvalidRate,
     #[msg("Amount must be greater than zero")]
     ZeroAmount,
     #[msg("Slippage: price moved past max_price/min_price")]
@@ -16,6 +22,8 @@ pub enum MarketError {
     InvalidWindowDuration,
     #[msg("Order is not active")]
     OrderNotActive,
+    #[msg("Market trading is disabled until canonical ToolData transfer is implemented")]
+    TradingDisabled,
     #[msg("Insufficient reserve in pool")]
     InsufficientReserve,
 }

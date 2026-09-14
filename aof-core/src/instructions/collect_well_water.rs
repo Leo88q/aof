@@ -12,11 +12,16 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
     let well = &mut ctx.accounts.well_state;
     
     // Init if needed
-    if well.owner == Pubkey::default() {
+    let was_initialized = well.owner != Pubkey::default();
+    if !was_initialized {
         well.owner = ctx.accounts.user.key();
         well.water_buffer = 0;
         well.last_collected_at = Clock::get()?.unix_timestamp;
         well.bump = ctx.bumps.well_state;
+        // The first call creates the well and starts accrual. Requiring a
+        // positive elapsed amount here would make init_if_needed impossible:
+        // the transaction would always revert and the PDA would never exist.
+        return Ok(());
     }
 
     require!(well.owner == ctx.accounts.user.key(), AofError::Unauthorized);
@@ -35,7 +40,8 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
     };
 
     // Вода = elapsed (сек) * rate (в час) / 3600 — все u64
-    let water_amount: u64 = elapsed_u64
+    let accrual_seconds = elapsed_u64.min(WELL_MAX_ACCRUAL_SECONDS);
+    let water_amount: u64 = accrual_seconds
         .checked_mul(rate_per_hour)
         .ok_or(AofError::MathOverflow)?
         .checked_div(3600)

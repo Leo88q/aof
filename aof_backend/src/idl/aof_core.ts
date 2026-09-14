@@ -101,6 +101,24 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "bidder",
           "writable": true,
           "signer": true
@@ -187,6 +205,9 @@ export type AofCore = {
         {
           "name": "mint",
           "writable": true
+        },
+        {
+          "name": "tool"
         },
         {
           "name": "sellerToken",
@@ -1374,6 +1395,60 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payoutMint",
+          "writable": true
+        },
+        {
+          "name": "payoutToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
@@ -2077,6 +2152,46 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "foodMint",
+          "writable": true
+        },
+        {
+          "name": "userFood",
+          "writable": true
+        },
+        {
+          "name": "seedsMint",
+          "writable": true
+        },
+        {
+          "name": "userSeeds",
+          "writable": true
+        },
+        {
+          "name": "waterMint",
+          "writable": true
+        },
+        {
+          "name": "userWater",
+          "writable": true
+        },
+        {
+          "name": "potatoMint",
+          "writable": true
+        },
+        {
+          "name": "userPotato",
+          "writable": true
+        },
+        {
+          "name": "skrMint",
+          "writable": true
+        },
+        {
+          "name": "userSkr",
+          "writable": true
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -2297,6 +2412,10 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "creatorRefund",
+          "writable": true
         },
         {
           "name": "treasury",
@@ -2852,6 +2971,13 @@ export type AofCore = {
         },
         {
           "name": "userStone",
+          "writable": true
+        },
+        {
+          "name": "meatMint"
+        },
+        {
+          "name": "userMeat",
           "writable": true
         },
         {
@@ -3897,11 +4023,19 @@ export type AofCore = {
           }
         },
         {
+          "name": "programData"
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "marketplaceBuy",
@@ -4117,6 +4251,9 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "tool"
+        },
+        {
           "name": "sellerToken",
           "writable": true
         },
@@ -4196,11 +4333,69 @@ export type AofCore = {
           }
         },
         {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "mint"
         },
         {
           "name": "buyOrder",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  111,
+                  117,
+                  114,
+                  99,
+                  101,
+                  95,
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyOrder.maker",
+                "account": "ResourceOrder"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
         },
         {
           "name": "sellOrder",
@@ -4739,6 +4934,10 @@ export type AofCore = {
           }
         },
         {
+          "name": "buyerRefund",
+          "writable": true
+        },
+        {
           "name": "treasury",
           "writable": true
         },
@@ -4933,6 +5132,9 @@ export type AofCore = {
         },
         {
           "name": "packConfig"
+        },
+        {
+          "name": "auth"
         },
         {
           "name": "mint"
@@ -5366,6 +5568,32 @@ export type AofCore = {
           "name": "mint"
         },
         {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "order",
           "writable": true,
           "pda": {
@@ -5458,6 +5686,32 @@ export type AofCore = {
         },
         {
           "name": "mint"
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "makerToken",
@@ -6249,6 +6503,10 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "renterRefund",
+          "writable": true
         }
       ],
       "args": []
@@ -6464,6 +6722,14 @@ export type AofCore = {
         },
         {
           "name": "userStone",
+          "writable": true
+        },
+        {
+          "name": "woodMint",
+          "writable": true
+        },
+        {
+          "name": "userWood",
           "writable": true
         },
         {
@@ -7358,6 +7624,18 @@ export type AofCore = {
         {
           "name": "stoneMint",
           "type": "pubkey"
+        },
+        {
+          "name": "seedsMint",
+          "type": "pubkey"
+        },
+        {
+          "name": "waterMint",
+          "type": "pubkey"
+        },
+        {
+          "name": "potatoMint",
+          "type": "pubkey"
         }
       ]
     },
@@ -7662,6 +7940,32 @@ export type AofCore = {
           }
         },
         {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "user",
           "writable": true,
           "signer": true
@@ -7702,6 +8006,21 @@ export type AofCore = {
         },
         {
           "name": "toolMint"
+        },
+        {
+          "name": "tool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 111, 111, 108]
+              },
+              {
+                "kind": "account",
+                "path": "toolMint"
+              }
+            ]
+          }
         },
         {
           "name": "explorationCommit",
@@ -7757,6 +8076,13 @@ export type AofCore = {
         },
         {
           "name": "userStone",
+          "writable": true
+        },
+        {
+          "name": "meatMint"
+        },
+        {
+          "name": "userMeat",
           "writable": true
         },
         {
@@ -8903,6 +9229,19 @@ export type AofCore = {
   ],
   "events": [
     {
+      "name": "MiningCollected",
+      "discriminator": [
+        58,
+        22,
+        29,
+        78,
+        81,
+        75,
+        107,
+        236
+      ]
+    },
+    {
       "name": "auctionBid",
       "discriminator": [
         113,
@@ -9335,416 +9674,508 @@ export type AofCore = {
   "errors": [
     {
       "code": 6000,
-      "name": "unauthorized",
+      "name": "Unauthorized",
       "msg": "Unauthorized: signer does not match required authority"
     },
     {
       "code": 6001,
-      "name": "mathOverflow",
+      "name": "MathOverflow",
       "msg": "Math overflow or underflow detected"
     },
     {
       "code": 6002,
-      "name": "insufficientBalance",
+      "name": "InsufficientBalance",
       "msg": "Insufficient balance for operation"
     },
     {
       "code": 6003,
-      "name": "zeroAmount",
+      "name": "ZeroAmount",
       "msg": "Amount must be greater than zero"
     },
     {
       "code": 6004,
-      "name": "paused",
+      "name": "Paused",
       "msg": "Program is paused"
     },
     {
       "code": 6005,
-      "name": "invalidResourceKind",
+      "name": "InvalidResourceKind",
       "msg": "Invalid resource kind for mint"
     },
     {
       "code": 6006,
-      "name": "invalidRarityForCraft",
+      "name": "InvalidRarityForCraft",
       "msg": "Tool rarity must be above Common for craft"
     },
     {
       "code": 6007,
-      "name": "notToolOwner",
+      "name": "NotToolOwner",
       "msg": "Tool is not owned by user"
     },
     {
       "code": 6008,
-      "name": "insufficientDurability",
+      "name": "InsufficientDurability",
       "msg": "Tool durability insufficient"
     },
     {
       "code": 6009,
-      "name": "toolIsMining",
+      "name": "ToolIsMining",
       "msg": "Tool is currently mining"
     },
     {
       "code": 6010,
-      "name": "miningNotComplete",
+      "name": "MiningNotComplete",
       "msg": "Mining not yet complete"
     },
     {
       "code": 6011,
-      "name": "invalidMiningHours",
+      "name": "InvalidMiningHours",
       "msg": "Invalid mining hours for tool rarity"
     },
     {
       "code": 6012,
-      "name": "durabilityExceedsMax",
+      "name": "DurabilityExceedsMax",
       "msg": "Durability would exceed maximum"
     },
     {
       "code": 6013,
-      "name": "invalidStakeState",
+      "name": "InvalidStakeState",
       "msg": "Tool is already staked or not staked"
     },
     {
       "code": 6014,
-      "name": "notStaked",
+      "name": "NotStaked",
       "msg": "Tool is not staked"
     },
     {
       "code": 6015,
-      "name": "alreadyStaked",
+      "name": "AlreadyStaked",
       "msg": "Tool is already staked"
     },
     {
       "code": 6016,
-      "name": "alreadyMining",
+      "name": "AlreadyMining",
       "msg": "Tool is already mining"
     },
     {
       "code": 6017,
-      "name": "notMining",
+      "name": "NotMining",
       "msg": "Tool is not mining"
     },
     {
       "code": 6018,
-      "name": "lockNotExpired",
+      "name": "LockNotExpired",
       "msg": "Lock period not yet expired"
     },
     {
       "code": 6019,
-      "name": "cooldownNotExpired",
+      "name": "CooldownNotExpired",
       "msg": "Cooldown period not yet expired"
     },
     {
       "code": 6020,
-      "name": "cannotRerollLegendary",
+      "name": "CannotRerollLegendary",
       "msg": "Legendary tools cannot be rerolled"
     },
     {
       "code": 6021,
-      "name": "rerollMismatchedRarity",
+      "name": "RerollMismatchedRarity",
       "msg": "Reroll requires two tools of same rarity"
     },
     {
       "code": 6022,
-      "name": "alreadyInitialized",
+      "name": "AlreadyInitialized",
       "msg": "Program already initialized"
     },
     {
       "code": 6023,
-      "name": "invalidMigrationAuthority",
+      "name": "InvalidMigrationAuthority",
       "msg": "Invalid migration authority"
     },
     {
       "code": 6024,
-      "name": "vaultInsufficient",
+      "name": "VaultInsufficient",
       "msg": "Vault balance insufficient for payout"
     },
     {
       "code": 6025,
-      "name": "invalidLockSeconds",
+      "name": "InvalidLockSeconds",
       "msg": "Invalid lock seconds for stake"
     },
     {
       "code": 6026,
-      "name": "toolTypeTooLong",
+      "name": "ToolTypeTooLong",
       "msg": "Tool type string too long"
     },
     {
       "code": 6027,
-      "name": "rentExemptionFailed",
+      "name": "RentExemptionFailed",
       "msg": "Rent exemption check failed"
     },
     {
       "code": 6028,
-      "name": "rarityCounterMismatch",
+      "name": "RarityCounterMismatch",
       "msg": "Rarity counter account does not match the tool's target rarity"
     },
     {
       "code": 6029,
-      "name": "noExcessToSweep",
+      "name": "NoExcessToSweep",
       "msg": "No excess lamports available to sweep from gas tank"
     },
     {
       "code": 6030,
-      "name": "noIdleVillagers",
-      "msg": "No idle villagers available for mining"
+      "name": "InvalidMint",
+      "msg": "Invalid mint address"
     },
     {
       "code": 6031,
-      "name": "hoursExceedRarityCap",
-      "msg": "Requested mining hours exceed max hours for this tool rarity"
+      "name": "NoIdleVillagers",
+      "msg": "No idle villagers available for mining"
     },
     {
       "code": 6032,
-      "name": "notCollectorOwner",
-      "msg": "Signer does not own this staked collector"
+      "name": "HoursExceedRarityCap",
+      "msg": "Requested mining hours exceed max hours for this tool rarity"
     },
     {
       "code": 6033,
-      "name": "commitMismatch",
-      "msg": "Commit hash does not match revealed secret"
+      "name": "NotCollectorOwner",
+      "msg": "Signer does not own this staked collector"
     },
     {
       "code": 6034,
-      "name": "commitExpired",
-      "msg": "Commit has expired (SlotHashes window passed) — abort and refund"
+      "name": "CollectorNotConfigured",
+      "msg": "Collector mint registry is not configured"
     },
     {
       "code": 6035,
-      "name": "invalidOddsWeights",
-      "msg": "Odds weights must sum to 10000 basis points"
+      "name": "CommitMismatch",
+      "msg": "Commit hash does not match revealed secret"
     },
     {
       "code": 6036,
-      "name": "explorationCooldown",
-      "msg": "Exploration cooldown has not expired"
+      "name": "CommitExpired",
+      "msg": "Commit has expired (SlotHashes window passed) — abort and refund"
     },
     {
       "code": 6037,
-      "name": "explorationDailyLimitReached",
-      "msg": "Daily exploration trip limit reached"
+      "name": "InvalidOddsWeights",
+      "msg": "Odds weights must sum to 10000 basis points"
     },
     {
       "code": 6038,
-      "name": "explorationMaxTier",
-      "msg": "Exploration tier is already at maximum"
+      "name": "ExplorationCooldown",
+      "msg": "Exploration cooldown has not expired"
     },
     {
       "code": 6039,
-      "name": "referralAlreadyBound",
-      "msg": "Referral link already exists for this user"
+      "name": "ExplorationDailyLimitReached",
+      "msg": "Daily exploration trip limit reached"
     },
     {
       "code": 6040,
-      "name": "referralCapReached",
-      "msg": "Referrer has reached their active referral cap"
+      "name": "ExplorationMaxTier",
+      "msg": "Exploration tier is already at maximum"
     },
     {
       "code": 6041,
-      "name": "referralMaxTier",
-      "msg": "Referral tier is already at maximum"
+      "name": "ReferralAlreadyBound",
+      "msg": "Referral link already exists for this user"
     },
     {
       "code": 6042,
-      "name": "enchantMaxLevel",
-      "msg": "Enchant slot is already at maximum level"
+      "name": "ReferralCapReached",
+      "msg": "Referrer has reached their active referral cap"
     },
     {
       "code": 6043,
-      "name": "auctionEnded",
-      "msg": "Auction has already ended"
+      "name": "InvalidReferral",
+      "msg": "A wallet cannot refer itself"
     },
     {
       "code": 6044,
-      "name": "auctionNotEnded",
-      "msg": "Auction has not ended yet"
+      "name": "ReferralMaxTier",
+      "msg": "Referral tier is already at maximum"
     },
     {
       "code": 6045,
-      "name": "bidTooLow",
-      "msg": "Bid must exceed current highest bid"
+      "name": "EnchantMaxLevel",
+      "msg": "Enchant slot is already at maximum level"
     },
     {
       "code": 6046,
-      "name": "notActive",
-      "msg": "Listing/Offer/Auction is not active"
+      "name": "AuctionEnded",
+      "msg": "Auction has already ended"
     },
     {
       "code": 6047,
-      "name": "invalidRentalDuration",
-      "msg": "Rental period out of allowed range"
+      "name": "AuctionNotEnded",
+      "msg": "Auction has not ended yet"
     },
     {
       "code": 6048,
-      "name": "rentalGraceNotExpired",
-      "msg": "Rental is still active — cannot revoke without grace period"
+      "name": "BidTooLow",
+      "msg": "Bid must exceed current highest bid"
     },
     {
       "code": 6049,
-      "name": "notToolOperator",
-      "msg": "Signer is not the current operator of this tool"
+      "name": "NotActive",
+      "msg": "Listing/Offer/Auction is not active"
     },
     {
       "code": 6050,
-      "name": "ordersDoNotCross",
-      "msg": "Order kinds/side do not cross (price/side mismatch)"
+      "name": "InvalidRentalDuration",
+      "msg": "Rental period out of allowed range"
     },
     {
       "code": 6051,
-      "name": "orderExhausted",
-      "msg": "Order has no remaining amount"
+      "name": "RentalGraceNotExpired",
+      "msg": "Rental is still active — cannot revoke without grace period"
     },
     {
       "code": 6052,
-      "name": "lotteryRoundClosed",
-      "msg": "Lottery round is already drawn or closed"
+      "name": "NotToolOperator",
+      "msg": "Signer is not the current operator of this tool"
     },
     {
       "code": 6053,
-      "name": "lotteryNotDrawn",
-      "msg": "Lottery round is not drawn yet"
+      "name": "OrdersDoNotCross",
+      "msg": "Order kinds/side do not cross (price/side mismatch)"
     },
     {
       "code": 6054,
-      "name": "notWinningTicket",
-      "msg": "Not the winning ticket for this round"
+      "name": "OrderExhausted",
+      "msg": "Order has no remaining amount"
     },
     {
       "code": 6055,
-      "name": "lotteryDailyLimitReached",
-      "msg": "Daily lottery ticket limit reached"
+      "name": "LotteryRoundClosed",
+      "msg": "Lottery round is already drawn or closed"
     },
     {
       "code": 6056,
-      "name": "seasonRewardAlreadyClaimed",
-      "msg": "Season reward level already claimed"
+      "name": "LotteryNotDrawn",
+      "msg": "Lottery round is not drawn yet"
     },
     {
       "code": 6057,
-      "name": "seasonPremiumRequired",
-      "msg": "Season reward requires premium pass"
+      "name": "NotWinningTicket",
+      "msg": "Not the winning ticket for this round"
     },
     {
       "code": 6058,
-      "name": "seasonInsufficientXp",
-      "msg": "Not enough XP for this season level"
+      "name": "LotteryDailyLimitReached",
+      "msg": "Daily lottery ticket limit reached"
     },
     {
       "code": 6059,
-      "name": "seasonEnded",
-      "msg": "Season has ended"
+      "name": "SeasonRewardAlreadyClaimed",
+      "msg": "Season reward level already claimed"
     },
     {
       "code": 6060,
-      "name": "lotteryDrawNotCommitted",
-      "msg": "Lottery draw has not been committed yet"
+      "name": "SeasonPremiumRequired",
+      "msg": "Season reward requires premium pass"
     },
     {
       "code": 6061,
-      "name": "invalidHash",
-      "msg": "Revealed secret does not match committed hash"
+      "name": "SeasonInsufficientXp",
+      "msg": "Not enough XP for this season level"
     },
     {
       "code": 6062,
-      "name": "energyDepleted",
-      "msg": "Energy account depleted"
+      "name": "SeasonEnded",
+      "msg": "Season has ended"
     },
     {
       "code": 6063,
-      "name": "insufficientEnergy",
-      "msg": "Energy cost exceeds available balance"
+      "name": "LotteryDrawNotCommitted",
+      "msg": "Lottery draw has not been committed yet"
     },
     {
       "code": 6064,
-      "name": "farmTileBusy",
-      "msg": "Farm tile is busy (growing)"
+      "name": "InvalidHash",
+      "msg": "Revealed secret does not match committed hash"
     },
     {
       "code": 6065,
-      "name": "farmTileNotReady",
-      "msg": "Farm tile is not ready for harvest"
+      "name": "EnergyDepleted",
+      "msg": "Energy account depleted"
     },
     {
       "code": 6066,
-      "name": "farmTileEmpty",
-      "msg": "Farm tile is empty (nothing planted)"
+      "name": "InsufficientEnergy",
+      "msg": "Energy cost exceeds available balance"
     },
     {
       "code": 6067,
-      "name": "toolBusy",
-      "msg": "Tool is busy (mining), cannot harvest"
+      "name": "FarmTileBusy",
+      "msg": "Farm tile is busy (growing)"
     },
     {
       "code": 6068,
-      "name": "millInProgress",
-      "msg": "Mill has active batch in progress"
+      "name": "FarmTileNotReady",
+      "msg": "Farm tile is not ready for harvest"
     },
     {
       "code": 6069,
-      "name": "millNotReady",
-      "msg": "Mill batch is not ready yet"
+      "name": "FarmTileEmpty",
+      "msg": "Farm tile is empty (nothing planted)"
     },
     {
       "code": 6070,
-      "name": "ovenInProgress",
-      "msg": "Oven has active batch in progress"
+      "name": "ToolBusy",
+      "msg": "Tool is busy (mining), cannot harvest"
     },
     {
       "code": 6071,
-      "name": "ovenNotReady",
-      "msg": "Oven batch is not ready yet"
+      "name": "MillInProgress",
+      "msg": "Mill has active batch in progress"
     },
     {
       "code": 6072,
-      "name": "invalidBatchSize",
-      "msg": "Invalid batch size (must be 1, 2, or 3)"
+      "name": "MillNotReady",
+      "msg": "Mill batch is not ready yet"
     },
     {
       "code": 6073,
-      "name": "invalidFuelKind",
-      "msg": "Invalid fuel kind (must be 0=wood or 1=coal)"
+      "name": "OvenInProgress",
+      "msg": "Oven has active batch in progress"
     },
     {
       "code": 6074,
-      "name": "materialNotRegistered",
-      "msg": "Material mint is not registered in MaterialMints PDA"
+      "name": "OvenNotReady",
+      "msg": "Oven batch is not ready yet"
     },
     {
       "code": 6075,
-      "name": "weatherAlreadyUpdated",
-      "msg": "Weather state already updated for this day"
+      "name": "InvalidBatchSize",
+      "msg": "Invalid batch size (must be 1, 2, or 3)"
     },
     {
       "code": 6076,
-      "name": "wellEmpty",
-      "msg": "Well has no water to collect"
+      "name": "InvalidFuelKind",
+      "msg": "Invalid fuel kind (must be 0=wood or 1=coal)"
     },
     {
       "code": 6077,
-      "name": "recipeNotFound",
-      "msg": "Recipe not found in RecipeConfig"
+      "name": "MaterialNotRegistered",
+      "msg": "Material mint is not registered in MaterialMints PDA"
     },
     {
       "code": 6078,
-      "name": "fortuneBoostExpired",
-      "msg": "Fortune boost has expired"
+      "name": "WeatherAlreadyUpdated",
+      "msg": "Weather state already updated for this day"
     },
     {
       "code": 6079,
-      "name": "fortuneBoostAlreadyActive",
-      "msg": "Fortune boost is already active"
+      "name": "WellEmpty",
+      "msg": "Well has no water to collect"
     },
     {
       "code": 6080,
-      "name": "loveHeartNotTransferable",
-      "msg": "Love heart is not transferable"
+      "name": "RecipeNotFound",
+      "msg": "Recipe not found in RecipeConfig"
     },
     {
       "code": 6081,
-      "name": "invalidWeatherSeed",
+      "name": "FortuneBoostExpired",
+      "msg": "Fortune boost has expired"
+    },
+    {
+      "code": 6082,
+      "name": "FortuneBoostAlreadyActive",
+      "msg": "Fortune boost is already active"
+    },
+    {
+      "code": 6083,
+      "name": "LoveHeartNotTransferable",
+      "msg": "Love heart is not transferable"
+    },
+    {
+      "code": 6084,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6085,
+      "name": "DurabilityOverflow",
+      "msg": "Durability overflow"
+    },
+    {
+      "code": 6086,
+      "name": "InvalidWeatherSeed",
       "msg": "Invalid weather seed (must be derived from slot hash)"
+    },
+    {
+      "code": 6087,
+      "name": "InvalidReveal",
+      "msg": "Invalid reveal: hash mismatch"
+    },
+    {
+      "code": 6088,
+      "name": "AlreadyRevealed",
+      "msg": "Commit already revealed"
+    },
+    {
+      "code": 6089,
+      "name": "InvalidFlaskType",
+      "msg": "Invalid flask type"
+    },
+    {
+      "code": 6090,
+      "name": "EnergyCapExceeded",
+      "msg": "Energy cap exceeded"
+    },
+    {
+      "code": 6091,
+      "name": "InvalidToolType",
+      "msg": "Tool type is not valid for this instruction"
+    },
+    {
+      "code": 6092,
+      "name": "InvalidProgramData",
+      "msg": "Program data does not contain a valid upgrade authority"
+    },
+    {
+      "code": 6093,
+      "name": "FeatureDisabled",
+      "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
     }
   ],
   "types": [
+    {
+      "name": "MiningCollected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "toolMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "resourceMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "hours",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "durabilityAfter",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "auction",
       "type": {
@@ -11400,6 +11831,9 @@ export type AofCore = {
           },
           {
             "name": "loveHeart"
+          },
+          {
+            "name": "potato"
           }
         ]
       }

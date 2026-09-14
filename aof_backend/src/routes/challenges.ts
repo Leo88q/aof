@@ -9,11 +9,12 @@ import {
   challengeContributionPda,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
 // Создание еженедельного челленджа
-r.post("/init", async (req, res) => {
+r.post("/init", requireAdmin, async (req, res) => {
   try {
     const weekNumber = Number(req.body.weekNumber);
     const medalsPool = new BN(req.body.medalsPool);
@@ -37,7 +38,15 @@ r.post("/init", async (req, res) => {
   }
 });
 
-// Вклад медалей в челлендж
+// Disabled until medals are debited from a canonical mint and there is a
+// verified settlement/claim path. The on-chain instruction is fail-closed too.
+r.post("/contribute", async (_req, res) => {
+  res.status(503).json({
+    error: "CHALLENGE_CONTRIBUTION_DISABLED_UNTIL_SETTLEMENT_IMPLEMENTED",
+  });
+});
+
+/*
 r.post("/contribute", async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -64,5 +73,6 @@ r.post("/contribute", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
 export default r;

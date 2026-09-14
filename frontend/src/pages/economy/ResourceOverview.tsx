@@ -69,7 +69,7 @@ const CATEGORIES = [
 
 export function ResourceOverview() {
   const { address } = useWalletStore();
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -77,8 +77,8 @@ export function ResourceOverview() {
     setLoading(true);
     api.query
       .balances(address)
-      .then((b: any) => setBalances(b || {}))
-      .catch(() => setBalances({}))
+      .then((b: any) => setBalances(b || null))
+      .catch(() => setBalances(null))
       .finally(() => setLoading(false));
   }, [address]);
 
@@ -86,6 +86,14 @@ export function ResourceOverview() {
     return (
       <div className="economy-empty">
         <p className="text-straw">Подключите кошелёк, чтобы увидеть ресурсы</p>
+      </div>
+    );
+  }
+
+  if (!balances) {
+    return (
+      <div className="economy-empty">
+        <p className="text-amber-400">Балансы ресурсов недоступны из канонической сети</p>
       </div>
     );
   }

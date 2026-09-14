@@ -25,9 +25,19 @@ const u64le = (n: BN | bigint | number | string) => {
 const find = (seeds: (Buffer | Uint8Array)[]) =>
   PublicKey.findProgramAddressSync(seeds, PROGRAM_ID);
 
+const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+const programDataFor = (programId: PublicKey) =>
+  PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE_PROGRAM_ID);
+
 export const configPda = () => find([enc("config")]);
 export const authPda = () => find([enc("auth")]);
 export const vaultPda = () => find([enc("vault")]);
+
+// Upgradeable-loader ProgramData for the core program. Initialize is bound to
+// this account on-chain, so the first Config authority cannot be front-run by
+// an arbitrary signer.
+export const programDataPda = () => programDataFor(PROGRAM_ID);
+
 export const playerPda = (owner: PublicKey) => find([enc("player"), owner.toBuffer()]);
 export const gastankPda = (owner: PublicKey) => find([enc("gastank"), owner.toBuffer()]);
 export const toolPda = (mint: PublicKey) => find([enc("tool"), mint.toBuffer()]);
@@ -70,23 +80,41 @@ export const seasonPassPda = (owner: PublicKey, seasonId: number) =>
 // ============================================================
 import marketIdl from "../idl/aof_market.json";
 const MARKET_PROGRAM_ID_LOCAL = new PublicKey(marketIdl.address);
+export const marketProgramDataPda = () => programDataFor(MARKET_PROGRAM_ID_LOCAL);
 
 const findMarket = (seeds: (Buffer | Uint8Array)[]) =>
   PublicKey.findProgramAddressSync(seeds, MARKET_PROGRAM_ID_LOCAL);
 
-export const potatoConfigPda = () => findMarket([enc("potato_config")]);
+export const marketConfigPda = () => findMarket([enc("market_config")]);
 export const hotMarketPoolPda = (rarity: number) =>
-  findMarket([enc("hot_market_pool"), u8(rarity)]);
+  findMarket([enc("hot_pool"), u8(rarity)]);
+// Kept as a compatibility helper for old clients. The current contract has no
+// queue PDA; callers must treat the returned address as unavailable.
 export const hotMarketQueuePda = (rarity: number) =>
-  findMarket([enc("hot_market_queue"), u8(rarity)]);
-export const sessionTokenPda = (authority: PublicKey, sessionSigner: PublicKey) =>
-  findMarket([enc("session"), authority.toBuffer(), sessionSigner.toBuffer()]);
+  findMarket([enc("hot_queue_legacy"), u8(rarity)]);
+export const potatoConfigPda = marketConfigPda;
+
+// ============================================================
+// PDA для программы aof-session-keys
+// ============================================================
+import sessionIdl from "../idl/aof_session_keys.json";
+const SESSION_PROGRAM_ID_LOCAL = new PublicKey(sessionIdl.address);
+export const sessionProgramDataPda = () => programDataFor(SESSION_PROGRAM_ID_LOCAL);
+const findSession = (seeds: (Buffer | Uint8Array)[]) =>
+  PublicKey.findProgramAddressSync(seeds, SESSION_PROGRAM_ID_LOCAL);
+
+export const sessionConfigPda = () => findSession([enc("sk_config")]);
+export const sessionTokenPda = (authority: PublicKey, _sessionSigner?: PublicKey) =>
+  findSession([enc("session"), authority.toBuffer()]);
+export const trustSnapshotPda = (user: PublicKey) =>
+  findSession([enc("trust_snapshot"), user.toBuffer()]);
 
 // ============================================================
 // PDA для программы aof-quests
 // ============================================================
 import questsIdl from "../idl/aof_quests.json";
 const QUESTS_PROGRAM_ID_LOCAL = new PublicKey(questsIdl.address);
+export const questsProgramDataPda = () => programDataFor(QUESTS_PROGRAM_ID_LOCAL);
 
 const findQuests = (seeds: (Buffer | Uint8Array)[]) =>
   PublicKey.findProgramAddressSync(seeds, QUESTS_PROGRAM_ID_LOCAL);
@@ -110,6 +138,7 @@ export const drumCommitPda = (user: PublicKey) =>
 // ============================================================
 import rebirthIdl from "../idl/aof_rebirth.json";
 const REBIRTH_PROGRAM_ID_LOCAL = new PublicKey(rebirthIdl.address);
+export const rebirthProgramDataPda = () => programDataFor(REBIRTH_PROGRAM_ID_LOCAL);
 
 const findRebirth = (seeds: (Buffer | Uint8Array)[]) =>
   PublicKey.findProgramAddressSync(seeds, REBIRTH_PROGRAM_ID_LOCAL);
@@ -123,6 +152,7 @@ export const rebirthRecordPda = (user: PublicKey) =>
 // ============================================================
 import liquidityIdl from "../idl/aof_liquidity.json";
 const LIQUIDITY_PROGRAM_ID_LOCAL = new PublicKey(liquidityIdl.address);
+export const liquidityProgramDataPda = () => programDataFor(LIQUIDITY_PROGRAM_ID_LOCAL);
 
 const findLiquidity = (seeds: (Buffer | Uint8Array)[]) =>
   PublicKey.findProgramAddressSync(seeds, LIQUIDITY_PROGRAM_ID_LOCAL);
@@ -132,10 +162,6 @@ export const lpPoolPda = (rarity: number) =>
   findLiquidity([enc("lp_pool"), u8(rarity)]);
 export const lpPositionPda = (user: PublicKey, rarity: number) =>
   findLiquidity([enc("lp_position"), user.toBuffer(), u8(rarity)]);
-
-// PDA для trust snapshot (в программе aof-market)
-export const trustSnapshotPda = (user: PublicKey) =>
-  findMarket([enc("trust_snapshot"), user.toBuffer()]);
 
 // Bow/скины (добавлено из aof_solana_fixed)
 export const bowCommitPda = (toolMint: PublicKey) => find([enc("bow_commit"), toolMint.toBuffer()]);

@@ -6,6 +6,7 @@ import { AUTHORITY } from "../config";
 import { program } from "../provider";
 import { collectorPda, configPda, gastankPda, playerPda, vaultPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -14,6 +15,13 @@ const kindMap: Record<string, any> = {
   medallion: { medallion: {} },
 };
 
+// There is no canonical Historian/Medallion mint registry in Config yet.
+// Do not let a caller stake an arbitrary NFT to obtain economic perks.
+r.post("/stake", (_req, res) => {
+  res.status(503).json({ error: "COLLECTOR_STAKING_DISABLED_UNTIL_CANONICAL_MINTS_CONFIGURED" });
+});
+
+/*
 r.post("/stake", async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -48,7 +56,13 @@ r.post("/stake", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
+r.post("/unstake", (_req, res) => {
+  res.status(503).json({ error: "COLLECTOR_STAKING_DISABLED_UNTIL_CANONICAL_MINTS_CONFIGURED" });
+});
+
+/*
 r.post("/unstake", async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -83,8 +97,9 @@ r.post("/unstake", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
-r.post("/adjust-capacity", async (req, res) => {
+r.post("/adjust-capacity", requireAdmin, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const delta = Number(req.body.delta);

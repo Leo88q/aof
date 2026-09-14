@@ -1,6 +1,18 @@
 use anchor_lang::prelude::*;
 use crate::InitMaterialMints;
 use crate::constants::*;
+use crate::errors::AofError;
+
+fn require_distinct_mints(mints: &[Pubkey]) -> Result<()> {
+    for (index, mint) in mints.iter().enumerate() {
+        require!(*mint != Pubkey::default(), AofError::InvalidMint);
+        require!(
+            !mints[..index].iter().any(|previous| previous == mint),
+            AofError::InvalidMint,
+        );
+    }
+    Ok(())
+}
 
 /// [БЛОК L] Инициализация PDA MaterialMints с адресами всех 23 минтов
 /// Вызывается один раз админом при деплое.
@@ -30,6 +42,15 @@ pub fn handler(
     flask_purple: Pubkey,
     love_heart: Pubkey,
 ) -> Result<()> {
+    require_distinct_mints(&[
+        seeds, wheat, flour, bread, water, coal, meat,
+        stone_blue, stone_purple, stone_red,
+        sand_white, sand_pink, sand_yellow,
+        gem_blue, gem_orange, gem_white, gem_green,
+        flask_blue, flask_yellow, flask_green, flask_pink, flask_purple,
+        love_heart,
+    ])?;
+
     let mm = &mut ctx.accounts.material_mints;
     mm.seeds = seeds;
     mm.wheat = wheat;

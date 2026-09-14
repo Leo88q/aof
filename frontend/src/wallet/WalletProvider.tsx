@@ -5,7 +5,13 @@ import {
 } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 
-const RPC_URL = (import.meta as any).env?.VITE_RPC_URL || "http://127.0.0.1:8899";
+const RPC_URL = (import.meta as any).env?.VITE_RPC_URL || "https://api.devnet.solana.com";
+
+// wallet-adapter currently ships a nested React 19 type package while this
+// app intentionally stays on React 18. Runtime behavior is unchanged; this
+// cast prevents the duplicate React type identities from breaking tsc.
+const SafeConnectionProvider: any = ConnectionProvider;
+const SafeWalletProvider: any = SolanaWalletProvider;
 
 export function AppWalletProvider({ children }: { children: React.ReactNode }) {
   const wallets = useMemo(
@@ -13,10 +19,10 @@ export function AppWalletProvider({ children }: { children: React.ReactNode }) {
     []
   );
   return (
-    <ConnectionProvider endpoint={RPC_URL}>
-      <SolanaWalletProvider wallets={wallets} autoConnect>
+    <SafeConnectionProvider endpoint={RPC_URL}>
+      <SafeWalletProvider wallets={wallets} autoConnect>
         {children}
-      </SolanaWalletProvider>
-    </ConnectionProvider>
+      </SafeWalletProvider>
+    </SafeConnectionProvider>
   );
 }

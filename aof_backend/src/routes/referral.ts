@@ -7,6 +7,7 @@ import { program } from "../provider";
 import { configPda, playerPda, referralLinkPda, referrerStatsPda, vaultPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -74,7 +75,8 @@ r.post("/upgrade", async (req, res) => {
   }
 });
 
-r.post("/pay-out", requireCircuitOpen, requireWalletLimits("referral_payout"), requireIdempotency, async (req, res) => {
+// This route signs a vault transfer; only the trusted payout worker may call it.
+r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("referral_payout"), requireIdempotency, async (req, res) => {
   try {
     const referred = pk(req.body.referred);
     const mint = pk(req.body.mint);

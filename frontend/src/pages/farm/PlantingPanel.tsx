@@ -21,14 +21,24 @@ export function PlantingPanel() {
   const walletAddr = useWalletStr();
   const [tiles, setTiles] = useState<FarmTile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedPlot, setSelectedPlot] = useState<number | null>(null);
   const [seedsAmount, setSeedsAmount] = useState(10);
   const [planting, setPlanting] = useState(false);
   const [harvesting, setHarvesting] = useState<number | null>(null);
+  const [reaper, setReaper] = useState<{ mint: string; pubkey: string } | null>(null);
 
   useEffect(() => {
     if (!walletAddr) return;
     loadTiles();
+    api.query.myTools(walletAddr)
+      .then((tools: any[]) => {
+        const found = (tools || []).find((tool: any) =>
+          String(tool.toolType || tool.tool_type || "").toLowerCase() === "reaper"
+        );
+        setReaper(found?.mint && found?.pubkey ? { mint: found.mint, pubkey: found.pubkey } : null);
+      })
+      .catch(() => setReaper(null));
     // Автообновление каждые 10 секунд
     const interval = setInterval(loadTiles, 10000);
     return () => clearInterval(interval);
@@ -39,12 +49,12 @@ export function PlantingPanel() {
     try {
       const data = await api.query.farmTiles(walletAddr);
       setTiles(data.tiles || []);
+      setLoadError(false);
     } catch (e) {
       console.error("loadTiles:", e);
-      // Fallback — пустые тайлы
-      setTiles(Array.from({ length: 6 }, (_, i) => ({
-        index: i, planted: false, ready: false, seedsAmount: 0, progress: 0, plantedAt: 0, cropType: null,
-      })));
+      // An RPC failure is not an empty farm. Keep no synthetic tile state.
+      setTiles([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -89,14 +99,17 @@ export function PlantingPanel() {
         toast.show("❌ Mint WHEAT не найден");
         return;
       }
-      // TODO: получить реальный toolMint из инвентаря игрока
-      const toolMint = "11111111111111111111111111111111"; // placeholder
+      if (!reaper) {
+        toast.show("❌ Инструмент Reaper не найден в инвентаре");
+        return;
+      }
+      const toolMint = reaper.mint;
       const resp = await api.chain.harvestWheat({
         user: walletAddr,
         tileIndex,
         wheatMint,
         toolMint,
-        toolData: toolMint,
+        toolData: reaper.pubkey,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
@@ -134,12 +147,19 @@ export function PlantingPanel() {
     <Card className="p-4 space-y-3">
       <h3 className="text-parchment font-bold text-lg">🌱 Посадка семян</h3>
 
+      {loadError ? (
+        <p className="text-amber-400 text-sm text-center py-4">
+          Состояние участка недоступно из канонической сети. Повторите попытку позже.
+        </p>
+      ) : (
       <div className="grid grid-cols-3 gap-2">
         {tiles.map((tile) => (
-          <button
+          <div
             key={tile.index}
+            role="button"
+            tabIndex={tile.planted ? -1 : 0}
             onClick={() => !tile.planted && setSelectedPlot(tile.index)}
-            disabled={tile.planted}
+            onKeyDown={(e) => { if (e.key === "Enter" && !tile.planted) setSelectedPlot(tile.index); }}
             className={`p-3 rounded-lg text-center transition ${
               selectedPlot === tile.index
                 ? "bg-green-600/30 border-2 border-green-500"
@@ -164,7 +184,8 @@ export function PlantingPanel() {
                 {tile.ready && (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleHarvest(tile.index); }}
-                    disabled={harvesting === tile.index}
+                    disabled={harvesting === tile.index || !reaper}
+                    title={!reaper ? "Нужен инструмент Reaper" : undefined}
                     className="mt-1 text-[10px] bg-amber-600 text-parchment px-2 py-0.5 rounded disabled:opacity-50"
                   >
                     {harvesting === tile.index ? "..." : "Собрать"}
@@ -173,9 +194,10 @@ export function PlantingPanel() {
               </>
             )}
             {!tile.planted && <div className="text-[10px] text-straw">Свободен</div>}
-          </button>
+          </div>
         ))}
       </div>
+      )}
 
       {selectedPlot !== null && (
         <div className="bg-soil-800/50 rounded-lg p-3 space-y-2">
@@ -193,7 +215,6 @@ export function PlantingPanel() {
             <span className="text-parchment font-bold text-sm w-10">{seedsAmount}</span>
           </div>
           <p className="text-[10px] text-straw">⚡ Стоимость: 1 Energy + {seedsAmount} 🌰</p>
-          <p className="text-[10px] text-amber-400">🌾 Ожидаемый урожай: ~{Math.floor(seedsAmount * 1.5)} пшеницы</p>
           <button
             onClick={handlePlant}
             disabled={planting}

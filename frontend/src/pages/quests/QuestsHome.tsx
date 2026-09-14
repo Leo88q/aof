@@ -155,10 +155,14 @@ export function QuestsHome() {
       {activeTab === "challenges" && (
         <Card>
           <h3 className="text-parchment font-semibold mb-3">🏆 Недельный челлендж</h3>
-          <p className="text-straw text-sm mb-3">Внесите медали в общий пул гильдии</p>
-          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели" icon="🏆" />
-          <button className="w-full mt-4 py-3 rounded-2xl bg-wheat-600 text-soil-950 font-semibold active:scale-95 transition-transform">
-            Внести медали
+          <p className="text-straw text-sm mb-3">Внесение отключено до появления проверяемого списания медалей и расчёта наград.</p>
+          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели · только просмотр" icon="🏆" />
+          <button
+            type="button"
+            disabled
+            className="w-full mt-4 py-3 rounded-2xl bg-soil-800 text-straw font-semibold cursor-not-allowed"
+          >
+            Временно отключено
           </button>
         </Card>
       )}

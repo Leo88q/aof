@@ -12,6 +12,10 @@ use crate::events::*;
 /// для обычного стейка инструментов в этой же программе; у PDA нет
 /// приватного ключа в принципе.
 pub fn handler(ctx: Context<CollectorStake>, kind: CollectorKind) -> Result<()> {
+    // Config currently has no canonical Historian/Medallion mint registry.
+    // Accepting a caller-supplied mint would let any NFT grant fee/referral
+    // perks, so keep staking closed until those addresses are configured.
+    require!(false, AofError::CollectorNotConfigured);
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),

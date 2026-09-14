@@ -6,11 +6,6 @@ import { Card } from "../../components/ui/Card";
 import { NavHeader } from "../../components/NavHeader";
 import { useWalletStr } from "../../lib/useWalletStr";
 
-const demoLetters = [
-  { id: 1, sender: "AOF Team", subject: "С возвращением!", body: "Мы скучали! Вот подарок за отсутствие.", reward: "500 WOOD", read: false, hasReward: true },
-  { id: 2, sender: "Старый Ферма Джо", subject: "Совет дня", body: "Не забывай поливать грядки — энергия восстанавливается.", reward: null, read: false, hasReward: false },
-  { id: 3, sender: "AOF Team", subject: "Челлендж недели", body: "Внеси 100 медалей и получи бонус.", reward: "200 CORE", read: true, hasReward: true },
-];
 
 function normalizeLetter(item: any, i: number) {
   const hasReward = Boolean(item.rewardType);
@@ -31,18 +26,18 @@ function normalizeLetter(item: any, i: number) {
 
 export function InboxHome() {
   const user = useWalletStr();
-  const [letters, setLetters] = useState<any[]>(demoLetters);
+  const [letters, setLetters] = useState<any[]>([]);
   const [opened, setOpened] = useState<any>(null);
   const [claimStatus, setClaimStatus] = useState<string | null>(null);
 
   const load = () => {
-    if (!user) return;
+    if (!user) { setLetters([]); return; }
     api.inbox.list(user)
       .then((items: any) => {
         const arr = Array.isArray(items) ? items : items?.items || [];
-        if (arr.length > 0) setLetters(arr.map(normalizeLetter));
+        setLetters(arr.map(normalizeLetter));
       })
-      .catch(() => {});
+      .catch(() => setLetters([]));
   };
 
   useEffect(() => { load(); }, [user]);
@@ -59,10 +54,15 @@ export function InboxHome() {
       setClaimStatus("Готовим клейм награды…");
       let mints: any = undefined;
       try {
-        const cfgRaw: any = await api.query.config();
+        const [cfgRaw, registry] = await Promise.all([
+          api.query.config(),
+          api.query.materialMints(),
+        ]);
         const cfg = cfgRaw?.config || cfgRaw;
         const byType: Record<string, string | undefined> = {
           FOOD: cfg?.foodMint, WOOD: cfg?.woodMint, STONE: cfg?.stoneMint,
+          POTATO: cfg?.potatoMint,
+          ...(registry?.mints || {}),
         };
         const rewardMint = byType[letter.rewardType];
         if (rewardMint) mints = { rewardMint };

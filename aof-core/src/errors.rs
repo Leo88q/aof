@@ -72,6 +72,8 @@ pub enum AofError {
     HoursExceedRarityCap,
     #[msg("Signer does not own this staked collector")]
     NotCollectorOwner,
+    #[msg("Collector mint registry is not configured")]
+    CollectorNotConfigured,
 
     // ===== [НОВОЕ] полная реализация TOR v4 =====
     #[msg("Commit hash does not match revealed secret")]
@@ -90,6 +92,8 @@ pub enum AofError {
     ReferralAlreadyBound,
     #[msg("Referrer has reached their active referral cap")]
     ReferralCapReached,
+    #[msg("A wallet cannot refer itself")]
+    InvalidReferral,
     #[msg("Referral tier is already at maximum")]
     ReferralMaxTier,
     #[msg("Enchant slot is already at maximum level")]
@@ -130,6 +134,8 @@ pub enum AofError {
     SeasonEnded,
     #[msg("Lottery draw has not been committed yet")]
     LotteryDrawNotCommitted,
+    #[msg("Lottery draw is already committed")]
+    LotteryDrawAlreadyCommitted,
     #[msg("Revealed secret does not match committed hash")]
     InvalidHash,
 
@@ -191,4 +197,11 @@ pub enum AofError {
     InvalidFlaskType,
     #[msg("Energy cap exceeded")]
     EnergyCapExceeded,
+    #[msg("Tool type is not valid for this instruction")]
+    InvalidToolType,
+
+    #[msg("Program data does not contain a valid upgrade authority")]
+    InvalidProgramData,
+    #[msg("Feature is disabled until its on-chain economic and recovery path is complete")]
+    FeatureDisabled,
 }

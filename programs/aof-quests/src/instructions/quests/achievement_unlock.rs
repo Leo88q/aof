@@ -26,7 +26,13 @@ pub struct AchievementUnlock<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<AchievementUnlock>, achievement_id: u32) -> Result<()> {
+pub fn handler(_ctx: Context<AchievementUnlock>, _achievement_id: u32) -> Result<()> {
+    // A caller cannot be allowed to self-attest an achievement. The old
+    // instruction wrote an arbitrary id without checking game progress or a
+    // trusted verifier, so keep it closed until proof/criteria are on-chain.
+    return err!(QuestError::FeatureDisabled);
+
+    /*
     let record = &mut ctx.accounts.achievement_record;
     record.user = ctx.accounts.user.key();
     record.achievement_id = achievement_id;
@@ -39,4 +45,5 @@ pub fn handler(ctx: Context<AchievementUnlock>, achievement_id: u32) -> Result<(
     });
 
     Ok(())
+    */
 }

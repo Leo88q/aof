@@ -60,17 +60,25 @@ pub fn handler(ctx: Context<LpWithdraw>, rarity: u8, shares: u64) -> Result<()> 
     require!(position.shares >= shares, LiquidityError::NotEnoughShares);
 
     let pool = &ctx.accounts.lp_pool;
-    let price = pool.share_price();
-    let amount_principal = shares * price;
+    require!(pool.total_shares > 0, LiquidityError::NotEnoughShares);
 
-    // Доля комиссий пропорционально долям
-    let fees_share = if pool.total_shares > 0 {
-        pool.accumulated_fees * shares / pool.total_shares
-    } else {
-        0
-    };
-
-    let total_out = amount_principal + fees_share;
+    // Split reserve and fees before calculating the withdrawal. The previous
+    // implementation used share_price (which already included fees) and then
+    // added fees_share again, allowing the instruction to request more tokens
+    // than the vault could ever contain.
+    let amount_principal = pool
+        .mascot_reserve
+        .checked_mul(shares)
+        .ok_or(LiquidityError::MathOverflow)?
+        / pool.total_shares;
+    let fees_share = pool
+        .accumulated_fees
+        .checked_mul(shares)
+        .ok_or(LiquidityError::MathOverflow)?
+        / pool.total_shares;
+    let total_out = amount_principal
+        .checked_add(fees_share)
+        .ok_or(LiquidityError::MathOverflow)?;
 
     // Перевод из пула пользователю (подпись пула через PDA)
     let pool_seeds = &[

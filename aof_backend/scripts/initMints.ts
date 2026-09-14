@@ -2,7 +2,7 @@
  * Скрипт автоматической инициализации MaterialMints
  * 
  * Что делает:
- * 1. Создаёт 25 SPL mint-токенов (SEEDS, WHEAT, FLOUR, и т.д.)
+ * 1. Создаёт 27 канонических SPL-токенов (SEEDS, WHEAT, FLOUR, и т.д.)
  * 2. Собирает их адреса
  * 3. Вызывает /admin/init-material-mints для инициализации контракта
  * 4. Сохраняет адреса в mints.json для reference
@@ -12,22 +12,29 @@
  *   npx ts-node scripts/initMints.ts
  */
 
-import { Connection, Keypair, clusterApiUrl } from "@solana/web3.js";
+import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 import { createMint } from "@solana/spl-token";
-import { AUTHORITY } from "../src/config";
+import { AUTHORITY, PROGRAM_ID } from "../src/config";
 
 const RPC_URL = process.env.RPC_URL || clusterApiUrl("devnet");
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
-// Все 25 ресурсов игры
+// Все 27 ресурсных mint'ов: 4 в Config + 23 в MaterialMints.
 const RESOURCES = [
-  "seeds", "wheat", "flour", "bread", "wood", "stone", "coal", 
+  "seeds", "wheat", "flour", "bread", "wood", "stone", "potato", "coal",
   "meat", "water", "food",
   "sandWhite", "sandPink", "sandYellow",
   "stoneBlue", "stonePurple", "stoneRed",
   "gemBlue", "gemOrange", "gemWhite", "gemGreen",
   "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
+  "loveHeart",
 ];
+
+// mint_resource проверяет, что mint authority — именно auth PDA программы.
+const [MINT_AUTHORITY] = PublicKey.findProgramAddressSync(
+  [Buffer.from("auth")],
+  PROGRAM_ID,
+);
 
 async function main() {
   console.log("🎮 Инициализация MaterialMints...");
@@ -42,12 +49,12 @@ async function main() {
   console.log(`💰 Balance: ${(balance / 1e9).toFixed(4)} SOL`);
   
   if (balance < 0.1e9) {
-    console.error("❌ Недостаточно SOL. Нужно минимум 0.1 SOL для создания 25 mint'ов.");
+    console.error("❌ Недостаточно SOL. Нужно минимум 0.1 SOL для создания ресурсных mint'ов.");
     console.log(`   Airdrop: solana airdrop 2 ${AUTHORITY.publicKey.toBase58()} --url devnet`);
     process.exit(1);
   }
   
-  // 1. Создаём все 25 mint-токенов
+  // 1. Создаём все 27 канонических mint-токенов
   console.log("\n📦 Создаём SPL mint-токены...\n");
   const mints: Record<string, string> = {};
   
@@ -59,9 +66,9 @@ async function main() {
       const mint = await createMint(
         connection,
         AUTHORITY,                    // payer
-        AUTHORITY.publicKey,          // mintAuthority
-        AUTHORITY.publicKey,          // freezeAuthority
-        9                             // decimals (как у большинства токенов)
+        MINT_AUTHORITY,               // mintAuthority: auth PDA signs on-chain minting
+        null,                         // immutable freeze authority
+        9                             // decimals
       );
       
       const addr = mint.toBase58();
@@ -86,7 +93,10 @@ async function main() {
   console.log("\n🔧 Инициализация контракта...");
   const resp = await fetch(`${BACKEND_URL}/admin/init-material-mints`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
     body: JSON.stringify({ mints }),
   });
   
@@ -107,7 +117,10 @@ async function main() {
       // Отправляем через backend endpoint send
       const sendResp = await fetch(`${BACKEND_URL}/admin/send-tx`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
         body: JSON.stringify({ tx: result.tx }),
       });
       const sendResult: any = await sendResp.json();
@@ -123,8 +136,46 @@ async function main() {
       console.error("❌ Ошибка отправки:", e.message);
     }
   }
+
+  // 5. Config хранит базовые mint'ы отдельно от MaterialMints.
+  console.log("\n🔧 Установка базовых resource mint'ов...");
+  const setMintsResp = await fetch(`${BACKEND_URL}/admin/set-resource-mints`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
+    body: JSON.stringify({
+      foodMint: mints.food,
+      woodMint: mints.wood,
+      stoneMint: mints.stone,
+      seedsMint: mints.seeds,
+      waterMint: mints.water,
+      potatoMint: mints.potato,
+    }),
+  });
+  const setMintsResult: any = await setMintsResp.json();
+  if (!setMintsResp.ok) {
+    console.error("❌ Ошибка установки базовых mint'ов:", setMintsResult.error);
+    process.exit(1);
+  }
+  if (setMintsResult.tx) {
+    const sendResp = await fetch(`${BACKEND_URL}/admin/send-tx`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+      },
+      body: JSON.stringify({ tx: setMintsResult.tx }),
+    });
+    const sendResult: any = await sendResp.json();
+    if (!sendResp.ok || !sendResult.signature) {
+      console.error("❌ Ошибка отправки Config mint-транзакции:", sendResult.error || "unknown error");
+      process.exit(1);
+    }
+  }
   
-  // 5. Проверяем что контракт инициализирован
+  // 6. Проверяем что контракт инициализирован
   console.log("\n🔍 Проверка...");
   await new Promise(r => setTimeout(r, 2000));
   const checkResp = await fetch(`${BACKEND_URL}/query/material-mints`);

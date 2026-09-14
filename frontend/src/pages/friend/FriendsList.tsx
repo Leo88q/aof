@@ -15,7 +15,7 @@ interface Neighbor {
 export function FriendsList() {
   const user = useWalletStr();
   const { push } = useNav();
-  const [visitsLeft, setVisitsLeft] = useState<number>(5);
+  const [visitsLeft, setVisitsLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function FriendsList() {
     api.neighbors
       .list(user)
       .then((data: any) => {
-        setVisitsLeft(data?.visitsLeftToday ?? 5);
+        setVisitsLeft(data?.visitsLeftToday ?? null);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -50,11 +50,11 @@ export function FriendsList() {
               Визиты сегодня
             </h3>
             <p className="text-straw text-xs">
-              Помогайте друзьям — получайте trust points
+              Социальные бонусы появятся после развёртывания канонической механики
             </p>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-bold text-gold">{visitsLeft}</div>
+            <div className="text-3xl font-bold text-gold">{visitsLeft ?? "—"}</div>
             <div className="text-xs text-straw">осталось</div>
           </div>
         </div>

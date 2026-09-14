@@ -9,6 +9,7 @@ const toolTypes = [
   { id: "pick", icon: "⛏️", label: "Кирка" },
   { id: "spear", icon: "🗡️", label: "Копьё" },
   { id: "bow", icon: "🏹", label: "Лук" },
+  { id: "reaper", icon: "🌾", label: "Жнец" },
 ];
 
 const rarities = [
@@ -19,29 +20,30 @@ const rarities = [
   { id: "legendary", label: "Легендарный", color: "border-gold/60" },
 ];
 
-const demoCaught = new Set([
-  "axe-common", "axe-uncommon", "pick-common", "pick-rare",
-  "spear-common", "bow-uncommon", "axe-epic",
-]);
-
 export function CompendiumHome() {
-  // [ФИКС] Адрес кошелька для реального компендиума
   const user = useWalletStr();
-  const [caught, setCaught] = useState<Set<string>>(demoCaught);
+  const [caught, setCaught] = useState<Set<string>>(new Set());
+  const [loaded, setLoaded] = useState(false);
 
-  // [ФИКС] Реальный компендиум вместо хардкод-набора
-  // (демо остаётся если нет кошелька/бэкенда или коллекция пуста)
   useEffect(() => {
+    setCaught(new Set());
+    setLoaded(false);
     if (!user) return;
-    api.compendium
-      .get(user)
-      .then((entries: any) => {
-        const arr = Array.isArray(entries) ? entries : entries?.entries || [];
-        if (arr.length > 0) {
-          setCaught(new Set(arr.map((e: any) => `${e.toolType}-${e.rarity}`)));
-        }
+
+    api.compendium.get(user)
+      .then((data: any) => {
+        const entries = Array.isArray(data)
+          ? data
+          : data?.entries || data?.grid?.flatMap((row: any) =>
+              (row.rarities || []).filter((r: any) => r.seen).map((r: any) => ({
+                toolType: row.toolType,
+                rarity: r.rarity,
+              }))
+            ) || [];
+        setCaught(new Set(entries.map((e: any) => `${e.toolType}-${e.rarity}`)));
       })
-      .catch(() => {});
+      .catch(() => setCaught(new Set()))
+      .finally(() => setLoaded(true));
   }, [user]);
 
   const totalCells = toolTypes.length * rarities.length;
@@ -56,43 +58,20 @@ export function CompendiumHome() {
       <Card className="mb-4">
         <div className="flex justify-between items-center mb-2">
           <span className="text-parchment text-sm font-semibold">Прогресс</span>
-          <span className="text-wheat-500 font-bold">{pct}%</span>
+          <span className="text-wheat-500 font-bold">{user && loaded ? `${pct}%` : "—"}</span>
         </div>
         <div className="h-3 bg-soil-800 rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
+            animate={{ width: user && loaded ? `${pct}%` : "0%" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
             className="h-full bg-gradient-to-r from-wheat-700 to-wheat-500 rounded-full"
           />
         </div>
-        <p className="text-straw text-xs mt-2">Собрано {caughtCount} из {totalCells}</p>
-        
-        {/* Milestones клейм */}
-        <div className="grid grid-cols-4 gap-2 mt-4">
-          {[25, 50, 75, 100].map((milestone) => {
-            const reached = pct >= milestone;
-            return (
-              <button
-                key={milestone}
-                disabled={!reached}
-                className={`py-2 rounded-xl text-xs font-semibold transition-colors ${
-                  reached
-                    ? "bg-gold text-soil-950 hover:bg-gold/90"
-                    : "bg-soil-800 text-straw/40 cursor-not-allowed"
-                }`}
-                onClick={() => {
-                  if (reached) {
-                    // TODO: вызвать API для клейма награды
-                    alert(`Награда за ${milestone}% компендиума (coming soon)`);
-                  }
-                }}
-              >
-                {milestone}%
-              </button>
-            );
-          })}
-        </div>
+        <p className="text-straw text-xs mt-2">
+          {user ? (loaded ? `Собрано ${caughtCount} из ${totalCells}` : "Загрузка данных из backend…") : "Подключите кошелёк для просмотра компендиума"}
+        </p>
+        <p className="text-straw/70 text-xs mt-3">Награды за этапы: источник клейма не найден.</p>
       </Card>
 
       <div className="space-y-3">
@@ -106,6 +85,7 @@ export function CompendiumHome() {
                 return (
                   <div
                     key={key}
+                    title={isCaught ? "Найдено" : "Не найдено"}
                     className={`aspect-square rounded-xl border-2 flex items-center justify-center text-2xl ${
                       isCaught ? `bg-soil-800 ${rarity.color}` : "bg-soil-900 border-soil-800 opacity-40"
                     }`}

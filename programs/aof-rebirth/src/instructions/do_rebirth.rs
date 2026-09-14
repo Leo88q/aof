@@ -33,6 +33,11 @@ pub struct DoRebirth<'info> {
 }
 
 pub fn handler(ctx: Context<DoRebirth>) -> Result<()> {
+    // The cross-program progress reset is not atomic yet. Fail closed here as
+    // well as in the backend: this instruction is public and can be invoked
+    // directly without going through the API.
+    require!(false, RebirthError::FeatureDisabled);
+
     let config = &ctx.accounts.rebirth_config;
     let record = &mut ctx.accounts.rebirth_record;
 

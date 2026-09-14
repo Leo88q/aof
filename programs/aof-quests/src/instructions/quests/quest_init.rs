@@ -7,7 +7,8 @@ use crate::events::QuestCreated;
 pub struct QuestInit<'info> {
     #[account(
         seeds = [b"quest_config"],
-        bump = quest_config.bump
+        bump = quest_config.bump,
+        has_one = authority @ crate::errors::QuestError::Unauthorized
     )]
     pub quest_config: Account<'info, QuestConfig>,
 

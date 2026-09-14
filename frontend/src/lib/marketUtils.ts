@@ -3,9 +3,10 @@ import { api } from "./api";
 
 // Ресурсные минты (заданы /admin/set-resource-mints) + kind из контракта (ResourceKind)
 export const RESOURCE_MINTS = [
-  { key: "food", mint: "BTQKBbm5vVueo4ZYR34Abr5B3ftJZ1811HuSfcMFkhiu", kind: 0, label: "Зерно", icon: "🌾" },
-  { key: "wood", mint: "CHj3wHZrtdQy7NTDoGGwA5XxuEogN5zstFwxVKBEwzUT", kind: 1, label: "Древесина", icon: "🪵" },
-  { key: "stone", mint: "CgGcZfxJD2YYM3CsfPE5UNeGZnsqQLquCCbyx547skVi", kind: 2, label: "Камень", icon: "🪨" },
+  { key: "food", mint: "", kind: 0, label: "Зерно", icon: "🌾" },
+  { key: "wood", mint: "", kind: 1, label: "Древесина", icon: "🪵" },
+  { key: "stone", mint: "", kind: 2, label: "Камень", icon: "🪨" },
+  { key: "potato", mint: "", kind: 26, label: "POTATO", icon: "🥔" },
 ];
 
 export const TOOL_ICONS: Record<string, string> = { axe: "🪓", pick: "⛏️", spear: "🗡️", bow: "🏹" };
@@ -94,38 +95,32 @@ export function useFlash(): [string | null, (m: string, ms?: number) => void] {
 export type TradeResource = { key: string; label: string; icon: string; mint: string; kind: number };
 
 export const ALL_TRADE_RESOURCES: TradeResource[] = [
-  // === Базовые ресурсы ===
-  { key: "FOOD",   label: "Зерно",      icon: "🌾", mint: "BTQKBbm5vVueo4ZYR34Abr5B3ftJZ1811HuSfcMFkhiu", kind: 0 },
-  { key: "WOOD",   label: "Древесина",  icon: "🪵", mint: "CHj3wHZrtdQy7NTDoGGwA5XxuEogN5zstFwxVKBEwzUT", kind: 1 },
-  { key: "STONE",  label: "Камень",     icon: "🪨", mint: "CgGcZfxJD2YYM3CsfPE5UNeGZnsqQLquCCbyx547skVi", kind: 2 },
-  { key: "SEEDS",  label: "Семена",     icon: "🌰", mint: "", kind: 0 }, // TODO: подставить реальный mint
-  { key: "WATER",  label: "Вода",       icon: "💧", mint: "" , kind: 0 },
-  { key: "POTATO", label: "Картошка",   icon: "🥔", mint: "" , kind: 0 },
-  
-  // === Камни ===
-  { key: "STONE_BLUE",   label: "Сапфир",         icon: "🔵", mint: "" , kind: 0 },
-  { key: "STONE_PURPLE", label: "Аметист",        icon: "🟣", mint: "" , kind: 0 },
-  { key: "STONE_RED",    label: "Рубин",          icon: "🔴", mint: "" , kind: 0 },
-  
-  // === Песок ===
-  { key: "SAND_WHITE",  label: "Кварцевый песок", icon: "⚪", mint: "" , kind: 0 },
-  { key: "SAND_PINK",   label: "Розовый песок",   icon: "💗", mint: "" , kind: 0 },
-  { key: "SAND_YELLOW", label: "Янтарный песок",  icon: "🟡", mint: "" , kind: 0 },
-  
-  // === Гемы ===
-  { key: "GEM_BLUE",   label: "Сапфировый гем",  icon: "💎", mint: "" , kind: 0 },
-  { key: "GEM_ORANGE", label: "Янтарный гем",    icon: "🟠", mint: "" , kind: 0 },
-  { key: "GEM_WHITE",  label: "Кварцевый гем",   icon: "⚪", mint: "" , kind: 0 },
-  { key: "GEM_GREEN",  label: "Изумрудный гем",  icon: "🟢", mint: "" , kind: 0 },
-  
-  // === Хлебная цепочка ===
-  { key: "WHEAT", label: "Пшеница", icon: "🌾", mint: "" , kind: 0 },
-  { key: "FLOUR", label: "Мука",    icon: "🥣", mint: "" , kind: 0 },
-  { key: "BREAD", label: "Хлеб",    icon: "🍞", mint: "" , kind: 0 },
-  
-  // === Прочее ===
-  { key: "COAL", label: "Уголь", icon: "⬛", mint: "" , kind: 0 },
-  { key: "MEAT", label: "Мясо",  icon: "🍖", mint: "" , kind: 0 },
-  
-  // === Флаконы ===
+  // ResourceKind discriminants are kept in the same order as aof-core.
+  { key: "FOOD", label: "Зерно", icon: "🌾", mint: "", kind: 0 },
+  { key: "WOOD", label: "Древесина", icon: "🪵", mint: "", kind: 1 },
+  { key: "STONE", label: "Камень", icon: "🪨", mint: "", kind: 2 },
+  { key: "SEEDS", label: "Семена", icon: "🌰", mint: "", kind: 3 },
+  { key: "WHEAT", label: "Пшеница", icon: "🌾", mint: "", kind: 4 },
+  { key: "FLOUR", label: "Мука", icon: "🥣", mint: "", kind: 5 },
+  { key: "BREAD", label: "Хлеб", icon: "🍞", mint: "", kind: 6 },
+  { key: "WATER", label: "Вода", icon: "💧", mint: "", kind: 7 },
+  { key: "COAL", label: "Уголь", icon: "⬛", mint: "", kind: 8 },
+  { key: "MEAT", label: "Мясо", icon: "🍖", mint: "", kind: 9 },
+  { key: "STONE_BLUE", label: "Сапфир", icon: "🔵", mint: "", kind: 10 },
+  { key: "STONE_PURPLE", label: "Аметист", icon: "🟣", mint: "", kind: 11 },
+  { key: "STONE_RED", label: "Рубин", icon: "🔴", mint: "", kind: 12 },
+  { key: "SAND_WHITE", label: "Кварцевый песок", icon: "⚪", mint: "", kind: 13 },
+  { key: "SAND_PINK", label: "Розовый песок", icon: "💗", mint: "", kind: 14 },
+  { key: "SAND_YELLOW", label: "Янтарный песок", icon: "🟡", mint: "", kind: 15 },
+  { key: "GEM_BLUE", label: "Сапфировый гем", icon: "💎", mint: "", kind: 16 },
+  { key: "GEM_ORANGE", label: "Янтарный гем", icon: "🟠", mint: "", kind: 17 },
+  { key: "GEM_WHITE", label: "Кварцевый гем", icon: "⚪", mint: "", kind: 18 },
+  { key: "GEM_GREEN", label: "Изумрудный гем", icon: "🟢", mint: "", kind: 19 },
+  { key: "FLASK_BLUE", label: "Зелье энергии", icon: "🧪", mint: "", kind: 20 },
+  { key: "FLASK_YELLOW", label: "Зелье газа", icon: "🧪", mint: "", kind: 21 },
+  { key: "FLASK_GREEN", label: "Зелье роста", icon: "🧪", mint: "", kind: 22 },
+  { key: "FLASK_PINK", label: "Зелье любви", icon: "🧪", mint: "", kind: 23 },
+  { key: "FLASK_PURPLE", label: "Зелье удачи", icon: "🧪", mint: "", kind: 24 },
+  { key: "LOVE_HEART", label: "Сердце любви", icon: "💗", mint: "", kind: 25 },
+  { key: "POTATO", label: "POTATO", icon: "🥔", mint: "", kind: 26 },
 ];

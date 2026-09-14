@@ -1,5 +1,5 @@
 {
-  "address": "sFpDGRDYjH7VqdBdg2HyWGamUC7Pk6bGabhD91eZmaw",
+  "address": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
   "metadata": {
     "name": "aof_core",
     "version": "0.1.0",
@@ -95,6 +95,24 @@
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "bidder",
           "writable": true,
           "signer": true
@@ -181,6 +199,9 @@
         {
           "name": "mint",
           "writable": true
+        },
+        {
+          "name": "tool"
         },
         {
           "name": "seller_token",
@@ -1368,6 +1389,60 @@
               }
             ]
           }
+        },
+        {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payout_mint",
+          "writable": true
+        },
+        {
+          "name": "payout_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
@@ -2331,6 +2406,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "creator_refund",
+          "writable": true
         },
         {
           "name": "treasury",
@@ -3938,11 +4017,19 @@
           }
         },
         {
+          "name": "program_data"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "marketplace_buy",
@@ -4158,6 +4245,9 @@
           "writable": true
         },
         {
+          "name": "tool"
+        },
+        {
           "name": "seller_token",
           "writable": true
         },
@@ -4237,11 +4327,69 @@
           }
         },
         {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "mint"
         },
         {
           "name": "buy_order",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  111,
+                  117,
+                  114,
+                  99,
+                  101,
+                  95,
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buy_order.maker",
+                "account": "ResourceOrder"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
         },
         {
           "name": "sell_order",
@@ -4780,6 +4928,10 @@
           }
         },
         {
+          "name": "buyer_refund",
+          "writable": true
+        },
+        {
           "name": "treasury",
           "writable": true
         },
@@ -4974,6 +5126,9 @@
         },
         {
           "name": "pack_config"
+        },
+        {
+          "name": "auth"
         },
         {
           "name": "mint"
@@ -5407,6 +5562,32 @@
           "name": "mint"
         },
         {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "order",
           "writable": true,
           "pda": {
@@ -5499,6 +5680,32 @@
         },
         {
           "name": "mint"
+        },
+        {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "maker_token",
@@ -6290,6 +6497,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "renter_refund",
+          "writable": true
         }
       ],
       "args": []
@@ -7407,6 +7618,18 @@
         {
           "name": "stone_mint",
           "type": "pubkey"
+        },
+        {
+          "name": "seeds_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "water_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "potato_mint",
+          "type": "pubkey"
         }
       ]
     },
@@ -7711,6 +7934,32 @@
           }
         },
         {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "user",
           "writable": true,
           "signer": true
@@ -7751,6 +8000,26 @@
         },
         {
           "name": "tool_mint"
+        },
+        {
+          "name": "tool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "toolMint"
+              }
+            ]
+          }
         },
         {
           "name": "exploration_commit",
@@ -9154,6 +9423,19 @@
       ]
     },
     {
+      "name": "MiningCollected",
+      "discriminator": [
+        58,
+        22,
+        29,
+        78,
+        81,
+        75,
+        107,
+        236
+      ]
+    },
+    {
       "name": "OfferAccepted",
       "discriminator": [
         81,
@@ -9554,273 +9836,323 @@
     },
     {
       "code": 6030,
+      "name": "InvalidMint",
+      "msg": "Invalid mint address"
+    },
+    {
+      "code": 6031,
       "name": "NoIdleVillagers",
       "msg": "No idle villagers available for mining"
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "HoursExceedRarityCap",
       "msg": "Requested mining hours exceed max hours for this tool rarity"
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "NotCollectorOwner",
       "msg": "Signer does not own this staked collector"
     },
     {
-      "code": 6033,
+      "code": 6034,
+      "name": "CollectorNotConfigured",
+      "msg": "Collector mint registry is not configured"
+    },
+    {
+      "code": 6035,
       "name": "CommitMismatch",
       "msg": "Commit hash does not match revealed secret"
     },
     {
-      "code": 6034,
+      "code": 6036,
       "name": "CommitExpired",
       "msg": "Commit has expired (SlotHashes window passed) — abort and refund"
     },
     {
-      "code": 6035,
+      "code": 6037,
       "name": "InvalidOddsWeights",
       "msg": "Odds weights must sum to 10000 basis points"
     },
     {
-      "code": 6036,
+      "code": 6038,
       "name": "ExplorationCooldown",
       "msg": "Exploration cooldown has not expired"
     },
     {
-      "code": 6037,
+      "code": 6039,
       "name": "ExplorationDailyLimitReached",
       "msg": "Daily exploration trip limit reached"
     },
     {
-      "code": 6038,
+      "code": 6040,
       "name": "ExplorationMaxTier",
       "msg": "Exploration tier is already at maximum"
     },
     {
-      "code": 6039,
+      "code": 6041,
       "name": "ReferralAlreadyBound",
       "msg": "Referral link already exists for this user"
     },
     {
-      "code": 6040,
+      "code": 6042,
       "name": "ReferralCapReached",
       "msg": "Referrer has reached their active referral cap"
     },
     {
-      "code": 6041,
+      "code": 6043,
+      "name": "InvalidReferral",
+      "msg": "A wallet cannot refer itself"
+    },
+    {
+      "code": 6044,
       "name": "ReferralMaxTier",
       "msg": "Referral tier is already at maximum"
     },
     {
-      "code": 6042,
+      "code": 6045,
       "name": "EnchantMaxLevel",
       "msg": "Enchant slot is already at maximum level"
     },
     {
-      "code": 6043,
+      "code": 6046,
       "name": "AuctionEnded",
       "msg": "Auction has already ended"
     },
     {
-      "code": 6044,
+      "code": 6047,
       "name": "AuctionNotEnded",
       "msg": "Auction has not ended yet"
     },
     {
-      "code": 6045,
+      "code": 6048,
       "name": "BidTooLow",
       "msg": "Bid must exceed current highest bid"
     },
     {
-      "code": 6046,
+      "code": 6049,
       "name": "NotActive",
       "msg": "Listing/Offer/Auction is not active"
     },
     {
-      "code": 6047,
+      "code": 6050,
       "name": "InvalidRentalDuration",
       "msg": "Rental period out of allowed range"
     },
     {
-      "code": 6048,
+      "code": 6051,
       "name": "RentalGraceNotExpired",
       "msg": "Rental is still active — cannot revoke without grace period"
     },
     {
-      "code": 6049,
+      "code": 6052,
       "name": "NotToolOperator",
       "msg": "Signer is not the current operator of this tool"
     },
     {
-      "code": 6050,
+      "code": 6053,
       "name": "OrdersDoNotCross",
       "msg": "Order kinds/side do not cross (price/side mismatch)"
     },
     {
-      "code": 6051,
+      "code": 6054,
       "name": "OrderExhausted",
       "msg": "Order has no remaining amount"
     },
     {
-      "code": 6052,
+      "code": 6055,
       "name": "LotteryRoundClosed",
       "msg": "Lottery round is already drawn or closed"
     },
     {
-      "code": 6053,
+      "code": 6056,
       "name": "LotteryNotDrawn",
       "msg": "Lottery round is not drawn yet"
     },
     {
-      "code": 6054,
+      "code": 6057,
       "name": "NotWinningTicket",
       "msg": "Not the winning ticket for this round"
     },
     {
-      "code": 6055,
+      "code": 6058,
       "name": "LotteryDailyLimitReached",
       "msg": "Daily lottery ticket limit reached"
     },
     {
-      "code": 6056,
+      "code": 6059,
       "name": "SeasonRewardAlreadyClaimed",
       "msg": "Season reward level already claimed"
     },
     {
-      "code": 6057,
+      "code": 6060,
       "name": "SeasonPremiumRequired",
       "msg": "Season reward requires premium pass"
     },
     {
-      "code": 6058,
+      "code": 6061,
       "name": "SeasonInsufficientXp",
       "msg": "Not enough XP for this season level"
     },
     {
-      "code": 6059,
+      "code": 6062,
       "name": "SeasonEnded",
       "msg": "Season has ended"
     },
     {
-      "code": 6060,
+      "code": 6063,
       "name": "LotteryDrawNotCommitted",
       "msg": "Lottery draw has not been committed yet"
     },
     {
-      "code": 6061,
+      "code": 6064,
       "name": "InvalidHash",
       "msg": "Revealed secret does not match committed hash"
     },
     {
-      "code": 6062,
+      "code": 6065,
       "name": "EnergyDepleted",
       "msg": "Energy account depleted"
     },
     {
-      "code": 6063,
+      "code": 6066,
       "name": "InsufficientEnergy",
       "msg": "Energy cost exceeds available balance"
     },
     {
-      "code": 6064,
+      "code": 6067,
       "name": "FarmTileBusy",
       "msg": "Farm tile is busy (growing)"
     },
     {
-      "code": 6065,
+      "code": 6068,
       "name": "FarmTileNotReady",
       "msg": "Farm tile is not ready for harvest"
     },
     {
-      "code": 6066,
+      "code": 6069,
       "name": "FarmTileEmpty",
       "msg": "Farm tile is empty (nothing planted)"
     },
     {
-      "code": 6067,
+      "code": 6070,
       "name": "ToolBusy",
       "msg": "Tool is busy (mining), cannot harvest"
     },
     {
-      "code": 6068,
+      "code": 6071,
       "name": "MillInProgress",
       "msg": "Mill has active batch in progress"
     },
     {
-      "code": 6069,
+      "code": 6072,
       "name": "MillNotReady",
       "msg": "Mill batch is not ready yet"
     },
     {
-      "code": 6070,
+      "code": 6073,
       "name": "OvenInProgress",
       "msg": "Oven has active batch in progress"
     },
     {
-      "code": 6071,
+      "code": 6074,
       "name": "OvenNotReady",
       "msg": "Oven batch is not ready yet"
     },
     {
-      "code": 6072,
+      "code": 6075,
       "name": "InvalidBatchSize",
       "msg": "Invalid batch size (must be 1, 2, or 3)"
     },
     {
-      "code": 6073,
+      "code": 6076,
       "name": "InvalidFuelKind",
       "msg": "Invalid fuel kind (must be 0=wood or 1=coal)"
     },
     {
-      "code": 6074,
+      "code": 6077,
       "name": "MaterialNotRegistered",
       "msg": "Material mint is not registered in MaterialMints PDA"
     },
     {
-      "code": 6075,
+      "code": 6078,
       "name": "WeatherAlreadyUpdated",
       "msg": "Weather state already updated for this day"
     },
     {
-      "code": 6076,
+      "code": 6079,
       "name": "WellEmpty",
       "msg": "Well has no water to collect"
     },
     {
-      "code": 6077,
+      "code": 6080,
       "name": "RecipeNotFound",
       "msg": "Recipe not found in RecipeConfig"
     },
     {
-      "code": 6078,
+      "code": 6081,
       "name": "FortuneBoostExpired",
       "msg": "Fortune boost has expired"
     },
     {
-      "code": 6079,
+      "code": 6082,
       "name": "FortuneBoostAlreadyActive",
       "msg": "Fortune boost is already active"
     },
     {
-      "code": 6080,
+      "code": 6083,
       "name": "LoveHeartNotTransferable",
       "msg": "Love heart is not transferable"
     },
     {
-      "code": 6081,
+      "code": 6084,
       "name": "InvalidAmount",
       "msg": "Invalid amount"
     },
     {
-      "code": 6082,
+      "code": 6085,
       "name": "DurabilityOverflow",
       "msg": "Durability overflow"
     },
     {
-      "code": 6083,
+      "code": 6086,
       "name": "InvalidWeatherSeed",
       "msg": "Invalid weather seed (must be derived from slot hash)"
+    },
+    {
+      "code": 6087,
+      "name": "InvalidReveal",
+      "msg": "Invalid reveal: hash mismatch"
+    },
+    {
+      "code": 6088,
+      "name": "AlreadyRevealed",
+      "msg": "Commit already revealed"
+    },
+    {
+      "code": 6089,
+      "name": "InvalidFlaskType",
+      "msg": "Invalid flask type"
+    },
+    {
+      "code": 6090,
+      "name": "EnergyCapExceeded",
+      "msg": "Energy cap exceeded"
+    },
+    {
+      "code": 6091,
+      "name": "InvalidToolType",
+      "msg": "Tool type is not valid for this instruction"
+    },
+    {
+      "code": 6092,
+      "name": "InvalidProgramData",
+      "msg": "Program data does not contain a valid upgrade authority"
+    },
+    {
+      "code": 6093,
+      "name": "FeatureDisabled",
+      "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
     }
   ],
   "types": [
@@ -10914,6 +11246,38 @@
       }
     },
     {
+      "name": "MiningCollected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "tool_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "resource_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "hours",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "durability_after",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "Offer",
       "type": {
         "kind": "struct",
@@ -11663,6 +12027,9 @@
           },
           {
             "name": "LoveHeart"
+          },
+          {
+            "name": "Potato"
           }
         ]
       }

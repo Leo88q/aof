@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
@@ -18,7 +19,7 @@ r.get("/feed", async (req, res) => {
 });
 
 // Записать крупную сделку (вызывается индексатором при превышении порога)
-r.post("/record", async (req, res) => {
+r.post("/record", requireAdmin, async (req, res) => {
   try {
     const { type, mint, amount, price } = req.body;
     const alert = await db.whaleAlert.create({

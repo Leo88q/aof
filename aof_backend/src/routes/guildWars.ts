@@ -34,6 +34,9 @@ r.get("/territories", async (req, res) => {
 r.post("/capture", async (req, res) => {
   try {
     const { guildId, territoryId, actor } = req.body;
+    if (!TERRITORIES.some((t) => t.territoryId === territoryId)) {
+      return res.status(400).json({ error: "Unknown territory" });
+    }
 
     // Проверяем роль захватчика
     const member = await db.guildMember.findFirst({

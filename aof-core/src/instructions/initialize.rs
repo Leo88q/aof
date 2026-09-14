@@ -1,14 +1,33 @@
 use anchor_lang::prelude::*;
+use crate::errors::AofError;
 use crate::Initialize;
 
 /// [ФИКС]: Config теперь настоящий singleton PDA (seeds=[CONFIG_SEED]) — см.
 /// AUDIT_AND_CHANGES.md, критическая находка. bump сохраняется в аккаунт,
 /// как и предполагало наличие поля `Config.bump` в присланном state.rs
 /// (оно было объявлено, но никогда не заполнялось).
-pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+pub fn handler(ctx: Context<Initialize>, treasury: Pubkey) -> Result<()> {
+    // Config is a singleton, so `init` prevents a second initialization. That
+    // alone is not enough: without this check, any wallet could win the first
+    // transaction and permanently become Config.authority. During bootstrap,
+    // only the upgrade authority recorded in the canonical ProgramData account
+    // may create Config. Because Config.authority is set to this signer, a
+    // deployment must retain this key (or add an explicit authority-rotation
+    // instruction before transferring upgrade authority).
+    let upgrade_authority = ctx
+        .accounts
+        .program_data
+        .upgrade_authority_address
+        .ok_or(AofError::InvalidProgramData)?;
+    require_keys_eq!(
+        upgrade_authority,
+        ctx.accounts.authority.key(),
+        AofError::Unauthorized
+    );
+
     let cfg = &mut ctx.accounts.config;
     cfg.authority = ctx.accounts.authority.key();
-    cfg.treasury = ctx.accounts.authority.key();
+    cfg.treasury = treasury;
     cfg.food_mint = Pubkey::default();
     cfg.wood_mint = Pubkey::default();
     cfg.stone_mint = Pubkey::default();

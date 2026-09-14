@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::errors::MarketError;
+use core::convert::TryFrom;
 
 pub const MAX_GROWTH_ITER: u64 = 200;
 pub const MAX_DECAY_HOURS: u64 = 72;
@@ -24,7 +25,7 @@ pub fn apply_growth(base: u64, growth_bps: u16, purchases_in_window: u64) -> Res
             break;
         }
     }
-    Ok(price as u64)
+    u64::try_from(price).map_err(|_| error!(MarketError::MathOverflow))
 }
 
 pub fn apply_decay(current: u64, base: u64, decay_bps_per_hour: u16, hours_idle: i64) -> Result<u64> {
@@ -43,7 +44,7 @@ pub fn apply_decay(current: u64, base: u64, decay_bps_per_hour: u16, hours_idle:
             return Ok(base);
         }
     }
-    Ok(price.max(1) as u64)
+    u64::try_from(price.max(1)).map_err(|_| error!(MarketError::MathOverflow))
 }
 
 pub fn current_price(
@@ -68,5 +69,5 @@ pub fn apply_hot_multiplier(price: u64, hot_multiplier_bps: u16, is_hot: bool) -
         .ok_or(MarketError::MathOverflow)?
         .checked_div(10_000)
         .ok_or(MarketError::MathOverflow)?;
-    Ok(v as u64)
+    u64::try_from(v).map_err(|_| error!(MarketError::MathOverflow))
 }

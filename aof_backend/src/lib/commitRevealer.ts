@@ -1,40 +1,27 @@
-import { getExpiredCommits, markUsed } from "./secretStore";
-import { prisma } from "./db";
+import { getExpiredCommits } from "./secretStore";
 
 /**
- * Фоновый воркер: обрабатывает протухшие коммиты.
- * В идеале должен вызывать on-chain reveal-инструкцию.
- * Пока что просто помечает как использованные + логирует.
- *
- * TODO (этап 2): добавить реальный CPI к on-chain программе
+ * Reports expired commits for operational handling. A generic worker cannot
+ * safely submit a reveal because each commit type requires different PDAs,
+ * accounts, and (for user flows) the original wallet. Marking the record as
+ * revealed here would be false and would hide an unrecoverable game state.
  */
 export async function runCommitRevealer(): Promise<void> {
   try {
     const expired = await getExpiredCommits(50);
     if (expired.length === 0) return;
 
-    console.log(`🕐 [CommitRevealer] Found ${expired.length} expired commits`);
-
+    console.error(
+      `[CommitRevealer] ${expired.length} expired commits require a typed on-chain reveal/refund worker`
+    );
     for (const record of expired) {
-      try {
-        // TODO: Здесь должен быть on-chain reveal
-        // const secret = Buffer.from(record.secret, "hex");
-        // await submitRevealTx(record.key, secret);
-
-        await markUsed(record.key);
-        console.log(`  ✅ Revealed: ${record.key}`);
-      } catch (e) {
-        console.error(`  ❌ Failed to reveal ${record.key}:`, e);
-      }
+      console.error(`[CommitRevealer] unresolved commit: ${record.key}`);
     }
   } catch (e) {
     console.error("[CommitRevealer] Error:", e);
   }
 }
 
-/**
- * Запускает воркер с заданным интервалом.
- */
 export function startCommitRevealer(intervalMs: number = 60_000): NodeJS.Timeout {
   console.log(`✅ [CommitRevealer] Started (every ${intervalMs / 1000}s)`);
   return setInterval(runCommitRevealer, intervalMs);

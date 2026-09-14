@@ -16,4 +16,6 @@ pub enum RebirthError {
     MathOverflow,
     #[msg("Rebirth cooldown still active")]
     CooldownActive,
+    #[msg("Rebirth is disabled until the full reset is atomic")]
+    FeatureDisabled,
 }

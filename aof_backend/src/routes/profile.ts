@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { db } from "../lib/db";
 import { pk } from "../lib/tx";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
 // [NEW] Регистрация username (адрес + ник)
-r.post("/register", async (req, res) => {
+r.post("/register", requireWalletProof("profile_register", "address"), async (req, res) => {
   try {
     const { address, username } = req.body;
     if (!address || !username) {

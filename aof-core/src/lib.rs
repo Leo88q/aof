@@ -49,6 +49,8 @@ pub enum ResourceKind {
     FlaskPurple,
     // Особое
     LoveHeart,
+    // Utility resource configured in Config (kept last to preserve existing enum discriminants).
+    Potato,
 }
 
 // =====================================================================
@@ -100,6 +102,16 @@ pub struct Initialize<'info> {
     /// CHECK: vault PDA, holds staked SPL
     #[account(seeds = [VAULT_SEED], bump)]
     pub vault: UncheckedAccount<'info>,
+    /// Canonical upgradeable-loader ProgramData account for this program. It is
+    /// read during the one-time bootstrap to bind Config authority to the actual
+    /// deploy/upgrade authority instead of an attacker-chosen signer.
+    #[account(
+        address = Pubkey::find_program_address(
+            &[crate::ID.as_ref()],
+            &anchor_lang::solana_program::bpf_loader_upgradeable::id()
+        ).0
+    )]
+    pub program_data: Account<'info, anchor_lang::ProgramData>,
     pub system_program: Program<'info, System>,
 }
 
@@ -247,7 +259,10 @@ pub struct MintResource<'info> {
     pub auth: UncheckedAccount<'info>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = token_account.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub token_account: Account<'info, TokenAccount>,
     // [НОВОЕ]: withdraw-fee bps по перкам (см. instructions::mint_resource,
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
@@ -300,9 +315,14 @@ pub struct MintTool<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = mint.decimals == 0 @ AofError::InvalidMint,
+        constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
+    )]
     pub mint: Account<'info, Mint>,
-    #[account(mut)]
+    #[account(mut, constraint = token_account.mint == mint.key(), constraint = token_account.amount == 0)]
     pub token_account: Account<'info, TokenAccount>,
     #[account(
         init_if_needed,
@@ -336,7 +356,11 @@ pub struct BurnTool<'info> {
         close = user,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
-        constraint = tool_data.owner == user.key() @ AofError::NotToolOwner
+        constraint = tool_data.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool_data.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool_data.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool_data.staked @ AofError::AlreadyStaked,
+        constraint = !tool_data.is_mining @ AofError::AlreadyMining
     )]
     pub tool_data: Account<'info, ToolData>,
     pub token_program: Program<'info, Token>,
@@ -347,8 +371,9 @@ pub struct BurnTool<'info> {
 pub struct MigrateTool<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
-    /// CHECK: migration authority (hardcoded pubkey)
-    #[account(mut, constraint = migration_authority.key() == MIGRATION_AUTHORITY @ AofError::InvalidMigrationAuthority)]
+    /// Migration signer is the configured core authority. Keeping this
+    /// relation in the account constraints avoids a stale hardcoded key.
+    #[account(mut, constraint = migration_authority.key() == config.authority @ AofError::InvalidMigrationAuthority)]
     pub migration_authority: Signer<'info>,
     pub authority: Signer<'info>,
     /// CHECK: auth PDA
@@ -357,9 +382,14 @@ pub struct MigrateTool<'info> {
     /// CHECK: vault PDA
     #[account(seeds = [VAULT_SEED], bump)]
     pub vault: UncheckedAccount<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = mint.decimals == 0 @ AofError::InvalidMint,
+        constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
+    )]
     pub mint: Account<'info, Mint>,
-    #[account(mut)]
+    #[account(mut, constraint = vault_token_account.mint == mint.key(), constraint = vault_token_account.owner == vault.key(), constraint = vault_token_account.amount == 0)]
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(
         init_if_needed,
@@ -396,17 +426,26 @@ pub struct Craft<'info> {
         mut,
         seeds = [TOOL_SEED, prev_mint.key().as_ref()],
         bump,
+        constraint = prev_tool.mint == prev_mint.key() @ AofError::InvalidMint,
         constraint = prev_tool.owner == user.key() @ AofError::NotToolOwner,
+        constraint = prev_tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !prev_tool.staked @ AofError::NotActive,
+        constraint = !prev_tool.is_mining @ AofError::NotActive,
         constraint = prev_tool.rarity.to_u8() == rarity.to_u8().checked_sub(1).ok_or(AofError::InvalidRarityForCraft)? @ AofError::InvalidRarityForCraft,
     )]
     pub prev_tool: Box<Account<'info, ToolData>>,
     #[account(mut)]
     pub prev_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = prev_token.mint == prev_mint.key(), constraint = prev_token.owner == user.key())]
+    #[account(mut, constraint = prev_token.mint == prev_mint.key(), constraint = prev_token.owner == user.key(), constraint = prev_token.amount == 1)]
     pub prev_token: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
+        constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+    )]
     pub new_mint: Box<Account<'info, Mint>>,
-    #[account(mut)]
+    #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
     pub new_token: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
@@ -476,28 +515,38 @@ pub struct Reroll<'info> {
         seeds = [TOOL_SEED, mint_a.key().as_ref()],
         bump,
         constraint = tool_a.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool_a.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool_a.staked @ AofError::AlreadyStaked,
+        constraint = !tool_a.is_mining @ AofError::AlreadyMining,
         constraint = tool_a.rarity != Rarity::Legendary @ AofError::CannotRerollLegendary,
     )]
     pub tool_a: Box<Account<'info, ToolData>>,
     #[account(mut)]
     pub mint_a: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = token_a.mint == mint_a.key(), constraint = token_a.owner == user.key())]
+    #[account(mut, constraint = token_a.mint == mint_a.key(), constraint = token_a.owner == user.key(), constraint = token_a.amount == 1)]
     pub token_a: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
         seeds = [TOOL_SEED, mint_b.key().as_ref()],
         bump,
         constraint = tool_b.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool_b.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool_b.staked @ AofError::AlreadyStaked,
+        constraint = !tool_b.is_mining @ AofError::AlreadyMining,
         constraint = tool_b.rarity == tool_a.rarity @ AofError::RerollMismatchedRarity,
     )]
     pub tool_b: Box<Account<'info, ToolData>>,
     #[account(mut)]
     pub mint_b: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = token_b.mint == mint_b.key(), constraint = token_b.owner == user.key())]
+    #[account(mut, constraint = token_b.mint == mint_b.key(), constraint = token_b.owner == user.key(), constraint = token_b.amount == 1)]
     pub token_b: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+    )]
     pub new_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key())]
+    #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
     pub new_token: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
@@ -525,7 +574,9 @@ pub struct Stake<'info> {
         mut,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
         constraint = tool.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
         constraint = !tool.staked @ AofError::AlreadyStaked,
         constraint = !tool.is_mining @ AofError::AlreadyMining,
     )]
@@ -557,8 +608,11 @@ pub struct Unstake<'info> {
         mut,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
         constraint = tool.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
         constraint = tool.staked @ AofError::NotStaked,
+        constraint = !tool.is_mining @ AofError::AlreadyMining,
     )]
     pub tool: Account<'info, ToolData>,
     #[account(mut)]
@@ -593,9 +647,10 @@ pub struct StartMining<'info> {
         mut,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
         constraint = tool.operator == user.key() @ AofError::NotToolOperator,
         constraint = !tool.is_mining @ AofError::AlreadyMining,
-        constraint = !tool.staked @ AofError::InvalidStakeState,
+        constraint = tool.staked @ AofError::InvalidStakeState,
     )]
     pub tool: Account<'info, ToolData>,
     pub mint: Account<'info, Mint>,
@@ -620,8 +675,10 @@ pub struct CollectMining<'info> {
         mut,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
         constraint = tool.operator == user.key() @ AofError::NotToolOperator,
         constraint = tool.is_mining @ AofError::NotMining,
+        constraint = tool.staked @ AofError::InvalidStakeState,
     )]
     pub tool: Account<'info, ToolData>,
     #[account(mut)]
@@ -633,6 +690,20 @@ pub struct CollectMining<'info> {
         constraint = player.owner == user.key() @ AofError::Unauthorized,
     )]
     pub player: Account<'info, Player>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Account<'info, MaterialMints>,
+    /// CHECK: auth PDA, canonical mint authority for resource emissions.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub payout_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = payout_token.mint == payout_mint.key(),
+        constraint = payout_token.owner == user.key()
+    )]
+    pub payout_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -646,6 +717,7 @@ pub struct Repair<'info> {
         mut,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
         constraint = tool.operator == user.key() @ AofError::NotToolOperator,
     )]
     pub tool: Account<'info, ToolData>,
@@ -655,9 +727,9 @@ pub struct Repair<'info> {
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Account<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
-    #[account(mut)]
+    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -675,10 +747,14 @@ pub struct BurnNft<'info> {
         close = user,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
         constraint = tool.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool.staked @ AofError::AlreadyStaked,
+        constraint = !tool.is_mining @ AofError::AlreadyMining,
     )]
     pub tool: Account<'info, ToolData>,
-    #[account(mut, constraint = token_account.mint == mint.key(), constraint = token_account.owner == user.key())]
+    #[account(mut, constraint = token_account.mint == mint.key(), constraint = token_account.owner == user.key(), constraint = token_account.amount == 1)]
     pub token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -852,7 +928,16 @@ pub struct PackOpenCommit<'info> {
     pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_type.to_u8()]], bump = pack_config.bump)]
     pub pack_config: Account<'info, PackConfig>,
-    /// CHECK: mint будущего инструмента, создаётся клиентом заранее (0 decimals)
+    /// CHECK: auth PDA is the only supported mint authority for tools.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    /// Mint is created by the caller but must be an unused zero-decimal tool mint
+    /// controlled by the program authority PDA.
+    #[account(
+        constraint = mint.decimals == 0 @ AofError::InvalidMint,
+        constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
+    )]
     pub mint: Account<'info, Mint>,
     #[account(
         init, payer = user, space = PACK_COMMIT_SPACE,
@@ -869,8 +954,11 @@ pub struct PackOpenReveal<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
-        mut, close = user,
-        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()], bump,
+        mut,
+        close = user,
+        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()],
+        bump,
+        constraint = pack_commit.mint == mint.key() @ AofError::InvalidMint
     )]
     pub pack_commit: Account<'info, PackCommit>,
     /// CHECK: получатель — тот же user, что делал commit; закрываем ренту ему
@@ -878,9 +966,19 @@ pub struct PackOpenReveal<'info> {
     pub user: UncheckedAccount<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_commit.pack_type]], bump = pack_config.bump)]
     pub pack_config: Account<'info, PackConfig>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = mint.decimals == 0 @ AofError::InvalidMint,
+        constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
+    )]
     pub mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_token.mint == mint.key())]
+    #[account(
+        mut,
+        constraint = user_token.mint == mint.key(),
+        constraint = user_token.owner == user.key(),
+        constraint = user_token.amount == 0
+    )]
     pub user_token: Account<'info, TokenAccount>,
     #[account(
         init, payer = authority, space = TOOL_DATA_SPACE,
@@ -932,13 +1030,14 @@ pub struct RerollRandomCommit<'info> {
         mut, seeds = [TOOL_SEED, burn_mint.key().as_ref()], bump,
         close = user,
         constraint = burn_tool.owner == user.key() @ AofError::NotToolOwner,
+        constraint = burn_tool.operator == user.key() @ AofError::NotToolOperator,
         constraint = !burn_tool.staked @ AofError::AlreadyStaked,
         constraint = !burn_tool.is_mining @ AofError::AlreadyMining,
     )]
     pub burn_tool: Account<'info, ToolData>,
     #[account(mut)]
     pub burn_mint: Account<'info, Mint>,
-    #[account(mut, constraint = burn_token.mint == burn_mint.key(), constraint = burn_token.owner == user.key())]
+    #[account(mut, constraint = burn_token.mint == burn_mint.key(), constraint = burn_token.owner == user.key(), constraint = burn_token.amount == 1)]
     pub burn_token: Account<'info, TokenAccount>,
     /// CHECK: mint будущего инструмента, создаётся клиентом заранее
     pub new_mint: Account<'info, Mint>,
@@ -964,9 +1063,14 @@ pub struct RerollRandomReveal<'info> {
     /// CHECK: получатель закрытой ренты коммита — тот же user
     #[account(mut, address = reroll_commit.user)]
     pub payer: UncheckedAccount<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
+        constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+    )]
     pub new_mint: Account<'info, Mint>,
-    #[account(mut, constraint = new_token.mint == new_mint.key())]
+    #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == payer.key(), constraint = new_token.amount == 0)]
     pub new_token: Account<'info, TokenAccount>,
     #[account(init, payer = authority, space = TOOL_DATA_SPACE, seeds = [TOOL_SEED, new_mint.key().as_ref()], bump)]
     pub new_tool_data: Account<'info, ToolData>,
@@ -987,15 +1091,25 @@ pub struct RerollRandomReveal<'info> {
 pub struct StartExplorationCommit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(
         init_if_needed, payer = user, space = EXPLORATION_STATE_SPACE,
-        seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump
+        seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump,
+        constraint = (exploration_state.owner == Pubkey::default() || exploration_state.owner == user.key()) @ AofError::Unauthorized
     )]
     pub exploration_state: Account<'info, ExplorationState>,
-    /// CHECK: инструмент, с которым идёт поход (только для события/учёта)
-    pub tool_mint: UncheckedAccount<'info>,
+    pub tool_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump,
+        constraint = tool.owner == user.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = tool.tool_type == "Bow" @ AofError::InvalidToolType,
+        constraint = !tool.is_mining @ AofError::ToolBusy
+    )]
+    pub tool: Account<'info, ToolData>,
     #[account(
         init, payer = user, space = EXPLORATION_COMMIT_SPACE,
         seeds = [EXPLORATION_COMMIT_SEED, tool_mint.key().as_ref()], bump
@@ -1013,7 +1127,8 @@ pub struct StartExplorationCommit<'info> {
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Account<'info, TokenAccount>,
-    // [НОВОЕ] MEAT для исследования (передаётся напрямую)
+    // [НОВОЕ] MEAT для исследования — только официальный MaterialMints mint.
+    #[account(address = material_mints.meat)]
     pub meat_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
     pub user_meat: Account<'info, TokenAccount>,
@@ -1026,7 +1141,12 @@ pub struct ExploreReveal<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
-    #[account(mut, seeds = [EXPLORATION_STATE_SEED, exploration_commit.user.as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [EXPLORATION_STATE_SEED, exploration_commit.user.as_ref()],
+        bump,
+        constraint = exploration_state.owner == exploration_commit.user @ AofError::Unauthorized
+    )]
     pub exploration_state: Account<'info, ExplorationState>,
     #[account(mut, close = payer, seeds = [EXPLORATION_COMMIT_SEED, exploration_commit.tool_mint.as_ref()], bump)]
     pub exploration_commit: Account<'info, ExplorationCommit>,
@@ -1035,11 +1155,11 @@ pub struct ExploreReveal<'info> {
     pub payer: UncheckedAccount<'info>,
     #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key())]
+    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == payer.key())]
     pub user_wood: Account<'info, TokenAccount>,
     #[account(mut, address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key())]
+    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == payer.key())]
     pub user_stone: Account<'info, TokenAccount>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
@@ -1082,6 +1202,7 @@ pub struct ReferralBindCtx<'info> {
     #[account(mut)]
     pub referred: Signer<'info>,
     /// CHECK: реферер — просто получатель ссылки, не подписывает
+    #[account(constraint = referrer.key() != referred.key() @ AofError::InvalidReferral)]
     pub referrer: UncheckedAccount<'info>,
     #[account(seeds = [PLAYER_SEED, referrer.key().as_ref()], bump)]
     pub referrer_player: Account<'info, Player>,
@@ -1138,7 +1259,7 @@ pub struct PayOutWithReferral<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut, constraint = vault_token.mint == mint.key(), constraint = vault_token.owner == vault.key())]
     pub vault_token: Account<'info, TokenAccount>,
-    #[account(mut, constraint = user_token.mint == mint.key())]
+    #[account(mut, constraint = user_token.mint == mint.key(), constraint = user_token.owner == referral_link.referred @ AofError::Unauthorized)]
     pub user_token: Account<'info, TokenAccount>,
     #[account(seeds = [REFERRAL_LINK_SEED, referral_link.referred.as_ref()], bump)]
     pub referral_link: Account<'info, ReferralLink>,
@@ -1285,6 +1406,15 @@ pub struct MarketplaceList<'info> {
     pub seller: Signer<'info>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
+    #[account(
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.owner == seller.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == seller.key() @ AofError::NotToolOperator,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
+    pub tool: Account<'info, ToolData>,
     #[account(mut, constraint = seller_token.mint == mint.key(), constraint = seller_token.owner == seller.key(), constraint = seller_token.amount == 1)]
     pub seller_token: Account<'info, TokenAccount>,
     #[account(
@@ -1312,9 +1442,22 @@ pub struct MarketplaceBuy<'info> {
     pub treasury: UncheckedAccount<'info>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [TOOL_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == tool.owner @ AofError::NotActive,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
     pub tool: Account<'info, ToolData>,
-    #[account(mut, seeds = [LISTING_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [LISTING_SEED, mint.key().as_ref()],
+        bump,
+        constraint = listing.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub listing: Account<'info, Listing>,
     #[account(mut, constraint = listing_vault.owner == listing.key(), constraint = listing_vault.mint == mint.key())]
     pub listing_vault: Account<'info, TokenAccount>,
@@ -1350,6 +1493,15 @@ pub struct AuctionCreateCtx<'info> {
     pub seller: Signer<'info>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
+    #[account(
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.owner == seller.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == seller.key() @ AofError::NotToolOperator,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
+    pub tool: Account<'info, ToolData>,
     #[account(mut, constraint = seller_token.mint == mint.key(), constraint = seller_token.owner == seller.key(), constraint = seller_token.amount == 1)]
     pub seller_token: Account<'info, TokenAccount>,
     #[account(init, payer = seller, space = AUCTION_SPACE, seeds = [AUCTION_SEED, mint.key().as_ref()], bump)]
@@ -1363,6 +1515,8 @@ pub struct AuctionCreateCtx<'info> {
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct AuctionBidCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
     #[account(mut)]
     pub bidder: Signer<'info>,
     #[account(mut)]
@@ -1370,7 +1524,7 @@ pub struct AuctionBidCtx<'info> {
     #[account(mut, seeds = [AUCTION_SEED, mint.key().as_ref()], bump)]
     pub auction: Account<'info, Auction>,
     /// CHECK: предыдущий ставивший (для возврата) — адрес читается из auction.current_bidder
-    #[account(address = auction.current_bidder)]
+    #[account(mut, address = auction.current_bidder)]
     pub previous_bidder: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -1395,7 +1549,15 @@ pub struct AuctionSettleCtx<'info> {
     #[account(mut, constraint = winner_token.mint == mint.key(),
     constraint = winner_token.owner == (if auction.current_bid > 0 { auction.current_bidder } else { auction.seller }) @ AofError::Unauthorized)]
     pub winner_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds = [TOOL_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == tool.owner @ AofError::NotActive,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
     pub tool: Account<'info, ToolData>,
     pub token_program: Program<'info, Token>,
 }
@@ -1423,10 +1585,27 @@ pub struct OfferAcceptCtx<'info> {
     pub seller: Signer<'info>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [TOOL_SEED, mint.key().as_ref()], bump, constraint = tool.owner == seller.key() @ AofError::NotToolOwner)]
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.owner == seller.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == seller.key() @ AofError::NotToolOperator,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
     pub tool: Account<'info, ToolData>,
-    #[account(mut, seeds = [OFFER_SEED, mint.key().as_ref(), offer.buyer.as_ref()], bump)]
+    #[account(
+        mut,
+        close = buyer_refund,
+        seeds = [OFFER_SEED, mint.key().as_ref(), offer.buyer.as_ref()],
+        bump,
+        constraint = offer.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub offer: Account<'info, Offer>,
+    /// CHECK: offer escrow rent recipient is fixed to the offer buyer.
+    #[account(mut, address = offer.buyer)]
+    pub buyer_refund: UncheckedAccount<'info>,
     /// CHECK: казна
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
@@ -1440,7 +1619,14 @@ pub struct OfferAcceptCtx<'info> {
 #[derive(Accounts)]
 pub struct OfferCancelCtx<'info> {
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [OFFER_SEED, mint.key().as_ref(), buyer.key().as_ref()], bump, constraint = offer.buyer == buyer.key() @ AofError::Unauthorized)]
+    #[account(
+        mut,
+        close = buyer,
+        seeds = [OFFER_SEED, mint.key().as_ref(), buyer.key().as_ref()],
+        bump,
+        constraint = offer.buyer == buyer.key() @ AofError::Unauthorized,
+        constraint = offer.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub offer: Account<'info, Offer>,
     #[account(mut)]
     pub buyer: Signer<'info>,
@@ -1457,7 +1643,15 @@ pub struct RentalListCtx<'info> {
     pub owner: Signer<'info>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(seeds = [TOOL_SEED, mint.key().as_ref()], bump, constraint = tool.owner == owner.key() @ AofError::NotToolOwner)]
+    #[account(
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.owner == owner.key() @ AofError::NotToolOwner,
+        constraint = tool.operator == owner.key() @ AofError::NotToolOperator,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
     pub tool: Account<'info, ToolData>,
     #[account(init, payer = owner, space = RENTAL_LISTING_SPACE, seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
     pub rental_listing: Account<'info, RentalListing>,
@@ -1472,9 +1666,23 @@ pub struct RentalStartCtx<'info> {
     #[account(mut)]
     pub renter: Signer<'info>,
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [TOOL_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = !tool.staked @ AofError::NotActive,
+        constraint = !tool.is_mining @ AofError::NotActive
+    )]
     pub tool: Account<'info, ToolData>,
-    #[account(mut, seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()],
+        bump,
+        constraint = rental_listing.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.owner == rental_listing.owner @ AofError::NotToolOwner
+    )]
     pub rental_listing: Account<'info, RentalListing>,
     /// CHECK: владелец инструмента, получает свою долю платы за аренду
     #[account(mut, address = rental_listing.owner @ AofError::NotToolOwner)]
@@ -1491,9 +1699,21 @@ pub struct RentalStartCtx<'info> {
 pub struct RentalEndCtx<'info> {
     pub caller: Signer<'info>,
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [TOOL_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub tool: Account<'info, ToolData>,
-    #[account(mut, close = renter_refund, seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        close = renter_refund,
+        seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()],
+        bump,
+        constraint = rental_agreement.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == rental_agreement.renter @ AofError::NotToolOperator
+    )]
     pub rental_agreement: Account<'info, RentalAgreement>,
     /// CHECK: получатель ренты закрытого аккаунта — рентер
     #[account(mut, address = rental_agreement.renter)]
@@ -1507,8 +1727,17 @@ pub struct RentalRevokeCtx<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut, seeds = [TOOL_SEED, mint.key().as_ref()], bump, constraint = tool.owner == owner.key() @ AofError::NotToolOwner)]
     pub tool: Account<'info, ToolData>,
-    #[account(mut, seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump, constraint = rental_agreement.owner == owner.key() @ AofError::Unauthorized)]
+    #[account(
+        mut,
+        seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()],
+        bump,
+        constraint = rental_agreement.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == rental_agreement.renter @ AofError::NotToolOperator
+    )]
     pub rental_agreement: Account<'info, RentalAgreement>,
+    /// CHECK: rent refund recipient is fixed to the agreement renter.
+    #[account(mut, address = rental_agreement.renter)]
+    pub renter_refund: UncheckedAccount<'info>,
 }
 
 // [БЛОК L] Инициализация MaterialMints PDA
@@ -1594,7 +1823,9 @@ pub struct HarvestWheat<'info> {
     #[account(
         mut,
         seeds = [TOOL_SEED, tool_data.mint.as_ref()],
-        bump
+        bump,
+        constraint = tool_data.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool_data.is_mining @ AofError::ToolBusy
     )]
     pub tool_data: Box<Account<'info, ToolData>>,
     /// CHECK: auth PDA
@@ -1826,6 +2057,8 @@ pub struct PlaceBuyOrder<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Account<'info, MaterialMints>,
     #[account(init, payer = maker, space = RESOURCE_ORDER_SPACE, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
     pub order: Account<'info, ResourceOrder>,
     pub system_program: Program<'info, System>,
@@ -1839,6 +2072,8 @@ pub struct PlaceSellOrder<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Account<'info, MaterialMints>,
     #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
     pub maker_token: Account<'info, TokenAccount>,
     #[account(init, payer = maker, space = RESOURCE_ORDER_SPACE, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
@@ -1854,7 +2089,14 @@ pub struct CancelBuyOrder<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
-    #[account(mut, close = maker, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump, constraint = order.maker == maker.key() @ AofError::Unauthorized)]
+    #[account(
+        mut,
+        close = maker,
+        seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()],
+        bump,
+        constraint = order.maker == maker.key() @ AofError::Unauthorized,
+        constraint = order.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub order: Account<'info, ResourceOrder>,
 }
 
@@ -1863,7 +2105,14 @@ pub struct CancelSellOrder<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump, constraint = order.maker == maker.key() @ AofError::Unauthorized)]
+    #[account(
+        mut,
+        close = maker,
+        seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()],
+        bump,
+        constraint = order.maker == maker.key() @ AofError::Unauthorized,
+        constraint = order.mint == mint.key() @ AofError::InvalidMint
+    )]
     pub order: Account<'info, ResourceOrder>,
     #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
     pub order_vault: Account<'info, TokenAccount>,
@@ -1874,12 +2123,19 @@ pub struct CancelSellOrder<'info> {
 
 #[derive(Accounts)]
 pub struct MatchResourceOrders<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Account<'info, MaterialMints>,
     pub mint: Account<'info, Mint>,
-    #[account(mut, constraint = buy_order.mint == mint.key())]
+    #[account(mut, seeds = [RESOURCE_ORDER_SEED, buy_order.maker.as_ref(), mint.key().as_ref()], bump, constraint = buy_order.mint == mint.key() @ AofError::OrdersDoNotCross)]
     pub buy_order: Account<'info, ResourceOrder>,
-    #[account(mut, seeds = [RESOURCE_ORDER_SEED, sell_order.maker.as_ref(), mint.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [RESOURCE_ORDER_SEED, sell_order.maker.as_ref(), mint.key().as_ref()],
+        bump,
+        constraint = sell_order.mint == mint.key() @ AofError::OrdersDoNotCross
+    )]
     pub sell_order: Account<'info, ResourceOrder>,
     /// CHECK: продавец, получатель SOL
     #[account(mut, address = sell_order.maker)]
@@ -1915,8 +2171,16 @@ pub struct CraftOrderFulfillCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub fulfiller: Signer<'info>,
-    #[account(mut, seeds = [CRAFT_ORDER_SEED, craft_order.creator.as_ref()], bump)]
+    #[account(
+        mut,
+        close = creator_refund,
+        seeds = [CRAFT_ORDER_SEED, craft_order.creator.as_ref()],
+        bump
+    )]
     pub craft_order: Account<'info, CraftOrder>,
+    /// CHECK: escrow rent recipient; it is fixed to the order creator.
+    #[account(mut, address = craft_order.creator)]
+    pub creator_refund: UncheckedAccount<'info>,
     /// CHECK: казна
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
@@ -1939,7 +2203,13 @@ pub struct CraftOrderFulfillCtx<'info> {
 pub struct CraftOrderCancelCtx<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
-    #[account(mut, seeds = [CRAFT_ORDER_SEED, creator.key().as_ref()], bump, constraint = craft_order.creator == creator.key() @ AofError::Unauthorized)]
+    #[account(
+        mut,
+        close = creator,
+        seeds = [CRAFT_ORDER_SEED, creator.key().as_ref()],
+        bump,
+        constraint = craft_order.creator == creator.key() @ AofError::Unauthorized
+    )]
     pub craft_order: Account<'info, CraftOrder>,
 }
 
@@ -2019,8 +2289,8 @@ pub mod aof_core {
     use super::*;
     use crate::instructions;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        instructions::initialize::handler(ctx)
+    pub fn initialize(ctx: Context<Initialize>, treasury: Pubkey) -> Result<()> {
+        instructions::initialize::handler(ctx, treasury)
     }
 
     pub fn set_fees(ctx: Context<SetFees>, craft_fee: u64, unstake_fee: u64) -> Result<()> {

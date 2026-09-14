@@ -1,13 +1,17 @@
 import { Router } from "express";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SystemProgram } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
 import { AUTHORITY } from "../config";
 import { program } from "../provider";
-import { authPda, configPda, playerPda } from "../lib/pda";
+import { authPda, configPda, materialMintsPda, playerPda } from "../lib/pda";
+import { fetchOne } from "../lib/decode";
 import { authorityOnly, pk } from "../lib/tx";
 import { logger } from "../lib/logger";
-import { requireIdempotency, completeIdempotencyMiddleware } from "../middleware/security";
+import { RESOURCE_UNIT } from "../lib/miningPayout";
+import { requireIdempotency } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -16,6 +20,7 @@ const kindMap: Record<string, any> = {
   FOOD: { food: {} },
   WOOD: { wood: {} },
   STONE: { stone: {} },
+  POTATO: { potato: {} },
   // [БЛОК L] Хлебная цепочка
   SEEDS: { seeds: {} },
   WHEAT: { wheat: {} },
@@ -46,6 +51,39 @@ const kindMap: Record<string, any> = {
   LOVE_HEART: { loveHeart: {} },
 };
 
+const CONFIG_REWARD_MINT: Record<string, string> = {
+  FOOD: "foodMint",
+  WOOD: "woodMint",
+  STONE: "stoneMint",
+  POTATO: "potatoMint",
+};
+
+const MATERIAL_REWARD_MINT: Record<string, string> = {
+  SEEDS: "seeds",
+  WHEAT: "wheat",
+  FLOUR: "flour",
+  BREAD: "bread",
+  WATER: "water",
+  COAL: "coal",
+  MEAT: "meat",
+  STONE_BLUE: "stoneBlue",
+  STONE_PURPLE: "stonePurple",
+  STONE_RED: "stoneRed",
+  SAND_WHITE: "sandWhite",
+  SAND_PINK: "sandPink",
+  SAND_YELLOW: "sandYellow",
+  GEM_BLUE: "gemBlue",
+  GEM_ORANGE: "gemOrange",
+  GEM_WHITE: "gemWhite",
+  GEM_GREEN: "gemGreen",
+  FLASK_BLUE: "flaskBlue",
+  FLASK_YELLOW: "flaskYellow",
+  FLASK_GREEN: "flaskGreen",
+  FLASK_PINK: "flaskPink",
+  FLASK_PURPLE: "flaskPurple",
+  LOVE_HEART: "loveHeart",
+};
+
 // Список писем пользователя
 r.get("/:user", async (req, res) => {
   try {
@@ -63,7 +101,7 @@ r.get("/:user", async (req, res) => {
 });
 
 // Создать письмо (вызывается бэкендом для компенсаций/ивентов)
-r.post("/create", async (req, res) => {
+r.post("/create", requireAdmin, async (req, res) => {
   try {
     const { user, sender, subject, body, rewardType, rewardAmount, ttlHours } = req.body;
     const expiresAt = ttlHours ? new Date(Date.now() + ttlHours * 3600000) : null;
@@ -77,9 +115,12 @@ r.post("/create", async (req, res) => {
 });
 
 // Отметить как прочитанное
-r.post("/read", async (req, res) => {
+r.post("/read", requireWalletProof("inbox_read", "user"), async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id, user } = req.body;
+    const current = await db.inboxItem.findUnique({ where: { id } });
+    if (!current) return res.status(404).json({ error: "Not found" });
+    if (!user || user !== current.user) return res.status(403).json({ error: "Not your inbox item" });
     const item = await db.inboxItem.update({ where: { id }, data: { read: true } });
     res.json({ item });
   } catch (e: any) {
@@ -88,38 +129,66 @@ r.post("/read", async (req, res) => {
 });
 
 // Забрать награду из письма (явный клейм + реальное ончейн-начисление)
-r.post("/claim", requireIdempotency, async (req, res) => {
+r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, async (req, res) => {
   try {
-    const { id, mints } = req.body;
+    const { id, user } = req.body;
     const item = await db.inboxItem.findUnique({ where: { id } });
     if (!item) return res.status(404).json({ error: "Not found" });
+    if (item.user !== user) {
+      return res.status(403).json({ error: "Not your inbox item" });
+    }
     if (item.claimed) return res.status(400).json({ error: "Already claimed" });
     if (item.expiresAt && new Date(item.expiresAt) < new Date()) {
       return res.status(400).json({ error: "Letter expired" });
     }
+
+    // Claim the row before signing the mint instruction. This closes the
+    // concurrent double-claim race; failures release the claim below.
+    const locked = await db.inboxItem.updateMany({
+      where: { id, claimed: false },
+      data: { claimed: true },
+    });
+    if (locked.count !== 1) return res.status(409).json({ error: "Already claimed or in progress" });
 
     // Реальное ончейн-начисление через mintResource (прямой вызов, без HTTP в себя)
     let onchainSig: string | null = null;
     let rewardResult: any = { type: item.rewardType, amount: item.rewardAmount };
 
     try {
-      const kind = kindMap[item.rewardType || ""];
-      if (kind && mints?.rewardMint && item.rewardAmount) {
-        const ownerPk = pk(item.user);
-        const mintPk = pk(mints.rewardMint);
-        const treasuryToken = mints.treasuryToken
-          ? pk(mints.treasuryToken)
-          : getAssociatedTokenAddressSync(mintPk, AUTHORITY.publicKey, true);
-
+      const rewardType = (item.rewardType || "").toUpperCase();
+      const kind = kindMap[rewardType];
+      if (kind && item.rewardAmount && item.rewardAmount > 0) {
         const [config] = configPda();
-        const [auth] = authPda();
+        const [materialMints] = materialMintsPda();
+        const cfg: any = await fetchOne("config", config);
+        const mm: any = await fetchOne("materialMints", materialMints);
+        const mintValue = CONFIG_REWARD_MINT[rewardType]
+          ? cfg?.[CONFIG_REWARD_MINT[rewardType]]
+          : mm?.[MATERIAL_REWARD_MINT[rewardType]];
+
+        if (!cfg || !mintValue || !cfg.treasury) {
+          await db.inboxItem.update({ where: { id }, data: { claimed: false } });
+          return res.status(202).json({
+            pending: true,
+            reason: "canonical reward mint is not initialized — claim later",
+            reward: rewardResult,
+          });
+        }
+
+        const ownerPk = pk(item.user);
+        const mintPk = new PublicKey(String(mintValue));
+        const treasury = new PublicKey(String(cfg.treasury));
+        const auth = authPda()[0];
         const [player] = playerPda(ownerPk);
         const tokenAccount = getAssociatedTokenAddressSync(mintPk, ownerPk);
+        const treasuryToken = getAssociatedTokenAddressSync(mintPk, treasury, true);
+        const amount = BigInt(item.rewardAmount) * BigInt(RESOURCE_UNIT);
 
         const ix = await (program.methods as any)
-          .mintResource(kind, BigInt(item.rewardAmount))
+          .mintResource(kind, amount)
           .accounts({
             config,
+            materialMints,
             authority: AUTHORITY.publicKey,
             auth,
             mint: mintPk,
@@ -131,19 +200,26 @@ r.post("/claim", requireIdempotency, async (req, res) => {
           })
           .instruction();
 
-        onchainSig = await authorityOnly([ix]);
+        const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
+          AUTHORITY.publicKey, tokenAccount, ownerPk, mintPk,
+        );
+        const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
+          AUTHORITY.publicKey, treasuryToken, treasury, mintPk,
+        );
+        onchainSig = await authorityOnly([createUserAta, createTreasuryAta, ix]);
       } else {
-        // [ФИКС] Без данных о минте награда откладывается, письмо НЕ клеймится.
-        // Раньше при этом всё равно ставился claimed=true → награда терялась навсегда.
+        // Без канонического типа/положительной суммы письмо нельзя безопасно клеймить.
+        await db.inboxItem.update({ where: { id }, data: { claimed: false } });
         return res.status(202).json({
           pending: true,
-          reason: "rewardMint not provided — клейм доступен позже",
+          reason: "reward type or amount is not claimable",
           reward: rewardResult,
         });
       }
     } catch (e: any) {
       // Ончейн не сработал (контракты не задеплоены) — оставляем письмо неклеенным
       logger.warn({ err: e.message, inboxId: id }, "On-chain reward mint failed");
+      await db.inboxItem.update({ where: { id }, data: { claimed: false } });
       rewardResult.pending = true;
       rewardResult.reason = e.message;
       return res.status(503).json({
@@ -154,11 +230,8 @@ r.post("/claim", requireIdempotency, async (req, res) => {
 
     const updated = await db.inboxItem.update({
       where: { id },
-      data: { claimed: true, read: true },
+      data: { read: true },
     });
-
-    // Завершаем идемпотентность после успешной операции
-    await completeIdempotencyMiddleware(req);
 
     res.json({ item: updated, reward: rewardResult, onchainSig });
   } catch (e: any) {
@@ -167,9 +240,12 @@ r.post("/claim", requireIdempotency, async (req, res) => {
 });
 
 // Архивировать письмо
-r.post("/archive", async (req, res) => {
+r.post("/archive", requireWalletProof("inbox_archive", "user"), async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id, user } = req.body;
+    const current = await db.inboxItem.findUnique({ where: { id } });
+    if (!current) return res.status(404).json({ error: "Not found" });
+    if (!user || user !== current.user) return res.status(403).json({ error: "Not your inbox item" });
     await db.inboxItem.delete({ where: { id } });
     res.json({ archived: true });
   } catch (e: any) {

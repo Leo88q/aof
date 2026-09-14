@@ -4,16 +4,19 @@ let socket: Socket | null = null;
 
 export function connectWS(): Socket {
   if (socket?.connected) return socket;
-  // WS индексатора на порту 8081
-  socket = io("http://localhost:8081", { path: "/ws", transports: ["websocket"] });
+
+  const configuredUrl = (import.meta as any).env?.VITE_MARKET_WS_URL as string | undefined;
+  const configuredPath = (import.meta as any).env?.VITE_MARKET_WS_PATH || "/ws";
+  // With no explicit URL Socket.IO uses the current origin, which is also the
+  // only browser-reachable option behind the production reverse proxy.
+  socket = io(configuredUrl || undefined, {
+    path: configuredPath,
+    transports: ["websocket"],
+  });
   socket.on("connect", () => console.log("[ws] подключён к индексатору"));
   return socket;
 }
 
-/**
- * Подписка на канал. Возвращает функцию очистки с типом () => void,
- * совместимую с useEffect (EffectCallback).
- */
 export function subscribeToChannel(channel: string, handler: (data: any) => void): () => void {
   const s = connectWS();
   s.emit("subscribe", channel);

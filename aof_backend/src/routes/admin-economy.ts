@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { db } from "../lib/db";
 import { takeEconomySnapshot } from "../lib/economyMonitor";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
+r.use(requireAdmin);
 
 /**
  * GET /admin/economy/snapshots

@@ -2,9 +2,9 @@
  * Инициализация Config аккаунта (если его нет)
  */
 import { connection } from "../src/provider";
-import { configPda } from "../src/lib/pda";
+import { configPda, programDataPda, authPda, vaultPda } from "../src/lib/pda";
 import { program } from "../src/provider";
-import { AUTHORITY } from "../src/config";
+import { AUTHORITY, TREASURY } from "../src/config";
 import { SystemProgram } from "@solana/web3.js";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
@@ -28,11 +28,17 @@ async function main() {
   // Или вызываем напрямую через program
   
   try {
+    const [programData] = programDataPda();
+    const [auth] = authPda();
+    const [vault] = vaultPda();
     const ix = await (program.methods as any)
-      .initialize()
+      .initialize(TREASURY)
       .accounts({
         config,
         authority: AUTHORITY.publicKey,
+        auth,
+        vault,
+        programData,
         systemProgram: SystemProgram.programId,
       })
       .instruction();

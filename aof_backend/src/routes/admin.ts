@@ -4,7 +4,7 @@ import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentIn
 import BN from "bn.js";
 import { AUTHORITY, TREASURY } from "../config";
 import { fetchOne } from "../lib/decode";
-import { program, connection } from "../provider";
+import { program, connection, sessionProgram } from "../provider";
 import {
   authPda,
   configPda,
@@ -14,23 +14,83 @@ import {
   vaultPda,
   playerPda,
   materialMintsPda,
+  sessionConfigPda,
+  sessionProgramDataPda,
+  programDataPda,
 } from "../lib/pda";
 import { authorityOnly, pk, coSign } from "../lib/tx";
+import { requireAdmin } from "../middleware/adminAuth";
+import { simulateTransaction } from "../security/txSimulator";
 
 const r = Router();
+r.use(requireAdmin);
+
+const RESOURCE_KIND_BY_NAME: Record<string, any> = {
+  FOOD: { food: {} },
+  WOOD: { wood: {} },
+  STONE: { stone: {} },
+  POTATO: { potato: {} },
+  SEEDS: { seeds: {} },
+  WHEAT: { wheat: {} },
+  FLOUR: { flour: {} },
+  BREAD: { bread: {} },
+  WATER: { water: {} },
+  COAL: { coal: {} },
+  MEAT: { meat: {} },
+  STONE_BLUE: { stoneBlue: {} },
+  STONE_PURPLE: { stonePurple: {} },
+  STONE_RED: { stoneRed: {} },
+  SAND_WHITE: { sandWhite: {} },
+  SAND_PINK: { sandPink: {} },
+  SAND_YELLOW: { sandYellow: {} },
+  GEM_BLUE: { gemBlue: {} },
+  GEM_ORANGE: { gemOrange: {} },
+  GEM_WHITE: { gemWhite: {} },
+  GEM_GREEN: { gemGreen: {} },
+  FLASK_BLUE: { flaskBlue: {} },
+  FLASK_YELLOW: { flaskYellow: {} },
+  FLASK_GREEN: { flaskGreen: {} },
+  FLASK_PINK: { flaskPink: {} },
+  FLASK_PURPLE: { flaskPurple: {} },
+  LOVE_HEART: { loveHeart: {} },
+};
 
 r.post("/initialize", async (req, res) => {
   try {
     const [config] = configPda();
     const [auth] = authPda();
     const [vault] = vaultPda();
+    const [programData] = programDataPda();
     const ix = await (program.methods as any)
-      .initialize()
+      .initialize(TREASURY)
       .accounts({
         config,
         authority: AUTHORITY.publicKey,
         auth,
         vault,
+        programData,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ sig, config: config.toBase58() });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+r.post("/session-config/init", async (req, res) => {
+  try {
+    const oracleAuthority = pk(req.body.oracleAuthority || AUTHORITY.publicKey.toBase58());
+    const [config] = sessionConfigPda();
+    const [programData] = sessionProgramDataPda();
+    const ix = await (sessionProgram.methods as any)
+      .initConfig()
+      .accounts({
+        config,
+        authority: AUTHORITY.publicKey,
+        oracleAuthority,
+        programData,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -77,9 +137,12 @@ r.post("/set-resource-mints", async (req, res) => {
     const foodMint = pk(req.body.foodMint);
     const woodMint = pk(req.body.woodMint);
     const stoneMint = pk(req.body.stoneMint);
+    const seedsMint = pk(req.body.seedsMint);
+    const waterMint = pk(req.body.waterMint);
+    const potatoMint = pk(req.body.potatoMint);
     const [config] = configPda();
     const ix = await (program.methods as any)
-      .setResourceMints(foodMint, woodMint, stoneMint)
+      .setResourceMints(foodMint, woodMint, stoneMint, seedsMint, waterMint, potatoMint)
       .accounts({ config, authority: AUTHORITY.publicKey })
       .instruction();
     const sig = await authorityOnly([ix]);
@@ -210,14 +273,26 @@ r.post("/mint-resource", async (req, res) => {
     const kind = req.body.kind;
     const amount = new BN(req.body.amount);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [auth] = authPda();
     const cfg: any = await fetchOne("config", config);
-    const mint = kind === "Food" ? cfg?.foodMint : kind === "Wood" ? cfg?.woodMint : cfg?.stoneMint;
+    if (!cfg || !cfg.treasury) return res.status(400).json({ error: "Config not initialized" });
+    const mint = kind === "Food" ? cfg.foodMint
+      : kind === "Wood" ? cfg.woodMint
+      : kind === "Stone" ? cfg.stoneMint
+      : kind === "Potato" ? cfg.potatoMint
+      : undefined;
     if (!mint) return res.status(400).json({ error: "минт ресурса не задан в конфиге" });
     const mintPk = typeof mint === "string" ? pk(mint) : mint;
+    const treasury = new PublicKey(cfg.treasury.toString());
     const userAta = getAssociatedTokenAddressSync(mintPk, owner, true);
-    const treasuryAta = getAssociatedTokenAddressSync(mintPk, cfg.treasury, true);
-    const kindMap: Record<string, any> = { Food: { food: {} }, Wood: { wood: {} }, Stone: { stone: {} } };
+    const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
+    const kindMap: Record<string, any> = {
+      Food: { food: {} },
+      Wood: { wood: {} },
+      Stone: { stone: {} },
+      Potato: { potato: {} },
+    };
 
     const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
       AUTHORITY.publicKey, userAta, owner, mintPk
@@ -230,6 +305,7 @@ r.post("/mint-resource", async (req, res) => {
       .mintResource(kindMap[kind], amount)
       .accounts({
         config,
+        materialMints,
         authority: AUTHORITY.publicKey,
         auth,
         mint: mintPk,
@@ -241,12 +317,7 @@ r.post("/mint-resource", async (req, res) => {
       })
       .instruction();
 
-    const tx = new Transaction().add(createTreasuryAtaIx, createAtaIx, ix);
-    tx.feePayer = AUTHORITY.publicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx.partialSign(AUTHORITY);
-    const sig = await connection.sendRawTransaction(tx.serialize());
-    await connection.confirmTransaction(sig, "confirmed");
+    const sig = await authorityOnly([createTreasuryAtaIx, createAtaIx, ix]);
     res.json({ sig });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -260,10 +331,12 @@ r.post("/init-craft-economy", async (req, res) => {
     const [config] = configPda();
     const [craftEconomy] = craftEconomyPda();
     // Anchor ожидает BN[] для u64 массивов — заворачиваю каждое число
-    const woodBase = [50, 100, 200, 400].map((x) => new BN(x).mul(new BN(1_000_000_000)));
-    const stoneBase = [30, 60, 120, 240].map((x) => new BN(x).mul(new BN(1_000_000_000)));
-    const woodMult = [10, 20, 40, 80].map((x) => new BN(x).mul(new BN(1_000_000_000)));
-    const stoneMult = [6, 12, 24, 48].map((x) => new BN(x).mul(new BN(1_000_000_000)));
+    const unit = new BN(1_000_000_000);
+    const asAtomic = (values: number[]) => values.map((x) => new BN(x).mul(unit));
+    const woodBase = asAtomic([100, 150, 500, 2_000]);
+    const stoneBase = asAtomic([100, 120, 400, 1_500]);
+    const woodMult = asAtomic([1, 2, 10, 50]);
+    const stoneMult = asAtomic([1, 2, 10, 50]);
 
     const ix1 = await (program.methods as any)
       .initCraftEconomy()
@@ -303,8 +376,9 @@ r.post("/test-grant", async (req, res) => {
     
     const cfg: any = await fetchOne("config", config);
     const mm: any = await fetchOne("materialMints", materialMints);
+    const treasury = cfg?.treasury ? new PublicKey(cfg.treasury.toString()) : null;
     
-    if (!cfg || !mm) {
+    if (!cfg || !mm || !treasury) {
       return res.status(400).json({ error: "Config/MaterialMints not initialized" });
     }
     
@@ -313,6 +387,7 @@ r.post("/test-grant", async (req, res) => {
       { name: "FOOD", mint: cfg.foodMint, amount: 10000 },
       { name: "WOOD", mint: cfg.woodMint, amount: 10000 },
       { name: "STONE", mint: cfg.stoneMint, amount: 10000 },
+      { name: "POTATO", mint: cfg.potatoMint, amount: 10000 },
     ];
     
     // Все ресурсы из MaterialMints
@@ -358,32 +433,50 @@ r.post("/test-grant", async (req, res) => {
       
       try {
         const mintPk = pk(r.mint);
-        const userAta = getAssociatedTokenAddressSync(mintPk, user);
+        const userAta = getAssociatedTokenAddressSync(mintPk, user, true);
+        const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
         
-        // Проверяем существует ли ATA, если нет - создаём
-        const ataInfo = await connection.getAccountInfo(userAta);
-        if (!ataInfo) {
+        // Проверяем существуют ли ATA, если нет — создаём их authority-плательщиком.
+        const [userInfo, treasuryInfo] = await Promise.all([
+          connection.getAccountInfo(userAta),
+          connection.getAccountInfo(treasuryAta),
+        ]);
+        if (!userInfo) {
           instructions.push(
             createAssociatedTokenAccountIdempotentInstruction(
               AUTHORITY.publicKey,
               userAta,
               user,
-              mintPk
+              mintPk,
+            )
+          );
+        }
+        if (!treasuryInfo) {
+          instructions.push(
+            createAssociatedTokenAccountIdempotentInstruction(
+              AUTHORITY.publicKey,
+              treasuryAta,
+              treasury,
+              mintPk,
             )
           );
         }
         
-        // Минтим ресурс (умножаем на 1e9 для 9 decimals)
+        // Минтим ресурс (ресурсные mint'ы используют 9 atomic decimals).
         const amountWithDecimals = r.amount * 1e9;
+        const kind = RESOURCE_KIND_BY_NAME[r.name];
+        if (!kind) throw new Error(`Unknown resource kind: ${r.name}`);
         const ix = await (program.methods as any)
-          .mintResource(r.name.toLowerCase(), new (require("bn.js"))(amountWithDecimals))
+          .mintResource(kind, new BN(amountWithDecimals))
           .accounts({
             config,
             materialMints,
+            authority: AUTHORITY.publicKey,
             auth,
-            user,
             mint: mintPk,
             tokenAccount: userAta,
+            treasuryToken: treasuryAta,
+            player: playerPda(user)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
@@ -439,33 +532,34 @@ r.post("/test-grant-potato", async (req, res) => {
     }
     
     const mintPk = pk(cfg.potatoMint);
-    const userAta = getAssociatedTokenAddressSync(mintPk, user);
+    const treasury = new PublicKey(cfg.treasury.toString());
+    const userAta = getAssociatedTokenAddressSync(mintPk, user, true);
+    const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
     const [auth] = authPda();
+    const [materialMints] = materialMintsPda();
     
-    // Создаём ATA если нет
-    const instructions: any[] = [];
-    const ataInfo = await connection.getAccountInfo(userAta);
-    if (!ataInfo) {
-      instructions.push(
-        createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY.publicKey,
-          userAta,
-          user,
-          mintPk
-        )
-      );
-    }
+    // Идемпотентно создаём ATA игрока и казны.
+    const instructions: any[] = [
+      createAssociatedTokenAccountIdempotentInstruction(
+        AUTHORITY.publicKey, userAta, user, mintPk,
+      ),
+      createAssociatedTokenAccountIdempotentInstruction(
+        AUTHORITY.publicKey, treasuryAta, treasury, mintPk,
+      ),
+    ];
     
     const amountWithDecimals = amount * 1e9;
     const ix = await (program.methods as any)
-      .mintResource("potato", new (require("bn.js"))(amountWithDecimals))
+      .mintResource(RESOURCE_KIND_BY_NAME.POTATO, new BN(amountWithDecimals))
       .accounts({
         config,
-        materialMints: materialMintsPda()[0],
+        materialMints,
+        authority: AUTHORITY.publicKey,
         auth,
-        user,
         mint: mintPk,
         tokenAccount: userAta,
+        treasuryToken: treasuryAta,
+        player: playerPda(user)[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -480,34 +574,10 @@ r.post("/test-grant-potato", async (req, res) => {
   }
 });
 
-// [ТЕСТ] Создание инструментов всех редкостей
-r.post("/test-grant-tools", async (req, res) => {
-  try {
-    const user = pk(req.body.user);
-    const toolTypes = ["axe", "pick", "spear", "bow"];
-    const rarities = ["common", "uncommon", "rare", "epic"];
-    const signatures = [];
-    
-    for (const toolType of toolTypes) {
-      for (const rarity of rarities) {
-        try {
-          const resp = await (program.methods as any)
-            .mintTool(toolType, rarity)
-            .accounts({
-              // Используем существующий mint_tool endpoint
-            })
-            .rpc();
-          signatures.push({ toolType, rarity, sig: resp });
-        } catch (e: any) {
-          console.log(`Skip ${toolType}/${rarity}:`, e.message);
-        }
-      }
-    }
-    
-    res.json({ success: true, tools: signatures });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// Tool grants stay disabled: the old endpoint had an incomplete account map and
+// must not advertise a transaction that cannot be built against the deployed IDL.
+r.post("/test-grant-tools", (_req, res) => {
+  res.status(503).json({ error: "TOOL_GRANT_DISABLED_UNTIL_ACCOUNT_MAP_IS_IMPLEMENTED" });
 });
 
 
@@ -542,7 +612,9 @@ r.post("/init-material-mints", async (req, res) => {
       "seeds", "wheat", "flour", "bread", "water", "coal", "meat",
       "stoneBlue", "stonePurple", "stoneRed",
       "sandWhite", "sandPink", "sandYellow",
-      "gemBlue"
+      "gemBlue", "gemOrange", "gemWhite", "gemGreen",
+      "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
+      "loveHeart"
     ];
     const missing = required.filter(k => !mintKeys[k]);
     if (missing.length > 0) {
@@ -569,7 +641,16 @@ r.post("/init-material-mints", async (req, res) => {
         mintKeys.sandWhite,
         mintKeys.sandPink,
         mintKeys.sandYellow,
-        mintKeys.gemBlue
+        mintKeys.gemBlue,
+        mintKeys.gemOrange,
+        mintKeys.gemWhite,
+        mintKeys.gemGreen,
+        mintKeys.flaskBlue,
+        mintKeys.flaskYellow,
+        mintKeys.flaskGreen,
+        mintKeys.flaskPink,
+        mintKeys.flaskPurple,
+        mintKeys.loveHeart
       )
       .accounts({
         config,
@@ -584,7 +665,7 @@ r.post("/init-material-mints", async (req, res) => {
     res.json({ 
       success: true, 
       tx,
-      message: `Инициализировано 14 mint-адресов`
+      message: `Инициализировано 23 mint-адреса`
     });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -602,6 +683,10 @@ r.post("/send-tx", async (req, res) => {
     const { connection } = await import("../provider");
     
     const tx = Transaction.from(Buffer.from(txBase64, "base64"));
+    const simulation = await simulateTransaction(tx);
+    if (!simulation.success) {
+      return res.status(400).json({ error: `Transaction simulation failed: ${simulation.error || "unknown error"}` });
+    }
     const signature = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: false,
       preflightCommitment: "confirmed",

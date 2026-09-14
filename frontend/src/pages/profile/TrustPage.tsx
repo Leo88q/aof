@@ -65,7 +65,7 @@ export function TrustPage() {
   if (!data) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Подключите кошелёк</p></Card>
+        <Card><p className="text-straw text-center py-8">Индекс доверия недоступен до развёртывания канонического индексатора</p></Card>
       </div>
     );
   }

@@ -139,6 +139,9 @@
           "signer": true
         },
         {
+          "name": "program_data"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -262,6 +265,11 @@
       "code": 6006,
       "name": "CooldownActive",
       "msg": "Rebirth cooldown still active"
+    },
+    {
+      "code": 6007,
+      "name": "FeatureDisabled",
+      "msg": "Rebirth is disabled until the full reset is atomic"
     }
   ],
   "types": [

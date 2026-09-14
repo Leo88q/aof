@@ -269,7 +269,7 @@
 .site-step-number{font-family:var(--aof-font-mono);font-size:1.8rem;font-weight:700;color:var(--aof-copper);line-height:1}
 
 /* ────────────────────────────────────────────────────────────────────────────
-   16. TOOLS (4 редкости)
+   16. TOOLS (5 редкостей)
    ──────────────────────────────────────────────────────────────────────────── */
 .site-tool{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px;background:var(--aof-parchment);background-image:var(--site-paper-texture);border:2px solid var(--aof-oak);border-radius:var(--aof-radius-sm);transition:all var(--aof-dur-release)}
 .site-tool--0{border-width:2px}

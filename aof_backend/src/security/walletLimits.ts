@@ -25,46 +25,52 @@ export async function checkWalletLimits(
   operationType: string,
   volumeLamports: number = 0
 ): Promise<void> {
+  if (!walletAddress || !operationType || !Number.isSafeInteger(volumeLamports) || volumeLamports < 0) {
+    throw new Error("Invalid wallet limit input");
+  }
+
   const windowStart = new Date(Date.now() - WINDOW_MS);
 
-  // Количество операций за период
-  const opCount = await db.walletOperation.count({
-    where: {
-      wallet: walletAddress,
-      createdAt: { gte: windowStart },
-    },
-  });
+  // Keep the read/check/write in one SQLite transaction. Separate count and
+  // insert calls allowed concurrent requests to all observe the same old
+  // count and exceed the per-wallet cap.
+  await db.$transaction(async (tx: any) => {
+    const opCount = await tx.walletOperation.count({
+      where: {
+        wallet: walletAddress,
+        createdAt: { gte: windowStart },
+      },
+    });
 
-  if (opCount >= DEFAULT_LIMITS.maxOperations) {
-    throw new Error(
-      `RATE_LIMIT_EXCEEDED: кошелек ${walletAddress} превысил лимит операций (${opCount}/${DEFAULT_LIMITS.maxOperations})`
-    );
-  }
+    if (opCount >= DEFAULT_LIMITS.maxOperations) {
+      throw new Error(
+        `RATE_LIMIT_EXCEEDED: кошелек ${walletAddress} превысил лимит операций (${opCount}/${DEFAULT_LIMITS.maxOperations})`
+      );
+    }
 
-  // Суммарный объём за период
-  const volumeResult = await db.walletOperation.aggregate({
-    where: {
-      wallet: walletAddress,
-      createdAt: { gte: windowStart },
-    },
-    _sum: { volumeLamports: true },
-  });
+    const volumeResult = await tx.walletOperation.aggregate({
+      where: {
+        wallet: walletAddress,
+        createdAt: { gte: windowStart },
+      },
+      _sum: { volumeLamports: true },
+    });
 
-  const currentVolume = volumeResult._sum.volumeLamports || 0;
-  if (currentVolume + volumeLamports > DEFAULT_LIMITS.maxVolumeLamports) {
-    throw new Error(
-      `VOLUME_LIMIT_EXCEEDED: кошелек ${walletAddress} превысил лимит объёма (${currentVolume} + ${volumeLamports} > ${DEFAULT_LIMITS.maxVolumeLamports})`
-    );
-  }
+    const currentVolume = volumeResult._sum.volumeLamports || 0;
+    if (currentVolume + volumeLamports > DEFAULT_LIMITS.maxVolumeLamports) {
+      throw new Error(
+        `VOLUME_LIMIT_EXCEEDED: кошелек ${walletAddress} превысил лимит объёма (${currentVolume} + ${volumeLamports} > ${DEFAULT_LIMITS.maxVolumeLamports})`
+      );
+    }
 
-  // Записываем операцию
-  await db.walletOperation.create({
-    data: {
-      wallet: walletAddress,
-      operationType,
-      volumeLamports,
-      createdAt: new Date(),
-    },
+    await tx.walletOperation.create({
+      data: {
+        wallet: walletAddress,
+        operationType,
+        volumeLamports,
+        createdAt: new Date(),
+      },
+    });
   });
 }
 

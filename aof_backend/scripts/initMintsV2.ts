@@ -7,22 +7,28 @@
  * - Задержки между транзакциями (избегаем 429)
  */
 
-import { Connection, Keypair, clusterApiUrl, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
-import { AUTHORITY } from "../src/config";
+import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { createMint } from "@solana/spl-token";
+import { AUTHORITY, PROGRAM_ID } from "../src/config";
 
 // Используем Helius RPC если есть, иначе devnet (публичный)
 const RPC_URL = process.env.HELIUS_RPC_URL || process.env.RPC_URL || clusterApiUrl("devnet");
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
 const RESOURCES = [
-  "seeds", "wheat", "flour", "bread", "wood", "stone", "coal", 
+  "seeds", "wheat", "flour", "bread", "wood", "stone", "potato", "coal",
   "meat", "water", "food",
   "sandWhite", "sandPink", "sandYellow",
   "stoneBlue", "stonePurple", "stoneRed",
   "gemBlue", "gemOrange", "gemWhite", "gemGreen",
   "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
+  "loveHeart",
 ];
+
+const [MINT_AUTHORITY] = PublicKey.findProgramAddressSync(
+  [Buffer.from("auth")],
+  PROGRAM_ID,
+);
 
 // Retry wrapper для createMint
 async function createMintWithRetry(
@@ -36,8 +42,8 @@ async function createMintWithRetry(
       const mint = await createMint(
         connection,
         AUTHORITY,
-        AUTHORITY.publicKey,
-        AUTHORITY.publicKey,
+        MINT_AUTHORITY,
+        null,
         9,
         undefined,
         { commitment: "confirmed" }
@@ -70,12 +76,12 @@ async function main() {
     process.exit(1);
   }
   
-  console.log("📦 Создаём 25 SPL mint-токенов...\n");
+  console.log("📦 Создаём 27 канонических SPL-токенов...\n");
   const mints: Record<string, string> = {};
   
   for (let i = 0; i < RESOURCES.length; i++) {
     const name = RESOURCES[i];
-    process.stdout.write(`  [${(i+1).toString().padStart(2)}/25] ${name.padEnd(15)} ... `);
+    process.stdout.write(`  [${(i+1).toString().padStart(2)}/${RESOURCES.length}] ${name.padEnd(15)} ... `);
     
     try {
       const mint = await createMintWithRetry(connection, name);
@@ -117,7 +123,10 @@ async function main() {
   
   const resp = await fetch(`${BACKEND_URL}/admin/init-material-mints`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
     body: JSON.stringify({ mints }),
   });
   
@@ -137,7 +146,10 @@ async function main() {
     try {
       const sendResp = await fetch(`${BACKEND_URL}/admin/send-tx`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
         body: JSON.stringify({ tx: result.tx }),
       });
       const sendResult: any = await sendResp.json();
@@ -150,6 +162,43 @@ async function main() {
       }
     } catch (e: any) {
       console.error("❌ Ошибка отправки:", e.message);
+    }
+  }
+
+  console.log("\n🔧 Установка базовых resource mint'ов...");
+  const setMintsResp = await fetch(`${BACKEND_URL}/admin/set-resource-mints`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
+    body: JSON.stringify({
+      foodMint: mints.food,
+      woodMint: mints.wood,
+      stoneMint: mints.stone,
+      seedsMint: mints.seeds,
+      waterMint: mints.water,
+      potatoMint: mints.potato,
+    }),
+  });
+  const setMintsResult: any = await setMintsResp.json();
+  if (!setMintsResp.ok) {
+    console.error("❌ Ошибка установки базовых mint'ов:", setMintsResult.error);
+    process.exit(1);
+  }
+  if (setMintsResult.tx) {
+    const sendResp = await fetch(`${BACKEND_URL}/admin/send-tx`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+      },
+      body: JSON.stringify({ tx: setMintsResult.tx }),
+    });
+    const sendResult: any = await sendResp.json();
+    if (!sendResp.ok || !sendResult.signature) {
+      console.error("❌ Ошибка отправки Config mint-транзакции:", sendResult.error || "unknown error");
+      process.exit(1);
     }
   }
   

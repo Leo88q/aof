@@ -3,13 +3,14 @@ import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { AUTHORITY } from "../config";
 import { rebirthProgram } from "../provider";
-import { rebirthConfigPda, rebirthRecordPda } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
+import { rebirthConfigPda, rebirthProgramDataPda, rebirthRecordPda } from "../lib/pda";
+import { authorityOnly, pk } from "../lib/tx";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
 // Инициализация конфигурации ребёрта
-r.post("/config/init", async (req, res) => {
+r.post("/config/init", requireAdmin, async (req, res) => {
   try {
     const bonusPerRebirthBps = Number(req.body.bonusPerRebirthBps || 200);
     const maxBonusBps = Number(req.body.maxBonusBps || 2000);
@@ -20,6 +21,7 @@ r.post("/config/init", async (req, res) => {
     const cooldownSeconds = new BN(req.body.cooldownSeconds || 604800); // 7 дней по умолчанию
 
     const [rebirthConfig] = rebirthConfigPda();
+    const [programData] = rebirthProgramDataPda();
 
     const ix = await (rebirthProgram.methods as any)
       .initRebirthConfig(
@@ -33,6 +35,7 @@ r.post("/config/init", async (req, res) => {
       .accounts({
         rebirthConfig,
         authority: AUTHORITY.publicKey,
+        programData,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -43,7 +46,17 @@ r.post("/config/init", async (req, res) => {
   }
 });
 
-// Выполнение ребёрта (пользователь)
+// Disabled until the on-chain instruction atomically resets the canonical
+// seasonal state and burns/settles every asset promised by the game rules.
+// Charging SOL while only incrementing RebirthRecord would be an irreversible
+// economic mismatch, so this route fails closed rather than accepting funds.
+r.post("/do", (_req, res) => {
+  res.status(503).json({
+    error: "REBIRTH_DISABLED_UNTIL_FULL_RESET_IMPLEMENTED",
+  });
+});
+
+/*
 r.post("/do", async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -70,5 +83,6 @@ r.post("/do", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+*/
 
 export default r;

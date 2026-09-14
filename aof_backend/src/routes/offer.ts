@@ -1,6 +1,6 @@
 import { BN } from "bn.js";
 import { Router } from "express";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
 import { configPda, offerPda, toolPda } from "../lib/pda";
@@ -49,6 +49,7 @@ r.post("/accept", requireCircuitOpen, requireWalletLimits("offer__accept"), requ
         mint,
         tool,
         offer,
+        buyerRefund: buyer,
         treasury,
         sellerToken,
         buyerToken,
@@ -56,7 +57,13 @@ r.post("/accept", requireCircuitOpen, requireWalletLimits("offer__accept"), requ
       })
       .instruction();
 
-    const tx = await coSign([ix], seller);
+    const createBuyerAta = createAssociatedTokenAccountIdempotentInstruction(
+      seller,
+      buyerToken,
+      buyer,
+      mint,
+    );
+    const tx = await coSign([createBuyerAta, ix], seller);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });

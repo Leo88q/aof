@@ -20,7 +20,10 @@ async function main() {
   console.log("📤 POST /admin/init-material-mints...");
   const resp = await fetch(`${BACKEND_URL}/admin/init-material-mints`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
     body: JSON.stringify({ mints }),
   });
   
@@ -41,7 +44,10 @@ async function main() {
     console.log("\n📤 Отправка транзакции в блокчейн...");
     const sendResp = await fetch(`${BACKEND_URL}/admin/send-tx`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
+    },
       body: JSON.stringify({ tx: result.tx }),
     });
     const sendResult: any = await sendResp.json();
