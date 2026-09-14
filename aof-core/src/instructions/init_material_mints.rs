@@ -33,11 +33,18 @@ fn require_distinct_mints(mints: &[Pubkey]) -> Result<()> {
 /// (CI run 34906762097, job Anchor test: aof_core не деплоился, поэтому падал
 /// `"before all"` hook всего набора тестов.)
 ///
-/// `#[inline(never)]` выносит локальные переменные handler из кадра обёртки, а
-/// минты собираются в heap-`Vec` (24 байта на стеке) вместо массива. Сигнатура,
-/// порядок аргументов и IDL не меняются: tests/aof_core.ts и
-/// aof_backend/src/routes/admin.ts продолжают работать как раньше.
-#[inline(never)]
+/// Минты собираются в heap-`Vec` (24 байта на стеке) вместо массива из 23
+/// элементов. Сигнатура, порядок аргументов и IDL не меняются: tests/aof_core.ts
+/// и aof_backend/src/routes/admin.ts продолжают работать как раньше.
+///
+/// Handler ОБЯЗАН быть инлайном в обёртку (`#[inline(always)]`). Замер в CI run
+/// 34909103310: с `#[inline(never)]` кадр остался ровно 4672 байта — замена
+/// массива на `Vec` сэкономила 736 байт, но отдельный вызов handler с 23
+/// аргументами `Pubkey` добавил обратно столько же стековой области аргументов
+/// (в SBPF в регистрах передаётся только 5 аргументов), плюс верификатор
+/// продолжал сообщать "A function call ... overwrites values in the frame".
+/// Инлайн убирает сам вызов, а локальные переменные handler теперь малы.
+#[inline(always)]
 pub fn handler(
     ctx: Context<InitMaterialMints>,
     seeds: Pubkey,
