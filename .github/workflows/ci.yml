@@ -77,17 +77,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache cargo + SBPF target dir
+      - name: Cache cargo registry
+        # Dependency crates are content-addressed, so a prefix match is safe here.
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-            target
-          key: ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.AGAVE_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.AGAVE_VERSION }}-
+            ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-
+
+      - name: Cache SBPF target dir
+        # Keyed on the program sources as well as the lock file, and deliberately
+        # WITHOUT restore-keys. A partial hit used to restore a target/ whose
+        # artifacts carried newer mtimes than the freshly checked-out sources, so
+        # cargo considered the .so files up to date and skipped the rebuild: run
+        # 34908007614 still reported the pre-fix `init_material_mints` frame -
+        # byte-identical symbol hash h552c6377707d29af - after the fix had been
+        # pushed. A stale artifact is worse than a slow build.
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.AGAVE_VERSION }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', 'aof-core/src/**/*.rs', 'programs/*/src/**/*.rs') }}
 
       - name: Cache Agave release
         uses: actions/cache@v4

@@ -1086,11 +1086,19 @@ pub struct RerollRandomReveal<'info> {
 
 // ----- Exploration -----
 
+// SBPF ограничивает стековый кадр 4096 байтами; Anchor-сгенерированная
+// `try_accounts` десериализует каждый типизированный аккаунт в стек, и верификатор
+// отклонял программу целиком (CI run 34908007614):
+//   Function <aof_core::StartExplorationCommit as Accounts<..>>::try_accounts overflows the maximum
+//   allowed frame space ... Estimated function frame size: 5824 bytes.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
+// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
+// порядок, ограничения и IDL не меняются.
 #[derive(Accounts)]
 #[instruction(commit_hash: [u8;32])]
 pub struct StartExplorationCommit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(mut)]
@@ -1100,8 +1108,8 @@ pub struct StartExplorationCommit<'info> {
         seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump,
         constraint = (exploration_state.owner == Pubkey::default() || exploration_state.owner == user.key()) @ AofError::Unauthorized
     )]
-    pub exploration_state: Account<'info, ExplorationState>,
-    pub tool_mint: Account<'info, Mint>,
+    pub exploration_state: Box<Account<'info, ExplorationState>>,
+    pub tool_mint: Box<Account<'info, Mint>>,
     #[account(
         seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump,
         constraint = tool.owner == user.key() @ AofError::NotToolOwner,
@@ -1109,29 +1117,29 @@ pub struct StartExplorationCommit<'info> {
         constraint = tool.tool_type == "Bow" @ AofError::InvalidToolType,
         constraint = !tool.is_mining @ AofError::ToolBusy
     )]
-    pub tool: Account<'info, ToolData>,
+    pub tool: Box<Account<'info, ToolData>>,
     #[account(
         init, payer = user, space = EXPLORATION_COMMIT_SPACE,
         seeds = [EXPLORATION_COMMIT_SEED, tool_mint.key().as_ref()], bump
     )]
-    pub exploration_commit: Account<'info, ExplorationCommit>,
+    pub exploration_commit: Box<Account<'info, ExplorationCommit>>,
     #[account(address = config.food_mint)]
-    pub food_mint: Account<'info, Mint>,
+    pub food_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Account<'info, TokenAccount>,
+    pub user_food: Box<Account<'info, TokenAccount>>,
     #[account(address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
+    pub wood_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
+    pub user_wood: Box<Account<'info, TokenAccount>>,
     #[account(address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
+    pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
+    pub user_stone: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ] MEAT для исследования — только официальный MaterialMints mint.
     #[account(address = material_mints.meat)]
-    pub meat_mint: Account<'info, Mint>,
+    pub meat_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
-    pub user_meat: Account<'info, TokenAccount>,
+    pub user_meat: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1270,41 +1278,49 @@ pub struct PayOutWithReferral<'info> {
 
 // ----- Кузница риска (Enchant) -----
 
+// SBPF ограничивает стековый кадр 4096 байтами; Anchor-сгенерированная
+// `try_accounts` десериализует каждый типизированный аккаунт в стек, и верификатор
+// отклонял программу целиком (CI run 34908007614):
+//   Function <aof_core::ForgeAttemptCommit as Accounts<..>>::try_accounts overflows the maximum
+//   allowed frame space ... Estimated function frame size: 4544 bytes.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
+// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
+// порядок, ограничения и IDL не меняются.
 #[derive(Accounts)]
 #[instruction(slot_type: u8, commit_hash: [u8;32])]
 pub struct ForgeAttemptCommit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub user: Signer<'info>,
     /// CHECK: казна для fee/protector
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump, constraint = tool.owner == user.key() @ AofError::NotToolOwner)]
-    pub tool: Account<'info, ToolData>,
-    pub tool_mint: Account<'info, Mint>,
+    pub tool: Box<Account<'info, ToolData>>,
+    pub tool_mint: Box<Account<'info, Mint>>,
     #[account(
         init_if_needed, payer = user, space = ENCHANT_SLOT_SPACE,
         seeds = [ENCHANT_SLOT_SEED, tool_mint.key().as_ref(), &[slot_type]], bump
     )]
-    pub enchant_slot: Account<'info, EnchantSlot>,
+    pub enchant_slot: Box<Account<'info, EnchantSlot>>,
     #[account(
         init, payer = user, space = FORGE_COMMIT_SPACE,
         seeds = [FORGE_COMMIT_SEED, tool_mint.key().as_ref(), &[slot_type]], bump
     )]
-    pub forge_commit: Account<'info, ForgeCommit>,
+    pub forge_commit: Box<Account<'info, ForgeCommit>>,
     #[account(address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
+    pub wood_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
+    pub user_wood: Box<Account<'info, TokenAccount>>,
     #[account(address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
+    pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
+    pub user_stone: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ] MEAT для исследования (передаётся напрямую)
-    pub meat_mint: Account<'info, Mint>,
+    pub meat_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
-    pub user_meat: Account<'info, TokenAccount>,
+    pub user_meat: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2064,22 +2080,30 @@ pub struct PlaceBuyOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// SBPF ограничивает стековый кадр 4096 байтами; Anchor-сгенерированная
+// `try_accounts` десериализует каждый типизированный аккаунт в стек, и верификатор
+// отклонял программу целиком (CI run 34908007614):
+//   Function <aof_core::PlaceSellOrder as Accounts<..>>::try_accounts overflows the maximum
+//   allowed frame space ... Estimated function frame size: 4160 bytes.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
+// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
+// порядок, ограничения и IDL не меняются.
 #[derive(Accounts)]
 #[instruction(kind: u8, price_lamports_per_unit: u64, amount: u64)]
 pub struct PlaceSellOrder<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
-    pub maker_token: Account<'info, TokenAccount>,
+    pub maker_token: Box<Account<'info, TokenAccount>>,
     #[account(init, payer = maker, space = RESOURCE_ORDER_SPACE, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
-    pub order: Account<'info, ResourceOrder>,
+    pub order: Box<Account<'info, ResourceOrder>>,
     #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
-    pub order_vault: Account<'info, TokenAccount>,
+    pub order_vault: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
