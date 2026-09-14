@@ -691,7 +691,7 @@ pub struct CollectMining<'info> {
     )]
     pub player: Account<'info, Player>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     /// CHECK: auth PDA, canonical mint authority for resource emissions.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
@@ -1757,10 +1757,17 @@ pub struct RentalRevokeCtx<'info> {
 }
 
 // [БЛОК L] Инициализация MaterialMints PDA
+// SBPF: кадр функции ограничен 4096 байтами, а `MaterialMints` — это 23 pubkey
+// (737 байт), которые Anchor-сгенерированная `try_accounts` десериализует в стек.
+// Для init_material_mints верификатор отклонял программу целиком (кадр обёртки
+// 4672 байта, CI run 34909636940): обёртка инлайнит `try_accounts`, поэтому
+// стоимость аккаунтов попадает в её кадр, а не в отдельный. `Box<..>` уводит
+// данные в кучу. Состав аккаунтов, ограничения и IDL не меняются; обращения вида
+// `&ctx.accounts.material_mints` продолжают работать через deref-coercion.
 #[derive(Accounts)]
 pub struct InitMaterialMints<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
@@ -1770,7 +1777,7 @@ pub struct InitMaterialMints<'info> {
         seeds = [MATERIAL_MINTS_SEED],
         bump
     )]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -2074,7 +2081,7 @@ pub struct PlaceBuyOrder<'info> {
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(init, payer = maker, space = RESOURCE_ORDER_SPACE, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
     pub order: Account<'info, ResourceOrder>,
     pub system_program: Program<'info, System>,
@@ -2150,7 +2157,7 @@ pub struct MatchResourceOrders<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     pub mint: Account<'info, Mint>,
     #[account(mut, seeds = [RESOURCE_ORDER_SEED, buy_order.maker.as_ref(), mint.key().as_ref()], bump, constraint = buy_order.mint == mint.key() @ AofError::OrdersDoNotCross)]
     pub buy_order: Account<'info, ResourceOrder>,
