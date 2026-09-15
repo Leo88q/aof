@@ -152,7 +152,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "previousBidder"
+          "name": "previousBidder",
+          "writable": true
         },
         {
           "name": "systemProgram",
