@@ -37,5 +37,11 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "solana/keys/aof-authority-devnet.json"
 
+[test]
+# Initialize читает канонический ProgramData апгрейд-лоадера, чтобы привязать
+# Config.authority к фактическому upgrade authority, а не к произвольному
+# подписанту. Без upgradeable-деплоя этого аккаунта нет, и bootstrap падает.
+upgradeable = true
+
 [scripts]
 test = "npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"

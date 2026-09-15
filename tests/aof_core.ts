@@ -71,11 +71,22 @@ describe("aof-core: security & core flows", () => {
   before(async () => {
     setupPayer = Keypair.generate();
     await airdrop(setupPayer, 100);
+    // Диагностика: раньше ошибки initialize/initMaterialMints проглатывались
+    // (catch {}), и весь набор падал позже на setResourceMints с
+    // AccountNotInitialized по config, не показывая настоящую причину.
+    console.log(`provider wallet ${authority.toBase58()} balance: ` +
+      `${await provider.connection.getBalance(authority)} lamports`);
+    console.log(`program id ${pid.toBase58()} | config ${configPda.toBase58()} | ` +
+      `programData ${programDataPda.toBase58()}`);
     try {
       await program.methods.initialize(authority).accounts({
         config: configPda, authority, auth: authPda, vault: vaultPda,
         programData: programDataPda, systemProgram: SystemProgram.programId }).rpc();
-    } catch (e) {}
+      console.log("initialize: ok");
+    } catch (e: any) {
+      console.log(`initialize FAILED: code=${e?.error?.errorCode?.code ?? "?"} ` +
+        `msg=${(e?.error?.errorMessage ?? e?.message ?? "").toString().slice(0, 300)}`);
+    }
     // Resource mints use the production 9-decimal atomic unit. Tool/NFT
     // mints created by mintTool below intentionally remain 0-decimal NFTs.
     foodMint  = await createMint(provider.connection, setupPayer, authPda, null, 9);
@@ -91,7 +102,11 @@ describe("aof-core: security & core flows", () => {
     try {
       await (program.methods as any).initMaterialMints(...materialArgs)
         .accounts({ config: configPda, authority, materialMints: materialMintsPda, systemProgram: SystemProgram.programId }).rpc();
-    } catch (e) {}
+      console.log("initMaterialMints: ok");
+    } catch (e: any) {
+      console.log(`initMaterialMints FAILED: code=${e?.error?.errorCode?.code ?? "?"} ` +
+        `msg=${(e?.error?.errorMessage ?? e?.message ?? "").toString().slice(0, 300)}`);
+    }
     await program.methods.setResourceMints(
       foodMint, woodMint, stoneMint, materialArgs[0], materialArgs[4], potatoMint,
     ).accounts({ config: configPda, authority }).rpc();
