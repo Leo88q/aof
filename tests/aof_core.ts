@@ -42,11 +42,25 @@ describe("aof-core: security & core flows", () => {
 
   async function ensureAta(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
     const ata = getAssociatedTokenAddressSync(mint, owner, true); // allowOwnerOffCurve для PDA
-    try {
-      await provider.sendAndConfirm(new Transaction().add(
-        createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint)), [setupPayer]);
-    } catch (e) {}
+    // Idempotent by construction (check-then-create) instead of swallowing every
+    // error: a real failure (funding, wrong owner) must surface, not be hidden.
+    if (await provider.connection.getAccountInfo(ata)) return ata;
+    await provider.sendAndConfirm(new Transaction().add(
+      createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint)), [setupPayer]);
     return ata;
+  }
+
+  // Bootstrap calls are allowed to fail only with "already initialised" (a
+  // validator that was not reset). Every other error aborts the suite here,
+  // with the Anchor code in the message, instead of surfacing later as an
+  // unrelated AccountNotInitialized on config.
+  function rethrowUnlessAlreadyInitialised(step: string, e: any): void {
+    const code = e?.error?.errorCode?.code ?? "";
+    const msg = (e?.error?.errorMessage ?? e?.message ?? "").toString();
+    const logs: string[] = e?.logs ?? e?.transactionLogs ?? [];
+    const alreadyInUse = /already in use/.test(msg) || logs.some((l) => /already in use/.test(l));
+    if (alreadyInUse) { console.log(`${step}: already initialised, continuing`); return; }
+    throw new Error(`${step} FAILED: code=${code || "?"} msg=${msg.slice(0, 300)}`);
   }
 
   async function expectError(p: Promise<any>, code: string) {
@@ -74,6 +88,7 @@ describe("aof-core: security & core flows", () => {
     // Диагностика: раньше ошибки initialize/initMaterialMints проглатывались
     // (catch {}), и весь набор падал позже на setResourceMints с
     // AccountNotInitialized по config, не показывая настоящую причину.
+    // Теперь bootstrap падает сразу (см. rethrowUnlessAlreadyInitialised).
     console.log(`provider wallet ${authority.toBase58()} balance: ` +
       `${await provider.connection.getBalance(authority)} lamports`);
     console.log(`program id ${pid.toBase58()} | config ${configPda.toBase58()} | ` +
@@ -84,8 +99,7 @@ describe("aof-core: security & core flows", () => {
         programData: programDataPda, systemProgram: SystemProgram.programId }).rpc();
       console.log("initialize: ok");
     } catch (e: any) {
-      console.log(`initialize FAILED: code=${e?.error?.errorCode?.code ?? "?"} ` +
-        `msg=${(e?.error?.errorMessage ?? e?.message ?? "").toString().slice(0, 300)}`);
+      rethrowUnlessAlreadyInitialised("initialize", e);
     }
     // Resource mints use the production 9-decimal atomic unit. Tool/NFT
     // mints created by mintTool below intentionally remain 0-decimal NFTs.
@@ -104,8 +118,7 @@ describe("aof-core: security & core flows", () => {
         .accounts({ config: configPda, authority, materialMints: materialMintsPda, systemProgram: SystemProgram.programId }).rpc();
       console.log("initMaterialMints: ok");
     } catch (e: any) {
-      console.log(`initMaterialMints FAILED: code=${e?.error?.errorCode?.code ?? "?"} ` +
-        `msg=${(e?.error?.errorMessage ?? e?.message ?? "").toString().slice(0, 300)}`);
+      rethrowUnlessAlreadyInitialised("initMaterialMints", e);
     }
     await program.methods.setResourceMints(
       foodMint, woodMint, stoneMint, materialArgs[0], materialArgs[4], potatoMint,
@@ -207,7 +220,10 @@ describe("aof-core: security & core flows", () => {
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
     const ownerTile = pda([B("farm_tile"), owner.publicKey.toBuffer(), Buffer.from([0])]);
-    await program.methods.plantSeeds(1_000_000_000).accounts({
+    // plant_seeds(tile_index: u8, amount: u64). Passing only the amount made
+    // Anchor treat it as tile_index and the account map as `amount`, which
+    // surfaced as "Account `config` not provided" (tests/aof_core.ts:210).
+    await program.methods.plantSeeds(0, new BN(1_000_000_000)).accounts({
       config: configPda, user: owner.publicKey, materialMints: materialMintsPda,
       energyAccount: pda([B("energy_account"), owner.publicKey.toBuffer()]), farmTile: ownerTile,
       seedsMint, userSeeds: ownerSeeds, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
@@ -239,7 +255,7 @@ describe("aof-core: security & core flows", () => {
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
     const renterTile = pda([B("farm_tile"), renter.publicKey.toBuffer(), Buffer.from([0])]);
-    await program.methods.plantSeeds(1_000_000_000).accounts({
+    await program.methods.plantSeeds(0, new BN(1_000_000_000)).accounts({
       config: configPda, user: renter.publicKey, materialMints: materialMintsPda,
       energyAccount: pda([B("energy_account"), renter.publicKey.toBuffer()]), farmTile: renterTile,
       seedsMint, userSeeds: renterSeeds, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
@@ -339,29 +355,53 @@ describe("aof-core: security & core flows", () => {
     expect(bal).to.equal("100");
   });
 
-  it("pack commit-reveal: инструмент минтится игроку", async () => {
+  it("pack commit-reveal: pack_open_commit is fail-closed (FeatureDisabled) and takes no SOL", async () => {
+    // Pack opening is intentionally disabled on-chain
+    // (aof-core/src/instructions/pack_open_commit.rs): the commit transfers SOL
+    // before reveal and there is no expiry/cancel/refund path yet. The backend
+    // route answers 503 PACK_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED
+    // and the site marks the mechanic as "soon". This test pins that guard:
+    // a direct program caller must get FeatureDisabled and must not be charged.
     const packConfig = pda([B("pack_config"), Buffer.from([0])]);
     try {
       await program.methods.initPackConfig(0, new BN(100_000_000), [6000, 3200, 700, 100, 0])
         .accounts({ config: configPda, authority, packConfig, systemProgram: SystemProgram.programId }).rpc();
-    } catch (e) {}
+      console.log("initPackConfig: ok");
+    } catch (e: any) {
+      rethrowUnlessAlreadyInitialised("initPackConfig", e);
+    }
     const user = Keypair.generate(); await airdrop(user);
     const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
-    const userToken = await ensureAta(mint, user.publicKey);
     const secret = crypto.randomBytes(32);
     const commitHash = crypto.createHash("sha256").update(secret).digest();
-    await program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
+    const packCommit = pda([B("pack_commit"), mint.toBuffer()]);
+    const treasuryBefore = await provider.connection.getBalance(authority);
+    await expectError(program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
       config: configPda, authority, user: user.publicKey, treasury: authority,
-      packConfig, auth: authPda, mint, packCommit: pda([B("pack_commit"), mint.toBuffer()]),
-      systemProgram: SystemProgram.programId }).signers([user]).rpc();
-    await sleep(1500);
-    await program.methods.packOpenReveal(Array.from(secret)).accounts({
-      config: configPda, authority, packCommit: pda([B("pack_commit"), mint.toBuffer()]),
-      user: user.publicKey, packConfig, mint, userToken, toolData: toolPda(mint),
-      auth: authPda, slotHashes: SLOT_HASHES, tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId }).rpc();
-    const td = await program.account.toolData.fetch(toolPda(mint));
+      packConfig, auth: authPda, mint, packCommit,
+      systemProgram: SystemProgram.programId }).signers([user]).rpc(), "FeatureDisabled");
+    // The failed transaction must leave no PackCommit behind and move no lamports.
+    expect(await provider.connection.getAccountInfo(packCommit)).to.equal(null);
+    expect(await provider.connection.getBalance(authority)).to.equal(treasuryBefore);
+  });
+
+  it("disabled commit-reveal mechanics stay fail-closed: reroll_random_commit", async () => {
+    // Same fail-closed policy as packs (reroll_random.rs burns the tool before
+    // reveal and has no refund path). The guard runs before any state change,
+    // so it must trigger even with a freshly minted tool and empty gastank.
+    const user = Keypair.generate(); await airdrop(user);
+    const { mint: burnMint, tokenAccount: burnToken } = await mintTool(user.publicKey);
+    const gAcc = { config: configPda, user: user.publicKey, gastank: gastankPda(user.publicKey), systemProgram: SystemProgram.programId };
+    await program.methods.depositGas(new BN(100_000_000)).accounts(gAcc).signers([user]).rpc();
+    const newMint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+    const commitHash = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest();
+    await expectError((program.methods as any).rerollRandomCommit(Array.from(commitHash)).accounts({
+      config: configPda, user: user.publicKey, gastank: gastankPda(user.publicKey),
+      burnTool: toolPda(burnMint), burnMint, burnToken, newMint,
+      rerollCommit: pda([B("reroll_commit"), newMint.toBuffer()]),
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc(), "FeatureDisabled");
+    const td = await program.account.toolData.fetch(toolPda(burnMint));
     expect(td.owner.toString()).to.equal(user.publicKey.toString());
-    expect(Object.keys(td.rarity)[0]).to.be.oneOf(["common", "uncommon", "rare", "epic"]);
   });
 });
