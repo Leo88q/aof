@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
+import { FeatureDisabledNotice, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { useWalletStore } from "../../store/walletStore";
 import { api } from "../../lib/api";
 import { useFlash } from "../../lib/marketUtils";
@@ -31,7 +32,10 @@ export function ExplorationPage() {
 
   const bowMint = bow?.mint || null;
 
+  const explorationDisabled = isMechanicDisabled("exploration");
+
   async function startExploration() {
+    if (explorationDisabled) return;
     if (!address) return flash("❌ Подключите кошелёк");
     if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
 
@@ -83,6 +87,7 @@ export function ExplorationPage() {
   return (
     <div className="p-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold mb-4">🗺️ Исследование</h1>
+      {explorationDisabled && <div className="mb-4"><FeatureDisabledNotice id="exploration" /></div>}
 
       <Card className="mb-4">
         <div className="text-center mb-4">
@@ -123,10 +128,10 @@ export function ExplorationPage() {
 
         <button
           onClick={startExploration}
-          disabled={loading || !address || !bowMint}
+          disabled={explorationDisabled || loading || !address || !bowMint}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
         >
-          {loading ? "Отправляем..." : !bowMint ? "Нужен Bow в инвентаре" : "🗺️ Отправить в поход"}
+          {explorationDisabled ? "Временно недоступно" : loading ? "Отправляем..." : !bowMint ? "Нужен Bow в инвентаре" : "🗺️ Отправить в поход"}
         </button>
       </Card>
 
