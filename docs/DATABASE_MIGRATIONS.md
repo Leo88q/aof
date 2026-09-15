@@ -104,6 +104,15 @@ SQLite has no online down-migrations; the rollback unit is the file snapshot.
 
 ## 5. Environment variables
 
+`DATABASE_URL` for SQLite **must** include `?connection_limit=1`. Prisma's pool
+opens several connections to the same file otherwise, and concurrent writers
+fail with "database is locked" instead of the unique-constraint violation
+(P2002) that `src/security/idempotency.ts` treats as "another request won the
+race". The integration test `npm run test:idempotency-db` runs with this
+setting; the workers (`services/*`) share the file with the API, so the same
+limitation applies to them.
+
+
 See `aof_backend/.env.example` and `frontend/.env.example`. Required in
 production (enforced in `src/config.ts`): `RPC_URL` (non-devnet), `PROGRAM_ID`,
 `AUTHORITY_SECRET_KEY`, `TREASURY_PUBKEY`, `ADMIN_TOKEN`, `DATABASE_URL`.

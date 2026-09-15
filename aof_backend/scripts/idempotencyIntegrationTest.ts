@@ -32,7 +32,13 @@ import path from "path";
 async function main(): Promise<void> {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aof-idem-"));
   const dbFile = path.join(tmp, "idempotency-test.db");
-  process.env.DATABASE_URL = `file:${dbFile}`;
+  // SQLite is single-writer. Prisma's own guidance for SQLite is
+  // `connection_limit=1`; without it, concurrent writers through the pool
+  // surface as "database is locked" instead of the unique-constraint P2002 the
+  // CAS relies on. Production DATABASE_URL must carry the same parameter (see
+  // aof_backend/.env.example and docs/DATABASE_MIGRATIONS.md).
+  process.env.DATABASE_URL = `file:${dbFile}?connection_limit=1`;
+  console.log(`idempotency integration test: DATABASE_URL=file:<tmp>/idempotency-test.db?connection_limit=1`);
 
   const root = path.resolve(__dirname, "..");
   const prismaBin = path.join(root, "node_modules", ".bin", "prisma");
@@ -40,7 +46,7 @@ async function main(): Promise<void> {
     execFileSync(prismaBin, ["db", "push", "--schema", "prisma/schema.prisma", "--skip-generate", "--accept-data-loss"], {
       cwd: root,
       stdio: "pipe",
-      env: process.env,
+      env: { ...process.env, DATABASE_URL: `file:${dbFile}` },
     });
   } catch (e: any) {
     const out = `${e?.stdout ?? ""}${e?.stderr ?? ""}`;
@@ -48,6 +54,7 @@ async function main(): Promise<void> {
   }
 
   // Import after DATABASE_URL is set so the singleton client binds to the temp DB.
+  // `prisma db push` above has to see a plain file URL; the client gets the pooled one.
   const { db } = await import("../src/lib/db");
   const { checkIdempotency, completeIdempotency, failIdempotency } = await import("../src/security/idempotency");
   if (typeof (db as any).idempotencyRecord?.findUnique !== "function") {
@@ -104,5 +111,7 @@ async function main(): Promise<void> {
 
 void main().catch((error) => {
   console.error("idempotency integration test FAILED:", error?.message ?? error);
+  if (error?.code) console.error("prisma error code:", error.code);
+  if (error?.stack) console.error(error.stack.split("\n").slice(0, 8).join("\n"));
   process.exitCode = 1;
 });

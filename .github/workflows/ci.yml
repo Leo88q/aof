@@ -762,18 +762,32 @@ jobs:
           exit "$rc"
 
       - name: Self-test - wallet proof
-        run: npm run test:wallet-proof
+        run: |
+          set -uo pipefail
+          npm run test:wallet-proof 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
 
       - name: Self-test - resource registry
-        run: npm run test:resource-registry
+        run: |
+          set -uo pipefail
+          npm run test:resource-registry 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
 
       - name: Self-test - security invariants
-        run: npm run test:security-invariants
+        run: |
+          set -uo pipefail
+          npm run test:security-invariants 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
 
       - name: Integration test - Prisma idempotency CAS (temporary SQLite)
         # Real database: prisma db push into a temp file, then 32 concurrent
         # claims / replay / failed+stale reclaim against src/security/idempotency.ts.
-        run: npm run test:idempotency-db
+        # Output is tee'd into the published failure log so a failing assertion
+        # is visible even when the Actions log endpoint is unreachable.
+        run: |
+          set -uo pipefail
+          npm run test:idempotency-db 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
 
       - name: Migration gate - prisma/migrations matches schema.prisma
         run: |
