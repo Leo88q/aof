@@ -60,4 +60,46 @@ assert.ok(questsIdl.errors.some((error: any) => error.name === "FeatureDisabled"
 const rebirthIdl = JSON.parse(read("aof_backend/src/idl/aof_rebirth.json"));
 assert.ok(rebirthIdl.errors.some((error: any) => error.name === "FeatureDisabled"));
 
-console.log("security invariant self-test: passed");
+// IDL/source flag parity for the account that broke every real auction bid:
+// auction_bid.previous_bidder receives lamports and must be writable in the
+// IDL the backend and the test suite load.
+const auctionBidIx = coreIdl.instructions.find((ix: any) => ix.name === "auction_bid");
+assert.ok(auctionBidIx, "auction_bid missing from committed IDL");
+assert.equal(auctionBidIx.accounts.find((a: any) => a.name === "previous_bidder")?.writable, true,
+  "auction_bid.previous_bidder must be writable in aof_backend/src/idl/aof_core.json");
+assert.match(section(core, "pub struct AuctionBidCtx", "pub struct AuctionSettleCtx"),
+  /#\[account\(mut, address = auction\.current_bidder\)\]\s*pub previous_bidder/);
+
+// Disabled mechanics must be reflected identically in every layer:
+//   on-chain guard  ->  backend 503  ->  site content status:'soon'  ->  app notice.
+const siteMechanics = read("frontend/src/site/content/mechanics.ts");
+const appNotice = read("frontend/src/components/ui/FeatureDisabledNotice.tsx");
+const siteStatus = (id: string) => {
+  const m = siteMechanics.match(new RegExp(`\\{id:'${id}',name:'[^']*',status:'(live|soon)'`));
+  assert.ok(m, `site mechanic ${id} missing from mechanics.ts`);
+  return m![1];
+};
+const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
+const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
+  { id: "packs", route: "packs.ts", code: /PACK_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/pack_open_commit.rs", /require!\(false, AofError::FeatureDisabled\)/] },
+  { id: "forge", route: "forge.ts", code: /FORGE_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/forge.rs", /require!\(false, AofError::FeatureDisabled\)/] },
+  { id: "lottery", route: "lottery.ts", code: /LOTTERY_TICKETS_DISABLED/, guard: ["aof-core/src/instructions/lottery.rs", /require!\(false, AofError::FeatureDisabled\)/] },
+  { id: "exploration", route: "exploration.ts", code: /EXPLORATION_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/exploration.rs", /require!\(false, AofError::FeatureDisabled\)/] },
+  { id: "drum", route: "drum.ts", code: /DRUM_COMMITS_DISABLED/, guard: ["programs/aof-quests/src/instructions/drum/drum_commit.rs", /require!\(false, QuestError::FeatureDisabled\)/] },
+  { id: "hot_market", route: "hotMarket.ts", code: /HOT_MARKET_DISABLED/, guard: ["programs/aof-market/src/lib.rs", /err!\(MarketError::TradingDisabled\)/] },
+  { id: "collectors", route: "collectors.ts", code: /COLLECTOR_STAKING_DISABLED/, guard: ["aof-core/src/instructions/collector_stake.rs", /require!\(false, AofError::CollectorNotConfigured\)/] },
+  { id: "rebirth", route: "rebirth.ts", code: /REBIRTH_DISABLED/, guard: ["programs/aof-rebirth/src/instructions/do_rebirth.rs", /require!\(false, RebirthError::FeatureDisabled\)/] },
+  { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /require!\(false, SkError::AtomicBindingRequired\)/] },
+];
+for (const layer of disabledLayers) {
+  assert.match(read(layer.guard[0]), layer.guard[1], `${layer.id}: on-chain guard missing`);
+  assert.match(backendRoute(layer.route), layer.code, `${layer.id}: backend route is not fail-closed`);
+  assert.equal(siteStatus(layer.id), "soon", `${layer.id}: site content must be status:'soon' while the on-chain guard exists`);
+}
+for (const id of ["packs", "lottery", "exploration", "forge", "reroll", "drum", "hot_market", "collectors", "rebirth", "session"]) {
+  assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
+}
+// Random reroll has no separate site entry; it is covered on-chain + backend + app notice.
+assert.match(backendRoute("reroll.ts"), /REROLL_COMMITS_DISABLED/);
+
+console.log("security invariant self-test: rental/auction constraints, fail-closed guards, IDL flag parity, disabled-mechanic layer parity passed");
