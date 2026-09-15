@@ -642,11 +642,23 @@ jobs:
           echo "--- artifact contents ---"
           find target -maxdepth 2 \( -name '*.so' -o -name '*.json' -o -name '*.ts' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort || true
 
-      - name: Report IDL drift vs committed backend IDL
-        # Advisory only: the backend ships its own copy of the market IDL under
-        # aof_backend/src/idl/. If the generated IDL diverges, the backend can be
-        # calling instructions/accounts that no longer exist. Kept non-blocking
-        # until the copies are re-synced deliberately.
+      - name: IDL drift gate (source account contexts vs committed IDL)
+        # Blocking. The IDL builder is upstream-blocked, so the backend, the
+        # frontend and the Anchor test suite all run against the committed
+        # copies in aof_backend/src/idl/. scripts/check-idl-drift.py parses the
+        # Rust #[derive(Accounts)] structs directly and compares instruction
+        # names, argument counts, account order and writable/signer/optional
+        # flags with every committed IDL (and with target/idl when it exists).
+        # This is what would have caught auction_bid.previous_bidder losing
+        # `writable` (ConstraintMut 2000 on every real bid).
+        run: |
+          set -uo pipefail
+          python3 scripts/check-idl-drift.py --target-idl target/idl 2>&1 | tee -a /tmp/anchor-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Report generated-IDL arg-type drift vs committed backend IDL
+        # Secondary, advisory: only runs when the IDL builder produced output and
+        # compares argument *types*, which the source parser above does not.
         continue-on-error: true
         run: |
           set -uo pipefail
@@ -758,6 +770,29 @@ jobs:
       - name: Self-test - security invariants
         run: npm run test:security-invariants
 
+      - name: Integration test - Prisma idempotency CAS (temporary SQLite)
+        # Real database: prisma db push into a temp file, then 32 concurrent
+        # claims / replay / failed+stale reclaim against src/security/idempotency.ts.
+        run: npm run test:idempotency-db
+
+      - name: Migration gate - prisma/migrations matches schema.prisma
+        run: |
+          set -uo pipefail
+          npm run prisma:migrate:check 2>&1 | tee -a /tmp/backend-build.log
+          rc=${PIPESTATUS[0]}
+          rm -f prisma/.migrate-shadow.db .migrate-shadow.db
+          exit "$rc"
+
+      - name: Hygiene - no tracked databases or secrets
+        run: |
+          set -uo pipefail
+          cd ..
+          bad=$(git ls-files | grep -Ei '\.(db|sqlite|sqlite3|pem|p12|pfx)$|keypair\.json$|(^|/)\.env(\.|$)' | grep -v '\.env\.example$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::tracked database/secret files:"; echo "$bad"; exit 1
+          fi
+          echo "no tracked databases or secret files"
+
       - name: Publish failure log
         if: failure()
         env:
@@ -769,11 +804,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: programs
-    # Advisory for now: the aof-core suite expects target/idl/aof_core.json,
-    # which `anchor build` does not produce until [workspace] members declares
-    # aof-core. Promote to a blocking gate once that is fixed and the suite is
-    # green.
-    continue-on-error: true
+    # Blocking release gate. aof-core is in [workspace] members, the artifacts
+    # deploy on the local validator (run 34910317710) and the suite reaches real
+    # assertions, so a failing test must make the workflow red. The failure log
+    # is still published as a PR comment by the last step; that step runs
+    # after the failure but does not change the job conclusion.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -1050,7 +1085,8 @@ jobs:
           echo "restored IDL files: $count"
           if [ "$count" -eq 0 ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::anchor test skipped - no generated IDL was restored. IDL generation is advisory-blocked upstream: anchor-lang 0.30.1 needs proc_macro2::Span::source_file, which is gone from proc-macro2 >= 1.0.95 and from current nightlies. See the 'Anchor IDL generation attempts (advisory)' step in the programs job."
+            echo "::error::anchor test cannot run - no IDL in target/idl (neither generated nor seeded from aof_backend/src/idl). This job is a blocking gate, so it fails instead of skipping."
+            exit 1
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
           fi
@@ -1064,6 +1100,18 @@ jobs:
           : > /tmp/anchor-test.log
           rc=0
           RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor test --skip-build 2>&1 | tee -a /tmp/anchor-test.log || rc=$?
+          echo "anchor test exit code: $rc" | tee -a /tmp/anchor-test.log
+          # Belt and braces: `anchor test` has been observed to exit 0 while
+          # mocha reported failures in some CLI/mocha combinations. Treat any
+          # "N failing" summary as a failure regardless of the CLI exit code.
+          if grep -Eq '^[[:space:]]*[1-9][0-9]* failing' /tmp/anchor-test.log; then
+            echo "::error::mocha reported failing tests"
+            rc=1
+          fi
+          if ! grep -Eq '^[[:space:]]*[1-9][0-9]* passing' /tmp/anchor-test.log; then
+            echo "::error::mocha did not report any passing tests - the suite did not run"
+            rc=1
+          fi
           exit "$rc"
 
       - name: Publish failure log
