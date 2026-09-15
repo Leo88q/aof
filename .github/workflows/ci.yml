@@ -653,7 +653,9 @@ jobs:
         # `writable` (ConstraintMut 2000 on every real bid).
         run: |
           set -uo pipefail
-          python3 scripts/check-idl-drift.py --target-idl target/idl 2>&1 | tee -a /tmp/anchor-build.log
+          # The key-sync step rewrote declare_id!/Anchor.toml to throwaway ids for
+          # this run, so program ids are compared against the committed revision.
+          python3 scripts/check-idl-drift.py --target-idl target/idl --ids-from-git "$GITHUB_SHA" 2>&1 | tee -a /tmp/anchor-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Report generated-IDL arg-type drift vs committed backend IDL

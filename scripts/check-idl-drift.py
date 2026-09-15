@@ -212,10 +212,32 @@ def check_ts_copy(json_idl: dict, problems: list[str]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--target-idl", default="target/idl", help="directory with generated IDLs (optional)")
+    ap.add_argument("--ids-from-git", metavar="REV", default=None,
+                    help="compare program ids against declare_id!/Anchor.toml at this git revision instead of the "
+                         "working tree (CI rewrites declare_id! to throwaway keypairs before building; the committed "
+                         "ids are the canonical ones)")
     args = ap.parse_args()
+    git_ids: dict[str, str] | None = None
+    git_toml: dict[str, dict[str, str]] | None = None
+    if args.ids_from_git:
+        import subprocess
+        git_ids = {}
+        for name, path in PROGRAMS.items():
+            lib = subprocess.run(["git", "show", f"{args.ids_from_git}:{path}/src/lib.rs"],
+                                 capture_output=True, text=True, check=True).stdout
+            m = re.search(r'declare_id!\("([^"]+)"\)', lib)
+            if m:
+                git_ids[name] = m.group(1)
+        cfg = subprocess.run(["git", "show", f"{args.ids_from_git}:Anchor.toml"],
+                             capture_output=True, text=True, check=True).stdout
+        git_toml = {}
+        for sec in ("localnet", "devnet"):
+            m = re.search(rf"^\[programs\.{sec}\](.*?)(?=^\[|\Z)", cfg, re.M | re.S)
+            git_toml[sec] = dict(re.findall(r'^\s*(\w+)\s*=\s*"([^"]+)"', m.group(1), re.M)) if m else {}
+        print(f"program ids taken from git revision {args.ids_from_git}")
 
     problems: list[str] = []
-    toml_ids = anchor_toml_ids()
+    toml_ids = git_toml if git_toml is not None else anchor_toml_ids()
     checked = 0
     for name, path in PROGRAMS.items():
         if not os.path.isdir(path):
@@ -226,7 +248,7 @@ def main() -> int:
         if not did:
             problems.append(f"{name}: declare_id! not found")
             continue
-        declared = did.group(1)
+        declared = git_ids.get(name, did.group(1)) if git_ids is not None else did.group(1)
         for sec in ("localnet", "devnet"):
             if toml_ids[sec].get(name) != declared:
                 problems.append(f"{name}: Anchor.toml [programs.{sec}] = {toml_ids[sec].get(name)} != declare_id {declared}")
