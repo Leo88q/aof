@@ -1,6 +1,8 @@
 # Секреты
 .env
 .env.*
+# templates are safe and must stay tracked
+!.env.example
 *.env
 keys/*.json
 solana/keys/*.json
@@ -26,3 +28,4 @@ data/session-keys/
 
 # Local database files; production uses a managed database and committed migrations.
 prisma/*.db
+.migrate-shadow.db
