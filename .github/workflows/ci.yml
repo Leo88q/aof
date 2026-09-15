@@ -813,6 +813,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash ../.github/scripts/publish-failure-log.sh /tmp/backend-build.log "Backend build + self-tests" 10
 
+      - name: Upload backend log artifact
+        # Artifacts are readable even when the Actions log endpoint and PR
+        # comments are not (no PR yet, or annotation truncation at 10 lines).
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: /tmp/backend-build.log
+          if-no-files-found: warn
+          retention-days: 7
+
   anchor-test:
     name: Anchor test (local validator)
     runs-on: ubuntu-latest
