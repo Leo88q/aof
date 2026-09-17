@@ -2930,10 +2930,6 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "treasury",
-          "writable": true
-        },
-        {
           "name": "tool",
           "pda": {
             "seeds": [
@@ -2978,13 +2974,6 @@ export type AofCore = {
         },
         {
           "name": "userStone",
-          "writable": true
-        },
-        {
-          "name": "meatMint"
-        },
-        {
-          "name": "userMeat",
           "writable": true
         },
         {
@@ -3067,6 +3056,10 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "slotHashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
@@ -3082,6 +3075,87 @@ export type AofCore = {
           }
         }
       ]
+    },
+    {
+      "name": "forgeAttemptExpire",
+      "docs": [
+        "Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent)."
+      ],
+      "discriminator": [
+        206,
+        118,
+        31,
+        164,
+        99,
+        185,
+        27,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "forgeCommit",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "woodMint",
+          "writable": true
+        },
+        {
+          "name": "userWood",
+          "writable": true
+        },
+        {
+          "name": "stoneMint",
+          "writable": true
+        },
+        {
+          "name": "userStone",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "grantSeasonXp",
@@ -9443,6 +9517,19 @@ export type AofCore = {
       ]
     },
     {
+      "name": "forgeCommitExpired",
+      "discriminator": [
+        24,
+        244,
+        189,
+        74,
+        234,
+        139,
+        170,
+        174
+      ]
+    },
+    {
       "name": "gasFeesSwept",
       "discriminator": [
         29,
@@ -10805,6 +10892,38 @@ export type AofCore = {
       }
     },
     {
+      "name": "forgeCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "toolMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "slotType",
+            "type": "u8"
+          },
+          {
+            "name": "refundedLamports",
+            "type": "u64"
+          },
+          {
+            "name": "woodRefunded",
+            "type": "u64"
+          },
+          {
+            "name": "stoneRefunded",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "forgeCommit",
       "type": {
         "kind": "struct",
@@ -10837,6 +10956,18 @@ export type AofCore = {
           {
             "name": "useProtector",
             "type": "bool"
+          },
+          {
+            "name": "paidLamports",
+            "type": "u64"
+          },
+          {
+            "name": "woodBurned",
+            "type": "u64"
+          },
+          {
+            "name": "stoneBurned",
+            "type": "u64"
           }
         ]
       }

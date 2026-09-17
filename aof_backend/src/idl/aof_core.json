@@ -2924,10 +2924,6 @@
           "signer": true
         },
         {
-          "name": "treasury",
-          "writable": true
-        },
-        {
           "name": "tool",
           "pda": {
             "seeds": [
@@ -2972,13 +2968,6 @@
         },
         {
           "name": "user_stone",
-          "writable": true
-        },
-        {
-          "name": "meat_mint"
-        },
-        {
-          "name": "user_meat",
           "writable": true
         },
         {
@@ -3061,6 +3050,10 @@
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "slot_hashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
@@ -3076,6 +3069,87 @@
           }
         }
       ]
+    },
+    {
+      "name": "forge_attempt_expire",
+      "docs": [
+        "Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent)."
+      ],
+      "discriminator": [
+        206,
+        118,
+        31,
+        164,
+        99,
+        185,
+        27,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "forge_commit",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "wood_mint",
+          "writable": true
+        },
+        {
+          "name": "user_wood",
+          "writable": true
+        },
+        {
+          "name": "stone_mint",
+          "writable": true
+        },
+        {
+          "name": "user_stone",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "grant_season_xp",
@@ -9791,6 +9865,19 @@
         135,
         69
       ]
+    },
+    {
+      "name": "ForgeCommitExpired",
+      "discriminator": [
+        24,
+        244,
+        189,
+        74,
+        234,
+        139,
+        170,
+        174
+      ]
     }
   ],
   "errors": [
@@ -10961,6 +11048,18 @@
           {
             "name": "use_protector",
             "type": "bool"
+          },
+          {
+            "name": "paid_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "wood_burned",
+            "type": "u64"
+          },
+          {
+            "name": "stone_burned",
+            "type": "u64"
           }
         ]
       }
@@ -12594,6 +12693,38 @@
           },
           {
             "name": "refunded_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForgeCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "tool_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot_type",
+            "type": "u8"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "wood_refunded",
+            "type": "u64"
+          },
+          {
+            "name": "stone_refunded",
             "type": "u64"
           }
         ]

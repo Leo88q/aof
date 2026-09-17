@@ -432,6 +432,59 @@ describe("aof-core: security & core flows", () => {
     expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
   });
 
+  it("forge commit-reveal: wood/stone burned + fee escrowed on commit, fee to treasury on reveal, expire blocked inside window", async () => {
+    // Forge is live again: the SOL fee is escrowed on the ForgeCommit PDA and
+    // the burned wood/stone amounts are recorded so forge_attempt_expire can
+    // re-mint them after the reveal window. Level-0 attempt: 200 wood + 200
+    // stone + 33_000_000 lamports (+ 20_000_000 with the protector).
+    const user = Keypair.generate(); await airdrop(user);
+    const { mint: toolMint } = await mintTool(user.publicKey, "pickaxe");
+    const userWood = await giveResource("wood", woodMint, user.publicKey, 1000);
+    const userStone = await giveResource("stone", stoneMint, user.publicKey, 1000);
+    const woodBefore = await balance(userWood);
+    const stoneBefore = await balance(userStone);
+    const treasuryBefore = await provider.connection.getBalance(authority);
+    const secret = crypto.randomBytes(32);
+    const commitHash = crypto.createHash("sha256").update(secret).digest();
+    const slotType = 0;
+    const enchantSlot = pda([B("enchant_slot"), toolMint.toBuffer(), Buffer.from([slotType])]);
+    const forgeCommit = pda([B("forge_commit"), toolMint.toBuffer(), Buffer.from([slotType])]);
+    const FEE = 33_000_000 + 20_000_000;
+
+    await program.methods.forgeAttemptCommit(slotType, Array.from(commitHash), true).accounts({
+      config: configPda, user: user.publicKey, tool: toolPda(toolMint), toolMint, enchantSlot, forgeCommit,
+      woodMint, userWood, stoneMint, userStone,
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).signers([user]).rpc();
+
+    expect(woodBefore.sub(await balance(userWood)).toString()).to.equal(UNIT.muln(200).toString());
+    expect(stoneBefore.sub(await balance(userStone)).toString()).to.equal(UNIT.muln(200).toString());
+    const fc = await program.account.forgeCommit.fetch(forgeCommit);
+    expect(fc.paidLamports.toNumber()).to.equal(FEE);
+    expect(fc.woodBurned.toString()).to.equal(UNIT.muln(200).toString());
+    expect(fc.useProtector).to.equal(true);
+    const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(
+      (await provider.connection.getAccountInfo(forgeCommit))!.data.length);
+    expect(await provider.connection.getBalance(forgeCommit)).to.equal(rentExempt + FEE);
+    expect(await provider.connection.getBalance(authority)).to.equal(treasuryBefore);
+
+    // Refund path is closed while a reveal is still possible.
+    await expectError(program.methods.forgeAttemptExpire().accounts({
+      config: configPda, forgeCommit, user: user.publicKey, auth: authPda,
+      woodMint, userWood, stoneMint, userStone, tokenProgram: TOKEN_PROGRAM_ID }).rpc(), "CommitNotExpired");
+    expect((await balance(userWood)).toString()).to.equal(woodBefore.sub(UNIT.muln(200)).toString());
+
+    await sleep(1500);
+    const userBefore = await provider.connection.getBalance(user.publicKey);
+    await program.methods.forgeAttemptReveal(Array.from(secret)).accounts({
+      config: configPda, authority, enchantSlot, forgeCommit, payer: user.publicKey, treasury: authority,
+      slotHashes: SLOT_HASHES }).rpc();
+    expect(await provider.connection.getAccountInfo(forgeCommit)).to.equal(null);
+    // Rent back to the user; escrow went to the treasury (== authority == fee payer here).
+    expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
+    const slot = await program.account.enchantSlot.fetch(enchantSlot);
+    expect(slot.level).to.be.oneOf([0, 1]); // level-0 attempt: success -> 1, any failure -> 0
+  });
+
   it("disabled commit-reveal mechanics stay fail-closed: reroll_random_commit", async () => {
     // Same fail-closed policy as packs (reroll_random.rs burns the tool before
     // reveal and has no refund path). The guard runs before any state change,

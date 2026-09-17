@@ -360,6 +360,12 @@ pub struct ForgeCommit {
     pub commit_hash: [u8; 32],
     pub commit_slot: u64,
     pub use_protector: bool,
+    /// SOL fee (+protector) escrowed on this PDA until reveal (-> treasury)
+    /// or expiry (-> user).
+    pub paid_lamports: u64,
+    /// Resources burned at commit; re-minted to the user on expiry.
+    pub wood_burned: u64,
+    pub stone_burned: u64,
 }
 
 // ----- Лотерея -----

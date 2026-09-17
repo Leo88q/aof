@@ -135,7 +135,7 @@ RELEASE_READINESS_AUDIT_2026-09-15.md             | этот файл
 - [ ] Скачать artifact `anchor-target` и заархивировать `.so` текущего релиза (для rollback).
 - [ ] Devnet: `anchor test --skip-build --provider.cluster devnet` с реальными keypair'ами (вне CI), либо `solana program deploy` на devnet + прогон `tests/aof_core.ts` с `ANCHOR_PROVIDER_URL`.
 - [ ] Devnet smoke по 17 live-механикам (список §10) — минимум по одной транзакции.
-- [ ] Backend против staging DB по `docs/DATABASE_MIGRATIONS.md` §3 (migrate resolve → deploy → build → 4 теста → smoke: /health, wallet-proof + повтор idempotency-key, /admin без токена → 401, `/forge/commit` → 503, `/packs/expire` без admin-токена → 401).
+- [ ] Backend против staging DB по `docs/DATABASE_MIGRATIONS.md` §3 (migrate resolve → deploy → build → 4 теста → smoke: /health, wallet-proof + повтор idempotency-key, /admin без токена → 401, `/exploration/start/commit` → 503, `/packs/expire` и `/forge/expire` без admin-токена → 401).
 - [ ] Frontend build с production `VITE_RPC_URL`, ручная проверка Packs/Lottery/Exploration показывают notice и не открывают кошелёк.
 - [ ] `python3 scripts/check-idl-drift.py` = 0 на релизном коммите.
 - [ ] Решение владельца по purge `aof.db` из истории.
@@ -162,7 +162,7 @@ Frontend (`frontend/.env.example`): `VITE_API_URL`, `VITE_DEV_BACKEND_URL`, `VIT
 |---|---|---|---|---|---|
 | energy, tools, marketplace, orderbook, auction, liquidity, seasons, social/referral, quests (claim), weather, gas, npc (read), rental, farm, craft, milling, mine | live | live | live | live | **Заявлены live — требуют devnet/in-game проверки** |
 | packs | escrow на PDA + `pack_open_expire` (refund после 600 слотов) | commit/reveal live, `/expire` admin-only | live | — | live (после anchor test на машине владельца) |
-| forge | `FeatureDisabled` | 503 | soon ✔ | notice list | fail-closed |
+| forge | escrow SOL-fee на PDA + запись wood/stone + `forge_attempt_expire` (re-mint + refund после 600 слотов) | commit/reveal live, `/expire` admin-only | live | — | live (после anchor test на машине владельца) |
 | lottery (tickets) | `FeatureDisabled` | 503 | soon ✔ | notice + disabled ✔ | fail-closed |
 | drum | `FeatureDisabled` (quests) | 503 | soon ✔ | notice list | fail-closed |
 | exploration | `FeatureDisabled` | 503 | soon ✔ | notice + disabled ✔ | fail-closed |

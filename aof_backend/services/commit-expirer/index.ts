@@ -1,10 +1,11 @@
 /**
  * Commit-Expirer: возврат средств по просроченным commit-reveal коммитам.
  *
- * Сейчас обслуживает паки (PackCommit). Цена пака лежит в escrow на PDA
- * коммита; если сервер по любой причине не сделал pack_open_reveal за окно
- * SlotHashes, воркер вызывает pack_open_expire — SOL и рента возвращаются
- * игроку (адрес берётся из самого аккаунта, не из внешних данных).
+ * Обслуживает паки (PackCommit → pack_open_expire: возврат SOL-escrow) и
+ * кузницу (ForgeCommit → forge_attempt_expire: возврат SOL-fee из escrow и
+ * ре-минт сожжённых wood/stone). Если сервер по любой причине не сделал
+ * reveal за окно SlotHashes, воркер возвращает всё игроку (адрес берётся из
+ * самого аккаунта коммита, не из внешних данных).
  *
  * Инструкция permissionless и сама проверяет `slot - commit_slot >=
  * COMMIT_EXPIRY_SLOTS`, поэтому воркер безопасен при любых гонках: раньше
@@ -17,6 +18,7 @@ import { program, connection } from "../../src/provider";
 import { configPda } from "../../src/lib/pda";
 import { authorityOnly } from "../../src/lib/tx";
 import { markUsed } from "../../src/lib/secretStore";
+import { buildForgeExpireIx } from "../../src/routes/forge";
 
 // Должно совпадать с aof-core/src/constants.rs::COMMIT_EXPIRY_SLOTS.
 const COMMIT_EXPIRY_SLOTS = 600;
@@ -52,12 +54,34 @@ async function expirePacks(): Promise<void> {
   console.log(`[commit-expirer] packs: ${commits.length} коммитов, возвращено ${refunded}`);
 }
 
+async function expireForge(): Promise<void> {
+  const slot = await connection.getSlot("confirmed");
+  const commits: Array<{ publicKey: any; account: any }> = await (program.account as any).forgeCommit.all();
+  let refunded = 0;
+  for (const { publicKey, account } of commits) {
+    const age = slot - Number(account.commitSlot);
+    if (age < COMMIT_EXPIRY_SLOTS) continue;
+    try {
+      const ix = await buildForgeExpireIx(publicKey);
+      const sig = await authorityOnly([ix]);
+      await markUsed(`forge:${account.toolMint.toBase58()}:${account.slotType}`).catch(() => {});
+      refunded++;
+      console.log(`[commit-expirer] forge ${account.toolMint.toBase58()}/${account.slotType}: refunded ${account.paidLamports.toString()} lamports + wood/stone to ${account.user.toBase58()}, age=${age}, sig=${sig}`);
+    } catch (e: any) {
+      console.warn(`[commit-expirer] forge ${account.toolMint.toBase58()}/${account.slotType}: пропуск — ${e.message}`);
+    }
+  }
+  console.log(`[commit-expirer] forge: ${commits.length} коммитов, возвращено ${refunded}`);
+}
+
 async function cycle(): Promise<void> {
   console.log(`[commit-expirer] Цикл начат (${new Date().toISOString()})`);
-  try {
-    await expirePacks();
-  } catch (e: any) {
-    console.error("[commit-expirer] ошибка цикла", e.message);
+  for (const step of [expirePacks, expireForge]) {
+    try {
+      await step();
+    } catch (e: any) {
+      console.error(`[commit-expirer] ошибка ${step.name}`, e.message);
+    }
   }
 }
 

@@ -18,11 +18,6 @@ export const DISABLED_MECHANICS = {
     reason:
       "Ресурсы сжигаются до раскрытия, а on-chain пути возврата ещё нет. Программа возвращает FeatureDisabled, API — 503 EXPLORATION_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED.",
   },
-  forge: {
-    title: "Кузница временно недоступна",
-    reason:
-      "forge_attempt_commit возвращает FeatureDisabled до появления канонической стоимости мяса и пути возврата.",
-  },
   reroll: {
     title: "Случайный reroll временно недоступен",
     reason: "Инструмент сжигается до раскрытия, пути возврата нет. Программа возвращает FeatureDisabled.",

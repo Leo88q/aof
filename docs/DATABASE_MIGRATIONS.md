@@ -60,8 +60,8 @@ Backend datastore: Prisma 5 + SQLite (`aof_backend/prisma/schema.prisma`,
 9. Smoke: `GET /health`, `GET /query/config`, one wallet-proofed POST with a
    reused idempotency key (expect the second call to be rejected), one
    unauthenticated `/admin/*` call (expect 401), one disabled route
-   (`POST /forge/commit` -> 503 `FORGE_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED`),
-   and `POST /packs/expire` without admin token (expect 401).
+   (`POST /exploration/start/commit` -> 503 `EXPLORATION_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED`),
+   and `POST /packs/expire` / `POST /forge/expire` without admin token (expect 401).
 10. Compare row counts of money-bearing tables before/after
     (`WalletOperation`, `IdempotencyRecord`, `CommitSecret`).
 

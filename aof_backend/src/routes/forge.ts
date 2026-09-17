@@ -1,39 +1,60 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import { AUTHORITY, TREASURY } from "../config";
 import { program } from "../provider";
 import { authPda, configPda, enchantSlotPda, forgeCommitPda, toolPda, bowCommitPda, skinPda, materialMintsPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { fetchOne } from "../lib/decode";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { requireAdmin } from "../middleware/adminAuth";
 import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
 
 const r = Router();
 
+/** Shared with services/commit-expirer: build forge_attempt_expire for a ForgeCommit PDA. */
+export async function buildForgeExpireIx(forgeCommit: PublicKey) {
+  const [config] = configPda();
+  const [cfg, commit]: any[] = await Promise.all([
+    fetchOne("config", config),
+    (program.account as any).forgeCommit.fetch(forgeCommit),
+  ]);
+  if (!cfg) throw new Error("config account not found");
+  const woodMint = new PublicKey(cfg.woodMint);
+  const stoneMint = new PublicKey(cfg.stoneMint);
+  return (program.methods as any)
+    .forgeAttemptExpire()
+    .accounts({
+      config,
+      forgeCommit,
+      user: commit.user,
+      auth: authPda()[0],
+      woodMint,
+      userWood: getAssociatedTokenAddressSync(woodMint, commit.user),
+      stoneMint,
+      userStone: getAssociatedTokenAddressSync(stoneMint, commit.user),
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .instruction();
+}
+
 r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async (req, res) => {
-  // Forge commits burn resources/fees and have no typed expiry refund path.
-  // Do not accept a paid irreversible state until the recovery worker exists.
-  return res.status(503).json({
-    error: "FORGE_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
-  });
+  // The SOL fee is escrowed on the ForgeCommit PDA and the burned wood/stone
+  // amounts are recorded on it. If reveal never happens, forge_attempt_expire
+  // (commit-expirer worker or anyone) re-mints the resources and refunds the
+  // fee after COMMIT_EXPIRY_SLOTS.
   try {
     const user = pk(req.body.user);
     const toolMint = pk(req.body.toolMint);
     const slotType = Number(req.body.slotType);
     const useProtector = Boolean(req.body.useProtector);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
-    const treasury = pk(req.body.treasury);
-    const [materialMints] = materialMintsPda();
-    const materials: any = await fetchOne("materialMints", materialMints);
-    if (!materials?.meat) {
-      return res.status(503).json({ error: "FORGE_MEAT_MINT_NOT_CONFIGURED" });
-    }
-    const meatMint = new PublicKey(materials.meat);
+    const [config] = configPda();
+    const cfg: any = await fetchOne("config", config);
+    if (!cfg) return res.status(503).json({ error: "CONFIG_NOT_INITIALIZED" });
+    const woodMint = new PublicKey(cfg.woodMint);
+    const stoneMint = new PublicKey(cfg.stoneMint);
     const { hash } = await newCommit(`forge:${toolMint.toBase58()}:${slotType}`);
 
-    const [config] = configPda();
     const [tool] = toolPda(toolMint);
     const [enchantSlot] = enchantSlotPda(toolMint, slotType);
     const [forgeCommit] = forgeCommitPda(toolMint, slotType);
@@ -45,7 +66,6 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
       .accounts({
         config,
         user,
-        treasury,
         tool,
         toolMint,
         enchantSlot,
@@ -54,8 +74,6 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
         userWood,
         stoneMint,
         userStone,
-        meatMint,
-        userMeat: getAssociatedTokenAddressSync(meatMint, user),
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -87,11 +105,32 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("forge_reveal"), requi
         enchantSlot,
         forgeCommit,
         payer: user,
+        treasury: TREASURY,
         slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
       })
       .instruction();
     const sig = await authorityOnly([ix]);
     await markUsed(key);
+    res.json({ sig });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Refund of an expired forge commit: re-mints the burned wood/stone to the
+ * committer and returns the escrowed fee + rent. On-chain the instruction is
+ * permissionless and only succeeds after COMMIT_EXPIRY_SLOTS; admin-only here
+ * because the authority pays the transaction fee (used by commit-expirer).
+ */
+r.post("/expire", requireCircuitOpen, requireAdmin, async (req, res) => {
+  try {
+    const toolMint = pk(req.body.toolMint);
+    const slotType = Number(req.body.slotType);
+    const [forgeCommit] = forgeCommitPda(toolMint, slotType);
+    const ix = await buildForgeExpireIx(forgeCommit);
+    const sig = await authorityOnly([ix]);
+    await markUsed(`forge:${toolMint.toBase58()}:${slotType}`).catch(() => {});
     res.json({ sig });
   } catch (e: any) {
     res.status(400).json({ error: e.message });

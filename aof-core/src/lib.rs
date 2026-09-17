@@ -1327,9 +1327,6 @@ pub struct ForgeAttemptCommit<'info> {
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub user: Signer<'info>,
-    /// CHECK: казна для fee/protector
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump, constraint = tool.owner == user.key() @ AofError::NotToolOwner)]
     pub tool: Box<Account<'info, ToolData>>,
     pub tool_mint: Box<Account<'info, Mint>>,
@@ -1353,10 +1350,6 @@ pub struct ForgeAttemptCommit<'info> {
     pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Box<Account<'info, TokenAccount>>,
-    // [НОВОЕ] MEAT для исследования (передаётся напрямую)
-    pub meat_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
-    pub user_meat: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1373,9 +1366,44 @@ pub struct ForgeAttemptReveal<'info> {
     /// CHECK: получатель ренты — user, делавший commit
     #[account(mut, address = forge_commit.user)]
     pub payer: UncheckedAccount<'info>,
+    /// CHECK: казна получает escrow-fee только здесь, когда исход известен.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
     /// CHECK: sysvar SlotHashes
     #[account(address = SLOT_HASHES_ID)]
     pub slot_hashes: UncheckedAccount<'info>,
+}
+
+/// Возврат просроченного forge-коммита: сожжённые wood/stone минтятся обратно
+/// (auth PDA — mint authority ресурсов), SOL-fee из escrow и рента идут user.
+/// Permissionless; разрешён только после окна SlotHashes, так что не может
+/// сработать параллельно с валидным reveal.
+#[derive(Accounts)]
+pub struct ForgeAttemptExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [FORGE_COMMIT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]],
+        bump
+    )]
+    pub forge_commit: Box<Account<'info, ForgeCommit>>,
+    /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
+    #[account(mut, address = forge_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    /// CHECK: auth PDA — mint authority ресурсов.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == forge_commit.user @ AofError::Unauthorized)]
+    pub user_wood: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == forge_commit.user @ AofError::Unauthorized)]
+    pub user_stone: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
 }
 
 // ----- Лотерея -----
@@ -2636,6 +2664,10 @@ pub mod aof_core {
     }
     pub fn forge_attempt_reveal(ctx: Context<ForgeAttemptReveal>, secret: [u8;32]) -> Result<()> {
         instructions::forge::reveal_handler(ctx, secret)
+    }
+    /// Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent).
+    pub fn forge_attempt_expire(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
+        instructions::forge::expire_handler(ctx)
     }
 
     // --- Лотерея ---
