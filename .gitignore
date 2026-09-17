@@ -92,3 +92,4 @@ solana/
 test-ledger/
 frontend.zip
 frontend.zip.*
+ci-local-logs/
