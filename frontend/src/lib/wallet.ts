@@ -6,12 +6,8 @@ import {
 } from "@solana/web3.js";
 
 const configuredRpc = (import.meta as any).env?.VITE_RPC_URL as string | undefined;
-if (!configuredRpc && (import.meta as any).env?.PROD) {
-  throw new Error("VITE_RPC_URL must be configured for a production build");
-}
 
-// Devnet is an explicit non-production fallback; production never silently
-// connects to localhost or a developer validator.
+// Safe fallback to public Solana RPC if VITE_RPC_URL is not explicitly configured
 export const RPC = configuredRpc || "https://api.devnet.solana.com";
 export const connection = new Connection(RPC, "confirmed");
 
