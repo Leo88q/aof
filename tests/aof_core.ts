@@ -407,7 +407,11 @@ describe("aof-core: security & core flows", () => {
     const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(
       (await provider.connection.getAccountInfo(packCommit))!.data.length);
     expect(await provider.connection.getBalance(packCommit)).to.equal(rentExempt + PRICE);
-    expect(await provider.connection.getBalance(authority)).to.equal(treasuryBefore);
+    // treasury == authority == provider wallet here, and the provider pays the
+    // tx fee, so the treasury may only go DOWN by fees — never up by PRICE.
+    const treasuryAfterCommit = await provider.connection.getBalance(authority);
+    expect(treasuryAfterCommit).to.be.at.most(treasuryBefore);
+    expect(treasuryBefore - treasuryAfterCommit).to.be.below(PRICE);
 
     // Inside the reveal window the refund path must be closed (CommitNotExpired).
     await expectError(program.methods.packOpenExpire().accounts({
@@ -418,6 +422,7 @@ describe("aof-core: security & core flows", () => {
     await sleep(1500); // let the commit slot land in SlotHashes
     const userToken = getAssociatedTokenAddressSync(mint, user.publicKey);
     const userBefore = await provider.connection.getBalance(user.publicKey);
+    const treasuryBeforeReveal = await provider.connection.getBalance(authority);
     await program.methods.packOpenReveal(Array.from(secret)).accounts({
       config: configPda, authority, packCommit, user: user.publicKey, treasury: authority,
       packConfig, mint, userToken, toolData: toolPda(mint), auth: authPda,
@@ -428,6 +433,11 @@ describe("aof-core: security & core flows", () => {
     // PRICE minus tx fee and tool_data/ATA rent it just paid; assert the escrow
     // ended up with the user (rent back) and the PDA is empty instead.
     expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
+    // Treasury received PRICE minus what it spent as fee payer in the same tx
+    // (tx fee + rent for tool_data and the user's ATA, well under 0.01 SOL).
+    const treasuryDelta = (await provider.connection.getBalance(authority)) - treasuryBeforeReveal;
+    expect(treasuryDelta).to.be.above(PRICE - 10_000_000);
+    expect(treasuryDelta).to.be.at.most(PRICE);
     const tool = await program.account.toolData.fetch(toolPda(mint));
     expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
   });
@@ -465,7 +475,11 @@ describe("aof-core: security & core flows", () => {
     const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(
       (await provider.connection.getAccountInfo(forgeCommit))!.data.length);
     expect(await provider.connection.getBalance(forgeCommit)).to.equal(rentExempt + FEE);
-    expect(await provider.connection.getBalance(authority)).to.equal(treasuryBefore);
+    // Same caveat as in the pack test: the provider wallet (== treasury) pays
+    // tx fees, so it may only decrease slightly — it must not receive FEE.
+    const treasuryAfterCommit = await provider.connection.getBalance(authority);
+    expect(treasuryAfterCommit).to.be.at.most(treasuryBefore);
+    expect(treasuryBefore - treasuryAfterCommit).to.be.below(FEE);
 
     // Refund path is closed while a reveal is still possible.
     await expectError(program.methods.forgeAttemptExpire().accounts({
@@ -475,12 +489,17 @@ describe("aof-core: security & core flows", () => {
 
     await sleep(1500);
     const userBefore = await provider.connection.getBalance(user.publicKey);
+    const treasuryBeforeReveal = await provider.connection.getBalance(authority);
     await program.methods.forgeAttemptReveal(Array.from(secret)).accounts({
       config: configPda, authority, enchantSlot, forgeCommit, payer: user.publicKey, treasury: authority,
       slotHashes: SLOT_HASHES }).rpc();
     expect(await provider.connection.getAccountInfo(forgeCommit)).to.equal(null);
     // Rent back to the user; escrow went to the treasury (== authority == fee payer here).
     expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
+    // Treasury got FEE minus the reveal tx fee it paid (no rent is created here).
+    const treasuryDelta = (await provider.connection.getBalance(authority)) - treasuryBeforeReveal;
+    expect(treasuryDelta).to.be.above(FEE - 100_000);
+    expect(treasuryDelta).to.be.at.most(FEE);
     const slot = await program.account.enchantSlot.fetch(enchantSlot);
     expect(slot.level).to.be.oneOf([0, 1]); // level-0 attempt: success -> 1, any failure -> 0
   });
