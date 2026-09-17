@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "types": ["node"],
     "moduleResolution": "node",
     "declaration": false,
     "sourceMap": false
