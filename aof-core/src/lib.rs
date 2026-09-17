@@ -1807,7 +1807,8 @@ pub struct PlantSeeds<'info> {
         bump
     )]
     pub farm_tile: Box<Account<'info, FarmTile>>,
-    #[account(address = material_mints.seeds)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.seeds)]
     pub seeds_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
@@ -1891,9 +1892,11 @@ pub struct StartMilling<'info> {
         bump
     )]
     pub mill_state: Box<Account<'info, MillState>>,
-    #[account(address = material_mints.wheat)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.wheat)]
     pub wheat_mint: Box<Account<'info, Mint>>,
-    #[account(address = config.stone_mint)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wheat.mint == wheat_mint.key(), constraint = user_wheat.owner == user.key())]
     pub user_wheat: Box<Account<'info, TokenAccount>>,
@@ -1954,13 +1957,17 @@ pub struct StartBaking<'info> {
         bump
     )]
     pub oven_state: Box<Account<'info, OvenState>>,
-    #[account(address = material_mints.flour)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.flour)]
     pub flour_mint: Box<Account<'info, Mint>>,
-    #[account(address = material_mints.water)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.water)]
     pub water_mint: Box<Account<'info, Mint>>,
-    #[account(address = config.wood_mint)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(address = material_mints.coal)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.coal)]
     pub coal_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_flour.mint == flour_mint.key(), constraint = user_flour.owner == user.key())]
     pub user_flour: Box<Account<'info, TokenAccount>>,

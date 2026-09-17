@@ -5882,7 +5882,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "seedsMint"
+          "name": "seedsMint",
+          "writable": true
         },
         {
           "name": "userSeeds",
@@ -7862,16 +7863,20 @@ export type AofCore = {
           }
         },
         {
-          "name": "flourMint"
+          "name": "flourMint",
+          "writable": true
         },
         {
-          "name": "waterMint"
+          "name": "waterMint",
+          "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
-          "name": "coalMint"
+          "name": "coalMint",
+          "writable": true
         },
         {
           "name": "userFlour",
@@ -8231,10 +8236,12 @@ export type AofCore = {
           }
         },
         {
-          "name": "wheatMint"
+          "name": "wheatMint",
+          "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userWheat",

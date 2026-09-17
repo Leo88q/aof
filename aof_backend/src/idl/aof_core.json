@@ -5876,7 +5876,8 @@
           "writable": true
         },
         {
-          "name": "seeds_mint"
+          "name": "seeds_mint",
+          "writable": true
         },
         {
           "name": "user_seeds",
@@ -7856,16 +7857,20 @@
           }
         },
         {
-          "name": "flour_mint"
+          "name": "flour_mint",
+          "writable": true
         },
         {
-          "name": "water_mint"
+          "name": "water_mint",
+          "writable": true
         },
         {
-          "name": "wood_mint"
+          "name": "wood_mint",
+          "writable": true
         },
         {
-          "name": "coal_mint"
+          "name": "coal_mint",
+          "writable": true
         },
         {
           "name": "user_flour",
@@ -8230,10 +8235,12 @@
           }
         },
         {
-          "name": "wheat_mint"
+          "name": "wheat_mint",
+          "writable": true
         },
         {
-          "name": "stone_mint"
+          "name": "stone_mint",
+          "writable": true
         },
         {
           "name": "user_wheat",
