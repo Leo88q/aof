@@ -1025,7 +1025,8 @@
           }
         },
         {
-          "name": "wood_mint"
+          "name": "wood_mint",
+          "writable": true
         },
         {
           "name": "user_wood",
@@ -1172,7 +1173,8 @@
           }
         },
         {
-          "name": "bread_mint"
+          "name": "bread_mint",
+          "writable": true
         },
         {
           "name": "user_bread",
@@ -1294,7 +1296,8 @@
           }
         },
         {
-          "name": "flour_mint"
+          "name": "flour_mint",
+          "writable": true
         },
         {
           "name": "user_flour",
@@ -1582,7 +1585,8 @@
           }
         },
         {
-          "name": "water_mint"
+          "name": "water_mint",
+          "writable": true
         },
         {
           "name": "user_water",
@@ -2955,14 +2959,16 @@
           "writable": true
         },
         {
-          "name": "wood_mint"
+          "name": "wood_mint",
+          "writable": true
         },
         {
           "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stone_mint"
+          "name": "stone_mint",
+          "writable": true
         },
         {
           "name": "user_stone",
@@ -3320,7 +3326,8 @@
           }
         },
         {
-          "name": "wheat_mint"
+          "name": "wheat_mint",
+          "writable": true
         },
         {
           "name": "user_wheat",
@@ -6202,21 +6209,24 @@
           }
         },
         {
-          "name": "wood_mint"
+          "name": "wood_mint",
+          "writable": true
         },
         {
           "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stone_mint"
+          "name": "stone_mint",
+          "writable": true
         },
         {
           "name": "user_stone",
           "writable": true
         },
         {
-          "name": "food_mint"
+          "name": "food_mint",
+          "writable": true
         },
         {
           "name": "user_food",
@@ -8063,28 +8073,32 @@
           }
         },
         {
-          "name": "food_mint"
+          "name": "food_mint",
+          "writable": true
         },
         {
           "name": "user_food",
           "writable": true
         },
         {
-          "name": "wood_mint"
+          "name": "wood_mint",
+          "writable": true
         },
         {
           "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stone_mint"
+          "name": "stone_mint",
+          "writable": true
         },
         {
           "name": "user_stone",
           "writable": true
         },
         {
-          "name": "meat_mint"
+          "name": "meat_mint",
+          "writable": true
         },
         {
           "name": "user_meat",
@@ -8623,21 +8637,24 @@
           }
         },
         {
-          "name": "wood_mint"
+          "name": "wood_mint",
+          "writable": true
         },
         {
           "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stone_mint"
+          "name": "stone_mint",
+          "writable": true
         },
         {
           "name": "user_stone",
           "writable": true
         },
         {
-          "name": "food_mint"
+          "name": "food_mint",
+          "writable": true
         },
         {
           "name": "user_food",

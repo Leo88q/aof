@@ -1123,20 +1123,24 @@ pub struct StartExplorationCommit<'info> {
         seeds = [EXPLORATION_COMMIT_SEED, tool_mint.key().as_ref()], bump
     )]
     pub exploration_commit: Box<Account<'info, ExplorationCommit>>,
-    #[account(address = config.food_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.food_mint)]
     pub food_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
     pub user_food: Box<Account<'info, TokenAccount>>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(address = config.stone_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ] MEAT для исследования — только официальный MaterialMints mint.
-    #[account(address = material_mints.meat)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.meat)]
     pub meat_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
     pub user_meat: Box<Account<'info, TokenAccount>>,
@@ -1186,15 +1190,18 @@ pub struct UpgradeExplorationTier<'info> {
     pub user: Signer<'info>,
     #[account(mut, seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump, constraint = exploration_state.owner == user.key() @ AofError::Unauthorized)]
     pub exploration_state: Account<'info, ExplorationState>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Account<'info, TokenAccount>,
-    #[account(address = config.food_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.food_mint)]
     pub food_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
     pub user_food: Account<'info, TokenAccount>,
@@ -1235,15 +1242,18 @@ pub struct ReferralUpgradeCtx<'info> {
     pub user: Signer<'info>,
     #[account(mut, seeds = [REFERRAL_LINK_SEED, user.key().as_ref()], bump, constraint = referral_link.referred == user.key() @ AofError::Unauthorized)]
     pub referral_link: Account<'info, ReferralLink>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Account<'info, TokenAccount>,
-    #[account(address = config.food_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.food_mint)]
     pub food_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
     pub user_food: Account<'info, TokenAccount>,
@@ -1309,11 +1319,13 @@ pub struct ForgeAttemptCommit<'info> {
         seeds = [FORGE_COMMIT_SEED, tool_mint.key().as_ref(), &[slot_type]], bump
     )]
     pub forge_commit: Box<Account<'info, ForgeCommit>>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(address = config.stone_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Box<Account<'info, TokenAccount>>,
@@ -1855,7 +1867,8 @@ pub struct HarvestWheat<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.wheat)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.wheat)]
     pub wheat_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
@@ -1925,7 +1938,8 @@ pub struct CollectFlour<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.flour)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.flour)]
     pub flour_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_flour.mint == flour_mint.key(), constraint = user_flour.owner == user.key())]
     pub user_flour: Box<Account<'info, TokenAccount>>,
@@ -2000,7 +2014,8 @@ pub struct CollectBread<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.bread)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.bread)]
     pub bread_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_bread.mint == bread_mint.key(), constraint = user_bread.owner == user.key())]
     pub user_bread: Box<Account<'info, TokenAccount>>,
@@ -2045,7 +2060,8 @@ pub struct CollectWellWater<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.water)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.water)]
     pub water_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
     pub user_water: Box<Account<'info, TokenAccount>>,
@@ -2312,7 +2328,8 @@ pub struct ClaimSeasonReward<'info> {
     pub season: Account<'info, Season>,
     #[account(mut, seeds = [SEASON_PASS_SEED, season_pass.owner.as_ref(), &season.season_id.to_le_bytes()], bump)]
     pub season_pass: Account<'info, SeasonPass>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == season_pass.owner)]
     pub user_wood: Account<'info, TokenAccount>,

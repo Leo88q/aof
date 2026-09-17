@@ -35,6 +35,22 @@ describe("aof-core: security & core flows", () => {
   let setupPayer: Keypair;
   let foodMint: PublicKey, woodMint: PublicKey, stoneMint: PublicKey, potatoMint: PublicKey;
   let seedsMint: PublicKey, wheatMint: PublicKey;
+  let flourMint: PublicKey, breadMint: PublicKey, waterMint: PublicKey, coalMint: PublicKey;
+  const UNIT = new BN(1_000_000_000); // RESOURCE_UNIT (9 decimals)
+
+  // Admin faucet for resource tokens: mint_resource keeps a treasury fee, so
+  // callers ask for `amount` and get amount - fee. Returns the user's ATA.
+  async function giveResource(kind: string, mint: PublicKey, user: PublicKey, units: number): Promise<PublicKey> {
+    const ata = await ensureAta(mint, user);
+    const treasuryAta = await ensureAta(mint, authority);
+    await program.methods.mintResource({ [kind]: {} }, UNIT.muln(units)).accounts({
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint,
+      tokenAccount: ata, treasuryToken: treasuryAta, player: playerPda(user),
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).rpc();
+    return ata;
+  }
+  const balance = async (ata: PublicKey) => new BN((await provider.connection.getTokenAccountBalance(ata)).value.amount);
 
   const airdrop = async (kp: Keypair, sol = 5) =>
     provider.connection.confirmTransaction(
@@ -113,6 +129,10 @@ describe("aof-core: security & core flows", () => {
     }
     seedsMint = materialArgs[0];
     wheatMint = materialArgs[1];
+    flourMint = materialArgs[2];
+    breadMint = materialArgs[3];
+    waterMint = materialArgs[4];
+    coalMint = materialArgs[5];
     try {
       await (program.methods as any).initMaterialMints(...materialArgs)
         .accounts({ config: configPda, authority, materialMints: materialMintsPda, systemProgram: SystemProgram.programId }).rpc();
@@ -403,5 +423,82 @@ describe("aof-core: security & core flows", () => {
     }).signers([user]).rpc(), "FeatureDisabled");
     const td = await program.account.toolData.fetch(toolPda(burnMint));
     expect(td.owner.toString()).to.equal(user.publicKey.toString());
+  });
+
+  it("start_milling: burns wheat+stone from writable mints, arms the mill, blocks re-start and early collect", async () => {
+    // Regression for the read-only-mint bug: StartMilling.wheat_mint /
+    // stone_mint were declared without `mut`, so token::burn failed with
+    // "writable privilege escalated" and milling never worked on-chain.
+    const user = Keypair.generate(); await airdrop(user);
+    const userWheat = await giveResource("wheat", wheatMint, user.publicKey, 100);
+    const userStone = await giveResource("stone", stoneMint, user.publicKey, 100);
+    const wheatBefore = await balance(userWheat);
+    const stoneBefore = await balance(userStone);
+    const supplyBefore = new BN((await provider.connection.getTokenSupply(wheatMint)).value.amount);
+    const millState = pda([B("mill_state"), user.publicKey.toBuffer()]);
+    const acc = {
+      config: configPda, user: user.publicKey, materialMints: materialMintsPda,
+      energyAccount: pda([B("energy_account"), user.publicKey.toBuffer()]), millState,
+      wheatMint, stoneMint, userWheat, userStone,
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    };
+    await program.methods.startMilling(1).accounts(acc).signers([user]).rpc();
+    // batch 1 recipe: 6 wheat + 1 stone (start_milling.rs MILL_*_COST[0])
+    expect(wheatBefore.sub(await balance(userWheat)).toString()).to.equal(UNIT.muln(6).toString());
+    expect(stoneBefore.sub(await balance(userStone)).toString()).to.equal(UNIT.muln(1).toString());
+    const supplyAfter = new BN((await provider.connection.getTokenSupply(wheatMint)).value.amount);
+    expect(supplyBefore.sub(supplyAfter).toString()).to.equal(UNIT.muln(6).toString());
+    const mill = await program.account.millState.fetch(millState);
+    expect(mill.owner.toString()).to.equal(user.publicKey.toString());
+    expect(mill.inProgress).to.equal(true);
+    expect(mill.outputFlour.toString()).to.equal(UNIT.muln(3).toString());
+    // A second batch while one is running is rejected and burns nothing.
+    await expectError(program.methods.startMilling(2).accounts(acc).signers([user]).rpc(), "MillInProgress");
+    expect(wheatBefore.sub(await balance(userWheat)).toString()).to.equal(UNIT.muln(6).toString());
+    // Collecting before ready_at (1h) is rejected.
+    const userFlour = await ensureAta(flourMint, user.publicKey);
+    await expectError(program.methods.collectFlour().accounts({
+      config: configPda, user: user.publicKey, materialMints: materialMintsPda, millState,
+      auth: authPda, flourMint, userFlour, tokenProgram: TOKEN_PROGRAM_ID,
+    }).signers([user]).rpc(), "MillNotReady");
+    expect((await balance(userFlour)).toString()).to.equal("0");
+  });
+
+  it("start_baking: burns flour+water+fuel from writable mints for both fuel kinds, blocks early collect", async () => {
+    // Same regression class as milling: flour/water/wood/coal mints in
+    // StartBaking lacked `mut`. Covers fuel_kind 0 (wood) and 1 (coal) with
+    // two separate users because an oven can only run one batch at a time.
+    for (const fuelKind of [0, 1] as const) {
+      const user = Keypair.generate(); await airdrop(user);
+      const userFlour = await giveResource("flour", flourMint, user.publicKey, 100);
+      const userWater = await giveResource("water", waterMint, user.publicKey, 100);
+      const userWood = await giveResource("wood", woodMint, user.publicKey, 100);
+      const userCoal = await giveResource("coal", coalMint, user.publicKey, 100);
+      const before = { flour: await balance(userFlour), water: await balance(userWater), wood: await balance(userWood), coal: await balance(userCoal) };
+      const ovenState = pda([B("oven_state"), user.publicKey.toBuffer()]);
+      const acc = {
+        config: configPda, user: user.publicKey, materialMints: materialMintsPda,
+        energyAccount: pda([B("energy_account"), user.publicKey.toBuffer()]), ovenState,
+        flourMint, waterMint, woodMint, coalMint, userFlour, userWater, userWood, userCoal,
+        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      };
+      await program.methods.startBaking(1, fuelKind).accounts(acc).signers([user]).rpc();
+      // batch 1 recipe: 4 flour + 3 water + (5 wood | 2 coal) (start_baking.rs OVEN_*_COST[0])
+      expect(before.flour.sub(await balance(userFlour)).toString()).to.equal(UNIT.muln(4).toString(), `flour fuel=${fuelKind}`);
+      expect(before.water.sub(await balance(userWater)).toString()).to.equal(UNIT.muln(3).toString(), `water fuel=${fuelKind}`);
+      expect(before.wood.sub(await balance(userWood)).toString()).to.equal(UNIT.muln(fuelKind === 0 ? 5 : 0).toString(), `wood fuel=${fuelKind}`);
+      expect(before.coal.sub(await balance(userCoal)).toString()).to.equal(UNIT.muln(fuelKind === 1 ? 2 : 0).toString(), `coal fuel=${fuelKind}`);
+      const oven = await program.account.ovenState.fetch(ovenState);
+      expect(oven.inProgress).to.equal(true);
+      expect(oven.fuelKind).to.equal(fuelKind);
+      expect(oven.outputBread.toString()).to.equal(UNIT.muln(fuelKind === 0 ? 2 : 3).toString());
+      await expectError(program.methods.startBaking(1, fuelKind).accounts(acc).signers([user]).rpc(), "OvenInProgress");
+      const userBread = await ensureAta(breadMint, user.publicKey);
+      await expectError(program.methods.collectBread().accounts({
+        config: configPda, user: user.publicKey, materialMints: materialMintsPda, ovenState,
+        auth: authPda, breadMint: breadMint, userBread, tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([user]).rpc(), "OvenNotReady");
+      expect((await balance(userBread)).toString()).to.equal("0");
+    }
   });
 });

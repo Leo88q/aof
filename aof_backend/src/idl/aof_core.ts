@@ -1031,7 +1031,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
@@ -1178,7 +1179,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "breadMint"
+          "name": "breadMint",
+          "writable": true
         },
         {
           "name": "userBread",
@@ -1300,7 +1302,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "flourMint"
+          "name": "flourMint",
+          "writable": true
         },
         {
           "name": "userFlour",
@@ -1588,7 +1591,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "waterMint"
+          "name": "waterMint",
+          "writable": true
         },
         {
           "name": "userWater",
@@ -2961,14 +2965,16 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
@@ -3326,7 +3332,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "wheatMint"
+          "name": "wheatMint",
+          "writable": true
         },
         {
           "name": "userWheat",
@@ -6208,21 +6215,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
           "writable": true
         },
         {
-          "name": "foodMint"
+          "name": "foodMint",
+          "writable": true
         },
         {
           "name": "userFood",
@@ -8064,28 +8074,32 @@ export type AofCore = {
           }
         },
         {
-          "name": "foodMint"
+          "name": "foodMint",
+          "writable": true
         },
         {
           "name": "userFood",
           "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
           "writable": true
         },
         {
-          "name": "meatMint"
+          "name": "meatMint",
+          "writable": true
         },
         {
           "name": "userMeat",
@@ -8624,21 +8638,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
           "writable": true
         },
         {
-          "name": "foodMint"
+          "name": "foodMint",
+          "writable": true
         },
         {
           "name": "userFood",
