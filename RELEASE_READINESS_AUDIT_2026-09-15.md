@@ -40,7 +40,7 @@ Production / Cloudflare **не трогались**.
 | `48aa7ce` tsconfig | `types: ["node"]` / `["vite/client"]` — битые `@types/*` в родительских `node_modules` на машине разработчика ломали `tsc` (TS2688); CI не затрагивало. |
 | `e2964cd` aof-core | **Реальный on-chain баг, найденный первым запуском `anchor test` на машине владельца**: `PlantSeeds.seeds_mint` без `mut` при `token::burn` → «writable privilege escalated». Аудит burn-CPI нашёл то же в `StartMilling` (wheat, stone) и `StartBaking` (flour, water, wood, coal). Семь мнтов получили `mut` (address-constraint сохранён); IDL json/ts синхронизированы, drift 0. |
 | `16aeba1` aof-core | Системный аудит всех `mint_to`/`burn` CPI (в т.ч. через tuple-биндинги): **ещё 17 read-only mint'ов** в `harvest_wheat`, `collect_flour/bread/well_water`, `start_exploration_commit` (4), `upgrade_exploration_tier` (3), `forge_attempt_commit` (2), `referral_upgrade` (3), `claim_season_reward`, `use_flask`. Все эти инструкции были неработоспособны on-chain. Добавлен только `mut`. IDL синхронизированы (drift 0). Новые тесты `start_milling` и `start_baking` (оба вида топлива) — точные списания, supply, state, guard'ы `MillInProgress`/`OvenInProgress`/`MillNotReady`/`OvenNotReady`. |
-| `<этот коммит>` scripts/ci | `scripts/check-mint-writable.py` — статический gate «Mint в mint_to/burn обязан быть `mut`» (50 полей проверяется, negative test → exit 1); подключён blocking-шагом в job `programs` перед IDL drift gate. |
+| `86221e2` scripts/ci | `scripts/check-mint-writable.py` — статический gate «Mint в mint_to/burn обязан быть `mut`» (50 полей проверяется, negative test → exit 1); подключён blocking-шагом в job `programs` перед IDL drift gate. |
 
 ## 3. Компоненты
 
