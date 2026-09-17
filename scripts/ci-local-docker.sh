@@ -45,6 +45,8 @@ IMAGE="ubuntu:24.04"
 TTY_FLAGS="-t"; [ "$MODE" = "--shell" ] && TTY_FLAGS="-it"
 docker run --rm $TTY_FLAGS \
   --platform linux/amd64 \
+  --ulimit nofile=1000000:1000000 \
+  --shm-size 2g \
   -v "$ROOT:/src:ro" \
   -v "$LOGDIR:/logs" \
   -v aof-ci-cargo:/root/.cargo \
@@ -205,7 +207,33 @@ for src in sorted(pathlib.Path("aof_backend/src/idl").glob("*.json")):
 sys.exit(0 if n == 6 else 1)
 PY
 
+# solana-test-validator inside a container: it needs a writable ledger dir, a
+# large open-files limit, and on Rosetta/QEMU it starts slowly. Smoke-test it
+# first so a validator problem is reported as such (with its own log), and
+# give anchor a longer startup_wait than the default 5000 ms.
+step "Validator smoke test (solana-test-validator starts and answers RPC)" bash -c '
+  ulimit -n 1000000 2>/dev/null || ulimit -n 65536 || true
+  rm -rf /tmp/smoke-ledger
+  solana-test-validator --ledger /tmp/smoke-ledger --reset --quiet --bind-address 127.0.0.1 --rpc-port 8899 > /logs/validator-smoke.log 2>&1 &
+  pid=$!
+  ok=0
+  for i in $(seq 1 60); do
+    if solana cluster-version --url http://127.0.0.1:8899 >/dev/null 2>&1; then ok=1; break; fi
+    if ! kill -0 $pid 2>/dev/null; then break; fi
+    sleep 2
+  done
+  kill $pid 2>/dev/null; wait $pid 2>/dev/null
+  cp -f /tmp/smoke-ledger/validator.log /logs/validator-smoke-ledger.log 2>/dev/null || true
+  if [ $ok -eq 1 ]; then echo "validator answered RPC after ~$((i*2))s"; exit 0; fi
+  echo "::error::solana-test-validator did not become ready; last lines of its output:"
+  tail -40 /logs/validator-smoke.log; tail -40 /logs/validator-smoke-ledger.log 2>/dev/null
+  exit 1' || exit 1
+
 gate "Anchor test (local validator)" bash -c '
+  ulimit -n 1000000 2>/dev/null || ulimit -n 65536 || true
+  # 120 s instead of the 5 s default: the validator is slow under emulation.
+  grep -q "startup_wait" Anchor.toml || sed -i "s/^upgradeable = true/upgradeable = true\nstartup_wait = 120000/" Anchor.toml
+  grep -n "startup_wait" Anchor.toml
   npm ci --no-audit --no-fund 2>&1 | tail -2
   : > /logs/anchor-test-full.log
   rc=0
@@ -215,6 +243,8 @@ gate "Anchor test (local validator)" bash -c '
   if grep -Eq "^[[:space:]]*[1-9][0-9]* failing" /logs/anchor-test-full.log; then echo "::error::mocha reported failing tests"; rc=1; fi
   if ! grep -Eq "^[[:space:]]*[1-9][0-9]* passing" /logs/anchor-test-full.log; then echo "::error::no passing tests reported - suite did not run"; rc=1; fi
   grep -E "passing|failing" /logs/anchor-test-full.log
+  cp -f .anchor/test-ledger/test-ledger-log.txt /logs/test-ledger-log.txt 2>/dev/null || true
+  cp -f .anchor/test-ledger/validator.log /logs/test-ledger-validator.log 2>/dev/null || true
   exit $rc'
 
 # ---------- backend ----------
