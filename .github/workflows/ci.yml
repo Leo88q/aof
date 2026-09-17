@@ -642,6 +642,16 @@ jobs:
           echo "--- artifact contents ---"
           find target -maxdepth 2 \( -name '*.so' -o -name '*.json' -o -name '*.ts' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort || true
 
+      - name: Mint-writable gate (mint_to/burn CPIs need a `mut` Mint)
+        # Blocking. A read-only Mint passed to token::mint_to / token::burn
+        # compiles but fails on a real validator with "writable privilege
+        # escalated"; the first local anchor test run found 24 such fields
+        # across the farm/exploration/forge/referral/season flows.
+        run: |
+          set -uo pipefail
+          python3 scripts/check-mint-writable.py 2>&1 | tee -a /tmp/anchor-build.log
+          exit "${PIPESTATUS[0]}"
+
       - name: IDL drift gate (source account contexts vs committed IDL)
         # Blocking. The IDL builder is upstream-blocked, so the backend, the
         # frontend and the Anchor test suite all run against the committed

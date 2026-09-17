@@ -38,7 +38,9 @@ Production / Cloudflare **не трогались**.
 | `97da5b2` fix(backend) | **Реальный баг, найденный новым integration-тестом на CI**: stale-reclaim CAS в `idempotency.ts` матчился только по `status`; 16 из 16 конкурентных retry захватывали одну stale-операцию. Добавлен `createdAt` в предикат `updateMany`. |
 | `8c05471` ci/idl-gate | `--ids-from-git $GITHUB_SHA`: CI подменяет `declare_id!` на throwaway-ключи, ids сравниваются с закоммиченной ревизией. |
 | `48aa7ce` tsconfig | `types: ["node"]` / `["vite/client"]` — битые `@types/*` в родительских `node_modules` на машине разработчика ломали `tsc` (TS2688); CI не затрагивало. |
-| `e2964cd` aof-core | **Реальный on-chain баг, найденный первым запуском `anchor test` на машине владельца**: `PlantSeeds.seeds_mint` без `mut` при `token::burn` → «writable privilege escalated». Аудит всех burn-CPI нашёл то же в `StartMilling` (wheat, stone) и `StartBaking` (flour, water, wood, coal) — помол и выпечка не могли пройти on-chain. Семь мнтов получили `mut` (address-constraint сохранён); IDL json/ts синхронизированы, drift 0. |
+| `e2964cd` aof-core | **Реальный on-chain баг, найденный первым запуском `anchor test` на машине владельца**: `PlantSeeds.seeds_mint` без `mut` при `token::burn` → «writable privilege escalated». Аудит burn-CPI нашёл то же в `StartMilling` (wheat, stone) и `StartBaking` (flour, water, wood, coal). Семь мнтов получили `mut` (address-constraint сохранён); IDL json/ts синхронизированы, drift 0. |
+| `16aeba1` aof-core | Системный аудит всех `mint_to`/`burn` CPI (в т.ч. через tuple-биндинги): **ещё 17 read-only mint'ов** в `harvest_wheat`, `collect_flour/bread/well_water`, `start_exploration_commit` (4), `upgrade_exploration_tier` (3), `forge_attempt_commit` (2), `referral_upgrade` (3), `claim_season_reward`, `use_flask`. Все эти инструкции были неработоспособны on-chain. Добавлен только `mut`. IDL синхронизированы (drift 0). Новые тесты `start_milling` и `start_baking` (оба вида топлива) — точные списания, supply, state, guard'ы `MillInProgress`/`OvenInProgress`/`MillNotReady`/`OvenNotReady`. |
+| `<этот коммит>` scripts/ci | `scripts/check-mint-writable.py` — статический gate «Mint в mint_to/burn обязан быть `mut`» (50 полей проверяется, negative test → exit 1); подключён blocking-шагом в job `programs` перед IDL drift gate. |
 
 ## 3. Компоненты
 
@@ -113,8 +115,8 @@ RELEASE_READINESS_AUDIT_2026-09-15.md             | этот файл
 
 ## 6. Оставшиеся риски
 
-1. **`anchor test` подтверждён только локально, не в CI.** На машине владельца (macOS, локальный валидатор) на `f7dd144` (= код `e2964cd`): **11 passing / 0 failing, exit 0**. Предыдущий прогон на `48aa7ce` дал 10/1 (`plant_seeds`, read-only mint) — исправлено. GitHub Actions остаётся заблокирован биллингом («recent account payments have failed…», run 35166693775), поэтому нет независимого прогона на чистом раннере с Node 20 / зафиксированными версиями toolchain.
-1b. **Механики помола и выпечки (`start_milling`, `start_baking`) не покрыты тестами** — их баг с read-only mint найден только статическим аудитом burn-CPI. До добавления интеграционных тестов их работоспособность on-chain не подтверждена.
+1. **`anchor test` подтверждён только локально, не в CI.** На машине владельца (macOS, локальный валидатор) на `16aeba1`: **13 passing / 0 failing, exit 0** (история: `48aa7ce` — 10/1, `f7dd144` — 11/11). GitHub Actions остаётся заблокирован биллингом («recent account payments have failed…», run 35166693775), поэтому нет независимого прогона на чистом раннере с Node 20 / зафиксированными версиями toolchain.
+1b. **24 инструкции aof-core получили изменение account-flags (read-only → writable mint).** Это breaking change для любого клиента со старым IDL: backend/frontend в репо обновлены, но задеплоенная программа на devnet/mainnet (если есть) и любые внешние интеграции требуют скоординированного апгрейда программы + клиентов. Интеграционными тестами покрыты `plant_seeds`, `harvest_wheat` (частично), `start_milling`, `start_baking`; `collect_*`, exploration, forge, referral, season, use_flask — только статический gate.
 2. **Operational data в истории Git** (`aof.db` с адресами кошельков/IP). Untrack не удаляет из истории; purge = history rewrite + force-push, что запрещено этой сессии.
 3. **IDL генерация upstream-blocked**: anchor-lang 0.30.1 + proc-macro2 ≥1.0.95. Все клиенты живут на закоммиченных IDL; drift-gate парсит Rust регулярками — покрывает имена/порядок/флаги/число аргументов, но **не типы аргументов** и не изменения `#[account] struct` (layouts).
 4. **Ключи программ отсутствуют в репозитории** → CI деплоит на throwaway-адреса. Тесты валидны для логики, но не для «те же байты по каноническому адресу».
@@ -127,7 +129,8 @@ RELEASE_READINESS_AUDIT_2026-09-15.md             | этот файл
 
 ## 7. Staging checklist
 
-- [x] Локально (владелец): `anchor test` на `f7dd144` — **11 passing, 0 failing, exit 0**.
+- [x] Локально (владелец): `anchor test` на `16aeba1` — **13 passing, 0 failing, exit 0** (вкл. новые milling/baking тесты).
+- [x] Локально (владелец): backend `prisma:migrate:check` + 4 теста exit 0; frontend `npm run build` exit 0.
 - [ ] Восстановить биллинг GitHub Actions; CI на HEAD должен показать 4 зелёных job'а (независимое подтверждение на чистом раннере).
 - [ ] Скачать artifact `anchor-target` и заархивировать `.so` текущего релиза (для rollback).
 - [ ] Devnet: `anchor test --skip-build --provider.cluster devnet` с реальными keypair'ами (вне CI), либо `solana program deploy` на devnet + прогон `tests/aof_core.ts` с `ANCHOR_PROVIDER_URL`.
@@ -186,7 +189,8 @@ Frontend (`frontend/.env.example`): `VITE_API_URL`, `VITE_DEV_BACKEND_URL`, `VIT
 
 **Подтверждено на машине владельца (macOS, Node 26, Anchor/Agave установлены; коммит `48aa7ce`):**
 - `anchor build` + `cargo test` для 6 программ — успешно (только `unexpected cfg` / `ambiguous_glob_reexports` warnings).
-- `anchor test` (local validator) на `48aa7ce`: 10 passing / 1 failing (`plant_seeds`, read-only mint) → исправлено `e2964cd`; **повтор на `f7dd144`: 11 passing / 0 failing, exit 0** (58s).
+- `anchor test` (local validator): `48aa7ce` — 10/1 (`plant_seeds`, read-only mint) → `f7dd144` — 11/11 → **`16aeba1` — 13 passing / 0 failing, exit 0** (1m), включая новые `start_milling`/`start_baking`.
+- Frontend `npm run build` на `48aa7ce`: exit 0 (предупреждение Vite о chunk > 500 kB — не ошибка).
 - Backend: `prisma:migrate:check` «No difference detected», 4 self/integration-теста exit 0 (в т.ч. Prisma CAS). `npm run build` падал с TS2688 из-за окружения (исправлено `48aa7ce`).
 
 **Подтверждено CI (GitHub Actions, ветка arena/01a0a358-aof):**
@@ -196,7 +200,7 @@ Frontend (`frontend/.env.example`): `VITE_API_URL`, `VITE_DEV_BACKEND_URL`, `VIT
 
 **Требует devnet/staging:**
 - `anchor test` в CI (чистый раннер, Node 20): Actions заблокирован биллингом.
-- Работоспособность `start_milling` / `start_baking` on-chain после фикса (тестов нет).
+- On-chain работоспособность `collect_flour/bread/well_water`, exploration, forge, `referral_upgrade`, `claim_season_reward`, `use_flask` после `16aeba1` (покрыты только статическим gate, не интеграционными тестами).
 - Все 17 live-механик in-game; refund в auction_bid; staging-миграция по §3 docs; rollback drill.
 
 **Не найдено / заблокировано:**
@@ -209,6 +213,6 @@ Frontend (`frontend/.env.example`): `VITE_API_URL`, `VITE_DEV_BACKEND_URL`, `VIT
 
 ## Verdict
 
-Условие «все Anchor-тесты зелёные» выполнено локально (11/11 на `f7dd144`), но не подтверждено в CI (Actions заблокирован биллингом). Остальные условия не выполнены: staging/devnet smoke не проводились; программы после фикса `e2964cd` (7 mint'ов стали writable) не задеплоены ни на один кластер, а `start_milling`/`start_baking` не покрыты тестами; operational data остаётся в истории Git до решения владельца; `cargo test` для программ отсутствует в pipeline.
+Условие «все Anchor-тесты зелёные» выполнено локально (13/13 на `16aeba1`), но не подтверждено в CI (Actions заблокирован биллингом). Остальные условия не выполнены: staging/devnet smoke не проводились; программы после фиксов `e2964cd`+`16aeba1` (24 mint-аккаунта стали writable — breaking change для старых клиентов) не задеплоены ни на один кластер, и 9 затронутых инструкций покрыты только статическим gate; operational data остаётся в истории Git до решения владельца; `cargo test` для программ отсутствует в pipeline.
 
 **Готово к продакшн-деплою: НЕТ**
