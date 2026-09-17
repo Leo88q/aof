@@ -100,6 +100,14 @@ pub struct PackOpened {
 }
 
 #[event]
+pub struct PackCommitExpired {
+    pub user: Pubkey,
+    pub mint: Pubkey,
+    pub pack_type: u8,
+    pub refunded_lamports: u64,
+}
+
+#[event]
 pub struct RerollResult {
     pub user: Pubkey,
     pub burned_mint: Pubkey,

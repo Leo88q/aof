@@ -60,7 +60,8 @@ Backend datastore: Prisma 5 + SQLite (`aof_backend/prisma/schema.prisma`,
 9. Smoke: `GET /health`, `GET /query/config`, one wallet-proofed POST with a
    reused idempotency key (expect the second call to be rejected), one
    unauthenticated `/admin/*` call (expect 401), one disabled route
-   (`POST /packs/commit` -> 503 `PACK_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED`).
+   (`POST /forge/commit` -> 503 `FORGE_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED`),
+   and `POST /packs/expire` without admin token (expect 401).
 10. Compare row counts of money-bearing tables before/after
     (`WalletOperation`, `IdempotencyRecord`, `CommitSecret`).
 
@@ -74,7 +75,7 @@ Backend datastore: Prisma 5 + SQLite (`aof_backend/prisma/schema.prisma`,
 SQLite has no online down-migrations; the rollback unit is the file snapshot.
 
 1. Stop the backend and all workers (`indexer`, `trust-worker`, `farm-trader`,
-   `price-cranker`, `push-worker`) - they share the file.
+   `price-cranker`, `push-worker`, `commit-expirer`) - they share the file.
 2. `sqlite3 live.db ".backup live.failed.db"` (preserve evidence).
 3. Replace `live.db` with the pre-migration snapshot taken in §3 step 3 /
    the production equivalent, verify `sha256sum`.

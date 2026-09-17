@@ -204,4 +204,6 @@ pub enum AofError {
     InvalidProgramData,
     #[msg("Feature is disabled until its on-chain economic and recovery path is complete")]
     FeatureDisabled,
+    #[msg("Commit is still inside its reveal window; it cannot be expired yet")]
+    CommitNotExpired,
 }

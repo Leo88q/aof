@@ -5135,10 +5135,6 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "treasury",
-          "writable": true
-        },
-        {
           "name": "packConfig"
         },
         {
@@ -5272,6 +5268,10 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "packConfig"
         },
         {
@@ -5343,6 +5343,78 @@ export type AofCore = {
           }
         }
       ]
+    },
+    {
+      "name": "packOpenExpire",
+      "docs": [
+        "Refund an expired pack commit (escrow + rent back to the player)."
+      ],
+      "discriminator": [
+        8,
+        126,
+        131,
+        194,
+        12,
+        202,
+        159,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "packCommit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  99,
+                  107,
+                  95,
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        }
+      ],
+      "args": []
     },
     {
       "name": "payOut",
@@ -9514,6 +9586,19 @@ export type AofCore = {
       ]
     },
     {
+      "name": "packCommitExpired",
+      "discriminator": [
+        10,
+        107,
+        17,
+        86,
+        143,
+        248,
+        135,
+        69
+      ]
+    },
+    {
       "name": "paidOut",
       "discriminator": [
         6,
@@ -10166,6 +10251,11 @@ export type AofCore = {
       "code": 6093,
       "name": "FeatureDisabled",
       "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
+    },
+    {
+      "code": 6094,
+      "name": "CommitNotExpired",
+      "msg": "Commit is still inside its reveal window; it cannot be expired yet"
     }
   ],
   "types": [
@@ -11314,6 +11404,10 @@ export type AofCore = {
           {
             "name": "revealed",
             "type": "bool"
+          },
+          {
+            "name": "paidLamports",
+            "type": "u64"
           }
         ]
       }
@@ -11375,6 +11469,30 @@ export type AofCore = {
           {
             "name": "toolType",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "packCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "packType",
+            "type": "u8"
+          },
+          {
+            "name": "refundedLamports",
+            "type": "u64"
           }
         ]
       }

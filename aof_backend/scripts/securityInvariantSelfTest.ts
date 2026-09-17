@@ -44,7 +44,6 @@ for (const [name, source] of [
   ["forge", forge],
   ["lottery", lottery],
   ["exploration", exploration],
-  ["pack", pack],
   ["random reroll", randomReroll],
   ["drum", questsDrum],
   ["rebirth", rebirth],
@@ -81,7 +80,6 @@ const siteStatus = (id: string) => {
 };
 const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
 const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
-  { id: "packs", route: "packs.ts", code: /PACK_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/pack_open_commit.rs", /require!\(false, AofError::FeatureDisabled\)/] },
   { id: "forge", route: "forge.ts", code: /FORGE_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/forge.rs", /require!\(false, AofError::FeatureDisabled\)/] },
   { id: "lottery", route: "lottery.ts", code: /LOTTERY_TICKETS_DISABLED/, guard: ["aof-core/src/instructions/lottery.rs", /require!\(false, AofError::FeatureDisabled\)/] },
   { id: "exploration", route: "exploration.ts", code: /EXPLORATION_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/exploration.rs", /require!\(false, AofError::FeatureDisabled\)/] },
@@ -96,9 +94,29 @@ for (const layer of disabledLayers) {
   assert.match(backendRoute(layer.route), layer.code, `${layer.id}: backend route is not fail-closed`);
   assert.equal(siteStatus(layer.id), "soon", `${layer.id}: site content must be status:'soon' while the on-chain guard exists`);
 }
-for (const id of ["packs", "lottery", "exploration", "forge", "reroll", "drum", "hot_market", "collectors", "rebirth", "session"]) {
+for (const id of ["lottery", "exploration", "forge", "reroll", "drum", "hot_market", "collectors", "rebirth", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
+// Packs are live again: the price must be escrowed on the PackCommit PDA (no
+// treasury account in the commit context), released to the treasury only in
+// reveal, and refundable through pack_open_expire after the reveal window.
+assert.doesNotMatch(pack, /require!\(false, .*FeatureDisabled/, "packs: stale FeatureDisabled guard");
+assert.doesNotMatch(section(core, "pub struct PackOpenCommit", "pub struct PackOpenReveal"), /treasury/,
+  "pack_open_commit must not pay the treasury before reveal");
+assert.match(section(core, "pub struct PackOpenReveal", "pub struct PackOpenExpire"), /address = config\.treasury/);
+const packExpireCtx = section(core, "pub struct PackOpenExpire", "// ----- Reroll");
+assert.match(packExpireCtx, /close = user/);
+assert.match(packExpireCtx, /address = pack_commit\.user/);
+assert.match(packExpireCtx, /constraint = !pack_commit\.revealed/);
+assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /COMMIT_EXPIRY_SLOTS/);
+assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /AofError::CommitNotExpired/);
+assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "pack_open_expire"), "pack_open_expire missing from committed IDL");
+assert.ok(coreIdl.errors.some((error: any) => error.name === "CommitNotExpired"));
+assert.equal(siteStatus("packs"), "live");
+assert.doesNotMatch(backendRoute("packs.ts"), /PACK_COMMITS_DISABLED/);
+assert.match(backendRoute("packs.ts"), /packOpenExpire/);
+assert.doesNotMatch(appNotice, /^  packs: \{/m, "packs must not be listed in DISABLED_MECHANICS");
+
 // Random reroll has no separate site entry; it is covered on-chain + backend + app notice.
 assert.match(backendRoute("reroll.ts"), /REROLL_COMMITS_DISABLED/);
 

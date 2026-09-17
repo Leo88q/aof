@@ -923,9 +923,6 @@ pub struct PackOpenCommit<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
-    /// CHECK: казна, куда идёт оплата пака
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_type.to_u8()]], bump = pack_config.bump)]
     pub pack_config: Account<'info, PackConfig>,
     /// CHECK: auth PDA is the only supported mint authority for tools.
@@ -964,6 +961,9 @@ pub struct PackOpenReveal<'info> {
     /// CHECK: получатель — тот же user, что делал commit; закрываем ренту ему
     #[account(mut, address = pack_commit.user)]
     pub user: UncheckedAccount<'info>,
+    /// CHECK: казна получает escrow только здесь, когда исход уже известен.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_commit.pack_type]], bump = pack_config.bump)]
     pub pack_config: Account<'info, PackConfig>,
     #[account(
@@ -993,6 +993,30 @@ pub struct PackOpenReveal<'info> {
     pub slot_hashes: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+/// Возврат просроченного pack-коммита. Permissionless: любой может вызвать,
+/// деньги всегда идут только `pack_commit.user`. Разрешён строго после того,
+/// как хэш слота коммита гарантированно выпал из SlotHashes, поэтому
+/// `reveal` и `expire` для одного коммита взаимоисключающи.
+#[derive(Accounts)]
+pub struct PackOpenExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()],
+        bump,
+        constraint = pack_commit.mint == mint.key() @ AofError::InvalidMint,
+        constraint = !pack_commit.revealed @ AofError::CommitMismatch
+    )]
+    pub pack_commit: Account<'info, PackCommit>,
+    /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
+    #[account(mut, address = pack_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    /// CHECK: только как seed pack_commit; supply/authority не важны для возврата.
+    pub mint: UncheckedAccount<'info>,
 }
 
 // ----- Reroll (честный) -----
@@ -2564,6 +2588,10 @@ pub mod aof_core {
     }
     pub fn pack_open_reveal(ctx: Context<PackOpenReveal>, secret: [u8;32]) -> Result<()> {
         instructions::pack_open_reveal::handler(ctx, secret)
+    }
+    /// Refund an expired pack commit (escrow + rent back to the player).
+    pub fn pack_open_expire(ctx: Context<PackOpenExpire>) -> Result<()> {
+        instructions::pack_open_expire::handler(ctx)
     }
 
     // --- Честный reroll ---

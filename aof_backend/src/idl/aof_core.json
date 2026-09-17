@@ -5129,10 +5129,6 @@
           "signer": true
         },
         {
-          "name": "treasury",
-          "writable": true
-        },
-        {
           "name": "pack_config"
         },
         {
@@ -5266,6 +5262,10 @@
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "pack_config"
         },
         {
@@ -5337,6 +5337,78 @@
           }
         }
       ]
+    },
+    {
+      "name": "pack_open_expire",
+      "docs": [
+        "Refund an expired pack commit (escrow + rent back to the player)."
+      ],
+      "discriminator": [
+        8,
+        126,
+        131,
+        194,
+        12,
+        202,
+        159,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pack_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  99,
+                  107,
+                  95,
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        }
+      ],
+      "args": []
     },
     {
       "name": "pay_out",
@@ -9706,6 +9778,19 @@
         195,
         7
       ]
+    },
+    {
+      "name": "PackCommitExpired",
+      "discriminator": [
+        10,
+        107,
+        17,
+        86,
+        143,
+        248,
+        135,
+        69
+      ]
     }
   ],
   "errors": [
@@ -10178,6 +10263,11 @@
       "code": 6093,
       "name": "FeatureDisabled",
       "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
+    },
+    {
+      "code": 6094,
+      "name": "CommitNotExpired",
+      "msg": "Commit is still inside its reveal window; it cannot be expired yet"
     }
   ],
   "types": [
@@ -11494,6 +11584,10 @@
           {
             "name": "revealed",
             "type": "bool"
+          },
+          {
+            "name": "paid_lamports",
+            "type": "u64"
           }
         ]
       }
@@ -12477,6 +12571,30 @@
           {
             "name": "buff_type",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "pack_type",
+            "type": "u8"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
           }
         ]
       }

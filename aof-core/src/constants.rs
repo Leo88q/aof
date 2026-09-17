@@ -343,3 +343,9 @@ pub const MILL_STATE_SPACE: usize = 8 + MillState::INIT_SPACE;
 pub const OVEN_STATE_SPACE: usize = 8 + OvenState::INIT_SPACE;
 pub const LOVE_PROGRESS_SPACE: usize = 8 + LoveProgress::INIT_SPACE;
 pub const FORTUNE_BOOST_SPACE: usize = 8 + FortuneBoost::INIT_SPACE;
+
+/// Commit-reveal expiry. SlotHashes keeps ~512 recent slots, so a reveal
+/// older than that fails with CommitExpired. Expiry is allowed only after the
+/// slot hash is guaranteed gone, so `expire` and `reveal` can never both
+/// succeed for the same commit (reveal needs the hash, expire needs it gone).
+pub const COMMIT_EXPIRY_SLOTS: u64 = 600;

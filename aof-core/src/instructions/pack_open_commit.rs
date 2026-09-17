@@ -4,9 +4,21 @@ use crate::PackOpenCommit;
 use crate::errors::*;
 use crate::state::PackType;
 
-/// Игрок платит SOL сразу в казну (это единственная реальная revenue-точка
-/// в SOL из всего TOR v4 — см. AUDIT_V3, «следующий кандидат по важности»).
-/// Сервер к этому моменту уже вычислил `secret` офчейн и прислал только
+/// Игрок платит за пак, но SOL **не уходит в казну сразу**: сумма лежит в
+/// escrow на PDA `pack_commit` до исхода.
+///
+/// * `pack_open_reveal` — исход известен, инструмент сминчен → escrow
+///   переводится в казну (это единственная реальная revenue-точка в SOL,
+///   см. AUDIT_V3).
+/// * `pack_open_expire` — секрет потерян / сервер не сделал reveal за окно
+///   SlotHashes → escrow возвращается игроку, PDA закрывается.
+///
+/// Раньше оплата шла в казну до reveal, и потерянный секрет означал потерю
+/// денег игрока без пути возврата — поэтому инструкция была fail-closed
+/// (FeatureDisabled). С escrow ни один из двух исходов не оставляет средства
+/// зависшими, и guard снят.
+///
+/// Сервер к моменту commit уже вычислил `secret` офчейн и прислал только
 /// `sha256(secret)` — не может задним числом подобрать исход, потому что
 /// финальная энтропия домешивает ещё и хэш слота коммита (см. randomness.rs).
 pub fn handler(
@@ -14,14 +26,13 @@ pub fn handler(
     _pack_type: PackType,
     commit_hash: [u8; 32],
 ) -> Result<()> {
-    // SOL is transferred before reveal, but there is no on-chain expiry,
-    // cancel, or refund path. The API is disabled; block direct callers too.
-    require!(false, AofError::FeatureDisabled);
-
     let price = ctx.accounts.pack_config.price_lamports;
+    require!(price > 0, AofError::ZeroAmount);
+
+    // Escrow: user -> pack_commit PDA (on top of the rent Anchor just paid).
     let cpi = system_program::Transfer {
         from: ctx.accounts.user.to_account_info(),
-        to: ctx.accounts.treasury.to_account_info(),
+        to: ctx.accounts.pack_commit.to_account_info(),
     };
     system_program::transfer(
         CpiContext::new(ctx.accounts.system_program.to_account_info(), cpi),
@@ -36,5 +47,6 @@ pub fn handler(
     pc.commit_hash = commit_hash;
     pc.commit_slot = slot;
     pc.revealed = false;
+    pc.paid_lamports = price;
     Ok(())
 }

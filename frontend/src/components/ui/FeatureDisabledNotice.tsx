@@ -8,11 +8,6 @@
  * so review it whenever a guard is added or removed.
  */
 export const DISABLED_MECHANICS = {
-  packs: {
-    title: "Паки временно недоступны",
-    reason:
-      "Оплата пака списывается до раскрытия, а on-chain пути отмены/возврата ещё нет. Программа возвращает FeatureDisabled, API — 503 PACK_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED.",
-  },
   lottery: {
     title: "Покупка билетов временно недоступна",
     reason:

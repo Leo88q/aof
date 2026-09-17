@@ -268,6 +268,10 @@ pub struct PackCommit {
     pub commit_hash: [u8; 32],
     pub commit_slot: u64,
     pub revealed: bool,
+    /// Pack price held in escrow on this PDA until reveal (then forwarded to
+    /// the treasury) or expiry (then refunded to `user`). Never paid out
+    /// before the outcome is known, so a lost secret cannot cost the player.
+    pub paid_lamports: u64,
 }
 
 // ----- Reroll (честный, RNG) -----

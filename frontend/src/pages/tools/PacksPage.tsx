@@ -4,7 +4,6 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
-import { FeatureDisabledNotice, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { fmtSol, shortAddr, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
 
@@ -33,10 +32,7 @@ export function PacksPage() {
     });
   }, []);
 
-  const packsDisabled = isMechanicDisabled("packs");
-
   async function openPack(p: typeof PACKS[0]) {
-    if (packsDisabled) return flash("Паки временно отключены (fail-closed): транзакция не отправлена", 6000);
     if (!address) return flash("❌ Подключите кошелёк (кнопка вверху)", 6000);
     if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен", 6000);
     setResult(null);
@@ -53,7 +49,7 @@ export function PacksPage() {
 
       setStage("pay");
       flash("Шаг 2/3 · Подтвердите оплату пака в кошельке…", 60000);
-      const commit = await api.packs.commit({ user: address, mint, packType: p.type, treasury });
+      const commit = await api.packs.commit({ user: address, mint, packType: p.type });
       const rc = await handleTxResponse(commit);
       if (!rc.success) {
         setStage("idle");
@@ -87,7 +83,6 @@ export function PacksPage() {
       <p className="text-straw text-xs">
         Пак — мешок семян: внутри инструмент случайной редкости. Веса прозрачны и лежат ончейн (честный розыгрыш комит-ревил).
       </p>
-      {packsDisabled && <FeatureDisabledNotice id="packs" />}
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -114,7 +109,7 @@ export function PacksPage() {
                       <p className="text-straw text-xs mt-1">цена загружается…</p>
                     )}
                   </div>
-                  <button onClick={() => openPack(p)} disabled={packsDisabled || stage !== "idle"}
+                  <button onClick={() => openPack(p)} disabled={stage !== "idle"}
                     className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-semibold disabled:opacity-40">
                     Открыть
                   </button>

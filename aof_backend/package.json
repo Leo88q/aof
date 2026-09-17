@@ -13,6 +13,7 @@
     "workers:all": "npm run indexer & npm run trust-worker & npm run farm-trader",
     "price-cranker": "ts-node services/price-cranker/index.ts",
     "push-worker": "ts-node services/push-worker/index.ts",
+    "commit-expirer": "ts-node services/commit-expirer/index.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate:check": "prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url file:./.migrate-shadow.db --exit-code",
     "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",

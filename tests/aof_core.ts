@@ -375,16 +375,14 @@ describe("aof-core: security & core flows", () => {
     expect(bal).to.equal("100");
   });
 
-  it("pack commit-reveal: pack_open_commit is fail-closed (FeatureDisabled) and takes no SOL", async () => {
-    // Pack opening is intentionally disabled on-chain
-    // (aof-core/src/instructions/pack_open_commit.rs): the commit transfers SOL
-    // before reveal and there is no expiry/cancel/refund path yet. The backend
-    // route answers 503 PACK_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED
-    // and the site marks the mechanic as "soon". This test pins that guard:
-    // a direct program caller must get FeatureDisabled and must not be charged.
+  it("pack commit-reveal: price is escrowed on commit, paid to treasury on reveal, tool minted", async () => {
+    // Packs are live again: pack_open_commit no longer pays the treasury up
+    // front. The price sits on the PackCommit PDA and is released only by
+    // pack_open_reveal (-> treasury) or pack_open_expire (-> user refund).
     const packConfig = pda([B("pack_config"), Buffer.from([0])]);
+    const PRICE = 100_000_000;
     try {
-      await program.methods.initPackConfig(0, new BN(100_000_000), [6000, 3200, 700, 100, 0])
+      await program.methods.initPackConfig(0, new BN(PRICE), [6000, 3200, 700, 100, 0])
         .accounts({ config: configPda, authority, packConfig, systemProgram: SystemProgram.programId }).rpc();
       console.log("initPackConfig: ok");
     } catch (e: any) {
@@ -396,13 +394,42 @@ describe("aof-core: security & core flows", () => {
     const commitHash = crypto.createHash("sha256").update(secret).digest();
     const packCommit = pda([B("pack_commit"), mint.toBuffer()]);
     const treasuryBefore = await provider.connection.getBalance(authority);
-    await expectError(program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
-      config: configPda, authority, user: user.publicKey, treasury: authority,
+
+    await program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
+      config: configPda, authority, user: user.publicKey,
       packConfig, auth: authPda, mint, packCommit,
-      systemProgram: SystemProgram.programId }).signers([user]).rpc(), "FeatureDisabled");
-    // The failed transaction must leave no PackCommit behind and move no lamports.
-    expect(await provider.connection.getAccountInfo(packCommit)).to.equal(null);
+      systemProgram: SystemProgram.programId }).signers([user]).rpc();
+
+    // Escrow: the PDA holds rent + price, the treasury has received nothing yet.
+    const commitAcc = await program.account.packCommit.fetch(packCommit);
+    expect(commitAcc.paidLamports.toNumber()).to.equal(PRICE);
+    expect(commitAcc.revealed).to.equal(false);
+    const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(
+      (await provider.connection.getAccountInfo(packCommit))!.data.length);
+    expect(await provider.connection.getBalance(packCommit)).to.equal(rentExempt + PRICE);
     expect(await provider.connection.getBalance(authority)).to.equal(treasuryBefore);
+
+    // Inside the reveal window the refund path must be closed (CommitNotExpired).
+    await expectError(program.methods.packOpenExpire().accounts({
+      config: configPda, packCommit, user: user.publicKey, mint }).rpc(), "CommitNotExpired");
+    expect(await provider.connection.getBalance(packCommit)).to.equal(rentExempt + PRICE);
+
+    // Reveal: tool minted to the user, escrow forwarded to the treasury, PDA closed to user.
+    await sleep(1500); // let the commit slot land in SlotHashes
+    const userToken = getAssociatedTokenAddressSync(mint, user.publicKey);
+    const userBefore = await provider.connection.getBalance(user.publicKey);
+    await program.methods.packOpenReveal(Array.from(secret)).accounts({
+      config: configPda, authority, packCommit, user: user.publicKey, treasury: authority,
+      packConfig, mint, userToken, toolData: toolPda(mint), auth: authPda,
+      slotHashes: SLOT_HASHES, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
+    expect((await balance(userToken)).toNumber()).to.equal(1);
+    expect(await provider.connection.getAccountInfo(packCommit)).to.equal(null);
+    // Treasury == authority == reveal fee payer here, so the exact delta is
+    // PRICE minus tx fee and tool_data/ATA rent it just paid; assert the escrow
+    // ended up with the user (rent back) and the PDA is empty instead.
+    expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
+    const tool = await program.account.toolData.fetch(toolPda(mint));
+    expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
   });
 
   it("disabled commit-reveal mechanics stay fail-closed: reroll_random_commit", async () => {
