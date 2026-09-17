@@ -34,7 +34,9 @@ if ! docker info >/dev/null 2>&1; then
   echo "docker daemon is not running - start Docker Desktop" >&2; exit 2
 fi
 
-IMAGE="ubuntu:22.04"
+# ubuntu-latest on GitHub = 24.04 (glibc 2.39); the prebuilt Anchor 0.30.2
+# binary needs GLIBC_2.38, so 22.04 cannot run it.
+IMAGE="ubuntu:24.04"
 
 # Everything below the marker is executed inside the container.
 # linux/amd64 on purpose: Anza publishes prebuilt Agave binaries only for
@@ -121,8 +123,15 @@ ANCHOR_FALLBACK_VERSION=0.30.2
 step "Install Anchor CLI $ANCHOR_VERSION (fallback $ANCHOR_FALLBACK_VERSION)" bash -c '
   export PATH="$HOME/.cargo/bin:$PATH"
   if anchor --version 2>/dev/null | grep -qE "'"$ANCHOR_VERSION"'|'"$ANCHOR_FALLBACK_VERSION"'"; then echo "cached: $(anchor --version)"; exit 0; fi
+  rm -f "$HOME/.cargo/bin/anchor"   # a stale binary that cannot run (glibc) must not count as cached
   echo "building anchor-cli v'"$ANCHOR_VERSION"' from source..."
-  if cargo install --git https://github.com/coral-xyz/anchor --tag v'"$ANCHOR_VERSION"' anchor-cli --locked --force > /logs/anchor-cli-build.log 2>&1; then
+  # anchor v0.30.1 locks time 0.3.29, which does not compile on rustc >= 1.80
+  # (E0282 in format_description/parse). Bump only `time` inside a local clone,
+  # then install from the clone; everything else stays as locked upstream.
+  rm -rf /tmp/anchor-src && git clone -q --depth 1 --branch v'"$ANCHOR_VERSION"' https://github.com/coral-xyz/anchor /tmp/anchor-src
+  ( cd /tmp/anchor-src && cargo update -p time --precise 0.3.36 >/dev/null 2>&1 || cargo update -p time >/dev/null 2>&1 )
+  if cargo install --path /tmp/anchor-src/cli --locked --force > /logs/anchor-cli-build.log 2>&1 \
+     || cargo install --path /tmp/anchor-src/cli --force >> /logs/anchor-cli-build.log 2>&1; then
     echo "installed from source: $(anchor --version)"; exit 0
   fi
   echo "::warning::source build failed (see /logs/anchor-cli-build.log, first error below); using prebuilt '"$ANCHOR_FALLBACK_VERSION"'"
@@ -132,9 +141,10 @@ step "Install Anchor CLI $ANCHOR_VERSION (fallback $ANCHOR_FALLBACK_VERSION)" ba
   # avm stub lives next to anchor in ~/.cargo/bin (a persistent volume), so it survives reruns
   printf "#!/bin/sh\necho \"avm stub: this runner does not switch Anchor CLI versions\" >&2\nexit 1\n" > "$HOME/.cargo/bin/avm"
   chmod +x "$HOME/.cargo/bin/avm"
-  echo "installed fallback: $(anchor --version)"' || exit 1
+  v=$(anchor --version 2>&1) || { echo "::error::anchor binary does not run: $v"; exit 1; }
+  echo "installed fallback: $v"' || exit 1
 
-step "Verify toolchain" bash -c 'rustc --version; cargo --version; solana --version; anchor --version; node --version; python3 --version'
+step "Verify toolchain" bash -c 'set -e; rustc --version; cargo --version; solana --version; anchor --version; node --version; python3 --version' || exit 1
 
 # ---------- clean checkout ----------
 step "Clean checkout of $HOST_COMMIT" bash -c '
