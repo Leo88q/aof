@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
+import { FeatureDisabledNotice, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -88,7 +89,10 @@ export function LotteryPage() {
     }
   }
 
+  const ticketsDisabled = isMechanicDisabled("lottery");
+
   async function buyTicket() {
+    if (ticketsDisabled) return flash("Покупка билетов временно отключена (fail-closed): транзакция не отправлена", 6000);
     if (!address) return flash("❌ Сначала подключите кошелёк");
     if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
     const n = ticketNum.trim();
@@ -154,6 +158,7 @@ export function LotteryPage() {
           {loading ? "…" : "⟳ Обновить"}
         </button>
       </div>
+      {ticketsDisabled && <FeatureDisabledNotice id="lottery" />}
       <p className="text-straw text-xs">
         Барабан Урожая: билеты — пакетики семян, розыгрыш честный (комит-ревил хеша), приз — пул раунда.
       </p>
@@ -224,7 +229,7 @@ export function LotteryPage() {
           <input type="number" min="0" step="1" placeholder="Номер билета" value={ticketNum}
             onChange={(e) => setTicketNum(e.target.value)}
             className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
-          <button onClick={buyTicket} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium">
+          <button onClick={buyTicket} disabled={ticketsDisabled} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
             🌱 Купить
           </button>
         </div>

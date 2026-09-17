@@ -152,7 +152,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "previousBidder"
+          "name": "previousBidder",
+          "writable": true
         },
         {
           "name": "systemProgram",
@@ -1030,7 +1031,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
@@ -1177,7 +1179,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "breadMint"
+          "name": "breadMint",
+          "writable": true
         },
         {
           "name": "userBread",
@@ -1299,7 +1302,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "flourMint"
+          "name": "flourMint",
+          "writable": true
         },
         {
           "name": "userFlour",
@@ -1587,7 +1591,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "waterMint"
+          "name": "waterMint",
+          "writable": true
         },
         {
           "name": "userWater",
@@ -2925,10 +2930,6 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "treasury",
-          "writable": true
-        },
-        {
           "name": "tool",
           "pda": {
             "seeds": [
@@ -2960,24 +2961,19 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
-        },
-        {
-          "name": "userStone",
+          "name": "stoneMint",
           "writable": true
         },
         {
-          "name": "meatMint"
-        },
-        {
-          "name": "userMeat",
+          "name": "userStone",
           "writable": true
         },
         {
@@ -3060,6 +3056,10 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "slotHashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
@@ -3075,6 +3075,87 @@ export type AofCore = {
           }
         }
       ]
+    },
+    {
+      "name": "forgeAttemptExpire",
+      "docs": [
+        "Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent)."
+      ],
+      "discriminator": [
+        206,
+        118,
+        31,
+        164,
+        99,
+        185,
+        27,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "forgeCommit",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "woodMint",
+          "writable": true
+        },
+        {
+          "name": "userWood",
+          "writable": true
+        },
+        {
+          "name": "stoneMint",
+          "writable": true
+        },
+        {
+          "name": "userStone",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "grantSeasonXp",
@@ -3325,7 +3406,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "wheatMint"
+          "name": "wheatMint",
+          "writable": true
         },
         {
           "name": "userWheat",
@@ -5127,10 +5209,6 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "treasury",
-          "writable": true
-        },
-        {
           "name": "packConfig"
         },
         {
@@ -5264,6 +5342,10 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "packConfig"
         },
         {
@@ -5335,6 +5417,78 @@ export type AofCore = {
           }
         }
       ]
+    },
+    {
+      "name": "packOpenExpire",
+      "docs": [
+        "Refund an expired pack commit (escrow + rent back to the player)."
+      ],
+      "discriminator": [
+        8,
+        126,
+        131,
+        194,
+        12,
+        202,
+        159,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "packCommit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  99,
+                  107,
+                  95,
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        }
+      ],
+      "args": []
     },
     {
       "name": "payOut",
@@ -5881,7 +6035,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "seedsMint"
+          "name": "seedsMint",
+          "writable": true
         },
         {
           "name": "userSeeds",
@@ -6206,21 +6361,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
           "writable": true
         },
         {
-          "name": "foodMint"
+          "name": "foodMint",
+          "writable": true
         },
         {
           "name": "userFood",
@@ -7861,16 +8019,20 @@ export type AofCore = {
           }
         },
         {
-          "name": "flourMint"
+          "name": "flourMint",
+          "writable": true
         },
         {
-          "name": "waterMint"
+          "name": "waterMint",
+          "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
-          "name": "coalMint"
+          "name": "coalMint",
+          "writable": true
         },
         {
           "name": "userFlour",
@@ -8058,28 +8220,32 @@ export type AofCore = {
           }
         },
         {
-          "name": "foodMint"
+          "name": "foodMint",
+          "writable": true
         },
         {
           "name": "userFood",
           "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
           "writable": true
         },
         {
-          "name": "meatMint"
+          "name": "meatMint",
+          "writable": true
         },
         {
           "name": "userMeat",
@@ -8230,10 +8396,12 @@ export type AofCore = {
           }
         },
         {
-          "name": "wheatMint"
+          "name": "wheatMint",
+          "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userWheat",
@@ -8616,21 +8784,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint"
+          "name": "woodMint",
+          "writable": true
         },
         {
           "name": "userWood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stoneMint",
+          "writable": true
         },
         {
           "name": "userStone",
           "writable": true
         },
         {
-          "name": "foodMint"
+          "name": "foodMint",
+          "writable": true
         },
         {
           "name": "userFood",
@@ -9346,6 +9517,19 @@ export type AofCore = {
       ]
     },
     {
+      "name": "forgeCommitExpired",
+      "discriminator": [
+        24,
+        244,
+        189,
+        74,
+        234,
+        139,
+        170,
+        174
+      ]
+    },
+    {
       "name": "gasFeesSwept",
       "discriminator": [
         29,
@@ -9486,6 +9670,19 @@ export type AofCore = {
         166,
         46,
         201
+      ]
+    },
+    {
+      "name": "packCommitExpired",
+      "discriminator": [
+        10,
+        107,
+        17,
+        86,
+        143,
+        248,
+        135,
+        69
       ]
     },
     {
@@ -10141,6 +10338,11 @@ export type AofCore = {
       "code": 6093,
       "name": "FeatureDisabled",
       "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
+    },
+    {
+      "code": 6094,
+      "name": "CommitNotExpired",
+      "msg": "Commit is still inside its reveal window; it cannot be expired yet"
     }
   ],
   "types": [
@@ -10690,6 +10892,38 @@ export type AofCore = {
       }
     },
     {
+      "name": "forgeCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "toolMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "slotType",
+            "type": "u8"
+          },
+          {
+            "name": "refundedLamports",
+            "type": "u64"
+          },
+          {
+            "name": "woodRefunded",
+            "type": "u64"
+          },
+          {
+            "name": "stoneRefunded",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "forgeCommit",
       "type": {
         "kind": "struct",
@@ -10722,6 +10956,18 @@ export type AofCore = {
           {
             "name": "useProtector",
             "type": "bool"
+          },
+          {
+            "name": "paidLamports",
+            "type": "u64"
+          },
+          {
+            "name": "woodBurned",
+            "type": "u64"
+          },
+          {
+            "name": "stoneBurned",
+            "type": "u64"
           }
         ]
       }
@@ -11289,6 +11535,10 @@ export type AofCore = {
           {
             "name": "revealed",
             "type": "bool"
+          },
+          {
+            "name": "paidLamports",
+            "type": "u64"
           }
         ]
       }
@@ -11350,6 +11600,30 @@ export type AofCore = {
           {
             "name": "toolType",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "packCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "packType",
+            "type": "u8"
+          },
+          {
+            "name": "refundedLamports",
+            "type": "u64"
           }
         ]
       }

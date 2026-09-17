@@ -1,0 +1,1200 @@
+name: CI
+
+# Why this workflow exists:
+#   The on-chain programs can only be compiled with the Solana SBPF toolchain
+#   (cargo-build-sbf) and the Anchor CLI, and the backend needs the Prisma query
+#   engine. Those are large binary downloads, so builds belong on CI runners
+#   rather than on every developer machine.
+#
+# Toolchain pins - these mirror the documented project environment in CLAUDE.md
+# ("Solana CLI 4.2.1 (Agave), Anchor 0.30.1, rustc 1.89.0, platform-tools
+# v1.56"). CLAUDE.md also forbids toolchain downgrades and rust-toolchain files
+# in the repo, so the pins live here only.
+#
+#   Do NOT downgrade these to match the `solana-program = 1.18.26` entry in
+#   Cargo.lock. The committed lock file resolves 2025-era transitive crates
+#   (toml_datetime 1.1.1+spec-1.1.0, serde_core 1.0.229, toml_edit 0.25.13)
+#   that require the Cargo `edition2024` feature, i.e. Cargo >= 1.85. A Rust
+#   1.79 host therefore fails in `cargo metadata` before compiling anything:
+#       error: failed to parse manifest at .../toml_datetime-1.1.1/Cargo.toml
+#       Caused by: feature `edition2024` is required
+#
+#   * Anchor.toml declares anchor_version = "0.30.1", so anchor-cli is built
+#     from source at exactly that tag. If that build fails, the job falls back
+#     to the prebuilt 0.30.2 binary plus an `avm` stub, because Anchor handles a
+#     version mismatch by shelling out to `avm install <version>` and aborts
+#     with a raw io error when `avm` is missing (anchor-cli/src/lib.rs:522).
+#
+# Frontend layout:
+#   The React app lives in frontend/ (Vite + React 18 + TS). The root
+#   package.json is a stale create-react-app shell with no src/ or public/ at
+#   the repository root - `npm run build` there fails with "Could not find a
+#   required file. Name: index.html". It is kept only for the Anchor test
+#   devDependencies used by tests/aof_core.ts. Build frontend/, not the root.
+#
+# Failure reporting:
+#   Build output is tee'd into a log file and, on failure, republished by
+#   .github/scripts/publish-failure-log.sh as a pull request comment, workflow
+#   annotations and check-run output. That keeps failures diagnosable in
+#   environments that cannot reach the Actions log endpoint
+#   (results-receiver.actions.githubusercontent.com).
+
+on:
+  push:
+    branches:
+      - main
+      - "arena/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  AGAVE_VERSION: "4.2.1"
+  ANCHOR_LANG_VERSION: "0.30.1"
+  ANCHOR_FALLBACK_CLI_VERSION: "0.30.2"
+  RUST_VERSION: "1.89.0"
+  NODE_VERSION: "20"
+  # Anchor.toml points the provider at a gitignored devnet keypair. CI generates a
+  # throwaway one so builds and tests never depend on a developer's secrets.
+  CI_WALLET_PATH: "solana/keys/aof-authority-devnet.json"
+
+jobs:
+  programs:
+    name: Anchor build (on-chain programs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache cargo registry
+        # Dependency crates are content-addressed, so a prefix match is safe here.
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-
+
+      - name: Cache SBPF target dir
+        # Keyed on the program sources as well as the lock file, and deliberately
+        # WITHOUT restore-keys. A partial hit used to restore a target/ whose
+        # artifacts carried newer mtimes than the freshly checked-out sources, so
+        # cargo considered the .so files up to date and skipped the rebuild: run
+        # 34908007614 still reported the pre-fix `init_material_mints` frame -
+        # byte-identical symbol hash h552c6377707d29af - after the fix had been
+        # pushed. A stale artifact is worse than a slow build.
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-sbf-${{ env.RUST_VERSION }}-${{ env.AGAVE_VERSION }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', 'aof-core/src/**/*.rs', 'programs/*/src/**/*.rs') }}
+
+      - name: Cache Agave release
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana/install/active_release
+          key: ${{ runner.os }}-agave-${{ env.AGAVE_VERSION }}
+
+      - name: Install Rust ${{ env.RUST_VERSION }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install "${RUST_VERSION}" --profile minimal --component rustfmt
+          rustup default "${RUST_VERSION}"
+          rustc --version
+          cargo --version
+
+      - name: Install Agave (Solana CLI) ${{ env.AGAVE_VERSION }}
+        run: |
+          set -uo pipefail
+          release_dir="$HOME/.local/share/solana/install/active_release"
+          if [ -x "$release_dir/bin/solana" ]; then
+            echo "Reusing cached Agave release"
+          elif sh -c "$(curl -sSfL https://release.anza.xyz/v${AGAVE_VERSION}/install)"; then
+            echo "Installed via release.anza.xyz"
+          else
+            echo "::warning::release.anza.xyz install failed, falling back to the GitHub release tarball"
+            url="https://github.com/anza-xyz/agave/releases/download/v${AGAVE_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+            curl -sSfL --retry 3 -o /tmp/solana-release.tar.bz2 "$url"
+            rm -rf /tmp/solana-release "$release_dir"
+            tar xjf /tmp/solana-release.tar.bz2 -C /tmp
+            mkdir -p "$(dirname "$release_dir")"
+            mv /tmp/solana-release "$release_dir"
+          fi
+          echo "$release_dir/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor CLI ${{ env.ANCHOR_LANG_VERSION }}
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+
+          if command -v anchor >/dev/null 2>&1 && anchor --version | grep -q "${ANCHOR_LANG_VERSION}"; then
+            echo "Reusing cached Anchor CLI: $(anchor --version)"
+            exit 0
+          fi
+
+          echo "Building anchor-cli v${ANCHOR_LANG_VERSION} from source (one-off, then cached)..."
+          if cargo install --git https://github.com/coral-xyz/anchor \
+               --tag "v${ANCHOR_LANG_VERSION}" anchor-cli --locked --force; then
+            echo "Installed from source: $(anchor --version)"
+            exit 0
+          fi
+
+          echo "::warning::source install of anchor-cli ${ANCHOR_LANG_VERSION} failed, falling back to the prebuilt ${ANCHOR_FALLBACK_CLI_VERSION} binary"
+          url="https://github.com/coral-xyz/anchor/releases/download/v${ANCHOR_FALLBACK_CLI_VERSION}/anchor-${ANCHOR_FALLBACK_CLI_VERSION}-x86_64-unknown-linux-gnu"
+          curl -sSfL --retry 3 -o /tmp/anchor "$url"
+          chmod +x /tmp/anchor
+          sudo mv /tmp/anchor /usr/local/bin/anchor
+
+          # Anchor reacts to `anchor_version` != CLI version by running
+          # `avm install <version>` and aborting with a raw io error when avm is
+          # absent. Provide a stub that fails cleanly so Anchor logs the mismatch
+          # and continues with the installed CLI.
+          mkdir -p /tmp/avm-stub
+          cat > /tmp/avm-stub/avm <<'STUB'
+          #!/usr/bin/env bash
+          echo "avm stub: CI does not switch Anchor CLI versions" >&2
+          exit 1
+          STUB
+          chmod +x /tmp/avm-stub/avm
+          echo "/tmp/avm-stub" >> "$GITHUB_PATH"
+          echo "Installed fallback: $(anchor --version)"
+
+      - name: Verify toolchain
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor --version
+          solana --version
+          cargo-build-sbf --version
+
+      - name: Create throwaway provider wallet
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          mkdir -p "$(dirname "$CI_WALLET_PATH")"
+          solana-keygen new --silent --no-bip39-passphrase --force -o "$CI_WALLET_PATH"
+          ls -l "$CI_WALLET_PATH"
+
+      - name: Pin proc-macro2 so the Anchor IDL build can compile
+        # anchor-syn 0.30.1 calls `proc_macro2::Span::call_site().source_file()`
+        # (src/idl/defined.rs) behind the `procmacro2_semver_exempt` cfg. That
+        # semver-exempt API was REMOVED from proc-macro2 in 1.0.95: 1.0.94 is the
+        # last release that still defines `Span::source_file`, and 1.0.95/1.0.100
+        # have no such method at all.
+        #
+        # The committed Cargo.lock resolves proc-macro2 1.0.107, so the IDL step
+        # cannot compile no matter which toolchain or rustflags are used - the
+        # method simply does not exist. Hence the pin. `cargo update --precise`
+        # is used instead of editing Cargo.lock by hand because the registry
+        # checksum for the older version is not reproducible offline.
+        #
+        # The resulting diff is printed so the corrected Cargo.lock can be
+        # committed and this step reduced to a guard.
+        id: pin_procmacro2
+        run: |
+          set -uo pipefail
+          : > /tmp/lockfix.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/lockfix.log; }
+          current=$(awk '/^name = "proc-macro2"$/{f=1;next} f&&/^version/{gsub(/"/,"",$3); print $3; exit}' Cargo.lock)
+          log "proc-macro2 pinned in Cargo.lock: ${current:-unknown}"
+          if [ "$current" = "1.0.94" ]; then
+            log "already at 1.0.94 - nothing to do"
+            exit 0
+          fi
+          log "### cargo update -p proc-macro2 --precise 1.0.94"
+          if cargo update -p proc-macro2 --precise 1.0.94 2>&1 | tee -a /tmp/lockfix.log; then
+            log "### Cargo.lock diff (copy this into the repository to make the fix permanent)"
+            git --no-pager diff -U2 -- Cargo.lock 2>&1 | tee -a /tmp/lockfix.log
+          else
+            log "::error::could not pin proc-macro2 to 1.0.94 - another locked crate may require a newer version"
+            exit 1
+          fi
+
+      - name: Publish lock-fix log
+        if: always() && steps.pin_procmacro2.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/lockfix.log "Anchor build (on-chain programs)" 10
+
+      - name: Generate program keypairs and sync ids for the test run
+        # The repository carries no program keypairs: .gitignore excludes keys/
+        # and target/deploy/*.json. On a fresh checkout `anchor build` therefore
+        # invents random keypairs while declare_id! and Anchor.toml still name
+        # the real devnet ids (HtJg3R3K..., 4BhD6spJ..., ...), so the .so files
+        # deploy to addresses that match neither - which is exactly why
+        # `anchor test` could never run in CI.
+        #
+        # Fix: create the keypairs first, then make declare_id! and Anchor.toml
+        # agree with them, the way `anchor init` does for a new project. Nothing
+        # is committed - the runner is throwaway - and devnet program identity is
+        # untouched.
+        #
+        # `anchor keys sync` is tried first because it is the canonical command,
+        # but the deterministic sync below always runs afterwards and verifies
+        # its own edits: run 34905611699 showed the artifact Anchor.toml
+        # disagreeing with all six keypairs, i.e. a sync that reported success
+        # without sticking. The resulting ids and a full report travel to the
+        # anchor-test job inside the build artifact, so a mismatch there is
+        # diagnosable without access to the Actions log endpoint.
+        id: keys_sync
+        run: |
+          set -uo pipefail
+          set +e
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          : > /tmp/keys-sync.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/keys-sync.log; }
+
+          mkdir -p target/deploy
+          names="aof_core aof_liquidity aof_market aof_quests aof_rebirth aof_session_keys"
+          for name in $names; do
+            kp="target/deploy/${name}-keypair.json"
+            if [ -f "$kp" ]; then
+              log "reusing   $kp"
+            else
+              solana-keygen new --silent --no-bip39-passphrase --force -o "$kp" >/dev/null 2>&1
+              log "generated $kp"
+            fi
+            log "  $(basename "$kp" -keypair.json) -> $(solana-keygen pubkey "$kp" 2>&1)"
+          done
+
+          # Authoritative id list, derived by the Solana CLI itself.
+          : > target/artifact-program-ids.txt
+          for name in $names; do
+            pid=$(solana-keygen pubkey "target/deploy/${name}-keypair.json" 2>/dev/null)
+            if [ -z "$pid" ]; then
+              log "::error::could not derive a pubkey for $name"
+            else
+              printf '%s %s\n' "$name" "$pid" >> target/artifact-program-ids.txt
+            fi
+          done
+          log "### target/artifact-program-ids.txt"
+          cat target/artifact-program-ids.txt | tee -a /tmp/keys-sync.log
+
+          log "### anchor keys list (before sync)"
+          anchor keys list 2>&1 | tee -a /tmp/keys-sync.log || true
+          log "### anchor keys sync (best effort)"
+          rc=0
+          anchor keys sync 2>&1 | tee -a /tmp/keys-sync.log || rc=$?
+          log "anchor keys sync exit code: $rc"
+
+          log "### deterministic sync (always runs, verifies its own edits)"
+          python3 - <<'PY' 2>&1 | tee -a /tmp/keys-sync.log
+          import json, pathlib, re, sys
+
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+          def b58(raw):
+              n = int.from_bytes(raw, "big")
+              out = ""
+              while n:
+                  n, r = divmod(n, 58)
+                  out = ALPHABET[r] + out
+              return "1" * (len(raw) - len(raw.lstrip(b"\x00"))) + (out or "1")
+
+          programs = {
+              "aof_core": "aof-core/src/lib.rs",
+              "aof_liquidity": "programs/aof-liquidity/src/lib.rs",
+              "aof_market": "programs/aof-market/src/lib.rs",
+              "aof_quests": "programs/aof-quests/src/lib.rs",
+              "aof_rebirth": "programs/aof-rebirth/src/lib.rs",
+              "aof_session_keys": "programs/aof-session-keys/src/lib.rs",
+          }
+
+          # Prefer the ids the Solana CLI derived; fall back to reading the
+          # keypair file (bytes 32..64 are the public key).
+          ids = {}
+          cli = pathlib.Path("target/artifact-program-ids.txt")
+          if cli.exists():
+              for line in cli.read_text().splitlines():
+                  parts = line.split()
+                  if len(parts) == 2:
+                      ids[parts[0]] = parts[1]
+          for name in programs:
+              if name in ids:
+                  continue
+              arr = json.loads(pathlib.Path("target/deploy/%s-keypair.json" % name).read_text())
+              if len(arr) != 64:
+                  print("::error::target/deploy/%s-keypair.json: expected 64 bytes, got %d" % (name, len(arr)))
+                  sys.exit(1)
+              ids[name] = b58(bytes(arr[32:]))
+          if len(ids) != len(programs):
+              print("::error::only derived %d of %d program ids" % (len(ids), len(programs)))
+              sys.exit(1)
+
+          for name, src in programs.items():
+              f = pathlib.Path(src)
+              new, n = re.subn(r'declare_id!\("[^"]+"\)', 'declare_id!("%s")' % ids[name], f.read_text(), count=1)
+              if n == 0:
+                  print("::error::%s: no declare_id! to sync" % src)
+                  sys.exit(1)
+              f.write_text(new)
+
+          # Line-based rewrite: an earlier regex version silently matched nothing
+          # in Anchor.toml while still reporting success.
+          cfg = pathlib.Path("Anchor.toml")
+          lines = cfg.read_text().splitlines(keepends=True)
+          section = None
+          replaced = {}
+          for i, line in enumerate(lines):
+              head = re.match(r"^\[([^\]]+)\]", line)
+              if head:
+                  section = head.group(1)
+                  continue
+              if section in ("programs.localnet", "programs.devnet"):
+                  entry = re.match(r'^(\s*)(\w+)(\s*=\s*)"([^"]+)"(.*)$', line)
+                  if entry and entry.group(2) in ids:
+                      lines[i] = '%s%s%s"%s"%s\n' % (entry.group(1), entry.group(2), entry.group(3),
+                                                     ids[entry.group(2)], entry.group(5))
+                      replaced.setdefault(section, set()).add(entry.group(2))
+          cfg.write_text("".join(lines))
+
+          bad = []
+          text = cfg.read_text()
+          for section in ("programs.localnet", "programs.devnet"):
+              missing = sorted(set(ids) - replaced.get(section, set()))
+              if missing:
+                  bad.append("Anchor.toml [%s] not updated for: %s" % (section, ", ".join(missing)))
+          for name, pid in ids.items():
+              if '%s = "%s"' % (name, pid) not in text:
+                  bad.append("Anchor.toml does not carry the synced id for %s" % name)
+          for name, src in programs.items():
+              if 'declare_id!("%s")' % ids[name] not in pathlib.Path(src).read_text():
+                  bad.append("%s: declare_id! not synced" % src)
+          for problem in bad:
+              print("::error::%s" % problem)
+          if bad:
+              sys.exit(1)
+          print("declare_id! and Anchor.toml (localnet + devnet) synced and verified")
+          for name in sorted(ids):
+              print("  %s = %s" % (name, ids[name]))
+          PY
+          sync_rc=$?
+          log "deterministic sync exit code: $sync_rc"
+
+          log "### anchor keys list (after sync)"
+          anchor keys list 2>&1 | tee -a /tmp/keys-sync.log || true
+          log "### Anchor.toml [programs.localnet] after sync"
+          grep -A8 '^\[programs.localnet\]' Anchor.toml 2>&1 | tee -a /tmp/keys-sync.log || true
+          log "### declare_id! after sync"
+          for name in $names; do
+            case "$name" in
+              aof_core) src="aof-core/src/lib.rs" ;;
+              *) src="programs/$(echo "$name" | tr '_' '-')/src/lib.rs" ;;
+            esac
+            log "  $name: $(grep -m1 -oE 'declare_id!\("[^"]+"\)' "$src" 2>&1)"
+          done
+          log "### files the sync changed (runner-local only, never committed)"
+          git --no-pager diff --stat 2>&1 | tee -a /tmp/keys-sync.log || true
+
+          if [ "$sync_rc" -eq 0 ]; then
+            log "sync_ok: true"
+          else
+            log "sync_ok: false"
+            echo "::error::program ids are inconsistent (declare_id! / Anchor.toml / keypairs disagree). The build still runs, but the anchor-test job will refuse to deploy binaries whose ids do not match."
+          fi
+          cp /tmp/keys-sync.log target/artifact-sync-report.txt
+
+      - name: Publish key-sync log
+        if: always() && steps.keys_sync.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/keys-sync.log "Anchor build (on-chain programs)" 10
+
+      - name: Publish key-sync log
+        if: always() && steps.keys_sync.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/keys-sync.log "Anchor build (on-chain programs)" 10
+
+      - name: Anchor build --no-idl (SBPF compile gate, blocking)
+        # This is the blocking half of the programs job. Every real regression in
+        # the on-chain code - including the E0502 borrow error in
+        # programs/aof-market/src/lib.rs that started this work - surfaces in the
+        # SBPF compile of programs/*, and that compile is green on the project's
+        # documented toolchain (Agave 4.2.1, rustc 1.89.0, Anchor 0.30.1).
+        # IDL generation is attempted separately and is advisory; see the next
+        # step for the measured reason.
+        id: sbpf_build
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          : > /tmp/anchor-build.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/anchor-build.log; }
+
+          if [ -f /tmp/lockfix.log ]; then
+            log "### Cargo.lock pin step output"
+            cat /tmp/lockfix.log | tee -a /tmp/anchor-build.log >/dev/null
+            cat /tmp/lockfix.log
+          fi
+          log "### toolchain"
+          log "host rustc: $(rustc --version)"
+          log "host cargo: $(cargo --version)"
+          log "anchor: $(anchor --version 2>&1)"
+          log "solana: $(solana --version 2>&1)"
+          log "### cargo config in effect"
+          for f in "$HOME/.cargo/config.toml" "$HOME/.cargo/config" .cargo/config.toml .cargo/config; do
+            if [ -f "$f" ]; then log "--- $f ---"; cat "$f" | tee -a /tmp/anchor-build.log; fi
+          done
+          log "### anchor build --help (the flags actually supported by this CLI)"
+          anchor build --help 2>&1 | tee -a /tmp/anchor-build.log || true
+          log "### end diagnostics"
+
+          # --no-idl skips the host-target IDL pass entirely, so this gate only
+          # proves the SBPF compile of programs/*. --skip-lint is not present in
+          # every 0.30.x CLI build, so fall back rather than fail the gate on an
+          # unsupported flag.
+          rc=0
+          RUSTUP_TOOLCHAIN="${RUST_VERSION}" anchor build --no-idl --skip-lint 2>&1 \
+            | tee -a /tmp/anchor-build.log || rc=$?
+          if [ "$rc" -ne 0 ] && grep -qE "unexpected argument|error: Found argument|unrecognized|unknown option" /tmp/anchor-build.log; then
+            log "### --skip-lint not supported by this CLI - retrying with --no-idl only"
+            rc=0
+            RUSTUP_TOOLCHAIN="${RUST_VERSION}" anchor build --no-idl 2>&1 \
+              | tee -a /tmp/anchor-build.log || rc=$?
+          fi
+          # The SBPF verifier rejects any function whose stack frame exceeds 4096
+          # bytes, and the program then fails to LOAD - the build itself can stay
+          # green. That is exactly what happened in run 34906762097: aof_core's
+          # generated init_material_mints wrapper had a 4672-byte frame (23 Pubkey
+          # arguments plus a 23-element stack array) and the local validator
+          # refused the program, so the whole test suite died in its "before all"
+          # hook. Catch the message here when the build does emit it; the
+          # authoritative check remains the deploy in the anchor-test job.
+          if grep -nE "maximum allowed frame space" /tmp/anchor-build.log; then
+            log "::error::SBPF stack frame overflow in the build output - the loader would reject this program at deploy time"
+            rc=1
+          fi
+          log "anchor build --no-idl exit code: $rc"
+          exit "$rc"
+
+      - name: Anchor IDL generation attempts (advisory)
+        # NOT a blocking gate: anchor-lang 0.30.1's IDL builder cannot succeed on
+        # any toolchain that is both allowed by CLAUDE.md (no downgrades, no
+        # rust-toolchain files) and new enough for this repository's Cargo.lock
+        # (lock v4 + edition2024 deps need Cargo/rustc >= 1.85). Evidence, all
+        # measured on this repository:
+        #
+        #   * anchor-syn 0.30.1 calls `proc_macro2::Span::source_file()`
+        #     (src/idl/defined.rs), which only exists behind the
+        #     `procmacro2_semver_exempt` cfg AND only in proc-macro2 <= 1.0.94
+        #     (removed in 1.0.95). The committed Cargo.lock is now pinned to
+        #     1.0.94 and the pin step above guards it.
+        #   * nightly (1.100.0-nightly, run 34898272133): with the cfg, proc-macro2
+        #     1.0.94 takes its `wrap_proc_macro` path and fails to compile -
+        #     `E0425 cannot find type SourceFile in crate proc_macro` and
+        #     `E0599 no method named source_file found for &proc_macro::Span`.
+        #     Those unstable proc_macro APIs are gone from current nightlies.
+        #     Adding `--cfg super_unstable` does not help: it only turns on
+        #     `#![feature(proc_macro_span)]`, and the type is still absent.
+        #   * stable 1.89.0 (same run): with the cfg, proc-macro2 falls back to
+        #     its own implementation and ark-bn254 0.4.0 then fails 53x with
+        #     `error: proc macro panicked ... message: could not parse` in
+        #     `MontFp!`. Without the cfg, anchor-syn lacks `source_file`.
+        #   * an era-correct nightly (2024, when `proc_macro::SourceFile` still
+        #     existed) is ruled out too: the IDL host build compiles
+        #     toml_datetime 1.1.1 / toml_edit 0.25.13 (edition2024, rustc >= 1.85)
+        #     via borsh-derive 1.8.0 -> proc-macro-crate 3.5.0.
+        #
+        # The SBPF compile gate above is the blocking half of this job. These
+        # attempts keep running so that any future nightly/proc-macro2 release
+        # that restores the semver-exempt API turns the step green automatically,
+        # and so the raw evidence stays published on the PR.
+        id: idl_build
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          : > /tmp/anchor-idl.log
+          log() { printf '%s\n' "$@" | tee -a /tmp/anchor-idl.log; }
+
+          if [ -f /tmp/lockfix.log ]; then
+            log "### Cargo.lock pin step output"
+            cat /tmp/lockfix.log | tee -a /tmp/anchor-idl.log >/dev/null
+            cat /tmp/lockfix.log
+          fi
+          log "### toolchain diagnostics"
+          log "host rustc: $(rustc --version)"
+          log "host cargo: $(cargo --version)"
+          rustup toolchain list -v 2>&1 | tee -a /tmp/anchor-idl.log
+          log "### cargo config in effect (rustflags and where they come from)"
+          for f in "$HOME/.cargo/config.toml" "$HOME/.cargo/config" .cargo/config.toml .cargo/config; do
+            if [ -f "$f" ]; then log "--- $f ---"; cat "$f" | tee -a /tmp/anchor-idl.log; fi
+          done
+          log "env RUSTFLAGS=[${RUSTFLAGS:-}] CARGO_BUILD_RUSTFLAGS=[${CARGO_BUILD_RUSTFLAGS:-}]"
+          cargo config get build.rustflags --show-origin 2>&1 | tee -a /tmp/anchor-idl.log || true
+          log "### end diagnostics"
+
+          rustup toolchain install nightly --profile minimal 2>&1 | tee -a /tmp/anchor-idl.log
+          log "nightly: $(cargo +nightly --version 2>&1) / $(rustc +nightly --version 2>&1)"
+
+          # cfg_mode host  -> [target.x86_64-unknown-linux-gnu] rustflags
+          # cfg_mode build -> the above plus [build] rustflags
+          set_cfg_mode() {
+            mkdir -p .cargo
+            if [ "$1" = "build" ]; then
+              printf '[build]\nrustflags = ["--cfg", "procmacro2_semver_exempt"]\n\n' > .cargo/config.toml
+              export CARGO_BUILD_RUSTFLAGS="--cfg procmacro2_semver_exempt"
+            else
+              : > .cargo/config.toml
+            fi
+            printf '[target.x86_64-unknown-linux-gnu]\nrustflags = ["--cfg", "procmacro2_semver_exempt"]\n' >> .cargo/config.toml
+            export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="--cfg procmacro2_semver_exempt"
+            log "cargo config for this attempt:"
+            cat .cargo/config.toml | tee -a /tmp/anchor-idl.log
+          }
+
+          attempt() { # $1 toolchain, $2 cfg mode, $3 label
+            log ""
+            log "################ attempt: $3 (toolchain=$1, cfg=$2) ################"
+            set_cfg_mode "$2"
+            local rc=0
+            RUSTUP_TOOLCHAIN="$1" anchor build 2>&1 | tee -a /tmp/anchor-idl.log || rc=$?
+            log "################ attempt '$3' exit code: $rc ################"
+            return "$rc"
+          }
+
+          rc=1
+          attempt nightly host  "nightly + target.<host>.rustflags" && rc=0
+          if [ "$rc" -ne 0 ]; then attempt nightly build "nightly + build.rustflags" && rc=0; fi
+          if [ "$rc" -ne 0 ]; then attempt "$RUST_VERSION" build "stable ${RUST_VERSION} + build.rustflags" && rc=0; fi
+
+          rm -rf .cargo
+          unset CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS CARGO_BUILD_RUSTFLAGS
+          log "final anchor build exit code: $rc"
+          exit "$rc"
+
+      - name: Publish IDL attempt log
+        if: always() && steps.idl_build.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-idl.log "Anchor build (on-chain programs)" 10
+
+      - name: Verify [workspace] members covers every program crate
+        # aof-core lives outside programs/, so Anchor only built it once
+        # [workspace] members was committed. That happened after the advisory
+        # build proved aof-core still compiles (run 34900235208). This step keeps
+        # the list honest: a new program crate that is not registered would
+        # silently escape the build gate, which is exactly how aof-core went
+        # uncompiled while tests/aof_core.ts kept loading its IDL.
+        id: members_check
+        run: |
+          set -uo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          cfg = pathlib.Path("Anchor.toml").read_text()
+          m = re.search(r"^\[workspace\][^\[]*?members\s*=\s*\[(.*?)\]", cfg, re.M | re.S)
+          if not m:
+              print("::error::Anchor.toml has no [workspace] members - aof-core, which lives "
+                    "outside programs/, would never be built")
+              sys.exit(1)
+
+          members = set(re.findall(r'"([^"]+)"', m.group(1)))
+          on_disk = {"aof-core"} | {
+              f"programs/{d.name}" for d in sorted(pathlib.Path("programs").iterdir())
+              if (d / "Cargo.toml").exists()
+          }
+          print(f"declared members     : {sorted(members)}")
+          print(f"program crates on disk: {sorted(on_disk)}")
+
+          bad = False
+          for missing in sorted(on_disk - members):
+              print(f"::error::{missing} has a Cargo.toml but is not in [workspace] members - "
+                    "it would never be built or tested")
+              bad = True
+          for stale in sorted(members - on_disk):
+              print(f"::warning::{stale} is listed in [workspace] members but has no Cargo.toml")
+          if not bad:
+              print("[ok] every program crate on disk is built by `anchor build`")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: Build artifacts
+        run: |
+          # actions/upload-artifact@v4 stores paths relative to the least common
+          # ancestor of the files that actually matched. When the IDL step
+          # produced nothing, only target/deploy/* matched, the ancestor became
+          # target/deploy and the .so files landed at the archive root. This
+          # marker (and the synced Anchor.toml below) pin the ancestor to
+          # target/, so the anchor-test job can extract straight back into
+          # target/ no matter which subdirectories exist.
+          mkdir -p target
+          echo "artifact root marker for actions/upload-artifact@v4" > target/artifact-root.txt
+          # The anchor-test job must deploy with the same program ids the .so
+          # files were built with, so the synced Anchor.toml travels along. It is
+          # copied under target/ to keep the artifact root from moving to the
+          # repository root (upload-artifact@v4 uses the least common ancestor).
+          cp Anchor.toml target/artifact-Anchor.toml
+          ls -l target/deploy/*.so target/idl/*.json 2>/dev/null || true
+          echo "--- artifact contents ---"
+          find target -maxdepth 2 \( -name '*.so' -o -name '*.json' -o -name '*.ts' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort || true
+
+      - name: Mint-writable gate (mint_to/burn CPIs need a `mut` Mint)
+        # Blocking. A read-only Mint passed to token::mint_to / token::burn
+        # compiles but fails on a real validator with "writable privilege
+        # escalated"; the first local anchor test run found 24 such fields
+        # across the farm/exploration/forge/referral/season flows.
+        run: |
+          set -uo pipefail
+          python3 scripts/check-mint-writable.py 2>&1 | tee -a /tmp/anchor-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: IDL drift gate (source account contexts vs committed IDL)
+        # Blocking. The IDL builder is upstream-blocked, so the backend, the
+        # frontend and the Anchor test suite all run against the committed
+        # copies in aof_backend/src/idl/. scripts/check-idl-drift.py parses the
+        # Rust #[derive(Accounts)] structs directly and compares instruction
+        # names, argument counts, account order and writable/signer/optional
+        # flags with every committed IDL (and with target/idl when it exists).
+        # This is what would have caught auction_bid.previous_bidder losing
+        # `writable` (ConstraintMut 2000 on every real bid).
+        run: |
+          set -uo pipefail
+          # The key-sync step rewrote declare_id!/Anchor.toml to throwaway ids for
+          # this run, so program ids are compared against the committed revision.
+          python3 scripts/check-idl-drift.py --target-idl target/idl --ids-from-git "$GITHUB_SHA" 2>&1 | tee -a /tmp/anchor-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Report generated-IDL arg-type drift vs committed backend IDL
+        # Secondary, advisory: only runs when the IDL builder produced output and
+        # compares argument *types*, which the source parser above does not.
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sys
+
+          generated_dir = pathlib.Path("target/idl")
+          committed_dir = pathlib.Path("aof_backend/src/idl")
+          drift = False
+
+          if not sorted(generated_dir.glob("*.json")):
+              print("[skipped] no generated IDL in target/idl - the IDL build is")
+              print("          advisory (anchor-lang 0.30.1 needs")
+              print("          proc_macro2::Span::source_file, removed from")
+              print("          proc-macro2 >= 1.0.95 and from current nightlies).")
+              print(f"          Committed backend IDLs in {committed_dir}: "
+                    f"{sorted(x.name for x in committed_dir.glob('*.json'))}")
+              sys.exit(0)
+
+          for gen in sorted(generated_dir.glob("*.json")):
+              ref = committed_dir / gen.name
+              g = json.loads(gen.read_text())
+              g_ix = {i["name"]: [(a["name"], json.dumps(a["type"], sort_keys=True)) for a in i.get("args", [])]
+                      for i in g.get("instructions", [])}
+              if not ref.exists():
+                  print(f"[drift] {gen.name}: generated but no committed copy at {ref}")
+                  drift = True
+                  continue
+              r = json.loads(ref.read_text())
+              r_ix = {i["name"]: [(a["name"], json.dumps(a["type"], sort_keys=True)) for a in i.get("args", [])]
+                      for i in r.get("instructions", [])}
+              added = sorted(set(g_ix) - set(r_ix))
+              removed = sorted(set(r_ix) - set(g_ix))
+              changed = sorted(n for n in set(g_ix) & set(r_ix) if g_ix[n] != r_ix[n])
+              if added or removed or changed:
+                  drift = True
+                  print(f"[drift] {gen.name}:")
+                  for n in added:
+                      print(f"    + instruction {n}{g_ix[n]}")
+                  for n in removed:
+                      print(f"    - instruction {n} (still referenced by committed IDL)")
+                  for n in changed:
+                      print(f"    ~ instruction {n}\n        generated: {g_ix[n]}\n        committed: {r_ix[n]}")
+              else:
+                  print(f"[ok] {gen.name}: instruction names and arg types match the committed IDL")
+
+          if drift:
+              print("::warning::IDL drift detected between target/idl and aof_backend/src/idl")
+              sys.exit(1)
+          PY
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: anchor-target
+          path: |
+            target/artifact-root.txt
+            target/artifact-Anchor.toml
+            target/artifact-program-ids.txt
+            target/artifact-sync-report.txt
+            target/deploy/*.so
+            target/deploy/*-keypair.json
+            target/idl/*.json
+            target/types/*.ts
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish failure log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-build.log "Anchor build (on-chain programs)" 10
+
+  backend:
+    name: Backend build + self-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: aof_backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: aof_backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build (prisma generate + tsc)
+        run: |
+          set -uo pipefail
+          : > /tmp/backend-build.log
+          rc=0
+          npm run build 2>&1 | tee -a /tmp/backend-build.log || rc=$?
+          exit "$rc"
+
+      - name: Self-test - wallet proof
+        run: |
+          set -uo pipefail
+          npm run test:wallet-proof 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Self-test - resource registry
+        run: |
+          set -uo pipefail
+          npm run test:resource-registry 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Self-test - security invariants
+        run: |
+          set -uo pipefail
+          npm run test:security-invariants 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Integration test - Prisma idempotency CAS (temporary SQLite)
+        # Real database: prisma db push into a temp file, then 32 concurrent
+        # claims / replay / failed+stale reclaim against src/security/idempotency.ts.
+        # Output is tee'd into the published failure log so a failing assertion
+        # is visible even when the Actions log endpoint is unreachable.
+        run: |
+          set -uo pipefail
+          npm run test:idempotency-db 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Migration gate - prisma/migrations matches schema.prisma
+        run: |
+          set -uo pipefail
+          npm run prisma:migrate:check 2>&1 | tee -a /tmp/backend-build.log
+          rc=${PIPESTATUS[0]}
+          rm -f prisma/.migrate-shadow.db .migrate-shadow.db
+          exit "$rc"
+
+      - name: Hygiene - no tracked databases or secrets
+        run: |
+          set -uo pipefail
+          cd ..
+          bad=$(git ls-files | grep -Ei '\.(db|sqlite|sqlite3|pem|p12|pfx)$|keypair\.json$|(^|/)\.env(\.|$)' | grep -v '\.env\.example$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::tracked database/secret files:"; echo "$bad"; exit 1
+          fi
+          echo "no tracked databases or secret files"
+
+      - name: Publish failure log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ../.github/scripts/publish-failure-log.sh /tmp/backend-build.log "Backend build + self-tests" 10
+
+      - name: Upload backend log artifact
+        # Artifacts are readable even when the Actions log endpoint and PR
+        # comments are not (no PR yet, or annotation truncation at 10 lines).
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: /tmp/backend-build.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  anchor-test:
+    name: Anchor test (local validator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: programs
+    # Blocking release gate. aof-core is in [workspace] members, the artifacts
+    # deploy on the local validator (run 34910317710) and the suite reaches real
+    # assertions, so a failing test must make the workflow red. The failure log
+    # is still published as a PR comment by the last step; that step runs
+    # after the failure but does not change the job conclusion.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Agave release
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana/install/active_release
+          key: ${{ runner.os }}-agave-${{ env.AGAVE_VERSION }}
+
+      - name: Install Rust ${{ env.RUST_VERSION }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install "${RUST_VERSION}" --profile minimal
+          rustup default "${RUST_VERSION}"
+
+      - name: Install Agave (Solana CLI) ${{ env.AGAVE_VERSION }}
+        run: |
+          set -uo pipefail
+          release_dir="$HOME/.local/share/solana/install/active_release"
+          if [ -x "$release_dir/bin/solana" ]; then
+            echo "Reusing cached Agave release"
+          elif sh -c "$(curl -sSfL https://release.anza.xyz/v${AGAVE_VERSION}/install)"; then
+            echo "Installed via release.anza.xyz"
+          else
+            echo "::warning::release.anza.xyz install failed, falling back to the GitHub release tarball"
+            url="https://github.com/anza-xyz/agave/releases/download/v${AGAVE_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+            curl -sSfL --retry 3 -o /tmp/solana-release.tar.bz2 "$url"
+            rm -rf /tmp/solana-release "$release_dir"
+            tar xjf /tmp/solana-release.tar.bz2 -C /tmp
+            mkdir -p "$(dirname "$release_dir")"
+            mv /tmp/solana-release "$release_dir"
+          fi
+          echo "$release_dir/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor CLI
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          if command -v anchor >/dev/null 2>&1 && anchor --version | grep -q "${ANCHOR_LANG_VERSION}"; then
+            echo "Reusing cached Anchor CLI: $(anchor --version)"
+            exit 0
+          fi
+          if ! cargo install --git https://github.com/coral-xyz/anchor \
+               --tag "v${ANCHOR_LANG_VERSION}" anchor-cli --locked --force; then
+            url="https://github.com/coral-xyz/anchor/releases/download/v${ANCHOR_FALLBACK_CLI_VERSION}/anchor-${ANCHOR_FALLBACK_CLI_VERSION}-x86_64-unknown-linux-gnu"
+            curl -sSfL --retry 3 -o /tmp/anchor "$url"
+            chmod +x /tmp/anchor
+            sudo mv /tmp/anchor /usr/local/bin/anchor
+            mkdir -p /tmp/avm-stub
+            printf '#!/usr/bin/env bash\nexit 1\n' > /tmp/avm-stub/avm
+            chmod +x /tmp/avm-stub/avm
+            echo "/tmp/avm-stub" >> "$GITHUB_PATH"
+          fi
+          anchor --version
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Restore build artifacts
+        # upload-artifact@v4 stores paths RELATIVE TO the least common ancestor of
+        # the files it uploaded. The programs job forces that ancestor to be
+        # target/ with a marker file, so the archive holds deploy/*.so,
+        # deploy/*-keypair.json and artifact-Anchor.toml - and extracting into
+        # `target` puts them back exactly where Anchor expects them. Extracting
+        # into `.` instead scatters them over the workspace root (measured in run
+        # 34904678609: "no program keypairs were restored from the build
+        # artifact" while the archive did contain them).
+        uses: actions/download-artifact@v4
+        with:
+          name: anchor-target
+          path: target
+
+      - name: Verify the restored artifact layout
+        # Fail closed with the real listing instead of letting the suite run
+        # against a half-restored target/.
+        run: |
+          set -uo pipefail
+          set +e
+          echo "--- what the artifact restored ---"
+          find . -maxdepth 3 \( -name '*.so' -o -name '*-keypair.json' -o -name 'artifact-*.toml' -o -name 'artifact-root.txt' \) -print 2>/dev/null | sort
+          so=$(find target/deploy -maxdepth 1 -name '*.so' 2>/dev/null | wc -l | tr -d ' ')
+          kp=$(find target/deploy -maxdepth 1 -name '*-keypair.json' 2>/dev/null | wc -l | tr -d ' ')
+          echo "restored: ${so:-0} program binaries, ${kp:-0} keypairs"
+          bad=0
+          [ "${so:-0}" -eq 6 ] || { echo "::error::expected 6 program binaries in target/deploy, found ${so:-0} - the artifact layout changed"; bad=1; }
+          [ "${kp:-0}" -eq 6 ] || { echo "::error::expected 6 program keypairs in target/deploy, found ${kp:-0}"; bad=1; }
+          [ -f target/artifact-Anchor.toml ] || { echo "::error::target/artifact-Anchor.toml is missing from the artifact"; bad=1; }
+          exit "$bad"
+
+      - name: Create throwaway provider wallet
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          mkdir -p "$(dirname "$CI_WALLET_PATH")"
+          solana-keygen new --silent --no-bip39-passphrase --force -o "$CI_WALLET_PATH"
+
+      - name: Restore the synced Anchor.toml from the build artifact
+        # Program ids in the checked-out Anchor.toml are the real devnet ids, but
+        # the .so files were built against CI-generated keypairs (see the
+        # "Generate program keypairs and sync ids" step in the programs job).
+        # Deploying with the checked-out config would target accounts that do not
+        # exist on the local validator.
+        run: |
+          set -uo pipefail
+          set +e
+          if [ -f target/artifact-Anchor.toml ]; then
+            echo "--- program ids the artifacts were built with ---"
+            grep -A8 '^\[programs.localnet\]' target/artifact-Anchor.toml || true
+            cp target/artifact-Anchor.toml Anchor.toml
+            echo "restored the synced Anchor.toml"
+          else
+            echo "::warning::the artifact carries no synced Anchor.toml; keeping the checked-out copy"
+          fi
+
+      - name: Report the build-time program id sync
+        # The Actions log endpoint is not reachable from every environment, so
+        # the programs job ships its sync report inside the artifact. Everything
+        # printed here lands in /tmp/anchor-test.log, which the failure publisher
+        # posts to the PR when this job does not succeed.
+        id: sync_report
+        run: |
+          set -uo pipefail
+          set +e
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          : > /tmp/anchor-test.log
+          {
+            echo "### sync report from the programs job"
+            cat target/artifact-sync-report.txt 2>/dev/null || echo "(no sync report in the artifact)"
+            echo
+            echo "### ids the restored keypairs correspond to"
+            for kp in target/deploy/*-keypair.json; do
+              [ -f "$kp" ] && echo "$(basename "$kp" -keypair.json) $(solana-keygen pubkey "$kp" 2>&1)"
+            done
+            echo
+            echo "### program ids this job will deploy with"
+            grep -A8 '^\[programs.localnet\]' Anchor.toml 2>/dev/null || echo "(no [programs.localnet] in Anchor.toml)"
+            echo
+            echo "### declare_id! in the checked-out sources (not used by --skip-build)"
+            for src in aof-core/src/lib.rs programs/*/src/lib.rs; do
+              echo "  $src: $(grep -m1 -oE 'declare_id!\("[^"]+"\)' "$src" 2>/dev/null)"
+            done
+          } 2>&1 | tee -a /tmp/anchor-test.log
+          if grep -qx "sync_ok: true" target/artifact-sync-report.txt 2>/dev/null; then
+            echo "sync_ok: true" | tee -a /tmp/anchor-test.log
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sync_ok: false" | tee -a /tmp/anchor-test.log
+            echo "::error::the programs job did not establish consistent program ids, so the binaries in this artifact were not built for the ids Anchor.toml declares. Refusing to run the suite: it would only produce meaningless deployment failures."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Seed target/idl from the committed backend IDLs
+        # Anchor's IDL builder cannot run on any toolchain this repository may use
+        # (see the advisory step in the programs job for the measured reasons), and
+        # tests/aof_core.ts reads target/idl/aof_core.json. The backend keeps a
+        # committed copy of all six IDLs under aof_backend/src/idl/, so seed from
+        # those and rewrite `address` to the id the artifacts were built with.
+        #
+        # The staleness warning is deliberate: these IDLs were generated from an
+        # older revision, so if an instruction set changed the suite exercises an
+        # outdated ABI. The programs job's drift report is the place that catches
+        # it once IDL generation works again.
+        id: idl_seed
+        run: |
+          set -uo pipefail
+          set +e
+          have=$(find target/idl -maxdepth 1 -name '*.json' 2>/dev/null | wc -l | tr -d ' ')
+          if [ "${have:-0}" -gt 0 ]; then
+            echo "seeded=no" >> "$GITHUB_OUTPUT"
+            echo "the IDL builder produced $have IDL file(s); not seeding"
+            exit 0
+          fi
+          mkdir -p target/idl
+          : >> /tmp/anchor-test.log
+          python3 - <<'PY' 2>&1 | tee -a /tmp/anchor-test.log
+          import json, pathlib, re, sys
+
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+          def b58(raw):
+              n = int.from_bytes(raw, "big")
+              out = ""
+              while n:
+                  n, r = divmod(n, 58)
+                  out = ALPHABET[r] + out
+              return "1" * (len(raw) - len(raw.lstrip(b"\x00"))) + (out or "1")
+
+          # Ground truth for "which program ids were these artifacts built with" is the
+          # keypair files that travelled in the artifact, not Anchor.toml: if the synced
+          # Anchor.toml was not restored, Anchor.toml still names the real devnet ids and
+          # seeding from it would deploy to accounts that do not exist.
+          built = {}
+          for kp in sorted(pathlib.Path("target/deploy").glob("*-keypair.json")):
+              arr = json.loads(kp.read_text())
+              if len(arr) != 64:
+                  print("::error::%s: expected a 64-byte keypair, got %d bytes" % (kp, len(arr)))
+                  sys.exit(1)
+              built[kp.name[:-len("-keypair.json")]] = b58(bytes(arr[32:]))
+          print("ids the artifact keypairs correspond to:")
+          for name in sorted(built):
+              print("  %s = %s" % (name, built[name]))
+          if not built:
+              print("::error::no program keypairs were restored from the build artifact")
+              sys.exit(1)
+
+          cfg = pathlib.Path("Anchor.toml").read_text()
+          sec = re.search(r"^\[programs\.localnet\](.*?)(?=^\[|\Z)", cfg, re.M | re.S)
+          declared = dict(re.findall(r'^\s*(\w+)\s*=\s*"([^"]+)"', sec.group(1), re.M)) if sec else {}
+          wrong = sorted(n for n in built if declared.get(n) != built[n])
+          if wrong:
+              print("::error::Anchor.toml does not match the artifacts for: %s" % ", ".join(wrong))
+              print("        The synced Anchor.toml from the programs job was not restored, so")
+              print("        `anchor test --skip-build` would deploy to the wrong addresses.")
+              sys.exit(1)
+          print("Anchor.toml [programs.localnet] matches the artifact keypairs")
+
+          out_dir = pathlib.Path("target/idl")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          seeded = 0
+          for src in sorted(pathlib.Path("aof_backend/src/idl").glob("*.json")):
+              name = src.stem
+              if name not in built:
+                  print("::warning::%s: no keypair in the artifact, skipping" % name)
+                  continue
+              d = json.loads(src.read_text())
+              old = d.get("address") or (d.get("metadata") or {}).get("address")
+              if old != built[name]:
+                  print("[patch] %s: address %s -> %s" % (name, old, built[name]))
+                  if isinstance(d.get("metadata"), dict) and "address" in d["metadata"]:
+                      d["metadata"]["address"] = built[name]
+                  d["address"] = built[name]
+              dst = out_dir / src.name
+              dst.write_text(json.dumps(d, indent=2))
+              seeded += 1
+              print("[seed] %s: %d instructions, %d accounts, address %s"
+                    % (dst, len(d.get("instructions", [])), len(d.get("accounts", [])), built[name]))
+
+          if seeded == 0:
+              print("::error::aof_backend/src/idl contains no IDL matching the artifact keypairs")
+              sys.exit(1)
+          print("seeded %d IDL file(s) into target/idl" % seeded)
+          PY
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -eq 0 ]; then
+            echo "seeded=yes" >> "$GITHUB_OUTPUT"
+            echo "::warning::target/idl was seeded from the committed copies in aof_backend/src/idl because the Anchor IDL builder is upstream-blocked; the suite runs against IDLs that may be stale relative to the programs just compiled."
+          fi
+          exit "$rc"
+
+      - name: Check that the restored artifacts contain an IDL
+        # anchor test --skip-build loads target/idl/*.json, so without a
+        # generated IDL it can only fail with a confusing "file not found".
+        # Report the real reason instead and skip; the whole job is advisory.
+        id: idl_check
+        run: |
+          # `set +e` matters here: GitHub Actions invokes run steps with
+          # `bash -e {0}`, and `find target/idl` fails when the advisory IDL
+          # build produced nothing. Under -e that aborted this step with exit
+          # code 1 instead of reporting the reason and skipping cleanly.
+          set -uo pipefail
+          set +e
+          ls -lR target 2>/dev/null | head -60 || true
+          count=$(find target/idl -maxdepth 1 -name '*.json' 2>/dev/null | wc -l | tr -d ' ')
+          count=${count:-0}
+          echo "restored IDL files: $count"
+          if [ "$count" -eq 0 ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::error::anchor test cannot run - no IDL in target/idl (neither generated nor seeded from aof_backend/src/idl). This job is a blocking gate, so it fails instead of skipping."
+            exit 1
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Anchor test
+        id: anchor_test
+        if: steps.idl_check.outputs.available == 'true'
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          : > /tmp/anchor-test.log
+          rc=0
+          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor test --skip-build 2>&1 | tee -a /tmp/anchor-test.log || rc=$?
+          echo "anchor test exit code: $rc" | tee -a /tmp/anchor-test.log
+          # Belt and braces: `anchor test` has been observed to exit 0 while
+          # mocha reported failures in some CLI/mocha combinations. Treat any
+          # "N failing" summary as a failure regardless of the CLI exit code.
+          if grep -Eq '^[[:space:]]*[1-9][0-9]* failing' /tmp/anchor-test.log; then
+            echo "::error::mocha reported failing tests"
+            rc=1
+          fi
+          if ! grep -Eq '^[[:space:]]*[1-9][0-9]* passing' /tmp/anchor-test.log; then
+            echo "::error::mocha did not report any passing tests - the suite did not run"
+            rc=1
+          fi
+          exit "$rc"
+
+      - name: Publish failure log
+        if: always() && steps.anchor_test.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-test.log "Anchor test (local validator)" 10
+
+  frontend:
+    name: Frontend build (frontend/)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build (tsc + vite build)
+        id: fe_build
+        run: |
+          set -uo pipefail
+          : > /tmp/frontend-build.log
+          rc=0
+          npm run build 2>&1 | tee -a /tmp/frontend-build.log || rc=$?
+          exit "$rc"
+
+      - name: Stylelint rule self-test
+        run: npm run test:aof-stylelint
+
+      - name: Design token lint (no raw colors)
+        run: npm run lint:aof-colors
+
+      - name: Publish failure log
+        if: always() && steps.fe_build.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ../.github/scripts/publish-failure-log.sh /tmp/frontend-build.log "Frontend build (frontend/)" 10

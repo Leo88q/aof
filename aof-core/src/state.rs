@@ -268,6 +268,10 @@ pub struct PackCommit {
     pub commit_hash: [u8; 32],
     pub commit_slot: u64,
     pub revealed: bool,
+    /// Pack price held in escrow on this PDA until reveal (then forwarded to
+    /// the treasury) or expiry (then refunded to `user`). Never paid out
+    /// before the outcome is known, so a lost secret cannot cost the player.
+    pub paid_lamports: u64,
 }
 
 // ----- Reroll (честный, RNG) -----
@@ -356,6 +360,12 @@ pub struct ForgeCommit {
     pub commit_hash: [u8; 32],
     pub commit_slot: u64,
     pub use_protector: bool,
+    /// SOL fee (+protector) escrowed on this PDA until reveal (-> treasury)
+    /// or expiry (-> user).
+    pub paid_lamports: u64,
+    /// Resources burned at commit; re-minted to the user on expiry.
+    pub wood_burned: u64,
+    pub stone_burned: u64,
 }
 
 // ----- Лотерея -----

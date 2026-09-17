@@ -49,7 +49,7 @@ export function PacksPage() {
 
       setStage("pay");
       flash("Шаг 2/3 · Подтвердите оплату пака в кошельке…", 60000);
-      const commit = await api.packs.commit({ user: address, mint, packType: p.type, treasury });
+      const commit = await api.packs.commit({ user: address, mint, packType: p.type });
       const rc = await handleTxResponse(commit);
       if (!rc.success) {
         setStage("idle");

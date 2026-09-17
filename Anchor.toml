@@ -1,6 +1,15 @@
 [toolchain]
 anchor_version = "0.30.1"
 
+[workspace]
+# aof-core lives outside programs/, so Anchor only builds it when it is
+# listed here. Committed after CI proved `anchor build --program-name aof_core
+# --no-idl` succeeds on the documented toolchain (Agave 4.2.1 / rustc 1.89.0 /
+# Anchor 0.30.1, run 34900235208). The CI job `programs` verifies that this
+# list keeps covering every program crate on disk.
+members = ["aof-core", "programs/aof-liquidity", "programs/aof-market",
+           "programs/aof-quests", "programs/aof-rebirth", "programs/aof-session-keys"]
+
 [features]
 resolution = true
 skip-lint = false
@@ -27,6 +36,12 @@ url = "https://api.apr.dev"
 [provider]
 cluster = "Localnet"
 wallet = "solana/keys/aof-authority-devnet.json"
+
+[test]
+# Initialize читает канонический ProgramData апгрейд-лоадера, чтобы привязать
+# Config.authority к фактическому upgrade authority, а не к произвольному
+# подписанту. Без upgradeable-деплоя этого аккаунта нет, и bootstrap падает.
+upgradeable = true
 
 [scripts]
 test = "npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"

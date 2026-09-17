@@ -58,6 +58,25 @@ pub fn handler(ctx: Context<PackOpenReveal>, secret: [u8; 32]) -> Result<()> {
 
     ctx.accounts.pack_commit.revealed = true;
 
+    // Outcome is final: release the escrowed price to the treasury. The PDA
+    // is program-owned, so lamports move by direct debit/credit; `close = user`
+    // then returns only the rent to the player.
+    let paid = ctx.accounts.pack_commit.paid_lamports;
+    if paid > 0 {
+        let commit_info = ctx.accounts.pack_commit.to_account_info();
+        **commit_info.try_borrow_mut_lamports()? = commit_info
+            .lamports()
+            .checked_sub(paid)
+            .ok_or(AofError::MathOverflow)?;
+        **ctx.accounts.treasury.try_borrow_mut_lamports()? = ctx
+            .accounts
+            .treasury
+            .lamports()
+            .checked_add(paid)
+            .ok_or(AofError::MathOverflow)?;
+        ctx.accounts.pack_commit.paid_lamports = 0;
+    }
+
     emit!(PackOpened {
         user: ctx.accounts.pack_commit.user,
         mint: ctx.accounts.mint.key(),

@@ -40,6 +40,7 @@ pub mod adjust_player_capacity;
 pub mod pack_config;
 pub mod pack_open_commit;
 pub mod pack_open_reveal;
+pub mod pack_open_expire;
 pub mod reroll_random;
 pub mod exploration;
 pub mod referral;

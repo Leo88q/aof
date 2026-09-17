@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import { AUTHORITY, TREASURY } from "../config";
 import { program } from "../provider";
 import { authPda, configPda, packCommitPda, packConfigPda, toolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -17,13 +17,10 @@ const packTypeMap: Record<string, any> = {
 };
 
 r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async (req, res) => {
-  // A pack commit transfers SOL immediately, but the current on-chain
-  // programs have no typed expiry-refund instruction and the worker cannot
-  // safely reconstruct every reveal account. Do not accept new paid commits
-  // until reveal/refund recovery is implemented and tested.
-  return res.status(503).json({
-    error: "PACK_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
-  });
+  // The pack price is escrowed on the PackCommit PDA (not paid to the
+  // treasury) until pack_open_reveal. If the reveal never happens the
+  // commit-expirer worker (services/commit-expirer) or anyone else can call
+  // pack_open_expire after COMMIT_EXPIRY_SLOTS and the user is refunded.
   try {
     const user = pk(req.body.user);
     const mint = pk(req.body.mint);
@@ -34,15 +31,12 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async
     const [config] = configPda();
     const [packConfig] = packConfigPda(packTypeIdx);
     const [packCommit] = packCommitPda(mint);
-    const treasury = pk(req.body.treasury);
-
     const ix = await (program.methods as any)
       .packOpenCommit(packTypeMap[packType], hash)
       .accounts({
         config,
         authority: AUTHORITY.publicKey,
         user,
-        treasury,
         packConfig,
         auth: authPda()[0],
         mint,
@@ -52,6 +46,32 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async
       .instruction();
     const tx = await coSign([ix], user);
     res.json({ tx });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Refund of an expired pack commit. On-chain the instruction is permissionless
+ * and only succeeds once the commit slot has left SlotHashes
+ * (>= COMMIT_EXPIRY_SLOTS), so it can never race a valid reveal and lamports
+ * always go to pack_commit.user. This HTTP entry point is admin-only because
+ * the authority pays the transaction fee; the commit-expirer worker uses it
+ * (or the same program call directly). Players never need to call it.
+ */
+r.post("/expire", requireCircuitOpen, requireAdmin, async (req, res) => {
+  try {
+    const mint = pk(req.body.mint);
+    const [config] = configPda();
+    const [packCommit] = packCommitPda(mint);
+    const commit: any = await (program.account as any).packCommit.fetch(packCommit);
+    const ix = await (program.methods as any)
+      .packOpenExpire()
+      .accounts({ config, packCommit, user: commit.user, mint })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    await markUsed(`pack:${mint.toBase58()}`).catch(() => {});
+    res.json({ sig, user: commit.user.toBase58(), refundedLamports: commit.paidLamports.toString() });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
@@ -80,6 +100,7 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("packs_reveal"), requi
         authority: AUTHORITY.publicKey,
         packCommit,
         user,
+        treasury: TREASURY,
         packConfig,
         mint,
         userToken,

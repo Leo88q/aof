@@ -1,6 +1,8 @@
 # === СЕКРЕТЫ (НИКОГДА НЕ КОММИТИТЬ) ===
 .env
 .env.*
+# templates are safe and must stay tracked
+!.env.example
 *.env
 .env.local
 .env.production
@@ -90,3 +92,4 @@ solana/
 test-ledger/
 frontend.zip
 frontend.zip.*
+ci-local-logs/

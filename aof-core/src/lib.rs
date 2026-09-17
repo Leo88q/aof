@@ -691,7 +691,7 @@ pub struct CollectMining<'info> {
     )]
     pub player: Account<'info, Player>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     /// CHECK: auth PDA, canonical mint authority for resource emissions.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
@@ -923,9 +923,6 @@ pub struct PackOpenCommit<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
-    /// CHECK: казна, куда идёт оплата пака
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_type.to_u8()]], bump = pack_config.bump)]
     pub pack_config: Account<'info, PackConfig>,
     /// CHECK: auth PDA is the only supported mint authority for tools.
@@ -964,6 +961,9 @@ pub struct PackOpenReveal<'info> {
     /// CHECK: получатель — тот же user, что делал commit; закрываем ренту ему
     #[account(mut, address = pack_commit.user)]
     pub user: UncheckedAccount<'info>,
+    /// CHECK: казна получает escrow только здесь, когда исход уже известен.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_commit.pack_type]], bump = pack_config.bump)]
     pub pack_config: Account<'info, PackConfig>,
     #[account(
@@ -993,6 +993,30 @@ pub struct PackOpenReveal<'info> {
     pub slot_hashes: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+/// Возврат просроченного pack-коммита. Permissionless: любой может вызвать,
+/// деньги всегда идут только `pack_commit.user`. Разрешён строго после того,
+/// как хэш слота коммита гарантированно выпал из SlotHashes, поэтому
+/// `reveal` и `expire` для одного коммита взаимоисключающи.
+#[derive(Accounts)]
+pub struct PackOpenExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()],
+        bump,
+        constraint = pack_commit.mint == mint.key() @ AofError::InvalidMint,
+        constraint = !pack_commit.revealed @ AofError::CommitMismatch
+    )]
+    pub pack_commit: Account<'info, PackCommit>,
+    /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
+    #[account(mut, address = pack_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    /// CHECK: только как seed pack_commit; supply/authority не важны для возврата.
+    pub mint: UncheckedAccount<'info>,
 }
 
 // ----- Reroll (честный) -----
@@ -1086,11 +1110,19 @@ pub struct RerollRandomReveal<'info> {
 
 // ----- Exploration -----
 
+// SBPF ограничивает стековый кадр 4096 байтами; Anchor-сгенерированная
+// `try_accounts` десериализует каждый типизированный аккаунт в стек, и верификатор
+// отклонял программу целиком (CI run 34908007614):
+//   Function <aof_core::StartExplorationCommit as Accounts<..>>::try_accounts overflows the maximum
+//   allowed frame space ... Estimated function frame size: 5824 bytes.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
+// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
+// порядок, ограничения и IDL не меняются.
 #[derive(Accounts)]
 #[instruction(commit_hash: [u8;32])]
 pub struct StartExplorationCommit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(mut)]
@@ -1100,8 +1132,8 @@ pub struct StartExplorationCommit<'info> {
         seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump,
         constraint = (exploration_state.owner == Pubkey::default() || exploration_state.owner == user.key()) @ AofError::Unauthorized
     )]
-    pub exploration_state: Account<'info, ExplorationState>,
-    pub tool_mint: Account<'info, Mint>,
+    pub exploration_state: Box<Account<'info, ExplorationState>>,
+    pub tool_mint: Box<Account<'info, Mint>>,
     #[account(
         seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump,
         constraint = tool.owner == user.key() @ AofError::NotToolOwner,
@@ -1109,29 +1141,33 @@ pub struct StartExplorationCommit<'info> {
         constraint = tool.tool_type == "Bow" @ AofError::InvalidToolType,
         constraint = !tool.is_mining @ AofError::ToolBusy
     )]
-    pub tool: Account<'info, ToolData>,
+    pub tool: Box<Account<'info, ToolData>>,
     #[account(
         init, payer = user, space = EXPLORATION_COMMIT_SPACE,
         seeds = [EXPLORATION_COMMIT_SEED, tool_mint.key().as_ref()], bump
     )]
-    pub exploration_commit: Account<'info, ExplorationCommit>,
-    #[account(address = config.food_mint)]
-    pub food_mint: Account<'info, Mint>,
+    pub exploration_commit: Box<Account<'info, ExplorationCommit>>,
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.food_mint)]
+    pub food_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Account<'info, TokenAccount>,
-    #[account(address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
+    pub user_food: Box<Account<'info, TokenAccount>>,
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
+    pub user_wood: Box<Account<'info, TokenAccount>>,
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
+    pub user_stone: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ] MEAT для исследования — только официальный MaterialMints mint.
-    #[account(address = material_mints.meat)]
-    pub meat_mint: Account<'info, Mint>,
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.meat)]
+    pub meat_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
-    pub user_meat: Account<'info, TokenAccount>,
+    pub user_meat: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1178,15 +1214,18 @@ pub struct UpgradeExplorationTier<'info> {
     pub user: Signer<'info>,
     #[account(mut, seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump, constraint = exploration_state.owner == user.key() @ AofError::Unauthorized)]
     pub exploration_state: Account<'info, ExplorationState>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Account<'info, TokenAccount>,
-    #[account(address = config.food_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.food_mint)]
     pub food_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
     pub user_food: Account<'info, TokenAccount>,
@@ -1227,15 +1266,18 @@ pub struct ReferralUpgradeCtx<'info> {
     pub user: Signer<'info>,
     #[account(mut, seeds = [REFERRAL_LINK_SEED, user.key().as_ref()], bump, constraint = referral_link.referred == user.key() @ AofError::Unauthorized)]
     pub referral_link: Account<'info, ReferralLink>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Account<'info, TokenAccount>,
-    #[account(address = config.food_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.food_mint)]
     pub food_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
     pub user_food: Account<'info, TokenAccount>,
@@ -1270,41 +1312,44 @@ pub struct PayOutWithReferral<'info> {
 
 // ----- Кузница риска (Enchant) -----
 
+// SBPF ограничивает стековый кадр 4096 байтами; Anchor-сгенерированная
+// `try_accounts` десериализует каждый типизированный аккаунт в стек, и верификатор
+// отклонял программу целиком (CI run 34908007614):
+//   Function <aof_core::ForgeAttemptCommit as Accounts<..>>::try_accounts overflows the maximum
+//   allowed frame space ... Estimated function frame size: 4544 bytes.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
+// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
+// порядок, ограничения и IDL не меняются.
 #[derive(Accounts)]
 #[instruction(slot_type: u8, commit_hash: [u8;32])]
 pub struct ForgeAttemptCommit<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub user: Signer<'info>,
-    /// CHECK: казна для fee/protector
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
     #[account(seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump, constraint = tool.owner == user.key() @ AofError::NotToolOwner)]
-    pub tool: Account<'info, ToolData>,
-    pub tool_mint: Account<'info, Mint>,
+    pub tool: Box<Account<'info, ToolData>>,
+    pub tool_mint: Box<Account<'info, Mint>>,
     #[account(
         init_if_needed, payer = user, space = ENCHANT_SLOT_SPACE,
         seeds = [ENCHANT_SLOT_SEED, tool_mint.key().as_ref(), &[slot_type]], bump
     )]
-    pub enchant_slot: Account<'info, EnchantSlot>,
+    pub enchant_slot: Box<Account<'info, EnchantSlot>>,
     #[account(
         init, payer = user, space = FORGE_COMMIT_SPACE,
         seeds = [FORGE_COMMIT_SEED, tool_mint.key().as_ref(), &[slot_type]], bump
     )]
-    pub forge_commit: Account<'info, ForgeCommit>,
-    #[account(address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
+    pub forge_commit: Box<Account<'info, ForgeCommit>>,
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
+    pub user_wood: Box<Account<'info, TokenAccount>>,
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
-    // [НОВОЕ] MEAT для исследования (передаётся напрямую)
-    pub meat_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
-    pub user_meat: Account<'info, TokenAccount>,
+    pub user_stone: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1321,9 +1366,44 @@ pub struct ForgeAttemptReveal<'info> {
     /// CHECK: получатель ренты — user, делавший commit
     #[account(mut, address = forge_commit.user)]
     pub payer: UncheckedAccount<'info>,
+    /// CHECK: казна получает escrow-fee только здесь, когда исход известен.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
     /// CHECK: sysvar SlotHashes
     #[account(address = SLOT_HASHES_ID)]
     pub slot_hashes: UncheckedAccount<'info>,
+}
+
+/// Возврат просроченного forge-коммита: сожжённые wood/stone минтятся обратно
+/// (auth PDA — mint authority ресурсов), SOL-fee из escrow и рента идут user.
+/// Permissionless; разрешён только после окна SlotHashes, так что не может
+/// сработать параллельно с валидным reveal.
+#[derive(Accounts)]
+pub struct ForgeAttemptExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [FORGE_COMMIT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]],
+        bump
+    )]
+    pub forge_commit: Box<Account<'info, ForgeCommit>>,
+    /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
+    #[account(mut, address = forge_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    /// CHECK: auth PDA — mint authority ресурсов.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == forge_commit.user @ AofError::Unauthorized)]
+    pub user_wood: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == forge_commit.user @ AofError::Unauthorized)]
+    pub user_stone: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
 }
 
 // ----- Лотерея -----
@@ -1741,10 +1821,17 @@ pub struct RentalRevokeCtx<'info> {
 }
 
 // [БЛОК L] Инициализация MaterialMints PDA
+// SBPF: кадр функции ограничен 4096 байтами, а `MaterialMints` — это 23 pubkey
+// (737 байт), которые Anchor-сгенерированная `try_accounts` десериализует в стек.
+// Для init_material_mints верификатор отклонял программу целиком (кадр обёртки
+// 4672 байта, CI run 34909636940): обёртка инлайнит `try_accounts`, поэтому
+// стоимость аккаунтов попадает в её кадр, а не в отдельный. `Box<..>` уводит
+// данные в кучу. Состав аккаунтов, ограничения и IDL не меняются; обращения вида
+// `&ctx.accounts.material_mints` продолжают работать через deref-coercion.
 #[derive(Accounts)]
 pub struct InitMaterialMints<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
@@ -1754,7 +1841,7 @@ pub struct InitMaterialMints<'info> {
         seeds = [MATERIAL_MINTS_SEED],
         bump
     )]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1784,7 +1871,8 @@ pub struct PlantSeeds<'info> {
         bump
     )]
     pub farm_tile: Box<Account<'info, FarmTile>>,
-    #[account(address = material_mints.seeds)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.seeds)]
     pub seeds_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
@@ -1831,7 +1919,8 @@ pub struct HarvestWheat<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.wheat)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.wheat)]
     pub wheat_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
@@ -1868,9 +1957,11 @@ pub struct StartMilling<'info> {
         bump
     )]
     pub mill_state: Box<Account<'info, MillState>>,
-    #[account(address = material_mints.wheat)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.wheat)]
     pub wheat_mint: Box<Account<'info, Mint>>,
-    #[account(address = config.stone_mint)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_wheat.mint == wheat_mint.key(), constraint = user_wheat.owner == user.key())]
     pub user_wheat: Box<Account<'info, TokenAccount>>,
@@ -1899,7 +1990,8 @@ pub struct CollectFlour<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.flour)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.flour)]
     pub flour_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_flour.mint == flour_mint.key(), constraint = user_flour.owner == user.key())]
     pub user_flour: Box<Account<'info, TokenAccount>>,
@@ -1931,13 +2023,17 @@ pub struct StartBaking<'info> {
         bump
     )]
     pub oven_state: Box<Account<'info, OvenState>>,
-    #[account(address = material_mints.flour)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.flour)]
     pub flour_mint: Box<Account<'info, Mint>>,
-    #[account(address = material_mints.water)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.water)]
     pub water_mint: Box<Account<'info, Mint>>,
-    #[account(address = config.wood_mint)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(address = material_mints.coal)]
+    // `mut`: token::burn decreases the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.coal)]
     pub coal_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_flour.mint == flour_mint.key(), constraint = user_flour.owner == user.key())]
     pub user_flour: Box<Account<'info, TokenAccount>>,
@@ -1970,7 +2066,8 @@ pub struct CollectBread<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.bread)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.bread)]
     pub bread_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_bread.mint == bread_mint.key(), constraint = user_bread.owner == user.key())]
     pub user_bread: Box<Account<'info, TokenAccount>>,
@@ -2015,7 +2112,8 @@ pub struct CollectWellWater<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(address = material_mints.water)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = material_mints.water)]
     pub water_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
     pub user_water: Box<Account<'info, TokenAccount>>,
@@ -2058,28 +2156,36 @@ pub struct PlaceBuyOrder<'info> {
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(init, payer = maker, space = RESOURCE_ORDER_SPACE, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
     pub order: Account<'info, ResourceOrder>,
     pub system_program: Program<'info, System>,
 }
 
+// SBPF ограничивает стековый кадр 4096 байтами; Anchor-сгенерированная
+// `try_accounts` десериализует каждый типизированный аккаунт в стек, и верификатор
+// отклонял программу целиком (CI run 34908007614):
+//   Function <aof_core::PlaceSellOrder as Accounts<..>>::try_accounts overflows the maximum
+//   allowed frame space ... Estimated function frame size: 4160 bytes.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
+// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
+// порядок, ограничения и IDL не меняются.
 #[derive(Accounts)]
 #[instruction(kind: u8, price_lamports_per_unit: u64, amount: u64)]
 pub struct PlaceSellOrder<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
-    pub maker_token: Account<'info, TokenAccount>,
+    pub maker_token: Box<Account<'info, TokenAccount>>,
     #[account(init, payer = maker, space = RESOURCE_ORDER_SPACE, seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
-    pub order: Account<'info, ResourceOrder>,
+    pub order: Box<Account<'info, ResourceOrder>>,
     #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
-    pub order_vault: Account<'info, TokenAccount>,
+    pub order_vault: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2126,7 +2232,7 @@ pub struct MatchResourceOrders<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Account<'info, MaterialMints>,
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     pub mint: Account<'info, Mint>,
     #[account(mut, seeds = [RESOURCE_ORDER_SEED, buy_order.maker.as_ref(), mint.key().as_ref()], bump, constraint = buy_order.mint == mint.key() @ AofError::OrdersDoNotCross)]
     pub buy_order: Account<'info, ResourceOrder>,
@@ -2274,7 +2380,8 @@ pub struct ClaimSeasonReward<'info> {
     pub season: Account<'info, Season>,
     #[account(mut, seeds = [SEASON_PASS_SEED, season_pass.owner.as_ref(), &season.season_id.to_le_bytes()], bump)]
     pub season_pass: Account<'info, SeasonPass>,
-    #[account(address = config.wood_mint)]
+    // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
+    #[account(mut, address = config.wood_mint)]
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == season_pass.owner)]
     pub user_wood: Account<'info, TokenAccount>,
@@ -2510,6 +2617,10 @@ pub mod aof_core {
     pub fn pack_open_reveal(ctx: Context<PackOpenReveal>, secret: [u8;32]) -> Result<()> {
         instructions::pack_open_reveal::handler(ctx, secret)
     }
+    /// Refund an expired pack commit (escrow + rent back to the player).
+    pub fn pack_open_expire(ctx: Context<PackOpenExpire>) -> Result<()> {
+        instructions::pack_open_expire::handler(ctx)
+    }
 
     // --- Честный reroll ---
     pub fn init_reroll_config(ctx: Context<InitRerollConfig>, odds_bps: [u16;5]) -> Result<()> {
@@ -2553,6 +2664,10 @@ pub mod aof_core {
     }
     pub fn forge_attempt_reveal(ctx: Context<ForgeAttemptReveal>, secret: [u8;32]) -> Result<()> {
         instructions::forge::reveal_handler(ctx, secret)
+    }
+    /// Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent).
+    pub fn forge_attempt_expire(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
+        instructions::forge::expire_handler(ctx)
     }
 
     // --- Лотерея ---

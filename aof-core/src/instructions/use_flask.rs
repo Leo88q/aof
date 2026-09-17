@@ -18,6 +18,8 @@ pub struct UseFlask<'info> {
     #[account(mut)]
     pub user_flask: Account<'info, token::TokenAccount>,
     
+    // `mut`: token::burn changes the mint supply, so the mint must be writable.
+    #[account(mut)]
     pub flask_mint: Account<'info, token::Mint>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

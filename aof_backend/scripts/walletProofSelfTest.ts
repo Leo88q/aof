@@ -39,8 +39,9 @@ function testEd25519Signature(): void {
  * This models the atomic check-and-consume contract used by the Prisma
  * idempotency record. It deliberately has no await between the existence
  * check and insert: a real database unique constraint provides that atomicity
- * across processes. The integration variant is not runnable until Prisma
- * client generation succeeds in this checkout.
+ * across processes. The Prisma-backed integration variant lives in
+ * scripts/idempotencyIntegrationTest.ts (`npm run test:idempotency-db`) and
+ * runs against a throwaway SQLite database.
  */
 class AtomicReplayStore {
   private readonly consumed = new Set<string>();
@@ -66,7 +67,7 @@ async function main(): Promise<void> {
   testEd25519Signature();
   await testReplayRaceModel();
   console.log("wallet proof self-test: canonical digest, Ed25519 signature, replay and race model passed");
-  console.log("NOTE: Prisma-backed multi-process idempotency integration remains unrun because prisma generate is unavailable");
+  console.log("NOTE: this is an in-memory model only; the Prisma-backed idempotency CAS is covered by `npm run test:idempotency-db`");
 }
 
 void main().catch((error) => {

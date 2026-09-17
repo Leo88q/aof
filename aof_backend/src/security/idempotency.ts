@@ -34,11 +34,19 @@ export async function checkIdempotency(operationKey: string): Promise<{
 
       // Failed requests are retryable. Claim the row atomically so two
       // retries cannot both execute the same operation.
+      //
+      // The compare-and-set must include the observed createdAt, not only the
+      // status: a stale row is already `in_progress`, so after the first
+      // reclaim its status is unchanged and a status-only predicate lets every
+      // concurrent retry through (found by scripts/idempotencyIntegrationTest.ts:
+      // 16 of 16 callers reclaimed one stale operation). Reclaiming rewrites
+      // createdAt, so the second caller's predicate no longer matches.
       if (existing.status === "failed" || Date.now() - existing.createdAt.getTime() > STALE_OPERATION_MS) {
         const reclaimed = await db.idempotencyRecord.updateMany({
           where: {
             operationKey,
             status: existing.status,
+            createdAt: existing.createdAt,
           },
           data: {
             status: "in_progress",

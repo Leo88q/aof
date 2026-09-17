@@ -100,6 +100,14 @@ pub struct PackOpened {
 }
 
 #[event]
+pub struct PackCommitExpired {
+    pub user: Pubkey,
+    pub mint: Pubkey,
+    pub pack_type: u8,
+    pub refunded_lamports: u64,
+}
+
+#[event]
 pub struct RerollResult {
     pub user: Pubkey,
     pub burned_mint: Pubkey,
@@ -273,4 +281,14 @@ pub struct CraftEvent {
     pub seeds_cost: u64,
     pub water_cost: u64,
     pub potato_cost: u64,
+}
+
+#[event]
+pub struct ForgeCommitExpired {
+    pub user: Pubkey,
+    pub tool_mint: Pubkey,
+    pub slot_type: u8,
+    pub refunded_lamports: u64,
+    pub wood_refunded: u64,
+    pub stone_refunded: u64,
 }
