@@ -1,31 +1,44 @@
 import React from "react";
 import { useNav } from "./NavContext";
+import { 
+  FarmIcon, 
+  ToolsIcon, 
+  EconomyIcon, 
+  MarketIcon, 
+  QuestsIcon, 
+  ProfileIcon 
+} from "../components/ui/Icons";
 
-// Наши 5 вкладок (игровая структура)
-const TABS: { key: string; label: string; icon: string }[] = [
-  { key: "farm", label: "Ферма", icon: "🏡" },
-  { key: "tools", label: "Инструменты", icon: "🛠️" },
-  { key: "economy", label: "Экономика", icon: "🌾" },
-  { key: "market", label: "Рынок", icon: "📈" },
-  { key: "quests", label: "Задания", icon: "⭐" },
-  { key: "profile", label: "Профиль", icon: "👤" },
+// 6 основных вкладок игры
+const TABS: { key: string; label: string; icon: React.ReactNode }[] = [
+  { key: "farm", label: "Ферма", icon: <FarmIcon size={20} /> },
+  { key: "tools", label: "Мастерская", icon: <ToolsIcon size={20} /> },
+  { key: "economy", label: "Экономика", icon: <EconomyIcon size={20} /> },
+  { key: "market", label: "Рынок", icon: <MarketIcon size={20} /> },
+  { key: "quests", label: "Задания", icon: <QuestsIcon size={20} /> },
+  { key: "profile", label: "Профиль", icon: <ProfileIcon size={20} /> },
 ];
 
 export function TabBar() {
   const { tab, setTab } = useNav();
   return (
-    <div className="tabbar">
-      {TABS.map((t) => (
-        <button
-          key={t.key}
-          className={"tab-btn" + (tab === t.key ? " active" : "")}
-          onClick={() => setTab(t.key)}
-        >
-          <span className="tab-icon">{t.icon}</span>
-          <span className="tab-label">{t.label}</span>
-        </button>
-      ))}
-    </div>
+    <nav className="tabbar" aria-label="Основная навигация">
+      {TABS.map((t) => {
+        const isActive = tab === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            className={"tab-btn" + (isActive ? " active" : "")}
+            onClick={() => setTab(t.key)}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 

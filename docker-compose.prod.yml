@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aof-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aof_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aof_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-aof_production}
+    ports:
+      - "5432:5432"
+    volumes:
+      - aof_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aof_user} -d ${POSTGRES_DB:-aof_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./aof_backend
+      dockerfile: Dockerfile
+    container_name: aof-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./aof_backend/.env
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aof_user}:${POSTGRES_PASSWORD:-aof_secure_password}@postgres:5432/${POSTGRES_DB:-aof_production}?schema=public&connection_limit=20
+
+  commit-expirer:
+    build:
+      context: ./aof_backend
+      dockerfile: Dockerfile
+    container_name: aof-commit-expirer
+    restart: always
+    command: ["npm", "run", "commit-expirer"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aof_user}:${POSTGRES_PASSWORD:-aof_secure_password}@postgres:5432/${POSTGRES_DB:-aof_production}?schema=public&connection_limit=5
+
+  price-cranker:
+    build:
+      context: ./aof_backend
+      dockerfile: Dockerfile
+    container_name: aof-price-cranker
+    restart: always
+    command: ["npm", "run", "price-cranker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aof_user}:${POSTGRES_PASSWORD:-aof_secure_password}@postgres:5432/${POSTGRES_DB:-aof_production}?schema=public&connection_limit=5
+
+volumes:
+  aof_pg_data:
