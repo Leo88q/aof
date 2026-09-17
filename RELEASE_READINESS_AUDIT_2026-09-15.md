@@ -37,6 +37,8 @@ Production / Cloudflare **не трогались**.
 | `d1…` ci | Backend log как artifact. |
 | `97da5b2` fix(backend) | **Реальный баг, найденный новым integration-тестом на CI**: stale-reclaim CAS в `idempotency.ts` матчился только по `status`; 16 из 16 конкурентных retry захватывали одну stale-операцию. Добавлен `createdAt` в предикат `updateMany`. |
 | `8c05471` ci/idl-gate | `--ids-from-git $GITHUB_SHA`: CI подменяет `declare_id!` на throwaway-ключи, ids сравниваются с закоммиченной ревизией. |
+| `48aa7ce` tsconfig | `types: ["node"]` / `["vite/client"]` — битые `@types/*` в родительских `node_modules` на машине разработчика ломали `tsc` (TS2688); CI не затрагивало. |
+| `e2964cd` aof-core | **Реальный on-chain баг, найденный первым запуском `anchor test` на машине владельца**: `PlantSeeds.seeds_mint` без `mut` при `token::burn` → «writable privilege escalated». Аудит всех burn-CPI нашёл то же в `StartMilling` (wheat, stone) и `StartBaking` (flour, water, wood, coal) — помол и выпечка не могли пройти on-chain. Семь мнтов получили `mut` (address-constraint сохранён); IDL json/ts синхронизированы, drift 0. |
 
 ## 3. Компоненты
 
@@ -111,7 +113,8 @@ RELEASE_READINESS_AUDIT_2026-09-15.md             | этот файл
 
 ## 6. Оставшиеся риски
 
-1. **`anchor test` на финальном коммите заблокирован биллингом GitHub Actions.** Run 34933357564 / 34933353873 (`8c05471`): Anchor build ✅ (включая IDL-gate), Backend ✅, Frontend ✅, **Anchor test — job не стартовал**: «The job was not started because recent account payments have failed or your spending limit needs to be increased». `gh run rerun` / `workflow_dispatch` недоступны из сессии. Нужно действие владельца в Billing & plans, затем rerun — до этого суите на 11 тестов не имеет CI-результата.
+1. **`anchor test` на финальном коммите (`e2964cd`) ещё не прогнан.** Первый реальный прогон на машине владельца (macOS, коммит `48aa7ce`, локальный валидатор): **10 passing / 1 failing** — оба ранее падавших pack/reroll теста и auction bid зелёные; `harvest wheat` упал внутри `plant_seeds` с `writable privilege escalated` (см. `e2964cd`). Исправление требует пересборки программы и повторного `anchor test`. GitHub Actions при этом заблокирован биллингом («recent account payments have failed…»), поэтому подтверждение — только локальный прогон владельца до восстановления оплаты.
+1b. **Механики помола и выпечки (`start_milling`, `start_baking`) не покрыты тестами** — их баг с read-only mint найден только статическим аудитом burn-CPI. До добавления интеграционных тестов их работоспособность on-chain не подтверждена.
 2. **Operational data в истории Git** (`aof.db` с адресами кошельков/IP). Untrack не удаляет из истории; purge = history rewrite + force-push, что запрещено этой сессии.
 3. **IDL генерация upstream-blocked**: anchor-lang 0.30.1 + proc-macro2 ≥1.0.95. Все клиенты живут на закоммиченных IDL; drift-gate парсит Rust регулярками — покрывает имена/порядок/флаги/число аргументов, но **не типы аргументов** и не изменения `#[account] struct` (layouts).
 4. **Ключи программ отсутствуют в репозитории** → CI деплоит на throwaway-адреса. Тесты валидны для логики, но не для «те же байты по каноническому адресу».
@@ -124,7 +127,8 @@ RELEASE_READINESS_AUDIT_2026-09-15.md             | этот файл
 
 ## 7. Staging checklist
 
-- [ ] Восстановить биллинг GitHub Actions, перезапустить run 34933357564; ожидание: `anchor test` — `11 passing, 0 failing`.
+- [ ] Локально (владелец): `git pull` → `anchor test` на `e2964cd`; ожидание `11 passing, 0 failing`.
+- [ ] Восстановить биллинг GitHub Actions; CI на `e2964cd` должен показать 4 зелёных job'а.
 - [ ] Скачать artifact `anchor-target` и заархивировать `.so` текущего релиза (для rollback).
 - [ ] Devnet: `anchor test --skip-build --provider.cluster devnet` с реальными keypair'ами (вне CI), либо `solana program deploy` на devnet + прогон `tests/aof_core.ts` с `ANCHOR_PROVIDER_URL`.
 - [ ] Devnet smoke по 17 live-механикам (список §10) — минимум по одной транзакции.
@@ -180,13 +184,19 @@ Frontend (`frontend/.env.example`): `VITE_API_URL`, `VITE_DEV_BACKEND_URL`, `VIT
 - Тест-файл `tests/aof_core.ts` компилируется; аргументы всех 40 вызовов сверены с IDL; account maps сверены с IDL (авто-PDA учтены).
 - Baseline migration применяется на пустую SQLite; соответствие 49 моделей ↔ 49 таблиц.
 
+**Подтверждено на машине владельца (macOS, Node 26, Anchor/Agave установлены; коммит `48aa7ce`):**
+- `anchor build` + `cargo test` для 6 программ — успешно (только `unexpected cfg` / `ambiguous_glob_reexports` warnings).
+- `anchor test` (local validator): **10 passing / 1 failing** — падение `harvest wheat` на `plant_seeds` (`writable privilege escalated`), исправлено в `e2964cd`; повтор на `e2964cd` ожидается.
+- Backend: `prisma:migrate:check` «No difference detected», 4 self/integration-теста exit 0 (в т.ч. Prisma CAS). `npm run build` падал с TS2688 из-за окружения (исправлено `48aa7ce`).
+
 **Подтверждено CI (GitHub Actions, ветка arena/01a0a358-aof):**
 - run 34933357564 (`8c05471`, PR #3): Anchor build (SBPF всех 6 программ + IDL drift gate 0) — **success**; Backend (prisma generate, tsc, 4 теста, migration gate, hygiene gate) — **success**; Frontend — **success**; Anchor test — **не запущен (billing)**.
 - run 34932815104 (`97da5b2`): Backend build + prisma generate + tsc + 4 теста (включая integration idempotency после фикса) — **success**; Frontend — **success**; Anchor build (`anchor build --no-idl`, все 6 программ, SBPF без stack-frame ошибок, без borrow-checker ошибок) — компиляция exit 0, job **failure** на IDL-gate из-за подмены ids (исправлено `8c05471`).
 - run 34928507107 (`486b252`, база): Anchor build success; Anchor test 7 passing / 3 failing (harvest wheat, auction bid, pack) — все три адресованы.
 
 **Требует devnet/staging:**
-- `anchor test` для `8c05471`: job не стартовал из-за биллинга GitHub Actions; требуется rerun после восстановления оплаты.
+- `anchor test` = 11 passing на финальном коммите `e2964cd` (последний реальный прогон: 10/1 на `48aa7ce`, до фикса).
+- Работоспособность `start_milling` / `start_baking` on-chain после фикса (тестов нет).
 - Все 17 live-механик in-game; refund в auction_bid; staging-миграция по §3 docs; rollback drill.
 
 **Не найдено / заблокировано:**
@@ -199,6 +209,6 @@ Frontend (`frontend/.env.example`): `VITE_API_URL`, `VITE_DEV_BACKEND_URL`, `VIT
 
 ## Verdict
 
-Не выполнены условия release gate: `anchor test` exit 0 на финальном коммите не подтверждён (CI-job не стартовал из-за биллинга GitHub Actions; три остальных job'а зелёные), staging/devnet smoke не проводились (нет toolchain/сети/credentials), operational data остаётся в истории Git до решения владельца, `cargo test` для программ отсутствует в pipeline.
+Не выполнены условия release gate: последний реальный `anchor test` — 10 passing / 1 failing (на `48aa7ce`; причина исправлена в `e2964cd`, повторный прогон ещё не выполнен; CI заблокирован биллингом), staging/devnet smoke не проводились (нет toolchain/сети/credentials), operational data остаётся в истории Git до решения владельца, `cargo test` для программ отсутствует в pipeline.
 
 **Готово к продакшн-деплою: НЕТ**
