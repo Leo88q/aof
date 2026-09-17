@@ -420,7 +420,10 @@ describe("aof-core: security & core flows", () => {
 
     // Reveal: tool minted to the user, escrow forwarded to the treasury, PDA closed to user.
     await sleep(1500); // let the commit slot land in SlotHashes
-    const userToken = getAssociatedTokenAddressSync(mint, user.publicKey);
+    // In production /tools/prep-mint creates the user's ATA together with the
+    // mint (step 1/3); pack_open_reveal expects it to exist (no init here so
+    // the authority never pays rent on the player's behalf).
+    const userToken = await ensureAta(mint, user.publicKey);
     const userBefore = await provider.connection.getBalance(user.publicKey);
     const treasuryBeforeReveal = await provider.connection.getBalance(authority);
     await program.methods.packOpenReveal(Array.from(secret)).accounts({
@@ -434,7 +437,7 @@ describe("aof-core: security & core flows", () => {
     // ended up with the user (rent back) and the PDA is empty instead.
     expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
     // Treasury received PRICE minus what it spent as fee payer in the same tx
-    // (tx fee + rent for tool_data and the user's ATA, well under 0.01 SOL).
+    // (tx fee + rent for tool_data, well under 0.01 SOL).
     const treasuryDelta = (await provider.connection.getBalance(authority)) - treasuryBeforeReveal;
     expect(treasuryDelta).to.be.above(PRICE - 10_000_000);
     expect(treasuryDelta).to.be.at.most(PRICE);
