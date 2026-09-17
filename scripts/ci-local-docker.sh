@@ -19,6 +19,18 @@
 # (read-only mount), so nothing on the host is modified. Toolchains and cargo
 # caches live in named Docker volumes and are reused by later runs.
 # Logs: ./ci-local-logs/<timestamp>/ (gitignored).
+#
+# seccomp=unconfined: Agave 4.x's accounts-db asserts io_uring support at
+# startup (solana_accounts_db::utils::create_accounts_run_and_snapshot_dirs),
+# and Docker's default seccomp profile blocks the io_uring_* syscalls. GitHub
+# runners are plain VMs, so CI is unaffected. The container is throwaway and
+# mounts the checkout read-only.
+#
+# Apple Silicon: io_uring must also exist in the Linux VM kernel. Docker
+# Desktop >= 4.25 (linuxkit 6.x) has it; "Use Rosetta" must be enabled.
+# If the smoke test still panics on io_uring, install `colima` and run
+#   colima start --arch x86_64 --vm-type vz --cpu 6 --memory 10
+# then rerun this script (the docker CLI will target colima).
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -47,6 +59,7 @@ docker run --rm $TTY_FLAGS \
   --platform linux/amd64 \
   --ulimit nofile=1000000:1000000 \
   --shm-size 2g \
+  --security-opt seccomp=unconfined \
   -v "$ROOT:/src:ro" \
   -v "$LOGDIR:/logs" \
   -v aof-ci-cargo:/root/.cargo \
