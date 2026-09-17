@@ -113,11 +113,26 @@ step "Install Agave (Solana CLI) $AGAVE_VERSION" bash -c '
   solana --version' || exit 1
 
 # ---------- Anchor CLI ----------
-step "Install Anchor CLI $ANCHOR_VERSION" bash -c '
+# Same policy as CI: try to build 0.30.1 from source; if that fails, use the
+# prebuilt 0.30.2 x86_64 binary plus an `avm` stub (Anchor shells out to
+# `avm install 0.30.1` when Anchor.toml's anchor_version differs and aborts
+# with a raw io error if avm is missing).
+ANCHOR_FALLBACK_VERSION=0.30.2
+step "Install Anchor CLI $ANCHOR_VERSION (fallback $ANCHOR_FALLBACK_VERSION)" bash -c '
   export PATH="$HOME/.cargo/bin:$PATH"
-  if anchor --version 2>/dev/null | grep -q "'"$ANCHOR_VERSION"'"; then echo "cached: $(anchor --version)"; exit 0; fi
-  cargo install --git https://github.com/coral-xyz/anchor --tag v'"$ANCHOR_VERSION"' anchor-cli --locked --force 2>&1 | tail -3
-  anchor --version' || exit 1
+  if anchor --version 2>/dev/null | grep -qE "'"$ANCHOR_VERSION"'|'"$ANCHOR_FALLBACK_VERSION"'"; then echo "cached: $(anchor --version)"; exit 0; fi
+  echo "building anchor-cli v'"$ANCHOR_VERSION"' from source..."
+  if cargo install --git https://github.com/coral-xyz/anchor --tag v'"$ANCHOR_VERSION"' anchor-cli --locked --force > /logs/anchor-cli-build.log 2>&1; then
+    echo "installed from source: $(anchor --version)"; exit 0
+  fi
+  echo "::warning::source build failed (see /logs/anchor-cli-build.log, first error below); using prebuilt '"$ANCHOR_FALLBACK_VERSION"'"
+  grep -nE "^error(\[|:)" -A6 /logs/anchor-cli-build.log | head -30
+  curl -sSfL --retry 3 -o /tmp/anchor "https://github.com/coral-xyz/anchor/releases/download/v'"$ANCHOR_FALLBACK_VERSION"'/anchor-'"$ANCHOR_FALLBACK_VERSION"'-x86_64-unknown-linux-gnu"
+  chmod +x /tmp/anchor && mv /tmp/anchor "$HOME/.cargo/bin/anchor"
+  # avm stub lives next to anchor in ~/.cargo/bin (a persistent volume), so it survives reruns
+  printf "#!/bin/sh\necho \"avm stub: this runner does not switch Anchor CLI versions\" >&2\nexit 1\n" > "$HOME/.cargo/bin/avm"
+  chmod +x "$HOME/.cargo/bin/avm"
+  echo "installed fallback: $(anchor --version)"' || exit 1
 
 step "Verify toolchain" bash -c 'rustc --version; cargo --version; solana --version; anchor --version; node --version; python3 --version'
 
