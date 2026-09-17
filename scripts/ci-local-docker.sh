@@ -225,27 +225,29 @@ PY
 # first so a validator problem is reported as such (with its own log), and
 # give anchor a longer startup_wait than the default 5000 ms.
 step "Validator smoke test (solana-test-validator starts and answers RPC)" bash -c '
-  ulimit -n 1000000 2>/dev/null || ulimit -n 65536 || true
+  # Mirrors the command that was verified to initialise under Docker Desktop /
+  # Rosetta: plain flags, ledger on the container filesystem (not a volume).
   rm -rf /tmp/smoke-ledger
-  solana-test-validator --ledger /tmp/smoke-ledger --reset --quiet --bind-address 127.0.0.1 --rpc-port 8899 > /logs/validator-smoke.log 2>&1 &
+  RUST_LOG=info solana-test-validator --ledger /tmp/smoke-ledger --reset > /logs/validator-smoke.log 2>&1 &
   pid=$!
-  ok=0
-  for i in $(seq 1 60); do
+  ok=0; waited=0
+  while [ $waited -lt 300 ]; do
     if solana cluster-version --url http://127.0.0.1:8899 >/dev/null 2>&1; then ok=1; break; fi
     if ! kill -0 $pid 2>/dev/null; then break; fi
-    sleep 2
+    sleep 5; waited=$((waited+5))
   done
   kill $pid 2>/dev/null; wait $pid 2>/dev/null
   cp -f /tmp/smoke-ledger/validator.log /logs/validator-smoke-ledger.log 2>/dev/null || true
-  if [ $ok -eq 1 ]; then echo "validator answered RPC after ~$((i*2))s"; exit 0; fi
-  echo "::error::solana-test-validator did not become ready; last lines of its output:"
-  tail -40 /logs/validator-smoke.log; tail -40 /logs/validator-smoke-ledger.log 2>/dev/null
+  if [ $ok -eq 1 ]; then echo "validator answered RPC after ~${waited}s"; exit 0; fi
+  echo "::error::solana-test-validator did not become ready within 300s; stdout/stderr tail:"
+  tail -30 /logs/validator-smoke.log
+  echo "--- validator.log tail:"; tail -40 /logs/validator-smoke-ledger.log 2>/dev/null
   exit 1' || exit 1
 
 gate "Anchor test (local validator)" bash -c '
   ulimit -n 1000000 2>/dev/null || ulimit -n 65536 || true
-  # 120 s instead of the 5 s default: the validator is slow under emulation.
-  grep -q "startup_wait" Anchor.toml || sed -i "s/^upgradeable = true/upgradeable = true\nstartup_wait = 120000/" Anchor.toml
+  # 300 s instead of the 5 s default: the validator is slow under emulation.
+  grep -q "startup_wait" Anchor.toml || sed -i "s/^upgradeable = true/upgradeable = true\nstartup_wait = 300000/" Anchor.toml
   grep -n "startup_wait" Anchor.toml
   npm ci --no-audit --no-fund 2>&1 | tail -2
   : > /logs/anchor-test-full.log
