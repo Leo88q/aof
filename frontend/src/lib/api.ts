@@ -104,6 +104,39 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/exploration/upgrade-tier", subject: "exploration_upgrade_tier", field: "user" },
 ];
 
+async function parseApiResponse(res: Response): Promise<any> {
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+
+  let data: any = null;
+  if (isJson) {
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+  }
+
+  if (!res.ok) {
+    const errorText = !isJson ? await res.text().catch(() => "") : "";
+    const message =
+      data?.error ||
+      data?.message ||
+      (typeof data === "string" ? data : "") ||
+      (errorText && !errorText.includes("<!DOCTYPE") && !errorText.includes("<html") ? errorText.slice(0, 200) : "") ||
+      `HTTP ${res.status}`;
+    throw new Error(message);
+  }
+
+  if (data === null) {
+    throw new Error(
+      `API endpoint returned non-JSON response (status: ${res.status}, content-type: ${contentType || "none"})`
+    );
+  }
+
+  return data;
+}
+
 async function post(path: string, body: Record<string, any> = {}): Promise<any> {
   const requestBody = { ...body };
   const proofRoute = WALLET_PROOF_ROUTES.find((route) =>
@@ -121,9 +154,7 @@ async function post(path: string, body: Record<string, any> = {}): Promise<any> 
     headers: { "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify(requestBody),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
+  return parseApiResponse(res);
 }
 
 async function del(path: string, body: Record<string, any> = {}): Promise<any> {
@@ -143,16 +174,12 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
     headers: { "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify(requestBody),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
+  return parseApiResponse(res);
 }
 
 async function get(path: string): Promise<any> {
   const res = await fetch(`${BASE}${path}`);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
+  return parseApiResponse(res);
 }
 
 export const api = {

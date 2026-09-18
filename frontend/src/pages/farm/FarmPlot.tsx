@@ -94,7 +94,7 @@ export function FarmPlot() {
 
       {/* Участок */}
       <Card className="relative overflow-hidden mb-4">
-        {weather && <WeatherOverlay type={weather.type} />}
+        {weather && typeof weather.type === "string" && <WeatherOverlay type={weather.type} />}
         <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID}, minmax(0, 1fr))` }}>
           {Array.from({ length: GRID * GRID }).map((_, i) => {
             const x = i % GRID;
@@ -135,14 +135,14 @@ export function FarmPlot() {
       </Card>
 
       {/* Погода */}
-      {weather && (
+      {weather && typeof weather.type === "string" && (
         <Card className="mb-4 flex items-center gap-3">
           <span className="text-2xl">
             {weather.type === "rain" ? "🌧️" : weather.type === "sunny" ? "☀️" : "🌵"}
           </span>
           <div>
-            <p className="text-sm text-parchment capitalize">{String(weather.type).replace("_", " ")}</p>
-            <p className="text-xs text-straw">{weather.effect}</p>
+            <p className="text-sm text-parchment capitalize">{weather.type.replace("_", " ")}</p>
+            <p className="text-xs text-straw">{weather.effect || ""}</p>
           </div>
         </Card>
       )}

@@ -62,7 +62,7 @@ export function TrustPage() {
     );
   }
 
-  if (!data) {
+  if (!data || typeof data.score !== "number" || typeof data.tier !== "number" || !data.breakdown) {
     return (
       <div className="p-4">
         <Card><p className="text-straw text-center py-8">Индекс доверия недоступен до развёртывания канонического индексатора</p></Card>

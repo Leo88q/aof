@@ -14,10 +14,9 @@ const SafeConnectionProvider: any = ConnectionProvider;
 const SafeWalletProvider: any = SolanaWalletProvider;
 
 export function AppWalletProvider({ children }: { children: React.ReactNode }) {
-  const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
-    []
-  );
+  // Standard wallets (Phantom, Solflare, Backpack, etc.) are registered automatically
+  // by @solana/wallet-adapter-react via the Solana Wallet Standard.
+  const wallets = useMemo(() => [], []);
   return (
     <SafeConnectionProvider endpoint={RPC_URL}>
       <SafeWalletProvider wallets={wallets} autoConnect>

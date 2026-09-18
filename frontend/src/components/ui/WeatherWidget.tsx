@@ -48,11 +48,23 @@ export function WeatherWidget() {
       api.weather.forecast().catch(() => null),
     ])
       .then(([currentData, forecastData]) => {
-        setCurrent(currentData);
-        setForecast(forecastData?.forecast || []);
+        if (currentData && typeof currentData === "object" && typeof currentData.type === "string") {
+          setCurrent(currentData);
+        } else {
+          setCurrent(null);
+        }
+        if (forecastData && Array.isArray(forecastData.forecast)) {
+          setForecast(forecastData.forecast.filter((d: any) => d && typeof d.type === "string"));
+        } else {
+          setForecast([]);
+        }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setCurrent(null);
+        setForecast([]);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -66,7 +78,7 @@ export function WeatherWidget() {
     );
   }
 
-  if (!current) {
+  if (!current || typeof current !== "object" || !current.type || typeof current.type !== "string") {
     return (
       <Card className="p-4 bg-soil-800 border border-amber-500/20">
         <p className="text-amber-400 text-xs">Погода недоступна из канонической сети</p>
@@ -88,35 +100,35 @@ export function WeatherWidget() {
           </motion.span>
           <div>
             <div className="text-parchment font-semibold capitalize">
-              {current.type.replace("_", " ")}
+              {current.type?.replace?.("_", " ") || current.type || "—"}
             </div>
-            <div className="text-straw text-xs">{current.effect}</div>
+            <div className="text-straw text-xs">{current.effect || ""}</div>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl">{SEASON_ICONS[current.season] || "🌸"}</div>
-          <div className="text-xs text-straw capitalize">{current.season}</div>
+          <div className="text-2xl">{SEASON_ICONS[current.season || ""] || "🌸"}</div>
+          <div className="text-xs text-straw capitalize">{current.season || "—"}</div>
         </div>
       </div>
 
       {/* Прогресс сезона */}
       <div className="mb-3">
         <div className="flex justify-between text-xs text-straw mb-1">
-          <span>День {current.dayOfSeason + 1} из 42</span>
-          <span>{current.daysUntilNextSeason} до смены</span>
+          <span>День {((current.dayOfSeason ?? 0) + 1)} из 42</span>
+          <span>{current.daysUntilNextSeason ?? 0} до смены</span>
         </div>
         <div className="h-2 bg-soil-700 rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-gradient-to-r from-straw/60 to-gold/60"
             initial={{ width: 0 }}
-            animate={{ width: `${((current.dayOfSeason + 1) / 42) * 100}%` }}
+            animate={{ width: `${Math.min(100, Math.max(0, (((current.dayOfSeason ?? 0) + 1) / 42) * 100))}%` }}
             transition={{ duration: 1 }}
           />
         </div>
       </div>
 
       {/* Прогноз на 3 дня */}
-      {forecast.length > 0 && (
+      {Array.isArray(forecast) && forecast.length > 0 && (
         <div className="border-t border-straw/10 pt-3">
           <div className="text-xs text-straw mb-2">Прогноз на 3 дня:</div>
           <div className="grid grid-cols-3 gap-2">
@@ -128,12 +140,12 @@ export function WeatherWidget() {
                 transition={{ delay: i * 0.1 }}
                 className="text-center p-2 bg-soil-700/50 rounded-lg"
               >
-                <div className="text-2xl mb-1">{WEATHER_ICONS[day.type] || "☀️"}</div>
+                <div className="text-2xl mb-1">{day?.type ? WEATHER_ICONS[day.type] || "☀️" : "☀️"}</div>
                 <div className="text-xs text-straw capitalize">
-                  {day.type.replace("_", " ")}
+                  {day?.type ? day.type.replace("_", " ") : "—"}
                 </div>
                 <div className="text-xs text-straw/60 mt-1">
-                  День {day.dayOfSeason + 1}
+                  День {((day?.dayOfSeason ?? 0) + 1)}
                 </div>
               </motion.div>
             ))}
