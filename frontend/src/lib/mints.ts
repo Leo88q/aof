@@ -51,7 +51,7 @@ export async function loadMints(): Promise<Partial<Record<ResourceId, string>>> 
   mintPromise = (async () => {
     try {
       const data = await api.query.materialMints();
-      if (data.initialized === true && isCompleteCanonicalRegistry(data.mints)) {
+      if (data && data.initialized === true && isCompleteCanonicalRegistry(data.mints)) {
         mintCache = data.mints;
         console.log(`✅ Loaded ${Object.keys(data.mints).length} canonical mints from chain`);
         return data.mints;

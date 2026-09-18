@@ -136,7 +136,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
           {activePrivs.slice(0, 3).map((p: Privilege) => (
             <span key={p.id} className="text-xs px-2 py-1 rounded-full font-bold"
                   style={{ backgroundColor: p.color + "30", color: p.color }}>
-              {p.icon} {p.title.split(" ").slice(1).join(" ")}
+              {p.icon} {p.title ? p.title.split(" ").slice(1).join(" ") : ""}
             </span>
           ))}
           {activePrivs.length > 3 && (

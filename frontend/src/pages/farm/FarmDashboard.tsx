@@ -154,14 +154,14 @@ export function FarmDashboard() {
             <StatChip icon="⛽" value="12.4" label="SOL газ" accent="gold" />
             <StatChip
               icon="💧"
-              value={energy ? `${energy.amount}/${energy.cap}` : "—"}
+              value={energy && typeof energy.amount === "number" ? `${energy.amount}/${energy.cap ?? 100}` : "—"}
               label="Энергия"
               accent="water"
             />
-            <StatChip icon="🔥" value={streak ? streak.current : "—"} label="Стрик" accent="green" />
+            <StatChip icon="🔥" value={streak && typeof streak.current !== "undefined" ? String(streak.current) : "—"} label="Стрик" accent="green" />
           </div>
 
-          {energy && (
+          {energy && typeof energy.amount === "number" && typeof energy.cap === "number" && energy.cap > 0 && (
             <Card className="mb-4">
               <LiquidBar
                 level={(energy.amount / energy.cap) * 100}

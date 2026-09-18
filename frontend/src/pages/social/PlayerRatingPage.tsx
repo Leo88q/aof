@@ -43,7 +43,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
     );
   }
 
-  if (!data || data.count === 0) {
+  if (!data || !data.count || !Array.isArray(data.distribution) || !data.user) {
     return (
       <div className="p-4">
         <Card>
@@ -55,14 +55,14 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
     );
   }
 
-  const stars = Math.round(data.average);
+  const stars = Math.round(data.average || 0);
   const totalVotes = data.distribution.reduce((a, b) => a + b, 0);
 
   return (
     <div className="p-4 pb-24">
       <Card className="mb-4 text-center">
         <p className="text-straw text-xs font-mono mb-3">
-          {data.user.slice(0, 12)}...{data.user.slice(-12)}
+          {data.user ? `${data.user.slice(0, 12)}...${data.user.slice(-12)}` : "—"}
         </p>
         
         <div className="flex justify-center mb-3">
