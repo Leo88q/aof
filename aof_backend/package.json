@@ -27,6 +27,7 @@
     "test:idempotency-db:pg": "prisma generate --schema prisma/postgres/schema.prisma && ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
     "test:audit-security": "ts-node --project tsconfig.json --transpile-only scripts/auditSecuritySelfTest.ts",
     "test:admin-auth": "ts-node --project tsconfig.json --transpile-only scripts/adminAuthSelfTest.ts",
+    "test:fraud-signals": "ts-node --project tsconfig.json --transpile-only scripts/fraudSignalsSelfTest.ts",
     "test:chain-indexer": "ts-node --project tsconfig.json --transpile-only scripts/chainIndexerSelfTest.ts",
     "chain-indexer": "ts-node services/chain-indexer/index.ts",
     "caps:init": "ts-node --project tsconfig.json --transpile-only scripts/initIssuanceCaps.ts",

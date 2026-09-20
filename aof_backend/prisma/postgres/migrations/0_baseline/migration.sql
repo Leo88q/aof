@@ -798,3 +798,25 @@ CREATE TABLE "IndexerCursor" (
 );
 
 ALTER TABLE "EconomySnapshot" ADD COLUMN "fieldQuality" TEXT;
+
+-- ===== from 202609210002_fraud_cases =====
+-- Anti-fraud review queue (human-resolved; no automatic enforcement).
+CREATE TABLE "FraudCase" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "wallet" TEXT NOT NULL,
+    "signal" TEXT NOT NULL,
+    "severity" INTEGER NOT NULL,
+    "score" DOUBLE PRECISION NOT NULL,
+    "evidence" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'open',
+    "openKey" TEXT,
+    "firstSeen" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastSeen" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "hits" INTEGER NOT NULL DEFAULT 1,
+    "resolvedBy" TEXT,
+    "resolvedAt" TIMESTAMP(3),
+    "resolution" TEXT
+);
+CREATE UNIQUE INDEX "FraudCase_openKey_key" ON "FraudCase"("openKey");
+CREATE INDEX "FraudCase_status_severity_lastSeen_idx" ON "FraudCase"("status", "severity", "lastSeen");
+CREATE INDEX "FraudCase_wallet_idx" ON "FraudCase"("wallet");

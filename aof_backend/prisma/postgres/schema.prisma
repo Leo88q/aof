@@ -680,3 +680,29 @@ model ReconciliationCursor {
   lastId    String?
   updatedAt DateTime @updatedAt
 }
+
+// ---- Anti-fraud review queue (no auto-ban) ----------------------------------
+// One open case per (wallet, signal). Signals are computed from the chain
+// indexer ledger + device registry by src/lib/fraudSignals.ts; a human resolves
+// each case via /admin/fraud/cases/:id/resolve, and every resolution is written
+// to AuditLog. Nothing here changes a player's rights by itself.
+model FraudCase {
+  id         String    @id @default(cuid())
+  wallet     String
+  signal     String    // fresh_wallet_reward | reward_velocity | shared_funding | device_cluster | wash_trade_pair
+  severity   Int       // 1 = info, 2 = review, 3 = urgent review
+  score      Float     // signal-specific magnitude (e.g. rewards/hour, cluster size)
+  evidence   String    // JSON: signatures, counterpart wallets, windows
+  status     String    @default("open") // open | confirmed | dismissed
+  openKey    String?   // `${wallet}|${signal}` while open, NULL once resolved → one open case per pair
+  firstSeen  DateTime  @default(now())
+  lastSeen   DateTime  @default(now())
+  hits       Int       @default(1)
+  resolvedBy String?
+  resolvedAt DateTime?
+  resolution String?   // free-text note by the reviewer
+
+  @@unique([openKey])
+  @@index([status, severity, lastSeen])
+  @@index([wallet])
+}

@@ -126,11 +126,28 @@ async function main(): Promise<void> {
     const fresh = await checkIdempotency(key4);
     assert.deepEqual(fresh, { allowed: false, alreadyProcessed: false });
 
+    // FraudCase review queue: openKey uniqueness + resolve CAS (same migration set).
+    await db.fraudCase.deleteMany({ where: { wallet: "itest-wallet" } });
+    const { persistFindings } = await import("../src/lib/fraudSignals");
+    const finding = { wallet: "itest-wallet", signal: "reward_velocity" as const, severity: 2 as const, score: 10, evidence: { n: 1 } };
+    const first = await persistFindings([finding]);
+    const second = await persistFindings([{ ...finding, severity: 3, score: 30 }]);
+    assert.deepEqual([first.opened, second.opened, second.refreshed], [1, 0, 1], "one open case per (wallet, signal)");
+    const open = await db.fraudCase.findMany({ where: { wallet: "itest-wallet", status: "open" } });
+    assert.equal(open.length, 1);
+    assert.deepEqual([open[0].hits, open[0].severity, open[0].score], [2, 3, 30]);
+    const resolves = await Promise.all(["confirmed", "dismissed"].map((status) =>
+      db.fraudCase.updateMany({ where: { id: open[0].id, status: "open" }, data: { status, openKey: null, resolvedBy: "itest", resolvedAt: new Date(), resolution: "x" } })));
+    assert.equal(resolves.map((r) => r.count).reduce((a, b) => a + b, 0), 1, "exactly one reviewer wins the resolve CAS");
+    const reopened = await persistFindings([finding]);
+    assert.equal(reopened.opened, 1, "a new case can be opened after resolution (openKey freed)");
+    assert.equal(await db.fraudCase.count({ where: { wallet: "itest-wallet" } }), 2);
+
     // Invalid key is rejected before touching the database.
     await assert.rejects(() => checkIdempotency(""), /Invalid idempotency key/);
     await assert.rejects(() => checkIdempotency("x".repeat(201)), /Invalid idempotency key/);
 
-    console.log(`idempotency integration test (Prisma + ${isPostgres ? "PostgreSQL" : "SQLite"}): concurrent claim, replay, failed/stale reclaim CAS passed`);
+    console.log(`idempotency integration test (Prisma + ${isPostgres ? "PostgreSQL" : "SQLite"}): concurrent claim, replay, failed/stale reclaim CAS, fraud-case openKey/resolve CAS passed`);
   } finally {
     await db.$disconnect();
     cleanup();

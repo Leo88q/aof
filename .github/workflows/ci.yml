@@ -792,6 +792,7 @@ jobs:
           npm run test:audit-security 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
           npm run test:admin-auth 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
           npm run test:chain-indexer 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          npm run test:fraud-signals 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
           npm run test:wallet-proof 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
