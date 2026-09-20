@@ -5,6 +5,12 @@ import {
   type NftCollectionItem,
 } from "../lib/nftCollection";
 
+interface NftCollectionGalleryProps {
+  title: string;
+  collection: string;
+  nfts: readonly NftCollectionItem[];
+}
+
 function NftCard({ item, selected, onSelect }: {
   item: NftCollectionItem;
   selected: boolean;
@@ -32,32 +38,33 @@ function NftCard({ item, selected, onSelect }: {
       </div>
       <div className="bg-soil-850 px-2 py-2">
         <div className="truncate text-[11px] font-semibold text-parchment">{item.rarityLabel}</div>
-        <div className="mt-0.5 truncate text-[10px] text-straw">Neural Analyzer</div>
+        <div className="mt-0.5 truncate text-[10px] text-straw">{item.collection}</div>
       </div>
     </motion.button>
   );
 }
 
-export function BiomoleculeSequencerCollection() {
-  const [selectedId, setSelectedId] = useState(BIOMOLECULE_SEQUENCER_NFTS[0].id);
-  const selected = BIOMOLECULE_SEQUENCER_NFTS.find((item) => item.id === selectedId)
-    || BIOMOLECULE_SEQUENCER_NFTS[0];
+export function NftCollectionGallery({ title, collection, nfts }: NftCollectionGalleryProps) {
+  const [selectedId, setSelectedId] = useState(nfts[0]?.id || "");
+  const selected = nfts.find((item) => item.id === selectedId) || nfts[0];
+
+  if (!selected) return null;
 
   return (
     <section className="mb-4 rounded-3xl border border-wheat-500/25 bg-gradient-to-br from-soil-850 to-soil-900 p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-wheat-500">NFT collection</div>
-          <h2 className="mt-1 text-lg font-bold text-parchment">Biomolecule Sequencer</h2>
-          <p className="mt-1 text-xs text-straw">Neural Analyzer · 5 вариантов редкости</p>
+          <h2 className="mt-1 text-lg font-bold text-parchment">{title}</h2>
+          <p className="mt-1 text-xs text-straw">{collection} · {nfts.length} вариантов редкости</p>
         </div>
         <span className="rounded-full border border-wheat-500/30 px-2 py-1 text-[10px] font-bold text-wheat-500">
           CATALOG
         </span>
       </div>
 
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2" role="list" aria-label="Варианты NFT">
-        {BIOMOLECULE_SEQUENCER_NFTS.map((item) => (
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2" role="list" aria-label={`Варианты NFT ${title}`}>
+        {nfts.map((item) => (
           <div role="listitem" key={item.id}>
             <NftCard
               item={item}
@@ -97,5 +104,15 @@ export function BiomoleculeSequencerCollection() {
         Каталог использует локальные assets проекта. Минтинг и владение подключаются отдельно к on-chain коллекции.
       </p>
     </section>
+  );
+}
+
+export function BiomoleculeSequencerCollection() {
+  return (
+    <NftCollectionGallery
+      title="Biomolecule Sequencer"
+      collection="Neural Analyzer"
+      nfts={BIOMOLECULE_SEQUENCER_NFTS}
+    />
   );
 }

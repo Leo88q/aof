@@ -1,0 +1,18 @@
+{
+  "name": "Quantum Transmitter #003",
+  "symbol": "QTRX",
+  "description": "Quantum Transmitter — Long-Range Data. A deep-space transmitter tuned for precise relay across distant systems.",
+  "seller_fee_basis_points": 500,
+  "image": "../rare.png",
+  "external_url": "/assets/nfts/quantum-transmitter/metadata/rare.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Long-Range Data" },
+    { "trait_type": "Series", "value": "Quantum Transmitter" },
+    { "trait_type": "Rarity", "value": "Rare" },
+    { "trait_type": "Edition", "value": "003" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../rare.png", "type": "image/png" }]
+  }
+}

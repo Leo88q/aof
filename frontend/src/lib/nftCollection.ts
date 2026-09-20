@@ -12,12 +12,12 @@ export interface NftCollectionItem {
   accent: string;
 }
 
-const NFT_ROOT = "/assets/nfts/biomolecule-sequencer";
+const NFT_ROOT = "/assets/nfts";
 
 /**
- * Static collection catalogue for the Biomolecule Sequencer cards.
- * The image and metadata paths are public assets so they survive rebuilds and
- * can be served by the same host as the frontend.
+ * Static collection catalogues for the card artwork shipped with the
+ * frontend. Image and metadata paths are public assets so they survive
+ * rebuilds and can be served by the same host as the application.
  */
 export const BIOMOLECULE_SEQUENCER_NFTS: readonly NftCollectionItem[] = [
   {
@@ -27,8 +27,8 @@ export const BIOMOLECULE_SEQUENCER_NFTS: readonly NftCollectionItem[] = [
     rarity: "common",
     rarityLabel: "Common",
     description: "A reliable laboratory sequencer for foundational biomolecule analysis.",
-    image: `${NFT_ROOT}/common.png`,
-    metadata: `${NFT_ROOT}/metadata/common.json`,
+    image: `${NFT_ROOT}/biomolecule-sequencer/common.png`,
+    metadata: `${NFT_ROOT}/biomolecule-sequencer/metadata/common.json`,
     accent: "#b8eff7",
   },
   {
@@ -38,8 +38,8 @@ export const BIOMOLECULE_SEQUENCER_NFTS: readonly NftCollectionItem[] = [
     rarity: "uncommon",
     rarityLabel: "Uncommon",
     description: "An upgraded green-spectrum analyzer with improved signal stability.",
-    image: `${NFT_ROOT}/uncommon.png`,
-    metadata: `${NFT_ROOT}/metadata/uncommon.json`,
+    image: `${NFT_ROOT}/biomolecule-sequencer/uncommon.png`,
+    metadata: `${NFT_ROOT}/biomolecule-sequencer/metadata/uncommon.json`,
     accent: "#69ff72",
   },
   {
@@ -49,8 +49,8 @@ export const BIOMOLECULE_SEQUENCER_NFTS: readonly NftCollectionItem[] = [
     rarity: "rare",
     rarityLabel: "Rare",
     description: "A dual-chamber analyzer built for parallel neural sequence scans.",
-    image: `${NFT_ROOT}/rare.png`,
-    metadata: `${NFT_ROOT}/metadata/rare.json`,
+    image: `${NFT_ROOT}/biomolecule-sequencer/rare.png`,
+    metadata: `${NFT_ROOT}/biomolecule-sequencer/metadata/rare.json`,
     accent: "#38e8ff",
   },
   {
@@ -60,8 +60,8 @@ export const BIOMOLECULE_SEQUENCER_NFTS: readonly NftCollectionItem[] = [
     rarity: "epic",
     rarityLabel: "Epic",
     description: "A charged magenta analyzer that pushes the sequence chamber beyond normal limits.",
-    image: `${NFT_ROOT}/epic.png`,
-    metadata: `${NFT_ROOT}/metadata/epic.json`,
+    image: `${NFT_ROOT}/biomolecule-sequencer/epic.png`,
+    metadata: `${NFT_ROOT}/biomolecule-sequencer/metadata/epic.json`,
     accent: "#ff35c8",
   },
   {
@@ -71,8 +71,66 @@ export const BIOMOLECULE_SEQUENCER_NFTS: readonly NftCollectionItem[] = [
     rarity: "legendary",
     rarityLabel: "Legendary",
     description: "The gilded apex of the Neural Analyzer series, tuned for perfect signal clarity.",
-    image: `${NFT_ROOT}/legendary.png`,
-    metadata: `${NFT_ROOT}/metadata/legendary.json`,
+    image: `${NFT_ROOT}/biomolecule-sequencer/legendary.png`,
+    metadata: `${NFT_ROOT}/biomolecule-sequencer/metadata/legendary.json`,
+    accent: "#ffd36b",
+  },
+] as const;
+
+export const QUANTUM_TRANSMITTER_NFTS: readonly NftCollectionItem[] = [
+  {
+    id: "quantum-transmitter-common",
+    name: "Quantum Transmitter",
+    collection: "Long-Range Data",
+    rarity: "common",
+    rarityLabel: "Common",
+    description: "A dependable satellite transmitter for routine long-range data relay.",
+    image: `${NFT_ROOT}/quantum-transmitter/common.png`,
+    metadata: `${NFT_ROOT}/quantum-transmitter/metadata/common.json`,
+    accent: "#b8eff7",
+  },
+  {
+    id: "quantum-transmitter-uncommon",
+    name: "Quantum Transmitter",
+    collection: "Long-Range Data",
+    rarity: "uncommon",
+    rarityLabel: "Uncommon",
+    description: "An upgraded green-spectrum dish with a stronger and more stable signal.",
+    image: `${NFT_ROOT}/quantum-transmitter/uncommon.png`,
+    metadata: `${NFT_ROOT}/quantum-transmitter/metadata/uncommon.json`,
+    accent: "#69ff72",
+  },
+  {
+    id: "quantum-transmitter-rare",
+    name: "Quantum Transmitter",
+    collection: "Long-Range Data",
+    rarity: "rare",
+    rarityLabel: "Rare",
+    description: "A deep-space transmitter tuned for precise relay across distant systems.",
+    image: `${NFT_ROOT}/quantum-transmitter/rare.png`,
+    metadata: `${NFT_ROOT}/quantum-transmitter/metadata/rare.json`,
+    accent: "#38e8ff",
+  },
+  {
+    id: "quantum-transmitter-epic",
+    name: "Quantum Transmitter",
+    collection: "Long-Range Data",
+    rarity: "epic",
+    rarityLabel: "Epic",
+    description: "A charged magenta transmitter that turns cosmic interference into reach.",
+    image: `${NFT_ROOT}/quantum-transmitter/epic.png`,
+    metadata: `${NFT_ROOT}/quantum-transmitter/metadata/epic.json`,
+    accent: "#ff35c8",
+  },
+  {
+    id: "quantum-transmitter-legendary",
+    name: "Quantum Transmitter",
+    collection: "Long-Range Data",
+    rarity: "legendary",
+    rarityLabel: "Legendary",
+    description: "The gilded apex of the Long-Range Data series, built for perfect transmission.",
+    image: `${NFT_ROOT}/quantum-transmitter/legendary.png`,
+    metadata: `${NFT_ROOT}/quantum-transmitter/metadata/legendary.json`,
     accent: "#ffd36b",
   },
 ] as const;

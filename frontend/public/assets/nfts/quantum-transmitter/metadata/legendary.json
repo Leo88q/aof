@@ -1,0 +1,18 @@
+{
+  "name": "Quantum Transmitter #005",
+  "symbol": "QTRX",
+  "description": "Quantum Transmitter — Long-Range Data. The gilded apex of the Long-Range Data series, built for perfect transmission.",
+  "seller_fee_basis_points": 500,
+  "image": "../legendary.png",
+  "external_url": "/assets/nfts/quantum-transmitter/metadata/legendary.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Long-Range Data" },
+    { "trait_type": "Series", "value": "Quantum Transmitter" },
+    { "trait_type": "Rarity", "value": "Legendary" },
+    { "trait_type": "Edition", "value": "005" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../legendary.png", "type": "image/png" }]
+  }
+}
