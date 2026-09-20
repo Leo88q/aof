@@ -692,7 +692,8 @@ r.post("/send-tx", async (req, res) => {
       preflightCommitment: "confirmed",
     });
     
-    await connection.confirmTransaction(signature, "confirmed");
+    const confirmation = await connection.confirmTransaction(signature, "finalized");
+    if (confirmation.value.err) throw new Error(`Transaction execution failed: ${signature}`);
     
     res.json({ success: true, signature });
   } catch (e: any) {

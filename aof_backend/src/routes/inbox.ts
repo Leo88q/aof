@@ -1,9 +1,12 @@
+import BN from "bn.js";
+import { inboxRewardId, rewardReceiptPda, fetchRewardReceipt, assertRewardReceipt, RewardReceiptConflict } from "../lib/rewardReceipt";
+import { TransactionOutcomeUnknown } from "../lib/transactionLifecycle";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
 import { AUTHORITY } from "../config";
-import { program } from "../provider";
+import { program, connection } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda } from "../lib/pda";
 import { fetchOne } from "../lib/decode";
 import { authorityOnly, pk } from "../lib/tx";
@@ -137,6 +140,8 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
     if (item.user !== user) {
       return res.status(403).json({ error: "Not your inbox item" });
     }
+    if (item.rewardVersion !== 1) return res.status(409).json({ error: "LEGACY_REWARD_REQUIRES_RECONCILIATION" });
+    if (item.claimState === "quarantined") return res.status(409).json({ error: "REWARD_RECEIPT_CONFLICT" });
     if (item.claimed) return res.status(400).json({ error: "Already claimed" });
     if (item.expiresAt && new Date(item.expiresAt) < new Date()) {
       return res.status(400).json({ error: "Letter expired" });
@@ -145,8 +150,8 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
     // Claim the row before signing the mint instruction. This closes the
     // concurrent double-claim race; failures release the claim below.
     const locked = await db.inboxItem.updateMany({
-      where: { id, claimed: false },
-      data: { claimed: true },
+      where: { id, claimed: false, rewardVersion: 1 },
+      data: { claimed: true, claimState: "reserved", claimSignature: null },
     });
     if (locked.count !== 1) return res.status(409).json({ error: "Already claimed or in progress" });
 
@@ -167,7 +172,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
           : mm?.[MATERIAL_REWARD_MINT[rewardType]];
 
         if (!cfg || !mintValue || !cfg.treasury) {
-          await db.inboxItem.update({ where: { id }, data: { claimed: false } });
+          await db.inboxItem.update({ where: { id }, data: { claimed: false, claimState: "unclaimed", claimSignature: null } });
           return res.status(202).json({
             pending: true,
             reason: "canonical reward mint is not initialized — claim later",
@@ -184,8 +189,14 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
         const treasuryToken = getAssociatedTokenAddressSync(mintPk, treasury, true);
         const amount = BigInt(item.rewardAmount) * BigInt(RESOURCE_UNIT);
 
+        const receipt = await fetchRewardReceipt(connection, id);
+        if (receipt) {
+          assertRewardReceipt(receipt, { recipient: item.user, mint: mintPk.toBase58(), grossAmount: amount.toString() });
+          const recovered = await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "confirmed", read: true } });
+          return res.json({ item: recovered, reward: rewardResult, recoveredFromReceipt: rewardReceiptPda(id).toBase58() });
+        }
         const ix = await (program.methods as any)
-          .mintResource(kind, amount)
+          .mintResourceOnce(kind, new BN(amount.toString()), Array.from(inboxRewardId(id)))
           .accounts({
             config,
             materialMints,
@@ -196,6 +207,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
             treasuryToken,
             player,
             tokenProgram: TOKEN_PROGRAM_ID,
+            rewardReceipt: rewardReceiptPda(id),
             systemProgram: SystemProgram.programId,
           })
           .instruction();
@@ -206,10 +218,14 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
         const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
           AUTHORITY.publicKey, treasuryToken, treasury, mintPk,
         );
-        onchainSig = await authorityOnly([createUserAta, createTreasuryAta, ix]);
+        onchainSig = await authorityOnly([createUserAta, createTreasuryAta, ix], async (signature) => {
+          await db.inboxItem.update({
+            where: { id }, data: { claimSignature: signature, claimState: "submitted", claimMint: mintPk.toBase58() },
+          });
+        });
       } else {
         // Без канонического типа/положительной суммы письмо нельзя безопасно клеймить.
-        await db.inboxItem.update({ where: { id }, data: { claimed: false } });
+        await db.inboxItem.update({ where: { id }, data: { claimed: false, claimState: "unclaimed", claimSignature: null } });
         return res.status(202).json({
           pending: true,
           reason: "reward type or amount is not claimable",
@@ -217,9 +233,20 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
         });
       }
     } catch (e: any) {
-      // Ончейн не сработал (контракты не задеплоены) — оставляем письмо неклеенным
+      if (e instanceof RewardReceiptConflict) {
+        await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "quarantined" } });
+        logger.error({ inboxId: id }, "Reward receipt conflict; manual review required");
+        return res.status(409).json({ error: "REWARD_RECEIPT_CONFLICT" });
+      }
+      // A timeout is NOT proof that a mint failed. Keep the durable reservation
+      // until an operator reconciles its finalized signature. Never mint twice.
+      if (e instanceof TransactionOutcomeUnknown) {
+        logger.error({ inboxId: id, signature: e.signature }, "Reward requires reconciliation");
+        return res.status(202).json({ pending: true, signature: e.signature, reason: "REWARD_RECONCILIATION_REQUIRED" });
+      }
+      // Definite pre-broadcast or finalized execution failure: safe to release.
       logger.warn({ err: e.message, inboxId: id }, "On-chain reward mint failed");
-      await db.inboxItem.update({ where: { id }, data: { claimed: false } });
+      await db.inboxItem.update({ where: { id }, data: { claimed: false, claimState: "unclaimed", claimSignature: null } });
       rewardResult.pending = true;
       rewardResult.reason = e.message;
       return res.status(503).json({
@@ -230,7 +257,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
 
     const updated = await db.inboxItem.update({
       where: { id },
-      data: { read: true },
+      data: { read: true, claimState: "confirmed" },
     });
 
     res.json({ item: updated, reward: rewardResult, onchainSig });
@@ -246,6 +273,9 @@ r.post("/archive", requireWalletProof("inbox_archive", "user"), async (req, res)
     const current = await db.inboxItem.findUnique({ where: { id } });
     if (!current) return res.status(404).json({ error: "Not found" });
     if (!user || user !== current.user) return res.status(403).json({ error: "Not your inbox item" });
+    if (["reserved", "submitted"].includes(current.claimState)) {
+      return res.status(409).json({ error: "Reward reconciliation pending" });
+    }
     await db.inboxItem.delete({ where: { id } });
     res.json({ archived: true });
   } catch (e: any) {

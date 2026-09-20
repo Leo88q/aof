@@ -13,7 +13,7 @@ read-only, so every real bid failed with ConstraintMut (2000).
 Checks, per program:
   * declare_id!() == IDL address == Anchor.toml [programs.localnet/devnet]
   * instruction set (names) is identical
-  * argument count per instruction is identical
+  * argument names, types, order and Anchor discriminator are identical
   * account list per instruction: same names, same order, same writable /
     signer / optional flags
   * aof_core.json and aof_core.ts (camelCase type helper) agree with each other
@@ -26,6 +26,7 @@ checked too, so the gate is meaningful whether or not the IDL builder worked.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import glob
 import json
 import os
@@ -104,31 +105,41 @@ def parse_structs(src: str) -> dict[str, list[tuple[str, bool, bool, bool]]]:
     return out
 
 
-def parse_instructions(src: str) -> dict[str, tuple[str, int]]:
-    """Return {fn_name: (CtxStruct, arg_count)} for #[program] entrypoints."""
+def rust_idl_type(value: str):
+    value = re.sub(r"\s+", "", value)
+    if value in {"u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "bool"}:
+        return value
+    if value == "Vec<u8>": return "bytes"
+    if value in {"String", "Pubkey"}:
+        return {"String": "string", "Pubkey": "pubkey"}[value]
+    m = re.fullmatch(r"\[(.+);(\d+)\]", value)
+    if m:
+        return {"array": [rust_idl_type(m[1]), int(m[2])]}
+    m = re.fullmatch(r"(Vec|Option)<(.+)>", value)
+    if m:
+        return {"vec" if m[1] == "Vec" else "option": rust_idl_type(m[2])}
+    return {"defined": {"name": value}}
+
+
+def parse_instructions(src: str) -> dict:
+    """Account context and exact ordered wire argument names/types, not just count."""
     prog = re.search(r"#\[program\]\s*pub mod \w+\s*\{(.*)\n\}", src, re.S)
-    body = prog.group(1) if prog else src
-    body = strip_comments(body)
-    out: dict[str, tuple[str, int]] = {}
+    body = strip_comments(prog.group(1) if prog else src)
+    out = {}
     for m in re.finditer(r"pub fn (\w+)\s*(?:<[^>]*>)?\s*\(\s*ctx:\s*Context<(\w+)>\s*(.*?)\)\s*->", body, re.S):
-        rest = m.group(3).strip()
-        n_args = 0
-        if rest:
-            # strip leading comma and count top-level commas
-            rest = rest.lstrip(",").strip()
-            depth = 0
-            if rest:
-                n_args = 1
-                for ch in rest:
-                    if ch in "<([":
-                        depth += 1
-                    elif ch in ">)]":
-                        depth -= 1
-                    elif ch == "," and depth == 0:
-                        n_args += 1
-                if rest.endswith(","):
-                    n_args -= 1
-        out[m.group(1)] = (m.group(2), n_args)
+        rest, parts, start, depth = m[3].strip().lstrip(",").strip(), [], 0, 0
+        for i, ch in enumerate(rest):
+            if ch in "<([": depth += 1
+            elif ch in ">)]": depth -= 1
+            elif ch == "," and depth == 0:
+                parts.append(rest[start:i]); start = i + 1
+        parts.append(rest[start:])
+        args = []
+        for part in parts:
+            if not part.strip(): continue
+            name, ty = part.split(":", 1)
+            args.append({"name": name.strip(), "type": rust_idl_type(ty)})
+        out[m[1]] = (m[2], args)
     return out
 
 
@@ -158,9 +169,12 @@ def compare(name: str, src_ix: dict, structs: dict, idl: dict, label: str, probl
     for fn in sorted(set(idl_ix) - set(src_ix)):
         problems.append(f"{label}: instruction `{fn}` exists in IDL but not in source")
     for fn in sorted(set(src_ix) & set(idl_ix)):
-        ctx, n_args = src_ix[fn]
-        if n_args != len(idl_ix[fn].get("args", [])):
-            problems.append(f"{label}: `{fn}` has {n_args} args in source, {len(idl_ix[fn]['args'])} in IDL")
+        ctx, args = src_ix[fn]
+        if args != idl_ix[fn].get("args", []):
+            problems.append(f"{label}: `{fn}` argument names/types/order differ: source={args}, IDL={idl_ix[fn].get('args')}")
+        discriminator = list(hashlib.sha256(f"global:{fn}".encode()).digest()[:8])
+        if idl_ix[fn].get("discriminator") != discriminator:
+            problems.append(f"{label}: `{fn}` discriminator differs from Anchor global namespace")
         s = structs.get(ctx)
         if s is None:
             problems.append(f"{label}: could not parse account struct `{ctx}` for `{fn}`")
@@ -205,8 +219,13 @@ def check_ts_copy(json_idl: dict, problems: list[str]) -> None:
             problems.append(f"{path}: `{camel(ix['name'])}` accounts/flags differ from aof_core.json")
         if ix.get("discriminator") != t.get("discriminator"):
             problems.append(f"{path}: `{camel(ix['name'])}` discriminator differs from aof_core.json")
-        if len(ix.get("args", [])) != len(t.get("args", [])):
-            problems.append(f"{path}: `{camel(ix['name'])}` arg count differs from aof_core.json")
+        def js_names(value):
+            if isinstance(value, list): return [js_names(v) for v in value]
+            if isinstance(value, dict):
+                return {k: camel(v[:1].lower() + v[1:]) if k == "name" and isinstance(v, str) else js_names(v) for k, v in value.items()}
+            return value
+        if js_names(ix.get("args", [])) != t.get("args", []):
+            problems.append(f"{path}: `{camel(ix['name'])}` argument names/types/order differ from aof_core.json")
 
 
 def main() -> int:

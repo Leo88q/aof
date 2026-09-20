@@ -22,14 +22,7 @@ pub fn handler(ctx: Context<PlantSeeds>, tile_index: u8, amount: u64) -> Result<
         energy.bump = ctx.bumps.energy_account;
     } else {
         // Ленивый регенератор: +1 за каждые 30 минут
-        let now = Clock::get()?.unix_timestamp;
-        let elapsed = now.saturating_sub(energy.last_regen_at);
-        let regen = (elapsed / ENERGY_REGEN_SECONDS) as u8;
-        if regen > 0 && energy.current < energy.cap {
-            let new_val = energy.current.saturating_add(regen).min(energy.cap);
-            energy.current = new_val;
-            energy.last_regen_at = now;
-        }
+        energy.regenerate(Clock::get()?.unix_timestamp);
     }
 
     require!(energy.current >= ENERGY_COST_PLANT, AofError::InsufficientEnergy);

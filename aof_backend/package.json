@@ -20,7 +20,11 @@
     "test:wallet-proof": "ts-node --project tsconfig.json --transpile-only scripts/walletProofSelfTest.ts",
     "test:resource-registry": "ts-node --project tsconfig.json --transpile-only scripts/resourceRegistrySelfTest.ts",
     "test:security-invariants": "ts-node --project tsconfig.json --transpile-only scripts/securityInvariantSelfTest.ts",
-    "test:idempotency-db": "ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts"
+    "test:idempotency-db": "ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
+    "test:audit-security": "ts-node --project tsconfig.json --transpile-only scripts/auditSecuritySelfTest.ts",
+    "reconcile:inbox": "ts-node --project tsconfig.json scripts/reconcileInboxClaims.ts",
+    "build:workers": "tsc -p tsconfig.workers.json",
+    "test:reward-receipts": "ts-node --project tsconfig.json --transpile-only scripts/rewardReceiptSelfTest.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
@@ -47,5 +51,10 @@
     "@types/node": "^20.14.15",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "@coral-xyz/anchor": {
+      "toml": "4.2.0"
+    }
   }
 }

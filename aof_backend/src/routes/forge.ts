@@ -38,51 +38,8 @@ export async function buildForgeExpireIx(forgeCommit: PublicKey) {
     .instruction();
 }
 
-r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async (req, res) => {
-  // The SOL fee is escrowed on the ForgeCommit PDA and the burned wood/stone
-  // amounts are recorded on it. If reveal never happens, forge_attempt_expire
-  // (commit-expirer worker or anyone) re-mints the resources and refunds the
-  // fee after COMMIT_EXPIRY_SLOTS.
-  try {
-    const user = pk(req.body.user);
-    const toolMint = pk(req.body.toolMint);
-    const slotType = Number(req.body.slotType);
-    const useProtector = Boolean(req.body.useProtector);
-    const [config] = configPda();
-    const cfg: any = await fetchOne("config", config);
-    if (!cfg) return res.status(503).json({ error: "CONFIG_NOT_INITIALIZED" });
-    const woodMint = new PublicKey(cfg.woodMint);
-    const stoneMint = new PublicKey(cfg.stoneMint);
-    const { hash } = await newCommit(`forge:${toolMint.toBase58()}:${slotType}`);
-
-    const [tool] = toolPda(toolMint);
-    const [enchantSlot] = enchantSlotPda(toolMint, slotType);
-    const [forgeCommit] = forgeCommitPda(toolMint, slotType);
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
-
-    const ix = await (program.methods as any)
-      .forgeAttemptCommit(slotType, hash, useProtector)
-      .accounts({
-        config,
-        user,
-        tool,
-        toolMint,
-        enchantSlot,
-        forgeCommit,
-        woodMint,
-        userWood,
-        stoneMint,
-        userStone,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const tx = await coSign([ix], user);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.post("/commit", (_req, res) => {
+  res.status(503).json({ error: "FORGE_COMMITS_DISABLED_UNTIL_VERIFIED_RANDOMNESS_SETTLEMENT" });
 });
 
 r.post("/reveal", requireCircuitOpen, requireWalletLimits("forge_reveal"), requireIdempotency, async (req, res) => {

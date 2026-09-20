@@ -61,13 +61,20 @@ def main() -> int:
         if ".bak" in path:
             continue
         src = open(path, encoding="utf-8").read()
-        if "MintTo" not in src and "Burn" not in src:
+        if "MintTo" not in src and "Burn" not in src and "execute_mint(" not in src:
             continue
         for hm in HANDLER_RE.finditer(src):
             fn, ctx_name, body = hm.group(1), hm.group(2), hm.group(0)
-            if "MintTo {" not in body and "Burn {" not in body:
+            if "MintTo {" not in body and "Burn {" not in body and "execute_mint(" not in body:
                 continue
             fields = set(CPI_DIRECT_RE.findall(body))
+            # Shared resource mint implementation takes accounts by reference;
+            # follow its two known context callers rather than silently losing
+            # these CPIs from the gate when the handler is factored out.
+            if "execute_mint(" in body:
+                if ctx_name not in {"MintResource", "MintResourceOnce"}:
+                    violations.append(f"{path}: review new execute_mint caller {ctx_name}")
+                fields.add("mint")
             if any(v != "ctx" for v in CPI_BOUND_RE.findall(body)):
                 fields |= set(TUPLE_RE.findall(body))
             struct_body = structs.get(ctx_name)
@@ -77,6 +84,8 @@ def main() -> int:
             for field in sorted(fields):
                 attr = mint_field_attr(struct_body, field)
                 if attr is None:
+                    if "execute_mint(" in body:
+                        violations.append(f"{path}: shared resource mint field missing in {ctx_name}")
                     continue
                 checked += 1
                 # Only the #[account(...)] attributes count; doc/line comments

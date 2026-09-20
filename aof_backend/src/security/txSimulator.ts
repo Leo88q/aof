@@ -8,6 +8,7 @@
  * Если симуляция падает — транзакция не отправляется.
  */
 import { Transaction, Connection } from "@solana/web3.js";
+import { simulationTransaction } from "../lib/transactionLifecycle";
 import { connection } from "../provider";
 
 export interface SimulationResult {
@@ -23,11 +24,11 @@ export interface SimulationResult {
  */
 export async function simulateTransaction(tx: Transaction): Promise<SimulationResult> {
   try {
-    // В @solana/web3.js v1.x для легаси Transaction сигнатура:
-    //   simulateTransaction(tx, signers?, includeAccounts?)
-    // Объект с опциями (sigVerify и т.д.) только для VersionedTransaction.
-    // Простой вызов без опций работает для легаси транзакций.
-    const result = await connection.simulateTransaction(tx);
+    const result = await connection.simulateTransaction(simulationTransaction(tx), {
+      sigVerify: false,
+      replaceRecentBlockhash: false,
+      commitment: "confirmed",
+    });
 
     if (result.value.err) {
       return {

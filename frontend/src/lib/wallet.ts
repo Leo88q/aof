@@ -1,3 +1,5 @@
+import type { TransactionIntent } from "./transactionIntent";
+import { confirmSignature } from "./confirmation";
 import {
   Connection,
   PublicKey,
@@ -34,7 +36,7 @@ export interface WalletAdapter {
   connect: () => Promise<PublicKey>;
   disconnect: () => Promise<void>;
   signMessage: (message: string) => Promise<string>;
-  signAndSend: (txBase64: string) => Promise<string>;
+  signAndSend: (txBase64: string, intent?: TransactionIntent) => Promise<string>;
 }
 
 export function createWalletAdapter(): WalletAdapter {
@@ -75,20 +77,29 @@ export function createWalletAdapter(): WalletAdapter {
       const signature = result?.signature || result;
       return btoa(String.fromCharCode(...new Uint8Array(signature)));
     },
-    signAndSend: async (txBase64: string) => {
+    signAndSend: async (txBase64: string, intent?: TransactionIntent) => {
       const tx = decodeTransaction(txBase64);
+      if (!provider.publicKey) throw new Error("NEED_WALLET");
+      const user = new PublicKey(provider.publicKey.toString());
+      const { guardTransaction, getAofGuardConfig } = await import("./txGuard");
+      const guard = await guardTransaction(tx, user, { ...getAofGuardConfig(), intent });
+      if (!guard.safe) throw new Error(guard.reason || "Transaction rejected by wallet guard");
+      if (!provider.publicKey || !new PublicKey(provider.publicKey.toString()).equals(user)) {
+        throw new Error("Wallet changed during transaction verification");
+      }
       const { signature } = await provider.signAndSendTransaction(tx);
+      await confirmSignature(connection, signature);
       return signature;
     },
   };
 }
 
-export async function signAndSendTx(txBase64: string): Promise<string> {
+export async function signAndSendTx(txBase64: string, intent?: TransactionIntent): Promise<string> {
   const adapter = createWalletAdapter();
   if (!adapter.available) {
     throw new Error("NEED_WALLET");
   }
-  return adapter.signAndSend(txBase64);
+  return adapter.signAndSend(txBase64, intent);
 }
 
 export async function signWalletMessage(message: string): Promise<string> {
@@ -134,13 +145,14 @@ async function digestWalletPayload(payload: Record<string, unknown>): Promise<st
 export async function createWalletProof(
   wallet: string,
   subject: string,
-  payload: Record<string, unknown> = {},
+  payload: Record<string, unknown>,
+  request: { method: string; target: string },
 ): Promise<WalletProof> {
   if (!wallet || !subject) throw new Error("Wallet and proof subject are required");
   const nonceBytes = new Uint8Array(16);
   crypto.getRandomValues(nonceBytes);
   const nonce = Array.from(nonceBytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  const digest = await digestWalletPayload(payload);
+  const digest = await digestWalletPayload({ ...request, body: payload });
   const message = `${WALLET_PROOF_DOMAIN}:${wallet}:${subject}:${digest}:${Date.now()}:${nonce}`;
   const signature = await signWalletMessage(message);
   return { message, signature };

@@ -52,13 +52,7 @@ pub fn handler(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Resu
         energy.cap = ENERGY_CAP;
         energy.bump = ctx.bumps.energy_account;
     } else {
-        let now = Clock::get()?.unix_timestamp;
-        let elapsed = now.saturating_sub(energy.last_regen_at);
-        let regen = (elapsed / ENERGY_REGEN_SECONDS) as u8;
-        if regen > 0 && energy.current < energy.cap {
-            energy.current = energy.current.saturating_add(regen).min(energy.cap);
-            energy.last_regen_at = now;
-        }
+        energy.regenerate(Clock::get()?.unix_timestamp);
     }
     require!(energy.current >= ENERGY_COST_OVEN, AofError::InsufficientEnergy);
 

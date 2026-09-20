@@ -1,3 +1,5 @@
+import { positiveU64, solToLamports, lamportsToSol } from "../../lib/amounts";
+import type { MarketplaceBuyIntent } from "../../lib/transactionIntent";
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
@@ -6,7 +8,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import {
   TOOL_ICONS, RARITY_LABEL, RARITY_COLOR, rarityKey,
-  fmtSol, shortAddr, useTreasury, useFlash,
+  shortAddr, useTreasury, useFlash,
 } from "../../lib/marketUtils";
 
 export function ListingPage() {
@@ -54,8 +56,14 @@ export function ListingPage() {
     if (!treasury) return flash("❌ Treasury config unavailable");
     try {
       flash("Готовим покупку…");
-      const resp = await api.marketplace.buy({ buyer: address, seller: l.seller, treasury, mint: l.mint });
-      const r = await handleTxResponse(resp);
+      const intent: MarketplaceBuyIntent = Object.freeze({
+        kind: "marketplaceBuy", buyer: address, seller: l.seller, treasury, mint: l.mint,
+        maxPriceLamports: positiveU64(l.priceLamports),
+        expiresAt: String(Math.floor(Date.now() / 1000) + 120),
+      });
+      const { kind: _kind, ...request } = intent;
+      const resp = await api.marketplace.buy(request);
+      const r = await handleTxResponse(resp, intent);
       flash(r.success ? `✅ Инструмент ваш: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
@@ -85,9 +93,8 @@ export function ListingPage() {
   async function createListing() {
     if (!address) return flash("❌ Connect your wallet first");
     if (!selMint) return flash("❌ Выберите инструмент");
-    const lamports = Math.round(parseFloat(priceSol) * 1e9);
-    if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите цену в SOL");
     try {
+      const lamports = solToLamports(priceSol);
       flash("Выставляем на прилавок…");
       const resp = await api.marketplace.list({ seller: address, mint: selMint, priceLamports: String(lamports) });
       const r = await handleTxResponse(resp);
@@ -149,7 +156,7 @@ export function ListingPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-wheat-500 font-bold">{fmtSol(l.priceLamports)} ◎</div>
+                    <div className="text-wheat-500 font-bold">{lamportsToSol(l.priceLamports)} ◎</div>
                     {mine ? (
                       <button onClick={() => cancel(l)}
                         className="mt-1 text-xs px-3 py-1 rounded-lg bg-soil-700 border border-straw/20 text-straw">

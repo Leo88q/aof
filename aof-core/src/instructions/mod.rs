@@ -53,3 +53,5 @@ pub mod rental;
 pub mod orderbook;
 pub mod craft_order;
 pub mod season;
+
+pub mod mint_resource_once;

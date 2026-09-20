@@ -206,4 +206,8 @@ pub enum AofError {
     FeatureDisabled,
     #[msg("Commit is still inside its reveal window; it cannot be expired yet")]
     CommitNotExpired,
+    #[msg("Listing price exceeds the signed maximum")]
+    PriceLimitExceeded,
+    #[msg("Quote expired or its lifetime exceeds 300 seconds")]
+    QuoteExpired,
 }

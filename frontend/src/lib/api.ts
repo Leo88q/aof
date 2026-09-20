@@ -79,6 +79,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/resources/burn", subject: "resources_burn", field: "owner" },
   { path: "/resources/exchange-energy", subject: "resources_exchange_energy", field: "user" },
   { path: "/season/pass/purchase", subject: "season_pass_purchase", field: "user" },
+  { path: "/tools/prep-mint", subject: "tools_prep_mint", field: "owner" },
   { path: "/tools/craft", subject: "tools_craft", field: "user" },
   { path: "/tools/repair", subject: "tools_repair", field: "user" },
   { path: "/tools/stake", subject: "tools_stake", field: "user" },
@@ -145,7 +146,7 @@ async function post(path: string, body: Record<string, any> = {}): Promise<any> 
   if (proofRoute && !requestBody.walletProof) {
     const wallet = requestBody[proofRoute.field];
     if (typeof wallet === "string" && wallet.length > 0) {
-      requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody);
+      requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody, { method: "POST", target: path });
     }
   }
 
@@ -165,7 +166,7 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
   if (proofRoute && !requestBody.walletProof) {
     const wallet = requestBody[proofRoute.field];
     if (typeof wallet === "string" && wallet.length > 0) {
-      requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody);
+      requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody, { method: "DELETE", target: path });
     }
   }
 

@@ -102,17 +102,13 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {/* Header with NFT image */}
       <div className="flex items-start gap-3">
         <div className="w-20 h-28 rounded-lg overflow-hidden flex-shrink-0 relative"
-             style={{ boxShadow: meta.glow, border: `1px solid ${meta.color}50` }}>
-          <img
-            src={getToolNftCard(tool.toolType, rarityKey(tool.rarity))}
-            alt={getToolName(tool.toolType)}
-            className="w-full h-full object-cover"
-            draggable={false}
-          />
+             style={{ border: `1px solid ${meta.color}50` }}>
+          <span role="img" aria-label={tool.toolType || "Инструмент"}
+            className="flex h-full items-center justify-center text-4xl">{icon}</span>
         </div>
         <div className="flex-1 min-w-0 pt-1">
-          <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{getToolName(tool.toolType || "axe")}</div>
-          <div className="text-xs font-medium mt-0.5" style={{ color: meta.color }}>{meta.label} · {getToolSubtitle(tool.toolType)}</div>
+          <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{tool.toolType || "Инструмент"}</div>
+          <div className="text-xs font-medium mt-0.5" style={{ color: meta.color }}>{meta.label}</div>
           <div className="text-straw text-xs mt-1 font-mono opacity-60">{tool.mint?.slice(0, 4)}…{tool.mint?.slice(-4)}</div>
           <div className="mt-2 text-right">
             <div className="text-sm" style={{ color: state.color }}>{state.label}</div>

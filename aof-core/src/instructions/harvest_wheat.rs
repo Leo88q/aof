@@ -21,7 +21,7 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     // rental/delegate model: the current operator, not only the owner, signs.
     let tool = &mut ctx.accounts.tool_data;
     require!(tool.operator == ctx.accounts.user.key(), AofError::NotToolOperator);
-    require!(tool.tool_type == "Reaper", AofError::InvalidRarityForCraft); // переиспользуем ошибку
+    require!(tool.tool_type.eq_ignore_ascii_case("reaper"), AofError::InvalidRarityForCraft); // переиспользуем ошибку
     require!(!tool.is_mining, AofError::ToolBusy);
 
     // Проверка что тайл готов
@@ -44,14 +44,7 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
         energy.cap = ENERGY_CAP;
         energy.bump = ctx.bumps.energy_account;
     } else {
-        let now = Clock::get()?.unix_timestamp;
-        let elapsed = now.saturating_sub(energy.last_regen_at);
-        let regen = (elapsed / ENERGY_REGEN_SECONDS) as u8;
-        if regen > 0 && energy.current < energy.cap {
-            let new_val = energy.current.saturating_add(regen).min(energy.cap);
-            energy.current = new_val;
-            energy.last_regen_at = now;
-        }
+        energy.regenerate(Clock::get()?.unix_timestamp);
     }
 
     require!(energy.current >= ENERGY_COST_HARVEST, AofError::InsufficientEnergy);

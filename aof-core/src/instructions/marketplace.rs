@@ -32,7 +32,9 @@ pub fn list_handler(ctx: Context<MarketplaceList>, price_lamports: u64) -> Resul
     Ok(())
 }
 
-pub fn buy_handler(ctx: Context<MarketplaceBuy>) -> Result<()> {
+pub fn buy_handler(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expires_at: i64) -> Result<()> {
+    validate_purchase_bounds(ctx.accounts.listing.price_lamports, max_price_lamports,
+        expires_at, Clock::get()?.unix_timestamp)?;
     require!(ctx.accounts.listing.active, AofError::NotActive);
     let price = ctx.accounts.listing.price_lamports;
     let fee = price.checked_mul(MARKETPLACE_FEE_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
@@ -107,4 +109,25 @@ pub fn cancel_handler(ctx: Context<MarketplaceCancel>) -> Result<()> {
     )?;
     ctx.accounts.listing.active = false;
     Ok(())
+}
+
+/// Signed maximum price and deadline are checked BEFORE any CPI or mutation.
+fn validate_purchase_bounds(price: u64, maximum: u64, deadline: i64, now: i64) -> Result<()> {
+    require!(maximum > 0 && price <= maximum, AofError::PriceLimitExceeded);
+    require!(deadline > now && deadline.saturating_sub(now) <= 300, AofError::QuoteExpired);
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn purchase_bounds() {
+        assert!(validate_purchase_bounds(100, 100, 200, 100).is_ok());
+        assert!(validate_purchase_bounds(99, 100, 200, 100).is_ok());
+        assert!(validate_purchase_bounds(101, 100, 200, 100).is_err());
+        assert!(validate_purchase_bounds(100, 100, 100, 100).is_err());
+        assert!(validate_purchase_bounds(100, 100, 401, 100).is_err());
+        assert!(validate_purchase_bounds(0, 0, 200, 100).is_err());
+    }
 }

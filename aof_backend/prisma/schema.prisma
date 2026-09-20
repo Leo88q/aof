@@ -58,6 +58,11 @@ model InboxItem {
   rewardAmount Int?
   expiresAt    DateTime?
   claimed      Boolean   @default(false)
+  claimState   String    @default("unclaimed")
+  claimSignature String?
+  rewardVersion Int @default(1)
+  claimMint String?
+  @@index([claimState, id])
   read         Boolean   @default(false)
   createdAt    DateTime  @default(now())
 }
@@ -583,4 +588,11 @@ model CommitSecret {
   
   @@index([key])
   @@index([expiresAt])
+}
+
+// Persist pagination even when the one-shot reconciler exits or is restarted.
+model ReconciliationCursor {
+  name      String   @id
+  lastId    String?
+  updatedAt DateTime @updatedAt
 }

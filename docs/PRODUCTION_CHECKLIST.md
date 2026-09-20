@@ -1,29 +1,41 @@
-# Production Deployment Final Checklist
+# Mainnet release gates — 2026-09-20
 
-## 1. Смарт-контракты (Solana)
-- [x] Все 6 программ синхронизированы с IDL (Drift = 0).
-- [x] Все 52 mint CPI поля проверены статическим анализатором (все `writable`).
-- [x] 8 недоработанных механик переведены в fail-closed on-chain (`FeatureDisabled`).
-- [x] Паки и Кузница защищены escrow-логикой на PDA с механизмами экспирации и возврата.
-- [ ] Развертывание в Mainnet-Beta через Squads Multisig v4.
-- [ ] Инициализация канонических параметров `init_config` и минтов ресурсов на mainnet.
+**Текущий статус: NO-GO.** Исправления в Git не являются deployment и не закрывают все риски. Источник деталей: [AUDIT_2026-09-20.md](../AUDIT_2026-09-20.md).
 
-## 2. Backend & Workers
-- [x] CAS-идемпотентность и криптографическая проверка подписей ed25519.
-- [x] Подготовлен multi-stage `Dockerfile` для backend.
-- [x] Подготовлен боевой `docker-compose.prod.yml` с PostgreSQL 16.
-- [x] Сконфигурированы демоны `commit-expirer` и `price-cranker`.
-- [ ] Подключение production RPC с DAS API (Helius / Triton).
-- [ ] Заполнение секретов окружения в `.env` (Authority keypair, Admin token, Treasury).
+## Выполнено локально
+- [x] Frontend build и новые wallet-guard/confirmation unit tests.
+- [x] Backend typecheck, proof/route/lifecycle regression tests (RPC mocked).
+- [x] IDL/account flags и mint-writable static checks.
+- [x] Новые unsafe pack/forge commitments отключены, legacy refund/reveal код сохранён.
+- [x] Добавлены permanent RewardReceipt и finalized recovery/quarantine для inbox (Rust runtime пока не проверен).
+- [x] SQL smoke трёх migrations, durable pagination cursor и legacy version=0 quarantine.
+- [x] Bounded marketplace instruction и локальный buyer intent; старый unbounded buy запрещён.
+- [x] 12 frontend security tests; backend receipt/codec/reconciliation tests; ABI gate проверяет точные типы/порядок аргументов.
+- [x] Добавлен offline compression cost model и архитектурный план.
 
-## 3. Frontend dApp
-- [x] Проверка дизайн-токенов и отсутствие сырых CSS-цветов.
-- [x] Сборка Vite проходит без ошибок TypeScript.
-- [x] Блокировка вызовов недоступных механик через `FeatureDisabledNotice`.
-- [ ] Установка production RPC URL и канонического `PROGRAM_ID` в `frontend/.env`.
-- [ ] Деплой статического бандла `frontend/dist` в Cloudflare Pages / Vercel.
+## Обязательно до release
+- [ ] Полный backend build с Prisma engines; migrate deploy/diff и реальные concurrency/restore tests.
+- [ ] Cargo unit tests, Anchor SBPF build, validator suite, negative tests всех денежных инструкций.
+- [ ] Legacy commit reveal/expiry fixtures, отсутствие зависших выплат после upgrade.
+- [ ] LP/energy изменения прошли runtime review; пользовательские minShares/maxSpend/deadline.
+- [ ] Docker image build/run, non-root persistent volume, worker smoke.
+- [ ] Реальный wallet E2E: prep-mint → craft, transfers/stake/market, wrong network, rejection, timeout.
+- [ ] On-chain mint/payout caps, review обходов receipt через unrestricted mint; supply/collateral/fee ledger сверка.
+- [ ] Validator: concurrent duplicate receipt, failed mint rollback, pause/authority/canonical mint; bounded/legacy marketplace paths.
+- [ ] Историческая сверка version=0 rewards, no-new-ID replay при restore; alert на quarantined и проверка cursor после restart.
+- [ ] Координированный upgrade с новым discriminator; rent-budget для постоянных receipt PDA утверждён.
+- [ ] Operational key/upgrade authority/treasury governance разделены; incident/key rotation drill.
+- [ ] Непротиворечивая taxonomy инструментов и миграция legacy инструментов.
+- [ ] Зависимости: закрыты или обоснованно и независимо приняты оставшиеся high advisories.
+- [ ] Gitleaks по истории, ротация возможных старых ключей, отсутствие legacy Firebase deploy.
+- [ ] DB/RPC/DAS/queue observability, limits, backup/restore, p95 и stress targets утверждены.
+- [ ] Внешний аудит и проверка deployed bytecode/config/upgrade authority.
+- [ ] Экономика утверждена с эмиссией, sinks, Sybil stress, late-player affordability и ликвидностью.
+- [ ] Mainnet canary утверждён владельцем с лимитами и планом аварийной остановки.
 
-## 4. Безопасность и данные
-- [x] База данных исключена из Git-трекинга.
-- [x] Подготовлена инструкция по развертыванию `docs/PRODUCTION_DEPLOYMENT.md`.
-- [ ] Санитарная очистка истории репозитория (удаление исторических дампов через git filter-repo).
+## Отдельные проекты, не «галочки»
+- [ ] VRF + mandatory settlement + frozen odds; только затем новые packs/forge.
+- [ ] Bubblegum V2 cosmetic pilot + DAS/proof negative tests.
+- [ ] cNFT custody/market/rental/craft adapter и миграция — без двойного владения.
+- [ ] Light compressed state/nullifiers pilot с реальными CU/latency/TCO.
+- [ ] Полноценная PostgreSQL schema/data migration для multi-instance production.

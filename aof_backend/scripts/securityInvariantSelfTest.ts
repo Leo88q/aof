@@ -95,10 +95,10 @@ for (const layer of disabledLayers) {
 for (const id of ["lottery", "exploration", "reroll", "drum", "hot_market", "collectors", "rebirth", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
-// Packs are live again: the price must be escrowed on the PackCommit PDA (no
+// Legacy pack recovery is retained: the price must be escrowed on the PackCommit PDA (no
 // treasury account in the commit context), released to the treasury only in
 // reveal, and refundable through pack_open_expire after the reveal window.
-assert.doesNotMatch(pack, /require!\(false, .*FeatureDisabled/, "packs: stale FeatureDisabled guard");
+assert.match(pack, /require!\(false, .*FeatureDisabled/, "packs: insecure randomness must be disabled");
 assert.doesNotMatch(section(core, "pub struct PackOpenCommit", "pub struct PackOpenReveal"), /treasury/,
   "pack_open_commit must not pay the treasury before reveal");
 assert.match(section(core, "pub struct PackOpenReveal", "pub struct PackOpenExpire"), /address = config\.treasury/);
@@ -110,14 +110,14 @@ assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /COMMIT_EXPI
 assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /AofError::CommitNotExpired/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "pack_open_expire"), "pack_open_expire missing from committed IDL");
 assert.ok(coreIdl.errors.some((error: any) => error.name === "CommitNotExpired"));
-assert.equal(siteStatus("packs"), "live");
-assert.doesNotMatch(backendRoute("packs.ts"), /PACK_COMMITS_DISABLED/);
+assert.equal(siteStatus("packs"), "soon");
+assert.match(backendRoute("packs.ts"), /PACK_COMMITS_DISABLED/);
 assert.match(backendRoute("packs.ts"), /packOpenExpire/);
-assert.doesNotMatch(appNotice, /^  packs: \{/m, "packs must not be listed in DISABLED_MECHANICS");
+assert.match(appNotice, /^  packs: \{/m);
 
-// Forge: same escrow contract as packs, plus the burned resources must be
+// Legacy forge recovery: same escrow contract as packs, plus the burned resources must be
 // recorded on the commit and re-minted by the expire path.
-assert.doesNotMatch(forge, /require!\(false, .*FeatureDisabled/, "forge: stale FeatureDisabled guard");
+assert.match(forge, /require!\(false, .*FeatureDisabled/, "forge: insecure randomness must be disabled");
 assert.doesNotMatch(section(core, "pub struct ForgeAttemptCommit", "pub struct ForgeAttemptReveal"), /treasury/,
   "forge_attempt_commit must not pay the treasury before reveal");
 assert.match(section(core, "pub struct ForgeAttemptReveal", "pub struct ForgeAttemptExpire"), /address = config\.treasury/);
@@ -130,10 +130,10 @@ assert.match(forge, /fc\.wood_burned = wood_cost/);
 assert.match(forge, /fc\.stone_burned = stone_cost/);
 assert.match(forge, /pub fn expire_handler[\s\S]*COMMIT_EXPIRY_SLOTS[\s\S]*AofError::CommitNotExpired[\s\S]*token::mint_to/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "forge_attempt_expire"), "forge_attempt_expire missing from committed IDL");
-assert.equal(siteStatus("forge"), "live");
-assert.doesNotMatch(backendRoute("forge.ts"), /FORGE_COMMITS_DISABLED/);
+assert.equal(siteStatus("forge"), "soon");
+assert.match(backendRoute("forge.ts"), /FORGE_COMMITS_DISABLED/);
 assert.match(backendRoute("forge.ts"), /forgeAttemptExpire/);
-assert.doesNotMatch(appNotice, /^  forge: \{/m, "forge must not be listed in DISABLED_MECHANICS");
+assert.match(appNotice, /^  forge: \{/m);
 
 // Random reroll has no separate site entry; it is covered on-chain + backend + app notice.
 assert.match(backendRoute("reroll.ts"), /REROLL_COMMITS_DISABLED/);
