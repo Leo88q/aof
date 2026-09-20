@@ -1,6 +1,6 @@
 # AOF — Production Readiness Roadmap
 
-_Обновлено: 2026-09-21 (итерация 3). Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
+_Обновлено: 2026-09-21 (итерация 4). Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
 
 Документ фиксирует, что из внешних замечаний **подтвердилось**, что **уже закрыто** в
 этой ветке, и что **осталось** — с приоритетом, оценкой и явным решением по спорным пунктам.
@@ -49,6 +49,20 @@ _Обновлено: 2026-09-21 (итерация 3). Источник: внеш
 
 Ограничения: `topHolders` по-прежнему `unavailable` (нужен holder-снимок через `getProgramAccounts`/DAS, отдельная задача); `activity24h` всё ещё из AuditLog — переключить на `ChainEvent` после первого backfill на devnet; воркер не исполнялся против живого RPC из песочницы (нет сети).
 
+### 1d. Четвёртая итерация — economy monitor `complete` и подготовка PostgreSQL
+
+| # | Что | Где |
+|---|---|---|
+| 25 | `topHolders` из RPC (`getTokenLargestAccounts` top-20 → owner) | `economyMonitor.ts`; качество `complete` при наличии данных. |
+| 26 | `activity24h` (crafters/traders/tx/failed) из `ChainEvent`/`ChainTx`, когда indexer покрывает окно; иначе fallback на AuditLog с `partial` | `countActors` / `countTxs` в `economyMonitor.ts`. |
+| 27 | PostgreSQL: генерируемая PG-схема и baseline из SQLite-источника (`prisma/postgres/*`), CI-check на устаревание | `scripts/gen-postgres-schema.py`, `npm run prisma:postgres:check`. |
+| 28 | Скрипт переноса данных с count- и построчной сверкой критичных таблиц | `scripts/migrate-sqlite-to-postgres.ts`. |
+| 29 | Overlay `docker-compose.postgres.yml`, `Dockerfile` build-arg `PRISMA_SCHEMA` | Один образ, провайдер выбирается при сборке. |
+| 30 | `walletLimits` — `Serializable` + retry на `P2034` | На PG READ COMMITTED двойной count/insert обходил лимит. |
+| 31 | Runbook cut-over с откатом | `docs/POSTGRES_MIGRATION.md`. |
+
+Не выполнено (нужна инфраструктура): реальный cut-over на staging; `test:idempotency-db` против PG в CI (service container); перевод JSON-TEXT колонок в `jsonb` — после cut-over.
+
 **Не изменено**: `AuditLog.action` по-прежнему = нормализованный URL. Замена на бизнес-тип
 события требует ручной разметки ~60 роутов; сделать вместе с indexer'ом (§2.3), чтобы
 не размечать дважды.
@@ -71,7 +85,7 @@ _Обновлено: 2026-09-21 (итерация 3). Источник: внеш
 
 | Приоритет | Задача | Комментарий |
 |---|---|---|
-| P0 | **PostgreSQL** | Смена provider + `metadata String` → `Json` + миграция данных + тест `test:idempotency-db` на PG. Отдельная ветка. SQLite остаётся допустимым только для devnet/staging single-host. |
+| P0 | **PostgreSQL** | Подготовлено (§1d). Осталось: cut-over на staging по runbook, PG service container в CI для `test:idempotency-db`, затем production. |
 | P0 | Staging окружение | Тот же compose с `NODE_ENV=staging`? **Нет** — `nonProductionOnly` и другие guard'ы смотрят на `production`. Staging должен идти с `NODE_ENV=production` и своими ключами, иначе он не проверяет prod-поведение. |
 | ~~P0~~ done | Workers в compose | Сделано (profiles). **Открытый вопрос** остаётся: нужен ли `farm-trader` в проде. |
 | P0 | Backup + restore drill | Скрипт готов. Осталось: cron на хосте + первый реальный drill на staging (в песочнице нет `sqlite3`, скрипт не исполнялся). |
@@ -84,8 +98,7 @@ _Обновлено: 2026-09-21 (итерация 3). Источник: внеш
 | Приоритет | Задача | Комментарий |
 |---|---|---|
 | ~~P0~~ done | **On-chain event indexer** | Реализован (§1c). Осталось: запустить на devnet (`--profile indexer`), дождаться `backfillComplete`, сверить `potatoMinted24h` с ручным подсчётом за сутки. |
-| P1 | Top holders | Периодический снимок владельцев через `getTokenLargestAccounts` (top-20 достаточно для алертов) → `topHolders: complete`. |
-| P1 | `activity24h` из `ChainEvent` вместо AuditLog | После верификации indexer'а на devnet. |
+| ~~P1~~ done | Top holders, `activity24h` из `ChainEvent` | Сделано (§1d); весь economy monitor становится `complete`, как только indexer закроет 24h-окно. |
 | P1 | `AuditLog.action` → бизнес-тип | Вместе с indexer'ом, единый словарь событий. |
 | P1 | Daily player facts | Материализованная таблица от indexer + AuditLog. |
 
@@ -139,7 +152,7 @@ _Обновлено: 2026-09-21 (итерация 3). Источник: внеш
 - [ ] On-chain issuance caps
 - [ ] Authority на Squads multisig
 - [ ] Program ID / bytecode verified (скрипт есть, прогон против devnet/mainnet — нет)
-- [ ] PostgreSQL в production
+- [ ] PostgreSQL в production (схема/baseline/перенос/overlay готовы; cut-over не выполнен)
 - [ ] Backup/restore drill пройден на реальных данных (скрипт есть)
 - [x] Workers вынесены в отдельные сервисы compose
 - [x] On-chain indexer реализован и покрыт тестами

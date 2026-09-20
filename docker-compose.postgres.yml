@@ -1,0 +1,65 @@
+# Overlay: run the stack on PostgreSQL instead of the SQLite baseline.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.postgres.yml up -d
+#
+# Requires the image built with PRISMA_SCHEMA=prisma/postgres/schema.prisma and
+# the data migrated per docs/POSTGRES_MIGRATION.md.
+#
+# Worker profiles from the base file still apply (compose merges lists; the
+# `!reset` tag needs Compose >= 2.24 and is avoided here). On PostgreSQL there
+# is no single-writer constraint, so enable all of them:
+#   COMPOSE_PROFILES=market,trust,push,indexer,recovery docker compose \
+#     -f docker-compose.prod.yml -f docker-compose.postgres.yml up -d
+x-pg-env: &pg-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-aof}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-aof}?schema=public
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aof}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-aof}
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+    volumes:
+      - aof_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aof} -d ${POSTGRES_DB:-aof}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  backend:
+    build:
+      context: ./aof_backend
+      args:
+        PRISMA_SCHEMA: prisma/postgres/schema.prisma
+    environment:
+      <<: *pg-env
+    command: ["sh", "-c", "npx prisma migrate deploy --schema prisma/postgres/schema.prisma && node dist/server.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  price-cranker:
+    build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
+    environment: { <<: *pg-env }
+  price-tracker:
+    build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
+    environment: { <<: *pg-env }
+  trust-worker:
+    build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
+    environment: { <<: *pg-env }
+  push-worker:
+    build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
+    environment: { <<: *pg-env }
+  chain-indexer:
+    build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
+    environment: { <<: *pg-env }
+  commit-expirer:
+    build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
+    environment: { <<: *pg-env }
+
+volumes:
+  aof_pg:

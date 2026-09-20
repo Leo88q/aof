@@ -50,6 +50,7 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   // Параллельно собираем все метрики
   const potatoMint = await getPotatoMint();
   const indexer = await getIndexerCoverage(last24h);
+  const topHolders = await getTopHolders(potatoMint);
   const [
     supplyData,
     burnEvents,
@@ -70,33 +71,10 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
       where: { timestamp: { lte: last24h } },
       orderBy: { timestamp: "desc" },
     }),
-    db.auditLog.findMany({
-      where: { 
-        timestamp: { gte: last24h },
-        result: "success",
-        OR: [
-          { action: { contains: "craft" } },
-          { action: { contains: "tools" } },
-          { action: { contains: "packs" } },
-          { action: { contains: "forge" } },
-        ],
-      },
-      select: { user: true }
-    }).then(logs => new Set(logs.map((l: any) => l.user)).size),
-    db.auditLog.findMany({
-      where: {
-        timestamp: { gte: last24h },
-        result: "success",
-        OR: [
-          { action: { contains: "orderbook" } },
-          { action: { contains: "marketplace" } },
-          { action: { contains: "auction" } },
-        ],
-      },
-      select: { user: true }
-    }).then(logs => new Set(logs.map((l: any) => l.user)).size),
-    db.auditLog.count({ where: { timestamp: { gte: last24h } } }),
-    db.auditLog.count({ where: { timestamp: { gte: last24h }, result: "fail" } }),
+    countActors(indexer.quality, last24h, CRAFT_EVENTS, ["craft", "tools", "packs", "forge"]),
+    countActors(indexer.quality, last24h, TRADE_EVENTS, ["orderbook", "marketplace", "auction", "hot-market", "offer"]),
+    countTxs(indexer.quality, last24h, undefined),
+    countTxs(indexer.quality, last24h, false),
   ]);
 
   const supply = supplyData.supply;
@@ -109,6 +87,10 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     // partial; with no indexed data at all they stay unavailable.
     potatoMinted24h: indexer.quality,
     potatoBurned24h: indexer.quality,
+    // Activity switches from the off-chain AuditLog to the on-chain ledger as
+    // soon as the indexer fully covers the window; until then it is partial.
+    activity24h: indexer.quality === "complete" ? "complete" : "partial",
+    topHolders: topHolders.length > 0 ? "complete" : "unavailable",
     // Without a 24h-old snapshot the baseline is the current supply and the
     // inflation figure is 0 by construction, not by measurement.
     inflation24h: supplyData.ok && baselineSnapshot ? "partial" : "unavailable",
@@ -124,8 +106,6 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     ? Number((supply - baselineSupply) * 10000n / baselineSupply) / 100
     : 0;
 
-  // Топ холдеры (упрощённо — из audit logs)
-  const topHolders = await getTopHolders();
 
   const metrics: EconomyMetrics = {
     potatoSupply: supply,
@@ -315,7 +295,50 @@ async function getMintEvents(since: Date, potatoMint: PublicKey | null): Promise
   return sumMintDeltas(since, potatoMint, 1);
 }
 
-async function getTopHolders(): Promise<{ address: string; balance: bigint }[]> {
-  // TODO: индексировать top holders через Helius/Shyft
-  return [];
+// Event types that count as "crafting" / "trading" activity on-chain.
+const CRAFT_EVENTS = ["CraftEvent", "ToolCrafted", "ToolMinted", "PackOpened", "ForgeAttempted", "ToolRepaired", "RerollResult", "MiningCollected"];
+const TRADE_EVENTS = ["ListingSold", "ListingCreated", "AuctionBid", "AuctionSettled", "OfferAccepted", "OrderPlaced", "OrderMatched", "HotMarketBought", "HotMarketSold", "LimitOrderPlaced", "LimitOrderMatched"];
+
+/** Distinct actors: on-chain events when the ledger is complete, AuditLog otherwise. */
+async function countActors(quality: "complete" | "partial" | "unavailable", since: Date, eventTypes: string[], auditFragments: string[]): Promise<number> {
+  if (quality === "complete") {
+    const rows = await db.chainEvent.findMany({
+      where: { blockTime: { gte: since }, eventType: { in: eventTypes }, wallet: { not: null } },
+      distinct: ["wallet"], select: { wallet: true },
+    });
+    return rows.length;
+  }
+  const logs = await db.auditLog.findMany({
+    where: { timestamp: { gte: since }, result: "success", OR: auditFragments.map((f) => ({ action: { contains: f } })) },
+    select: { user: true },
+  });
+  return new Set(logs.map((l: any) => l.user)).size;
+}
+
+/** Tx count (all or failed only) from the same source selection as countActors. */
+async function countTxs(quality: "complete" | "partial" | "unavailable", since: Date, success: boolean | undefined): Promise<number> {
+  if (quality === "complete") {
+    return db.chainTx.count({ where: { blockTime: { gte: since }, ...(success === undefined ? {} : { success }) } });
+  }
+  return db.auditLog.count({ where: { timestamp: { gte: since }, ...(success === undefined ? {} : { result: success ? "success" : "fail" }) } });
+}
+
+/**
+ * Top-20 holders straight from the RPC (getTokenLargestAccounts). Enough for
+ * whale/concentration alerts; a full holder census needs a DAS provider.
+ */
+async function getTopHolders(potatoMint: PublicKey | null): Promise<{ address: string; balance: bigint }[]> {
+  if (!potatoMint) return [];
+  try {
+    const largest = await connection.getTokenLargestAccounts(potatoMint, "confirmed");
+    const accounts = largest.value.slice(0, 20);
+    if (accounts.length === 0) return [];
+    const infos = await connection.getMultipleParsedAccounts(accounts.map((a) => a.address), { commitment: "confirmed" });
+    return accounts.map((a, i) => {
+      const owner = (infos.value[i]?.data as any)?.parsed?.info?.owner;
+      return { address: typeof owner === "string" ? owner : a.address.toBase58(), balance: BigInt(a.amount) };
+    });
+  } catch {
+    return [];
+  }
 }

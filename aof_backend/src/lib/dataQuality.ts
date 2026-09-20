@@ -12,7 +12,7 @@ export type EconomyFieldQuality = {
   potatoMinted24h: DataQuality;   // chain indexer (ChainMintDelta); overridden at runtime by coverage
   inflation24h: DataQuality;      // derived from supply vs 24h-old snapshot
   activity24h: DataQuality;       // crafters/traders/tx counts from AuditLog (off-chain, partial by nature)
-  topHolders: DataQuality;        // requires holder indexer
+  topHolders: DataQuality;        // getTokenLargestAccounts (top-20); overridden at runtime
 };
 
 /**
