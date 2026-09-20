@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { db } from "../lib/db";
 import { takeEconomySnapshot } from "../lib/economyMonitor";
-import { requireAdmin } from "../middleware/adminAuth";
+import { ECONOMY_FIELD_QUALITY, worstQuality } from "../lib/dataQuality";
+import { adminByMethod } from "../middleware/adminAuth";
 
 const r = Router();
-r.use(requireAdmin);
+r.use(adminByMethod);
 
 /**
  * GET /admin/economy/snapshots
@@ -18,14 +19,21 @@ r.get("/snapshots", async (req, res) => {
       take: limit,
     });
     
-    // [ФИКС] Конвертируем BigInt поля в string для JSON
+    // Persisted snapshots carry no provenance column; attach the provenance
+    // of the code that produced them so the dashboard never renders a
+    // placeholder zero (unimplemented indexer) as a measured value.
+    const fieldQuality = ECONOMY_FIELD_QUALITY;
+    const dataQuality = worstQuality(fieldQuality);
     const safe = snapshots.map((s: any) => ({
       ...s,
       potatoSupply: s.potatoSupply.toString(),
-      potatoBurned24h: s.potatoBurned24h.toString(),
-      potatoMinted24h: s.potatoMinted24h.toString(),
+      potatoBurned24h: fieldQuality.potatoBurned24h === "unavailable" ? null : s.potatoBurned24h.toString(),
+      potatoMinted24h: fieldQuality.potatoMinted24h === "unavailable" ? null : s.potatoMinted24h.toString(),
+      dataQuality,
+      fieldQuality,
     }));
     
+    res.setHeader("X-Data-Quality", dataQuality);
     res.json(safe);
   } catch (e: any) {
     res.status(400).json({ error: e.message });

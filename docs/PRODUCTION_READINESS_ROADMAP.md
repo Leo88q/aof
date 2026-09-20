@@ -1,0 +1,119 @@
+# AOF — Production Readiness Roadmap
+
+_Обновлено: 2026-09-21. Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
+
+Документ фиксирует, что из внешних замечаний **подтвердилось**, что **уже закрыто** в
+этой ветке, и что **осталось** — с приоритетом, оценкой и явным решением по спорным пунктам.
+Он не заменяет `AUDIT_2026-09-20.md` (техаудит) — это план работ.
+
+---
+
+## 1. Закрыто в этой ветке (P0, backend)
+
+| # | Замечание | Факт | Решение |
+|---|---|---|---|
+| 1 | `POST /admin/send-tx` — произвольный relay | Подтверждено (`admin.ts`) | В production отвечает **404** (`nonProductionOnly`). Оставлен только для devnet-отладки. |
+| 2 | `test-grant`, `test-grant-potato`, `test-grant-tools`, `mint-resource` в проде | Подтверждено, guard отсутствовал | **404 в production** независимо от токена. Regression-тест `test:admin-auth`. |
+| 3 | Единый `ADMIN_TOKEN` | Подтверждено | Разделён на **ops** (`ADMIN_TOKEN`) и **read** (`ADMIN_READ_TOKEN`). GET под `/admin/audit`, `/admin/economy`, `/security` принимает read; любой POST — только ops. 5 ролей/2FA — см. §3. |
+| 4 | `trust proxy` не настроен | Подтверждено — не было вовсе | `app.set("trust proxy", TRUST_PROXY_HOPS)`; в production переменная обязательна; `docker-compose.prod.yml` выставляет 1. |
+| 5 | `readLimiter` объявлен, но не подключён | Подтверждено | Подключён к `/query`, `/whale-alerts`, `/market-data`, `/public`. |
+| 6 | `GET /whale-alerts/feed` без защиты | **Частично**: PII в модели нет (type/mint/amount/price/ts) | Явный `select`, санитайз `limit`, readLimiter. Авторизация не нужна — это публичная лента по дизайну. |
+| 7 | `127.0.0.1:8899` в price tracker | Подтверждено | Берётся из `RPC_URL`; в production devnet/localhost запрещён. |
+| 8 | Wallet prefix в device fingerprint | Подтверждено — ломало сам сигнал | Убран; добавлен `FINGERPRINT_SALT`, заголовок `x-timezone`. |
+| 9 | `AuditLog.user` из `req.body.user` | Подтверждено — подделываемо | Actor = `authenticatedWallet` → `admin:<role>` → `anonymous`. Значение из body сохраняется как `metadata.claimedUser`. |
+| 10 | Экономический монитор показывает нули как факт | Подтверждено: mint/burn/topHolders — заглушки `return []` | `fieldQuality` per-field + `dataQuality`; API отдаёт `null` вместо 0 для `unavailable`; дашборд показывает бейджи и предупреждение. |
+| 11 | gitleaks по полной истории | Выполнен regex-скан по всем 70 коммитам всех веток (бинарь gitleaks недоступен в песочнице — см. §4) | Реальных секретов не найдено. |
+
+**Не изменено**: `AuditLog.action` по-прежнему = нормализованный URL. Замена на бизнес-тип
+события требует ручной разметки ~60 роутов; сделать вместе с indexer'ом (§2.3), чтобы
+не размечать дважды.
+
+---
+
+## 2. Осталось до mainnet — согласованный порядок
+
+### 2.1 On-chain (блокеры, требуют редеплоя и внешнего аудита)
+
+| Приоритет | Задача | Комментарий |
+|---|---|---|
+| P0 | **Issuance caps для `mint_resource`** (per-epoch / per-resource лимит в Config) | Единственная реальная защита при краже authority. Аудит AOF-05 явно называет отсутствие cap «границей гарантии». |
+| P0 | **Authority → Squads multisig** для `set_fees`, `set_paused`, `set_resource_mints`, `set_craft_economy`, treasury | Это и есть «dual approval» — делать on-chain, а не approval-flow в Express. Hot-key backend'а остаётся только для `mint_resource_once` (inbox rewards) под cap. |
+| P0 | Верификация 6 program ID через RPC + сверка deployed bytecode с audited commit | Скрипт `scripts/verify-programs.sh` (getProgramAccounts + `solana program dump` + sha256). Прогонять в CI против devnet, вручную — против mainnet. |
+| P0 | Внешний аудит всех программ | После caps и multisig, иначе аудит устареет. |
+| P1 | Bonding curve / `minted_count` / поведение burns в цене | Зафиксировать формулу в `docs/ECONOMY.md`, добавить property-тесты в Rust. |
+
+### 2.2 Инфраструктура
+
+| Приоритет | Задача | Комментарий |
+|---|---|---|
+| P0 | **PostgreSQL** | Смена provider + `metadata String` → `Json` + миграция данных + тест `test:idempotency-db` на PG. Отдельная ветка. SQLite остаётся допустимым только для devnet/staging single-host. |
+| P0 | Staging окружение | Тот же compose с `NODE_ENV=staging`? **Нет** — `nonProductionOnly` и другие guard'ы смотрят на `production`. Staging должен идти с `NODE_ENV=production` и своими ключами, иначе он не проверяет prod-поведение. |
+| P0 | Workers в compose: price-tracker, price-cranker, trust-worker, push-worker, commit-expirer | Сейчас в `docker-compose.prod.yml` только backend + commit-expirer (profile). **Открытый вопрос**: нужен ли `farm-trader` в проде вообще (это торговый бот) — решить до добавления. |
+| P0 | Backup + restore drill | `sqlite3 .backup` / `pg_dump` по cron + ежемесячный restore на staging с проверкой `prisma migrate status`. |
+| P1 | Redis | **Только** когда появится второй инстанс backend. До этого — лишний компонент и лишняя точка отказа. |
+| P1 | Readiness/liveness раздельно | `/health` есть; добавить `/ready` (DB ping + RPC getSlot). |
+| P1 | Prometheus / OTel / Sentry | `prom-client` + `/metrics` за admin-read токеном; Sentry для backend и frontend. |
+
+### 2.3 Данные
+
+| Приоритет | Задача | Комментарий |
+|---|---|---|
+| P0 | **On-chain event indexer** для `aof_core`, `aof_market`, `aof_quests` | Таблица `ChainEvent(signature, slot, blockTime, programId, eventType, walletHash, mint, amount, success)` с unique(signature, index). Backfill через `getSignaturesForAddress` с курсором. После него `ECONOMY_FIELD_QUALITY.potatoMinted24h/Burned24h/topHolders` → `complete`. |
+| P1 | `AuditLog.action` → бизнес-тип | Вместе с indexer'ом, единый словарь событий. |
+| P1 | Daily player facts | Материализованная таблица от indexer + AuditLog. |
+
+### 2.4 Anti-fraud
+
+| Приоритет | Задача | Комментарий |
+|---|---|---|
+| P1 | Сигналы: funding source, wallet age (реальный, через первый tx), IP/device cluster, reward velocity | После indexer'а — большинство сигналов из него. |
+| P1 | Trust Index: убрать placeholder-возраст и rebirth-заглушку, staking из on-chain stake | Проверить `services/trust-worker/formula.js`. |
+| P1 | Fraud review queue + аудит каждой резолюции, **без авто-бана** | Согласны полностью: авто-бан без human review недопустим. |
+
+---
+
+## 3. Спорные пункты — принятые решения
+
+| Замечание | Решение | Почему |
+|---|---|---|
+| 5 ролей RBAC (viewer/analyst/operator/finance/superadmin) | **Нет, 2 роли** (read/ops) | Команда 1–3 человека. 5 ролей без реальных пользователей — мёртвый код. Расширить, когда появятся отдельные люди на finance. |
+| 2FA для опасных действий | **Заменяется Squads multisig** | Опасные действия должны требовать вторую подпись on-chain, а не второй фактор к HTTP-токену, который всё равно живёт в одном `.env`. |
+| Dual approval в backend | **Squads** | См. выше. |
+| Переписать историю Git (убрать IP/UA) | **Нет** | В истории не найдено секретов (см. §4). IP/UA в audit-логах живут в БД, не в git. Переписывание истории ломает все клоны/PR ради нулевого выигрыша. Ротация ключей при любом подозрении — да. |
+| Продуктовые метрики (DAU/retention/funnel/crash) | **Отдельный трек после запуска** | Не блокер безопасности. Требует indexer + client analytics SDK. |
+| Notification service, P0/P1/P2 каналы, on-call/SLA | **Минимум**: Telegram read-only + runbook | Запрет write-действий из Telegram — да (проверить, что бот их не делает). SLA/on-call — когда есть кому дежурить. |
+| Redis сейчас | **Нет** | Один инстанс backend; express-rate-limit in-memory достаточно. |
+
+---
+
+## 4. Скан истории Git на секреты (2026-09-21)
+
+- Охват: все 70 коммитов, все ветки (`git rev-list --objects --all`), каждый blob один раз.
+- Паттерны: PEM private key, Solana JSON keypair (64 байта), base58 86–88 символов,
+  `*_SECRET_KEY|ADMIN_TOKEN|BOT_TOKEN|API_KEY|DATABASE_URL=<значение>`, Telegram bot token,
+  JWT, AWS/GitHub/OpenAI/Firebase ключи, публичные IPv4 в коде.
+- Результат: **реальных секретов не найдено.** Все совпадения — плейсхолдеры в
+  `.env.example`, `docs/*.md`, `docker-compose.prod.yml` и `process.env.X` в `functions/index.js`.
+- Файлы-ключи (`solana/keys/*`, `id.json`, `.env`) в истории отсутствуют.
+- Ограничение: бинарь `gitleaks` не удалось скачать из песочницы (сетевой сбой), скан выполнен
+  эквивалентным набором regex. **Рекомендация**: добавить `gitleaks/gitleaks-action@v2`
+  с `fetch-depth: 0` в CI как постоянный gate — это 10 строк в `ci.yml`.
+
+---
+
+## 5. Критерии готовности (обновлённые)
+
+- [x] `send-tx`, `test-grant*`, `mint-resource` недоступны в production
+- [x] Admin-токен разделён на read/ops
+- [x] `trust proxy`, readLimiter, RPC_URL в воркерах
+- [x] Audit log не подделывается через body
+- [x] Метрики экономики помечены data quality, нули не выдаются за факты
+- [x] История Git проверена на секреты
+- [ ] On-chain issuance caps
+- [ ] Authority на Squads multisig
+- [ ] Program ID / bytecode verified
+- [ ] PostgreSQL в production, backup/restore drill пройден
+- [ ] Все нужные workers в compose и под healthcheck
+- [ ] On-chain indexer работает, `ECONOMY_FIELD_QUALITY` → complete
+- [ ] Staging с `NODE_ENV=production`
+- [ ] Внешний аудит завершён

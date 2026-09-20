@@ -10,6 +10,9 @@ services:
       NODE_ENV: production
       PORT: 8080
       DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+      # Port 8080 is bound to loopback below, so a reverse proxy on the host
+      # is the only path in. Override if a second hop (CDN/LB) is added.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
     command: ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
     ports:
       - "127.0.0.1:${PORT:-8080}:8080"

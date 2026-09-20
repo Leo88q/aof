@@ -790,6 +790,7 @@ jobs:
         run: |
           set -uo pipefail
           npm run test:audit-security 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          npm run test:admin-auth 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
           npm run test:wallet-proof 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 

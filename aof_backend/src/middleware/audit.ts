@@ -1,6 +1,29 @@
 import { Request, Response, NextFunction } from "express";
 import { redactSensitive } from "../security/redaction";
 import { db } from "../lib/db";
+import { resolveAdminRole } from "./adminAuth";
+
+/**
+ * Actor attribution for the audit log.
+ *
+ * Priority: wallet proven by signature (walletProof middleware) → admin token
+ * role → unauthenticated. The request body is NOT trusted for the actor
+ * field: any caller could write an arbitrary `user` there and forge history.
+ * The body-supplied subject (if any) is kept separately in metadata as
+ * `claimedUser`, so mismatches between actor and subject remain visible.
+ */
+export function resolveAuditActor(req: Request): { user: string; actorType: string } {
+  const wallet = (req as any).authenticatedWallet;
+  if (typeof wallet === "string" && wallet) return { user: wallet, actorType: "wallet" };
+  const role = resolveAdminRole(req);
+  if (role) return { user: `admin:${role}`, actorType: "admin" };
+  return { user: "anonymous", actorType: "anonymous" };
+}
+
+function claimedSubject(req: Request): string | null {
+  const v = req.body?.user ?? req.body?.owner ?? req.params?.user;
+  return typeof v === "string" ? v : null;
+}
 
 /**
  * Sentinel middleware — логирует критичные действия игроков.
@@ -46,10 +69,13 @@ export function audit(action: string) {
     const originalJson = res.json.bind(res);
 
     res.json = (body: any) => {
+      const actor = resolveAuditActor(req);
       logAction({
-        user: req.body?.user || req.params?.user || "unknown",
+        user: actor.user,
         action,
         metadata: {
+          actorType: actor.actorType,
+          claimedUser: claimedSubject(req),
           method: req.method,
           path: req.path,
           body: redactSensitive(req.body),
@@ -93,11 +119,14 @@ export function sentinelAutoAudit() {
 
     res.json = (body: any) => {
       const action = makeActionName(req);
+      const actor = resolveAuditActor(req);
 
       logAction({
-        user: req.body?.user || req.params?.user || "unknown",
+        user: actor.user,
         action,
         metadata: {
+          actorType: actor.actorType,
+          claimedUser: claimedSubject(req),
           method,
           path: req.path,
           body: redactSensitive(req.body),

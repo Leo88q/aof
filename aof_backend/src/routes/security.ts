@@ -10,10 +10,10 @@ import {
   listAllowedMints,
 } from "../security/mintValidator";
 import { getCircuitState, setCircuitState } from "../security/circuitBreaker";
-import { requireAdmin } from "../middleware/adminAuth";
+import { adminByMethod } from "../middleware/adminAuth";
 
 const r = Router();
-r.use(requireAdmin);
+r.use(adminByMethod);
 
 // === Управление разрешёнными минтами ===
 

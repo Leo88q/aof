@@ -1,7 +1,9 @@
 /**
  * Анти-фрод сервис: выявление сибил-аккаунтов и мошеннических паттернов.
  * Три сигнала (из ТЗ §4.1):
- *   1. Device fingerprint — несколько кошельков с одного устройства
+ *   1. Device fingerprint — несколько кошельков с одного устройства.
+ *      Фингерпринт НЕ должен включать кошелёк: иначе один человек с N
+ *      кошельками получает N «разных устройств» и сигнал теряет смысл.
  *   2. Скорость рефералов — аномально быстрые привязки
  *   3. Возраст кошелька — свеже-созданные кошельки подозрительнее
  */
@@ -11,15 +13,16 @@ import crypto from "crypto";
 const db = new PrismaClient();
 
 // Генерация фингерпринта устройства из заголовков запроса
-export function computeFingerprint(headers: any, wallet: string): string {
+export function computeFingerprint(headers: any, _wallet?: string): string {
   const parts = [
     headers["user-agent"] || "",
     headers["accept-language"] || "",
     headers["x-device-model"] || "",
     headers["x-screen-resolution"] || "",
-    wallet.slice(0, 8), // часть кошелька чтобы различать устройства
+    headers["x-timezone"] || "",
   ];
-  return crypto.createHash("sha256").update(parts.join("|")).digest("hex");
+  const secret = process.env.FINGERPRINT_SALT || "";
+  return crypto.createHash("sha256").update(secret + "|" + parts.join("|")).digest("hex");
 }
 
 // Регистрация устройства + проверка на сибил

@@ -22,6 +22,7 @@
     "test:security-invariants": "ts-node --project tsconfig.json --transpile-only scripts/securityInvariantSelfTest.ts",
     "test:idempotency-db": "ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
     "test:audit-security": "ts-node --project tsconfig.json --transpile-only scripts/auditSecuritySelfTest.ts",
+    "test:admin-auth": "ts-node --project tsconfig.json --transpile-only scripts/adminAuthSelfTest.ts",
     "reconcile:inbox": "ts-node --project tsconfig.json scripts/reconcileInboxClaims.ts",
     "build:workers": "tsc -p tsconfig.workers.json",
     "test:reward-receipts": "ts-node --project tsconfig.json --transpile-only scripts/rewardReceiptSelfTest.ts"

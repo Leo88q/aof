@@ -1,0 +1,162 @@
+/**
+ * Self-test for the split admin credential, production gating of dangerous
+ * admin routes, audit actor attribution and device fingerprint stability.
+ *
+ * Run: npm run test:admin-auth
+ */
+import assert from "node:assert/strict";
+import express from "express";
+
+const OPS = "o".repeat(40);
+const READ = "r".repeat(40);
+
+async function request(port: number, method: string, path: string, token?: string, body?: any) {
+  const res = await fetch(`http://127.0.0.1:${port}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { status: res.status, json: await res.json().catch(() => null) };
+}
+
+async function withServer(app: express.Express, fn: (port: number) => Promise<void>) {
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    await fn((server.address() as any).port);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+async function testRoleSplit() {
+  process.env.ADMIN_TOKEN = OPS;
+  process.env.ADMIN_READ_TOKEN = READ;
+  const { requireAdmin, requireAdminRead, adminByMethod } = await import("../src/middleware/adminAuth");
+
+  const app = express();
+  app.use(express.json());
+  app.post("/ops", requireAdmin, (_req, res) => res.json({ ok: true }));
+  app.get("/read", requireAdminRead, (req, res) => res.json({ role: req.adminRole }));
+  const mixed = express.Router();
+  mixed.use(adminByMethod);
+  mixed.get("/logs", (req, res) => res.json({ role: req.adminRole }));
+  mixed.post("/resolve", (req, res) => res.json({ role: req.adminRole }));
+  app.use("/mixed", mixed);
+
+  await withServer(app, async (port) => {
+    // No token
+    assert.equal((await request(port, "POST", "/ops")).status, 401);
+    assert.equal((await request(port, "GET", "/read")).status, 401);
+    // Read token: allowed on read routes, forbidden on ops routes
+    assert.equal((await request(port, "GET", "/read", READ)).status, 200);
+    assert.equal((await request(port, "GET", "/read", READ)).json.role, "read");
+    assert.equal((await request(port, "POST", "/ops", READ)).status, 403);
+    // Ops token: allowed everywhere
+    assert.equal((await request(port, "POST", "/ops", OPS)).status, 200);
+    assert.equal((await request(port, "GET", "/read", OPS)).json.role, "ops");
+    // Method-based router
+    assert.equal((await request(port, "GET", "/mixed/logs", READ)).status, 200);
+    assert.equal((await request(port, "POST", "/mixed/resolve", READ)).status, 403);
+    assert.equal((await request(port, "POST", "/mixed/resolve", OPS)).status, 200);
+    // Wrong token / prefix of a token
+    assert.equal((await request(port, "GET", "/read", OPS.slice(0, 39))).status, 401);
+    assert.equal((await request(port, "GET", "/read", "x".repeat(40))).status, 401);
+  });
+
+  // Without a read token configured, the ops token still works on read routes
+  delete process.env.ADMIN_READ_TOKEN;
+  await withServer(app, async (port) => {
+    assert.equal((await request(port, "GET", "/read", OPS)).status, 200);
+    assert.equal((await request(port, "GET", "/read", READ)).status, 401);
+  });
+
+  // Unconfigured admin API is closed, not open
+  delete process.env.ADMIN_TOKEN;
+  await withServer(app, async (port) => {
+    assert.equal((await request(port, "POST", "/ops", OPS)).status, 503);
+  });
+  process.env.ADMIN_TOKEN = OPS;
+}
+
+async function testProductionGate() {
+  // nonProductionOnly captures NODE_ENV at module load, so evaluate it in a
+  // fresh module instance for each environment.
+  for (const [env, expected] of [["production", 404], ["development", 200], ["test", 200]] as const) {
+    process.env.NODE_ENV = env;
+    const modPath = require.resolve("../src/middleware/adminAuth");
+    delete require.cache[modPath];
+    const { requireAdmin, nonProductionOnly } = await import("../src/middleware/adminAuth");
+    const app = express();
+    app.use(express.json());
+    app.use(requireAdmin);
+    app.post("/admin/send-tx", nonProductionOnly, (_req, res) => res.json({ relayed: true }));
+    app.post("/admin/test-grant", nonProductionOnly, (_req, res) => res.json({ granted: true }));
+    await withServer(app, async (port) => {
+      // Even a valid operator token does not reach the handler in production.
+      assert.equal((await request(port, "POST", "/admin/send-tx", OPS, { tx: "AAAA" })).status, expected, `send-tx in ${env}`);
+      assert.equal((await request(port, "POST", "/admin/test-grant", OPS, { user: "x" })).status, expected, `test-grant in ${env}`);
+    });
+  }
+  delete process.env.NODE_ENV;
+  delete require.cache[require.resolve("../src/middleware/adminAuth")];
+}
+
+async function testAuditActor() {
+  process.env.ADMIN_TOKEN = OPS;
+  process.env.ADMIN_READ_TOKEN = READ;
+  const { resolveAuditActor } = await import("../src/middleware/audit");
+  const mk = (over: any) => ({ header: (name: string) => over.headers?.[name.toLowerCase()] || "", body: over.body || {}, params: {}, ...over }) as any;
+
+  // Body-supplied user is never the actor
+  assert.deepEqual(resolveAuditActor(mk({ body: { user: "FORGED_WALLET" } })), { user: "anonymous", actorType: "anonymous" });
+  // Signed wallet wins over body and over an admin token
+  assert.deepEqual(
+    resolveAuditActor(mk({ authenticatedWallet: "SIGNED", body: { user: "FORGED" }, headers: { authorization: `Bearer ${OPS}` } })),
+    { user: "SIGNED", actorType: "wallet" },
+  );
+  // Admin token is attributed by role, without leaking the token
+  assert.deepEqual(resolveAuditActor(mk({ headers: { authorization: `Bearer ${OPS}` }, body: { user: "X" } })), { user: "admin:ops", actorType: "admin" });
+  assert.deepEqual(resolveAuditActor(mk({ headers: { "x-admin-token": READ } })), { user: "admin:read", actorType: "admin" });
+}
+
+async function testFingerprint() {
+  const { computeFingerprint } = await import("../src/lib/antifraud");
+  const headers = { "user-agent": "UA/1.0", "accept-language": "ru", "x-device-model": "Pixel", "x-screen-resolution": "1080x2400" };
+  // Same device, different wallets -> same fingerprint (that is the whole point)
+  assert.equal(computeFingerprint(headers, "WalletAAAAAAAAAAAAAAAA"), computeFingerprint(headers, "WalletBBBBBBBBBBBBBBBB"));
+  // Different device -> different fingerprint
+  assert.notEqual(computeFingerprint(headers, "W"), computeFingerprint({ ...headers, "user-agent": "UA/2.0" }, "W"));
+  // Salt changes the value (so raw header combos cannot be precomputed)
+  const plain = computeFingerprint(headers);
+  process.env.FINGERPRINT_SALT = "salt";
+  assert.notEqual(plain, computeFingerprint(headers));
+  delete process.env.FINGERPRINT_SALT;
+}
+
+async function testEconomyQuality() {
+  const { worstQuality, ECONOMY_FIELD_QUALITY } = await import("../src/lib/dataQuality");
+  assert.equal(worstQuality({ a: "complete", b: "complete" }), "complete");
+  assert.equal(worstQuality({ a: "complete", b: "partial" }), "partial");
+  assert.equal(worstQuality({ a: "complete", b: "unavailable" }), "partial");
+  assert.equal(worstQuality({ a: "unavailable", b: "unavailable" }), "unavailable");
+  // Until the on-chain indexer exists these must stay flagged; flipping them
+  // to "complete" without an indexer would reintroduce fictitious zeros.
+  assert.equal(ECONOMY_FIELD_QUALITY.potatoMinted24h, "unavailable");
+  assert.equal(ECONOMY_FIELD_QUALITY.potatoBurned24h, "unavailable");
+  assert.equal(ECONOMY_FIELD_QUALITY.topHolders, "unavailable");
+}
+
+async function main() {
+  await testRoleSplit();
+  await testProductionGate();
+  await testAuditActor();
+  await testFingerprint();
+  await testEconomyQuality();
+  console.log("admin auth tests: read/ops split, production gating of send-tx/test-grant, audit actor attribution, wallet-independent fingerprint and economy data-quality flags passed");
+}
+
+main().catch((error) => { console.error(error); process.exitCode = 1; });

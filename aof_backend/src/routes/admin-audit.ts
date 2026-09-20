@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAdmin } from "../middleware/adminAuth";
+import { adminByMethod } from "../middleware/adminAuth";
 
 const r = Router();
-r.use(requireAdmin);
+r.use(adminByMethod);
 
 /**
  * GET /admin/audit/logs
  * Последние audit logs.
- * В dev открыто. Перед продом нужно закрыть authority/admin проверкой.
+ * Доступно с ADMIN_READ_TOKEN или ADMIN_TOKEN.
  */
 r.get("/logs", async (req, res) => {
   try {

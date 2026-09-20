@@ -1,6 +1,9 @@
 import { db } from "./db";
 import { connection } from "./../provider";
 import { PublicKey } from "@solana/web3.js";
+import { DataQuality, EconomyFieldQuality, ECONOMY_FIELD_QUALITY, worstQuality } from "./dataQuality";
+export { ECONOMY_FIELD_QUALITY, worstQuality } from "./dataQuality";
+export type { DataQuality, EconomyFieldQuality } from "./dataQuality";
 
 /**
  * OpenClaw Economy Monitor
@@ -17,9 +20,15 @@ export interface EconomyMetrics {
   totalTxs24h: number;
   failedTxs24h: number;
   topHolders: { address: string; balance: bigint }[];
-  /** Explicitly surfaced because event/holder indexing is not complete yet. */
-  dataQuality: "partial" | "complete";
+  /** Overall quality: the worst of the per-field values below. */
+  dataQuality: DataQuality;
+  /**
+   * Per-field provenance. Consumers MUST NOT render an `unavailable` field as
+   * a numeric fact (a zero from an unimplemented indexer is not "0 minted").
+   */
+  fieldQuality: EconomyFieldQuality;
 }
+
 
 // Константы для алертов
 const THRESHOLDS = {
@@ -89,6 +98,13 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   ]);
 
   const supply = supplyData.supply;
+  const fieldQuality: EconomyFieldQuality = {
+    ...ECONOMY_FIELD_QUALITY,
+    potatoSupply: supplyData.ok ? "complete" : "unavailable",
+    // Without a 24h-old snapshot the baseline is the current supply and the
+    // inflation figure is 0 by construction, not by measurement.
+    inflation24h: supplyData.ok && baselineSnapshot ? "partial" : "unavailable",
+  };
   const burned = burnEvents.reduce((sum, e) => sum + e.amount, 0n);
   const minted = mintEvents.reduce((sum, e) => sum + e.amount, 0n);
 
@@ -113,9 +129,8 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     totalTxs24h: totalTxs,
     failedTxs24h: failedTxs,
     topHolders,
-    // Mint/burn event and holder indexing are still TODO; do not present the
-    // zero-valued breakdown as a complete economic accounting.
-    dataQuality: "partial",
+    dataQuality: worstQuality(fieldQuality),
+    fieldQuality,
   };
 
   // Сохраняем snapshot
@@ -220,7 +235,7 @@ async function createAlert(data: {
 
 // === Вспомогательные функции ===
 
-async function getPOTATOSupply(): Promise<{ supply: bigint }> {
+async function getPOTATOSupply(): Promise<{ supply: bigint; ok: boolean }> {
   try {
     // Читаем из Config PDA
     const { configPda } = await import("./pda");
@@ -229,16 +244,16 @@ async function getPOTATOSupply(): Promise<{ supply: bigint }> {
     const cfg: any = await fetchOne("config", config);
     
     if (!cfg?.potatoMint) {
-      return { supply: 0n };
+      return { supply: 0n, ok: false };
     }
 
     // Читаем mint account
     const mintInfo = await connection.getParsedAccountInfo(new PublicKey(cfg.potatoMint));
-    const supply = BigInt((mintInfo.value?.data as any)?.parsed?.info?.supply || "0");
-    
-    return { supply };
+    const rawSupply = (mintInfo.value?.data as any)?.parsed?.info?.supply;
+    if (rawSupply === undefined || rawSupply === null) return { supply: 0n, ok: false };
+    return { supply: BigInt(rawSupply), ok: true };
   } catch (e) {
-    return { supply: 0n };
+    return { supply: 0n, ok: false };
   }
 }
 

@@ -8,13 +8,29 @@ interface EconomySnapshot {
   id: string;
   timestamp: string;
   potatoSupply: string;
-  potatoBurned24h: string;
-  potatoMinted24h: string;
+  potatoBurned24h: string | null;
+  potatoMinted24h: string | null;
   inflation24h: number;
   activeCrafters24h: number;
   activeTraders24h: number;
   totalTxs24h: number;
   failedTxs24h: number;
+  dataQuality?: DataQuality;
+  fieldQuality?: Partial<Record<string, DataQuality>>;
+}
+
+type DataQuality = "complete" | "partial" | "unavailable";
+
+const QUALITY_LABEL: Record<DataQuality, { text: string; cls: string }> = {
+  complete: { text: "полные данные", cls: "bg-sprout-500/20 text-sprout-500" },
+  partial: { text: "частичные данные", cls: "bg-yellow-500/20 text-yellow-400" },
+  unavailable: { text: "нет данных", cls: "bg-red-500/20 text-red-400" },
+};
+
+function QualityBadge({ q }: { q?: DataQuality }) {
+  if (!q) return null;
+  const { text, cls } = QUALITY_LABEL[q];
+  return <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${cls}`}>{text}</span>;
 }
 
 interface EconomyAlert {
@@ -102,17 +118,33 @@ export function EconomyDashboard() {
 
       {latest && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">📊 Текущие метрики</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-1">
+            📊 Текущие метрики
+            <QualityBadge q={latest.dataQuality} />
+          </h3>
+          {latest.dataQuality && latest.dataQuality !== "complete" && (
+            <p className="text-straw text-xs mb-3">
+              On-chain индексатор событий ещё не запущен: mint/burn за 24ч и топ-холдеры недоступны,
+              активность считается по off-chain audit log. Не используйте эти цифры как полный учёт экономики.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-soil-800/60">
-              <p className="text-straw text-xs mb-1">POTATO Supply</p>
+              <p className="text-straw text-xs mb-1">POTATO Supply<QualityBadge q={latest.fieldQuality?.potatoSupply} /></p>
               <p className="text-wheat-500 text-xl font-bold">
-                {(Number(latest.potatoSupply) / 1e9).toFixed(2)}M
+                {latest.fieldQuality?.potatoSupply === "unavailable" ? "—" : `${(Number(latest.potatoSupply) / 1e9).toFixed(2)}M`}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-soil-800/60">
+              <p className="text-straw text-xs mb-1">Minted / Burned 24ч<QualityBadge q={latest.fieldQuality?.potatoMinted24h} /></p>
+              <p className="text-parchment text-xl font-bold">
+                {latest.potatoMinted24h === null || latest.potatoMinted24h === undefined ? "—" : `${latest.potatoMinted24h} / ${latest.potatoBurned24h}`}
               </p>
             </div>
             
             <div className="p-3 rounded-lg bg-soil-800/60">
-              <p className="text-straw text-xs mb-1">Инфляция 24ч</p>
+              <p className="text-straw text-xs mb-1">Инфляция 24ч<QualityBadge q={latest.fieldQuality?.inflation24h} /></p>
               <div className="flex items-center gap-2">
                 <ProgressRing
                   value={Math.min(Math.abs(latest.inflation24h), 20)}
@@ -126,7 +158,7 @@ export function EconomyDashboard() {
             </div>
             
             <div className="p-3 rounded-lg bg-soil-800/60">
-              <p className="text-straw text-xs mb-1">Крафтеры 24ч</p>
+              <p className="text-straw text-xs mb-1">Крафтеры 24ч<QualityBadge q={latest.fieldQuality?.activity24h} /></p>
               <p className="text-sprout-500 text-xl font-bold">{latest.activeCrafters24h}</p>
             </div>
             

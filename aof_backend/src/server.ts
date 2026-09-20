@@ -2,10 +2,10 @@ import { startCronJobs } from "./lib/cron";
 import express from "express";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
-import { generalLimiter, txLimiter } from "./middleware/rateLimit";
+import { generalLimiter, txLimiter, readLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
 import cors from "cors";
-import { PORT } from "./config";
+import { PORT, TRUST_PROXY_HOPS } from "./config";
 import { connection } from "./provider";
 import admin from "./routes/admin";
 import gastank from "./routes/gastank";
@@ -71,11 +71,15 @@ import adminAudit from "./routes/admin-audit";
 import adminEconomy from "./routes/admin-economy";
 import rating from "./routes/rating";
 import { sentinelAutoAudit } from "./middleware/audit";
-import { requireAdmin } from "./middleware/adminAuth";
+import { adminByMethod } from "./middleware/adminAuth";
 import { startCommitRevealer } from "./lib/commitRevealer";
 import { requireMappedWalletProof } from "./security/walletProof";
 
 const app = express();
+// Must be set before any middleware reads req.ip (rate limiter, audit log).
+// A fixed hop count, never `true`: trusting every X-Forwarded-For would let
+// clients spoof their IP and bypass per-IP limits.
+app.set("trust proxy", TRUST_PROXY_HOPS);
 const configuredOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim())
@@ -97,6 +101,12 @@ app.use(requireMappedWalletProof());
 app.use(sentinelAutoAudit());
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/health" } }));
 app.use("/admin", txLimiter);
+// Read-heavy public endpoints proxy RPC / DB scans; they get the read limiter
+// on top of the general one so a single client cannot saturate the RPC quota.
+app.use("/query", readLimiter);
+app.use("/whale-alerts", readLimiter);
+app.use("/market-data", readLimiter);
+app.use("/public", readLimiter);
 app.use("/hot-market", txLimiter);
 app.use("/orderbook", txLimiter);
 app.use("/marketplace", txLimiter);
@@ -133,7 +143,7 @@ app.use("/orderbook", orderbook);
 app.use("/craft-order", craftOrder);
 app.use("/season", season);
 app.use("/query", query);
-app.use("/security", requireAdmin, security);
+app.use("/security", adminByMethod, security);
 app.use("/hot-market", hotMarket);
 app.use("/session", session);
 app.use("/quests", quests);

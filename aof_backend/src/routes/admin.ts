@@ -19,7 +19,7 @@ import {
   programDataPda,
 } from "../lib/pda";
 import { authorityOnly, pk, coSign } from "../lib/tx";
-import { requireAdmin } from "../middleware/adminAuth";
+import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
 import { simulateTransaction } from "../security/txSimulator";
 
 const r = Router();
@@ -267,7 +267,9 @@ r.post("/migrate-tool", async (req, res) => {
 
 
 // [FIXED] Тестовая выдача ресурса игроку — правильные аккаунты tokenAccount + treasuryToken + player + авто-создание ATA
-r.post("/mint-resource", async (req, res) => {
+// Bulk manual minting is a devnet/staging tool. In production resources are
+// issued only through audited flows (inbox rewards with on-chain receipts).
+r.post("/mint-resource", nonProductionOnly, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const kind = req.body.kind;
@@ -367,7 +369,7 @@ r.post("/init-craft-economy", async (req, res) => {
 
 
 // [ТЕСТ] Начисление всех ресурсов и инструментов для ручного тестирования
-r.post("/test-grant", async (req, res) => {
+r.post("/test-grant", nonProductionOnly, async (req, res) => {
   try {
     const user = pk(req.body.user);
     const [config] = configPda();
@@ -520,7 +522,7 @@ r.post("/test-grant", async (req, res) => {
 });
 
 // [ТЕСТ] Начисление POTATO (отдельно, через Config)
-r.post("/test-grant-potato", async (req, res) => {
+r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
   try {
     const user = pk(req.body.user);
     const amount = Number(req.body.amount || 10000);
@@ -576,7 +578,7 @@ r.post("/test-grant-potato", async (req, res) => {
 
 // Tool grants stay disabled: the old endpoint had an incomplete account map and
 // must not advertise a transaction that cannot be built against the deployed IDL.
-r.post("/test-grant-tools", (_req, res) => {
+r.post("/test-grant-tools", nonProductionOnly, (_req, res) => {
   res.status(503).json({ error: "TOOL_GRANT_DISABLED_UNTIL_ACCOUNT_MAP_IS_IMPLEMENTED" });
 });
 
@@ -673,8 +675,11 @@ r.post("/init-material-mints", async (req, res) => {
 });
 
 
-// ===== Отправка подписанной транзакции =====
-r.post("/send-tx", async (req, res) => {
+// ===== Relay of an arbitrary pre-signed transaction =====
+// Devnet debugging aid only. It is NOT available in production: an operator
+// token would otherwise become a universal relay for any transaction that
+// passes simulation. Production operators use the CLI / multisig directly.
+r.post("/send-tx", nonProductionOnly, async (req, res) => {
   try {
     const { tx: txBase64 } = req.body;
     if (!txBase64) return res.status(400).json({ error: "tx required" });
