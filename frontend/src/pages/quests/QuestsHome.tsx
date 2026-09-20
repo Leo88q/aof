@@ -23,7 +23,7 @@ export function QuestsHome() {
   const [claimedIds, setClaimedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Загрузка квестов
+  // Loading квестов
   useEffect(() => {
     if (!address) return;
     api.quests
@@ -33,7 +33,7 @@ export function QuestsHome() {
       .finally(() => setLoading(false));
   }, [address]);
 
-  // Загрузка достижений
+  // Loading достижений
   useEffect(() => {
     if (!address || activeTab !== "achievements") return;
     api.quests
@@ -44,7 +44,7 @@ export function QuestsHome() {
 
   // Клейм награды за квест
   async function claimQuest(questId: number) {
-    if (!address) return flash("❌ Подключите кошелёк");
+    if (!address) return flash("❌ Connect wallet");
     try {
       const resp = await api.quests.claim({ user: address, questId });
       if (resp.success) {
@@ -172,7 +172,7 @@ export function QuestsHome() {
         <div className="grid grid-cols-3 gap-3">
           {achievements.length === 0 ? (
             <Card className="col-span-3 text-center py-8">
-              <p className="text-straw">Загрузка достижений...</p>
+              <p className="text-straw">Loading достижений...</p>
             </Card>
           ) : (
             achievements.map((ach) => (

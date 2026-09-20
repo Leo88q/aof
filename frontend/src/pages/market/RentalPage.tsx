@@ -52,7 +52,7 @@ export function RentalPage() {
   }, [address]);
 
   async function rent(l: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     const minS = toNum(l.minDuration);
     const maxS = toNum(l.maxDuration);
     let durS = Math.round(parseFloat(hours[l.mint] || "0") * 3600);
@@ -71,7 +71,7 @@ export function RentalPage() {
   }
 
   async function revoke(l: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     try {
       flash("Снимаем с аренды…");
       const resp = await api.rental.revoke({ owner: address, mint: l.mint });
@@ -84,7 +84,7 @@ export function RentalPage() {
   }
 
   async function endRental(l: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     try {
       flash("Читаем соглашение…");
       const info: any = await api.query.rental(l.mint);
@@ -100,7 +100,7 @@ export function RentalPage() {
   }
 
   async function createRental() {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     if (!selMint) return flash("❌ Выберите инструмент");
     const ownerSplitBps = Math.round(parseFloat(splitPct) * 100);
     const minS = Math.round(parseFloat(minH) * 3600);
@@ -132,7 +132,7 @@ export function RentalPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-parchment">🔑 Аренда</h1>
         <button onClick={load} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Обновить"}
+          {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
       <p className="text-straw text-xs">
@@ -251,7 +251,7 @@ export function RentalPage() {
                   className="w-full bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
               </div>
               <div>
-                <p className="text-straw text-xs mb-1">Цена часа, ◎ (0 = бесплатно)</p>
+                <p className="text-straw text-xs mb-1">Price часа, ◎ (0 = бесплатно)</p>
                 <input type="number" step="0.0001" min="0" value={pricePerHour} onChange={(e) => setPricePerHour(e.target.value)}
                   className="w-full bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
               </div>

@@ -45,8 +45,8 @@ export function OfferPage() {
   }, [selOwn]);
 
   async function accept(o: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
+    if (!address) return flash("❌ Connect your wallet first");
+    if (!treasury) return flash("❌ Treasury config unavailable");
     try {
       flash("Принимаем оффер…");
       const resp = await api.offer.accept({ seller: address, mint: selOwn, buyer: o.buyer, treasury });
@@ -59,7 +59,7 @@ export function OfferPage() {
   }
 
   async function cancelOffer(o: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     try {
       flash("Отзываем оффер…");
       const resp = await api.offer.cancel({ buyer: address, mint: selOwn });
@@ -71,7 +71,7 @@ export function OfferPage() {
   }
 
   async function createOffer() {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     if (!offerMint) return flash("❌ Выберите инструмент из листингов");
     const lamports = Math.round(parseFloat(offerPrice) * 1e9);
     if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите цену оффера в SOL");

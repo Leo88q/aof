@@ -69,7 +69,7 @@ export function CompendiumHome() {
           />
         </div>
         <p className="text-straw text-xs mt-2">
-          {user ? (loaded ? `Собрано ${caughtCount} из ${totalCells}` : "Загрузка данных из backend…") : "Подключите кошелёк для просмотра компендиума"}
+          {user ? (loaded ? `Собрано ${caughtCount} из ${totalCells}` : "Loading данных из backend…") : "Подключите кошелёк для просмотра компендиума"}
         </p>
         <p className="text-straw/70 text-xs mt-3">Награды за этапы: источник клейма не найден.</p>
       </Card>

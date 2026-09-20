@@ -81,7 +81,7 @@ export function SandboxPage() {
         <div className="space-y-3">
           <div>
             <label className="text-straw text-xs block mb-1">
-              Количество агентов: <span className="text-parchment font-bold">{agents}</span>
+              Amount агентов: <span className="text-parchment font-bold">{agents}</span>
             </label>
             <input
               type="range"

@@ -75,7 +75,7 @@ export function EconomyDashboard() {
   if (loading) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Загрузка экономики...</p></Card>
+        <Card><p className="text-straw text-center py-8">Loading экономики...</p></Card>
       </div>
     );
   }

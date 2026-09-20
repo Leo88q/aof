@@ -9,7 +9,7 @@ import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUt
 
 const FIELD_LABELS: Record<string, string> = {
   roundId: "Раунд",
-  ticketPriceLamports: "Цена билета",
+  ticketPriceLamports: "Price билета",
   ticketsSold: "Билетов продано",
   prizePoolLamports: "Призовой фонд",
   winnerTicket: "Выигрышный билет",
@@ -93,8 +93,8 @@ export function LotteryPage() {
 
   async function buyTicket() {
     if (ticketsDisabled) return flash("Покупка билетов временно отключена (fail-closed): транзакция не отправлена", 6000);
-    if (!address) return flash("❌ Сначала подключите кошелёк");
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
+    if (!address) return flash("❌ Connect your wallet first");
+    if (!treasury) return flash("❌ Treasury config unavailable");
     const n = ticketNum.trim();
     if (!n || isNaN(Number(n))) return flash("❌ Укажите номер билета");
     try {
@@ -132,7 +132,7 @@ export function LotteryPage() {
   }
 
   async function claim() {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     const n = claimNum.trim();
     if (!n || isNaN(Number(n))) return flash("❌ Укажите номер выигрышного билета");
     try {
@@ -155,7 +155,7 @@ export function LotteryPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-parchment">🎰 Лотерея</h1>
         <button onClick={() => load(roundId)} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Обновить"}
+          {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
       {ticketsDisabled && <FeatureDisabledNotice id="lottery" />}
@@ -221,16 +221,16 @@ export function LotteryPage() {
 
       {/* Покупка билета */}
       <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Купить билет</div>
+        <div className="text-parchment font-semibold text-sm mb-2">Buy билет</div>
         {round?.ticketPriceLamports !== undefined && (
-          <p className="text-straw text-xs mb-2">Цена: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
+          <p className="text-straw text-xs mb-2">Price: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
         )}
         <div className="flex items-center gap-2">
           <input type="number" min="0" step="1" placeholder="Номер билета" value={ticketNum}
             onChange={(e) => setTicketNum(e.target.value)}
             className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
           <button onClick={buyTicket} disabled={ticketsDisabled} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
-            🌱 Купить
+            🌱 Buy
           </button>
         </div>
 

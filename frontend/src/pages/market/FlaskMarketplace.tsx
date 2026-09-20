@@ -31,7 +31,7 @@ export function FlaskMarketplace() {
                 <div className="text-parchment text-sm font-bold">{flask.label}</div>
                 <div className="text-straw text-xs">{flask.desc}</div>
               </div>
-              <span className="text-straw text-xs">Цена: не найдена</span>
+              <span className="text-straw text-xs">Price: не найдена</span>
             </div>
           ))}
         </div>

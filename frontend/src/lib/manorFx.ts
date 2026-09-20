@@ -120,7 +120,7 @@ export function ripple(target: HTMLElement, x: number, y: number) {
   r.addEventListener("animationend", () => r.remove(), { once: true });
 }
 
-/** Ошибка: дрожь + красное свечение. */
+/** Error: дрожь + красное свечение. */
 export function shake(el: HTMLElement) {
   el.classList.remove("mn-shake"); void el.offsetWidth; el.classList.add("mn-shake");
   el.addEventListener("animationend", () => el.classList.remove("mn-shake"), { once: true });

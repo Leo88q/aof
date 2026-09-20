@@ -33,8 +33,8 @@ export function PacksPage() {
   }, []);
 
   async function openPack(p: typeof PACKS[0]) {
-    if (!address) return flash("❌ Подключите кошелёк (кнопка вверху)", 6000);
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен", 6000);
+    if (!address) return flash("❌ Connect wallet (кнопка вверху)", 6000);
+    if (!treasury) return flash("❌ Treasury config unavailable", 6000);
     setResult(null);
     try {
       setStage("prep");

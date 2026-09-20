@@ -33,7 +33,7 @@ export function Foundation() {
         <p>Inter 400 · Энергия восстановлена / Energy restored</p>
         <p className="aof-foundation__medium">Inter 500 · Сезонные награды / Season rewards</p>
         <p className="aof-foundation__strong">Inter 600 · Подтвердить действие / Confirm action</p>
-        <p className="aof-foundation__mono">JetBrains Mono 500 · Прочность 20/20 · 0123456789</p>
+        <p className="aof-foundation__mono">JetBrains Mono 500 · Durability 20/20 · 0123456789</p>
       </section>
       <section className="aof-foundation__paper">
         <h2>Тени</h2>

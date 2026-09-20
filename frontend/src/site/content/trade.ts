@@ -19,7 +19,7 @@ export const tradeMethods: TradeMethod[] = [
     name: 'Маркетплейс (мгновенные листинги)',
     speed: 'Мгновенно',
     risk: 'Низкий',
-    control: 'Цена продавца фиксирована',
+    control: 'Price продавца фиксирована',
     bestFor: 'Быстро купить или продать ходовой товар',
     instructions: ['marketplace_list', 'marketplace_buy', 'marketplace_cancel'],
     fees: 'Комиссия площадки с продажи',
@@ -28,10 +28,10 @@ export const tradeMethods: TradeMethod[] = [
     whenToUse: [
       'Нужен ресурс прямо сейчас для рецепта',
       'Хочешь быстро избавиться от излишков',
-      'Цена устраивает и нет времени ждать'
+      'Price устраивает и нет времени ждать'
     ],
     whenToAvoid: [
-      'Цена листинга выше средней по рынку',
+      'Price листинга выше средней по рынку',
       'Ты готов подождать ради лучшей цены'
     ]
   },
@@ -41,7 +41,7 @@ export const tradeMethods: TradeMethod[] = [
     speed: 'От минут до дней',
     risk: 'Низкий, но заявка может не исполниться',
     control: 'Полный: ты задаёшь цену',
-    bestFor: 'Купить дешевле рынка или продать дороже',
+    bestFor: 'Buy дешевле рынка или продать дороже',
     instructions: ['place_buy_order', 'place_sell_order', 'cancel_buy_order', 'cancel_sell_order', 'match_resource_orders'],
     fees: 'Комиссия с исполненной части',
     description: 'Ты оставляешь заявку со своей ценой. Исполнение происходит, когда встречная заявка совпадает. Неисполненная часть остаётся в книге.',
@@ -61,7 +61,7 @@ export const tradeMethods: TradeMethod[] = [
     name: 'Аукцион (последовательные ставки)',
     speed: 'По таймеру лота',
     risk: 'Средний: азарт и перегрев ставки',
-    control: 'Цена определяется участниками',
+    control: 'Price определяется участниками',
     bestFor: 'Уникальные и редкие предметы без рыночной цены',
     instructions: ['auction_create', 'auction_bid', 'auction_settle'],
     fees: 'Комиссия с итоговой цены',

@@ -74,7 +74,7 @@ export function ToolsHome() {
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <div style={{ fontSize: 40 }}>🧰</div>
               <div style={{ color: "var(--straw)", marginTop: 8 }}>
-                {loading ? "Загрузка…" : "Инструментов пока нет — откройте первый пак ✨"}
+                {loading ? "Loading…" : "Инструментов пока нет — откройте первый пак ✨"}
               </div>
             </div>
           )}

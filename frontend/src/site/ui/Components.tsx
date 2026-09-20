@@ -109,7 +109,7 @@ export function CommitReveal() {
       {commit && <><h4>Хеш</h4><code className="site-hash">{commit}</code></>}
       {phase === 'revealed' && <><h4>Секрет</h4><code className="site-hash">{secret}</code></>}
       <p role="status">
-        {phase === 'idle' && 'Готово к проверке.'}
+        {phase === 'idle' && 'Done к проверке.'}
         {phase === 'committed' && 'Запись запечатана.'}
         {phase === 'revealed' && (valid ? 'Хеш совпал.' : 'Хеш не совпал.')}
       </p>

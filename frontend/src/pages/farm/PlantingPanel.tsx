@@ -81,10 +81,10 @@ export function PlantingPanel() {
         setSelectedPlot(null);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Ошибка посадки"}`);
+        toast.show(`❌ ${r.error || "Error посадки"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка"}`);
+      toast.show(`❌ ${e.message || "Error"}`);
     } finally {
       setPlanting(false);
     }
@@ -116,10 +116,10 @@ export function PlantingPanel() {
         toast.show(`🌾 Урожай собран с тайла ${tileIndex + 1}!`);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Ошибка сбора"}`);
+        toast.show(`❌ ${r.error || "Error сбора"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка"}`);
+      toast.show(`❌ ${e.message || "Error"}`);
     } finally {
       setHarvesting(null);
     }
@@ -129,7 +129,7 @@ export function PlantingPanel() {
     return (
       <Card className="p-4">
         <h3 className="text-parchment font-bold text-lg">🌱 Посадка семян</h3>
-        <p className="text-straw text-sm text-center py-4">Загрузка участка...</p>
+        <p className="text-straw text-sm text-center py-4">Loading участка...</p>
       </Card>
     );
   }

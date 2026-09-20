@@ -35,7 +35,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
   if (loading) {
     return (
       <Card className={compact ? "p-3" : "p-4"}>
-        <p className="text-straw text-xs text-center">Загрузка привилегий...</p>
+        <p className="text-straw text-xs text-center">Loading привилегий...</p>
       </Card>
     );
   }

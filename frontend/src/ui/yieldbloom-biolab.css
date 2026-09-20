@@ -1,0 +1,27 @@
+/* YieldBloom AI Biolab Neon Theme */
+:root {
+  --yb-bg: #0D0524;
+  --yb-bg-deep: #070215;
+  --yb-panel: #160B3A;
+  --yb-magenta: #FF2FA1;
+  --yb-violet: #A855F7;
+  --yb-cyan: #22D3EE;
+  --yb-gold: #FFD700;
+  --yb-text: #E9E5FF;
+  --yb-text-dim: #A9A1CE;
+  --yb-clip-card: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+}
+.yb-body, body { background: radial-gradient(ellipse at top, #1A0845 0%, #0D0524 50%, #070215 100%) fixed !important; color: var(--yb-text) !important; min-height: 100vh; }
+.rounded-2xl, .rounded-xl, .rounded-lg, .bg-soil-850, .bg-soil-800, [role="dialog"] { clip-path: var(--yb-clip-card) !important; border-radius:0!important; position:relative; }
+.bg-soil-850, .bg-soil-800 { background: linear-gradient(145deg, rgba(29,16,73,.9) 0%, rgba(22,11,58,.95) 100%) !important; border:1px solid rgba(168,85,247,.2)!important; }
+.text-parchment,h1,h2,h3,h4 { color: var(--yb-text)!important; }
+.text-straw { color: var(--yb-text-dim)!important; }
+button:not(.yb-skip) { clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px) !important; border-radius:0!important; }
+.yb-btn-primary { background: linear-gradient(135deg,var(--yb-violet),var(--yb-magenta))!important; color:white!important; font-weight:600; }
+nav { background: linear-gradient(180deg,rgba(22,11,58,.98),rgba(13,5,36,.99))!important; border-top:1px solid rgba(168,85,247,.3)!important; }
+input { background: rgba(13,5,36,.6)!important; border:1px solid rgba(168,85,247,.3)!important; color:var(--yb-text)!important; border-radius:0!important; }
+.yb-particles { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+.yb-particle { position:absolute; width:3px; height:3px; border-radius:50%; bottom:-10px; opacity:0; animation:yb-float linear infinite; }
+@keyframes yb-float { 0%{transform:translateY(0);opacity:0} 10%{opacity:.6} 90%{opacity:.6} 100%{transform:translateY(-110vh);opacity:0} }
+::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:#070215; } ::-webkit-scrollbar-thumb { background:var(--yb-violet); }
+.app-shell { height:100vh!important; overflow:hidden; background:transparent!important; }

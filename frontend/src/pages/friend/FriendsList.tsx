@@ -35,7 +35,7 @@ export function FriendsList() {
   if (loading) {
     return (
       <div className="p-8 text-center">
-        <div className="text-parchment">Загрузка...</div>
+        <div className="text-parchment">Loading...</div>
       </div>
     );
   }
@@ -94,7 +94,7 @@ export function FriendsList() {
                   alert("Игрок не найден");
                 }
               } catch (e: any) {
-                alert(`Ошибка: ${e.message}`);
+                alert(`Error: ${e.message}`);
               }
             }}
             className="px-4 py-2 rounded-xl bg-wheat-600 text-white font-semibold text-sm whitespace-nowrap"
