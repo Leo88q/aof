@@ -1,0 +1,20 @@
+{
+  "name": "Robotic Harvest Arm #003",
+  "symbol": "RHARM",
+  "description": "Robotic Harvest Arm — Automated Collector. RH-7 is a precision hydroponic collector built for repeatable harvest cycles.",
+  "seller_fee_basis_points": 500,
+  "image": "../rare.png",
+  "external_url": "/assets/nfts/robotic-harvest-arm/metadata/rare.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Automated Collector" },
+    { "trait_type": "Series", "value": "Robotic Harvest Arm" },
+    { "trait_type": "Rarity", "value": "Rare" },
+    { "trait_type": "Edition", "value": "003" },
+    { "trait_type": "Unit", "value": "RH-7" },
+    { "trait_type": "Collectible", "value": "#034" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../rare.png", "type": "image/png" }]
+  }
+}

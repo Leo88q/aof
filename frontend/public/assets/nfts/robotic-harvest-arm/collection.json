@@ -1,0 +1,13 @@
+{
+  "name": "Robotic Harvest Arm",
+  "symbol": "RHARM",
+  "description": "Automated Collector collectible NFT card series.",
+  "type": "static-catalogue",
+  "items": [
+    { "edition": "001", "rarity": "Common", "image": "common.png", "metadata": "metadata/common.json" },
+    { "edition": "002", "rarity": "Uncommon", "image": "uncommon.png", "metadata": "metadata/uncommon.json" },
+    { "edition": "003", "rarity": "Rare", "image": "rare.png", "metadata": "metadata/rare.json" },
+    { "edition": "004", "rarity": "Epic", "image": "epic.png", "metadata": "metadata/epic.json" },
+    { "edition": "005", "rarity": "Legendary", "image": "legendary.png", "metadata": "metadata/legendary.json" }
+  ]
+}

@@ -10,6 +10,7 @@ import { CraftPage } from "./CraftPage";
 import { RepairPage } from "./RepairPage";
 import { BiomoleculeSequencerCollection } from "../../components/BiomoleculeSequencerCollection";
 import { QuantumTransmitterCollection } from "../../components/QuantumTransmitterCollection";
+import { RoboticHarvestArmCollection } from "../../components/RoboticHarvestArmCollection";
 
 export function ToolsHome() {
   const { push } = useNav();
@@ -65,6 +66,7 @@ export function ToolsHome() {
       <div className="content-pad">
         <BiomoleculeSequencerCollection />
         <QuantumTransmitterCollection />
+        <RoboticHarvestArmCollection />
       </div>
 
       <Section label="Ваши инструменты">

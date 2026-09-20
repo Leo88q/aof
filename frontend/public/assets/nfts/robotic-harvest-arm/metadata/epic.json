@@ -1,0 +1,18 @@
+{
+  "name": "Robotic Harvest Arm #004",
+  "symbol": "RHARM",
+  "description": "Robotic Harvest Arm — Automated Collector. A charged magenta collector that can safely handle energized harvest cores.",
+  "seller_fee_basis_points": 500,
+  "image": "../epic.png",
+  "external_url": "/assets/nfts/robotic-harvest-arm/metadata/epic.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Automated Collector" },
+    { "trait_type": "Series", "value": "Robotic Harvest Arm" },
+    { "trait_type": "Rarity", "value": "Epic" },
+    { "trait_type": "Edition", "value": "004" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../epic.png", "type": "image/png" }]
+  }
+}

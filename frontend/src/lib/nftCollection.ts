@@ -135,6 +135,64 @@ export const QUANTUM_TRANSMITTER_NFTS: readonly NftCollectionItem[] = [
   },
 ] as const;
 
+export const ROBOTIC_HARVEST_ARM_NFTS: readonly NftCollectionItem[] = [
+  {
+    id: "robotic-harvest-arm-common",
+    name: "Robotic Harvest Arm",
+    collection: "Automated Collector",
+    rarity: "common",
+    rarityLabel: "Common",
+    description: "A dependable robotic arm for automated collection in the farm laboratory.",
+    image: `${NFT_ROOT}/robotic-harvest-arm/common.png`,
+    metadata: `${NFT_ROOT}/robotic-harvest-arm/metadata/common.json`,
+    accent: "#b8eff7",
+  },
+  {
+    id: "robotic-harvest-arm-uncommon",
+    name: "Robotic Harvest Arm",
+    collection: "Automated Collector",
+    rarity: "uncommon",
+    rarityLabel: "Uncommon",
+    description: "A greenhouse-ready collector with a precision claw and upgraded green drive.",
+    image: `${NFT_ROOT}/robotic-harvest-arm/uncommon.png`,
+    metadata: `${NFT_ROOT}/robotic-harvest-arm/metadata/uncommon.json`,
+    accent: "#69ff72",
+  },
+  {
+    id: "robotic-harvest-arm-rare",
+    name: "Robotic Harvest Arm",
+    collection: "Automated Collector",
+    rarity: "rare",
+    rarityLabel: "Rare",
+    description: "RH-7 is a precision hydroponic collector built for repeatable harvest cycles.",
+    image: `${NFT_ROOT}/robotic-harvest-arm/rare.png`,
+    metadata: `${NFT_ROOT}/robotic-harvest-arm/metadata/rare.json`,
+    accent: "#38e8ff",
+  },
+  {
+    id: "robotic-harvest-arm-epic",
+    name: "Robotic Harvest Arm",
+    collection: "Automated Collector",
+    rarity: "epic",
+    rarityLabel: "Epic",
+    description: "A charged magenta collector that can safely handle energized harvest cores.",
+    image: `${NFT_ROOT}/robotic-harvest-arm/epic.png`,
+    metadata: `${NFT_ROOT}/robotic-harvest-arm/metadata/epic.json`,
+    accent: "#ff35c8",
+  },
+  {
+    id: "robotic-harvest-arm-legendary",
+    name: "Robotic Harvest Arm",
+    collection: "Automated Collector",
+    rarity: "legendary",
+    rarityLabel: "Legendary",
+    description: "The gilded apex of the Automated Collector series, tuned for perfect yield.",
+    image: `${NFT_ROOT}/robotic-harvest-arm/legendary.png`,
+    metadata: `${NFT_ROOT}/robotic-harvest-arm/metadata/legendary.json`,
+    accent: "#ffd36b",
+  },
+] as const;
+
 export function getBiomoleculeSequencerNft(rarity: string): NftCollectionItem {
   const normalized = rarity.toLowerCase() as NftRarity;
   return BIOMOLECULE_SEQUENCER_NFTS.find((item) => item.rarity === normalized)

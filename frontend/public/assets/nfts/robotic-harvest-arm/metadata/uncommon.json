@@ -1,0 +1,18 @@
+{
+  "name": "Robotic Harvest Arm #002",
+  "symbol": "RHARM",
+  "description": "Robotic Harvest Arm — Automated Collector. A greenhouse-ready collector with a precision claw and upgraded green drive.",
+  "seller_fee_basis_points": 500,
+  "image": "../uncommon.png",
+  "external_url": "/assets/nfts/robotic-harvest-arm/metadata/uncommon.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Automated Collector" },
+    { "trait_type": "Series", "value": "Robotic Harvest Arm" },
+    { "trait_type": "Rarity", "value": "Uncommon" },
+    { "trait_type": "Edition", "value": "002" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../uncommon.png", "type": "image/png" }]
+  }
+}
