@@ -1,6 +1,6 @@
 # AOF — Production Readiness Roadmap
 
-_Обновлено: 2026-09-21. Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
+_Обновлено: 2026-09-21 (итерация 2). Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
 
 Документ фиксирует, что из внешних замечаний **подтвердилось**, что **уже закрыто** в
 этой ветке, и что **осталось** — с приоритетом, оценкой и явным решением по спорным пунктам.
@@ -24,6 +24,18 @@ _Обновлено: 2026-09-21. Источник: внешний ревью-ч�
 | 10 | Экономический монитор показывает нули как факт | Подтверждено: mint/burn/topHolders — заглушки `return []` | `fieldQuality` per-field + `dataQuality`; API отдаёт `null` вместо 0 для `unavailable`; дашборд показывает бейджи и предупреждение. |
 | 11 | gitleaks по полной истории | Выполнен regex-скан по всем 70 коммитам всех веток (бинарь gitleaks недоступен в песочнице — см. §4) | Реальных секретов не найдено. |
 
+### 1b. Закрыто во второй итерации
+
+| # | Задача | Что сделано |
+|---|---|---|
+| 12 | Workers отдельно от API | `docker-compose.prod.yml`: `price-cranker`, `price-tracker`, `trust-worker`, `push-worker` как отдельные сервисы за profiles `market`/`trust`/`push` (SQLite single-writer — включать осознанно). `farm-trader` намеренно не добавлен — продуктовое решение. |
+| 13 | trust-worker не мог пушить snapshot on-chain | `/trust/snapshot/update` за `requireAdmin`, а воркер слал без токена → тихий 401. Теперь шлёт `ADMIN_TOKEN`, `BACKEND_URL=http://backend:8080` в compose. |
+| 14 | Readiness/liveness | `/health` (liveness, без зависимостей) + `/ready` (DB `SELECT 1` + RPC `getSlot`, таймаут 3с, 503 при сбое). Для LB/reverse-proxy использовать `/ready`, для рестарта контейнера — `/health`. |
+| 15 | Верификация program ID / bytecode | `scripts/verify-programs.sh <cluster> [authority] [deploy_dir]`: существование, executable, upgrade authority, `declare_id!` drift, sha256 on-chain dump vs локальный `.so`. |
+| 16 | Backup + restore drill | `scripts/backup-db.sh backup|restore|drill` — `sqlite3 .backup` (не `cp`), integrity_check, sha256, retention, drill с `prisma migrate status` на восстановленной копии. |
+| 17 | gitleaks как постоянный gate | job `secrets-scan` в CI с `fetch-depth: 0` + `.gitleaks.toml` (allowlist плейсхолдеров). |
+| 18 | Issuance caps — дизайн | `docs/ISSUANCE_CAPS_DESIGN.md`: отдельный PDA на kind, эпохи в слотах, fail-closed, `set_cap` не сбрасывает счётчик, `MintDelegate` для разделения hot-key и Squads. Реализация требует SBPF-тулчейна (в песочнице недоступен). |
+
 **Не изменено**: `AuditLog.action` по-прежнему = нормализованный URL. Замена на бизнес-тип
 события требует ручной разметки ~60 роутов; сделать вместе с indexer'ом (§2.3), чтобы
 не размечать дважды.
@@ -36,9 +48,9 @@ _Обновлено: 2026-09-21. Источник: внешний ревью-ч�
 
 | Приоритет | Задача | Комментарий |
 |---|---|---|
-| P0 | **Issuance caps для `mint_resource`** (per-epoch / per-resource лимит в Config) | Единственная реальная защита при краже authority. Аудит AOF-05 явно называет отсутствие cap «границей гарантии». |
+| P0 | **Issuance caps для `mint_resource`** | Дизайн готов: `docs/ISSUANCE_CAPS_DESIGN.md`. Следующий шаг — реализация в `aof-core` + validator-тесты в CI `programs`/`anchor-test`. |
 | P0 | **Authority → Squads multisig** для `set_fees`, `set_paused`, `set_resource_mints`, `set_craft_economy`, treasury | Это и есть «dual approval» — делать on-chain, а не approval-flow в Express. Hot-key backend'а остаётся только для `mint_resource_once` (inbox rewards) под cap. |
-| P0 | Верификация 6 program ID через RPC + сверка deployed bytecode с audited commit | Скрипт `scripts/verify-programs.sh` (getProgramAccounts + `solana program dump` + sha256). Прогонять в CI против devnet, вручную — против mainnet. |
+| P0 | Верификация 6 program ID через RPC + сверка deployed bytecode с audited commit | Скрипт готов (`scripts/verify-programs.sh`). Осталось: прогнать против devnet с артефактами CI и записать хэши в release manifest. |
 | P0 | Внешний аудит всех программ | После caps и multisig, иначе аудит устареет. |
 | P1 | Bonding curve / `minted_count` / поведение burns в цене | Зафиксировать формулу в `docs/ECONOMY.md`, добавить property-тесты в Rust. |
 
@@ -48,10 +60,10 @@ _Обновлено: 2026-09-21. Источник: внешний ревью-ч�
 |---|---|---|
 | P0 | **PostgreSQL** | Смена provider + `metadata String` → `Json` + миграция данных + тест `test:idempotency-db` на PG. Отдельная ветка. SQLite остаётся допустимым только для devnet/staging single-host. |
 | P0 | Staging окружение | Тот же compose с `NODE_ENV=staging`? **Нет** — `nonProductionOnly` и другие guard'ы смотрят на `production`. Staging должен идти с `NODE_ENV=production` и своими ключами, иначе он не проверяет prod-поведение. |
-| P0 | Workers в compose: price-tracker, price-cranker, trust-worker, push-worker, commit-expirer | Сейчас в `docker-compose.prod.yml` только backend + commit-expirer (profile). **Открытый вопрос**: нужен ли `farm-trader` в проде вообще (это торговый бот) — решить до добавления. |
-| P0 | Backup + restore drill | `sqlite3 .backup` / `pg_dump` по cron + ежемесячный restore на staging с проверкой `prisma migrate status`. |
+| ~~P0~~ done | Workers в compose | Сделано (profiles). **Открытый вопрос** остаётся: нужен ли `farm-trader` в проде. |
+| P0 | Backup + restore drill | Скрипт готов. Осталось: cron на хосте + первый реальный drill на staging (в песочнице нет `sqlite3`, скрипт не исполнялся). |
 | P1 | Redis | **Только** когда появится второй инстанс backend. До этого — лишний компонент и лишняя точка отказа. |
-| P1 | Readiness/liveness раздельно | `/health` есть; добавить `/ready` (DB ping + RPC getSlot). |
+| ~~P1~~ done | Readiness/liveness раздельно | `/health` + `/ready`. |
 | P1 | Prometheus / OTel / Sentry | `prom-client` + `/metrics` за admin-read токеном; Sentry для backend и frontend. |
 
 ### 2.3 Данные
@@ -111,9 +123,10 @@ _Обновлено: 2026-09-21. Источник: внешний ревью-ч�
 - [x] История Git проверена на секреты
 - [ ] On-chain issuance caps
 - [ ] Authority на Squads multisig
-- [ ] Program ID / bytecode verified
-- [ ] PostgreSQL в production, backup/restore drill пройден
-- [ ] Все нужные workers в compose и под healthcheck
+- [ ] Program ID / bytecode verified (скрипт есть, прогон против devnet/mainnet — нет)
+- [ ] PostgreSQL в production
+- [ ] Backup/restore drill пройден на реальных данных (скрипт есть)
+- [x] Workers вынесены в отдельные сервисы compose
 - [ ] On-chain indexer работает, `ECONOMY_FIELD_QUALITY` → complete
 - [ ] Staging с `NODE_ENV=production`
 - [ ] Внешний аудит завершён

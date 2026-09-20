@@ -22,11 +22,114 @@ services:
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    # /health = liveness (process up). /ready (DB + RPC) is for the reverse
+    # proxy / LB health probe; using it here would restart the API on an RPC
+    # outage, which helps nobody.
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Workers. Each is a separate process from the API (own restart policy, own
+  # logs, no shared event loop). On the SQLite baseline every worker that
+  # writes to the DB is an extra writer contending for the single-writer lock;
+  # they are therefore behind profiles and must be enabled deliberately:
+  #
+  #   docker compose --profile market --profile trust up -d
+  #
+  # profile  service         writes DB?  signs with authority?
+  #   market  price-cranker   no          yes (hot_market_crank)
+  #   market  price-tracker   yes (ticks) no
+  #   trust   trust-worker    yes         via backend /trust/snapshot/update
+  #   push    push-worker     yes         no
+  #   recovery commit-expirer no (secretStore only)  yes
+  #
+  # farm-trader is intentionally NOT listed: it is a market-making bot, and
+  # whether it belongs in production is a product decision, not an ops default.
+  # Moving to PostgreSQL removes the single-writer constraint (see roadmap).
+  # ---------------------------------------------------------------------------
+  price-cranker:
+    profiles: [market]
+    build: ./aof_backend
+    restart: unless-stopped
+    command: ["node", "dist-workers/services/price-cranker/index.js"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file: ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  price-tracker:
+    profiles: [market]
+    build: ./aof_backend
+    restart: unless-stopped
+    command: ["node", "dist-workers/services/indexer/priceTracker.js"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file: ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+      WS_PORT: 8081
+    ports:
+      - "127.0.0.1:${WS_PORT:-8081}:8081"
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  trust-worker:
+    profiles: [trust]
+    build: ./aof_backend
+    restart: unless-stopped
+    command: ["node", "dist-workers/services/trust-worker/index.js"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file: ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+      # Reaches the API over the compose network, not the host loopback.
+      BACKEND_URL: http://backend:8080
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  push-worker:
+    profiles: [push]
+    build: ./aof_backend
+    restart: unless-stopped
+    command: ["node", "dist-workers/services/push-worker/index.js"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file: ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
 
   # Opt-in recovery worker; not a second automatic writer on the SQLite DB.
   commit-expirer:

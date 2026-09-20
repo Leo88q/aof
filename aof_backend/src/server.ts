@@ -186,7 +186,28 @@ app.use("/notifications", notifications);
 app.use("/privileges", txLimiter);
 app.use("/privileges", privileges);
 app.use(errorHandler);
+// Liveness: process is up. Never touches DB/RPC so a dependency outage does
+// not make the orchestrator restart-loop the API.
 app.get("/health", (_req, res) => res.json({ ok: true }));
+// Readiness: can this instance serve real traffic right now? Checks the DB
+// and the RPC with short timeouts; 503 on any failure so a load balancer
+// drains the instance instead of routing users into errors.
+app.get("/ready", async (_req, res) => {
+  const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+  const checks: Record<string, { ok: boolean; ms: number; error?: string }> = {};
+  const run = async (name: string, fn: () => Promise<unknown>) => {
+    const t = Date.now();
+    try { await withTimeout(fn(), 3000); checks[name] = { ok: true, ms: Date.now() - t }; }
+    catch (e: any) { checks[name] = { ok: false, ms: Date.now() - t, error: String(e?.message || e) }; }
+  };
+  await Promise.all([
+    run("db", async () => { const { db } = await import("./lib/db"); await db.$queryRaw`SELECT 1`; }),
+    run("rpc", () => connection.getSlot("processed")),
+  ]);
+  const ok = Object.values(checks).every((c) => c.ok);
+  res.status(ok ? 200 : 503).json({ ok, checks });
+});
 // Validate the actual cluster before any signing worker can start. URL names
 // are not proof of network identity (a custom RPC can point at any cluster).
 async function start(): Promise<void> {

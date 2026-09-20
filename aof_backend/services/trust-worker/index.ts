@@ -18,9 +18,17 @@ const RECALC_INTERVAL_MS = process.env.NODE_ENV === "production"
 async function pushTrustSnapshotOnChain(user: string, score: number, tier: number): Promise<void> {
   try {
     const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+    // /trust/snapshot/update is behind requireAdmin (it signs with the
+    // authority). Without the operator token every push silently 401'd and
+    // the on-chain TrustSnapshot PDA stayed empty.
+    const adminToken = process.env.ADMIN_TOKEN;
+    if (!adminToken) {
+      console.error("[trust-worker] ADMIN_TOKEN is not set; cannot push snapshots on-chain");
+      return;
+    }
     const response = await fetch(BACKEND_URL + "/trust/snapshot/update", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({ user, score, tier }),
     });
     if (!response.ok) {

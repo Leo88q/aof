@@ -1178,6 +1178,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-test.log "Anchor test (local validator)" 10
 
+  secrets-scan:
+    name: Secret scan (full git history)
+    # Permanent gate replacing the one-off history scan documented in
+    # docs/PRODUCTION_READINESS_ROADMAP.md §4. fetch-depth 0 is required:
+    # a shallow clone would only scan the tip commit.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_ENABLE_SUMMARY: "true"
+          GITLEAKS_CONFIG: .gitleaks.toml
+
   frontend:
     name: Frontend build (frontend/)
     runs-on: ubuntu-latest

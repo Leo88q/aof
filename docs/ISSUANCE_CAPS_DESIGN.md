@@ -1,0 +1,134 @@
+# On-chain issuance caps для `mint_resource` / `mint_resource_once` — дизайн
+
+_Статус: дизайн согласован, реализация ожидает SBPF-тулчейн (CI `programs` job). Не деплоено._
+
+## Зачем
+
+Сегодня authority backend'а может выпустить **любое** количество любого ресурса
+(`aof-core/src/instructions/mint_resource.rs::execute_mint`). `RewardReceipt` (AOF-05)
+защищает от повтора одного reward ID, но не от выпуска новых ID. Кража
+`AUTHORITY_SECRET_KEY` = неограниченная эмиссия. Cap переводит это в
+«ограниченная эмиссия за эпоху», что даёт время на `set_paused` и ротацию.
+
+## Принципы
+
+1. **Не менять layout `Config`** — он уже задеплоен и на него завязаны 87 инструкций.
+   Cap живёт в отдельном PDA (как `RarityCounter`, `MaterialMints`).
+2. **Fail-closed**: если PDA cap не инициализирован — mint отклоняется.
+   Иначе «забыли инициализировать» = «нет лимита».
+3. **Изменение лимитов — только authority, и только через multisig** (Squads).
+   Hot-key backend'а cap менять не может: инструкция `set_issuance_cap` требует
+   `config.authority`, который после миграции = Squads vault, а backend подписывает
+   отдельным `mint_authority`-делегатом (см. §5).
+4. **Эпоха фиксированной длины в слотах**, не по `unix_timestamp` (валидаторское
+   время манипулируемо в пределах ~допуска, слоты — нет).
+
+## Layout
+
+```rust
+// seeds = [b"issuance_cap", &(kind as u8).to_le_bytes()]
+#[account]
+#[derive(InitSpace)]
+pub struct IssuanceCap {
+    pub kind: u8,               // ResourceKind as u8
+    pub epoch_slots: u64,       // длина эпохи, напр. 216_000 (~24h при 400ms)
+    pub cap_per_epoch: u64,     // gross amount (до fee split), в base units
+    pub epoch_start_slot: u64,  // начало текущей эпохи
+    pub minted_in_epoch: u64,   // выпущено с начала эпохи
+    pub lifetime_minted: u128,  // монотонный счётчик для аудита/индексера
+    pub bump: u8,
+}
+// 8 + 1 + 8 + 8 + 8 + 8 + 16 + 1 = 58 bytes
+```
+
+Один PDA на `ResourceKind` (27 видов) — независимые лимиты; POTATO и gems с
+малым cap, food/wood/stone — с большим.
+
+## Логика в `execute_mint`
+
+```rust
+pub fn charge_cap(cap: &mut IssuanceCap, kind: &ResourceKind, amount: u64, slot: u64) -> Result<()> {
+    require!(cap.kind == *kind as u8, AofError::InvalidResourceKind);
+    require!(cap.cap_per_epoch > 0, AofError::IssuanceCapNotConfigured);
+    // Перекат эпохи: сколько бы эпох ни прошло, начинаем новую от текущего слота,
+    // выровненного по сетке (иначе можно «донабрать» пропущенные эпохи).
+    if slot >= cap.epoch_start_slot.saturating_add(cap.epoch_slots) {
+        let elapsed = slot - cap.epoch_start_slot;
+        let full = elapsed / cap.epoch_slots;
+        cap.epoch_start_slot = cap.epoch_start_slot.saturating_add(full.saturating_mul(cap.epoch_slots));
+        cap.minted_in_epoch = 0;
+    }
+    let next = cap.minted_in_epoch.checked_add(amount).ok_or(AofError::MathOverflow)?;
+    require!(next <= cap.cap_per_epoch, AofError::IssuanceCapExceeded);
+    cap.minted_in_epoch = next;
+    cap.lifetime_minted = cap.lifetime_minted.checked_add(amount as u128).ok_or(AofError::MathOverflow)?;
+    Ok(())
+}
+```
+
+Вызывается **до** обоих `mint_to` — атомарность гарантирует, что отклонённый
+mint не двигает счётчик. Учитывается `amount` (gross), а не `user_cut`: fee-часть
+в treasury — тоже эмиссия.
+
+## Новые инструкции
+
+| Инструкция | Кто | Что |
+|---|---|---|
+| `init_issuance_cap(kind, epoch_slots, cap_per_epoch)` | `config.authority` | `init` (не `init_if_needed`), `epoch_start_slot = clock.slot`. |
+| `set_issuance_cap(kind, epoch_slots, cap_per_epoch)` | `config.authority` | Меняет лимиты; **не** сбрасывает `minted_in_epoch` (иначе смена cap = обход cap). Emit `IssuanceCapChanged`. |
+
+Изменение аккаунтов: `MintResource` и `MintResourceOnce` получают
+`#[account(mut, seeds=[ISSUANCE_CAP_SEED, &kind_byte], bump = issuance_cap.bump)] pub issuance_cap: Account<'info, IssuanceCap>`.
+Ошибки: `IssuanceCapNotConfigured`, `IssuanceCapExceeded`.
+
+## Event для индексера
+
+```rust
+#[event] pub struct ResourceIssued { pub kind: u8, pub mint: Pubkey, pub recipient: Pubkey,
+    pub gross: u64, pub fee: u64, pub minted_in_epoch: u64, pub cap_per_epoch: u64, pub slot: u64 }
+```
+
+Закрывает одновременно «`potatoMinted24h` unavailable» в economy monitor: индексер
+читает `ResourceIssued`, а не парсит SPL `MintTo`.
+
+## 5. Разделение authority (вместе с Squads)
+
+Сейчас `config.authority` = один ключ и для конфигурации, и для mint. Целевое:
+
+- `config.authority` → Squads vault (конфиг, fees, pause, caps, resource mints).
+- Новое поле **не в Config**, а в `IssuanceCap`? Нет — в отдельном `MintDelegate` PDA:
+  `{ delegate: Pubkey, bump }`; `MintResource*` проверяет `authority.key() == mint_delegate.delegate`.
+  Делегата назначает/отзывает Squads. Backend hot-key = делегат. Кража hot-key →
+  эмиссия ограничена cap, ротация = одна multisig-транзакция `set_mint_delegate`.
+
+## Значения по умолчанию (для обсуждения, калибровать по devnet-данным)
+
+| kind | epoch | cap_per_epoch | обоснование |
+|---|---|---|---|
+| Potato | 24h | 2× среднедневной reward payout последних 30 дней | запас на ивенты |
+| Gem*, Flask*, LoveHeart | 24h | 3× дневного среднего | редкие, малый объём |
+| Food/Wood/Stone | 24h | 5× дневного среднего | базовые, всплески при онбординге |
+| остальные | 24h | 3× | |
+
+При превышении backend получает `IssuanceCapExceeded`, inbox-claim уходит в
+`quarantined` (существующая ветка AOF-05), не в retry-loop; алерт P0 в Telegram.
+
+## Тесты (обязательны до деплоя)
+
+1. Rust unit: перекат эпохи через 1 / 2 / 1000 эпох, отсутствие «накопления»
+   неиспользованного лимита; overflow на `u64::MAX`.
+2. Validator: mint ровно до cap проходит, +1 — `IssuanceCapExceeded`, счётчик не
+   изменился; `set_issuance_cap` не обнуляет `minted_in_epoch`; mint без
+   инициализированного cap — отклонён.
+3. Backend: `rewardReceiptSelfTest` дополняется кейсом `IssuanceCapExceeded` → quarantine.
+
+## Миграция
+
+1. Деплой программы с новыми инструкциями (mint-путь **ещё** не требует cap — feature-flag
+   через наличие аккаунта: пока `issuance_cap` передаётся как `Option`, проверка выполняется,
+   если аккаунт есть). *Компромисс с принципом fail-closed на один релиз, чтобы не
+   остановить rewards в момент деплоя.*
+2. `init_issuance_cap` для всех 27 kinds (скрипт `scripts/initIssuanceCaps.ts`).
+3. Backend начинает передавать `issuance_cap` во все mint-транзакции.
+4. Второй релиз: аккаунт становится обязательным (fail-closed). Только после этого
+   релиза cap считается защитой.
