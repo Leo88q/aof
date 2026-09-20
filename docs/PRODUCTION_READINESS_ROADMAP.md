@@ -75,7 +75,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 
 | Приоритет | Задача | Комментарий |
 |---|---|---|
-| P0 | **Issuance caps для `mint_resource`** | Дизайн готов: `docs/ISSUANCE_CAPS_DESIGN.md`. Следующий шаг — реализация в `aof-core` + validator-тесты в CI `programs`/`anchor-test`. |
+| P0 | **Issuance caps для `mint_resource`** | **Реализовано в коде** (program + IDL + backend + validator-тест), см. `docs/ISSUANCE_CAPS_DESIGN.md`. Осталось: зелёный CI `programs`/`anchor-test`, деплой, `npm run caps:init`, калибровка значений. |
 | P0 | **Authority → Squads multisig** для `set_fees`, `set_paused`, `set_resource_mints`, `set_craft_economy`, treasury | Это и есть «dual approval» — делать on-chain, а не approval-flow в Express. Hot-key backend'а остаётся только для `mint_resource_once` (inbox rewards) под cap. |
 | P0 | Верификация 6 program ID через RPC + сверка deployed bytecode с audited commit | Скрипт готов (`scripts/verify-programs.sh`). Осталось: прогнать против devnet с артефактами CI и записать хэши в release manifest. |
 | P0 | Внешний аудит всех программ | После caps и multisig, иначе аудит устареет. |
@@ -149,7 +149,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 - [x] Audit log не подделывается через body
 - [x] Метрики экономики помечены data quality, нули не выдаются за факты
 - [x] История Git проверена на секреты
-- [ ] On-chain issuance caps
+- [x] On-chain issuance caps (код; деплой + init caps — отдельный шаг)
 - [ ] Authority на Squads multisig
 - [ ] Program ID / bytecode verified (скрипт есть, прогон против devnet/mainnet — нет)
 - [ ] PostgreSQL в production (схема/baseline/перенос/overlay готовы; cut-over не выполнен)

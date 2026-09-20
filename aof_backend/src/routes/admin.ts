@@ -17,6 +17,8 @@ import {
   sessionConfigPda,
   sessionProgramDataPda,
   programDataPda,
+  issuanceCapPda,
+  RESOURCE_KIND_ORDER,
 } from "../lib/pda";
 import { authorityOnly, pk, coSign } from "../lib/tx";
 import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
@@ -314,6 +316,7 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
         tokenAccount: userAta,
         treasuryToken: treasuryAta,
         player: playerPda(owner)[0],
+        issuanceCap: issuanceCapPda(kindMap[kind])[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -479,6 +482,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
             tokenAccount: userAta,
             treasuryToken: treasuryAta,
             player: playerPda(user)[0],
+            issuanceCap: issuanceCapPda(kind)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
@@ -562,6 +566,7 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
         tokenAccount: userAta,
         treasuryToken: treasuryAta,
         player: playerPda(user)[0],
+        issuanceCap: issuanceCapPda(RESOURCE_KIND_BY_NAME.POTATO)[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -674,6 +679,71 @@ r.post("/init-material-mints", async (req, res) => {
   }
 });
 
+
+// ===== Issuance caps (per-ResourceKind on-chain mint budget) =====
+// Both endpoints sign with config.authority. After the Squads migration this
+// key is the multisig and these routes become read-only helpers that only
+// build the instruction for the vault to sign.
+const SLOTS_PER_DAY = 216_000; // ~400ms slots
+
+r.get("/issuance-caps", async (_req, res) => {
+  try {
+    const out: any[] = [];
+    for (const name of RESOURCE_KIND_ORDER) {
+      const [pda] = issuanceCapPda(name);
+      const acc: any = await fetchOne("issuanceCap", pda).catch(() => null);
+      out.push(acc ? {
+        kind: name, pda: pda.toBase58(), configured: true,
+        epochSlots: acc.epochSlots.toString(), capPerEpoch: acc.capPerEpoch.toString(),
+        epochStartSlot: acc.epochStartSlot.toString(), mintedInEpoch: acc.mintedInEpoch.toString(),
+        lifetimeMinted: acc.lifetimeMinted.toString(),
+        headroom: (BigInt(acc.capPerEpoch.toString()) - BigInt(acc.mintedInEpoch.toString())).toString(),
+      } : { kind: name, pda: pda.toBase58(), configured: false });
+    }
+    res.json({ caps: out, note: "unconfigured kinds cannot be minted (fail-closed)" });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** POST /admin/issuance-caps/init { kind, epochSlots?, capPerEpoch } — one-time per kind. */
+r.post("/issuance-caps/init", async (req, res) => {
+  try {
+    const kind = String(req.body.kind);
+    if (!(RESOURCE_KIND_ORDER as readonly string[]).includes(kind)) return res.status(400).json({ error: "unknown kind" });
+    const epochSlots = new BN(String(req.body.epochSlots ?? SLOTS_PER_DAY));
+    const capPerEpoch = new BN(String(req.body.capPerEpoch));
+    if (capPerEpoch.lten(0)) return res.status(400).json({ error: "capPerEpoch must be > 0" });
+    const [config] = configPda();
+    const ix = await (program.methods as any)
+      .initIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
+      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0], systemProgram: SystemProgram.programId })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** POST /admin/issuance-caps/set { kind, epochSlots, capPerEpoch } — capPerEpoch=0 halts that kind. */
+r.post("/issuance-caps/set", async (req, res) => {
+  try {
+    const kind = String(req.body.kind);
+    if (!(RESOURCE_KIND_ORDER as readonly string[]).includes(kind)) return res.status(400).json({ error: "unknown kind" });
+    const epochSlots = new BN(String(req.body.epochSlots ?? SLOTS_PER_DAY));
+    const capPerEpoch = new BN(String(req.body.capPerEpoch));
+    const [config] = configPda();
+    const ix = await (program.methods as any)
+      .setIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
+      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0] })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 // ===== Relay of an arbitrary pre-signed transaction =====
 // Devnet debugging aid only. It is NOT available in production: an operator

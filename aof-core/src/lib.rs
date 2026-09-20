@@ -241,6 +241,35 @@ pub struct SweepGasFees<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(kind: ResourceKind, epoch_slots: u64, cap_per_epoch: u64)]
+pub struct InitIssuanceCap<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    // `init`, never init_if_needed: re-initialising would reset the counter.
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + IssuanceCap::INIT_SPACE,
+        seeds = [ISSUANCE_CAP_SEED, &[kind as u8]],
+        bump
+    )]
+    pub issuance_cap: Account<'info, IssuanceCap>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(kind: ResourceKind, epoch_slots: u64, cap_per_epoch: u64)]
+pub struct SetIssuanceCap<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
+    pub issuance_cap: Account<'info, IssuanceCap>,
+}
+
+#[derive(Accounts)]
 #[instruction(kind: ResourceKind, amount: u64)]
 pub struct MintResource<'info> {
     #[account(
@@ -276,6 +305,10 @@ pub struct MintResource<'info> {
         seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
     )]
     pub player: Account<'info, Player>,
+    /// Per-kind issuance budget. Required: a missing PDA fails account
+    /// resolution, so an un-initialised cap can never mean "unlimited".
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
+    pub issuance_cap: Box<Account<'info, IssuanceCap>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -316,6 +349,9 @@ pub struct MintResourceOnce<'info> {
         seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
     )]
     pub player: Account<'info, Player>,
+    /// Per-kind issuance budget (see MintResource).
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
+    pub issuance_cap: Box<Account<'info, IssuanceCap>>,
     pub token_program: Program<'info, Token>,
     #[account(init, payer = authority, space = 8 + RewardReceipt::INIT_SPACE,
         seeds = [b"reward_receipt", reward_id.as_ref()], bump)]
@@ -2571,6 +2607,17 @@ pub mod aof_core {
 
     pub fn sweep_gas_fees(ctx: Context<SweepGasFees>) -> Result<()> {
         instructions::sweep_gas_fees::handler(ctx)
+    }
+
+    /// Create the per-kind issuance budget. Must be called for every kind
+    /// before that kind can be minted (fail-closed).
+    pub fn init_issuance_cap(ctx: Context<InitIssuanceCap>, kind: ResourceKind, epoch_slots: u64, cap_per_epoch: u64) -> Result<()> {
+        instructions::issuance_cap::init_handler(ctx, kind, epoch_slots, cap_per_epoch)
+    }
+
+    /// Change the budget. Never resets the current epoch's counter.
+    pub fn set_issuance_cap(ctx: Context<SetIssuanceCap>, kind: ResourceKind, epoch_slots: u64, cap_per_epoch: u64) -> Result<()> {
+        instructions::issuance_cap::set_handler(ctx, kind, epoch_slots, cap_per_epoch)
     }
 
     pub fn mint_resource(ctx: Context<MintResource>, kind: ResourceKind, amount: u64) -> Result<()> {

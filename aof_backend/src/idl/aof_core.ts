@@ -4796,6 +4796,35 @@ export type AofCore = {
           }
         },
         {
+          "name": "issuanceCap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -9067,6 +9096,35 @@ export type AofCore = {
           }
         },
         {
+          "name": "issuanceCap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -9248,6 +9306,179 @@ export type AofCore = {
         {
           "name": "expiresAt",
           "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initIssuanceCap",
+      "discriminator": [
+        7,
+        110,
+        74,
+        57,
+        227,
+        136,
+        110,
+        214
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "issuanceCap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "resourceKind"
+            }
+          }
+        },
+        {
+          "name": "epochSlots",
+          "type": "u64"
+        },
+        {
+          "name": "capPerEpoch",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setIssuanceCap",
+      "discriminator": [
+        227,
+        134,
+        78,
+        85,
+        122,
+        198,
+        113,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "issuanceCap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "resourceKind"
+            }
+          }
+        },
+        {
+          "name": "epochSlots",
+          "type": "u64"
+        },
+        {
+          "name": "capPerEpoch",
+          "type": "u64"
         }
       ]
     }
@@ -9720,6 +9951,19 @@ export type AofCore = {
         132,
         89
       ]
+    },
+    {
+      "name": "issuanceCap",
+      "discriminator": [
+        112,
+        197,
+        118,
+        158,
+        65,
+        80,
+        180,
+        96
+      ]
     }
   ],
   "events": [
@@ -10189,6 +10433,32 @@ export type AofCore = {
         71,
         195,
         7
+      ]
+    },
+    {
+      "name": "resourceIssued",
+      "discriminator": [
+        8,
+        244,
+        117,
+        191,
+        235,
+        4,
+        216,
+        184
+      ]
+    },
+    {
+      "name": "issuanceCapChanged",
+      "discriminator": [
+        120,
+        48,
+        51,
+        149,
+        131,
+        28,
+        145,
+        152
       ]
     }
   ],
@@ -10677,6 +10947,21 @@ export type AofCore = {
       "code": 6096,
       "name": "quoteExpired",
       "msg": "Quote expired or its lifetime exceeds 300 seconds"
+    },
+    {
+      "code": 6097,
+      "name": "IssuanceCapNotConfigured",
+      "msg": "Issuance cap for this resource is not configured"
+    },
+    {
+      "code": 6098,
+      "name": "IssuanceCapExceeded",
+      "msg": "Issuance cap for this resource exceeded in the current epoch"
+    },
+    {
+      "code": 6099,
+      "name": "InvalidIssuanceCapParams",
+      "msg": "Issuance cap parameters out of bounds"
     }
   ],
   "types": [
@@ -12873,6 +13158,114 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "issuanceCap",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "epochSlots",
+            "type": "u64"
+          },
+          {
+            "name": "capPerEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "epochStartSlot",
+            "type": "u64"
+          },
+          {
+            "name": "mintedInEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "lifetimeMinted",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "resourceIssued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gross",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "mintedInEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "capPerEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "epochStartSlot",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "issuanceCapChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "epochSlots",
+            "type": "u64"
+          },
+          {
+            "name": "capPerEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "mintedInEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

@@ -1,6 +1,6 @@
 # On-chain issuance caps для `mint_resource` / `mint_resource_once` — дизайн
 
-_Статус: дизайн согласован, реализация ожидает SBPF-тулчейн (CI `programs` job). Не деплоено._
+_Статус: **реализовано в коде** (`aof-core` + backend + validator-тест `tests/aof_core.ts`), Rust собирается только в CI (`programs`/`anchor-test` — в песочнице SBPF-тулчейна нет). **Не деплоено.** Cap обязателен сразу (fail-closed), без промежуточного `Option`-релиза._
 
 ## Зачем
 
@@ -122,13 +122,28 @@ mint не двигает счётчик. Учитывается `amount` (gross)
    инициализированного cap — отклонён.
 3. Backend: `rewardReceiptSelfTest` дополняется кейсом `IssuanceCapExceeded` → quarantine.
 
-## Миграция
+## Что реализовано
 
-1. Деплой программы с новыми инструкциями (mint-путь **ещё** не требует cap — feature-flag
-   через наличие аккаунта: пока `issuance_cap` передаётся как `Option`, проверка выполняется,
-   если аккаунт есть). *Компромисс с принципом fail-closed на один релиз, чтобы не
-   остановить rewards в момент деплоя.*
-2. `init_issuance_cap` для всех 27 kinds (скрипт `scripts/initIssuanceCaps.ts`).
-3. Backend начинает передавать `issuance_cap` во все mint-транзакции.
-4. Второй релиз: аккаунт становится обязательным (fail-closed). Только после этого
-   релиза cap считается защитой.
+- `aof-core`: `IssuanceCap` PDA (`["issuance_cap", kind as u8]`), `init_issuance_cap`, `set_issuance_cap`
+  (roll эпохи → set; счётчик не сбрасывается; `cap_per_epoch = 0` — стоп-кран), `charge()` в `execute_mint`
+  перед CPI для `mint_resource` и `mint_resource_once`. Ошибки 6097 `IssuanceCapNotConfigured`,
+  6098 `IssuanceCapExceeded`, 6099 `InvalidIssuanceCapParams`. Событие `IssuanceCapChanged`; в `ResourceIssued`
+  есть `minted_in_epoch`/`cap_per_epoch` для индексера.
+- IDL (`aof_backend/src/idl/aof_core.{json,ts}`) обновлён вручную; `scripts/check-idl-drift.py` — без дрейфа.
+  После реального `anchor build` в CI заменить на сгенерированный.
+- Backend: `issuanceCapPda()` / `RESOURCE_KIND_ORDER` в `src/lib/pda.ts` (порядок проверяется тестом
+  `test:admin-auth` против enum в `lib.rs`); аккаунт передаётся во всех mint-путях (`resources.ts`, `inbox.ts`,
+  `admin.ts`); в inbox `IssuanceCapExceeded/NotConfigured` → item возвращается в `unclaimed`, ответ 503
+  `ISSUANCE_CAP_EXCEEDED` (retryable), `logger.error`. Админка: `GET /admin/issuance-caps`,
+  `POST /admin/issuance-caps/init|set` (ops-токен). Скрипт массовой инициализации `npm run caps:init`.
+- Тесты: Rust unit в `state.rs`; validator-тест «cap блокирует, ровно до cap проходит, `set` не сбрасывает,
+  `mint_resource_once` без receipt при отказе, cap=0 → NotConfigured, чужой authority → Unauthorized».
+
+## Миграция (fail-closed, один релиз)
+
+1. `anchor build` в CI → сверить IDL с ручной копией → `anchor upgrade` программы.
+2. **Сразу после upgrade** (до перезапуска backend на новой IDL): `CAP_PER_EPOCH=… npm run caps:init`
+   (все 27 kinds; per-kind `CAP_<KIND>`; `DRY_RUN=1` для проверки). До этого шага любой mint падает
+   с `AccountNotInitialized` — это ожидаемо и безопасно (inbox-item остаётся `unclaimed`, повтор позже).
+3. Перезапустить backend; `GET /admin/issuance-caps` — все `configured: true`.
+4. Дальнейшая калибровка — `POST /admin/issuance-caps/set`; экстренная остановка kind'а — `capPerEpoch: 0`.

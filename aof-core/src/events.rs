@@ -27,6 +27,31 @@ pub struct Unstaked {
     pub mint: Pubkey,
 }
 
+/// Emitted by every mint path once the cap has been charged. The chain
+/// indexer uses this (not SPL MintTo deltas) as the authoritative issuance
+/// record, and the cap fields let dashboards show headroom per epoch.
+#[event]
+pub struct ResourceIssued {
+    pub kind: u8,
+    pub mint: Pubkey,
+    pub recipient: Pubkey,
+    pub gross: u64,
+    pub fee: u64,
+    pub minted_in_epoch: u64,
+    pub cap_per_epoch: u64,
+    pub epoch_start_slot: u64,
+    pub slot: u64,
+}
+
+#[event]
+pub struct IssuanceCapChanged {
+    pub kind: u8,
+    pub epoch_slots: u64,
+    pub cap_per_epoch: u64,
+    pub minted_in_epoch: u64,
+    pub slot: u64,
+}
+
 #[event]
 pub struct PaidOut {
     pub user: Pubkey,

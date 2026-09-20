@@ -4790,6 +4790,35 @@
           }
         },
         {
+          "name": "issuance_cap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -9061,6 +9090,35 @@
           }
         },
         {
+          "name": "issuance_cap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -9242,6 +9300,179 @@
         {
           "name": "expires_at",
           "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "init_issuance_cap",
+      "discriminator": [
+        7,
+        110,
+        74,
+        57,
+        227,
+        136,
+        110,
+        214
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "issuance_cap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "ResourceKind"
+            }
+          }
+        },
+        {
+          "name": "epoch_slots",
+          "type": "u64"
+        },
+        {
+          "name": "cap_per_epoch",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_issuance_cap",
+      "discriminator": [
+        227,
+        134,
+        78,
+        85,
+        122,
+        198,
+        113,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "issuance_cap",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "ResourceKind"
+            }
+          }
+        },
+        {
+          "name": "epoch_slots",
+          "type": "u64"
+        },
+        {
+          "name": "cap_per_epoch",
+          "type": "u64"
         }
       ]
     }
@@ -9713,6 +9944,19 @@
         73,
         132,
         89
+      ]
+    },
+    {
+      "name": "IssuanceCap",
+      "discriminator": [
+        112,
+        197,
+        118,
+        158,
+        65,
+        80,
+        180,
+        96
       ]
     }
   ],
@@ -10196,6 +10440,32 @@
         139,
         170,
         174
+      ]
+    },
+    {
+      "name": "ResourceIssued",
+      "discriminator": [
+        8,
+        244,
+        117,
+        191,
+        235,
+        4,
+        216,
+        184
+      ]
+    },
+    {
+      "name": "IssuanceCapChanged",
+      "discriminator": [
+        120,
+        48,
+        51,
+        149,
+        131,
+        28,
+        145,
+        152
       ]
     }
   ],
@@ -10684,6 +10954,21 @@
       "code": 6096,
       "name": "QuoteExpired",
       "msg": "Quote expired or its lifetime exceeds 300 seconds"
+    },
+    {
+      "code": 6097,
+      "name": "IssuanceCapNotConfigured",
+      "msg": "Issuance cap for this resource is not configured"
+    },
+    {
+      "code": 6098,
+      "name": "IssuanceCapExceeded",
+      "msg": "Issuance cap for this resource exceeded in the current epoch"
+    },
+    {
+      "code": 6099,
+      "name": "InvalidIssuanceCapParams",
+      "msg": "Issuance cap parameters out of bounds"
     }
   ],
   "types": [
@@ -13092,6 +13377,114 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IssuanceCap",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "epoch_slots",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_start_slot",
+            "type": "u64"
+          },
+          {
+            "name": "minted_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "lifetime_minted",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResourceIssued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gross",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "minted_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_start_slot",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IssuanceCapChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "epoch_slots",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "minted_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

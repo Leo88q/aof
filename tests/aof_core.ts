@@ -31,6 +31,18 @@ describe("aof-core: security & core flows", () => {
   const toolPda = (m: PublicKey) => pda([B("tool"), m.toBuffer()]);
   const playerPda = (u: PublicKey) => pda([B("player"), u.toBuffer()]);
   const gastankPda = (u: PublicKey) => pda([B("gastank"), u.toBuffer()]);
+  const UNIT_RAW = new BN(1_000_000_000);
+  // Must match the ResourceKind enum order in aof-core/src/lib.rs (seed = kind as u8).
+  const RESOURCE_KINDS = ["food", "wood", "stone", "seeds", "wheat", "flour", "bread", "water", "coal",
+    "fish", "milk", "eggs", "meat", "stones", "sands", "gems", "gemBlue", "gemYellow", "gemGreen", "gemPink",
+    "gemPurple", "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple", "loveHeart", "potato"];
+  const issuanceCapPda = (kind: string) => {
+    const idx = RESOURCE_KINDS.indexOf(kind);
+    if (idx < 0) throw new Error(`unknown kind ${kind}`);
+    return pda([B("issuance_cap"), Buffer.from([idx])]);
+  };
+  const TEST_CAP_EPOCH_SLOTS = new BN(1_500);
+  const TEST_CAP_PER_EPOCH = UNIT_RAW.mul(new BN(1_000_000)); // generous default for the suite
 
   let setupPayer: Keypair;
   let foodMint: PublicKey, woodMint: PublicKey, stoneMint: PublicKey, potatoMint: PublicKey;
@@ -44,7 +56,7 @@ describe("aof-core: security & core flows", () => {
     const ata = await ensureAta(mint, user);
     const treasuryAta = await ensureAta(mint, authority);
     await program.methods.mintResource({ [kind]: {} }, UNIT.muln(units)).accounts({
-      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda(kind), mint,
       tokenAccount: ata, treasuryToken: treasuryAta, player: playerPda(user),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
@@ -143,6 +155,71 @@ describe("aof-core: security & core flows", () => {
     await program.methods.setResourceMints(
       foodMint, woodMint, stoneMint, materialArgs[0], materialArgs[4], potatoMint,
     ).accounts({ config: configPda, authority }).rpc();
+    // Issuance caps are fail-closed: every mint_resource* needs an initialised
+    // cap PDA for its kind, so initialise all of them (idempotent across runs).
+    for (const kind of RESOURCE_KINDS) {
+      if (await provider.connection.getAccountInfo(issuanceCapPda(kind))) continue;
+      await program.methods.initIssuanceCap({ [kind]: {} }, TEST_CAP_EPOCH_SLOTS, TEST_CAP_PER_EPOCH)
+        .accounts({ config: configPda, authority, issuanceCap: issuanceCapPda(kind), systemProgram: SystemProgram.programId }).rpc();
+    }
+  });
+
+  it("issuance cap: per-kind budget blocks over-issuance, cap=0 halts, set never resets the counter", async () => {
+    const user = Keypair.generate(); await airdrop(user);
+    const stranger = Keypair.generate(); await airdrop(stranger);
+    const ata = await ensureAta(potatoMint, user.publicKey);
+    const treasAta = await ensureAta(potatoMint, authority);
+    const cap = issuanceCapPda("potato");
+    const mintAccounts = {
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: cap, mint: potatoMint,
+      tokenAccount: ata, treasuryToken: treasAta, player: playerPda(user.publicKey),
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId };
+    const setCap = (epoch: BN, limit: BN) => program.methods.setIssuanceCap({ potato: {} }, epoch, limit)
+      .accounts({ config: configPda, authority, issuanceCap: cap }).rpc();
+    // Only the config authority may change a cap.
+    await expectError(program.methods.setIssuanceCap({ potato: {} }, TEST_CAP_EPOCH_SLOTS, UNIT.muln(5))
+      .accounts({ config: configPda, authority: stranger.publicKey, issuanceCap: cap }).signers([stranger]).rpc(), "Unauthorized");
+    // Re-init of an existing cap must fail (PDA already in use).
+    let reinit = false;
+    try {
+      await program.methods.initIssuanceCap({ potato: {} }, TEST_CAP_EPOCH_SLOTS, UNIT.muln(5))
+        .accounts({ config: configPda, authority, issuanceCap: cap, systemProgram: SystemProgram.programId }).rpc();
+    } catch (error: any) {
+      expect(`${error.message} ${(error.logs || []).join(" ")}`).to.match(/already in use|already initialized|custom program error: 0x0/i);
+      reinit = true;
+    }
+    expect(reinit).to.equal(true);
+    // Long epoch so the budget cannot roll over mid-test.
+    const longEpoch = new BN(6_480_000);
+    await setCap(longEpoch, UNIT.muln(5));
+    const alreadyMinted = new BN((await program.account.issuanceCap.fetch(cap)).mintedInEpoch.toString());
+    // set_issuance_cap must never reset the epoch counter (that would be a bypass).
+    await setCap(longEpoch, UNIT.muln(5).add(alreadyMinted));
+    expect((await program.account.issuanceCap.fetch(cap)).mintedInEpoch.toString()).to.equal(alreadyMinted.toString());
+    const supplyBefore = new BN((await provider.connection.getTokenSupply(potatoMint)).value.amount);
+    await program.methods.mintResource({ potato: {} }, UNIT.muln(3)).accounts(mintAccounts).rpc();
+    // 3 + 3 > 5: rejected atomically (no partial supply change).
+    await expectError(program.methods.mintResource({ potato: {} }, UNIT.muln(3)).accounts(mintAccounts).rpc(), "IssuanceCapExceeded");
+    // Exactly filling the remaining budget is allowed; one more base unit is not.
+    await program.methods.mintResource({ potato: {} }, UNIT.muln(2)).accounts(mintAccounts).rpc();
+    await expectError(program.methods.mintResource({ potato: {} }, new BN(1)).accounts(mintAccounts).rpc(), "IssuanceCapExceeded");
+    const supplyDelta = new BN((await provider.connection.getTokenSupply(potatoMint)).value.amount).sub(supplyBefore);
+    expect(supplyDelta.toString()).to.equal(UNIT.muln(5).toString());
+    const state = await program.account.issuanceCap.fetch(cap);
+    expect(new BN(state.mintedInEpoch.toString()).sub(alreadyMinted).toString()).to.equal(UNIT.muln(5).toString());
+    // mint_resource_once shares the same budget and leaves no receipt behind on failure.
+    const rewardId = Array.from(crypto.randomBytes(32));
+    const receipt = pda([B("reward_receipt"), Buffer.from(rewardId)]);
+    await expectError(program.methods.mintResourceOnce({ potato: {} }, new BN(1), rewardId)
+      .accounts({ ...mintAccounts, rewardReceipt: receipt }).rpc(), "IssuanceCapExceeded");
+    expect(await provider.connection.getAccountInfo(receipt)).to.equal(null);
+    // cap = 0 is an explicit halt switch (distinct error from exhaustion).
+    await setCap(longEpoch, new BN(0));
+    await expectError(program.methods.mintResource({ potato: {} }, new BN(1)).accounts(mintAccounts).rpc(), "IssuanceCapNotConfigured");
+    // Epoch bounds are enforced.
+    await expectError(setCap(new BN(1), UNIT), "InvalidIssuanceCapParams");
+    // Restore a generous budget for the rest of the suite.
+    await setCap(TEST_CAP_EPOCH_SLOTS, TEST_CAP_PER_EPOCH);
   });
 
   it("reward receipts: atomic mint, authority/mint checks and permanent replay protection", async () => {
@@ -157,7 +234,7 @@ describe("aof-core: security & core flows", () => {
     const rewardReceipt = pda([B("reward_receipt"), Buffer.from(rewardId)]);
     const gross = UNIT.muln(2);
     const accounts = {
-      config: configPda, materialMints: materialMintsPda, authority, auth: authPda,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("wood"),
       mint: woodMint, tokenAccount: userWood, treasuryToken: treasuryWood, player: playerPda(user.publicKey),
       rewardReceipt, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     };
@@ -252,7 +329,7 @@ describe("aof-core: security & core flows", () => {
     expect(treasuryBefore.gtn(0)).to.equal(true);
     const gross = new BN(10_000);
     await program.methods.mintResource({ wood: {} }, gross).accounts({
-      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: woodMint,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("wood"), mint: woodMint,
       tokenAccount: ata, treasuryToken: treasAta, player: playerPda(user.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
     const userDelta = (await balance(ata)).sub(userBefore);
@@ -329,7 +406,7 @@ describe("aof-core: security & core flows", () => {
     const ownerSeeds = await ensureAta(seedsMint, owner.publicKey);
     const ownerSeedsTreasury = await ensureAta(seedsMint, authority);
     await program.methods.mintResource({ seeds: {} }, new BN(10_000_000_000)).accounts({
-      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: seedsMint,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("seeds"), mint: seedsMint,
       tokenAccount: ownerSeeds, treasuryToken: ownerSeedsTreasury, player: playerPda(owner.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
@@ -364,7 +441,7 @@ describe("aof-core: security & core flows", () => {
 
     const renterSeeds = await ensureAta(seedsMint, renter.publicKey);
     await program.methods.mintResource({ seeds: {} }, new BN(10_000_000_000)).accounts({
-      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: seedsMint,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("seeds"), mint: seedsMint,
       tokenAccount: renterSeeds, treasuryToken: ownerSeedsTreasury, player: playerPda(renter.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
@@ -442,7 +519,7 @@ describe("aof-core: security & core flows", () => {
     const sellerWood = await ensureAta(woodMint, seller.publicKey);
     const treasAta = await ensureAta(woodMint, authority);
     await program.methods.mintResource({ wood: {} }, new BN(1_000)).accounts({
-      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: woodMint, tokenAccount: sellerWood,
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("wood"), mint: woodMint, tokenAccount: sellerWood,
       treasuryToken: treasAta, player: playerPda(seller.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
     const buyerWood = await ensureAta(woodMint, buyer.publicKey);

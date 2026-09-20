@@ -7,7 +7,8 @@ pub fn handler(ctx: Context<MintResourceOnce>, kind: ResourceKind, amount: u64, 
     // even when the caller changes amount, recipient, mint, or transaction ID.
     // Account creation, both token mints and the receipt write are atomic.
     execute_mint(&ctx.accounts.config, &ctx.accounts.material_mints,
-        &mut ctx.accounts.player, &ctx.accounts.mint, &ctx.accounts.token_account,
+        &mut ctx.accounts.player, &mut ctx.accounts.issuance_cap,
+        &ctx.accounts.mint, &ctx.accounts.token_account,
         &ctx.accounts.treasury_token, &ctx.accounts.auth, &ctx.accounts.token_program,
         ctx.bumps.auth, kind, amount)?;
     let receipt = &mut ctx.accounts.reward_receipt;

@@ -4,7 +4,7 @@ import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentIn
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { AUTHORITY } from "../config";
 import { program } from "../provider";
-import { authPda, configPda, materialMintsPda, playerPda } from "../lib/pda";
+import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { fetchOne } from "../lib/decode";
 import { validateMintForTransaction } from "../security/mintValidator";
@@ -82,6 +82,7 @@ r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
         tokenAccount,
         treasuryToken,
         player,
+        issuanceCap: issuanceCapPda(kind)[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: pk("11111111111111111111111111111111"),
       })

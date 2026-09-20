@@ -150,13 +150,48 @@ async function testEconomyQuality() {
   assert.equal(ECONOMY_FIELD_QUALITY.topHolders, "unavailable");
 }
 
+async function testIssuanceCapMapping() {
+  // pda.ts pulls config.ts, which validates the runtime env. Provide a
+  // throwaway keypair/ids so the module loads without a real deployment.
+  const { Keypair } = await import("@solana/web3.js");
+  const bs58 = (await import("bs58")).default;
+  const idlAddress = JSON.parse((await import("node:fs")).readFileSync(require.resolve("../src/idl/aof_core.json"), "utf8")).address;
+  process.env.PROGRAM_ID ||= idlAddress;
+  process.env.AUTHORITY_SECRET_KEY ||= bs58.encode(Keypair.generate().secretKey);
+  process.env.TREASURY_PUBKEY ||= Keypair.generate().publicKey.toBase58();
+  const { RESOURCE_KIND_ORDER, resourceKindIndex, issuanceCapPda } = await import("../src/lib/pda");
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  // The PDA seed is `kind as u8`; a drift between this list and the Rust enum
+  // would silently point every mint at the wrong (or a missing) cap account.
+  const rs = fs.readFileSync(path.join(__dirname, "..", "..", "aof-core", "src", "lib.rs"), "utf8");
+  const body = /pub enum ResourceKind \{([\s\S]*?)\n\}/.exec(rs)![1];
+  const rust = body.split("\n").map((l) => l.trim().replace(/,$/, "")).filter((l) => l && !l.startsWith("//")).map((n) => n[0].toLowerCase() + n.slice(1));
+  assert.deepEqual([...RESOURCE_KIND_ORDER], rust);
+  assert.equal(resourceKindIndex({ gemBlue: {} }), 16);
+  assert.equal(resourceKindIndex("potato"), 26);
+  assert.equal(resourceKindIndex(0), 0);
+  assert.throws(() => resourceKindIndex({ nope: {} }));
+  assert.throws(() => resourceKindIndex(99));
+  assert.equal(issuanceCapPda({ potato: {} })[0].toBase58(), issuanceCapPda("potato")[0].toBase58());
+  assert.notEqual(issuanceCapPda("potato")[0].toBase58(), issuanceCapPda("food")[0].toBase58());
+  // IDL errors for the cap must exist with the codes the backend matches on.
+  const idl = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "idl", "aof_core.json"), "utf8"));
+  const byName = Object.fromEntries(idl.errors.map((e: any) => [e.name, e.code]));
+  assert.equal(byName.IssuanceCapNotConfigured, 6097);
+  assert.equal(byName.IssuanceCapExceeded, 6098);
+  assert.ok(idl.instructions.find((i: any) => i.name === "mint_resource").accounts.some((a: any) => a.name === "issuance_cap"));
+  assert.ok(idl.instructions.find((i: any) => i.name === "mint_resource_once").accounts.some((a: any) => a.name === "issuance_cap"));
+}
+
 async function main() {
+  await testIssuanceCapMapping();
   await testRoleSplit();
   await testProductionGate();
   await testAuditActor();
   await testFingerprint();
   await testEconomyQuality();
-  console.log("admin auth tests: read/ops split, production gating of send-tx/test-grant, audit actor attribution, wallet-independent fingerprint and economy data-quality flags passed");
+  console.log("admin auth tests: issuance-cap kind mapping/IDL, read/ops split, production gating of send-tx/test-grant, audit actor attribution, wallet-independent fingerprint and economy data-quality flags passed");
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

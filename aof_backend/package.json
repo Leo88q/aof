@@ -28,6 +28,7 @@
     "test:admin-auth": "ts-node --project tsconfig.json --transpile-only scripts/adminAuthSelfTest.ts",
     "test:chain-indexer": "ts-node --project tsconfig.json --transpile-only scripts/chainIndexerSelfTest.ts",
     "chain-indexer": "ts-node services/chain-indexer/index.ts",
+    "caps:init": "ts-node --project tsconfig.json --transpile-only scripts/initIssuanceCaps.ts",
     "reconcile:inbox": "ts-node --project tsconfig.json scripts/reconcileInboxClaims.ts",
     "build:workers": "tsc -p tsconfig.workers.json",
     "test:reward-receipts": "ts-node --project tsconfig.json --transpile-only scripts/rewardReceiptSelfTest.ts"
