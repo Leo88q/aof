@@ -1,0 +1,46 @@
+{
+  "collection": "Robotic Harvest Arm",
+  "subtitle": "Automated Collector",
+  "canvas": {
+    "width": 759,
+    "height": 1332
+  },
+  "format": "PNG-32 (RGBA) transparent background; webp/ = 512 px lossless thumbs",
+  "items": [
+    {
+      "rarity": "Common",
+      "rarityId": 0,
+      "accent": "#9FE8F5",
+      "file": "common.png",
+      "thumb": "webp/common@512.webp"
+    },
+    {
+      "rarity": "Uncommon",
+      "rarityId": 1,
+      "accent": "#3DFF7A",
+      "file": "uncommon.png",
+      "thumb": "webp/uncommon@512.webp"
+    },
+    {
+      "rarity": "Rare",
+      "rarityId": 2,
+      "accent": "#3FA9FF",
+      "file": "rare.png",
+      "thumb": "webp/rare@512.webp"
+    },
+    {
+      "rarity": "Epic",
+      "rarityId": 3,
+      "accent": "#FF3DD1",
+      "file": "epic.png",
+      "thumb": "webp/epic@512.webp"
+    },
+    {
+      "rarity": "Legendary",
+      "rarityId": 4,
+      "accent": "#FFC030",
+      "file": "legendary.png",
+      "thumb": "webp/legendary@512.webp"
+    }
+  ]
+}
