@@ -8,6 +8,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { PacksPage } from "./PacksPage";
 import { CraftPage } from "./CraftPage";
 import { RepairPage } from "./RepairPage";
+import { BiomoleculeSequencerCollection } from "../../components/BiomoleculeSequencerCollection";
 
 export function ToolsHome() {
   const { push } = useNav();
@@ -59,6 +60,10 @@ export function ToolsHome() {
             onClick={() => go("repair", <RepairPage />, "Ремонт")} />
         </div>
       </Section>
+
+      <div className="content-pad">
+        <BiomoleculeSequencerCollection />
+      </div>
 
       <Section label="Ваши инструменты">
         <div className="content-pad">

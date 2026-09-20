@@ -1,0 +1,18 @@
+{
+  "name": "Biomolecule Sequencer #005",
+  "symbol": "BSEQ",
+  "description": "Biomolecule Sequencer — Neural Analyzer. The gilded apex of the Neural Analyzer series, tuned for perfect signal clarity.",
+  "seller_fee_basis_points": 500,
+  "image": "../legendary.png",
+  "external_url": "/assets/nfts/biomolecule-sequencer/metadata/legendary.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Neural Analyzer" },
+    { "trait_type": "Series", "value": "Biomolecule Sequencer" },
+    { "trait_type": "Rarity", "value": "Legendary" },
+    { "trait_type": "Edition", "value": "005" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../legendary.png", "type": "image/png" }]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Biomolecule Sequencer #004",
+  "symbol": "BSEQ",
+  "description": "Biomolecule Sequencer — Neural Analyzer. A charged magenta analyzer that pushes the sequence chamber beyond normal limits.",
+  "seller_fee_basis_points": 500,
+  "image": "../epic.png",
+  "external_url": "/assets/nfts/biomolecule-sequencer/metadata/epic.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Neural Analyzer" },
+    { "trait_type": "Series", "value": "Biomolecule Sequencer" },
+    { "trait_type": "Rarity", "value": "Epic" },
+    { "trait_type": "Edition", "value": "004" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../epic.png", "type": "image/png" }]
+  }
+}

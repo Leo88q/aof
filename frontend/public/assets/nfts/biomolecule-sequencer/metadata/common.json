@@ -1,0 +1,18 @@
+{
+  "name": "Biomolecule Sequencer #001",
+  "symbol": "BSEQ",
+  "description": "Biomolecule Sequencer — Neural Analyzer. A reliable laboratory sequencer for foundational biomolecule analysis.",
+  "seller_fee_basis_points": 500,
+  "image": "../common.png",
+  "external_url": "/assets/nfts/biomolecule-sequencer/metadata/common.json",
+  "attributes": [
+    { "trait_type": "Collection", "value": "Neural Analyzer" },
+    { "trait_type": "Series", "value": "Biomolecule Sequencer" },
+    { "trait_type": "Rarity", "value": "Common" },
+    { "trait_type": "Edition", "value": "001" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "../common.png", "type": "image/png" }]
+  }
+}

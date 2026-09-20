@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { RARITY_META, TOOL_ICON, rarityKey } from "../lib/toolMeta";
+import {
+  RARITY_META,
+  TOOL_ICON,
+  getToolName,
+  getToolNftCard,
+  getToolSubtitle,
+  rarityKey,
+} from "../lib/toolMeta";
 import { useCountdown } from "../lib/useCountdown";
 import { api } from "../lib/api";
 import { handleTxResponse } from "../lib/txFlow";
@@ -27,6 +34,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   const rk = rarityKey(tool.rarity);
   const meta = RARITY_META[rk] || RARITY_META.common;
   const icon = TOOL_ICON[tool.toolType?.toLowerCase?.()] || "🛠️";
+  const nftCard = getToolNftCard(tool.toolType, rk);
 
   const [hours, setHours] = useState(4);
   const [busy, setBusy] = useState(false);
@@ -101,14 +109,18 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
     >
       {/* Header with NFT image */}
       <div className="flex items-start gap-3">
-        <div className="w-20 h-28 rounded-lg overflow-hidden flex-shrink-0 relative"
+        <div className="w-20 h-28 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center"
              style={{ boxShadow: meta.glow, border: `1px solid ${meta.color}50` }}>
-          <img
-            src={getToolNftCard(tool.toolType, rarityKey(tool.rarity))}
-            alt={getToolName(tool.toolType)}
-            className="w-full h-full object-cover"
-            draggable={false}
-          />
+          {nftCard ? (
+            <img
+              src={nftCard}
+              alt={getToolName(tool.toolType)}
+              className="w-full h-full object-cover"
+              draggable={false}
+            />
+          ) : (
+            <span className="text-3xl" aria-hidden="true">{icon}</span>
+          )}
         </div>
         <div className="flex-1 min-w-0 pt-1">
           <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{getToolName(tool.toolType || "axe")}</div>
