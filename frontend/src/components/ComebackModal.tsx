@@ -22,7 +22,7 @@ export function ComebackModal({ bonus, onClose }: ComebackModalProps) {
 
   async function handleClaim() {
     if (!user) {
-      flash("❌ Подключите кошелёк");
+      flash("❌ Connect wallet");
       return;
     }
     setClaiming(true);

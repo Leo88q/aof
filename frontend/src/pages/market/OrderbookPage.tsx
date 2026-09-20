@@ -69,7 +69,7 @@ export function OrderbookPage() {
   }), [bids, asks]);
 
   async function place(side: "buy" | "sell") {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     if (!res.mint) return flash("❌ Mint ресурсов ещё не инициализирован");
     const priceLam = Math.round(parseFloat(pricePerUnit) * 1e9);
     const amt = Math.round(parseFloat(amount) * 1e9);
@@ -94,7 +94,7 @@ export function OrderbookPage() {
   }
 
   async function cancel(o: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     try {
       flash("Отменяем ордер…");
       const resp = o.isBuy
@@ -110,8 +110,8 @@ export function OrderbookPage() {
 
   // Permissionless-матчинг: если лучший спрос ≥ лучшего предложения — сводим
   async function match() {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
+    if (!address) return flash("❌ Connect your wallet first");
+    if (!treasury) return flash("❌ Treasury config unavailable");
     const bb = bids[0];
     const ba = asks[0];
     if (!bb || !ba) return flash("❌ Нет пары встречных ордеров");
@@ -140,7 +140,7 @@ export function OrderbookPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-parchment">📊 Ордербук</h1>
         <button onClick={() => load(res.mint)} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Обновить"}
+          {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
       <p className="text-straw text-xs">
@@ -256,11 +256,11 @@ export function OrderbookPage() {
       <div className="grid grid-cols-2 gap-2">
         <button onClick={() => setFormOpen(formOpen === "buy" ? null : "buy")}
           className={`py-2.5 rounded-xl text-sm font-semibold border ${formOpen === "buy" ? "bg-sprout-500 text-white border-sprout-500" : "bg-soil-800 text-sprout-500 border-sprout-500/30"}`}>
-          🌱 Купить {res.label}
+          🌱 Buy {res.label}
         </button>
         <button onClick={() => setFormOpen(formOpen === "sell" ? null : "sell")}
           className={`py-2.5 rounded-xl text-sm font-semibold border ${formOpen === "sell" ? "bg-wheat-600 text-white border-wheat-600" : "bg-soil-800 text-wheat-500 border-wheat-600/30"}`}>
-          🧺 Продать {res.label}
+          🧺 Sell {res.label}
         </button>
       </div>
 
@@ -271,7 +271,7 @@ export function OrderbookPage() {
               {formOpen === "buy" ? "Лимитный ордер на покупку" : "Лимитный ордер на продажу"}
             </div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-straw text-xs w-28">Цена/ед., ◎</span>
+              <span className="text-straw text-xs w-28">Price/ед., ◎</span>
               <input type="number" step="0.000001" min="0" value={pricePerUnit} onChange={(e) => setPricePerUnit(e.target.value)}
                 className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
             </div>

@@ -123,7 +123,7 @@ export function CraftPage() {
   }, [targetRk]);
 
   async function prepMint() {
-    if (!address) return flash("❌ Подключите кошелёк (кнопка вверху)");
+    if (!address) return flash("❌ Connect wallet (кнопка вверху)");
     setBusyPrep(true);
     flash("Готовим новый минт (инструмент будет создан на нём)…", 8000);
     try {
@@ -143,7 +143,7 @@ export function CraftPage() {
   }
 
   async function doCraft() {
-    if (!address) return flash("❌ Подключите кошелёк");
+    if (!address) return flash("❌ Connect wallet");
     if (!src) return flash("❌ Выберите инструмент для переплавки");
     if (!targetRk) return flash("❌ Это уже максимальная редкость");
     if (!newMint) return flash("❌ Сначала подготовьте новый минт (шаг 1)");
@@ -158,7 +158,7 @@ export function CraftPage() {
       for (const res of requiredMints) {
         const needed = craftQuote[res] || 0;
         if (balances[res] < needed) {
-          return flash(`❌ Недостаточно ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
+          return flash(`❌ Not enough ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
         }
       }
     }
@@ -329,7 +329,7 @@ export function CraftPage() {
                   </div>
                   {status !== "sufficient" && (
                     <p className="text-[10px] text-red-400 mt-1">
-                      ⚠️ Недостаточно {RES_META[res].label}
+                      ⚠️ Not enough {RES_META[res].label}
                     </p>
                   )}
                 </div>

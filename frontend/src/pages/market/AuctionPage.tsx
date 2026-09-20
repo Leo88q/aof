@@ -56,7 +56,7 @@ export function AuctionPage() {
   }, [address]);
 
   async function bid(a: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     const lamports = Math.round(parseFloat(bids[a.mint] || "0") * 1e9);
     if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите сумму ставки в SOL");
     try {
@@ -73,8 +73,8 @@ export function AuctionPage() {
   }
 
   async function settle(a: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
+    if (!address) return flash("❌ Connect your wallet first");
+    if (!treasury) return flash("❌ Treasury config unavailable");
     const winner = a.highestBidder;
     if (!winner || winner === SYSTEM_KEY) return flash("❌ Ставок не было — завершать нечего");
     try {
@@ -94,7 +94,7 @@ export function AuctionPage() {
   }
 
   async function createAuction() {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     if (!selMint) return flash("❌ Выберите инструмент");
     const minBid = Math.round(parseFloat(minBidSol) * 1e9);
     const dur = Math.round(parseFloat(durationH) * 3600);
@@ -122,7 +122,7 @@ export function AuctionPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-parchment">🔨 Аукцион</h1>
         <button onClick={load} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Обновить"}
+          {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
       <p className="text-straw text-xs">

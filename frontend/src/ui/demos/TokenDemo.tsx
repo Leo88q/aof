@@ -20,7 +20,7 @@ export function TokenDemo({
         <p>{description}</p>
         <dl className="aof-token-demo__stats">
           <div><dt>Энергия</dt><dd>65 / 100</dd></div>
-          <div><dt>Прочность</dt><dd>20 / 20</dd></div>
+          <div><dt>Durability</dt><dd>20 / 20</dd></div>
         </dl>
         <button className="aof-token-demo__action" type="button"
                 aria-pressed={inspected}

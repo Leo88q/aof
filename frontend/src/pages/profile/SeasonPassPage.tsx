@@ -32,8 +32,8 @@ export function SeasonPassPage() {
   useEffect(() => { load(); }, [load]);
 
   async function buy() {
-    if (!address) return flash("❌ Подключите кошелёк (кнопка вверху)");
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
+    if (!address) return flash("❌ Connect wallet (кнопка вверху)");
+    if (!treasury) return flash("❌ Treasury config unavailable");
     try {
       flash("Готовим покупку пасса…");
       const resp = await api.season.passPurchase({ user: address, seasonId: SEASON_ID, treasury });
@@ -107,7 +107,7 @@ export function SeasonPassPage() {
       {!premium ? (
         <button onClick={buy} disabled={!address || !treasury}
           className="w-full py-3.5 rounded-2xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40">
-          Купить Premium за {PASS_PRICE_SOL} ◎
+          Buy Premium за {PASS_PRICE_SOL} ◎
         </button>
       ) : (
         <p className="text-center text-straw text-xs">Premium активен до конца сезона 🌟</p>

@@ -44,7 +44,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
     if ((kind === "start" || kind === "collect") && !MINING_ENABLED) {
       return flashMsg("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
     }
-    if (!address) return flashMsg("❌ Подключите кошелёк (кнопка вверху)");
+    if (!address) return flashMsg("❌ Connect wallet (кнопка вверху)");
     setBusy(true);
     try {
       let resp: any;
@@ -62,7 +62,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         resp = await api.tools.collectMining({ user: address, mint: tool.mint });
       }
       const r = await handleTxResponse(resp);
-      flashMsg(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flashMsg(r.success ? `✅ Done: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(() => onChanged?.(), 2500);
@@ -99,26 +99,30 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={`rounded-2xl bg-soil-850/80 border p-3 mb-3 ${tool.isMining && done ? "border-gold/60" : "border-straw/10"}`}
     >
-      {/* Шапка */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-          style={{ background: meta.color + "26" }}>
-          {icon}
+      {/* Header with NFT image */}
+      <div className="flex items-start gap-3">
+        <div className="w-20 h-28 rounded-lg overflow-hidden flex-shrink-0 relative"
+             style={{ boxShadow: meta.glow, border: `1px solid ${meta.color}50` }}>
+          <img
+            src={getToolNftCard(tool.toolType, rarityKey(tool.rarity))}
+            alt={getToolName(tool.toolType)}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-parchment font-semibold text-sm">{String(tool.toolType || "tool").toUpperCase()}</div>
-          <div className="text-xs font-medium" style={{ color: meta.color }}>{meta.label}</div>
-          <div className="text-straw text-xs">{tool.mint?.slice(0, 4)}…{tool.mint?.slice(-4)}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-xl">{state.icon}</div>
-          <div className="text-xs" style={{ color: state.color }}>{state.label}</div>
+        <div className="flex-1 min-w-0 pt-1">
+          <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{getToolName(tool.toolType || "axe")}</div>
+          <div className="text-xs font-medium mt-0.5" style={{ color: meta.color }}>{meta.label} · {getToolSubtitle(tool.toolType)}</div>
+          <div className="text-straw text-xs mt-1 font-mono opacity-60">{tool.mint?.slice(0, 4)}…{tool.mint?.slice(-4)}</div>
+          <div className="mt-2 text-right">
+            <div className="text-sm" style={{ color: state.color }}>{state.label}</div>
+          </div>
         </div>
       </div>
 
-      {/* Прочность */}
+      {/* Durability */}
       <div className="flex justify-between text-xs text-straw mt-3 mb-1">
-        <span>Прочность — {state.label}</span>
+        <span>Durability — {state.label}</span>
         <span>{durability} / 20</span>
       </div>
       <div className="h-2 rounded-full bg-soil-800 overflow-hidden">

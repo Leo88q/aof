@@ -57,7 +57,7 @@ export function FarmPlot() {
 
   async function quick(action: "start" | "collect") {
     if (!MINING_ENABLED) return flash("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
-    if (!address) return flash("❌ Подключите кошелёк");
+    if (!address) return flash("❌ Connect wallet");
     if (!selected) return;
     setBusy(true);
     try {
@@ -66,7 +66,7 @@ export function FarmPlot() {
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `✅ Done: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) {
         setSelected(null);
         setTimeout(load, 2500);

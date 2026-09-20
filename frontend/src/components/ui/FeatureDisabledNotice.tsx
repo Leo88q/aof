@@ -60,7 +60,7 @@ export function FeatureDisabledNotice({ id }: { id: DisabledMechanicId }) {
     >
       <p className="font-semibold text-wheat-500">{m.title}</p>
       <p className="mt-1 text-straw">{m.reason}</p>
-      <p className="mt-1 text-straw">Транзакции не отправляются и средства не списываются, пока механика отключена.</p>
+      <p className="mt-1 text-straw">Транзакции не отправляются и resourcesа не списываются, пока механика отключена.</p>
     </div>
   );
 }

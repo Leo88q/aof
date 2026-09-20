@@ -43,7 +43,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
   if (loading) return (
     <div className="p-4">
       <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад на свою ферму</button>
-      <p className="text-straw text-sm">Загрузка фермы {address}…</p>
+      <p className="text-straw text-sm">Loading фермы {address}…</p>
     </div>
   );
 

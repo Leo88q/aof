@@ -12,7 +12,7 @@ interface VipGateProps {
 
 /**
  * Обёртка для VIP-only фич.
- * Если не VIP — показывает апселл с кнопкой "Купить Premium".
+ * Если не VIP — показывает апселл с кнопкой "Buy Premium".
  */
 export function VipGate({ isVip, feature, children }: VipGateProps) {
   const { push } = useNav();
@@ -39,7 +39,7 @@ export function VipGate({ isVip, feature, children }: VipGateProps) {
             ))}
             className="mt-3 px-4 py-2 rounded-xl bg-gold text-soil-950 font-semibold text-sm active:scale-95 transition-transform"
           >
-            🎫 Купить Premium
+            🎫 Buy Premium
           </button>
         </div>
       </div>

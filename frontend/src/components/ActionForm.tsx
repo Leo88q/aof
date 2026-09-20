@@ -45,7 +45,7 @@ export function ActionForm({
       const res = await onSubmit(values);
       setResult({ ok: true, text: JSON.stringify(res) });
     } catch (e: any) {
-      setResult({ ok: false, text: e?.response?.data?.error || e.message || "Ошибка" });
+      setResult({ ok: false, text: e?.response?.data?.error || e.message || "Error" });
     } finally {
       setLoading(false);
     }

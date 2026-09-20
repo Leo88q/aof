@@ -576,7 +576,7 @@ export function ExtraSections({ id }: { id: string }) {
             </article>
           ))}
         </div>
-        <blockquote className="site-narrative">Редкость — характеристика предмета, а не гарантия выгодной сделки: легендарный инструмент в простых руках дешевле обычного в рабочих.</blockquote>
+        <blockquote className="site-narrative">Rarity — характеристика предмета, а не гарантия выгодной сделки: легендарный инструмент в простых руках дешевле обычного в рабочих.</blockquote>
       </Section>
     );
   }

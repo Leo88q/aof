@@ -92,10 +92,10 @@ export function OvenPanel() {
         toast.show(`🔥 Печь запущена! ${m.flour} муки → ${m.bread} хлеба`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Ошибка"}`);
+        toast.show(`❌ ${r.error || "Error"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка"}`);
+      toast.show(`❌ ${e.message || "Error"}`);
     } finally {
       setBaking(false);
     }
@@ -116,10 +116,10 @@ export function OvenPanel() {
         toast.show(`🍞 Собрано ${ovenState.breadReady} хлеба!`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Ошибка"}`);
+        toast.show(`❌ ${r.error || "Error"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка"}`);
+      toast.show(`❌ ${e.message || "Error"}`);
     } finally {
       setBaking(false);
     }

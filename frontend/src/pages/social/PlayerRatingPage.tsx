@@ -38,7 +38,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
   if (loading) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Загрузка рейтинга...</p></Card>
+        <Card><p className="text-straw text-center py-8">Loading рейтинга...</p></Card>
       </div>
     );
   }

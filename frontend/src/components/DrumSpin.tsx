@@ -21,7 +21,7 @@ export function DrumSpin() {
   const [result, setResult] = useState<{ icon: string; label: string } | null>(null);
 
   async function handleSpin() {
-    if (!address) return flash("❌ Подключите кошелёк");
+    if (!address) return flash("❌ Connect wallet");
     if (spinning) return;
 
     setSpinning(true);
@@ -45,7 +45,7 @@ export function DrumSpin() {
       setResult({ icon: "✨", label: "Приз распределён on-chain" });
       flash("🎉 Результат подтверждён в блокчейне. Обновите баланс MASCOT.");
     } catch (e: any) {
-      flash(`❌ Ошибка: ${e.message}`);
+      flash(`❌ Error: ${e.message}`);
     } finally {
       setSpinning(false);
     }

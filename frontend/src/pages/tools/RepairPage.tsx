@@ -54,10 +54,10 @@ export function RepairPage() {
   }, [tool?.mint, amt]);
 
   async function doRepair() {
-    if (!address) return flash("❌ Подключите кошелёк (кнопка вверху)");
+    if (!address) return flash("❌ Connect wallet (кнопка вверху)");
     if (!tool) return flash("❌ Выберите инструмент");
     if (!mints.stone || !mints.wood) return flash("❌ Минты ресурсов не загружены");
-    if (amt <= 0) return flash("❌ Прочность уже полная");
+    if (amt <= 0) return flash("❌ Durability уже полная");
     const q = quote;
     try {
       flash("Чиним…");
@@ -85,7 +85,7 @@ export function RepairPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        Прочность тратится майнингом. Ремонт атомарно списывает камень и дерево. Чем реже инструмент — тем дороже.
+        Durability тратится майнингом. Ремонт атомарно списывает камень и дерево. Чем реже инструмент — тем дороже.
       </p>
 
       {txStatus && (
@@ -144,7 +144,7 @@ export function RepairPage() {
                     {RARITY_META[rarityKey(tool.rarity)]?.label} · {tool.toolType}
                   </p>
                   <p className="text-straw text-xs">
-                    Прочность {durability} / {MAX_DURABILITY}
+                    Durability {durability} / {MAX_DURABILITY}
                     {critical && <span className="text-wheat-500 font-semibold"> — вот-вот сломается!</span>}
                   </p>
                 </div>

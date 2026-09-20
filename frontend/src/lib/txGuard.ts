@@ -215,7 +215,7 @@ export async function guardTransaction(
       safe: false,
       risk: "HIGH",
       reason: `Не удалось проверить транзакцию: ${e.message}`,
-      warnings: ["Ошибка симуляции"],
+      warnings: ["Error симуляции"],
     };
   }
 }

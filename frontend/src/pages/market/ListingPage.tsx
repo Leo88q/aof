@@ -50,8 +50,8 @@ export function ListingPage() {
   }, [address]);
 
   async function buy(l: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк (кнопка вверху)");
-    if (!treasury) return flash("❌ Казна не найдена — конфиг не загружен");
+    if (!address) return flash("❌ Connect your wallet first (кнопка вверху)");
+    if (!treasury) return flash("❌ Treasury config unavailable");
     try {
       flash("Готовим покупку…");
       const resp = await api.marketplace.buy({ buyer: address, seller: l.seller, treasury, mint: l.mint });
@@ -67,7 +67,7 @@ export function ListingPage() {
   }
 
   async function cancel(l: any) {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     try {
       flash("Снимаем с продажи…");
       const resp = await api.marketplace.cancel({ seller: address, mint: l.mint });
@@ -83,7 +83,7 @@ export function ListingPage() {
   }
 
   async function createListing() {
-    if (!address) return flash("❌ Сначала подключите кошелёк");
+    if (!address) return flash("❌ Connect your wallet first");
     if (!selMint) return flash("❌ Выберите инструмент");
     const lamports = Math.round(parseFloat(priceSol) * 1e9);
     if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите цену в SOL");
@@ -107,7 +107,7 @@ export function ListingPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-parchment">🏷️ Листинг</h1>
         <button onClick={load} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Обновить"}
+          {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
       <p className="text-straw text-xs">
@@ -158,7 +158,7 @@ export function ListingPage() {
                     ) : (
                       <button onClick={() => buy(l)}
                         className="mt-1 text-xs px-4 py-1 rounded-lg bg-sprout-500 text-white font-medium">
-                        Купить
+                        Buy
                       </button>
                     )}
                   </div>
@@ -197,7 +197,7 @@ export function ListingPage() {
               );
             })}
             <div className="flex items-center gap-2 pt-2">
-              <span className="text-straw text-xs w-20">Цена, ◎</span>
+              <span className="text-straw text-xs w-20">Price, ◎</span>
               <input type="number" step="0.001" min="0" value={priceSol} onChange={(e) => setPriceSol(e.target.value)}
                 className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
             </div>

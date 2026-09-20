@@ -36,7 +36,7 @@ export function ExplorationPage() {
 
   async function startExploration() {
     if (explorationDisabled) return;
-    if (!address) return flash("❌ Подключите кошелёк");
+    if (!address) return flash("❌ Connect wallet");
     if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
 
     setLoading(true);
@@ -108,7 +108,7 @@ export function ExplorationPage() {
 
         <div className="bg-gold/10 border border-gold/30 rounded-xl p-4 mb-4">
           <h3 className="text-gold font-semibold text-sm mb-2">Награда при успехе:</h3>
-          <p className="text-straw text-xs">Количество WOOD и STONE определяется on-chain энтропией текущего tier.</p>
+          <p className="text-straw text-xs">Amount WOOD и STONE определяется on-chain энтропией текущего tier.</p>
         </div>
 
         <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">

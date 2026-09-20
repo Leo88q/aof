@@ -93,10 +93,10 @@ export function MillPanel() {
         toast.show(`⚙️ Мельница запущена! Помол: ${m.wheat} пшеницы → ${m.flour} муки`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Ошибка запуска"}`);
+        toast.show(`❌ ${r.error || "Error запуска"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка"}`);
+      toast.show(`❌ ${e.message || "Error"}`);
     } finally {
       setMilling(false);
     }
@@ -117,10 +117,10 @@ export function MillPanel() {
         toast.show(`🥣 Собрано ${millState.flourReady} муки!`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Ошибка сбора"}`);
+        toast.show(`❌ ${r.error || "Error сбора"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка"}`);
+      toast.show(`❌ ${e.message || "Error"}`);
     } finally {
       setMilling(false);
     }
