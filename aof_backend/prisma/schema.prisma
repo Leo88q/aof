@@ -530,6 +530,10 @@ model EconomySnapshot {
   totalTxs24h       Int
   failedTxs24h      Int
   
+  // Provenance at snapshot time (JSON of EconomyFieldQuality). Null = taken
+  // before provenance existed; treat as "partial" at best.
+  fieldQuality   String?
+
   // Топ кошельки (JSON)
   topHolders     String   // JSON array [{address, balance}]
   
@@ -588,6 +592,85 @@ model CommitSecret {
   
   @@index([key])
   @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// On-chain event indexer (services/chain-indexer). Source of truth for
+// economic metrics; AuditLog is the off-chain intent log, not the ledger.
+// Only finalized transactions are indexed, so there is no reorg handling.
+// ---------------------------------------------------------------------------
+
+// One row per finalized transaction that touched an indexed program.
+model ChainTx {
+  signature  String   @id
+  slot       BigInt
+  blockTime  DateTime?
+  success    Boolean
+  feePayer   String
+  programIds String   // JSON array of indexed program ids present in the tx
+  errorJson  String?  // meta.err for failed txs
+  indexedAt  DateTime @default(now())
+
+  events     ChainEvent[]
+  mintDeltas ChainMintDelta[]
+
+  @@index([blockTime])
+  @@index([success, blockTime])
+  @@index([feePayer, blockTime])
+}
+
+// One row per Anchor event decoded from the tx logs.
+model ChainEvent {
+  id         String   @id @default(cuid())
+  signature  String
+  eventIndex Int      // position within the tx log stream (dedup key with signature)
+  slot       BigInt
+  blockTime  DateTime?
+  programId  String
+  eventType  String   // Anchor event name, e.g. "MiningCollected"
+  wallet     String?  // primary actor pubkey if the event has one
+  walletHash String?  // sha256(WALLET_HASH_SALT|wallet) for public/aggregate surfaces
+  mint       String?
+  amount     String?  // u64 as decimal string (SQLite has no unsigned 64-bit)
+  success    Boolean
+  data       String   // full decoded payload, JSON (BN -> string, Pubkey -> base58)
+
+  tx         ChainTx  @relation(fields: [signature], references: [signature])
+
+  @@unique([signature, eventIndex])
+  @@index([eventType, blockTime])
+  @@index([wallet, blockTime])
+  @@index([programId, slot])
+}
+
+// Net SPL supply change per (tx, mint), derived from pre/post token balances:
+// transfers cancel out, so a non-zero sum is mint_to (+) or burn (-). This is
+// how issuance is measured without a dedicated on-chain event.
+model ChainMintDelta {
+  id        String   @id @default(cuid())
+  signature String
+  mint      String
+  delta     String   // signed integer as decimal string
+  blockTime DateTime?
+  slot      BigInt
+
+  tx        ChainTx  @relation(fields: [signature], references: [signature])
+
+  @@unique([signature, mint])
+  @@index([mint, blockTime])
+}
+
+// Per-program sync state. newest/oldest bound the contiguous indexed window;
+// forward sync extends newest, backfill extends oldest until exhausted.
+model IndexerCursor {
+  programId        String   @id
+  newestSignature  String?
+  oldestSignature  String?
+  newestSlot       BigInt?
+  backfillComplete Boolean  @default(false)
+  txIndexed        Int      @default(0)
+  lastError        String?
+  updatedAt        DateTime @updatedAt
 }
 
 // Persist pagination even when the one-shot reconciler exits or is restarted.

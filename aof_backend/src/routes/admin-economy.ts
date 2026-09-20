@@ -22,18 +22,21 @@ r.get("/snapshots", async (req, res) => {
     // Persisted snapshots carry no provenance column; attach the provenance
     // of the code that produced them so the dashboard never renders a
     // placeholder zero (unimplemented indexer) as a measured value.
-    const fieldQuality = ECONOMY_FIELD_QUALITY;
-    const dataQuality = worstQuality(fieldQuality);
-    const safe = snapshots.map((s: any) => ({
-      ...s,
-      potatoSupply: s.potatoSupply.toString(),
-      potatoBurned24h: fieldQuality.potatoBurned24h === "unavailable" ? null : s.potatoBurned24h.toString(),
-      potatoMinted24h: fieldQuality.potatoMinted24h === "unavailable" ? null : s.potatoMinted24h.toString(),
-      dataQuality,
-      fieldQuality,
-    }));
+    const safe = snapshots.map((s: any) => {
+      let fieldQuality = ECONOMY_FIELD_QUALITY;
+      if (s.fieldQuality) { try { fieldQuality = { ...ECONOMY_FIELD_QUALITY, ...JSON.parse(s.fieldQuality) }; } catch { /* keep baseline */ } }
+      const dataQuality = worstQuality(fieldQuality);
+      return {
+        ...s,
+        potatoSupply: s.potatoSupply.toString(),
+        potatoBurned24h: fieldQuality.potatoBurned24h === "unavailable" ? null : s.potatoBurned24h.toString(),
+        potatoMinted24h: fieldQuality.potatoMinted24h === "unavailable" ? null : s.potatoMinted24h.toString(),
+        dataQuality,
+        fieldQuality,
+      };
+    });
     
-    res.setHeader("X-Data-Quality", dataQuality);
+    res.setHeader("X-Data-Quality", safe[0]?.dataQuality ?? worstQuality(ECONOMY_FIELD_QUALITY));
     res.json(safe);
   } catch (e: any) {
     res.status(400).json({ error: e.message });

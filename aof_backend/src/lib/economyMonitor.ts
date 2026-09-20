@@ -48,6 +48,8 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   const last1h = new Date(now.getTime() - 3600 * 1000);
 
   // Параллельно собираем все метрики
+  const potatoMint = await getPotatoMint();
+  const indexer = await getIndexerCoverage(last24h);
   const [
     supplyData,
     burnEvents,
@@ -58,9 +60,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     totalTxs,
     failedTxs,
   ] = await Promise.all([
-    getPOTATOSupply(),
-    getBurnEvents(last24h),
-    getMintEvents(last24h),
+    getPOTATOSupply(potatoMint),
+    getBurnEvents(last24h, potatoMint),
+    getMintEvents(last24h, potatoMint),
     // Compare with a snapshot at least 24h old. The previous implementation
     // compared to the latest five-minute snapshot while labelling the result
     // "24h", which made the alert metric materially wrong.
@@ -101,6 +103,12 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   const fieldQuality: EconomyFieldQuality = {
     ...ECONOMY_FIELD_QUALITY,
     potatoSupply: supplyData.ok ? "complete" : "unavailable",
+    // Mint/burn come from the chain indexer's per-tx supply deltas. They are
+    // complete only when the indexer has a contiguous window covering the
+    // whole 24h; while backfill is running or the cursor is stale they are
+    // partial; with no indexed data at all they stay unavailable.
+    potatoMinted24h: indexer.quality,
+    potatoBurned24h: indexer.quality,
     // Without a 24h-old snapshot the baseline is the current supply and the
     // inflation figure is 0 by construction, not by measurement.
     inflation24h: supplyData.ok && baselineSnapshot ? "partial" : "unavailable",
@@ -148,6 +156,7 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
         address: h.address,
         balance: h.balance.toString(),
       }))),
+      fieldQuality: JSON.stringify(fieldQuality),
     },
   });
 
@@ -235,20 +244,22 @@ async function createAlert(data: {
 
 // === Вспомогательные функции ===
 
-async function getPOTATOSupply(): Promise<{ supply: bigint; ok: boolean }> {
+async function getPotatoMint(): Promise<PublicKey | null> {
   try {
-    // Читаем из Config PDA
     const { configPda } = await import("./pda");
     const { fetchOne } = await import("./decode");
     const [config] = configPda();
     const cfg: any = await fetchOne("config", config);
-    
-    if (!cfg?.potatoMint) {
-      return { supply: 0n, ok: false };
-    }
+    return cfg?.potatoMint ? new PublicKey(cfg.potatoMint.toString()) : null;
+  } catch {
+    return null;
+  }
+}
 
-    // Читаем mint account
-    const mintInfo = await connection.getParsedAccountInfo(new PublicKey(cfg.potatoMint));
+async function getPOTATOSupply(potatoMint: PublicKey | null): Promise<{ supply: bigint; ok: boolean }> {
+  try {
+    if (!potatoMint) return { supply: 0n, ok: false };
+    const mintInfo = await connection.getParsedAccountInfo(potatoMint);
     const rawSupply = (mintInfo.value?.data as any)?.parsed?.info?.supply;
     if (rawSupply === undefined || rawSupply === null) return { supply: 0n, ok: false };
     return { supply: BigInt(rawSupply), ok: true };
@@ -257,14 +268,51 @@ async function getPOTATOSupply(): Promise<{ supply: bigint; ok: boolean }> {
   }
 }
 
-async function getBurnEvents(since: Date): Promise<{ amount: bigint }[]> {
-  // TODO: парсить events из on-chain (BurnResource events)
-  return [];
+/**
+ * How much of the last 24h the chain indexer actually covers for aof_core.
+ *   complete   — cursor fresh (< 10 min) and backfill done or oldest indexed
+ *                tx is older than the window start
+ *   partial    — some data but the window is not fully covered
+ *   unavailable— no indexer rows at all
+ */
+async function getIndexerCoverage(since: Date): Promise<{ quality: "complete" | "partial" | "unavailable" }> {
+  try {
+    const { PROGRAM_ID } = await import("../provider");
+    const cursor = await db.indexerCursor.findUnique({ where: { programId: PROGRAM_ID.toBase58() } });
+    if (!cursor || !cursor.newestSignature) return { quality: "unavailable" };
+    const fresh = Date.now() - cursor.updatedAt.getTime() < 10 * 60 * 1000;
+    if (!fresh) return { quality: "partial" };
+    if (cursor.backfillComplete) return { quality: "complete" };
+    const oldest = await db.chainTx.findFirst({ orderBy: { slot: "asc" }, select: { blockTime: true } });
+    if (oldest?.blockTime && oldest.blockTime <= since) return { quality: "complete" };
+    return { quality: "partial" };
+  } catch {
+    return { quality: "unavailable" };
+  }
 }
 
-async function getMintEvents(since: Date): Promise<{ amount: bigint }[]> {
-  // TODO: парсить events из on-chain (MintResource events)
-  return [];
+/** Sum of positive / negative supply deltas for one mint in the window. */
+async function sumMintDeltas(since: Date, mint: PublicKey | null, sign: 1 | -1): Promise<{ amount: bigint }[]> {
+  if (!mint) return [];
+  const rows = await db.chainMintDelta.findMany({
+    where: { mint: mint.toBase58(), blockTime: { gte: since } },
+    select: { delta: true },
+  });
+  let total = 0n;
+  for (const r of rows) {
+    const d = BigInt(r.delta);
+    if (sign === 1 && d > 0n) total += d;
+    if (sign === -1 && d < 0n) total += -d;
+  }
+  return total > 0n ? [{ amount: total }] : [];
+}
+
+async function getBurnEvents(since: Date, potatoMint: PublicKey | null): Promise<{ amount: bigint }[]> {
+  return sumMintDeltas(since, potatoMint, -1);
+}
+
+async function getMintEvents(since: Date, potatoMint: PublicKey | null): Promise<{ amount: bigint }[]> {
+  return sumMintDeltas(since, potatoMint, 1);
 }
 
 async function getTopHolders(): Promise<{ address: string; balance: bigint }[]> {

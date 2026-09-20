@@ -110,6 +110,7 @@ export function sentinelAutoAudit() {
     // Не логируем сам audit endpoint и health
     if (
       req.originalUrl.startsWith("/admin/audit") ||
+      req.originalUrl.startsWith("/admin/chain") ||
       req.originalUrl.startsWith("/health")
     ) {
       return next();

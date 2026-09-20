@@ -1,6 +1,6 @@
 # AOF — Production Readiness Roadmap
 
-_Обновлено: 2026-09-21 (итерация 2). Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
+_Обновлено: 2026-09-21 (итерация 3). Источник: внешний ревью-чеклист, сверенный с фактическим кодом._
 
 Документ фиксирует, что из внешних замечаний **подтвердилось**, что **уже закрыто** в
 этой ветке, и что **осталось** — с приоритетом, оценкой и явным решением по спорным пунктам.
@@ -36,6 +36,19 @@ _Обновлено: 2026-09-21 (итерация 2). Источник: внеш
 | 17 | gitleaks как постоянный gate | job `secrets-scan` в CI с `fetch-depth: 0` + `.gitleaks.toml` (allowlist плейсхолдеров). |
 | 18 | Issuance caps — дизайн | `docs/ISSUANCE_CAPS_DESIGN.md`: отдельный PDA на kind, эпохи в слотах, fail-closed, `set_cap` не сбрасывает счётчик, `MintDelegate` для разделения hot-key и Squads. Реализация требует SBPF-тулчейна (в песочнице недоступен). |
 
+### 1c. Закрыто в третьей итерации — on-chain event indexer
+
+| # | Что | Где |
+|---|---|---|
+| 19 | Ledger-таблицы `ChainTx`, `ChainEvent`, `ChainMintDelta`, `IndexerCursor` (+ `EconomySnapshot.fieldQuality`) | `prisma/schema.prisma`, миграция `202609210001_chain_indexer`. Dedup: PK signature, unique `(signature,eventIndex)`, unique `(signature,mint)`. |
+| 20 | Воркер `services/chain-indexer` | Forward-sync + backfill по `getSignaturesForAddress` для `aof_core`, `aof_market`, `aof_quests`; только `finalized` (без reorg-логики); запись tx+events атомарно; курсор двигается только за полностью записанным префиксом; health на :8082. |
+| 21 | Декодер событий `src/lib/chainIndexerCore.ts` | Anchor `EventParser` с CPI-атрибуцией, camelCase-нормализация, извлечение actor/mint/amount, `walletHash` с солью, supply-дельты из pre/post token balances (mint = +, burn = −, transfer = 0). |
+| 22 | Economy monitor на реальных данных | `potatoMinted24h`/`potatoBurned24h` из `ChainMintDelta`; качество поля вычисляется из свежести курсора и покрытия окна (`complete`/`partial`/`unavailable`), сохраняется в snapshot. |
+| 23 | Read-only API `/admin/chain/*` | `status`, `events`, `events/summary`, `supply?mint=`, `wallet/:wallet` — под `ADMIN_READ_TOKEN`. Основа для anti-fraud review и продуктовых метрик. |
+| 24 | Self-test `test:chain-indexer` | Реальное кодирование событий через committed IDL, CPI, dedup-индексы, дельты, u64 max. В CI. |
+
+Ограничения: `topHolders` по-прежнему `unavailable` (нужен holder-снимок через `getProgramAccounts`/DAS, отдельная задача); `activity24h` всё ещё из AuditLog — переключить на `ChainEvent` после первого backfill на devnet; воркер не исполнялся против живого RPC из песочницы (нет сети).
+
 **Не изменено**: `AuditLog.action` по-прежнему = нормализованный URL. Замена на бизнес-тип
 события требует ручной разметки ~60 роутов; сделать вместе с indexer'ом (§2.3), чтобы
 не размечать дважды.
@@ -70,7 +83,9 @@ _Обновлено: 2026-09-21 (итерация 2). Источник: внеш
 
 | Приоритет | Задача | Комментарий |
 |---|---|---|
-| P0 | **On-chain event indexer** для `aof_core`, `aof_market`, `aof_quests` | Таблица `ChainEvent(signature, slot, blockTime, programId, eventType, walletHash, mint, amount, success)` с unique(signature, index). Backfill через `getSignaturesForAddress` с курсором. После него `ECONOMY_FIELD_QUALITY.potatoMinted24h/Burned24h/topHolders` → `complete`. |
+| ~~P0~~ done | **On-chain event indexer** | Реализован (§1c). Осталось: запустить на devnet (`--profile indexer`), дождаться `backfillComplete`, сверить `potatoMinted24h` с ручным подсчётом за сутки. |
+| P1 | Top holders | Периодический снимок владельцев через `getTokenLargestAccounts` (top-20 достаточно для алертов) → `topHolders: complete`. |
+| P1 | `activity24h` из `ChainEvent` вместо AuditLog | После верификации indexer'а на devnet. |
 | P1 | `AuditLog.action` → бизнес-тип | Вместе с indexer'ом, единый словарь событий. |
 | P1 | Daily player facts | Материализованная таблица от indexer + AuditLog. |
 
@@ -127,6 +142,7 @@ _Обновлено: 2026-09-21 (итерация 2). Источник: внеш
 - [ ] PostgreSQL в production
 - [ ] Backup/restore drill пройден на реальных данных (скрипт есть)
 - [x] Workers вынесены в отдельные сервисы compose
-- [ ] On-chain indexer работает, `ECONOMY_FIELD_QUALITY` → complete
+- [x] On-chain indexer реализован и покрыт тестами
+- [ ] Indexer прогнан на devnet, backfill завершён, mint/burn сверены вручную
 - [ ] Staging с `NODE_ENV=production`
 - [ ] Внешний аудит завершён
