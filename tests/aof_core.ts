@@ -238,18 +238,29 @@ describe("aof-core: security & core flows", () => {
     expect(threw).to.be.true;
   });
 
-  it("mint_resource: комиссия в казну, user+fee == amount", async () => {
+  it("mint_resource: balance deltas conserve gross mint and treasury fee with existing balances", async () => {
     const user = Keypair.generate(); await airdrop(user);
-    const ata = await ensureAta(woodMint, user.publicKey);
+    // The treasury is shared with other tests and real payouts. Pre-fund the
+    // recipient too, so this test also catches absolute-balance assertions
+    // when run alone. Neither account is assumed to start at zero.
+    const ata = await giveResource("wood", woodMint, user.publicKey, 1);
     const treasAta = await ensureAta(woodMint, authority);
-    await program.methods.mintResource({ wood: {} }, new BN(10_000)).accounts({
+    const userBefore = await balance(ata);
+    const treasuryBefore = await balance(treasAta);
+    const supplyBefore = new BN((await provider.connection.getTokenSupply(woodMint)).value.amount);
+    expect(userBefore.gtn(0)).to.equal(true);
+    expect(treasuryBefore.gtn(0)).to.equal(true);
+    const gross = new BN(10_000);
+    await program.methods.mintResource({ wood: {} }, gross).accounts({
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: woodMint,
       tokenAccount: ata, treasuryToken: treasAta, player: playerPda(user.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
-    const u = Number((await provider.connection.getTokenAccountBalance(ata)).value.amount);
-    const t = Number((await provider.connection.getTokenAccountBalance(treasAta)).value.amount);
-    expect(u + t).to.equal(10_000);
-    expect(t).to.be.within(700, 1000); // база 7–10% в atomic units
+    const userDelta = (await balance(ata)).sub(userBefore);
+    const treasuryDelta = (await balance(treasAta)).sub(treasuryBefore);
+    const supplyDelta = new BN((await provider.connection.getTokenSupply(woodMint)).value.amount).sub(supplyBefore);
+    expect(userDelta.add(treasuryDelta).eq(gross)).to.equal(true, "user + treasury deltas must equal gross mint");
+    expect(supplyDelta.eq(gross)).to.equal(true, "total supply must increase by exactly the gross amount");
+    expect(treasuryDelta.gten(700) && treasuryDelta.lten(1000)).to.equal(true, "base fee must remain 7–10%");
   });
 
   it("withdraw_gas: кулдаун взводится после вывода (H1)", async () => {
