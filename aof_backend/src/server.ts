@@ -6,6 +6,7 @@ import { generalLimiter, txLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
 import cors from "cors";
 import { PORT } from "./config";
+import { connection } from "./provider";
 import admin from "./routes/admin";
 import gastank from "./routes/gastank";
 import resources from "./routes/resources";
@@ -86,7 +87,10 @@ app.use(cors({
   origin: configuredOrigins.length > 0 ? configuredOrigins : true,
   credentials: true,
 }));
-app.use(express.json());
+app.disable("x-powered-by");
+// Rate-limit before signature verification / durable nonce writes, not after.
+app.use(generalLimiter);
+app.use(express.json({ limit: "32kb" }));
 // Every mapped business mutation must carry a fresh wallet signature before
 // reaching a router. Admin routes and route-specific guards remain explicit.
 app.use(requireMappedWalletProof());
@@ -94,7 +98,6 @@ app.use(sentinelAutoAudit());
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/health" } }));
 app.use("/admin", txLimiter);
 app.use("/hot-market", txLimiter);
-app.use(generalLimiter);
 app.use("/orderbook", txLimiter);
 app.use("/marketplace", txLimiter);
 app.use("/auction", txLimiter);
@@ -174,9 +177,15 @@ app.use("/privileges", txLimiter);
 app.use("/privileges", privileges);
 app.use(errorHandler);
 app.get("/health", (_req, res) => res.json({ ok: true }));
-startCronJobs();
-
-// Запуск фонового воркера для авто-reveal протухших коммитов
-startCommitRevealer(60_000);
-
-app.listen(PORT, () => logger.info({ port: PORT }, "aof-backend started"));
+// Validate the actual cluster before any signing worker can start. URL names
+// are not proof of network identity (a custom RPC can point at any cluster).
+async function start(): Promise<void> {
+  const expected = process.env.EXPECTED_GENESIS_HASH;
+  if (expected && await connection.getGenesisHash() !== expected) {
+    throw new Error("RPC genesis hash does not match EXPECTED_GENESIS_HASH");
+  }
+  startCronJobs();
+  startCommitRevealer(60_000);
+  app.listen(PORT, "0.0.0.0", () => logger.info({ port: PORT }, "aof-backend started"));
+}
+start().catch((error) => { logger.fatal({ err: error }, "Startup verification failed"); process.exitCode = 1; });

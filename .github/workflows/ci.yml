@@ -180,6 +180,9 @@ jobs:
           solana --version
           cargo-build-sbf --version
 
+      - name: Core energy and LP arithmetic unit tests
+        run: cargo test --locked -p aof-core -p aof-liquidity --lib
+
       - name: Create throwaway provider wallet
         run: |
           set -euo pipefail
@@ -773,11 +776,25 @@ jobs:
           npm run build 2>&1 | tee -a /tmp/backend-build.log || rc=$?
           exit "$rc"
 
+      - name: Compile workers
+        run: npm run build:workers
+
+      - name: Offline mint cost model tests
+        working-directory: .
+        run: |
+          python3 scripts/test-mint-cost-model.py
+          python3 scripts/test-reward-migrations.py
+          python3 scripts/test-idl-drift.py
+
       - name: Self-test - wallet proof
         run: |
           set -uo pipefail
+          npm run test:audit-security 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
           npm run test:wallet-proof 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
+
+      - name: Self-test - reward receipts and bounded purchases
+        run: npm run test:reward-receipts
 
       - name: Self-test - resource registry
         run: |
@@ -942,6 +959,9 @@ jobs:
           [ "${kp:-0}" -eq 6 ] || { echo "::error::expected 6 program keypairs in target/deploy, found ${kp:-0}"; bad=1; }
           [ -f target/artifact-Anchor.toml ] || { echo "::error::target/artifact-Anchor.toml is missing from the artifact"; bad=1; }
           exit "$bad"
+
+      - name: Core energy and LP arithmetic unit tests
+        run: cargo test --locked -p aof-core -p aof-liquidity --lib
 
       - name: Create throwaway provider wallet
         run: |
@@ -1184,6 +1204,7 @@ jobs:
           set -uo pipefail
           : > /tmp/frontend-build.log
           rc=0
+          npm run test:security 2>&1 | tee -a /tmp/frontend-build.log || exit "${PIPESTATUS[0]}"
           npm run build 2>&1 | tee -a /tmp/frontend-build.log || rc=$?
           exit "$rc"
 

@@ -101,6 +101,13 @@ export function requireWalletProof(subject: string, selector: WalletSelector = "
     const selected = typeof selector === "function" ? selector(req) : req.body?.[selector];
     const wallet = typeof selected === "string" ? selected : "";
     const proof = req.body?.walletProof;
+    let digest: string;
+    try {
+      digest = walletProofDigest(req.body, { method: req.method, target: req.originalUrl });
+    } catch {
+      res.status(400).json({ error: "Invalid wallet proof payload" });
+      return;
+    }
     if (
       !wallet ||
       !proof ||
@@ -114,7 +121,7 @@ export function requireWalletProof(subject: string, selector: WalletSelector = "
         WALLET_PROOF_DOMAIN,
         subject,
         WALLET_PROOF_MAX_AGE_MS,
-        walletProofDigest(req.body),
+        digest,
       )
     ) {
       res.status(401).json({ error: "Wallet signature required" });
@@ -217,6 +224,7 @@ const MAPPED_MUTATIONS: MappedProof[] = [
   { path: "/resources/burn", subject: "resources_burn", selector: "owner" },
   { path: "/resources/exchange-energy", subject: "resources_exchange_energy", selector: "user" },
   { path: "/season/pass/purchase", subject: "season_pass_purchase", selector: "user" },
+  { path: "/tools/prep-mint", subject: "tools_prep_mint", selector: "owner" },
   { path: "/tools/craft", subject: "tools_craft", selector: "user" },
   { path: "/tools/repair", subject: "tools_repair", selector: "user" },
   { path: "/tools/stake", subject: "tools_stake", selector: "user" },
@@ -249,9 +257,12 @@ export function requireMappedWalletProof() {
       next();
       return;
     }
+    // Express routers are case-insensitive and accept a trailing slash by default.
+    // Authenticate the same route equivalence class, not only its spelling.
+    const path = req.path.toLowerCase().replace(/\/+$/, "") || "/";
     const mapping = MAPPED_MUTATIONS.find((candidate) => {
-      if (candidate.path.endsWith("/")) return req.path.startsWith(candidate.path);
-      return req.path === candidate.path;
+      if (candidate.path.endsWith("/")) return path.startsWith(candidate.path) || path === candidate.path.slice(0, -1);
+      return path === candidate.path;
     });
     if (!mapping) {
       next();

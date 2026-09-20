@@ -8,6 +8,14 @@
  * so review it whenever a guard is added or removed.
  */
 export const DISABLED_MECHANICS = {
+  packs: {
+    title: "Открытие новых паков временно недоступно",
+    reason: "Escrow обеспечивает возврат, но не защищает случайность от выборочного раскрытия. Новые оплаты отключены до проверенного VRF и обязательного расчёта результата. Возврат старых коммитов сохранён.",
+  },
+  forge: {
+    title: "Новые попытки ковки временно недоступны",
+    reason: "Возврат проигрышной попытки позволяет искажать шансы. Новые коммиты отключены до проверенного VRF и обязательного расчёта результата. Раскрытие и возврат старых коммитов сохранены.",
+  },
   lottery: {
     title: "Покупка билетов временно недоступна",
     reason:
@@ -60,7 +68,7 @@ export function FeatureDisabledNotice({ id }: { id: DisabledMechanicId }) {
     >
       <p className="font-semibold text-wheat-500">{m.title}</p>
       <p className="mt-1 text-straw">{m.reason}</p>
-      <p className="mt-1 text-straw">Транзакции не отправляются и resourcesа не списываются, пока механика отключена.</p>
+      <p className="mt-1 text-straw">Транзакции не отправляются и ресурсы не списываются, пока механика отключена.</p>
     </div>
   );
 }

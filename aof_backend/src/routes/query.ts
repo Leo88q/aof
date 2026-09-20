@@ -1,3 +1,4 @@
+import { serializeChainValue as deep } from "../lib/serializeChain";
 import { program } from "../provider";
 import { Router } from "express";
 import { marketProgram, connection } from "../provider";
@@ -16,21 +17,6 @@ import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 const r = Router();
 const RESOURCE_UNIT = 1_000_000_000;
 const resourceDisplay = (value: any) => Number(value?.toString?.() ?? value ?? 0) / RESOURCE_UNIT;
-
-// Нормализация: PublicKey → base58, BN → number, рекурсивно
-const num = (v: any) => (v && v.toString ? v.toString() : v);
-const deep = (obj: any): any => {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj === "object" && typeof obj.toBase58 === "function") return obj.toBase58();
-  if (typeof obj === "bigint" || (obj && obj._bn)) return num(obj);
-  if (Array.isArray(obj)) return obj.map(deep);
-  if (typeof obj === "object") {
-    const out: any = {};
-    for (const k of Object.keys(obj)) out[k] = deep(obj[k]);
-    return out;
-  }
-  return obj;
-};
 
 // Глобальный конфиг программы
 r.get("/config", async (_req, res) => {

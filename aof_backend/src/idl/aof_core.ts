@@ -8175,7 +8175,12 @@ export type AofCore = {
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 111, 111, 108]
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
               },
               {
                 "kind": "account",
@@ -8939,6 +8944,312 @@ export type AofCore = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "mintResourceOnce",
+      "discriminator": [
+        112,
+        16,
+        85,
+        114,
+        236,
+        4,
+        67,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "writable": true
+        },
+        {
+          "name": "tokenAccount",
+          "writable": true
+        },
+        {
+          "name": "treasuryToken",
+          "writable": true
+        },
+        {
+          "name": "player",
+          "docs": [
+            "создаём с нулевыми перками — mint_resource не должен блокироваться",
+            "отсутствием профиля."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenAccount.owner",
+                "account": "tokenAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "rewardReceipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "rewardId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "resourceKind"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "rewardId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "marketplaceBuyBounded",
+      "discriminator": [
+        219,
+        1,
+        7,
+        251,
+        90,
+        189,
+        167,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "writable": true
+        },
+        {
+          "name": "tool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listingVault",
+          "writable": true
+        },
+        {
+          "name": "buyerToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "maxPriceLamports",
+          "type": "u64"
+        },
+        {
+          "name": "expiresAt",
+          "type": "i64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -9395,6 +9706,19 @@ export type AofCore = {
         152,
         41,
         71
+      ]
+    },
+    {
+      "name": "rewardReceipt",
+      "discriminator": [
+        116,
+        154,
+        221,
+        22,
+        195,
+        73,
+        132,
+        89
       ]
     }
   ],
@@ -10343,6 +10667,16 @@ export type AofCore = {
       "code": 6094,
       "name": "CommitNotExpired",
       "msg": "Commit is still inside its reveal window; it cannot be expired yet"
+    },
+    {
+      "code": 6095,
+      "name": "priceLimitExceeded",
+      "msg": "Listing price exceeds the signed maximum"
+    },
+    {
+      "code": 6096,
+      "name": "quoteExpired",
+      "msg": "Quote expired or its lifetime exceeds 300 seconds"
     }
   ],
   "types": [
@@ -12498,6 +12832,43 @@ export type AofCore = {
           {
             "name": "lastCollectedAt",
             "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rewardReceipt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rewardId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "grossAmount",
+            "type": "u64"
+          },
+          {
+            "name": "claimedSlot",
+            "type": "u64"
           },
           {
             "name": "bump",

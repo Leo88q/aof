@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { redactSensitive } from "../security/redaction";
 import { db } from "../lib/db";
 
 /**
@@ -23,7 +24,7 @@ async function logAction(data: AuditInput) {
       data: {
         user: data.user || "unknown",
         action: data.action,
-        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        metadata: data.metadata ? JSON.stringify(redactSensitive(data.metadata)) : null,
         result: data.result || "unknown",
         txSig: data.txSig || null,
         programId: data.programId || null,
@@ -50,9 +51,9 @@ export function audit(action: string) {
         action,
         metadata: {
           method: req.method,
-          path: req.originalUrl,
-          body: sanitizeBody(req.body),
-          query: req.query,
+          path: req.path,
+          body: redactSensitive(req.body),
+          query: redactSensitive(req.query),
         },
         result: body?.error ? "fail" : "success",
         txSig: body?.signature || body?.sig || null,
@@ -98,9 +99,9 @@ export function sentinelAutoAudit() {
         action,
         metadata: {
           method,
-          path: req.originalUrl,
-          body: sanitizeBody(req.body),
-          query: req.query,
+          path: req.path,
+          body: redactSensitive(req.body),
+          query: redactSensitive(req.query),
           statusCode: res.statusCode,
         },
         result: body?.error || res.statusCode >= 400 ? "fail" : "success",
@@ -133,25 +134,4 @@ function makeActionName(req: Request): string {
     .replace(/\//g, "_")
     .replace(/[^a-zA-Z0-9_]/g, "_")
     .toLowerCase();
-}
-
-function sanitizeBody(body: any): any {
-  if (!body || typeof body !== "object") return body;
-
-  const clone = { ...body };
-
-  // На всякий случай не пишем чувствительные поля
-  for (const key of Object.keys(clone)) {
-    const lower = key.toLowerCase();
-    if (
-      lower.includes("secret") ||
-      lower.includes("private") ||
-      lower.includes("password") ||
-      lower.includes("token")
-    ) {
-      clone[key] = "[REDACTED]";
-    }
-  }
-
-  return clone;
 }

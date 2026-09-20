@@ -19,6 +19,10 @@ pub fn commit_handler(
     commit_hash: [u8; 32],
     use_protector: bool,
 ) -> Result<()> {
+    // A user-selected secret plus refundable expiry permits selective aborts.
+    // Do not accept new economic risk until authenticated VRF + non-optional
+    // settlement is implemented. Preserve reveal/expire for existing commits.
+    require!(false, AofError::FeatureDisabled);
     require!(slot_type < 3, AofError::InvalidAmount);
 
     let slot = &mut ctx.accounts.enchant_slot;

@@ -497,33 +497,26 @@ r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("tools_
 
 
 // [NEW] Подготовка нового минта для Крафта/Паков: создаём SPL-минт (власть = auth-PDA) + ATA владельца
-r.post("/prep-mint", requireAdmin, async (req, res) => {
+// User pays rent and network fees; the authority never sponsors arbitrary mints.
+r.post("/prep-mint", requireCircuitOpen, requireWalletLimits("tools_prep_mint"), async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const mintKp = Keypair.generate();
     const [auth] = authPda();
     const lamports = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
     const userToken = getAssociatedTokenAddressSync(mintKp.publicKey, owner);
-    const tx = new Transaction().add(
+    const tx = await coSign([
       SystemProgram.createAccount({
-        fromPubkey: AUTHORITY.publicKey,
+        fromPubkey: owner,
         newAccountPubkey: mintKp.publicKey,
         lamports,
         space: MINT_SIZE,
         programId: TOKEN_PROGRAM_ID,
       }),
-      createInitializeMintInstruction(mintKp.publicKey, 0, auth, auth),
-      createAssociatedTokenAccountIdempotentInstruction(AUTHORITY.publicKey, userToken, owner, mintKp.publicKey)
-    );
-    tx.feePayer = AUTHORITY.publicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx.partialSign(mintKp);
-    tx.partialSign(AUTHORITY);
-    const simulation = await simulateTransaction(tx);
-    if (!simulation.success) throw new Error(`Transaction simulation failed: ${simulation.error || "unknown error"}`);
-    const sig = await connection.sendRawTransaction(tx.serialize());
-    await connection.confirmTransaction(sig, "confirmed");
-    res.json({ sig, mint: mintKp.publicKey.toBase58() });
+      createInitializeMintInstruction(mintKp.publicKey, 0, auth, null),
+      createAssociatedTokenAccountIdempotentInstruction(owner, userToken, owner, mintKp.publicKey),
+    ], owner, [mintKp]);
+    res.json({ tx, mint: mintKp.publicKey.toBase58() });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

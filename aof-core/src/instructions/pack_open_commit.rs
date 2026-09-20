@@ -4,28 +4,16 @@ use crate::PackOpenCommit;
 use crate::errors::*;
 use crate::state::PackType;
 
-/// Игрок платит за пак, но SOL **не уходит в казну сразу**: сумма лежит в
-/// escrow на PDA `pack_commit` до исхода.
-///
-/// * `pack_open_reveal` — исход известен, инструмент сминчен → escrow
-///   переводится в казну (это единственная реальная revenue-точка в SOL,
-///   см. AUDIT_V3).
-/// * `pack_open_expire` — секрет потерян / сервер не сделал reveal за окно
-///   SlotHashes → escrow возвращается игроку, PDA закрывается.
-///
-/// Раньше оплата шла в казну до reveal, и потерянный секрет означал потерю
-/// денег игрока без пути возврата — поэтому инструкция была fail-closed
-/// (FeatureDisabled). С escrow ни один из двух исходов не оставляет средства
-/// зависшими, и guard снят.
-///
-/// Сервер к моменту commit уже вычислил `secret` офчейн и прислал только
-/// `sha256(secret)` — не может задним числом подобрать исход, потому что
-/// финальная энтропия домешивает ещё и хэш слота коммита (см. randomness.rs).
+/// New paid commitments are quarantined until a verified VRF settlement exists.
+/// Escrow refunds prevent loss from outages, but do not prevent the secret
+/// holder from selectively revealing favorable results. Legacy reveal/expire
+/// instructions remain available; do not remove users' recovery paths.
 pub fn handler(
     ctx: Context<PackOpenCommit>,
     _pack_type: PackType,
     commit_hash: [u8; 32],
 ) -> Result<()> {
+    require!(false, AofError::FeatureDisabled);
     let price = ctx.accounts.pack_config.price_lamports;
     require!(price > 0, AofError::ZeroAmount);
 

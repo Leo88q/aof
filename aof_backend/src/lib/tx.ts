@@ -1,6 +1,7 @@
-import { Transaction, PublicKey } from "@solana/web3.js";
-import { connection, wallet } from "../provider";
+import { Transaction, PublicKey, Signer } from "@solana/web3.js";
+import { connection, assertExpectedCluster } from "../provider";
 import { AUTHORITY } from "../config";
+import { sendConfirmedTransaction } from "./transactionLifecycle";
 import { simulateTransaction } from "../security/txSimulator";
 
 async function requireSimulation(tx: Transaction): Promise<void> {
@@ -10,7 +11,8 @@ async function requireSimulation(tx: Transaction): Promise<void> {
   }
 }
 
-export async function coSign(ix: any[], feePayer: PublicKey): Promise<string> {
+export async function coSign(ix: any[], feePayer: PublicKey, signers: Signer[] = []): Promise<string> {
+  await assertExpectedCluster();
   const tx = new Transaction().add(...ix);
   tx.feePayer = feePayer;
   tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
@@ -22,19 +24,23 @@ export async function coSign(ix: any[], feePayer: PublicKey): Promise<string> {
   if (required.some((k: any) => k.equals(AUTHORITY.publicKey))) {
     tx.partialSign(AUTHORITY);
   }
+  if (signers.length) tx.partialSign(...signers);
   await requireSimulation(tx);
   return tx.serialize({ requireAllSignatures: false }).toString("base64");
 }
 
-export async function authorityOnly(ix: any[]): Promise<string> {
+export async function authorityOnly(
+  ix: any[],
+  beforeBroadcast?: (signature: string) => Promise<void>,
+): Promise<string> {
+  await assertExpectedCluster();
   const tx = new Transaction().add(...ix);
   tx.feePayer = AUTHORITY.publicKey;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  const lifetime = await connection.getLatestBlockhash("confirmed");
+  tx.recentBlockhash = lifetime.blockhash;
   tx.sign(AUTHORITY);
   await requireSimulation(tx);
-  const sig = await connection.sendRawTransaction(tx.serialize());
-  await connection.confirmTransaction(sig, "confirmed");
-  return sig;
+  return sendConfirmedTransaction(connection, tx, lifetime, beforeBroadcast);
 }
 
 export function pk(s: string): PublicKey {

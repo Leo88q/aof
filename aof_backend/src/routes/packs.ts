@@ -16,39 +16,8 @@ const packTypeMap: Record<string, any> = {
   big: { big: {} },
 };
 
-r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async (req, res) => {
-  // The pack price is escrowed on the PackCommit PDA (not paid to the
-  // treasury) until pack_open_reveal. If the reveal never happens the
-  // commit-expirer worker (services/commit-expirer) or anyone else can call
-  // pack_open_expire after COMMIT_EXPIRY_SLOTS and the user is refunded.
-  try {
-    const user = pk(req.body.user);
-    const mint = pk(req.body.mint);
-    const packType = req.body.packType;
-    const packTypeIdx = ["small", "medium", "big"].indexOf(packType);
-    const { hash } = await newCommit(`pack:${mint.toBase58()}`);
-
-    const [config] = configPda();
-    const [packConfig] = packConfigPda(packTypeIdx);
-    const [packCommit] = packCommitPda(mint);
-    const ix = await (program.methods as any)
-      .packOpenCommit(packTypeMap[packType], hash)
-      .accounts({
-        config,
-        authority: AUTHORITY.publicKey,
-        user,
-        packConfig,
-        auth: authPda()[0],
-        mint,
-        packCommit,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const tx = await coSign([ix], user);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+r.post("/commit", (_req, res) => {
+  res.status(503).json({ error: "PACK_COMMITS_DISABLED_UNTIL_VERIFIED_RANDOMNESS_SETTLEMENT" });
 });
 
 /**

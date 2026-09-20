@@ -1,72 +1,49 @@
-version: '3.8'
-
+# Supported single-host SQLite baseline, NOT approval for a mainnet launch.
+# PostgreSQL requires a separately tested schema + data migration; a connection
+# URL cannot change the committed Prisma sqlite provider. See the audit/runbook.
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: aof-postgres
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-aof_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aof_secure_password}
-      POSTGRES_DB: ${POSTGRES_DB:-aof_production}
-    ports:
-      - "5432:5432"
-    volumes:
-      - aof_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aof_user} -d ${POSTGRES_DB:-aof_production}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
-    build:
-      context: ./aof_backend
-      dockerfile: Dockerfile
-    container_name: aof-backend
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - ./aof_backend/.env
+    build: ./aof_backend
+    restart: unless-stopped
+    env_file: ./aof_backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
     ports:
-      - "${PORT:-8080}:${PORT:-8080}"
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aof_user}:${POSTGRES_PASSWORD:-aof_secure_password}@postgres:5432/${POSTGRES_DB:-aof_production}?schema=public&connection_limit=20
+      - "127.0.0.1:${PORT:-8080}:8080"
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
+  # Opt-in recovery worker; not a second automatic writer on the SQLite DB.
   commit-expirer:
-    build:
-      context: ./aof_backend
-      dockerfile: Dockerfile
-    container_name: aof-commit-expirer
-    restart: always
-    command: ["npm", "run", "commit-expirer"]
+    profiles: [recovery]
+    build: ./aof_backend
+    restart: unless-stopped
+    command: ["node", "dist-workers/services/commit-expirer/index.js"]
     depends_on:
-      postgres:
+      backend:
         condition: service_healthy
-    env_file:
-      - ./aof_backend/.env
+    env_file: ./aof_backend/.env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aof_user}:${POSTGRES_PASSWORD:-aof_secure_password}@postgres:5432/${POSTGRES_DB:-aof_production}?schema=public&connection_limit=5
-
-  price-cranker:
-    build:
-      context: ./aof_backend
-      dockerfile: Dockerfile
-    container_name: aof-price-cranker
-    restart: always
-    command: ["npm", "run", "price-cranker"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - ./aof_backend/.env
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aof_user}:${POSTGRES_PASSWORD:-aof_secure_password}@postgres:5432/${POSTGRES_DB:-aof_production}?schema=public&connection_limit=5
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
 
 volumes:
-  aof_pg_data:
+  aof_data:

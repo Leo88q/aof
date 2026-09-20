@@ -1,0 +1,22 @@
+{
+  "label": "Illustrative 10k assets, NOT a live quote. Rent assumptions use current 82-byte Mint + 165-byte ATA + 161-byte ToolData; compressed state cost is only a placeholder benchmark. Zero operations budget EXCLUDES hosting/indexer costs.",
+  "assets": 10000,
+  "current_spl": {
+    "capacity": 1, "tree_lamports": 0, "fixed_lamports": 0,
+    "asset_rent_lamports": 3500880, "game_state_lamports": 2011440,
+    "protocol_fee_lamports": 0, "network_fee_lamports": 15000,
+    "operations_budget_lamports": 0
+  },
+  "bubblegum_hybrid": {
+    "capacity": 16384, "tree_lamports": 340000000, "fixed_lamports": 10000000,
+    "asset_rent_lamports": 0, "game_state_lamports": 2011440,
+    "protocol_fee_lamports": 90000, "network_fee_lamports": 10000,
+    "operations_budget_lamports": 0
+  },
+  "bubblegum_compressed_state": {
+    "capacity": 16384, "tree_lamports": 340000000, "fixed_lamports": 10000000,
+    "asset_rent_lamports": 0, "game_state_lamports": 15000,
+    "protocol_fee_lamports": 90000, "network_fee_lamports": 10000,
+    "operations_budget_lamports": 0
+  }
+}

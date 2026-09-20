@@ -30,7 +30,7 @@ export async function newCommit(
   });
   if (reclaimed.count === 0) {
     const existing = await prisma.commitSecret.findUnique({ where: { key } });
-    if (existing && !existing.used) {
+    if (existing) {
       throw new Error(
         existing.expiresAt < new Date()
           ? `commit_expired_unresolved: ${key}`

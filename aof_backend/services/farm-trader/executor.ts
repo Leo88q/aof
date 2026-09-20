@@ -1,3 +1,4 @@
+import { sendConfirmedTransaction } from "../../src/lib/transactionLifecycle";
 /**
  * Исполнитель сделок: вызывает ончейн инструкции от имени пользователя
  * через сессионный ключ.
@@ -26,7 +27,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import BN from "bn.js";
-import { connection, marketProgram } from "../../src/provider";
+import { connection, marketProgram, assertExpectedCluster } from "../../src/provider";
 import { AUTHORITY } from "../../src/config";
 import {
   hotMarketPoolPda,
@@ -190,10 +191,11 @@ async function executeSellIntoQueueReal(params: ExecutionParams): Promise<{
 
   const tx = new Transaction().add(ix);
   tx.feePayer = AUTHORITY.publicKey;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  await assertExpectedCluster();
+  const lifetime = await connection.getLatestBlockhash("confirmed");
+  tx.recentBlockhash = lifetime.blockhash;
   tx.partialSign(AUTHORITY, sessionKp);
-  const sig = await connection.sendRawTransaction(tx.serialize());
-  await connection.confirmTransaction(sig, "confirmed");
+  const sig = await sendConfirmedTransaction(connection, tx, lifetime);
   return { success: true, signature: sig };
 }
 

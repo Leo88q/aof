@@ -548,6 +548,59 @@ pub struct EnergyAccount {
     pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
+impl EnergyAccount {
+    /// Clamp before narrowing to u8; long absences must not wrap at 256 ticks.
+    /// Preserve fractional intervals while below cap, but never bank regen
+    /// while full and spend it a second time after the next energy debit.
+    pub fn regenerate(&mut self, now: i64) {
+        if now <= self.last_regen_at { return; }
+        if self.current >= self.cap {
+            self.current = self.cap;
+            self.last_regen_at = now;
+            return;
+        }
+        let ticks = now.saturating_sub(self.last_regen_at) / crate::constants::ENERGY_REGEN_SECONDS;
+        let missing = (self.cap - self.current) as i64;
+        self.current += ticks.min(missing) as u8;
+        if self.current == self.cap {
+            self.last_regen_at = now;
+        } else {
+            self.last_regen_at = self.last_regen_at.saturating_add(ticks * crate::constants::ENERGY_REGEN_SECONDS);
+        }
+    }
+}
+
+#[cfg(test)]
+mod energy_tests {
+    use super::*;
+    fn energy(current: u8) -> EnergyAccount {
+        EnergyAccount { owner: Pubkey::default(), current, last_regen_at: 100, cap: 10, bump: 0, buff_expires_at: 0, buff_type: 0 }
+    }
+    #[test]
+    fn long_absence_and_full_cap_do_not_wrap_or_bank() {
+        let tick = crate::constants::ENERGY_REGEN_SECONDS;
+        let mut e = energy(0);
+        e.regenerate(100 + tick * 256);
+        assert_eq!(e.current, 10);
+        e.regenerate(100 + tick * 300);
+        e.current -= 2;
+        e.regenerate(100 + tick * 300);
+        assert_eq!(e.current, 8);
+    }
+    #[test]
+    fn fractional_time_and_clock_rollback() {
+        let tick = crate::constants::ENERGY_REGEN_SECONDS;
+        let mut e = energy(0);
+        e.regenerate(100 + tick + tick / 2);
+        assert_eq!(e.current, 1);
+        assert_eq!(e.last_regen_at, 100 + tick);
+        e.regenerate(0);
+        assert_eq!(e.current, 1);
+        e.regenerate(100 + tick * 2);
+        assert_eq!(e.current, 2);
+    }
+}
+
 /// FarmTile — состояние полевого тайла (пусто/растёт/готово)
 #[account]
 #[derive(InitSpace)]
@@ -633,4 +686,17 @@ pub struct FortuneBoost {
     pub bump: u8,
     pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
     pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
+}
+
+/// Permanent replay tombstone. Never close/recycle this PDA: rent recovery would
+/// restore the ability to mint the same logical reward after a DB rollback.
+#[account]
+#[derive(InitSpace)]
+pub struct RewardReceipt {
+    pub reward_id: [u8; 32],
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub gross_amount: u64,
+    pub claimed_slot: u64,
+    pub bump: u8,
 }

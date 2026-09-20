@@ -93,3 +93,10 @@ test-ledger/
 frontend.zip
 frontend.zip.*
 ci-local-logs/
+
+# Compiled backend workers
+dist-workers/
+
+# Python check caches
+__pycache__/
+*.pyc

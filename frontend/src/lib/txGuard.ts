@@ -3,8 +3,8 @@
  * Защита от drain-атак и подозрительной активности
  */
 
+import { TransactionIntent, validateTransactionIntent } from "./transactionIntent";
 import { Connection, Transaction, PublicKey, VersionedTransaction } from "@solana/web3.js";
-import { connection } from "./wallet"; // или импортируем откуда нужно
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 
@@ -21,6 +21,9 @@ export interface GuardResult {
 }
 
 export interface GuardConfig {
+  intent?: TransactionIntent;
+  maxNetworkFeeLamports?: number;       // Includes priority fees, not rent
+  maxAccountCreationLamports?: number;  // Explicit account rent budget
   maxLamportsSpent?: number;            // Лимит явного исходящего SOL (в lamports)
   maxTokenOutflows?: Record<string, number>; // Лимиты по токенам (в base units)
   allowedPrograms?: string[];           // Разрешённые program IDs
@@ -61,6 +64,8 @@ const KNOWN_SCAM_PROGRAMS = new Set([
 ]);
 
 const DEFAULT_CONFIG: GuardConfig = {
+  maxNetworkFeeLamports: 150_000,
+  maxAccountCreationLamports: 5_000_000,
   maxLamportsSpent: 100_000, // 0.0001 SOL максимум на fees
   maxTokenOutflows: {},
   allowedPrograms: [],
@@ -74,40 +79,38 @@ const DEFAULT_CONFIG: GuardConfig = {
 export async function guardTransaction(
   tx: Transaction | VersionedTransaction,
   user: PublicKey,
-  config: GuardConfig = {}
+  config: GuardConfig = {},
+  rpc?: Pick<Connection, "simulateTransaction" | "getFeeForMessage">,
 ): Promise<GuardResult> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const warnings: string[] = [];
   let risk: RiskLevel = "LOW";
 
   try {
-    // 1. Симуляция транзакции
-    const simulation = await connection.simulateTransaction(tx as any, {
-      sigVerify: false,
-      replaceRecentBlockhash: true,
-    });
-
-    if (simulation.value.err) {
-      return {
-        safe: false,
-        risk: "HIGH",
-        reason: `Транзакция не пройдёт: ${JSON.stringify(simulation.value.err)}`,
-        warnings: ["Симуляция вернула ошибку"],
-      };
-    }
-
-    // 2. Анализируем сами инструкции, а не выдуманные строки в runtime logs.
-    // Logs do not contain reliable System/SPL transfer amounts and therefore
-    // are not a security boundary.
+    // Decode and reject dangerous opcodes BEFORE contacting the RPC.
     const instructions = collectInstructions(tx);
-    if (!instructions) {
-      return {
-        safe: false,
-        risk: "HIGH",
-        reason: "Не удалось разобрать инструкции транзакции",
-        warnings: ["Защита остановила неподдерживаемый versioned transaction"],
-      };
+    if (!instructions || instructions.length === 0) throw new Error("Unsupported or empty transaction");
+    validateInstructionPolicy(instructions, user, cfg);
+    validateTransactionIntent(instructions, cfg.intent, user);
+    const connection = rpc || (await import("./wallet")).connection;
+    // web3.js legacy simulateTransaction does not accept the config overload.
+    // A VersionedTransaction can carry a legacy Message without changing bytes.
+    const simulationTx = tx instanceof Transaction
+      ? VersionedTransaction.deserialize(tx.serialize({ requireAllSignatures: false }))
+      : tx;
+    if (cfg.intent && simulationTx.message.header.numRequiredSignatures !== 1) throw new Error("Unexpected additional signer");
+    const fee = await connection.getFeeForMessage(simulationTx.message, "confirmed");
+    if (fee.value === null || !Number.isSafeInteger(fee.value) || fee.value < 0 ||
+        fee.value > (cfg.maxNetworkFeeLamports ?? 150_000)) {
+      throw new Error("Network fee unavailable or exceeds wallet fee limit");
     }
+    const simulation = await connection.simulateTransaction(simulationTx, {
+      sigVerify: false,
+      replaceRecentBlockhash: false,
+      commitment: "confirmed",
+    });
+    if (simulation.value.err) throw new Error(`Simulation failed: ${JSON.stringify(simulation.value.err)}`);
+
     const logs = simulation.value.logs || [];
     const programsInvoked = Array.from(new Set([
       ...instructions.map((instruction) => instruction.programId),
@@ -202,6 +205,7 @@ export async function guardTransaction(
 
     return {
       safe: risk !== "HIGH",
+      reason: risk === "HIGH" ? warnings.join("; ") : undefined,
       risk,
       warnings,
       details: {
@@ -308,7 +312,64 @@ function readU64(data: Uint8Array, offset: number): number | null {
   if (data.length < offset + 8) return null;
   let value = 0;
   for (let i = 0; i < 8; i++) value += data[offset + i] * 2 ** (8 * i);
-  return Number.isSafeInteger(value) ? value : Number.MAX_SAFE_INTEGER;
+  if (!Number.isSafeInteger(value)) throw new Error("Unsafe u64 instruction amount");
+  return value;
+}
+
+/** Standard program IDs are NOT safe instructions. In particular Approve,
+ * SetAuthority, CloseAccount, nonce and Token-2022 extension instructions must
+ * never slip through simply because the token/system program was allowlisted.
+ * Only operations actually emitted by our builders are accepted here. */
+function validateInstructionPolicy(instructions: GuardInstruction[], user: PublicKey, cfg: GuardConfig): void {
+  let creationRent = 0;
+  let atas = 0;
+  const initialized = new Set<string>();
+  const created: string[] = [];
+  const auth = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("auth")], new PublicKey(AOF_PROGRAMS[5]),
+  )[0];
+  for (const ix of instructions) {
+    if (ix.programId === SYSTEM_PROGRAM_ID) {
+      const opcode = readU32(ix.data, 0);
+      if (opcode === 2 && ix.data.length === 12 && ix.keys[0]?.equals(user)) continue;
+      // Only an 82-byte classic SPL mint may be allocated by prep-mint.
+      if (opcode !== 0 || ix.data.length !== 52 || !ix.keys[0]?.equals(user) ||
+          readU64(ix.data, 12) !== 82 ||
+          new PublicKey(ix.data.slice(20, 52)).toBase58() !== TOKEN_PROGRAM_ID) {
+        throw new Error("Unsupported System Program instruction");
+      }
+      creationRent += readU64(ix.data, 4)!;
+      created.push(ix.keys[1].toBase58());
+    } else if (ix.programId === TOKEN_PROGRAM_ID) {
+      // InitializeMint / InitializeMint2 only; no direct approvals, burns or transfers.
+      if (![0, 20].includes(ix.data[0]) || ![35, 67].includes(ix.data.length) ||
+          ix.data[1] !== 0 || !new PublicKey(ix.data.slice(2, 34)).equals(auth) || ix.data[34] !== 0) {
+        throw new Error("Unsupported SPL Token instruction or mint authority");
+      }
+      initialized.add(ix.keys[0].toBase58());
+    } else if (ix.programId === TOKEN_2022_PROGRAM_ID) {
+      throw new Error("Token-2022 instructions require a separately reviewed policy");
+    } else if (ix.programId === ASSOCIATED_TOKEN_PROGRAM_ID) {
+      if (ix.data.length !== 1 || ix.data[0] !== 1 || !ix.keys[0]?.equals(user) ||
+          ix.keys[4]?.toBase58() !== SYSTEM_PROGRAM_ID || ix.keys[5]?.toBase58() !== TOKEN_PROGRAM_ID) {
+        throw new Error("Only idempotent ATA creation is permitted");
+      }
+      const expected = PublicKey.findProgramAddressSync(
+        [ix.keys[2].toBytes(), new PublicKey(TOKEN_PROGRAM_ID).toBytes(), ix.keys[3].toBytes()],
+        new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),
+      )[0];
+      if (!expected.equals(ix.keys[1]) || ++atas > 4) throw new Error("Unexpected ATA creation");
+    } else if (ix.programId === COMPUTE_BUDGET_PROGRAM_ID) {
+      const op = ix.data[0];
+      if (op === 2 && ix.data.length === 5 && readU32(ix.data, 1)! > 0 && readU32(ix.data, 1)! <= 1_400_000) continue;
+      if (op === 3 && ix.data.length === 9 && readU64(ix.data, 1)! <= 100_000) continue;
+      throw new Error("Unsupported or excessive compute budget");
+    }
+  }
+  if (created.length > 1 || created.some((mint) => !initialized.has(mint)) ||
+      initialized.size !== created.length || creationRent > (cfg.maxAccountCreationLamports ?? 5_000_000)) {
+    throw new Error("Unexpected mint allocation or excessive rent");
+  }
 }
 
 /** Sum explicit System Program transfers whose source is the connected wallet. */

@@ -145,6 +145,89 @@ describe("aof-core: security & core flows", () => {
     ).accounts({ config: configPda, authority }).rpc();
   });
 
+  it("reward receipts: atomic mint, authority/mint checks and permanent replay protection", async () => {
+    const user = Keypair.generate(); await airdrop(user);
+    const stranger = Keypair.generate(); await airdrop(stranger);
+    const userWood = await ensureAta(woodMint, user.publicKey);
+    const otherWood = await ensureAta(woodMint, stranger.publicKey);
+    const userStone = await ensureAta(stoneMint, user.publicKey);
+    const treasuryWood = await ensureAta(woodMint, authority);
+    const treasuryStone = await ensureAta(stoneMint, authority);
+    const rewardId = Array.from(crypto.randomBytes(32));
+    const rewardReceipt = pda([B("reward_receipt"), Buffer.from(rewardId)]);
+    const gross = UNIT.muln(2);
+    const accounts = {
+      config: configPda, materialMints: materialMintsPda, authority, auth: authPda,
+      mint: woodMint, tokenAccount: userWood, treasuryToken: treasuryWood, player: playerPda(user.publicKey),
+      rewardReceipt, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    };
+    await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId)
+      .accounts({ ...accounts, authority: stranger.publicKey }).signers([stranger]).rpc(), "Unauthorized");
+    await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId)
+      .accounts({ ...accounts, mint: stoneMint, tokenAccount: userStone, treasuryToken: treasuryStone }).rpc(), "InvalidResourceKind");
+    expect(await provider.connection.getAccountInfo(rewardReceipt)).to.equal(null);
+    await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
+    await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).rpc(), "Paused");
+    await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+    const before = (await balance(userWood)).add(await balance(treasuryWood));
+    await program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).rpc();
+    const receipt = await program.account.rewardReceipt.fetch(rewardReceipt);
+    expect(receipt.recipient.toBase58()).to.equal(user.publicKey.toBase58());
+    expect(receipt.mint.toBase58()).to.equal(woodMint.toBase58());
+    expect(receipt.grossAmount.toString()).to.equal(gross.toString());
+    expect((await balance(userWood)).add(await balance(treasuryWood)).sub(before).toString()).to.equal(gross.toString());
+    const after = (await balance(userWood)).toString();
+    for (const variant of [accounts, { ...accounts, tokenAccount: otherWood, player: playerPda(stranger.publicKey) },
+      { ...accounts, mint: stoneMint, tokenAccount: userStone, treasuryToken: treasuryStone }]) {
+      let rejected = false;
+      try {
+        await program.methods.mintResourceOnce({ wood: {} }, gross.addn(1), rewardId).accounts(variant).rpc();
+      } catch (error: any) {
+        const log = `${error.message} ${(error.logs || []).join(" ")}`;
+        expect(log).to.match(/already in use|already initialized|custom program error: 0x0/i);
+        rejected = true;
+      }
+      expect(rejected).to.equal(true);
+    }
+    expect((await balance(userWood)).toString()).to.equal(after);
+    // Two different signed messages for one logical reward: exactly one mint.
+    const concurrentId = Array.from(crypto.randomBytes(32));
+    const concurrentReceipt = pda([B("reward_receipt"), Buffer.from(concurrentId)]);
+    const results = await Promise.allSettled([gross, gross.addn(1)].map((amount) =>
+      program.methods.mintResourceOnce({ wood: {} }, amount, concurrentId)
+        .accounts({ ...accounts, rewardReceipt: concurrentReceipt }).rpc()));
+    expect(results.filter((result) => result.status === "fulfilled").length).to.equal(1);
+  });
+
+  it("marketplace: signed price/deadline reject before transfers and valid purchase settles", async () => {
+    const seller = Keypair.generate(); await airdrop(seller);
+    const buyer = Keypair.generate(); await airdrop(buyer);
+    const { mint, tokenAccount } = await mintTool(seller.publicKey);
+    const listing = pda([B("listing"), mint.toBuffer()]);
+    const listingVault = await ensureAta(mint, listing);
+    const buyerToken = await ensureAta(mint, buyer.publicKey);
+    const price = new BN(1_000_000);
+    await program.methods.marketplaceList(price).accounts({ config: configPda, seller: seller.publicKey,
+      mint, tool: toolPda(mint), sellerToken: tokenAccount, listing, listingVault,
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).signers([seller]).rpc();
+    const accounts = { config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority,
+      mint, tool: toolPda(mint), listing, listingVault, buyerToken,
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId };
+    const deadline = new BN(Math.floor(Date.now() / 1000) + 120);
+    const before = await provider.connection.getBalance(buyer.publicKey);
+    await expectError(program.methods.marketplaceBuyBounded(price.subn(1), deadline).accounts(accounts).signers([buyer]).rpc(), "PriceLimitExceeded");
+    await expectError(program.methods.marketplaceBuyBounded(price, new BN(1)).accounts(accounts).signers([buyer]).rpc(), "QuoteExpired");
+    const legacy = await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).instruction();
+    legacy.data = legacy.data.subarray(0, 8);
+    await expectError(provider.sendAndConfirm(new Transaction().add(legacy), [buyer]).catch((error: any) => { throw anchor.AnchorError.parse(error.logs || []) || error; }), "InstructionDidNotDeserialize");
+    await expectError(program.methods.marketplaceBuy().accounts(accounts).signers([buyer]).rpc(), "FeatureDisabled");
+    expect(await provider.connection.getBalance(buyer.publicKey)).to.equal(before);
+    expect((await balance(buyerToken)).toNumber()).to.equal(0);
+    await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).signers([buyer]).rpc();
+    expect((await balance(buyerToken)).toNumber()).to.equal(1);
+    expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(buyer.publicKey.toBase58());
+  });
+
   it("initialize is singleton (повторный вызов падает)", async () => {
     let threw = false;
     try {
@@ -155,18 +238,29 @@ describe("aof-core: security & core flows", () => {
     expect(threw).to.be.true;
   });
 
-  it("mint_resource: комиссия в казну, user+fee == amount", async () => {
+  it("mint_resource: balance deltas conserve gross mint and treasury fee with existing balances", async () => {
     const user = Keypair.generate(); await airdrop(user);
-    const ata = await ensureAta(woodMint, user.publicKey);
+    // The treasury is shared with other tests and real payouts. Pre-fund the
+    // recipient too, so this test also catches absolute-balance assertions
+    // when run alone. Neither account is assumed to start at zero.
+    const ata = await giveResource("wood", woodMint, user.publicKey, 1);
     const treasAta = await ensureAta(woodMint, authority);
-    await program.methods.mintResource({ wood: {} }, new BN(10_000)).accounts({
+    const userBefore = await balance(ata);
+    const treasuryBefore = await balance(treasAta);
+    const supplyBefore = new BN((await provider.connection.getTokenSupply(woodMint)).value.amount);
+    expect(userBefore.gtn(0)).to.equal(true);
+    expect(treasuryBefore.gtn(0)).to.equal(true);
+    const gross = new BN(10_000);
+    await program.methods.mintResource({ wood: {} }, gross).accounts({
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, mint: woodMint,
       tokenAccount: ata, treasuryToken: treasAta, player: playerPda(user.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
-    const u = Number((await provider.connection.getTokenAccountBalance(ata)).value.amount);
-    const t = Number((await provider.connection.getTokenAccountBalance(treasAta)).value.amount);
-    expect(u + t).to.equal(10_000);
-    expect(t).to.be.within(700, 1000); // база 7–10% в atomic units
+    const userDelta = (await balance(ata)).sub(userBefore);
+    const treasuryDelta = (await balance(treasAta)).sub(treasuryBefore);
+    const supplyDelta = new BN((await provider.connection.getTokenSupply(woodMint)).value.amount).sub(supplyBefore);
+    expect(userDelta.add(treasuryDelta).eq(gross)).to.equal(true, "user + treasury deltas must equal gross mint");
+    expect(supplyDelta.eq(gross)).to.equal(true, "total supply must increase by exactly the gross amount");
+    expect(treasuryDelta.gten(700) && treasuryDelta.lten(1000)).to.equal(true, "base fee must remain 7–10%");
   });
 
   it("withdraw_gas: кулдаун взводится после вывода (H1)", async () => {
@@ -375,10 +469,8 @@ describe("aof-core: security & core flows", () => {
     expect(bal).to.equal("100");
   });
 
-  it("pack commit-reveal: price is escrowed on commit, paid to treasury on reveal, tool minted", async () => {
-    // Packs are live again: pack_open_commit no longer pays the treasury up
-    // front. The price sits on the PackCommit PDA and is released only by
-    // pack_open_reveal (-> treasury) or pack_open_expire (-> user refund).
+  it("new pack commitments reject unsafe randomness without charging the user", async () => {
+    // New payments must fail atomically, including rent paid by init.
     const packConfig = pda([B("pack_config"), Buffer.from([0])]);
     const PRICE = 100_000_000;
     try {
@@ -393,60 +485,18 @@ describe("aof-core: security & core flows", () => {
     const secret = crypto.randomBytes(32);
     const commitHash = crypto.createHash("sha256").update(secret).digest();
     const packCommit = pda([B("pack_commit"), mint.toBuffer()]);
-    const treasuryBefore = await provider.connection.getBalance(authority);
-
-    await program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
+    const before = await provider.connection.getBalance(user.publicKey);
+    await expectError(program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
       config: configPda, authority, user: user.publicKey,
       packConfig, auth: authPda, mint, packCommit,
-      systemProgram: SystemProgram.programId }).signers([user]).rpc();
-
-    // Escrow: the PDA holds rent + price, the treasury has received nothing yet.
-    const commitAcc = await program.account.packCommit.fetch(packCommit);
-    expect(commitAcc.paidLamports.toNumber()).to.equal(PRICE);
-    expect(commitAcc.revealed).to.equal(false);
-    const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(
-      (await provider.connection.getAccountInfo(packCommit))!.data.length);
-    expect(await provider.connection.getBalance(packCommit)).to.equal(rentExempt + PRICE);
-    // treasury == authority == provider wallet here, and the provider pays the
-    // tx fee, so the treasury may only go DOWN by fees — never up by PRICE.
-    const treasuryAfterCommit = await provider.connection.getBalance(authority);
-    expect(treasuryAfterCommit).to.be.at.most(treasuryBefore);
-    expect(treasuryBefore - treasuryAfterCommit).to.be.below(PRICE);
-
-    // Inside the reveal window the refund path must be closed (CommitNotExpired).
-    await expectError(program.methods.packOpenExpire().accounts({
-      config: configPda, packCommit, user: user.publicKey, mint }).rpc(), "CommitNotExpired");
-    expect(await provider.connection.getBalance(packCommit)).to.equal(rentExempt + PRICE);
-
-    // Reveal: tool minted to the user, escrow forwarded to the treasury, PDA closed to user.
-    await sleep(1500); // let the commit slot land in SlotHashes
-    // In production /tools/prep-mint creates the user's ATA together with the
-    // mint (step 1/3); pack_open_reveal expects it to exist (no init here so
-    // the authority never pays rent on the player's behalf).
-    const userToken = await ensureAta(mint, user.publicKey);
-    const userBefore = await provider.connection.getBalance(user.publicKey);
-    const treasuryBeforeReveal = await provider.connection.getBalance(authority);
-    await program.methods.packOpenReveal(Array.from(secret)).accounts({
-      config: configPda, authority, packCommit, user: user.publicKey, treasury: authority,
-      packConfig, mint, userToken, toolData: toolPda(mint), auth: authPda,
-      slotHashes: SLOT_HASHES, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).rpc();
-    expect((await balance(userToken)).toNumber()).to.equal(1);
+      systemProgram: SystemProgram.programId }).signers([user]).rpc(), "FeatureDisabled");
+    expect(await provider.connection.getBalance(user.publicKey)).to.equal(before);
     expect(await provider.connection.getAccountInfo(packCommit)).to.equal(null);
-    // Treasury == authority == reveal fee payer here, so the exact delta is
-    // PRICE minus tx fee and tool_data/ATA rent it just paid; assert the escrow
-    // ended up with the user (rent back) and the PDA is empty instead.
-    expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
-    // Treasury received PRICE minus what it spent as fee payer in the same tx
-    // (tx fee + rent for tool_data, well under 0.01 SOL).
-    const treasuryDelta = (await provider.connection.getBalance(authority)) - treasuryBeforeReveal;
-    expect(treasuryDelta).to.be.above(PRICE - 10_000_000);
-    expect(treasuryDelta).to.be.at.most(PRICE);
-    const tool = await program.account.toolData.fetch(toolPda(mint));
-    expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
   });
 
-  it("forge commit-reveal: wood/stone burned + fee escrowed on commit, fee to treasury on reveal, expire blocked inside window", async () => {
-    // Forge is live again: the SOL fee is escrowed on the ForgeCommit PDA and
+  it("new forge commitments reject selective-abort randomness and roll back resource burns", async () => {
+    // Regression: even a fully funded user cannot create an unsafe commitment.
+    // Legacy design: the SOL fee is escrowed on the ForgeCommit PDA and
     // the burned wood/stone amounts are recorded so forge_attempt_expire can
     // re-mint them after the reveal window. Level-0 attempt: 200 wood + 200
     // stone + 33_000_000 lamports (+ 20_000_000 with the protector).
@@ -462,49 +512,13 @@ describe("aof-core: security & core flows", () => {
     const slotType = 0;
     const enchantSlot = pda([B("enchant_slot"), toolMint.toBuffer(), Buffer.from([slotType])]);
     const forgeCommit = pda([B("forge_commit"), toolMint.toBuffer(), Buffer.from([slotType])]);
-    const FEE = 33_000_000 + 20_000_000;
-
-    await program.methods.forgeAttemptCommit(slotType, Array.from(commitHash), true).accounts({
+    await expectError(program.methods.forgeAttemptCommit(slotType, Array.from(commitHash), true).accounts({
       config: configPda, user: user.publicKey, tool: toolPda(toolMint), toolMint, enchantSlot, forgeCommit,
       woodMint, userWood, stoneMint, userStone,
-      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).signers([user]).rpc();
-
-    expect(woodBefore.sub(await balance(userWood)).toString()).to.equal(UNIT.muln(200).toString());
-    expect(stoneBefore.sub(await balance(userStone)).toString()).to.equal(UNIT.muln(200).toString());
-    const fc = await program.account.forgeCommit.fetch(forgeCommit);
-    expect(fc.paidLamports.toNumber()).to.equal(FEE);
-    expect(fc.woodBurned.toString()).to.equal(UNIT.muln(200).toString());
-    expect(fc.useProtector).to.equal(true);
-    const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(
-      (await provider.connection.getAccountInfo(forgeCommit))!.data.length);
-    expect(await provider.connection.getBalance(forgeCommit)).to.equal(rentExempt + FEE);
-    // Same caveat as in the pack test: the provider wallet (== treasury) pays
-    // tx fees, so it may only decrease slightly — it must not receive FEE.
-    const treasuryAfterCommit = await provider.connection.getBalance(authority);
-    expect(treasuryAfterCommit).to.be.at.most(treasuryBefore);
-    expect(treasuryBefore - treasuryAfterCommit).to.be.below(FEE);
-
-    // Refund path is closed while a reveal is still possible.
-    await expectError(program.methods.forgeAttemptExpire().accounts({
-      config: configPda, forgeCommit, user: user.publicKey, auth: authPda,
-      woodMint, userWood, stoneMint, userStone, tokenProgram: TOKEN_PROGRAM_ID }).rpc(), "CommitNotExpired");
-    expect((await balance(userWood)).toString()).to.equal(woodBefore.sub(UNIT.muln(200)).toString());
-
-    await sleep(1500);
-    const userBefore = await provider.connection.getBalance(user.publicKey);
-    const treasuryBeforeReveal = await provider.connection.getBalance(authority);
-    await program.methods.forgeAttemptReveal(Array.from(secret)).accounts({
-      config: configPda, authority, enchantSlot, forgeCommit, payer: user.publicKey, treasury: authority,
-      slotHashes: SLOT_HASHES }).rpc();
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).signers([user]).rpc(), "FeatureDisabled");
+    expect((await balance(userWood)).toString()).to.equal(woodBefore.toString());
+    expect((await balance(userStone)).toString()).to.equal(stoneBefore.toString());
     expect(await provider.connection.getAccountInfo(forgeCommit)).to.equal(null);
-    // Rent back to the user; escrow went to the treasury (== authority == fee payer here).
-    expect(await provider.connection.getBalance(user.publicKey)).to.equal(userBefore + rentExempt);
-    // Treasury got FEE minus the reveal tx fee it paid (no rent is created here).
-    const treasuryDelta = (await provider.connection.getBalance(authority)) - treasuryBeforeReveal;
-    expect(treasuryDelta).to.be.above(FEE - 100_000);
-    expect(treasuryDelta).to.be.at.most(FEE);
-    const slot = await program.account.enchantSlot.fetch(enchantSlot);
-    expect(slot.level).to.be.oneOf([0, 1]); // level-0 attempt: success -> 1, any failure -> 0
   });
 
   it("disabled commit-reveal mechanics stay fail-closed: reroll_random_commit", async () => {

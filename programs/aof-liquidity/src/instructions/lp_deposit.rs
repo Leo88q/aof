@@ -66,8 +66,7 @@ pub fn handler(ctx: Context<LpDeposit>, rarity: u8, amount: u64) -> Result<()> {
     require!(amount > 0, LiquidityError::ZeroAmount);
 
     let pool = &ctx.accounts.lp_pool;
-    let price = pool.share_price();
-    let shares_minted = amount / price;
+    let shares_minted = pool.shares_for_deposit(amount)?;
     require!(shares_minted > 0, LiquidityError::ZeroAmount);
 
     // Перевод маскот-токена в пул

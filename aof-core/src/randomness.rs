@@ -3,35 +3,12 @@ use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::sysvar::slot_hashes::SlotHashes;
 use crate::errors::AofError;
 
-/// [НОВОЕ] Общий commit-reveal модуль для честного on-chain рандома.
-///
-/// Ни в присланном Ronin-бэкенде (index.js, `makeRng(seedHex)`), ни в
-/// первой версии этой Anchor-программы честного, проверяемого on-chain
-/// рандома не было вообще — вся рандомизация считалась офчейн, сервер
-/// технически мог подобрать выгодный себе исход, если seed фиксировался
-/// до того, как игрок терял возможность отменить операцию (см. AUDIT_V1).
-///
-/// Схема здесь:
-/// 1. `commit`: authority (сервер) заранее вычисляет `secret: [u8;32]`
-///    офчейн и присылает on-chain только `sha256(secret)`. Ни сервер, ни
-///    игрок не могут в этот момент повлиять на будущий исход, потому что
-///    финальная энтропия домешивает ещё и ончейн-данные, которых на
-///    момент коммита ещё не существует (см. п.2).
-/// 2. `reveal`: сервер публикует `secret`. Программа проверяет
-///    `sha256(secret) == commit_hash`, затем берёт хэш слота, в котором
-///    был сделан commit (`SlotHashes` sysvar — тот самый способ,
-///    которым на Solana исторически делали дешёвый ончейн-рандом до
-///    массового распространения VRF), которого на момент commit ещё не
-///    существовало → ни сервер, ни игрок не могли предугадать итоговую
-///    энтропию заранее. Комбинация `secret ⊕ slot_hash ⊕ tag` — финальная
-///    энтропия конкретной операции.
-///
-/// `SlotHashes` хранит только последние ~512 слотов — если reveal не
-/// сделан вовремя, коммит "протухает" (`CommitExpired`). Это осознанный
-/// компромисс: без интеграции полноценного VRF (Switchboard и т.п.,
-/// отдельная внешняя интеграция, не делаю её здесь вслепую без доступа
-/// к их SDK/programID в этой среде) это самый честный рандом, который
-/// можно реализовать полностью внутри одной программы.
+/// LEGACY randomness, NOT a VRF and NOT manipulation-resistant for paid games.
+/// Slot hashes are public and secret holders can withhold unfavorable reveals.
+/// A refundable expiry restores liveness but creates a free-option bias. New
+/// economic commitments using this module must remain disabled until replaced
+/// by request-bound, authenticated randomness and mandatory settlement.
+/// Retained to settle historical commitments only.
 
 pub fn hash_secret(secret: &[u8; 32]) -> [u8; 32] {
     hashv(&[secret]).to_bytes()

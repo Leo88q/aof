@@ -3,7 +3,6 @@ import {
   ConnectionProvider,
   WalletProvider as SolanaWalletProvider,
 } from "@solana/wallet-adapter-react";
-import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 
 const RPC_URL = (import.meta as any).env?.VITE_RPC_URL || "https://api.devnet.solana.com";
 

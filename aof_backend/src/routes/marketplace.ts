@@ -1,3 +1,4 @@
+import { parsePurchaseBounds } from "../security/purchaseBounds";
 import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -49,6 +50,7 @@ r.post("/list", requireCircuitOpen, requireWalletLimits("marketplace__list"), re
 
 r.post("/buy", requireCircuitOpen, requireWalletLimits("marketplace__buy"), requireIdempotency, async (req, res) => {
   try {
+    const bounds = parsePurchaseBounds(req.body);
     const buyer = pk(req.body.buyer);
     const seller = pk(req.body.seller);
     const treasury = pk(req.body.treasury);
@@ -60,7 +62,7 @@ r.post("/buy", requireCircuitOpen, requireWalletLimits("marketplace__buy"), requ
     const buyerToken = getAssociatedTokenAddressSync(mint, buyer);
 
     const ix = await (program.methods as any)
-      .marketplaceBuy()
+      .marketplaceBuyBounded(new BN(bounds.maxPriceLamports), new BN(bounds.expiresAt))
       .accounts({
         config,
         buyer,

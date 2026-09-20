@@ -66,16 +66,8 @@ pub fn handler(ctx: Context<LpWithdraw>, rarity: u8, shares: u64) -> Result<()> 
     // implementation used share_price (which already included fees) and then
     // added fees_share again, allowing the instruction to request more tokens
     // than the vault could ever contain.
-    let amount_principal = pool
-        .mascot_reserve
-        .checked_mul(shares)
-        .ok_or(LiquidityError::MathOverflow)?
-        / pool.total_shares;
-    let fees_share = pool
-        .accumulated_fees
-        .checked_mul(shares)
-        .ok_or(LiquidityError::MathOverflow)?
-        / pool.total_shares;
+    let amount_principal = crate::state::lp_pool::pro_rata(pool.mascot_reserve, shares, pool.total_shares)?;
+    let fees_share = crate::state::lp_pool::pro_rata(pool.accumulated_fees, shares, pool.total_shares)?;
     let total_out = amount_principal
         .checked_add(fees_share)
         .ok_or(LiquidityError::MathOverflow)?;
@@ -101,12 +93,12 @@ pub fn handler(ctx: Context<LpWithdraw>, rarity: u8, shares: u64) -> Result<()> 
 
     // Обновление состояния
     let pool = &mut ctx.accounts.lp_pool;
-    pool.total_shares = pool.total_shares.saturating_sub(shares);
-    pool.mascot_reserve = pool.mascot_reserve.saturating_sub(amount_principal);
-    pool.accumulated_fees = pool.accumulated_fees.saturating_sub(fees_share);
+    pool.total_shares = pool.total_shares.checked_sub(shares).ok_or(LiquidityError::MathOverflow)?;
+    pool.mascot_reserve = pool.mascot_reserve.checked_sub(amount_principal).ok_or(LiquidityError::MathOverflow)?;
+    pool.accumulated_fees = pool.accumulated_fees.checked_sub(fees_share).ok_or(LiquidityError::MathOverflow)?;
 
     let position = &mut ctx.accounts.lp_position;
-    position.shares = position.shares.saturating_sub(shares);
+    position.shares = position.shares.checked_sub(shares).ok_or(LiquidityError::MathOverflow)?;
 
     emit!(LpWithdrawn {
         user: ctx.accounts.user.key(),

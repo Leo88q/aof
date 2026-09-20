@@ -281,6 +281,49 @@ pub struct MintResource<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(kind: ResourceKind, amount: u64, reward_id: [u8; 32])]
+pub struct MintResourceOnce<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized,
+        constraint = !config.paused @ AofError::Paused
+    )]
+    pub config: Account<'info, Config>,
+    /// CHECK: [БЛОК L] MaterialMints PDA для новых ресурсов (Box — stack overflow fix)
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    /// CHECK: auth PDA
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = token_account.mint == mint.key() @ AofError::InvalidMint
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+    // [НОВОЕ]: withdraw-fee bps по перкам (см. instructions::mint_resource,
+    // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
+    #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
+    pub treasury_token: Account<'info, TokenAccount>,
+    /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
+    /// создаём с нулевыми перками — mint_resource не должен блокироваться
+    /// отсутствием профиля.
+    #[account(
+        init_if_needed, payer = authority, space = PLAYER_SPACE,
+        seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
+    )]
+    pub player: Account<'info, Player>,
+    pub token_program: Program<'info, Token>,
+    #[account(init, payer = authority, space = 8 + RewardReceipt::INIT_SPACE,
+        seeds = [b"reward_receipt", reward_id.as_ref()], bump)]
+    pub reward_receipt: Account<'info, RewardReceipt>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(kind: ResourceKind, amount: u64)]
 pub struct BurnResource<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
@@ -2534,6 +2577,11 @@ pub mod aof_core {
         instructions::mint_resource::handler(ctx, kind, amount)
     }
 
+    pub fn mint_resource_once(ctx: Context<MintResourceOnce>, kind: ResourceKind, amount: u64, reward_id: [u8; 32]) -> Result<()> {
+        instructions::mint_resource_once::handler(ctx, kind, amount, reward_id)
+    }
+
+
     pub fn burn_resource(ctx: Context<BurnResource>, kind: ResourceKind, amount: u64) -> Result<()> {
         instructions::burn_resource::handler(ctx, kind, amount)
     }
@@ -2691,8 +2739,13 @@ pub mod aof_core {
     pub fn marketplace_list(ctx: Context<MarketplaceList>, price_lamports: u64) -> Result<()> {
         instructions::marketplace::list_handler(ctx, price_lamports)
     }
+    // Keep the old discriminator fail-closed. A new discriminator is essential:
+    // an older deployed binary may ignore trailing args on the unbounded call.
     pub fn marketplace_buy(ctx: Context<MarketplaceBuy>) -> Result<()> {
-        instructions::marketplace::buy_handler(ctx)
+        err!(AofError::FeatureDisabled)
+    }
+    pub fn marketplace_buy_bounded(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expires_at: i64) -> Result<()> {
+        instructions::marketplace::buy_handler(ctx, max_price_lamports, expires_at)
     }
     pub fn marketplace_cancel(ctx: Context<MarketplaceCancel>) -> Result<()> {
         instructions::marketplace::cancel_handler(ctx)

@@ -10,16 +10,15 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint:aof-colors": "stylelint \"src/ui/**/*.css\" --config stylelint.aof.config.mjs --max-warnings 0",
-    "test:aof-stylelint": "node --test scripts/stylelint/no-raw-color.test.mjs"
+    "test:aof-stylelint": "node --test scripts/stylelint/no-raw-color.test.mjs",
+    "test:security": "tsx --test tests/security.test.ts"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
-    "@solana/spl-token": "^0.4.15",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
-    "@solana/wallet-adapter-wallets": "^0.19.38",
     "@solana/web3.js": "^1.95.3",
     "axios": "^1.20.0",
     "framer-motion": "^11.0.0",
@@ -46,7 +45,9 @@
     "storybook": "^8.6.18",
     "stylelint": "^16.26.1",
     "tailwindcss": "^3.4.4",
+    "tsx": "^4.23.15",
     "typescript": "^5.5.4",
-    "vite": "^5.3.0"
+    "vite": "^5.3.0",
+    "@solana/spl-token": "^0.4.15"
   }
 }

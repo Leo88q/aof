@@ -10,8 +10,14 @@ if (isProduction && (!process.env.RPC_URL || /devnet|localhost|127\.0\.0\.1/i.te
 if (!process.env.PROGRAM_ID || !process.env.AUTHORITY_SECRET_KEY || !process.env.TREASURY_PUBKEY) {
   throw new Error("PROGRAM_ID, AUTHORITY_SECRET_KEY and TREASURY_PUBKEY are required");
 }
-if (isProduction && !process.env.ADMIN_TOKEN) {
-  throw new Error("Production requires ADMIN_TOKEN");
+if (isProduction) {
+  if (!process.env.ADMIN_TOKEN || process.env.ADMIN_TOKEN.length < 32) {
+    throw new Error("Production requires a random ADMIN_TOKEN of at least 32 characters");
+  }
+  if (!process.env.EXPECTED_GENESIS_HASH) throw new Error("Production requires EXPECTED_GENESIS_HASH");
+  if (!process.env.WALLET_PROOF_DOMAIN || !/^[A-Za-z0-9._-]{1,64}$/.test(process.env.WALLET_PROOF_DOMAIN)) {
+    throw new Error("Production requires a deployment-specific WALLET_PROOF_DOMAIN");
+  }
 }
 export const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID);
 export const AUTHORITY: Keypair = Keypair.fromSecretKey(
