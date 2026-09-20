@@ -85,7 +85,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 
 | Приоритет | Задача | Комментарий |
 |---|---|---|
-| P0 | **PostgreSQL** | Подготовлено (§1d). Осталось: cut-over на staging по runbook, PG service container в CI для `test:idempotency-db`, затем production. |
+| P0 | **PostgreSQL** | Подготовлено (§1d) + CI job `backend-postgres` (postgres:16 service container: migrate diff/deploy baseline, tsc против PG-клиента, `test:idempotency-db:pg`). Осталось: cut-over на staging по runbook, затем production. |
 | P0 | Staging окружение | Тот же compose с `NODE_ENV=staging`? **Нет** — `nonProductionOnly` и другие guard'ы смотрят на `production`. Staging должен идти с `NODE_ENV=production` и своими ключами, иначе он не проверяет prod-поведение. |
 | ~~P0~~ done | Workers в compose | Сделано (profiles). **Открытый вопрос** остаётся: нужен ли `farm-trader` в проде. |
 | P0 | Backup + restore drill | Скрипт готов. Осталось: cron на хосте + первый реальный drill на staging (в песочнице нет `sqlite3`, скрипт не исполнялся). |

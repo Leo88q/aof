@@ -24,6 +24,7 @@
     "test:resource-registry": "ts-node --project tsconfig.json --transpile-only scripts/resourceRegistrySelfTest.ts",
     "test:security-invariants": "ts-node --project tsconfig.json --transpile-only scripts/securityInvariantSelfTest.ts",
     "test:idempotency-db": "ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
+    "test:idempotency-db:pg": "prisma generate --schema prisma/postgres/schema.prisma && ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
     "test:audit-security": "ts-node --project tsconfig.json --transpile-only scripts/auditSecuritySelfTest.ts",
     "test:admin-auth": "ts-node --project tsconfig.json --transpile-only scripts/adminAuthSelfTest.ts",
     "test:chain-indexer": "ts-node --project tsconfig.json --transpile-only scripts/chainIndexerSelfTest.ts",

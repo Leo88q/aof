@@ -59,5 +59,5 @@ SQLite — один writer на файл. Из-за этого каждый во
 
 - Убрать profiles у воркеров в основном compose (сейчас это делает overlay).
 - Бэкапы: `pg_dump -Fc` вместо `sqlite3 .backup` в `scripts/backup-db.sh` (drill-шаг сохранить).
-- `test:idempotency-db` прогнать против PG в CI (service container `postgres:16`).
+- ~~`test:idempotency-db` прогнать против PG в CI~~ — сделано: job `backend-postgres` (service container `postgres:16-alpine`) гоняет `prisma migrate diff` по PG shadow-схеме, `migrate deploy` baseline'а, `tsc` против PG-клиента и `npm run test:idempotency-db:pg`.
 - Затем — `Json` колонки и `AuditLog.action` → бизнес-события.
