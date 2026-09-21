@@ -3,7 +3,9 @@ use anchor_lang::prelude::*;
 pub const CONFIG_SEED: &[u8] = b"market_config";
 pub const POOL_SEED: &[u8] = b"hot_pool";
 pub const LIMIT_ORDER_SEED: &[u8] = b"hot_limit_order";
-pub const CONFIG_SPACE: usize = 8 + 32 + 32 + 32 + 32 + 2 + 1 + 1;
+// [AUDIT F-02] derive from InitSpace so the rotation fields cannot be
+// forgotten the next time the struct grows.
+pub const CONFIG_SPACE: usize = 8 + MarketConfig::INIT_SPACE;
 pub const POOL_SPACE: usize = 8 + 1 + 8 + 8 + 8 + 2 + 2 + 8 + 8 + 8 + 8 + 8 + 2 + 2 + 1 + 1;
 pub const LIMIT_ORDER_SPACE: usize = 8 + 32 + 1 + 1 + 1 + 8 + 8 + 1;
 
@@ -23,6 +25,11 @@ pub struct MarketConfig {
     pub fee_bps: u16,
     pub paused: bool,
     pub bump: u8,
+    /// [AUDIT F-02] Two-step authority rotation (see `set_pending_authority` /
+    /// `accept_authority`). Without it the authority captured at bootstrap was
+    /// permanent in every one of the six programs.
+    pub pending_authority: Pubkey,
+    pub authority_updated_at: i64,
 }
 
 #[account]

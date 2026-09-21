@@ -18,4 +18,12 @@ pub enum RebirthError {
     CooldownActive,
     #[msg("Rebirth is disabled until the full reset is atomic")]
     FeatureDisabled,
+
+    // ===== [AUDIT F-02] authority rotation =====
+    #[msg("No authority rotation is pending")]
+    NoPendingAuthority,
+    #[msg("Signer is not the pending authority")]
+    NotPendingAuthority,
+    #[msg("Invalid input")]
+    InvalidInput,
 }

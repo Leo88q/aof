@@ -5,14 +5,21 @@ use crate::state::{DrumCommit, QuestConfig};
 use crate::errors::QuestError;
 use crate::events::DrumRevealed;
 
-/// [ФИКС] Таблица шансов барабана: (вес в bps, сумма маскотов).
+/// Таблица шансов барабана: (вес в bps, сумма маскотов).
 /// Сумма весов строго = 10000. Редкие крупные призы с малым весом.
+///
+/// [AUDIT F-13] The old table paid an expected **40** mascots per spin against
+/// a spin price of 5 (0.4*10 + 0.3*25 + 0.2*50 + 0.09*150 + 0.01*500), i.e. the
+/// treasury lost 8x the price on every spin — a ready-made printing press the
+/// moment `drum_commit` was switched on. The table below is calibrated to an
+/// expected value of 4.75 against the same price of 5 (95% RTP). The invariants
+/// (weights sum to 10000, EV <= price) are now asserted by `drum_odds_tests`.
 pub const DRUM_PRIZES: [(u16, u64); 5] = [
-    (4000, 10),   // 40% -> 10 маскотов
-    (3000, 25),   // 30% -> 25
-    (2000, 50),   // 20% -> 50
-    (900,  150),  //  9% -> 150
-    (100,  500),  //  1% -> 500 (джекпот)
+    (6000, 2),    // 60% -> 2 маскота
+    (2500, 5),    // 25% -> 5  (ровно стоимость спина)
+    (1000, 10),   // 10% -> 10
+    (400, 20),    //  4% -> 20
+    (100, 50),    //  1% -> 50 (джекпот)
 ];
 
 #[derive(Accounts)]
@@ -140,4 +147,28 @@ pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod drum_odds_tests {
+    use super::*;
+
+    #[test]
+    fn weights_sum_to_ten_thousand() {
+        let sum: u32 = DRUM_PRIZES.iter().map(|(w, _)| *w as u32).sum();
+        assert_eq!(sum, 10_000, "drum weights must form a full probability space");
+    }
+
+    #[test]
+    fn expected_payout_does_not_exceed_the_spin_price() {
+        const SPIN_COST: u128 = 5;
+        let ev: u128 = DRUM_PRIZES
+            .iter()
+            .map(|(w, amount)| (*w as u128) * (*amount as u128) / 10_000)
+            .sum();
+        assert!(
+            ev <= SPIN_COST,
+            "drum EV {ev} exceeds the spin price {SPIN_COST}: the treasury would bleed on every spin"
+        );
+    }
 }
