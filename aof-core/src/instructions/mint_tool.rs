@@ -37,21 +37,18 @@ pub fn handler(ctx: Context<MintTool>, tool_type: String, rarity: Rarity) -> Res
     );
     token::mint_to(cpi_ctx, 1)?;
     // record tool data; owner derived from ATA owner
-    let td = &mut ctx.accounts.tool_data;
-    td.mint = ctx.accounts.mint.key();
-    td.owner = ctx.accounts.token_account.owner;
-    td.tool_type = tool_type;
-    td.rarity = rarity;
-    td.durability = MAX_DURABILITY;
-    td.is_mining = false;
-    td.mining_end = 0;
-    td.staked = false;
-    td.unlock_at = 0;
-    td.operator = ctx.accounts.token_account.owner;
+    let owner = ctx.accounts.token_account.owner;
+    init_tool_data(
+        &mut ctx.accounts.tool_data,
+        ctx.accounts.mint.key(),
+        owner,
+        tool_type.clone(),
+        rarity,
+    );
     emit!(ToolMinted {
-        to: ctx.accounts.token_account.owner,
+        to: owner,
         mint: ctx.accounts.mint.key(),
-        tool_type: td.tool_type.clone(),
+        tool_type,
         rarity,
     });
     Ok(())

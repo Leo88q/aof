@@ -538,8 +538,12 @@ pub struct MintResourceOnce<'info> {
     #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
     pub issuance_cap: Box<Account<'info, IssuanceCap>>,
     pub token_program: Program<'info, Token>,
+    /// [AUDIT F-28] The replay tombstone used to be keyed by `reward_id` alone,
+    /// in one global namespace: a receipt minted for wallet A permanently
+    /// blocked the same reward ID for wallet B (a cross-wallet DoS that looked
+    /// like "reward already claimed"). The recipient is now part of the seed.
     #[account(init, payer = authority, space = 8 + RewardReceipt::INIT_SPACE,
-        seeds = [b"reward_receipt", reward_id.as_ref()], bump)]
+        seeds = [b"reward_receipt", token_account.owner.as_ref(), reward_id.as_ref()], bump)]
     pub reward_receipt: Box<Account<'info, RewardReceipt>>,
     pub system_program: Program<'info, System>,
 }

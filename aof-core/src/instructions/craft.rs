@@ -172,18 +172,13 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
 
     // `init_if_needed` does not populate ToolData. Persist the canonical
     // ownership/operator state in the same transaction as the NFT mint.
-    let new_tool = &mut ctx.accounts.new_tool_data;
-    new_tool.mint = ctx.accounts.new_mint.key();
-    new_tool.owner = ctx.accounts.user.key();
-    new_tool.tool_type = tool_type.clone();
-    new_tool.rarity = rarity;
-    new_tool.durability = MAX_DURABILITY;
-    new_tool.is_mining = false;
-    new_tool.mining_end = 0;
-    new_tool.last_mined_hours = 0;
-    new_tool.staked = false;
-    new_tool.unlock_at = 0;
-    new_tool.operator = ctx.accounts.user.key();
+    init_tool_data(
+        &mut ctx.accounts.new_tool_data,
+        ctx.accounts.new_mint.key(),
+        ctx.accounts.user.key(),
+        tool_type.clone(),
+        rarity,
+    );
 
     ctx.accounts.rarity_counter.minted_count =
         minted.checked_add(1).ok_or(AofError::MathOverflow)?;

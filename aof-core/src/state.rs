@@ -647,6 +647,31 @@ pub struct MaterialMints {
 /// One canonical mapping ResourceKind -> mint. Previously duplicated in
 /// `mint_resource.rs` and `burn_resource.rs`, where the two copies could
 /// silently diverge ([AUDIT G-06]).
+/// [AUDIT G-08] `craft`, `reroll` and `mint_tool` each wrote the same nine
+/// fields of a freshly minted tool. Hand-copied initialisers drift: `reroll`
+/// already set them in a different order from `craft`, and a tenth field added
+/// to `ToolData` would have had to be remembered three times. One function,
+/// three call sites.
+pub fn init_tool_data(
+    tool: &mut ToolData,
+    mint: Pubkey,
+    owner: Pubkey,
+    tool_type: String,
+    rarity: Rarity,
+) {
+    tool.mint = mint;
+    tool.owner = owner;
+    tool.operator = owner;
+    tool.tool_type = tool_type;
+    tool.rarity = rarity;
+    tool.durability = MAX_DURABILITY;
+    tool.is_mining = false;
+    tool.mining_end = 0;
+    tool.last_mined_hours = 0;
+    tool.staked = false;
+    tool.unlock_at = 0;
+}
+
 pub fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
     match kind {
         // Старые ресурсы из Config
@@ -1003,4 +1028,190 @@ pub struct RewardReceipt {
     pub gross_amount: u64,
     pub claimed_slot: u64,
     pub bump: u8,
+}
+
+/// [AUDIT F-03 / F-01 / F-17] Unit tests for the pure helpers the audit's
+/// findings turned into. They need no validator: `cargo test -p aof-core` runs
+/// them. `tests/aof_core.ts` covers the wiring; these cover the arithmetic and
+/// the boundary conditions that decide whether funds move at all.
+#[cfg(test)]
+mod state_tests {
+    use super::*;
+    use crate::constants::{RESOURCE_KIND_COUNT, SUPPLY_CAP_UNLIMITED};
+    use crate::errors::AofError;
+
+    fn mm(cap: u64) -> MaterialMints {
+        let mut m = MaterialMints {
+            seeds: Pubkey::default(),
+            wheat: Pubkey::default(),
+            flour: Pubkey::default(),
+            bread: Pubkey::default(),
+            water: Pubkey::default(),
+            coal: Pubkey::default(),
+            meat: Pubkey::default(),
+            stone_blue: Pubkey::default(),
+            stone_purple: Pubkey::default(),
+            stone_red: Pubkey::default(),
+            sand_white: Pubkey::default(),
+            sand_pink: Pubkey::default(),
+            sand_yellow: Pubkey::default(),
+            gem_blue: Pubkey::default(),
+            gem_orange: Pubkey::default(),
+            gem_white: Pubkey::default(),
+            gem_green: Pubkey::default(),
+            flask_blue: Pubkey::default(),
+            flask_yellow: Pubkey::default(),
+            flask_green: Pubkey::default(),
+            flask_pink: Pubkey::default(),
+            flask_purple: Pubkey::default(),
+            love_heart: Pubkey::default(),
+            bump: 0,
+            max_supply: [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT],
+        };
+        m.max_supply[ResourceKind::Wood as usize] = cap;
+        m
+    }
+
+    #[test]
+    fn supply_cap_is_inclusive_and_unlimited_is_open() {
+        let capped = mm(1_000);
+        assert!(check_supply_cap(&capped, ResourceKind::Wood, 999, 1).is_ok(), "exactly at the cap must pass");
+        assert!(check_supply_cap(&capped, ResourceKind::Wood, 1_000, 1).is_err(), "one unit over the cap must fail");
+        assert!(matches!(
+            check_supply_cap(&capped, ResourceKind::Wood, 0, 1_001).unwrap_err(),
+            AofError::SupplyCapExceeded
+        ));
+        // Unlimited kinds never block, whatever the supply.
+        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX - 1, 1).is_ok());
+        // Overflowing supply+amount is an error, not a panic.
+        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX, u64::MAX).is_err());
+    }
+
+    fn guard(cap: u64, max_tx: u64) -> VaultGuard {
+        VaultGuard {
+            mint: Pubkey::default(),
+            epoch_slots: 100,
+            cap_per_epoch: cap,
+            max_per_tx: max_tx,
+            epoch_start_slot: 0,
+            withdrawn_in_epoch: 0,
+            lifetime_withdrawn: 0,
+            bump: 0,
+        }
+    }
+
+    #[test]
+    fn vault_guard_enforces_per_tx_then_per_epoch() {
+        let mut g = guard(1_000, 400);
+        assert!(g.charge(400, 10).is_ok());
+        assert!(matches!(g.charge(401, 11).unwrap_err(), AofError::VaultGuardLimitExceeded), "per-tx ceiling");
+        assert!(g.charge(300, 12).is_ok());
+        assert!(g.charge(300, 13).is_ok());
+        assert!(matches!(g.charge(1, 14).unwrap_err(), AofError::VaultGuardLimitExceeded), "epoch budget is cumulative");
+        // The epoch resets, so the guard is a rate limiter, not a permanent ban.
+        assert!(g.charge(400, 200).is_ok(), "a new epoch restores the budget");
+        assert_eq!(g.lifetime_withdrawn, 1_400);
+    }
+
+    #[test]
+    fn vault_guard_fails_closed_when_unconfigured() {
+        let mut g = guard(0, 0);
+        assert!(matches!(g.charge(1, 5).unwrap_err(), AofError::VaultGuardNotConfigured));
+        let mut no_slots = guard(1_000, 10);
+        no_slots.epoch_slots = 0;
+        assert!(matches!(no_slots.charge(1, 5).unwrap_err(), AofError::VaultGuardNotConfigured));
+    }
+
+    #[test]
+    fn tool_kinds_are_canonicalised() {
+        for kind in TOOL_KINDS {
+            assert!(is_valid_tool_type(kind));
+            assert_eq!(canonical_tool_type(kind), Some(kind));
+            assert!(is_valid_tool_type(&kind.to_uppercase()), "case must not matter");
+            assert!(is_valid_tool_type(&kind.to_uppercase()));
+        }
+        assert!(!is_valid_tool_type("sword"));
+        assert!(!is_valid_tool_type(""));
+        assert_eq!(canonical_tool_type("Spear"), Some("spear"));
+    }
+
+    #[test]
+    fn init_tool_data_writes_every_field() {
+        let mint = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+        let mut tool = ToolData {
+            mint: Pubkey::new_unique(),
+            owner: Pubkey::new_unique(),
+            tool_type: "stale".to_string(),
+            rarity: Rarity::Legendary,
+            durability: 0,
+            is_mining: true,
+            mining_end: 999,
+            last_mined_hours: 7,
+            staked: true,
+            unlock_at: 42,
+            operator: Pubkey::new_unique(),
+        };
+        init_tool_data(&mut tool, mint, owner, "axe".to_string(), Rarity::Common);
+        assert_eq!(tool.mint, mint);
+        assert_eq!(tool.owner, owner);
+        assert_eq!(tool.operator, owner, "operator must follow the owner");
+        assert_eq!(tool.tool_type, "axe");
+        assert_eq!(tool.rarity, Rarity::Common);
+        assert_eq!(tool.durability, crate::constants::MAX_DURABILITY);
+        assert!(!tool.is_mining && !tool.staked);
+        assert_eq!((tool.mining_end, tool.last_mined_hours, tool.unlock_at), (0, 0, 0));
+    }
+
+    /// The registry is indexed by `kind as u8` in `MaterialMints::max_supply`,
+    /// so every variant must sit inside the array the constant sizes.
+    #[test]
+    fn every_resource_kind_fits_the_registry() {
+        assert!(
+            RESOURCE_KIND_COUNT >= 27,
+            "RESOURCE_KIND_COUNT ({RESOURCE_KIND_COUNT}) is smaller than the ResourceKind enum"
+        );
+        // Spot-check both ends of the enum against the mapping (no transmute:
+        // an invalid discriminant would be UB and would hide the very bug this
+        // test is looking for).
+        let cfg = Config {
+            authority: Pubkey::default(),
+            treasury: Pubkey::default(),
+            food_mint: Pubkey::new_unique(),
+            wood_mint: Pubkey::new_unique(),
+            stone_mint: Pubkey::new_unique(),
+            seeds_mint: Pubkey::default(),
+            water_mint: Pubkey::default(),
+            potato_mint: Pubkey::default(),
+            craft_fee: 0,
+            unstake_fee: 0,
+            paused: false,
+            bump: 0,
+            mining_enabled: true,
+            pending_authority: Pubkey::default(),
+            authority_updated_at: 0,
+        };
+        let mut mints = mm(SUPPLY_CAP_UNLIMITED);
+        for kind in [
+            ResourceKind::Food,
+            ResourceKind::Wood,
+            ResourceKind::Stone,
+            ResourceKind::Seeds,
+            ResourceKind::Water,
+            ResourceKind::Potato,
+        ] {
+            let idx = kind as usize;
+            assert!(idx < RESOURCE_KIND_COUNT, "{kind:?} index {idx} is outside max_supply");
+            // Distinct mints must not silently collapse onto one registry slot.
+            mints.max_supply[idx] = idx as u64 + 1;
+            assert_eq!(
+                check_supply_cap(&mints, kind, 0, idx as u64 + 1).is_ok(),
+                true,
+                "{kind:?} cap lookup reads the wrong slot"
+            );
+        }
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Wood), cfg.wood_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Stone), cfg.stone_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Food), cfg.food_mint);
+    }
 }

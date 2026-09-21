@@ -126,18 +126,13 @@ pub fn handler(ctx: Context<Reroll>, new_type: String) -> Result<()> {
     ctx.accounts.tool_a.durability = 0;
     ctx.accounts.tool_b.durability = 0;
 
-    let td = &mut ctx.accounts.new_tool_data;
-    td.mint = ctx.accounts.new_mint.key();
-    td.owner = ctx.accounts.user.key();
-    td.tool_type = new_type.clone();
-    td.rarity = new_rarity;
-    td.durability = MAX_DURABILITY;
-    td.is_mining = false;
-    td.mining_end = 0;
-    td.staked = false;
-    td.unlock_at = 0;
-    td.last_mined_hours = 0;
-    td.operator = ctx.accounts.user.key();
+    init_tool_data(
+        &mut ctx.accounts.new_tool_data,
+        ctx.accounts.new_mint.key(),
+        ctx.accounts.user.key(),
+        new_type.clone(),
+        new_rarity,
+    );
 
     ctx.accounts.rarity_counter.minted_count = minted
         .checked_add(1)
