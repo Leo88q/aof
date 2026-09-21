@@ -2,7 +2,9 @@ import type { Connection } from "@solana/web3.js";
 import type { InboxItem, PrismaClient } from "@prisma/client";
 import { assertRewardReceipt, RewardReceiptConflict } from "./rewardReceipt";
 
-type ReceiptReader = (id: string) => Promise<{ recipient: string; mint: string; grossAmount: string } | null>;
+/// [AUDIT F-28] The receipt tombstone is keyed by (recipient, reward_id), so a
+/// reader that only knows the inbox id would look in the wrong namespace.
+type ReceiptReader = (id: string, recipient: string) => Promise<{ recipient: string; mint: string; grossAmount: string } | null>;
 
 /** Finalized receipt is authoritative for v1 rewards, even if a duplicate retry
  * signature failed. Never turn that failure into a second logical payout.
@@ -33,7 +35,7 @@ export async function reconcileInboxClaims(
       let paid = false;
       if (row.rewardVersion === 1) {
         if (!readReceipt || !row.claimMint || !row.rewardAmount) continue;
-        const receipt = await readReceipt(row.id); // throws on RPC/owner/decode error
+        const receipt = await readReceipt(row.id, row.user); // throws on RPC/owner/decode error
         if (receipt) {
           try {
             assertRewardReceipt(receipt, {

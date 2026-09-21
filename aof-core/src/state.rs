@@ -1113,8 +1113,10 @@ mod state_tests {
         ));
         // Unlimited kinds never block, whatever the supply.
         assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX - 1, 1).is_ok());
-        // Overflowing supply+amount is an error, not a panic.
-        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX, u64::MAX).is_err());
+        // Overflowing supply+amount is an error, not a panic - on a CAPPED
+        // kind. An unlimited kind returns before the addition (there is no
+        // ceiling to compare against), so it stays Ok by design.
+        assert!(check_supply_cap(&capped, ResourceKind::Wood, u64::MAX, u64::MAX).is_err());
     }
 
     fn guard(cap: u64, max_tx: u64) -> VaultGuard {
@@ -1417,7 +1419,9 @@ mod property_tests {
             for _ in 0..25 {
                 let roll = rng.next_u64();
                 let idx = weighted_pick(roll, &weights);
-                let r = roll % 10_000;
+                // u32 on both sides: `weighted_pick` reduces the roll modulo
+                // 10_000 and the bucket sums are accumulated as u32.
+                let r = (roll % 10_000) as u32;
                 let inclusive: u32 = weights[..=idx].iter().map(|w| *w as u32).sum();
                 let exclusive: u32 = weights[..idx].iter().map(|w| *w as u32).sum();
                 assert!(idx < weights.len(), "index {idx} out of range");
@@ -1436,9 +1440,11 @@ mod property_tests {
         for kind in TOOL_KINDS {
             for variant in [kind.to_string(), kind.to_uppercase(), kind.to_lowercase()] {
                 let c = canonical_tool_type(&variant).unwrap_or_else(|| panic!("{variant:?} must canonicalise"));
-                assert_eq!(c, *kind, "case changed the canonical value of {variant:?}");
+                // `kind` is already a `&str` (arrays iterate by value here);
+                // `*kind` would be an unsized `str`.
+                assert_eq!(c, kind, "case changed the canonical value of {variant:?}");
                 assert!(is_valid_tool_type(c));
-                assert_eq!(canonical_tool_type(c), Some(*kind), "canonicalisation is not idempotent");
+                assert_eq!(canonical_tool_type(c), Some(kind), "canonicalisation is not idempotent");
             }
         }
         const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ";

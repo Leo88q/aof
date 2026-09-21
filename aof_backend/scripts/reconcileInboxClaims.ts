@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { fetchRewardReceipt } from "../src/lib/rewardReceipt";
-import { Connection } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { db } from "../src/lib/db";
 import { reconcileInboxClaims } from "../src/lib/rewardReconciliation";
 
@@ -12,12 +12,19 @@ async function main() {
   if (await rpc.getGenesisHash() !== process.env.EXPECTED_GENESIS_HASH) throw new Error("Wrong Solana cluster");
   const name = "inbox-rewards-v1";
   const saved = await db.reconciliationCursor.findUnique({ where: { name } });
-  const resolved = await reconcileInboxClaims(db, rpc, (id) => fetchRewardReceipt(rpc, id), 10, {
+  const resolved = await reconcileInboxClaims(
+    db,
+    rpc,
+    // [AUDIT F-28] the on-chain receipt is per (recipient, reward_id).
+    (id, recipient) => fetchRewardReceipt(rpc, id, new PublicKey(recipient)),
+    10,
+    {
     cursor: saved?.lastId ?? undefined,
-    checkpoint: async (lastId) => {
-      await db.reconciliationCursor.upsert({ where: { name }, create: { name, lastId }, update: { lastId } });
+      checkpoint: async (lastId) => {
+        await db.reconciliationCursor.upsert({ where: { name }, create: { name, lastId }, update: { lastId } });
+      },
     },
-  });
+  );
   const quarantined = await db.inboxItem.count({ where: { claimState: "quarantined" } });
   console.log({ resolved, quarantined });
 }

@@ -4,7 +4,7 @@ use crate::constants::*;
 use crate::Reroll;
 use crate::errors::*;
 use crate::events::*;
-use crate::state::Rarity;
+use crate::state::{canonical_tool_type, init_tool_data, Rarity};
 
 /// [ПРИМЕЧАНИЕ]: несмотря на название, это детерминированная механика
 /// "сжечь 2 инструмента одной редкости → получить 1 следующей", без RNG.

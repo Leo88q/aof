@@ -373,8 +373,14 @@ describe("aof-core: security & core flows", () => {
     const user = Keypair.generate(); await airdrop(user);
     const acc = { config: configPda, user: user.publicKey, gastank: gastankPda(user.publicKey), systemProgram: SystemProgram.programId };
     await program.methods.depositGas(new BN(1_000_000_000)).accounts(acc).signers([user]).rpc();
-    await program.methods.withdrawGas(new BN(100_000)).accounts(acc).signers([user]).rpc();
-    await expectError(program.methods.withdrawGas(new BN(100_000)).accounts(acc).signers([user]).rpc(), "CooldownNotExpired");
+    // [AUDIT F-20] The 12h window is armed only above
+    // GASTANK_INSTANT_WITHDRAW_MICROS (200_000 micros = 0.2 SOL), so a player
+    // keeps access to small amounts of their own funds. Pin the threshold from
+    // both sides: exactly at it stays instant, one micro over arms the cooldown.
+    await program.methods.withdrawGas(new BN(200_000)).accounts(acc).signers([user]).rpc();
+    await program.methods.withdrawGas(new BN(200_001)).accounts(acc).signers([user]).rpc();
+    // Once armed, even a 1-micro withdrawal must wait out the full cooldown.
+    await expectError(program.methods.withdrawGas(new BN(1)).accounts(acc).signers([user]).rpc(), "CooldownNotExpired");
   });
 
   it("unstake до unlock падает (C6)", async () => {
@@ -607,7 +613,11 @@ describe("aof-core: security & core flows", () => {
     // re-mint them after the reveal window. Level-0 attempt: 200 wood + 200
     // stone + 33_000_000 lamports (+ 20_000_000 with the protector).
     const user = Keypair.generate(); await airdrop(user);
-    const { mint: toolMint } = await mintTool(user.publicKey, "pickaxe");
+    // [AUDIT F-17] mint_tool canonicalises tool_type against TOOL_KINDS and
+    // rejects anything outside that set, so the fixture has to use a canonical
+    // kind ("pick"); "pickaxe" now dies in setup with InvalidToolType before the
+    // forge call is ever sent.
+    const { mint: toolMint } = await mintTool(user.publicKey, "pick");
     const userWood = await giveResource("wood", woodMint, user.publicKey, 1000);
     const userStone = await giveResource("stone", stoneMint, user.publicKey, 1000);
     const woodBefore = await balance(userWood);
@@ -815,7 +825,12 @@ describe("aof-core: security & core flows", () => {
       // Un-configured mint: the guard PDA does not exist, so the withdrawal is
       // impossible at all (fail closed).
       await expectError(pay(UNIT), "AccountNotInitialized");
-      await program.methods.initVaultGuard(new BN(1_000), UNIT.muln(10), UNIT.muln(3))
+      // `init_vault_guard` rejects epoch_slots outside
+      // [ISSUANCE_EPOCH_MIN_SLOTS; ISSUANCE_EPOCH_MAX_SLOTS] = [1_500; 6_480_000]
+      // with InvalidVaultGuardParams, so the fixture has to stay in range. 2_000
+      // slots is far longer than this test runs, so the epoch cannot roll under
+      // it and the budget assertions below stay meaningful.
+      await program.methods.initVaultGuard(new BN(2_000), UNIT.muln(10), UNIT.muln(3))
         .accounts({ config: configPda, authority, mint: woodMint, vaultGuard: guard, systemProgram: SystemProgram.programId })
         .rpc();
       await expectError(pay(UNIT.muln(5)), "VaultGuardLimitExceeded"); // above max_per_tx
@@ -862,7 +877,13 @@ describe("aof-core: security & core flows", () => {
         sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([seller]).rpc();
       // Before the fix the second `init` collided with the stale PDA and the
-      // NFT lost its liquidity permanently.
+      // NFT lost its liquidity permanently. `marketplace_cancel` now closes
+      // BOTH accounts it holds: the listing PDA (`close = seller`, which is
+      // what frees the seed for the second `init`) and the listing vault ATA
+      // (`token::close_account`, handing its rent back to the seller). The
+      // vault is a plain `Account<TokenAccount>` in `MarketplaceList`, so the
+      // client has to recreate the ATA at the same address before relisting.
+      await ensureAta(mint, listing);
       await program.methods.marketplaceList(new BN(2_000)).accounts(listAcc).signers([seller]).rpc();
       expect((await program.account.listing.fetch(listing)).priceLamports.toString()).to.equal("2000");
       expect((await program.account.listing.fetch(listing)).active).to.equal(true);
