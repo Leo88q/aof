@@ -23,8 +23,14 @@ pub fn handler(ctx: Context<DepositGas>, amount: u64) -> Result<()> {
         ),
         amount,
     )?;
-    // credit gastank in micros (lamports / 1000)
-    let micros = lamports_to_micros(amount)?;
+    // [AUDIT F-20] Credit micros for the deposit plus any dust carried over
+    // from previous sub-micro deposits, and keep the new remainder. Nothing is
+    // lost: the leftover becomes the first lamports of the next deposit.
+    let total = amount
+        .checked_add(ctx.accounts.gastank.dust_lamports)
+        .ok_or(AofError::MathOverflow)?;
+    let micros = lamports_to_micros(total)?;
+    ctx.accounts.gastank.dust_lamports = total % MICROS_TO_LAMPORTS;
     ctx.accounts.gastank.owner = ctx.accounts.user.key();
     ctx.accounts.gastank.balance_micros = ctx
         .accounts

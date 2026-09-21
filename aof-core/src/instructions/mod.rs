@@ -1,4 +1,6 @@
 pub mod initialize;
+pub mod authority;
+pub mod admin_config;
 pub mod set_fees;
 pub mod set_paused;
 pub mod set_resource_mints;

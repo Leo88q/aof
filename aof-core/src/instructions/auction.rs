@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::{self, Token, Transfer};
+use anchor_spl::token::{self, Token, Transfer, CloseAccount};
 use crate::constants::*;
 use crate::{AuctionCreateCtx, AuctionBidCtx, AuctionSettleCtx};
 use crate::errors::*;
@@ -144,6 +144,21 @@ pub fn settle_handler(ctx: Context<AuctionSettleCtx>) -> Result<()> {
             1,
         )?;
     }
+
+    // [AUDIT F-24] Recover the escrow ATA rent; the auction PDA itself is
+    // closed by the `close = seller` constraint on the Accounts struct.
+    let bump = ctx.bumps.auction;
+    let mint_key = ctx.accounts.mint.key();
+    let seeds: &[&[u8]] = &[AUCTION_SEED, mint_key.as_ref(), &[bump]];
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        token::CloseAccount {
+            account: ctx.accounts.auction_vault.to_account_info(),
+            destination: ctx.accounts.seller.to_account_info(),
+            authority: ctx.accounts.auction.to_account_info(),
+        },
+        &[seeds],
+    ))?;
 
     ctx.accounts.auction.active = false;
     Ok(())

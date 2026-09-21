@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::{self, Token, Transfer};
+use anchor_spl::token::{self, Token, Transfer, CloseAccount};
 use crate::constants::*;
 use crate::{MarketplaceList, MarketplaceBuy, MarketplaceCancel};
 use crate::errors::*;
@@ -77,6 +77,18 @@ pub fn buy_handler(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expire
         1,
     )?;
 
+    // [AUDIT F-24] Recover the escrow ATA rent; the PDA itself is closed by the
+    // `close = seller` constraint on the Accounts struct.
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        token::CloseAccount {
+            account: ctx.accounts.listing_vault.to_account_info(),
+            destination: ctx.accounts.seller.to_account_info(),
+            authority: ctx.accounts.listing.to_account_info(),
+        },
+        &[seeds],
+    ))?;
+
     ctx.accounts.listing.active = false;
     ctx.accounts.tool.owner = ctx.accounts.buyer.key();
     ctx.accounts.tool.operator = ctx.accounts.buyer.key();
@@ -107,6 +119,16 @@ pub fn cancel_handler(ctx: Context<MarketplaceCancel>) -> Result<()> {
         ),
         1,
     )?;
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        CloseAccount {
+            account: ctx.accounts.listing_vault.to_account_info(),
+            destination: ctx.accounts.seller.to_account_info(),
+            authority: ctx.accounts.listing.to_account_info(),
+        },
+        &[seeds],
+    ))?;
+
     ctx.accounts.listing.active = false;
     Ok(())
 }

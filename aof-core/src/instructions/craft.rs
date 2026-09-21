@@ -8,6 +8,9 @@ use crate::Craft;
 
 pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {
     require!(tool_type.len() <= 32, AofError::ToolTypeTooLong);
+    let tool_type = canonical_tool_type(&tool_type)
+        .ok_or(AofError::InvalidToolType)?
+        .to_string();
     require!(rarity != Rarity::Common, AofError::InvalidRarityForCraft);
 
     let idx = rarity.craft_index().ok_or(AofError::InvalidRarityForCraft)?;

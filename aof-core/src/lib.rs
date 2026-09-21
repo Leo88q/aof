@@ -565,6 +565,10 @@ pub struct BurnResource<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// [AUDIT F-22] `token_account` used to be validated only by `mint` and
+/// `amount == 0`; its owner became `ToolData.owner`/`operator`. The intended
+/// recipient is now an explicit account and has to own the destination ATA, so
+/// the authority can no longer hand a tool to an arbitrary wallet.
 #[derive(Accounts)]
 #[instruction(tool_type: String, rarity: Rarity)]
 pub struct MintTool<'info> {
@@ -586,8 +590,11 @@ pub struct MintTool<'info> {
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
-    #[account(mut, constraint = token_account.mint == mint.key(), constraint = token_account.amount == 0)]
+    #[account(mut, constraint = token_account.mint == mint.key(), constraint = token_account.amount == 0, constraint = token_account.owner == recipient.key() @ AofError::Unauthorized)]
     pub token_account: Account<'info, TokenAccount>,
+    /// CHECK: explicit recipient of the minted tool; must own `token_account`.
+    #[account(mut)]
+    pub recipient: UncheckedAccount<'info>,
     #[account(
         init_if_needed,
         payer = authority,
@@ -760,6 +767,13 @@ pub struct Craft<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// [AUDIT F-09] `reroll` (burn 2 tools of rarity R -> mint 1 of R+1) cost only
+/// 0.06 SOL of gas: no resources, no `rarity_counter` movement. Sixteen Common
+/// tools and 0.90 SOL therefore produced a Legendary, while the craft path for
+/// the same result costs 2 750 WOOD / 2 120 STONE / 1 430 FOOD / 710 SEEDS /
+/// 540 WATER / 630 POTATO (and grows with every craft). Reroll now burns the
+/// same bundle the craft curve charges for the target rarity and increments the
+/// rarity counter, so the two progression tracks finally share one sink.
 #[derive(Accounts)]
 #[instruction(new_type: String)]
 pub struct Reroll<'info> {
@@ -804,8 +818,12 @@ pub struct Reroll<'info> {
     pub mint_b: Box<Account<'info, Mint>>,
     #[account(mut, constraint = token_b.mint == mint_b.key(), constraint = token_b.owner == user.key(), constraint = token_b.amount == 1)]
     pub token_b: Box<Account<'info, TokenAccount>>,
+    // [AUDIT F-22] `Craft` and `MintTool` both require decimals == 0 here; the
+    // reroll path did not, so a reroll onto a 9-decimal mint would create a
+    // ToolData claiming ownership of 1 atomic unit of a fungible token.
     #[account(
         mut,
+        constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
         constraint = new_mint.supply == 0 @ AofError::InvalidMint
     )]
@@ -823,6 +841,39 @@ pub struct Reroll<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
+    // ===== [AUDIT F-09] resource sink + bonding curve counter =====
+    #[account(
+        mut,
+        seeds = [RARITY_COUNTER_SEED, &[tool_a.rarity.to_u8().saturating_add(1)]],
+        bump
+    )]
+    pub rarity_counter: Box<Account<'info, RarityCounter>>,
+    #[account(seeds = [CRAFT_ECONOMY_SEED], bump = craft_economy.bump)]
+    pub craft_economy: Box<Account<'info, CraftEconomy>>,
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
+    pub user_wood: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
+    pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.food_mint)]
+    pub food_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
+    pub user_food: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.seeds_mint)]
+    pub seeds_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_seeds.mint == seeds_mint.key(), constraint = user_seeds.owner == user.key())]
+    pub user_seeds: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.water_mint)]
+    pub water_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
+    pub user_water: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.potato_mint)]
+    pub potato_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_potato.mint == potato_mint.key(), constraint = user_potato.owner == user.key())]
+    pub user_potato: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1103,6 +1154,16 @@ pub struct CollectorStake<'info> {
         bump
     )]
     pub staked_collector: Account<'info, StakedCollector>,
+    /// [AUDIT F-16] Allowlist entry created by `register_collector_mint`. The
+    /// perk is granted only for mints the authority explicitly registered, and
+    /// the entry carries the `CollectorKind`, so the caller cannot claim
+    /// Historian perks with a Medallion NFT.
+    #[account(
+        seeds = [COLLECTOR_ALLOW_SEED, mint.key().as_ref()],
+        bump = collector_allow.bump,
+        constraint = collector_allow.kind == kind @ AofError::CollectorMintNotAllowed
+    )]
+    pub collector_allow: Account<'info, CollectorAllowEntry>,
     #[account(
         init_if_needed,
         payer = user,
@@ -1846,8 +1907,11 @@ pub struct MarketplaceBuy<'info> {
         constraint = !tool.is_mining @ AofError::NotActive
     )]
     pub tool: Account<'info, ToolData>,
+    /// [AUDIT F-24] The listing PDA and its escrow ATA are closed on sale, so
+    /// the rent comes back and the NFT can be listed again by its new owner.
     #[account(
         mut,
+        close = seller,
         seeds = [LISTING_SEED, mint.key().as_ref()],
         bump,
         constraint = listing.mint == mint.key() @ AofError::InvalidMint
@@ -1863,9 +1927,12 @@ pub struct MarketplaceBuy<'info> {
 
 #[derive(Accounts)]
 pub struct MarketplaceCancel<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [LISTING_SEED, mint.key().as_ref()], bump, constraint = listing.seller == seller.key() @ AofError::Unauthorized)]
+    /// [AUDIT F-10/F-24] Closing here is what makes relisting possible.
+    #[account(mut, close = seller, seeds = [LISTING_SEED, mint.key().as_ref()], bump, constraint = listing.seller == seller.key() @ AofError::Unauthorized)]
     pub listing: Account<'info, Listing>,
     #[account(mut)]
     pub seller: Signer<'info>,
@@ -1898,7 +1965,17 @@ pub struct AuctionCreateCtx<'info> {
     pub tool: Account<'info, ToolData>,
     #[account(mut, constraint = seller_token.mint == mint.key(), constraint = seller_token.owner == seller.key(), constraint = seller_token.amount == 1)]
     pub seller_token: Account<'info, TokenAccount>,
-    #[account(init, payer = seller, space = AUCTION_SPACE, seeds = [AUCTION_SEED, mint.key().as_ref()], bump)]
+    /// [AUDIT F-10] Same one-shot bug as the marketplace listing: `init` on
+    /// `[AUCTION_SEED, mint]` plus a PDA that was never closed meant one auction
+    /// per NFT for its whole lifetime.
+    #[account(
+        init_if_needed,
+        payer = seller,
+        space = AUCTION_SPACE,
+        seeds = [AUCTION_SEED, mint.key().as_ref()],
+        bump,
+        constraint = !auction.active @ AofError::StillActive
+    )]
     pub auction: Account<'info, Auction>,
     #[account(mut, constraint = auction_vault.owner == auction.key(), constraint = auction_vault.mint == mint.key())]
     pub auction_vault: Account<'info, TokenAccount>,
@@ -1929,7 +2006,9 @@ pub struct AuctionSettleCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [AUCTION_SEED, mint.key().as_ref()], bump)]
+    /// [AUDIT F-24] Settling returns the auction rent (and the escrow ATA rent)
+    /// to the seller and lets the NFT be auctioned again.
+    #[account(mut, close = seller, seeds = [AUCTION_SEED, mint.key().as_ref()], bump)]
     pub auction: Account<'info, Auction>,
     /// CHECK: продавец, получатель оплаты
     #[account(mut, address = auction.seller)]
@@ -2012,6 +2091,8 @@ pub struct OfferAcceptCtx<'info> {
 
 #[derive(Accounts)]
 pub struct OfferCancelCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     pub mint: Account<'info, Mint>,
     #[account(
         mut,
@@ -2091,6 +2172,8 @@ pub struct RentalStartCtx<'info> {
 
 #[derive(Accounts)]
 pub struct RentalEndCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     pub caller: Signer<'info>,
     pub mint: Account<'info, Mint>,
     #[account(
@@ -2116,6 +2199,8 @@ pub struct RentalEndCtx<'info> {
 
 #[derive(Accounts)]
 pub struct RentalRevokeCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub mint: Account<'info, Mint>,
@@ -2391,6 +2476,8 @@ pub struct CollectBread<'info> {
 // [БЛОК L] Обновление погоды (permissionless)
 #[derive(Accounts)]
 pub struct WeatherCrank<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub cranker: Signer<'info>,
     #[account(
@@ -2523,6 +2610,8 @@ pub struct PlaceSellOrder<'info> {
 
 #[derive(Accounts)]
 pub struct CancelBuyOrder<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
@@ -2532,13 +2621,20 @@ pub struct CancelBuyOrder<'info> {
         seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()],
         bump,
         constraint = order.maker == maker.key() @ AofError::Unauthorized,
-        constraint = order.mint == mint.key() @ AofError::InvalidMint
+        constraint = order.mint == mint.key() @ AofError::InvalidMint,
+        // [AUDIT F-21] Without this, a maker could call `cancel_buy_order` on a
+        // SELL order: the handler would compute `price * amount_remaining` out
+        // of the order's lamports and then close the account, leaving the
+        // escrowed tokens in `order_vault` with nobody able to sign for them.
+        constraint = order.is_buy @ AofError::InvalidAmount
     )]
     pub order: Account<'info, ResourceOrder>,
 }
 
 #[derive(Accounts)]
 pub struct CancelSellOrder<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
     pub mint: Account<'info, Mint>,
@@ -2548,7 +2644,9 @@ pub struct CancelSellOrder<'info> {
         seeds = [RESOURCE_ORDER_SEED, maker.key().as_ref(), mint.key().as_ref()],
         bump,
         constraint = order.maker == maker.key() @ AofError::Unauthorized,
-        constraint = order.mint == mint.key() @ AofError::InvalidMint
+        constraint = order.mint == mint.key() @ AofError::InvalidMint,
+        // [AUDIT F-21] mirror of the check in CancelBuyOrder.
+        constraint = !order.is_buy @ AofError::InvalidAmount
     )]
     pub order: Account<'info, ResourceOrder>,
     #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
@@ -2604,7 +2702,8 @@ pub struct CraftOrderCreateCtx<'info> {
 
 #[derive(Accounts)]
 pub struct CraftOrderFulfillCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    /// [AUDIT F-19] the pause must also stop premium payouts.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub fulfiller: Signer<'info>,
@@ -2638,6 +2737,9 @@ pub struct CraftOrderFulfillCtx<'info> {
 
 #[derive(Accounts)]
 pub struct CraftOrderCancelCtx<'info> {
+    /// [AUDIT F-19] cancelling returns escrowed SOL, so it honours the pause.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
     #[account(mut)]
     pub creator: Signer<'info>,
     #[account(
@@ -2755,6 +2857,74 @@ pub mod aof_core {
 
     pub fn init_craft_economy(ctx: Context<InitCraftEconomy>) -> Result<()> {
         instructions::init_craft_economy::handler(ctx)
+    }
+
+    // =================================================================
+    // [AUDIT F-02] Authority rotation (two-step: propose -> accept)
+    // =================================================================
+    pub fn set_pending_authority(ctx: Context<SetPendingAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::set_pending_authority(ctx, new_authority)
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::accept_authority(ctx)
+    }
+
+    pub fn cancel_pending_authority(ctx: Context<CancelPendingAuthority>) -> Result<()> {
+        instructions::cancel_pending_authority(ctx)
+    }
+
+    // =================================================================
+    // [AUDIT F-27] On-chain mining kill-switch
+    // =================================================================
+    pub fn set_mining_enabled(ctx: Context<SetMiningEnabled>, enabled: bool) -> Result<()> {
+        instructions::set_mining_enabled(ctx, enabled)
+    }
+
+    // =================================================================
+    // [AUDIT F-01] Vault withdrawal guards
+    // =================================================================
+    pub fn init_vault_guard(
+        ctx: Context<InitVaultGuard>,
+        epoch_slots: u64,
+        cap_per_epoch: u64,
+        max_per_tx: u64,
+    ) -> Result<()> {
+        instructions::pay_out::init_vault_guard_handler(ctx, epoch_slots, cap_per_epoch, max_per_tx)
+    }
+
+    pub fn set_vault_guard(
+        ctx: Context<SetVaultGuard>,
+        epoch_slots: u64,
+        cap_per_epoch: u64,
+        max_per_tx: u64,
+    ) -> Result<()> {
+        instructions::pay_out::set_vault_guard_handler(ctx, epoch_slots, cap_per_epoch, max_per_tx)
+    }
+
+    // =================================================================
+    // [AUDIT F-03] Global supply ceilings
+    // =================================================================
+    pub fn set_supply_cap(ctx: Context<SetSupplyCap>, kind: ResourceKind, max_supply: u64) -> Result<()> {
+        instructions::set_supply_cap(ctx, kind, max_supply)
+    }
+
+    // =================================================================
+    // [AUDIT F-16] Collector perk allowlist
+    // =================================================================
+    pub fn register_collector_mint(ctx: Context<RegisterCollectorMint>, kind: CollectorKind) -> Result<()> {
+        instructions::collector_stake::register_handler(ctx, kind)
+    }
+
+    pub fn revoke_collector_mint(ctx: Context<RevokeCollectorMint>) -> Result<()> {
+        instructions::collector_stake::revoke_handler(ctx)
+    }
+
+    // =================================================================
+    // [AUDIT F-23] Lottery round recovery
+    // =================================================================
+    pub fn refund_lottery_round(ctx: Context<RefundLotteryRound>, round_id: u64) -> Result<()> {
+        instructions::lottery::refund_round_handler(ctx, round_id)
     }
 
     pub fn set_craft_economy(

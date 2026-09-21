@@ -32,6 +32,23 @@ pub struct Config {
     pub authority_updated_at: i64,  // 8
 }
 
+/// [AUDIT F-17] Canonical tool kinds. `ToolData.tool_type` is a free-form
+/// String, and `mint_tool` accepted any string up to 32 bytes. A tool minted as
+/// "Spear" (capital S) or "sword" produced nothing while mining (the mapping was
+/// case-sensitive in exploration and simply missing for spear) and could not be
+/// repaired. Every entry point now normalises to this set.
+pub const TOOL_KINDS: [&str; 5] = ["axe", "pick", "bow", "spear", "reaper"];
+
+pub fn is_valid_tool_type(tool_type: &str) -> bool {
+    TOOL_KINDS.iter().any(|k| tool_type.eq_ignore_ascii_case(k))
+}
+
+/// Lower-case canonical spelling, so "Axe" and "AXE" produce the same stored
+/// value and every comparison downstream is unambiguous.
+pub fn canonical_tool_type(tool_type: &str) -> Option<&'static str> {
+    TOOL_KINDS.iter().copied().find(|k| tool_type.eq_ignore_ascii_case(k))
+}
+
 impl Config {
     pub fn is_resource_mint(&self, materials: &MaterialMints, mint: &Pubkey) -> bool {
         let m = mint;
@@ -122,6 +139,12 @@ pub struct GasTank {
     pub owner: Pubkey,              // 32
     pub balance_micros: u64,        // 8 (SOL-micros, 1e6 per SOL)
     pub cooldown_until: i64,        // 8
+    /// [AUDIT F-20] Lamports that arrived but do not yet add up to a whole
+    /// micro (1 micro = 1000 lamports). `deposit_gas` used to floor every
+    /// deposit, so anything below 1000 lamports was credited as zero and could
+    /// never be withdrawn. The remainder is now carried over to the next
+    /// deposit instead of being swallowed by the PDA.
+    pub dust_lamports: u64,         // 8
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
