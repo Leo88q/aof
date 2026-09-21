@@ -347,11 +347,20 @@ export function ExtraSections({ id }: { id: string }) {
   if (id === 'trade') {
     return (
       <>
+        {/* [AUDIT G-05] "six ways to trade" while aof-market is off: the
+            venue list now states which ones are actually executable. */}
         <Section title="Шесть способов торговли">
           <div className="site-grid">
             {tradeMethods.map((t) => (
               <article key={t.id} className="site-card site-paper">
-                <h3>{t.name}</h3>
+                <h3>
+                  {t.name}{' '}
+                  {!t.live && (
+                    <span className="site-guide-warn" title="Программа aof-market пока не исполняет торговые инструкции">
+                      — не запущено
+                    </span>
+                  )}
+                </h3>
                 <p className="site-guide-meta">{t.speed} · риск: {t.risk} · контроль: {t.control}</p>
                 <p>{t.description}</p>
                 <blockquote className="site-narrative">{t.narrative}</blockquote>
