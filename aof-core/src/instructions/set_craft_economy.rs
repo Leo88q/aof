@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::events::CraftEconomyUpdated;
 use crate::SetCraftEconomy;
 
 pub fn handler(
@@ -13,5 +14,6 @@ pub fn handler(
     e.stone_base = stone_base;
     e.wood_mult = wood_mult;
     e.stone_mult = stone_mult;
+    emit!(CraftEconomyUpdated { wood_base, stone_base, wood_mult, stone_mult, authority: ctx.accounts.authority.key(), slot: Clock::get()?.slot });
     Ok(())
 }

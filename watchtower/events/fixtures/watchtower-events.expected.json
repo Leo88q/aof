@@ -607,7 +607,7 @@
       "occurredAt": "2026-09-20T10:11:00.000Z",
       "slot": "400000011",
       "signature": "aZwocJRrmQDXqU5Y97tPLn3GaFJJuDFXWtnLzj6ULxUoGNa7NA5DYiGaszKfAR3hyk3gH1m81EDSKpg11111111",
-      "playerId": "749372901540f3a7f3f12a7d9e9449f703da3684e8f2cb19d72c52f3d2f984c4",
+      "playerId": null,
       "counterpartyId": null,
       "asset": null,
       "amount": "9000000",
@@ -645,6 +645,98 @@
         "eventIndex": 0
       },
       "attributes": {}
+    },
+    {
+      "eventId": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111:0:0",
+      "gameId": "aof",
+      "type": "PausedToggled",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:14:00.000Z",
+      "slot": "400000014",
+      "signature": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PausedToggled",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "paused": true,
+        "authority": "config_authority"
+      }
+    },
+    {
+      "eventId": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111:0:1",
+      "gameId": "aof",
+      "type": "EmergencyPause",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:14:00.000Z",
+      "slot": "400000014",
+      "signature": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PausedToggled",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "authority": "config_authority"
+      }
+    },
+    {
+      "eventId": "aJrRbRoqYpnivAzm8ooKAqyb2ykGYoGG6fNVSZYjYNfW9ZoWAySnypTPvZTfSvH4DjS3vJzNKgKvQ1111111111:0:0",
+      "gameId": "aof",
+      "type": "ConfigUpdated",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:15:00.000Z",
+      "slot": "400000015",
+      "signature": "aJrRbRoqYpnivAzm8ooKAqyb2ykGYoGG6fNVSZYjYNfW9ZoWAySnypTPvZTfSvH4DjS3vJzNKgKvQ1111111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ResourceMintsUpdated",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "setting": "resource_mints",
+        "changed": [
+          "potato"
+        ],
+        "previous": {
+          "food": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "wood": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "stone": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "seeds": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "water": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "potato": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA"
+        },
+        "current": {
+          "food": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "wood": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "stone": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "seeds": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "water": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "potato": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh"
+        }
+      }
     }
   ]
 }

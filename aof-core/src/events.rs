@@ -52,6 +52,44 @@ pub struct IssuanceCapChanged {
     pub slot: u64,
 }
 
+/// Emitted by set_paused. `authority` identifies who flipped the switch.
+#[event]
+pub struct PausedToggled {
+    pub paused: bool,
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+/// Emitted by set_fees (values in base units).
+#[event]
+pub struct FeesUpdated {
+    pub craft_fee: u64,
+    pub unstake_fee: u64,
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+/// Emitted by set_resource_mints; previous values are included so a
+/// mint swap (a critical config change) is fully reconstructible from logs.
+#[event]
+pub struct ResourceMintsUpdated {
+    pub previous: [Pubkey; 6],
+    pub current: [Pubkey; 6],
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+/// Emitted by set_craft_economy.
+#[event]
+pub struct CraftEconomyUpdated {
+    pub wood_base: [u64; 4],
+    pub stone_base: [u64; 4],
+    pub wood_mult: [u64; 4],
+    pub stone_mult: [u64; 4],
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
 #[event]
 pub struct PaidOut {
     pub user: Pubkey,

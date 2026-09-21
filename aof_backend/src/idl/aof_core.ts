@@ -10460,6 +10460,58 @@ export type AofCore = {
         145,
         152
       ]
+    },
+    {
+      "name": "pausedToggled",
+      "discriminator": [
+        77,
+        42,
+        45,
+        184,
+        47,
+        55,
+        187,
+        17
+      ]
+    },
+    {
+      "name": "feesUpdated",
+      "discriminator": [
+        65,
+        34,
+        234,
+        59,
+        248,
+        242,
+        101,
+        118
+      ]
+    },
+    {
+      "name": "resourceMintsUpdated",
+      "discriminator": [
+        68,
+        174,
+        251,
+        121,
+        44,
+        8,
+        10,
+        120
+      ]
+    },
+    {
+      "name": "craftEconomyUpdated",
+      "discriminator": [
+        143,
+        160,
+        24,
+        236,
+        225,
+        207,
+        14,
+        80
+      ]
     }
   ],
   "errors": [
@@ -13262,6 +13314,136 @@ export type AofCore = {
           {
             "name": "mintedInEpoch",
             "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pausedToggled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feesUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "craftFee",
+            "type": "u64"
+          },
+          {
+            "name": "unstakeFee",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "resourceMintsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": {
+              "array": [
+                "pubkey",
+                6
+              ]
+            }
+          },
+          {
+            "name": "current",
+            "type": {
+              "array": [
+                "pubkey",
+                6
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "craftEconomyUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "woodBase",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "stoneBase",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "woodMult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "stoneMult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           },
           {
             "name": "slot",

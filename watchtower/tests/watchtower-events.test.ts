@@ -30,6 +30,16 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
   const [cfg] = normalizeChainEvent(by("IssuanceCapChanged"), SALT);
   assert.equal(cfg.type, "ConfigUpdated"); assert.equal(cfg.category, "security"); assert.equal(cfg.attributes.halted, true); assert.equal(cfg.playerId, null);
 }
+// Pause switch → PausedToggled + EmergencyPause (only when paused=true); mint swap lists changed slots.
+{
+  const p = normalizeChainEvent(by("PausedToggled"), SALT);
+  assert.deepEqual(p.map((e) => e.type), ["PausedToggled", "EmergencyPause"]);
+  assert.equal(p[0].attributes.paused, true); assert.equal(p[0].playerId, null);
+  const un = normalizeChainEvent({ ...by("PausedToggled"), data: { ...(by("PausedToggled").data as any), paused: false } }, SALT);
+  assert.deepEqual(un.map((e) => e.type), ["PausedToggled"]);
+  const [m] = normalizeChainEvent(by("ResourceMintsUpdated"), SALT);
+  assert.deepEqual(m.attributes.changed, ["potato"]); assert.equal(m.category, "security");
+}
 // Crafting burns the input and creates the output.
 {
   const out = normalizeChainEvent(by("ToolCrafted"), SALT);
@@ -43,8 +53,8 @@ assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" },
   const all = EVENTS.flatMap((e) => normalizeChainEvent(e, SALT, { treasury: W.treasury }));
   const blob = JSON.stringify(all);
   for (const w of Object.values(W)) assert.ok(!blob.includes(w), `raw wallet leaked: ${w}`);
-  // 12 mapped fixtures (AuctionCreated ignored) → 2+1+3+3+3+1+2+2+2+3+1+1 = 24 normalized events
-  assert.equal(all.length, 24, `fan-out count changed: ${all.map((e) => e.type).join(",")}`);
+  // 12 mapped fixtures (AuctionCreated ignored) → 2+1+3+3+3+1+2+2+2+3+1+1 +2 (pause) +1 (mints) = 27 normalized events
+  assert.equal(all.length, 27, `fan-out count changed: ${all.map((e) => e.type).join(",")}`);
   assert.deepEqual(validateEvents(all), [], "every normalized event validates against events/schema.json");
 }
 // Tx-level reliability events.

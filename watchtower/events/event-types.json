@@ -283,7 +283,7 @@
       "name": "AuthorityChanged",
       "category": "security",
       "support": "unsupported",
-      "reason": "no on-chain event emitted by set_authority today; tracked via Watchtower account diffing"
+      "reason": "aof_core has no authority-transfer instruction (authority is set at initialize); will arrive with the Squads migration"
     },
     {
       "name": "ConfigUpdated",
@@ -291,6 +291,9 @@
       "support": "native",
       "sources": [
         "IssuanceCapChanged",
+        "FeesUpdated",
+        "ResourceMintsUpdated",
+        "CraftEconomyUpdated",
         "QuestConfigInitialized",
         "HotMarketCranked",
         "HotMarketEventStarted"
@@ -299,14 +302,18 @@
     {
       "name": "PausedToggled",
       "category": "security",
-      "support": "unsupported",
-      "reason": "set_paused emits no Anchor event; visible only through Config account diffing"
+      "support": "native",
+      "sources": [
+        "PausedToggled"
+      ]
     },
     {
       "name": "EmergencyPause",
       "category": "security",
-      "support": "unsupported",
-      "reason": "same as PausedToggled"
+      "support": "native",
+      "sources": [
+        "PausedToggled"
+      ]
     },
     {
       "name": "AdminProposalCreated",

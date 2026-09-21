@@ -97,7 +97,9 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   TreasuryWithdrawn: ["PaidOut"],
   LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched"],
-  ConfigUpdated: ["IssuanceCapChanged", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted"],
+  ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted"],
+  PausedToggled: ["PausedToggled"],
+  EmergencyPause: ["PausedToggled"],
   WalletConnected: ["ReferralBound"],
   TransactionFinalized: ["*"],
   TransactionFailed: ["*"],
@@ -127,7 +129,9 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     out.push({
       eventId: `${row.signature}:${row.eventIndex}:${n++}`,
       gameId: "aof", type, category, occurredAt, slot, signature: row.signature,
-      playerId: fields.playerId ?? pid(row.wallet),
+      // An explicit null means "no player" (config/admin events); only an
+      // omitted playerId falls back to the row's primary actor.
+      playerId: "playerId" in fields ? fields.playerId ?? null : pid(row.wallet),
       counterpartyId: fields.counterpartyId ?? null,
       asset: fields.asset ?? row.mint ?? null,
       amount: fields.amount ?? null,
@@ -298,6 +302,25 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     // ---- security / config ----------------------------------------------------
     case "IssuanceCapChanged":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "issuance_cap", kind: str(d.kind), epochSlots: str(d.epochSlots), capPerEpoch: str(d.capPerEpoch), mintedInEpoch: str(d.mintedInEpoch), halted: str(d.capPerEpoch) === "0" } });
+      break;
+    case "PausedToggled":
+      // Same on-chain switch backs both Watchtower types: PausedToggled is the
+      // state change; EmergencyPause is emitted additionally when paused=true.
+      emit("PausedToggled", { playerId: null, attributes: { paused: bool(d.paused), authority: str(d.authority) ? "config_authority" : null } });
+      if (bool(d.paused)) emit("EmergencyPause", { playerId: null, attributes: { authority: "config_authority" } });
+      break;
+    case "FeesUpdated":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "fees", craftFee: str(d.craftFee), unstakeFee: str(d.unstakeFee) } });
+      break;
+    case "ResourceMintsUpdated": {
+      const prev = (d.previous as unknown[]) ?? [], cur = (d.current as unknown[]) ?? [];
+      const names = ["food", "wood", "stone", "seeds", "water", "potato"];
+      const changed = names.filter((_, i) => str(prev[i]) !== str(cur[i]));
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "resource_mints", changed, previous: Object.fromEntries(names.map((n, i) => [n, str(prev[i])])), current: Object.fromEntries(names.map((n, i) => [n, str(cur[i])])) } });
+      break;
+    }
+    case "CraftEconomyUpdated":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "craft_economy", woodBase: d.woodBase, stoneBase: d.stoneBase, woodMult: d.woodMult, stoneMult: d.stoneMult } });
       break;
     case "QuestConfigInitialized":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "quest_config", authority: str(d.authority) ? "set" : null, mascotMint: str(d.mascotMint) } });

@@ -29,6 +29,8 @@ export const EVENTS = [
   row(11, CORE, "GasFeesSwept", { to: W.treasury, amountLamports: "9000000" }, { wallet: W.treasury, amount: "9000000" }),
   row(12, CORE, "AuctionCreated", { seller: W.alice, mint: M.tool2, minBid: "1", endTime: "1790000000" }, { wallet: W.alice }), // intentionally ignored
   row(13, CORE, "Staked", { user: W.alice, mint: M.tool2 }, { wallet: W.alice, mint: M.tool2 }),
+  row(14, CORE, "PausedToggled", { paused: true, authority: W.authority, slot: "400000014" }, { wallet: W.authority }),
+  row(15, CORE, "ResourceMintsUpdated", { previous: [M.wood, M.wood, M.wood, M.wood, M.wood, M.potato], current: [M.wood, M.wood, M.wood, M.wood, M.wood, M.tool2], authority: W.authority, slot: "400000015" }, { wallet: W.authority }),
 ];
 
 export const TXS = [

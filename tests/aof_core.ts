@@ -243,9 +243,18 @@ describe("aof-core: security & core flows", () => {
     await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId)
       .accounts({ ...accounts, mint: stoneMint, tokenAccount: userStone, treasuryToken: treasuryStone }).rpc(), "InvalidResourceKind");
     expect(await provider.connection.getAccountInfo(rewardReceipt)).to.equal(null);
-    await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
+    const pauseSig = await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
     await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).rpc(), "Paused");
     await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+    // set_paused must leave an on-chain event trail (Watchtower PausedToggled).
+    {
+      const tx = await provider.connection.getTransaction(pauseSig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+      const parsed = [...new anchor.EventParser(pid, new anchor.BorshCoder(idlJson)).parseLogs(tx!.meta!.logMessages!)];
+      const ev = parsed.find((e: any) => e.name === "pausedToggled" || e.name === "PausedToggled");
+      expect(ev, "PausedToggled event").to.not.equal(undefined);
+      expect((ev as any).data.paused).to.equal(true);
+      expect((ev as any).data.authority.toBase58()).to.equal(authority.toBase58());
+    }
     const before = (await balance(userWood)).add(await balance(treasuryWood));
     await program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).rpc();
     const receipt = await program.account.rewardReceipt.fetch(rewardReceipt);

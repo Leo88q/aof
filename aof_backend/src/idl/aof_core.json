@@ -330,7 +330,7 @@
         {
           "name": "winner_token",
           "docs": [
-            "победитель (или продавец, если ставок не было) — получатель NFT"
+            "\u043f\u043e\u0431\u0435\u0434\u0438\u0442\u0435\u043b\u044c (\u0438\u043b\u0438 \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446, \u0435\u0441\u043b\u0438 \u0441\u0442\u0430\u0432\u043e\u043a \u043d\u0435 \u0431\u044b\u043b\u043e) \u2014 \u043f\u043e\u043b\u0443\u0447\u0430\u0442\u0435\u043b\u044c NFT"
           ],
           "writable": true
         },
@@ -1067,7 +1067,7 @@
     {
       "name": "collect_bread",
       "docs": [
-        "[БЛОК L] Сбор готового хлеба с печи"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u0433\u043e\u0442\u043e\u0432\u043e\u0433\u043e \u0445\u043b\u0435\u0431\u0430 \u0441 \u043f\u0435\u0447\u0438"
       ],
       "discriminator": [
         34,
@@ -1190,7 +1190,7 @@
     {
       "name": "collect_flour",
       "docs": [
-        "[БЛОК L] Сбор готовой муки с мельницы"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u0433\u043e\u0442\u043e\u0432\u043e\u0439 \u043c\u0443\u043a\u0438 \u0441 \u043c\u0435\u043b\u044c\u043d\u0438\u0446\u044b"
       ],
       "discriminator": [
         75,
@@ -1454,7 +1454,7 @@
     {
       "name": "collect_well_water",
       "docs": [
-        "[БЛОК L] Сбор воды из колодца"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u0432\u043e\u0434\u044b \u0438\u0437 \u043a\u043e\u043b\u043e\u0434\u0446\u0430"
       ],
       "discriminator": [
         158,
@@ -2452,7 +2452,7 @@
     {
       "name": "craft_recipe",
       "docs": [
-        "[БЛОК L] Мгновенный крафт гемов/баночек (recipe_id 0-7)"
+        "[\u0411\u041b\u041e\u041a L] \u041c\u0433\u043d\u043e\u0432\u0435\u043d\u043d\u044b\u0439 \u043a\u0440\u0430\u0444\u0442 \u0433\u0435\u043c\u043e\u0432/\u0431\u0430\u043d\u043e\u0447\u0435\u043a (recipe_id 0-7)"
       ],
       "discriminator": [
         184,
@@ -3264,7 +3264,7 @@
     {
       "name": "harvest_wheat",
       "docs": [
-        "[БЛОК L] Сбор пшеницы с готового тайла"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u043f\u0448\u0435\u043d\u0438\u0446\u044b \u0441 \u0433\u043e\u0442\u043e\u0432\u043e\u0433\u043e \u0442\u0430\u0439\u043b\u0430"
       ],
       "discriminator": [
         170,
@@ -3579,7 +3579,7 @@
     {
       "name": "init_material_mints",
       "docs": [
-        "[БЛОК L] Инициализация MaterialMints PDA с адресами 23 минтов"
+        "[\u0411\u041b\u041e\u041a L] \u0418\u043d\u0438\u0446\u0438\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f MaterialMints PDA \u0441 \u0430\u0434\u0440\u0435\u0441\u0430\u043c\u0438 23 \u043c\u0438\u043d\u0442\u043e\u0432"
       ],
       "discriminator": [
         29,
@@ -4524,7 +4524,7 @@
         {
           "name": "buyer_token",
           "docs": [
-            "покупатель — владелец buy_order, получает ресурс"
+            "\u043f\u043e\u043a\u0443\u043f\u0430\u0442\u0435\u043b\u044c \u2014 \u0432\u043b\u0430\u0434\u0435\u043b\u0435\u0446 buy_order, \u043f\u043e\u043b\u0443\u0447\u0430\u0435\u0442 \u0440\u0435\u0441\u0443\u0440\u0441"
           ],
           "writable": true
         },
@@ -4764,8 +4764,8 @@
         {
           "name": "player",
           "docs": [
-            "создаём с нулевыми перками — mint_resource не должен блокироваться",
-            "отсутствием профиля."
+            "\u0441\u043e\u0437\u0434\u0430\u0451\u043c \u0441 \u043d\u0443\u043b\u0435\u0432\u044b\u043c\u0438 \u043f\u0435\u0440\u043a\u0430\u043c\u0438 \u2014 mint_resource \u043d\u0435 \u0434\u043e\u043b\u0436\u0435\u043d \u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f",
+            "\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u044f."
           ],
           "writable": true,
           "pda": {
@@ -5960,7 +5960,7 @@
     {
       "name": "plant_seeds",
       "docs": [
-        "[БЛОК L] Посадка семян на полевой тайл"
+        "[\u0411\u041b\u041e\u041a L] \u041f\u043e\u0441\u0430\u0434\u043a\u0430 \u0441\u0435\u043c\u044f\u043d \u043d\u0430 \u043f\u043e\u043b\u0435\u0432\u043e\u0439 \u0442\u0430\u0439\u043b"
       ],
       "discriminator": [
         157,
@@ -7921,7 +7921,7 @@
     {
       "name": "start_baking",
       "docs": [
-        "[БЛОК L] Запуск партии выпечки в печи (0=дрова, 1=уголь)"
+        "[\u0411\u041b\u041e\u041a L] \u0417\u0430\u043f\u0443\u0441\u043a \u043f\u0430\u0440\u0442\u0438\u0438 \u0432\u044b\u043f\u0435\u0447\u043a\u0438 \u0432 \u043f\u0435\u0447\u0438 (0=\u0434\u0440\u043e\u0432\u0430, 1=\u0443\u0433\u043e\u043b\u044c)"
       ],
       "discriminator": [
         97,
@@ -8303,7 +8303,7 @@
     {
       "name": "start_milling",
       "docs": [
-        "[БЛОК L] Запуск партии помола на мельнице"
+        "[\u0411\u041b\u041e\u041a L] \u0417\u0430\u043f\u0443\u0441\u043a \u043f\u0430\u0440\u0442\u0438\u0438 \u043f\u043e\u043c\u043e\u043b\u0430 \u043d\u0430 \u043c\u0435\u043b\u044c\u043d\u0438\u0446\u0435"
       ],
       "discriminator": [
         12,
@@ -8845,7 +8845,7 @@
     {
       "name": "weather_crank",
       "docs": [
-        "[БЛОК L] Обновление погоды (permissionless, раз в сутки)"
+        "[\u0411\u041b\u041e\u041a L] \u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u043f\u043e\u0433\u043e\u0434\u044b (permissionless, \u0440\u0430\u0437 \u0432 \u0441\u0443\u0442\u043a\u0438)"
       ],
       "discriminator": [
         116,
@@ -9064,8 +9064,8 @@
         {
           "name": "player",
           "docs": [
-            "создаём с нулевыми перками — mint_resource не должен блокироваться",
-            "отсутствием профиля."
+            "\u0441\u043e\u0437\u0434\u0430\u0451\u043c \u0441 \u043d\u0443\u043b\u0435\u0432\u044b\u043c\u0438 \u043f\u0435\u0440\u043a\u0430\u043c\u0438 \u2014 mint_resource \u043d\u0435 \u0434\u043e\u043b\u0436\u0435\u043d \u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f",
+            "\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u044f."
           ],
           "writable": true,
           "pda": {
@@ -10467,6 +10467,58 @@
         145,
         152
       ]
+    },
+    {
+      "name": "PausedToggled",
+      "discriminator": [
+        77,
+        42,
+        45,
+        184,
+        47,
+        55,
+        187,
+        17
+      ]
+    },
+    {
+      "name": "FeesUpdated",
+      "discriminator": [
+        65,
+        34,
+        234,
+        59,
+        248,
+        242,
+        101,
+        118
+      ]
+    },
+    {
+      "name": "ResourceMintsUpdated",
+      "discriminator": [
+        68,
+        174,
+        251,
+        121,
+        44,
+        8,
+        10,
+        120
+      ]
+    },
+    {
+      "name": "CraftEconomyUpdated",
+      "discriminator": [
+        143,
+        160,
+        24,
+        236,
+        225,
+        207,
+        14,
+        80
+      ]
     }
   ],
   "errors": [
@@ -10653,7 +10705,7 @@
     {
       "code": 6036,
       "name": "CommitExpired",
-      "msg": "Commit has expired (SlotHashes window passed) — abort and refund"
+      "msg": "Commit has expired (SlotHashes window passed) \u2014 abort and refund"
     },
     {
       "code": 6037,
@@ -10728,7 +10780,7 @@
     {
       "code": 6051,
       "name": "RentalGraceNotExpired",
-      "msg": "Rental is still active — cannot revoke without grace period"
+      "msg": "Rental is still active \u2014 cannot revoke without grace period"
     },
     {
       "code": 6052,
@@ -11197,8 +11249,8 @@
     {
       "name": "CraftEconomy",
       "docs": [
-        "Настраиваемые параметры bonding-curve крафта (базы и множители по",
-        "редкости), меняются владельцем через set_craft_economy без редеплоя."
+        "\u041d\u0430\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u0435\u043c\u044b\u0435 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b bonding-curve \u043a\u0440\u0430\u0444\u0442\u0430 (\u0431\u0430\u0437\u044b \u0438 \u043c\u043d\u043e\u0436\u0438\u0442\u0435\u043b\u0438 \u043f\u043e",
+        "\u0440\u0435\u0434\u043a\u043e\u0441\u0442\u0438), \u043c\u0435\u043d\u044f\u044e\u0442\u0441\u044f \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0435\u043c \u0447\u0435\u0440\u0435\u0437 set_craft_economy \u0431\u0435\u0437 \u0440\u0435\u0434\u0435\u043f\u043b\u043e\u044f."
       ],
       "type": {
         "kind": "struct",
@@ -11433,7 +11485,7 @@
     {
       "name": "EnergyAccount",
       "docs": [
-        "EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)"
+        "EnergyAccount \u2014 \u043b\u0435\u043d\u0438\u0432\u0430\u044f \u044d\u043d\u0435\u0440\u0433\u0438\u044f \u0438\u0433\u0440\u043e\u043a\u0430 (\u0440\u0435\u0433\u0435\u043d +1 \u0437\u0430 30 \u043c\u0438\u043d \u0434\u043e \u043a\u0430\u043f\u0430 20)"
       ],
       "type": {
         "kind": "struct",
@@ -11557,7 +11609,7 @@
     {
       "name": "FarmTile",
       "docs": [
-        "FarmTile — состояние полевого тайла (пусто/растёт/готово)"
+        "FarmTile \u2014 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u043f\u043e\u043b\u0435\u0432\u043e\u0433\u043e \u0442\u0430\u0439\u043b\u0430 (\u043f\u0443\u0441\u0442\u043e/\u0440\u0430\u0441\u0442\u0451\u0442/\u0433\u043e\u0442\u043e\u0432\u043e)"
       ],
       "type": {
         "kind": "struct",
@@ -11922,7 +11974,7 @@
     {
       "name": "MaterialMints",
       "docs": [
-        "MaterialMints — singleton PDA, хранит адреса всех 23 минтов ресурсов"
+        "MaterialMints \u2014 singleton PDA, \u0445\u0440\u0430\u043d\u0438\u0442 \u0430\u0434\u0440\u0435\u0441\u0430 \u0432\u0441\u0435\u0445 23 \u043c\u0438\u043d\u0442\u043e\u0432 \u0440\u0435\u0441\u0443\u0440\u0441\u043e\u0432"
       ],
       "type": {
         "kind": "struct",
@@ -12037,7 +12089,7 @@
     {
       "name": "MillState",
       "docs": [
-        "MillState — мельница игрока (одна активная партия одновременно)"
+        "MillState \u2014 \u043c\u0435\u043b\u044c\u043d\u0438\u0446\u0430 \u0438\u0433\u0440\u043e\u043a\u0430 (\u043e\u0434\u043d\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u0430\u044f \u043f\u0430\u0440\u0442\u0438\u044f \u043e\u0434\u043d\u043e\u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e)"
       ],
       "type": {
         "kind": "struct",
@@ -12224,7 +12276,7 @@
     {
       "name": "OvenState",
       "docs": [
-        "OvenState — печь игрока (одна активная партия одновременно)"
+        "OvenState \u2014 \u043f\u0435\u0447\u044c \u0438\u0433\u0440\u043e\u043a\u0430 (\u043e\u0434\u043d\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u0430\u044f \u043f\u0430\u0440\u0442\u0438\u044f \u043e\u0434\u043d\u043e\u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e)"
       ],
       "type": {
         "kind": "struct",
@@ -12473,11 +12525,11 @@
     {
       "name": "RarityCounter",
       "docs": [
-        "Глобальный счётчик заминченных инструментов по редкости — bonding-curve",
-        "эскалация цены крафта. [ФАКТ, из аудита index.js реального Ronin-бэкенда]:",
-        "там цена крафта росла как `cost.wood + mintedCount * mult`; в присланных",
-        "файлах этой механики не было вовсе (craft ничего не тратил, кроме",
-        "фикс. SOL-комиссии) — восстанавливаю на Solana."
+        "\u0413\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u044b\u0439 \u0441\u0447\u0451\u0442\u0447\u0438\u043a \u0437\u0430\u043c\u0438\u043d\u0447\u0435\u043d\u043d\u044b\u0445 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u043e\u0432 \u043f\u043e \u0440\u0435\u0434\u043a\u043e\u0441\u0442\u0438 \u2014 bonding-curve",
+        "\u044d\u0441\u043a\u0430\u043b\u0430\u0446\u0438\u044f \u0446\u0435\u043d\u044b \u043a\u0440\u0430\u0444\u0442\u0430. [\u0424\u0410\u041a\u0422, \u0438\u0437 \u0430\u0443\u0434\u0438\u0442\u0430 index.js \u0440\u0435\u0430\u043b\u044c\u043d\u043e\u0433\u043e Ronin-\u0431\u044d\u043a\u0435\u043d\u0434\u0430]:",
+        "\u0442\u0430\u043c \u0446\u0435\u043d\u0430 \u043a\u0440\u0430\u0444\u0442\u0430 \u0440\u043e\u0441\u043b\u0430 \u043a\u0430\u043a `cost.wood + mintedCount * mult`; \u0432 \u043f\u0440\u0438\u0441\u043b\u0430\u043d\u043d\u044b\u0445",
+        "\u0444\u0430\u0439\u043b\u0430\u0445 \u044d\u0442\u043e\u0439 \u043c\u0435\u0445\u0430\u043d\u0438\u043a\u0438 \u043d\u0435 \u0431\u044b\u043b\u043e \u0432\u043e\u0432\u0441\u0435 (craft \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0442\u0440\u0430\u0442\u0438\u043b, \u043a\u0440\u043e\u043c\u0435",
+        "\u0444\u0438\u043a\u0441. SOL-\u043a\u043e\u043c\u0438\u0441\u0441\u0438\u0438) \u2014 \u0432\u043e\u0441\u0441\u0442\u0430\u043d\u0430\u0432\u043b\u0438\u0432\u0430\u044e \u043d\u0430 Solana."
       ],
       "type": {
         "kind": "struct",
@@ -12633,7 +12685,7 @@
           {
             "name": "owner_split_bps",
             "docs": [
-              "[ФИКС] Доля владельца от платы за аренду (0..=10000 bps), читается в start_handler"
+              "[\u0424\u0418\u041a\u0421] \u0414\u043e\u043b\u044f \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0430 \u043e\u0442 \u043f\u043b\u0430\u0442\u044b \u0437\u0430 \u0430\u0440\u0435\u043d\u0434\u0443 (0..=10000 bps), \u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044f \u0432 start_handler"
             ],
             "type": "u16"
           },
@@ -12652,7 +12704,7 @@
           {
             "name": "price_per_hour_lamports",
             "docs": [
-              "[ФИКС] Цена аренды за час в lamports (раньше аренда была бесплатной)"
+              "[\u0424\u0418\u041a\u0421] \u0426\u0435\u043d\u0430 \u0430\u0440\u0435\u043d\u0434\u044b \u0437\u0430 \u0447\u0430\u0441 \u0432 lamports (\u0440\u0430\u043d\u044c\u0448\u0435 \u0430\u0440\u0435\u043d\u0434\u0430 \u0431\u044b\u043b\u0430 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e\u0439)"
             ],
             "type": "u64"
           }
@@ -13221,7 +13273,7 @@
     {
       "name": "WeatherState",
       "docs": [
-        "WeatherState — глобальная погода (обновляется permissionless-кранком раз в сутки)"
+        "WeatherState \u2014 \u0433\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u0430\u044f \u043f\u043e\u0433\u043e\u0434\u0430 (\u043e\u0431\u043d\u043e\u0432\u043b\u044f\u0435\u0442\u0441\u044f permissionless-\u043a\u0440\u0430\u043d\u043a\u043e\u043c \u0440\u0430\u0437 \u0432 \u0441\u0443\u0442\u043a\u0438)"
       ],
       "type": {
         "kind": "struct",
@@ -13256,7 +13308,7 @@
     {
       "name": "WellState",
       "docs": [
-        "WellState — колодец игрока (копит воду из погоды)"
+        "WellState \u2014 \u043a\u043e\u043b\u043e\u0434\u0435\u0446 \u0438\u0433\u0440\u043e\u043a\u0430 (\u043a\u043e\u043f\u0438\u0442 \u0432\u043e\u0434\u0443 \u0438\u0437 \u043f\u043e\u0433\u043e\u0434\u044b)"
       ],
       "type": {
         "kind": "struct",
@@ -13481,6 +13533,136 @@
           {
             "name": "minted_in_epoch",
             "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PausedToggled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeesUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "craft_fee",
+            "type": "u64"
+          },
+          {
+            "name": "unstake_fee",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResourceMintsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": {
+              "array": [
+                "pubkey",
+                6
+              ]
+            }
+          },
+          {
+            "name": "current",
+            "type": {
+              "array": [
+                "pubkey",
+                6
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CraftEconomyUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wood_base",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "stone_base",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "wood_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "stone_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           },
           {
             "name": "slot",

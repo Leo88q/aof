@@ -90,13 +90,14 @@ Every JSON response (except health/readyz/config/metrics) is wrapped:
 ## Event coverage
 
 `events/event-types.json` is generated from the normalizer's support tables and
-checked by the events test. Summary for `aof-v1`: **22 native** (from a
-concrete on-chain event), **11 derived** (computed from the ledger:
-PlayerJoined/FirstAction/RetentionDayN, FraudSignalCreated, indexer gaps),
-**17 unsupported** with a reason each — e.g. no sessions/matches/races in a
-farming game, `set_paused`/`set_authority` emit no Anchor event today
-(Watchtower should diff the `config` account), no Squads yet so no
-`AdminProposal*`.
+checked by the events test. Summary for `aof-v1`: **24 native** (from a
+concrete on-chain event, incl. `PausedToggled`/`EmergencyPause` and
+`ConfigUpdated` for fees / resource mints / craft economy — these Anchor
+events ship with the next program upgrade), **11 derived** (computed from the
+ledger: PlayerJoined/FirstAction/RetentionDayN, FraudSignalCreated, indexer
+gaps), **15 unsupported** with a reason each — e.g. no sessions/matches/races
+in a farming game, no authority-transfer instruction (`AuthorityChanged`) and
+no Squads yet so no `AdminProposal*`.
 
 Every event in the three IDLs is either mapped or explicitly listed as ignored
 in `event-normalizer.ts`; the events test fails if a new IDL event appears
