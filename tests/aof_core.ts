@@ -825,7 +825,12 @@ describe("aof-core: security & core flows", () => {
       // Un-configured mint: the guard PDA does not exist, so the withdrawal is
       // impossible at all (fail closed).
       await expectError(pay(UNIT), "AccountNotInitialized");
-      await program.methods.initVaultGuard(new BN(1_000), UNIT.muln(10), UNIT.muln(3))
+      // `init_vault_guard` rejects epoch_slots outside
+      // [ISSUANCE_EPOCH_MIN_SLOTS; ISSUANCE_EPOCH_MAX_SLOTS] = [1_500; 6_480_000]
+      // with InvalidVaultGuardParams, so the fixture has to stay in range. 2_000
+      // slots is far longer than this test runs, so the epoch cannot roll under
+      // it and the budget assertions below stay meaningful.
+      await program.methods.initVaultGuard(new BN(2_000), UNIT.muln(10), UNIT.muln(3))
         .accounts({ config: configPda, authority, mint: woodMint, vaultGuard: guard, systemProgram: SystemProgram.programId })
         .rpc();
       await expectError(pay(UNIT.muln(5)), "VaultGuardLimitExceeded"); // above max_per_tx
@@ -872,7 +877,13 @@ describe("aof-core: security & core flows", () => {
         sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([seller]).rpc();
       // Before the fix the second `init` collided with the stale PDA and the
-      // NFT lost its liquidity permanently.
+      // NFT lost its liquidity permanently. `marketplace_cancel` now closes
+      // BOTH accounts it holds: the listing PDA (`close = seller`, which is
+      // what frees the seed for the second `init`) and the listing vault ATA
+      // (`token::close_account`, handing its rent back to the seller). The
+      // vault is a plain `Account<TokenAccount>` in `MarketplaceList`, so the
+      // client has to recreate the ATA at the same address before relisting.
+      await ensureAta(mint, listing);
       await program.methods.marketplaceList(new BN(2_000)).accounts(listAcc).signers([seller]).rpc();
       expect((await program.account.listing.fetch(listing)).priceLamports.toString()).to.equal("2000");
       expect((await program.account.listing.fetch(listing)).active).to.equal(true);
