@@ -6,14 +6,15 @@ import { program } from "../provider";
 import {
   authPda,
   configPda,
-  materialMintsPda,
   energyAccountPda,
   farmTilePda,
-  weatherStatePda,
-  wellStatePda,
+  materialMintsPda,
   millStatePda,
   ovenStatePda,
+  playerPda,
   toolPda,
+  weatherStatePda,
+  wellStatePda,
 } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 
@@ -248,11 +249,13 @@ r.post("/oven/collect", async (req, res) => {
 r.post("/weather/crank", async (req, res) => {
   try {
     const cranker = pk(req.body.cranker);
+    const [config] = configPda();
     const [weatherState] = weatherStatePda();
 
     const ix = await (program.methods as any)
       .weatherCrank()
       .accounts({
+        config,
         cranker,
         weatherState,
         systemProgram: SystemProgram.programId,
@@ -275,6 +278,9 @@ r.post("/well/collect", async (req, res) => {
     const [wellState] = wellStatePda(user);
     const [weatherState] = weatherStatePda();
     const [auth] = authPda();
+    // [AUDIT F-11] the well is no longer a faucet for throwaway wallets: the
+    // wallet must already own a Player PDA with villagers.
+    const [player] = playerPda(user);
     const waterMint = new PublicKey(req.body.waterMint);
     const userWater = getAssociatedTokenAddressSync(waterMint, user);
 
@@ -283,6 +289,7 @@ r.post("/well/collect", async (req, res) => {
       .accounts({
         config,
         user,
+        player,
         materialMints,
         wellState,
         weatherState,

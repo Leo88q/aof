@@ -70,6 +70,10 @@ export function resourceKindIndex(kind: unknown): number {
 }
 
 export const issuanceCapPda = (kind: unknown) => find([enc("issuance_cap"), u8(resourceKindIndex(kind))]);
+/// [AUDIT F-01] Per-mint withdrawal guard for `pay_out`.
+export const vaultGuardPda = (mint: PublicKey) => find([enc("vault_guard"), mint.toBuffer()]);
+/// [AUDIT F-16] Collector perk allowlist entry for an NFT mint.
+export const collectorAllowPda = (mint: PublicKey) => find([enc("collector_allow"), mint.toBuffer()]);
 export const craftEconomyPda = () => find([enc("craft_economy")]);
 export const collectorPda = (mint: PublicKey) => find([enc("collector"), mint.toBuffer()]);
 export const packConfigPda = (packType: number) => find([enc("pack_config"), u8(packType)]);

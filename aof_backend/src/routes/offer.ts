@@ -74,11 +74,12 @@ r.post("/cancel", requireCircuitOpen, requireWalletLimits("offer__cancel"), requ
   try {
     const buyer = pk(req.body.buyer);
     const mint = pk(req.body.mint);
+    const [config] = configPda();
     const [offer] = offerPda(mint, buyer);
 
     const ix = await (program.methods as any)
       .offerCancel()
-      .accounts({ mint, offer, buyer })
+      .accounts({ config, mint, offer, buyer })
       .instruction();
 
     const tx = await coSign([ix], buyer);

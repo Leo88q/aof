@@ -198,11 +198,11 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
         const treasuryToken = getAssociatedTokenAddressSync(mintPk, treasury, true);
         const amount = BigInt(item.rewardAmount) * BigInt(RESOURCE_UNIT);
 
-        const receipt = await fetchRewardReceipt(connection, id);
+        const receipt = await fetchRewardReceipt(connection, id, ownerPk);
         if (receipt) {
           assertRewardReceipt(receipt, { recipient: item.user, mint: mintPk.toBase58(), grossAmount: amount.toString() });
           const recovered = await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "confirmed", read: true } });
-          return res.json({ item: recovered, reward: rewardResult, recoveredFromReceipt: rewardReceiptPda(id).toBase58() });
+          return res.json({ item: recovered, reward: rewardResult, recoveredFromReceipt: rewardReceiptPda(id, ownerPk).toBase58() });
         }
         const ix = await (program.methods as any)
           .mintResourceOnce(kind, new BN(amount.toString()), Array.from(inboxRewardId(id)))
@@ -217,7 +217,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
             player,
             issuanceCap: issuanceCapPda(kind)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
-            rewardReceipt: rewardReceiptPda(id),
+            rewardReceipt: rewardReceiptPda(id, ownerPk),
             systemProgram: SystemProgram.programId,
           })
           .instruction();

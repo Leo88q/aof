@@ -14,6 +14,7 @@ import {
   toolPda,
   vaultPda,
   materialMintsPda,
+  vaultGuardPda,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { simulateTransaction } from "../security/txSimulator";
@@ -23,6 +24,19 @@ import { MINT_SIZE, createInitializeMintInstruction, createAssociatedTokenAccoun
 import { connection } from "../provider";
 import { criticalOperationGuard, requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
+
+/**
+ * [AUDIT F-01] Resolve the wallet that owns a token account (SPL layout:
+ * `mint` at 0..32, `owner` at 32..64). Read from chain instead of trusting a
+ * body field, so `player` can never be mismatched with `userToken`.
+ */
+async function tokenAccountOwner(tokenAccount: PublicKey): Promise<PublicKey> {
+  const { connection } = await import("../provider");
+  const info = await connection.getAccountInfo(tokenAccount, "confirmed");
+  if (!info) throw new Error("destination token account does not exist");
+  if (info.data.length < 64) throw new Error("destination is not a token account");
+  return new PublicKey(info.data.subarray(32, 64));
+}
 
 const r = Router();
 const RESOURCE_UNIT = 1_000_000_000;
@@ -55,6 +69,8 @@ r.post("/mint", requireAdmin, async (req, res) => {
         auth,
         mint,
         tokenAccount,
+        // [AUDIT F-22] the destination ATA must belong to the intended owner.
+        recipient: owner,
         toolData,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -473,13 +489,24 @@ r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("tools_
     const amount = new BN(req.body.amount);
     const [config] = configPda();
     const [vault] = vaultPda();
+    const [materialMints] = materialMintsPda();
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
+    // [AUDIT F-01] `pay_out` now requires the recipient to be an existing Player
+    // PDA and charges a per-mint VaultGuard budget. The Player is derived from
+    // the owner of the destination token account, which we read from chain so a
+    // caller cannot pass a mismatched player.
+    const recipient = await tokenAccountOwner(userToken);
+    const [player] = playerPda(recipient);
+    const [vaultGuard] = vaultGuardPda(mint);
 
     const ix = await (program.methods as any)
       .payOut(amount as any)
       .accounts({
         config,
         authority: AUTHORITY.publicKey,
+        materialMints,
+        vaultGuard,
+        player,
         vault,
         mint,
         vaultToken,

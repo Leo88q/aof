@@ -82,12 +82,13 @@ r.post("/end", requireCircuitOpen, requireWalletLimits("rental__end"), requireId
     const caller = pk(req.body.caller);
     const mint = pk(req.body.mint);
     const renterRefund = pk(req.body.renterRefund);
+    const [config] = configPda();
     const [tool] = toolPda(mint);
     const [rentalAgreement] = rentalAgreementPda(mint);
 
     const ix = await (program.methods as any)
       .rentalEnd()
-      .accounts({ caller, mint, tool, rentalAgreement, renterRefund })
+      .accounts({ config, caller, mint, tool, rentalAgreement, renterRefund })
       .instruction();
 
     const tx = await coSign([ix], caller);
@@ -101,13 +102,14 @@ r.post("/revoke", requireCircuitOpen, requireWalletLimits("rental__revoke"), req
   try {
     const owner = pk(req.body.owner);
     const mint = pk(req.body.mint);
+    const [config] = configPda();
     const [tool] = toolPda(mint);
     const [rentalAgreement] = rentalAgreementPda(mint);
     const agreement: any = await (program.account as any)["rentalAgreement"].fetch(rentalAgreement);
 
     const ix = await (program.methods as any)
       .rentalRevoke()
-      .accounts({ owner, mint, tool, rentalAgreement, renterRefund: agreement.renter })
+      .accounts({ config, owner, mint, tool, rentalAgreement, renterRefund: agreement.renter })
       .instruction();
 
     const tx = await coSign([ix], owner);

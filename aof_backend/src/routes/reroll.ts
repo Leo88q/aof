@@ -1,9 +1,19 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
+import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
 import { AUTHORITY } from "../config";
 import { program } from "../provider";
-import { authPda, configPda, gastankPda, rerollCommitPda, rerollConfigPda, toolPda } from "../lib/pda";
+import {
+  authPda,
+  configPda,
+  craftEconomyPda,
+  gastankPda,
+  materialMintsPda,
+  rarityCounterPda,
+  rerollCommitPda,
+  rerollConfigPda,
+  toolPda,
+} from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
@@ -29,6 +39,33 @@ r.post("/fuse", async (req, res) => {
     const tokenB = getAssociatedTokenAddressSync(mintB, user);
     const newToken = getAssociatedTokenAddressSync(newMint, user);
 
+    // [AUDIT F-09] Rerolling now burns the craft bundle for the target rarity
+    // and moves the rarity counter. The on-chain side derives the target rarity
+    // itself (tool_a.rarity + 1); we only have to resolve the resource mints
+    // from Config and derive the matching ATAs and the rarity counter PDA.
+    const [craftEconomy] = craftEconomyPda();
+    const cfg: any = await (program.account as any)["config"].fetch(config);
+    const toolAccount: any = await (program.account as any)["toolData"].fetch(toolA);
+    const RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
+    const rarityOf = (v: any): number => {
+      if (typeof v === "number") return v;
+      return RARITIES.findIndex((name) => v && typeof v === "object" && name in v);
+    };
+    const targetRarity = rarityOf(toolAccount.rarity) + 1;
+    if (!(targetRarity >= 1 && targetRarity < RARITIES.length)) {
+      throw new Error("Reroll target rarity is out of range");
+    }
+    const [rarityCounter] = rarityCounterPda(targetRarity);
+    const resourceMints = {
+      wood: new PublicKey(cfg.woodMint),
+      stone: new PublicKey(cfg.stoneMint),
+      food: new PublicKey(cfg.foodMint),
+      seeds: new PublicKey(cfg.seedsMint),
+      water: new PublicKey(cfg.waterMint),
+      potato: new PublicKey(cfg.potatoMint),
+    };
+    const ata = (m: PublicKey) => getAssociatedTokenAddressSync(m, user);
+
     const ix = await (program.methods as any)
       .reroll(newType)
       .accounts({
@@ -45,6 +82,20 @@ r.post("/fuse", async (req, res) => {
         newToken,
         newToolData,
         auth,
+        rarityCounter,
+        craftEconomy,
+        woodMint: resourceMints.wood,
+        userWood: ata(resourceMints.wood),
+        stoneMint: resourceMints.stone,
+        userStone: ata(resourceMints.stone),
+        foodMint: resourceMints.food,
+        userFood: ata(resourceMints.food),
+        seedsMint: resourceMints.seeds,
+        userSeeds: ata(resourceMints.seeds),
+        waterMint: resourceMints.water,
+        userWater: ata(resourceMints.water),
+        potatoMint: resourceMints.potato,
+        userPotato: ata(resourceMints.potato),
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })

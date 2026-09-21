@@ -4,7 +4,15 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { SystemProgram } from "@solana/web3.js";
 import { AUTHORITY } from "../config";
 import { program } from "../provider";
-import { configPda, playerPda, referralLinkPda, referrerStatsPda, vaultPda } from "../lib/pda";
+import {
+  configPda,
+  materialMintsPda,
+  playerPda,
+  referralLinkPda,
+  referrerStatsPda,
+  vaultGuardPda,
+  vaultPda,
+} from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
@@ -84,15 +92,22 @@ r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("referr
     const referrerToken = pk(req.body.referrerToken);
     const amount = new BN(req.body.amount);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [vault] = vaultPda();
     const [referralLink] = referralLinkPda(referred);
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
+    // [AUDIT F-01] same three brakes as `pay_out` (see tools.ts).
+    const [player] = playerPda(referred);
+    const [vaultGuard] = vaultGuardPda(mint);
 
     const ix = await (program.methods as any)
       .payOutWithReferral(amount as any)
       .accounts({
         config,
         authority: AUTHORITY.publicKey,
+        materialMints,
+        vaultGuard,
+        player,
         vault,
         mint,
         vaultToken,
