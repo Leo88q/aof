@@ -1,4 +1,6 @@
 pub mod initialize;
+pub mod authority;
+pub mod admin_config;
 pub mod set_fees;
 pub mod set_paused;
 pub mod set_resource_mints;
@@ -56,3 +58,10 @@ pub mod season;
 
 pub mod mint_resource_once;
 pub mod issuance_cap;
+
+// [AUDIT F-02/F-03/F-27] lib.rs calls these handlers as `instructions::<fn>`
+// (the new admin/governance instructions live in `authority` / `admin_config`),
+// so re-export them at the crate-instructions root. Without this the crate does
+// not compile: `instructions::set_pending_authority` would be unresolved.
+pub use authority::{accept_authority, cancel_pending_authority, set_pending_authority};
+pub use admin_config::{set_mining_enabled, set_supply_cap};

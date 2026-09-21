@@ -1,5 +1,7 @@
 export interface TradeMethod {
   id: string;
+  /** [AUDIT G-05] false = the venue is not executable on-chain yet. */
+  live: boolean;
   name: string;
   speed: string;
   risk: string;
@@ -13,9 +15,18 @@ export interface TradeMethod {
   whenToAvoid: string[];
 }
 
+/**
+ * [AUDIT G-05] Six trading venues are documented here, but `aof-market` (the
+ * Hot Market / VRGDA programme) is not live: three of its four trading
+ * instructions open with `require!(false, MarketError::TradingDisabled)` because
+ * the canonical ToolData ownership transfer was never implemented. The other
+ * five venues live in `aof-core` and are live. Every entry now carries an
+ * explicit `live` flag so the UI can stop advertising a venue that is off.
+ */
 export const tradeMethods: TradeMethod[] = [
   {
     id: 'trade-marketplace',
+    live: true,
     name: 'Маркетплейс (мгновенные листинги)',
     speed: 'Мгновенно',
     risk: 'Низкий',
@@ -37,6 +48,7 @@ export const tradeMethods: TradeMethod[] = [
   },
   {
     id: 'trade-orderbook',
+    live: true,
     name: 'Ордербук (лимитные заявки)',
     speed: 'От минут до дней',
     risk: 'Низкий, но заявка может не исполниться',
@@ -58,6 +70,7 @@ export const tradeMethods: TradeMethod[] = [
   },
   {
     id: 'trade-auction',
+    live: true,
     name: 'Аукцион (последовательные ставки)',
     speed: 'По таймеру лота',
     risk: 'Средний: азарт и перегрев ставки',
@@ -78,6 +91,7 @@ export const tradeMethods: TradeMethod[] = [
   },
   {
     id: 'trade-hotmarket',
+    live: false,
     name: 'Событийный рынок (очередь и приоритет)',
     speed: 'Быстро, но с очередью',
     risk: 'Средний: цена события может отличаться от обычной',
@@ -98,6 +112,7 @@ export const tradeMethods: TradeMethod[] = [
   },
   {
     id: 'trade-liquidity',
+    live: true,
     name: 'Пул ликвидности (доля и комиссии)',
     speed: 'Пассивно, на дистанции',
     risk: 'Высокий: изменение цен пары',
@@ -118,6 +133,7 @@ export const tradeMethods: TradeMethod[] = [
   },
   {
     id: 'trade-rental',
+    live: true,
     name: 'Аренда инструментов',
     speed: 'По сроку договора',
     risk: 'Низкий-средний: износ и условия возврата',

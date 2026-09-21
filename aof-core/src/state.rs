@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
+use crate::ResourceKind;
 
 #[account]
 #[derive(InitSpace)]
@@ -16,6 +17,71 @@ pub struct Config {
     pub unstake_fee: u64,           // 8
     pub paused: bool,               // 1
     pub bump: u8,                   // 1
+    // ===== [AUDIT F-27] on-chain kill-switch for mining =====
+    // MINING_ENABLED previously lived only in the backend env
+    // (`config.ts: MINING_ENABLED = !isProduction && ...`). Anybody could
+    // bypass it by calling `start_mining`/`collect_mining` straight through
+    // RPC. The flag now lives on-chain and is enforced by both instructions.
+    pub mining_enabled: bool,       // 1
+    // ===== [AUDIT F-02] two-step authority rotation =====
+    // `set_pending_authority` (current authority) -> `accept_authority`
+    // (new authority). `pending_authority == Pubkey::default()` means "no
+    // rotation in flight". Without this pair the deployed Config.authority
+    // was frozen forever at the value captured during the first initialize().
+    pub pending_authority: Pubkey,  // 32
+    pub authority_updated_at: i64,  // 8
+}
+
+/// [AUDIT F-17] Canonical tool kinds. `ToolData.tool_type` is a free-form
+/// String, and `mint_tool` accepted any string up to 32 bytes. A tool minted as
+/// "Spear" (capital S) or "sword" produced nothing while mining (the mapping was
+/// case-sensitive in exploration and simply missing for spear) and could not be
+/// repaired. Every entry point now normalises to this set.
+pub const TOOL_KINDS: [&str; 5] = ["axe", "pick", "bow", "spear", "reaper"];
+
+pub fn is_valid_tool_type(tool_type: &str) -> bool {
+    TOOL_KINDS.iter().any(|k| tool_type.eq_ignore_ascii_case(k))
+}
+
+/// Lower-case canonical spelling, so "Axe" and "AXE" produce the same stored
+/// value and every comparison downstream is unambiguous.
+pub fn canonical_tool_type(tool_type: &str) -> Option<&'static str> {
+    TOOL_KINDS.iter().copied().find(|k| tool_type.eq_ignore_ascii_case(k))
+}
+
+impl Config {
+    pub fn is_resource_mint(&self, materials: &MaterialMints, mint: &Pubkey) -> bool {
+        let m = mint;
+        *m == self.food_mint
+            || *m == self.wood_mint
+            || *m == self.stone_mint
+            || *m == self.seeds_mint
+            || *m == self.water_mint
+            || *m == self.potato_mint
+            || *m == materials.seeds
+            || *m == materials.wheat
+            || *m == materials.flour
+            || *m == materials.bread
+            || *m == materials.water
+            || *m == materials.coal
+            || *m == materials.meat
+            || *m == materials.stone_blue
+            || *m == materials.stone_purple
+            || *m == materials.stone_red
+            || *m == materials.sand_white
+            || *m == materials.sand_pink
+            || *m == materials.sand_yellow
+            || *m == materials.gem_blue
+            || *m == materials.gem_orange
+            || *m == materials.gem_white
+            || *m == materials.gem_green
+            || *m == materials.flask_blue
+            || *m == materials.flask_yellow
+            || *m == materials.flask_green
+            || *m == materials.flask_pink
+            || *m == materials.flask_purple
+            || *m == materials.love_heart
+    }
 }
 
 #[account]
@@ -73,6 +139,12 @@ pub struct GasTank {
     pub owner: Pubkey,              // 32
     pub balance_micros: u64,        // 8 (SOL-micros, 1e6 per SOL)
     pub cooldown_until: i64,        // 8
+    /// [AUDIT F-20] Lamports that arrived but do not yet add up to a whole
+    /// micro (1 micro = 1000 lamports). `deposit_gas` used to floor every
+    /// deposit, so anything below 1000 lamports was credited as zero and could
+    /// never be withdrawn. The remainder is now carried over to the next
+    /// deposit instead of being swallowed by the PDA.
+    pub dust_lamports: u64,         // 8
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
@@ -116,16 +188,6 @@ impl Rarity {
         }
     }
 
-    pub fn income_multiplier(&self) -> u64 {
-        match self {
-            Rarity::Common => 1,
-            Rarity::Uncommon => 2,
-            Rarity::Rare => 4,
-            Rarity::Epic => 8,
-            Rarity::Legendary => 16,
-        }
-    }
-
     // ===== [НОВОЕ] =====
 
     /// Индекс в craft/craft-economy таблицах (только крафтящиеся редкости,
@@ -142,6 +204,19 @@ impl Rarity {
 
     /// Стоимость ремонта (STONE за 1 юнит прочности) — тот же паттерн,
     /// что max_hours()/income_multiplier(), константы см. constants.rs.
+    /// Yield multiplier in bps for mining. Single source of truth: it used to
+    /// be duplicated between `constants::YIELD_BPS_*` and a private
+    /// `yield_bps()` inside `collect_mining.rs`, and the two could drift.
+    pub fn yield_bps(&self) -> u64 {
+        match self {
+            Rarity::Common => YIELD_BPS_COMMON as u64,
+            Rarity::Uncommon => YIELD_BPS_UNCOMMON as u64,
+            Rarity::Rare => YIELD_BPS_RARE as u64,
+            Rarity::Epic => YIELD_BPS_EPIC as u64,
+            Rarity::Legendary => YIELD_BPS_LEGENDARY as u64,
+        }
+    }
+
     pub fn repair_stone_cost_per_unit(&self) -> u64 {
         match self {
             Rarity::Common => REPAIR_STONE_COMMON,
@@ -226,6 +301,24 @@ pub struct StakedCollector {
     pub unlock_at: i64,    // 8
 }
 
+/// [AUDIT F-16] Allowlist entry for the Historian/Medallion perks.
+///
+/// `collector_stake` used to start with `require!(false, CollectorNotConfigured)`,
+/// which made the perks — and therefore `MINT_FEE_MEDALLION_*`,
+/// `REFERRAL_MEDALLION_BONUS_CAP`/`REFERRAL_HISTORIAN_BONUS_CAP` — permanently
+/// unreachable while the site kept advertising them. There is no canonical
+/// collection mint registry on-chain, so instead of trusting a caller-supplied
+/// mint the authority registers each eligible NFT mint explicitly here
+/// (`register_collector_mint`) and `collector_stake` requires the entry to
+/// exist and to carry the declared `CollectorKind`.
+#[account]
+#[derive(InitSpace)]
+pub struct CollectorAllowEntry {
+    pub mint: Pubkey,
+    pub kind: CollectorKind,
+    pub bump: u8,
+}
+
 // =====================================================================
 // [НОВОЕ] Полная реализация TOR v4 — см. AUDIT_V4_FULL_IMPLEMENTATION.md
 // =====================================================================
@@ -255,8 +348,6 @@ pub struct PackConfig {
     pub price_lamports: u64,
     pub odds_bps: [u16; 5], // Common,Uncommon,Rare,Epic,Legendary
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 #[account]
@@ -281,8 +372,6 @@ pub struct PackCommit {
 pub struct RerollConfig {
     pub odds_bps: [u16; 5],
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 #[account]
@@ -336,18 +425,11 @@ pub struct ReferrerStats {
 
 // ----- Кузница риска (Enchant) -----
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
-pub enum EnchantSlotType {
-    Speed,
-    Durability,
-    EnergyEfficiency,
-}
-
 #[account]
 #[derive(InitSpace)]
 pub struct EnchantSlot {
     pub tool_mint: Pubkey,
-    pub slot_type: u8, // EnchantSlotType as u8
+    pub slot_type: u8, // 0=Speed, 1=Durability, 2=EnergyEfficiency
     pub level: u8,      // 0..=ENCHANT_MAX_LEVEL
 }
 
@@ -381,6 +463,9 @@ pub struct LotteryRound {
     pub winning_ticket: u64,
     pub claimed: bool,
     pub bump: u8,
+    /// [AUDIT F-23] Round creation time; starts the refund timeout that stops
+    /// an unrevealed round from stranding its pool forever.
+    pub created_at: i64,
     // [ФИКС] commit-reveal поля для розыгрыша (закрывают вектор гриферства)
     pub draw_committed: bool,
     pub draw_commit_slot: u64,
@@ -393,6 +478,19 @@ pub struct LotteryTicket {
     pub round_id: u64,
     pub ticket_number: u64,
     pub buyer: Pubkey,
+}
+
+/// [AUDIT] Per-wallet, per-round ticket counter. `LOTTERY_MAX_TICKETS_PER_DAY`
+/// existed as a constant but was never enforced anywhere; the backend limit was
+/// trivially bypassed by calling the program directly. The PDA is derived from
+/// (round, buyer) so the counter cannot be shared or reset.
+#[account]
+#[derive(InitSpace)]
+pub struct LotteryTicketCounter {
+    pub buyer: Pubkey,
+    pub round_id: u64,
+    pub count: u8,
+    pub bump: u8,
 }
 
 // ----- Рынок -----
@@ -485,8 +583,6 @@ pub struct Season {
     pub season_id: u32,
     pub start_time: i64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 #[account]
@@ -531,8 +627,170 @@ pub struct MaterialMints {
     pub flask_purple: Pubkey,
     pub love_heart: Pubkey,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
+    /// [AUDIT F-03] Hard ceiling on the total supply of every resource,
+    /// indexed by `ResourceKind as u8` (see `RESOURCE_KIND_COUNT`).
+    ///
+    /// `IssuanceCap` only ever guarded `mint_resource`/`mint_resource_once`,
+    /// so `collect_mining`, `collect_flour`, `collect_bread`,
+    /// `collect_well_water`, `explore_reveal`, `craft_recipe` and
+    /// `claim_season_reward` could emit without any bound. This array is
+    /// checked by every minting path, whatever the caller, because the check
+    /// is a pure function of the mint account supply.
+    ///
+    /// `SUPPLY_CAP_UNLIMITED` (u64::MAX) means "no ceiling configured"; the
+    /// authority is expected to lower the interesting kinds right after
+    /// `init_material_mints`, and can tighten them at any time with
+    /// `set_supply_cap`. Lowering below the current supply halts that kind.
+    pub max_supply: [u64; RESOURCE_KIND_COUNT],
+}
+
+/// One canonical mapping ResourceKind -> mint. Previously duplicated in
+/// `mint_resource.rs` and `burn_resource.rs`, where the two copies could
+/// silently diverge ([AUDIT G-06]).
+/// [AUDIT G-08] `craft`, `reroll` and `mint_tool` each wrote the same nine
+/// fields of a freshly minted tool. Hand-copied initialisers drift: `reroll`
+/// already set them in a different order from `craft`, and a tenth field added
+/// to `ToolData` would have had to be remembered three times. One function,
+/// three call sites.
+pub fn init_tool_data(
+    tool: &mut ToolData,
+    mint: Pubkey,
+    owner: Pubkey,
+    tool_type: String,
+    rarity: Rarity,
+) {
+    tool.mint = mint;
+    tool.owner = owner;
+    tool.operator = owner;
+    tool.tool_type = tool_type;
+    tool.rarity = rarity;
+    tool.durability = MAX_DURABILITY;
+    tool.is_mining = false;
+    tool.mining_end = 0;
+    tool.last_mined_hours = 0;
+    tool.staked = false;
+    tool.unlock_at = 0;
+}
+
+pub fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
+    match kind {
+        // Старые ресурсы из Config
+        ResourceKind::Food => config.food_mint,
+        ResourceKind::Wood => config.wood_mint,
+        ResourceKind::Stone => config.stone_mint,
+        // [БЛОК L] Новые ресурсы из MaterialMints
+        ResourceKind::Seeds => material_mints.seeds,
+        ResourceKind::Wheat => material_mints.wheat,
+        ResourceKind::Flour => material_mints.flour,
+        ResourceKind::Bread => material_mints.bread,
+        ResourceKind::Water => material_mints.water,
+        ResourceKind::Coal => material_mints.coal,
+        ResourceKind::Meat => material_mints.meat,
+        ResourceKind::StoneBlue => material_mints.stone_blue,
+        ResourceKind::StonePurple => material_mints.stone_purple,
+        ResourceKind::StoneRed => material_mints.stone_red,
+        ResourceKind::SandWhite => material_mints.sand_white,
+        ResourceKind::SandPink => material_mints.sand_pink,
+        ResourceKind::SandYellow => material_mints.sand_yellow,
+        ResourceKind::GemBlue => material_mints.gem_blue,
+        ResourceKind::GemOrange => material_mints.gem_orange,
+        ResourceKind::GemWhite => material_mints.gem_white,
+        ResourceKind::GemGreen => material_mints.gem_green,
+        ResourceKind::FlaskBlue => material_mints.flask_blue,
+        ResourceKind::FlaskYellow => material_mints.flask_yellow,
+        ResourceKind::FlaskGreen => material_mints.flask_green,
+        ResourceKind::FlaskPink => material_mints.flask_pink,
+        ResourceKind::FlaskPurple => material_mints.flask_purple,
+        ResourceKind::LoveHeart => material_mints.love_heart,
+        ResourceKind::Potato => config.potato_mint,
+    }
+}
+
+/// Check the global supply ceiling for `kind` BEFORE the mint CPI runs, so a
+/// rejected mint leaves no state change behind. `u64::MAX` means unlimited.
+pub fn check_supply_cap(
+    material_mints: &MaterialMints,
+    kind: ResourceKind,
+    current_supply: u64,
+    amount: u64,
+) -> core::result::Result<(), crate::errors::AofError> {
+    use crate::errors::AofError;
+    let cap = material_mints.max_supply[kind as usize];
+    if cap == SUPPLY_CAP_UNLIMITED {
+        return Ok(());
+    }
+    let next = current_supply
+        .checked_add(amount)
+        .ok_or(AofError::MathOverflow)?;
+    if next > cap {
+        return Err(AofError::SupplyCapExceeded);
+    }
+    Ok(())
+}
+
+/// Per-mint rate limiter for authority withdrawals from the staking vault
+/// ([AUDIT F-01]). `pay_out` used to be an unbounded "move any amount of any
+/// mint to any wallet" primitive, so a single leaked hot key meant total loss
+/// of everything the vault held. The guard is a required account: a missing
+/// guard PDA fails account resolution, i.e. an un-configured mint cannot be
+/// withdrawn at all.
+#[account]
+#[derive(InitSpace)]
+pub struct VaultGuard {
+    pub mint: Pubkey,
+    pub epoch_slots: u64,
+    pub cap_per_epoch: u64,      // 0 = withdrawals of this mint halted
+    pub max_per_tx: u64,         // 0 = no per-transaction ceiling
+    pub epoch_start_slot: u64,
+    pub withdrawn_in_epoch: u64,
+    pub lifetime_withdrawn: u128,
+    pub bump: u8,
+}
+
+impl VaultGuard {
+    pub fn roll_epoch(&mut self, slot: u64) {
+        if self.epoch_slots == 0 {
+            return;
+        }
+        let end = self.epoch_start_slot.saturating_add(self.epoch_slots);
+        if slot < end {
+            return;
+        }
+        let elapsed = slot - self.epoch_start_slot;
+        let full = elapsed / self.epoch_slots;
+        self.epoch_start_slot = self
+            .epoch_start_slot
+            .saturating_add(full.saturating_mul(self.epoch_slots));
+        self.withdrawn_in_epoch = 0;
+    }
+
+    pub fn charge(
+        &mut self,
+        amount: u64,
+        slot: u64,
+    ) -> core::result::Result<(), crate::errors::AofError> {
+        use crate::errors::AofError;
+        if self.cap_per_epoch == 0 || self.epoch_slots == 0 {
+            return Err(AofError::VaultGuardNotConfigured);
+        }
+        if self.max_per_tx > 0 && amount > self.max_per_tx {
+            return Err(AofError::VaultGuardLimitExceeded);
+        }
+        self.roll_epoch(slot);
+        let next = self
+            .withdrawn_in_epoch
+            .checked_add(amount)
+            .ok_or(AofError::MathOverflow)?;
+        if next > self.cap_per_epoch {
+            return Err(AofError::VaultGuardLimitExceeded);
+        }
+        self.withdrawn_in_epoch = next;
+        self.lifetime_withdrawn = self
+            .lifetime_withdrawn
+            .checked_add(amount as u128)
+            .ok_or(AofError::MathOverflow)?;
+        Ok(())
+    }
 }
 
 /// EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)
@@ -544,8 +802,6 @@ pub struct EnergyAccount {
     pub last_regen_at: i64,
     pub cap: u8,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 impl EnergyAccount {
@@ -574,7 +830,7 @@ impl EnergyAccount {
 mod energy_tests {
     use super::*;
     fn energy(current: u8) -> EnergyAccount {
-        EnergyAccount { owner: Pubkey::default(), current, last_regen_at: 100, cap: 10, bump: 0, buff_expires_at: 0, buff_type: 0 }
+        EnergyAccount { owner: Pubkey::default(), current, last_regen_at: 100, cap: 10, bump: 0 }
     }
     #[test]
     fn long_absence_and_full_cap_do_not_wrap_or_bank() {
@@ -611,8 +867,6 @@ pub struct FarmTile {
     pub ready_at: i64,
     pub seeds_amount: u64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// WeatherState — глобальная погода (обновляется permissionless-кранком раз в сутки)
@@ -623,8 +877,6 @@ pub struct WeatherState {
     pub weather: u8,
     pub updated_at: i64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// WellState — колодец игрока (копит воду из погоды)
@@ -635,8 +887,6 @@ pub struct WellState {
     pub water_buffer: u64,
     pub last_collected_at: i64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// MillState — мельница игрока (одна активная партия одновременно)
@@ -648,8 +898,6 @@ pub struct MillState {
     pub ready_at: i64,
     pub output_flour: u64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// OvenState — печь игрока (одна активная партия одновременно)
@@ -662,30 +910,6 @@ pub struct OvenState {
     pub output_bread: u64,
     pub fuel_kind: u8, // 0=дрова, 1=уголь
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
-}
-
-/// LoveProgress — прогресс сердец любви игрока
-#[account]
-#[derive(InitSpace)]
-pub struct LoveProgress {
-    pub owner: Pubkey,
-    pub hearts: u64,
-    pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
-}
-
-/// FortuneBoost — активный буст удачи (для forge)
-#[account]
-#[derive(InitSpace)]
-pub struct FortuneBoost {
-    pub owner: Pubkey,
-    pub expires_at: i64,
-    pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// Per-ResourceKind issuance budget. Lives outside Config so the deployed
@@ -804,4 +1028,430 @@ pub struct RewardReceipt {
     pub gross_amount: u64,
     pub claimed_slot: u64,
     pub bump: u8,
+}
+
+/// Shared fixtures for the unit/property suites below. `MaterialMints` has no
+/// `Default`, so the 25-field literal lives here exactly once.
+#[cfg(test)]
+pub(crate) mod test_support {
+    use super::*;
+    use crate::constants::{RESOURCE_KIND_COUNT, SUPPLY_CAP_UNLIMITED};
+
+    pub fn material_mints() -> MaterialMints {
+        MaterialMints {
+            seeds: Pubkey::default(),
+            wheat: Pubkey::default(),
+            flour: Pubkey::default(),
+            bread: Pubkey::default(),
+            water: Pubkey::default(),
+            coal: Pubkey::default(),
+            meat: Pubkey::default(),
+            stone_blue: Pubkey::default(),
+            stone_purple: Pubkey::default(),
+            stone_red: Pubkey::default(),
+            sand_white: Pubkey::default(),
+            sand_pink: Pubkey::default(),
+            sand_yellow: Pubkey::default(),
+            gem_blue: Pubkey::default(),
+            gem_orange: Pubkey::default(),
+            gem_white: Pubkey::default(),
+            gem_green: Pubkey::default(),
+            flask_blue: Pubkey::default(),
+            flask_yellow: Pubkey::default(),
+            flask_green: Pubkey::default(),
+            flask_pink: Pubkey::default(),
+            flask_purple: Pubkey::default(),
+            love_heart: Pubkey::default(),
+            bump: 0,
+            max_supply: [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT],
+        }
+    }
+
+    pub fn with_supply_cap(kind: ResourceKind, cap: u64) -> MaterialMints {
+        let mut m = material_mints();
+        m.max_supply[kind as usize] = cap;
+        m
+    }
+
+    pub fn vault_guard(epoch_slots: u64, cap_per_epoch: u64, max_per_tx: u64) -> VaultGuard {
+        VaultGuard {
+            mint: Pubkey::default(),
+            epoch_slots,
+            cap_per_epoch,
+            max_per_tx,
+            epoch_start_slot: 1_000,
+            withdrawn_in_epoch: 0,
+            lifetime_withdrawn: 0,
+            bump: 0,
+        }
+    }
+}
+
+/// [AUDIT F-03 / F-01 / F-17] Unit tests for the pure helpers the audit's
+/// findings turned into. They need no validator: `cargo test -p aof-core` runs
+/// them. `tests/aof_core.ts` covers the wiring; these cover the arithmetic and
+/// the boundary conditions that decide whether funds move at all.
+#[cfg(test)]
+mod state_tests {
+    use super::test_support::with_supply_cap;
+    use super::*;
+    use crate::constants::{RESOURCE_KIND_COUNT, SUPPLY_CAP_UNLIMITED};
+    use crate::errors::AofError;
+
+    fn mm(cap: u64) -> MaterialMints {
+        with_supply_cap(ResourceKind::Wood, cap)
+    }
+
+    #[test]
+    fn supply_cap_is_inclusive_and_unlimited_is_open() {
+        let capped = mm(1_000);
+        assert!(check_supply_cap(&capped, ResourceKind::Wood, 999, 1).is_ok(), "exactly at the cap must pass");
+        assert!(check_supply_cap(&capped, ResourceKind::Wood, 1_000, 1).is_err(), "one unit over the cap must fail");
+        assert!(matches!(
+            check_supply_cap(&capped, ResourceKind::Wood, 0, 1_001).unwrap_err(),
+            AofError::SupplyCapExceeded
+        ));
+        // Unlimited kinds never block, whatever the supply.
+        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX - 1, 1).is_ok());
+        // Overflowing supply+amount is an error, not a panic.
+        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX, u64::MAX).is_err());
+    }
+
+    fn guard(cap: u64, max_tx: u64) -> VaultGuard {
+        VaultGuard {
+            mint: Pubkey::default(),
+            epoch_slots: 100,
+            cap_per_epoch: cap,
+            max_per_tx: max_tx,
+            epoch_start_slot: 0,
+            withdrawn_in_epoch: 0,
+            lifetime_withdrawn: 0,
+            bump: 0,
+        }
+    }
+
+    #[test]
+    fn vault_guard_enforces_per_tx_then_per_epoch() {
+        let mut g = guard(1_000, 400);
+        assert!(g.charge(400, 10).is_ok());
+        assert!(matches!(g.charge(401, 11).unwrap_err(), AofError::VaultGuardLimitExceeded), "per-tx ceiling");
+        assert!(g.charge(300, 12).is_ok());
+        assert!(g.charge(300, 13).is_ok());
+        assert!(matches!(g.charge(1, 14).unwrap_err(), AofError::VaultGuardLimitExceeded), "epoch budget is cumulative");
+        // The epoch resets, so the guard is a rate limiter, not a permanent ban.
+        assert!(g.charge(400, 200).is_ok(), "a new epoch restores the budget");
+        assert_eq!(g.lifetime_withdrawn, 1_400);
+    }
+
+    #[test]
+    fn vault_guard_fails_closed_when_unconfigured() {
+        let mut g = guard(0, 0);
+        assert!(matches!(g.charge(1, 5).unwrap_err(), AofError::VaultGuardNotConfigured));
+        let mut no_slots = guard(1_000, 10);
+        no_slots.epoch_slots = 0;
+        assert!(matches!(no_slots.charge(1, 5).unwrap_err(), AofError::VaultGuardNotConfigured));
+    }
+
+    #[test]
+    fn tool_kinds_are_canonicalised() {
+        for kind in TOOL_KINDS {
+            assert!(is_valid_tool_type(kind));
+            assert_eq!(canonical_tool_type(kind), Some(kind));
+            assert!(is_valid_tool_type(&kind.to_uppercase()), "case must not matter");
+            assert!(is_valid_tool_type(&kind.to_uppercase()));
+        }
+        assert!(!is_valid_tool_type("sword"));
+        assert!(!is_valid_tool_type(""));
+        assert_eq!(canonical_tool_type("Spear"), Some("spear"));
+    }
+
+    #[test]
+    fn init_tool_data_writes_every_field() {
+        let mint = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+        let mut tool = ToolData {
+            mint: Pubkey::new_unique(),
+            owner: Pubkey::new_unique(),
+            tool_type: "stale".to_string(),
+            rarity: Rarity::Legendary,
+            durability: 0,
+            is_mining: true,
+            mining_end: 999,
+            last_mined_hours: 7,
+            staked: true,
+            unlock_at: 42,
+            operator: Pubkey::new_unique(),
+        };
+        init_tool_data(&mut tool, mint, owner, "axe".to_string(), Rarity::Common);
+        assert_eq!(tool.mint, mint);
+        assert_eq!(tool.owner, owner);
+        assert_eq!(tool.operator, owner, "operator must follow the owner");
+        assert_eq!(tool.tool_type, "axe");
+        assert_eq!(tool.rarity, Rarity::Common);
+        assert_eq!(tool.durability, crate::constants::MAX_DURABILITY);
+        assert!(!tool.is_mining && !tool.staked);
+        assert_eq!((tool.mining_end, tool.last_mined_hours, tool.unlock_at), (0, 0, 0));
+    }
+
+    /// The registry is indexed by `kind as u8` in `MaterialMints::max_supply`,
+    /// so every variant must sit inside the array the constant sizes.
+    #[test]
+    fn every_resource_kind_fits_the_registry() {
+        assert!(
+            RESOURCE_KIND_COUNT >= 27,
+            "RESOURCE_KIND_COUNT ({RESOURCE_KIND_COUNT}) is smaller than the ResourceKind enum"
+        );
+        // Spot-check both ends of the enum against the mapping (no transmute:
+        // an invalid discriminant would be UB and would hide the very bug this
+        // test is looking for).
+        let cfg = Config {
+            authority: Pubkey::default(),
+            treasury: Pubkey::default(),
+            food_mint: Pubkey::new_unique(),
+            wood_mint: Pubkey::new_unique(),
+            stone_mint: Pubkey::new_unique(),
+            seeds_mint: Pubkey::default(),
+            water_mint: Pubkey::default(),
+            potato_mint: Pubkey::default(),
+            craft_fee: 0,
+            unstake_fee: 0,
+            paused: false,
+            bump: 0,
+            mining_enabled: true,
+            pending_authority: Pubkey::default(),
+            authority_updated_at: 0,
+        };
+        let mut mints = mm(SUPPLY_CAP_UNLIMITED);
+        for kind in [
+            ResourceKind::Food,
+            ResourceKind::Wood,
+            ResourceKind::Stone,
+            ResourceKind::Seeds,
+            ResourceKind::Water,
+            ResourceKind::Potato,
+        ] {
+            let idx = kind as usize;
+            assert!(idx < RESOURCE_KIND_COUNT, "{kind:?} index {idx} is outside max_supply");
+            // Distinct mints must not silently collapse onto one registry slot.
+            mints.max_supply[idx] = idx as u64 + 1;
+            assert_eq!(
+                check_supply_cap(&mints, kind, 0, idx as u64 + 1).is_ok(),
+                true,
+                "{kind:?} cap lookup reads the wrong slot"
+            );
+        }
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Wood), cfg.wood_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Stone), cfg.stone_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Food), cfg.food_mint);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// [AUDIT F-33] Property tests.
+//
+// The suite was example-based only. These drive the same pure helpers with a
+// seeded generator so that the INVARIANT is asserted instead of a handful of
+// hand-picked inputs - the audit asked for fuzzing of the money-moving
+// arithmetic. `proptest` would mean a new dev-dependency plus a Cargo.lock
+// edit that CI (`cargo test --locked`) could not be re-verified from an
+// environment without cargo, so the generator is 20 lines of xorshift64*:
+// deterministic, dependency-free and reproducible from the failing input.
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod property_tests {
+    use super::test_support::vault_guard;
+    use super::test_support::with_supply_cap;
+    use super::*;
+    use crate::constants::SUPPLY_CAP_UNLIMITED;
+    use crate::errors::AofError;
+    use crate::randomness::weighted_pick;
+
+    struct Rng(u64);
+
+    impl Rng {
+        fn new(seed: u64) -> Self { Self(seed | 1) }
+        fn next_u64(&mut self) -> u64 {
+            let mut x = self.0;
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.0 = x;
+            x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+        }
+        fn below(&mut self, n: u64) -> u64 { if n == 0 { 0 } else { self.next_u64() % n } }
+        /// Biased towards what an attacker actually sends: 0, 1, u64::MAX and
+        /// small numbers, not just a uniform spread.
+        fn extreme(&mut self) -> u64 {
+            match self.below(8) {
+                0 => 0,
+                1 => 1,
+                2 => u64::MAX,
+                3 => u64::MAX - 1,
+                4 => self.next_u64() & 0xffff,
+                _ => self.next_u64(),
+            }
+        }
+    }
+
+    /// [F-03] The cap must be exactly `supply + amount <= cap`, nothing more
+    /// and nothing less, for every input including the overflow edges.
+    #[test]
+    fn supply_cap_is_exactly_the_arithmetic_predicate() {
+        let mut rng = Rng::new(0xA0F_2026);
+        for _ in 0..20_000 {
+            let cap = rng.extreme();
+            let supply = rng.extreme();
+            let amount = rng.extreme();
+            let mints = with_supply_cap(ResourceKind::Wood, cap);
+            let sum = supply.checked_add(amount);
+            let expected = cap == SUPPLY_CAP_UNLIMITED || matches!(sum, Some(total) if total <= cap);
+            let got = check_supply_cap(&mints, ResourceKind::Wood, supply, amount);
+            assert_eq!(got.is_ok(), expected, "cap={cap} supply={supply} amount={amount}");
+            if !expected {
+                match sum {
+                    None => assert!(matches!(got.unwrap_err(), AofError::MathOverflow)),
+                    Some(_) => assert!(matches!(got.unwrap_err(), AofError::SupplyCapExceeded)),
+                }
+            }
+        }
+    }
+
+    /// [F-01] A stolen authority key is bounded by the guard, so the guard must
+    /// never let the epoch budget or the per-transaction ceiling slip.
+    #[test]
+    fn vault_guard_never_releases_more_than_its_budget() {
+        let mut rng = Rng::new(0xF01_2026);
+        for _ in 0..2_000 {
+            let epoch = 1 + rng.below(100_000);
+            let cap = rng.extreme();
+            let max_tx = rng.extreme();
+            if cap == 0 { continue; } // "halted": covered by the unit tests
+            let mut guard = vault_guard(epoch, cap, max_tx);
+            for _ in 0..8 {
+                let amount = rng.extreme();
+                let slot = 1_000 + rng.below(epoch);
+                let before = guard.withdrawn_in_epoch;
+                let lifetime = guard.lifetime_withdrawn;
+                match guard.charge(amount, slot) {
+                    Ok(()) => {
+                        assert!(max_tx == 0 || amount <= max_tx, "per-tx ceiling ignored: {amount} > {max_tx}");
+                        assert_eq!(guard.withdrawn_in_epoch, before + amount, "cumulative accounting drifted");
+                        assert!(guard.withdrawn_in_epoch <= cap, "epoch budget exceeded");
+                        assert_eq!(guard.lifetime_withdrawn, lifetime + amount as u128);
+                    }
+                    Err(AofError::VaultGuardLimitExceeded) => {
+                        let over_tx = max_tx > 0 && amount > max_tx;
+                        let over_epoch = before.checked_add(amount).map_or(false, |n| n > cap);
+                        assert!(over_tx || over_epoch,
+                            "rejected without a reason: amount={amount} before={before} cap={cap} max_tx={max_tx}");
+                        assert_eq!(guard.withdrawn_in_epoch, before, "a rejected charge moved the counter");
+                    }
+                    Err(AofError::MathOverflow) => {
+                        assert!(before.checked_add(amount).is_none(), "overflow reported for a bounded sum");
+                    }
+                    Err(other) => panic!("unexpected error {other:?}"),
+                }
+            }
+            // A later epoch restores exactly one budget - never two.
+            guard.charge(0, 1_000 + epoch).unwrap();
+            assert_eq!(guard.withdrawn_in_epoch, 0, "the epoch roll did not reset the budget");
+        }
+    }
+
+    /// [F-03] Same invariant for the per-epoch issuance budget.
+    #[test]
+    fn issuance_cap_never_releases_more_than_its_budget() {
+        let mut rng = Rng::new(0x103_2026);
+        for _ in 0..2_000 {
+            let epoch = 1 + rng.below(100_000);
+            let cap = rng.extreme();
+            if cap == 0 { continue; }
+            let mut c = IssuanceCap {
+                kind: 3,
+                epoch_slots: epoch,
+                cap_per_epoch: cap,
+                epoch_start_slot: 1_000,
+                minted_in_epoch: 0,
+                lifetime_minted: 0,
+                bump: 0,
+            };
+            for _ in 0..8 {
+                let amount = rng.extreme();
+                let slot = 1_000 + rng.below(epoch);
+                let before = c.minted_in_epoch;
+                match c.charge(3, amount, slot) {
+                    Ok(()) => {
+                        assert_eq!(c.minted_in_epoch, before + amount);
+                        assert!(c.minted_in_epoch <= cap, "epoch budget exceeded");
+                    }
+                    Err(AofError::IssuanceCapExceeded) => {
+                        assert!(before.checked_add(amount).map_or(false, |n| n > cap),
+                            "rejected without a reason: amount={amount} before={before} cap={cap}");
+                        assert_eq!(c.minted_in_epoch, before, "a rejected charge moved the counter");
+                    }
+                    Err(AofError::MathOverflow) => {
+                        assert!(before.checked_add(amount).is_none(), "overflow reported for a bounded sum");
+                    }
+                    Err(other) => panic!("unexpected error {other:?}"),
+                }
+            }
+        }
+    }
+
+    /// [F-13] The drum/pack/forge odds tables all funnel through
+    /// `weighted_pick`; a bucket that does not contain the roll would silently
+    /// re-price every prize.
+    #[test]
+    fn weighted_pick_returns_the_bucket_that_contains_the_roll() {
+        let mut rng = Rng::new(0x0D5_2026);
+        for _ in 0..2_000 {
+            let mut weights = [0u16; 5];
+            let mut used = 0u32;
+            // 4 x < 2_000 keeps `10_000 - used` positive: the release profile
+            // runs with overflow-checks on, so a subtraction wrap would panic.
+            for w in weights.iter_mut().take(4) {
+                *w = rng.below(2_000) as u16;
+                used += *w as u32;
+            }
+            weights[4] = (10_000 - used) as u16;
+            for _ in 0..25 {
+                let roll = rng.next_u64();
+                let idx = weighted_pick(roll, &weights);
+                let r = roll % 10_000;
+                let inclusive: u32 = weights[..=idx].iter().map(|w| *w as u32).sum();
+                let exclusive: u32 = weights[..idx].iter().map(|w| *w as u32).sum();
+                assert!(idx < weights.len(), "index {idx} out of range");
+                assert!(inclusive > r, "bucket {idx} does not contain roll {r} (weights {weights:?})");
+                assert!(idx == 0 || exclusive <= r, "bucket {idx} starts after roll {r}");
+            }
+        }
+    }
+
+    /// [F-17] Case-insensitive canonicalisation must be total (no junk
+    /// canonicalises to a tool) and idempotent, or "Axe" and "axe" remain two
+    /// different tools downstream.
+    #[test]
+    fn tool_type_canonicalisation_is_total_and_idempotent() {
+        let mut rng = Rng::new(0x117_2026);
+        for kind in TOOL_KINDS {
+            for variant in [kind.to_string(), kind.to_uppercase(), kind.to_lowercase()] {
+                let c = canonical_tool_type(&variant).unwrap_or_else(|| panic!("{variant:?} must canonicalise"));
+                assert_eq!(c, *kind, "case changed the canonical value of {variant:?}");
+                assert!(is_valid_tool_type(c));
+                assert_eq!(canonical_tool_type(c), Some(*kind), "canonicalisation is not idempotent");
+            }
+        }
+        const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ";
+        for _ in 0..5_000 {
+            let len = 1 + rng.below(12) as usize;
+            let junk: String = (0..len)
+                .map(|_| ALPHABET[rng.below(ALPHABET.len() as u64) as usize] as char)
+                .collect();
+            if let Some(c) = canonical_tool_type(&junk) {
+                assert!(TOOL_KINDS.contains(&c), "junk {junk:?} canonicalised to {c:?}");
+                assert!(junk.eq_ignore_ascii_case(c), "{junk:?} does not match {c:?} case-insensitively");
+            }
+            assert_eq!(is_valid_tool_type(&junk), canonical_tool_type(&junk).is_some());
+        }
+    }
 }

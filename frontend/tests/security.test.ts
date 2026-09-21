@@ -171,3 +171,66 @@ test("legacy unbounded purchase, trailing bytes, extra accounts and cosigners fa
     keys: ix.keys.map((pubkey, i) => ({ pubkey, isWritable: i >= 1 && i <= 8, isSigner: i === 1 || i === 2 })) }));
   assert.equal((await guard(tx, { intent })).safe, false);
 });
+
+// ---------------------------------------------------------------------------
+// [AUDIT F-32] generic aof-core instruction policy
+// ---------------------------------------------------------------------------
+import { validateCoreInstructions, CORE_PROGRAM_ID } from "../src/lib/transactionIntent";
+import { CORE_INSTRUCTIONS } from "../src/lib/coreInstructions";
+
+function specOf(name: string) {
+  const spec = CORE_INSTRUCTIONS.find((s) => s.name === name);
+  if (!spec) throw new Error(`no spec for ${name}`);
+  return spec;
+}
+function ixFor(name: string, keys: PublicKey[]) {
+  return { programId: CORE_PROGRAM_ID, data: Uint8Array.from(specOf(name).discriminator), keys };
+}
+
+test("core instruction policy names every instruction and rejects authority-only calls", () => {
+  // start_mining is a player instruction whose `user` slot is a required signer.
+  const start = specOf("start_mining");
+  assert.ok(start.actorIndexes.length === 1 && start.signerIndexes.includes(start.actorIndexes[0]));
+  // auction_settle is permissionless: its seller slot is a payee, not a signer,
+  // so the wallet is not required to be there.
+  const settle = specOf("auction_settle");
+  assert.ok(!settle.actorIndexes.some((i) => settle.signerIndexes.includes(i)));
+  const keys = Array.from({ length: start.accounts.length }, () => Keypair.generate().publicKey);
+  keys[start.actorIndexes[0]] = user.publicKey;
+  assert.doesNotThrow(() => validateCoreInstructions([ixFor("start_mining", keys)], user.publicKey));
+
+  // The actor slot must be the connected wallet: a tampered backend swapping in
+  // another wallet is rejected.
+  const swapped = [...keys];
+  swapped[start.actorIndexes[0]] = other;
+  assert.throws(() => validateCoreInstructions([ixFor("start_mining", swapped)], user.publicKey), /user/);
+
+  // Wrong account count is rejected.
+  assert.throws(() => validateCoreInstructions([ixFor("start_mining", keys.slice(1))], user.publicKey), /account count/);
+
+  // Authority-only instructions must never reach a player wallet.
+  for (const name of ["pay_out", "mint_tool", "set_paused", "set_supply_cap"]) {
+    const spec = specOf(name);
+    const authorityKeys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
+    assert.throws(
+      () => validateCoreInstructions([ixFor(name, authorityKeys)], user.publicKey),
+      /Authority-only/,
+      `${name} must be rejected`,
+    );
+  }
+
+  // An unknown discriminator inside our own program is not "probably fine".
+  const unknown = { programId: CORE_PROGRAM_ID, data: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]), keys: [] };
+  assert.doesNotThrow(() => validateCoreInstructions([unknown], user.publicKey),
+    "unrecognised instructions are left to the program allowlist check in txGuard");
+});
+
+test("core instruction table covers the committed IDL", () => {
+  assert.ok(CORE_INSTRUCTIONS.length >= 99);
+  const names = new Set(CORE_INSTRUCTIONS.map((s) => s.name));
+  for (const required of ["marketplace_buy_bounded", "craft", "reroll", "collect_mining", "withdraw_gas"]) {
+    assert.ok(names.has(required), `${required} missing from the table`);
+  }
+  assert.equal(new Set(CORE_INSTRUCTIONS.map((s) => s.discriminator.join(","))).size, CORE_INSTRUCTIONS.length,
+    "discriminators must be unique");
+});

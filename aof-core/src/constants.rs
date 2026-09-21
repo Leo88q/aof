@@ -1,4 +1,5 @@
 use crate::state::*;
+use crate::ResourceKind;
 
 use anchor_lang::prelude::*;
 
@@ -13,6 +14,12 @@ pub const TOOL_SEED: &[u8] = b"tool";
 pub const RARITY_COUNTER_SEED: &[u8] = b"rarity_counter";
 /// Per-ResourceKind issuance cap PDA: seeds = [ISSUANCE_CAP_SEED, &[kind as u8]].
 pub const ISSUANCE_CAP_SEED: &[u8] = b"issuance_cap";
+/// [AUDIT F-01] Per-mint withdrawal rate limiter for `pay_out`:
+/// seeds = [VAULT_GUARD_SEED, mint.key()].
+pub const VAULT_GUARD_SEED: &[u8] = b"vault_guard";
+/// [AUDIT F-16] Allowlist entry marking an NFT mint as a Historian/Medallion
+/// collectible: seeds = [COLLECTOR_ALLOW_SEED, mint.key()].
+pub const COLLECTOR_ALLOW_SEED: &[u8] = b"collector_allow";
 /// Upper bound for an epoch (~30 days at 400ms slots) so a typo cannot
 /// silently create a near-permanent window.
 pub const ISSUANCE_EPOCH_MAX_SLOTS: u64 = 6_480_000;
@@ -50,9 +57,23 @@ pub const MAX_HOURS_LEGENDARY: u8 = 20;
 
 /// Gas tank cooldown (12 hours in seconds)
 pub const GASTANK_COOLDOWN_SECONDS: i64 = 12 * 3600;
+/// [AUDIT F-20] Withdrawals up to this size do not arm the 12h cooldown, so
+/// small balances are never trapped behind it. Anything above it is
+/// rate-limited exactly as before.
+pub const GASTANK_INSTANT_WITHDRAW_MICROS: u64 = 200_000; // 0.2 SOL
 
 /// Max durability
 pub const MAX_DURABILITY: u8 = 20;
+
+/// [AUDIT F-15] Largest single `adjust_player_capacity` step. The instruction
+/// is authority-only but unbounded, so a bogus/compromised server call could
+/// zero a player's villagers and permanently brick their mining.
+pub const MAX_CAPACITY_DELTA: u32 = 6;
+
+/// [AUDIT F-23] A lottery round that is never revealed strands its pool.
+/// After this timeout anyone may sweep the lamports back to the treasury and
+/// close the round instead of leaving them locked forever.
+pub const LOTTERY_ROUND_TIMEOUT_SECONDS: i64 = 14 * 86400;
 
 /// Collectors lock seconds (3 days)
 pub const COLLECTORS_LOCK_SECONDS: i64 = 3 * 86400;
@@ -68,21 +89,47 @@ pub const DEFAULT_VILLAGERS: u32 = 6;
 // amounts in atomic units; UI/backend divide by this scale for display.
 pub const RESOURCE_UNIT: u64 = 1_000_000_000;
 
+/// Number of `ResourceKind` variants. Kept in sync by
+/// `state::resource_kind_count_is_complete` (cargo test).
+pub const RESOURCE_KIND_COUNT: usize = 27;
+/// Sentinel for `MaterialMints::max_supply`: no ceiling configured.
+pub const SUPPLY_CAP_UNLIMITED: u64 = u64::MAX;
+
 // [НОВОЕ] Стоимость ремонта (STONE за 1 юнит прочности), по редкости —
 // используется через Rarity::repair_stone_cost_per_unit() в state.rs,
 // тем же паттерном, что MAX_HOURS_* + Rarity::max_hours().
-pub const REPAIR_STONE_COMMON: u64 = 2 * RESOURCE_UNIT;
-pub const REPAIR_STONE_UNCOMMON: u64 = 4 * RESOURCE_UNIT;
-pub const REPAIR_STONE_RARE: u64 = 9 * RESOURCE_UNIT;
-pub const REPAIR_STONE_EPIC: u64 = 20 * RESOURCE_UNIT;
-pub const REPAIR_STONE_LEGENDARY: u64 = 45 * RESOURCE_UNIT;
+// =====================================================================
+// [AUDIT F-08] Кривая ремонта пересчитана.
+//
+// Было: yield растёт 10 -> 18 (x1.8), а ремонт 3 -> 70 WOOD (x23.3) и
+// 2 -> 45 STONE (x22.5). Портфель 3 axe + 3 pick по 20 ч/сутки убыточен
+// по обоим ресурсам уже с Rare (-900/-300), а с Uncommon — по WOOD.
+// Условие безубыточности портфеля: `yield_per_hour > 2 * repair_per_unit`
+// (3 добывающих инструмента кормят ремонт всех 6).
+//
+// Стало: ремонт растёт вдвое медленнее добычи (x1.67 WOOD, x1.75 STONE
+// против x1.8 у yield), поэтому нетто-маржа строго растёт с редкостью:
+//   Common    +12.0 WOOD/ч  +18.0 STONE/ч
+//   Uncommon  +13.5         +19.5
+//   Rare      +15.0         +21.0
+//   Epic      +18.0         +27.0
+//   Legendary +24.0         +33.0
+// Инвариант проверяется юнит-тестом `economy_tests::mining_pnl_is_positive_and_monotonic`.
+// =====================================================================
+const HALF_UNIT: u64 = RESOURCE_UNIT / 2;
 
-// [НОВОЕ] Стоимость ремонта в WOOD за единицу прочности
+pub const REPAIR_STONE_COMMON: u64 = 2 * RESOURCE_UNIT;
+pub const REPAIR_STONE_UNCOMMON: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_STONE_RARE: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_STONE_EPIC: u64 = 3 * RESOURCE_UNIT;
+pub const REPAIR_STONE_LEGENDARY: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
+
+// Стоимость ремонта в WOOD за единицу прочности
 pub const REPAIR_WOOD_COMMON: u64 = 3 * RESOURCE_UNIT;
-pub const REPAIR_WOOD_UNCOMMON: u64 = 6 * RESOURCE_UNIT;
-pub const REPAIR_WOOD_RARE: u64 = 14 * RESOURCE_UNIT;
-pub const REPAIR_WOOD_EPIC: u64 = 30 * RESOURCE_UNIT;
-pub const REPAIR_WOOD_LEGENDARY: u64 = 70 * RESOURCE_UNIT;
+pub const REPAIR_WOOD_UNCOMMON: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_WOOD_RARE: u64 = 4 * RESOURCE_UNIT;
+pub const REPAIR_WOOD_EPIC: u64 = 4 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_WOOD_LEGENDARY: u64 = 5 * RESOURCE_UNIT;
 
 // [НОВОЕ] Дефолты bonding-curve цены крафта (см. CraftEconomy в state.rs).
 // Индекс массива = rarity.craft_index() (Uncommon=0..Legendary=3).
@@ -197,7 +244,12 @@ pub const ENCHANT_FEE_LAMPORTS: [u64; 5] = [
 pub const FORGE_PROTECTOR_PRICE_LAMPORTS: u64 = 20_000_000; // ~$2
 
 // ----- Лотерея -----
-pub const LOTTERY_TICKET_PRICE_LAMPORTS: u64 = 800_000; // ~$0.08*100=$0.8? см. ниже
+/// Ticket price in lamports. 800_000 lamports = 0.0008 SOL (the old comment's
+/// "~$0.8" arithmetic was wrong: at the 1 SOL = $100 reference rate used
+/// throughout this file, 0.0008 SOL is $0.0008, i.e. well under a cent. Ticket
+/// sales stay disabled (`buy_lottery_ticket` reverts) until the prize funding
+/// model is decided; see F-06/F-23 in AUDIT_FULL_2026-09-21.md.
+pub const LOTTERY_TICKET_PRICE_LAMPORTS: u64 = 800_000;
 pub const LOTTERY_POOL_BPS: u16 = 7_000;   // 70% в пул
 pub const LOTTERY_DEV_BPS: u16 = 3_000;    // 30% разработчику
 pub const LOTTERY_MAX_TICKETS_PER_DAY: u8 = 10;
@@ -225,6 +277,10 @@ pub const SEASON_LENGTH_SECONDS: i64 = 42 * 86400; // 42 дня
 pub const SEASON_PASS_PREMIUM_PRICE_LAMPORTS: u64 = 150_000_000; // 0.15 SOL
 pub const SEASON_PASS_MAX_LEVEL: u8 = 42;
 pub const SEASON_XP_PER_LEVEL: u32 = 1_000;
+/// [AUDIT F-14] Season reward per level, in display units (multiplied by
+/// RESOURCE_UNIT at payout). Was effectively zero: the old code paid
+/// `level * 100` atomic units.
+pub const SEASON_REWARD_UNITS_PER_LEVEL: u64 = 100;
 
 // ----- Withdraw-fee (bps) на mint_resource, по перкам — [ФАКТ]-паттерн из
 // index.js `pickFeeBps` перенесён на materialization ресурсов on-chain -----
@@ -252,8 +308,6 @@ pub const WEATHER_STATE_SEED: &[u8] = b"weather_state";
 pub const WELL_STATE_SEED: &[u8] = b"well_state";
 pub const MILL_STATE_SEED: &[u8] = b"mill_state";
 pub const OVEN_STATE_SEED: &[u8] = b"oven_state";
-pub const LOVE_PROGRESS_SEED: &[u8] = b"love_progress";
-pub const FORTUNE_BOOST_SEED: &[u8] = b"fortune_boost";
 
 // Space для новых аккаунтов
 
@@ -302,9 +356,6 @@ pub const WELL_RATE_FESTIVAL: u64 = 20 * RESOURCE_UNIT;
 /// preventing an account from minting an unbounded backlog after a long absence.
 pub const WELL_MAX_ACCRUAL_SECONDS: u64 = 24 * 60 * 60;
 
-// Шанс побочного дропа Coal у Шахтёра (15%)
-pub const COAL_DROP_CHANCE_BPS: u16 = 1500;
-
 // ===== [НОВОЕ] Инструкции #11 из аудита =====
 
 // Конверсия FOOD → энергия (1 FOOD = 10 энергии, максимум 100)
@@ -333,6 +384,7 @@ pub const ENCHANT_SLOT_SPACE: usize = 8 + EnchantSlot::INIT_SPACE;
 pub const FORGE_COMMIT_SPACE: usize = 8 + ForgeCommit::INIT_SPACE;
 pub const LOTTERY_ROUND_SPACE: usize = 8 + LotteryRound::INIT_SPACE;
 pub const LOTTERY_TICKET_SPACE: usize = 8 + LotteryTicket::INIT_SPACE;
+pub const LOTTERY_TICKET_COUNTER_SPACE: usize = 8 + LotteryTicketCounter::INIT_SPACE;
 pub const LISTING_SPACE: usize = 8 + Listing::INIT_SPACE;
 pub const AUCTION_SPACE: usize = 8 + Auction::INIT_SPACE;
 pub const OFFER_SPACE: usize = 8 + Offer::INIT_SPACE;
@@ -349,11 +401,130 @@ pub const WEATHER_STATE_SPACE: usize = 8 + WeatherState::INIT_SPACE;
 pub const WELL_STATE_SPACE: usize = 8 + WellState::INIT_SPACE;
 pub const MILL_STATE_SPACE: usize = 8 + MillState::INIT_SPACE;
 pub const OVEN_STATE_SPACE: usize = 8 + OvenState::INIT_SPACE;
-pub const LOVE_PROGRESS_SPACE: usize = 8 + LoveProgress::INIT_SPACE;
-pub const FORTUNE_BOOST_SPACE: usize = 8 + FortuneBoost::INIT_SPACE;
+pub const VAULT_GUARD_SPACE: usize = 8 + VaultGuard::INIT_SPACE;
+pub const COLLECTOR_ALLOW_SPACE: usize = 8 + CollectorAllowEntry::INIT_SPACE;
 
 /// Commit-reveal expiry. SlotHashes keeps ~512 recent slots, so a reveal
 /// older than that fails with CommitExpired. Expiry is allowed only after the
 /// slot hash is guaranteed gone, so `expire` and `reveal` can never both
 /// succeed for the same commit (reveal needs the hash, expire needs it gone).
 pub const COMMIT_EXPIRY_SLOTS: u64 = 600;
+
+// =====================================================================
+// [AUDIT F-08 / F-33] Economy invariants as executable tests.
+//
+// The 2026-09-21 audit found the old repair curve made a 6-tool portfolio
+// loss-making from Rare upwards. These tests pin the corrected relationship
+// (net P&L > 0 and strictly increasing with rarity) so the next constant
+// tweak cannot silently re-introduce it.
+// =====================================================================
+#[cfg(test)]
+mod economy_tests {
+    use super::*;
+
+    const AXES: i128 = 3;
+    const PICKS: i128 = 3;
+    const TOOLS: i128 = AXES + PICKS;
+
+    /// ATOMIC units mined per hour by ONE tool (1 display unit = RESOURCE_UNIT).
+    fn yield_atomic_per_hour(r: Rarity) -> i128 {
+        (BASE_RATE_MINING as i128) * (RESOURCE_UNIT as i128) * (r.yield_bps() as i128) / 10_000
+    }
+
+    /// Net ATOMIC units per hour for a 3 axe + 3 pick portfolio that repairs to
+    /// full: only the axes bring WOOD in, but all six tools consume it.
+    fn net_per_hour(r: Rarity) -> (i128, i128) {
+        let y = yield_atomic_per_hour(r);
+        let wood = AXES * y - TOOLS * (r.repair_wood_cost_per_unit() as i128);
+        let stone = PICKS * y - TOOLS * (r.repair_stone_cost_per_unit() as i128);
+        (wood, stone)
+    }
+
+    #[test]
+    fn resource_kind_count_matches_enum() {
+        assert_eq!(
+            ResourceKind::Potato as usize + 1,
+            RESOURCE_KIND_COUNT,
+            "RESOURCE_KIND_COUNT is stale - MaterialMints::max_supply would be mis-sized"
+        );
+    }
+
+    #[test]
+    fn mining_pnl_is_positive_and_monotonic() {
+        let ladder = [
+            Rarity::Common,
+            Rarity::Uncommon,
+            Rarity::Rare,
+            Rarity::Epic,
+            Rarity::Legendary,
+        ];
+        let mut prev_wood = 0i128;
+        let mut prev_stone = 0i128;
+        for r in ladder {
+            let (wood, stone) = net_per_hour(r);
+            assert!(wood > 0, "{:?}: net WOOD/hour = {} must be positive", r, wood);
+            assert!(stone > 0, "{:?}: net STONE/hour = {} must be positive", r, stone);
+            assert!(
+                wood > prev_wood,
+                "{:?}: upgrading must strictly improve net WOOD ({} <= {})",
+                r, wood, prev_wood
+            );
+            assert!(
+                stone > prev_stone,
+                "{:?}: upgrading must strictly improve net STONE ({} <= {})",
+                r, stone, prev_stone
+            );
+            prev_wood = wood;
+            prev_stone = stone;
+        }
+    }
+
+    /// The break-even condition from the audit, in atomic units:
+    /// `yield_per_hour > 2 * repair_per_unit` for a 50/50 portfolio.
+    #[test]
+    fn repair_cost_stays_below_half_of_yield() {
+        for r in [
+            Rarity::Common,
+            Rarity::Uncommon,
+            Rarity::Rare,
+            Rarity::Epic,
+            Rarity::Legendary,
+        ] {
+            let y = yield_atomic_per_hour(r);
+            assert!(
+                2 * (r.repair_wood_cost_per_unit() as i128) < y,
+                "{:?}: 2 x WOOD repair >= yield",
+                r
+            );
+            assert!(
+                2 * (r.repair_stone_cost_per_unit() as i128) < y,
+                "{:?}: 2 x STONE repair >= yield",
+                r
+            );
+        }
+    }
+
+    /// One tool must also pay for itself over its full MAX_DURABILITY lifetime.
+    #[test]
+    fn lifetime_pnl_is_positive() {
+        for r in [
+            Rarity::Common,
+            Rarity::Uncommon,
+            Rarity::Rare,
+            Rarity::Epic,
+            Rarity::Legendary,
+        ] {
+            let lifetime_yield = yield_atomic_per_hour(r) * MAX_DURABILITY as i128;
+            let lifetime_repair = (r.repair_wood_cost_per_unit() as i128
+                + r.repair_stone_cost_per_unit() as i128)
+                * MAX_DURABILITY as i128;
+            assert!(
+                lifetime_yield > lifetime_repair,
+                "{:?}: lifetime {} yield vs {} repair",
+                r,
+                lifetime_yield,
+                lifetime_repair
+            );
+        }
+    }
+}

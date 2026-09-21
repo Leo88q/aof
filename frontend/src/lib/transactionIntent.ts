@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { positiveU64 } from "./amounts";
+import { coreInstructionSpec } from "./coreInstructions";
 
 export const CORE_PROGRAM_ID = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
 const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
@@ -31,6 +32,38 @@ function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
   return actual.length === expected.length && expected.every((key, i) => key.equals(actual[i]));
 }
 
+/**
+ * [AUDIT F-32] Generic aof-core instruction policy, applied to every
+ * transaction the player is asked to sign.
+ *
+ * Before this, only `marketplace_buy` was checked; every other instruction was
+ * accepted on the strength of the program allowlist alone, so a tampered (or
+ * compromised) backend could swap the discriminator, append an instruction, or
+ * move the player into the counterparty's account slot.
+ */
+export function validateCoreInstructions(instructions: Instruction[], user: PublicKey): void {
+  for (const ix of instructions) {
+    const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+    if (!spec) continue; // not an aof-core call: txGuard's program policy covers it
+    if (spec.authorityOnly) {
+      throw new Error(`Authority-only instruction ${spec.name} cannot be signed by a player wallet`);
+    }
+    if (ix.keys.length !== spec.accounts.length) {
+      throw new Error(`Unexpected account count for ${spec.name}`);
+    }
+    // Every party slot the program requires a signature from must be the
+    // connected wallet. Non-signer party slots (the payee of an auction settle,
+    // the two makers of an order match) are left alone: those instructions are
+    // permissionless and may be cranked by anyone.
+    for (const index of spec.actorIndexes) {
+      if (!spec.signerIndexes.includes(index)) continue;
+      if (!ix.keys[index]?.equals(user)) {
+        throw new Error(`Wallet is not the ${spec.accounts[index]} of ${spec.name}`);
+      }
+    }
+  }
+}
+
 /** Locally constructed intent, never a response-provided "approved" object.
  * Exact asset, parties, destinations and bytes are checked; any extra action
  * (even through an allowed AOF program) fails before the wallet sees it. */
@@ -42,6 +75,11 @@ export function validateTransactionIntent(
       [92, 247, 50, 140, 72, 120, 69, 249].every((byte, i) => ix.data[i] === byte))) {
     throw new Error("Unbounded legacy marketplace purchase is disabled");
   }
+  // [AUDIT F-32] Full intent validation exists only for marketplace_buy today,
+  // but every aof-core instruction can now at least be *named*. Four checks run
+  // for every transaction, with or without an intent object:
+  validateCoreInstructions(instructions, user);
+
   if (!intent) {
     if (instructions.some(isMarketplaceBuy)) throw new Error("Marketplace purchase requires a local user intent");
     return; // Other operations still use the existing guard policy, not full intent validation.

@@ -178,8 +178,18 @@ async function testIssuanceCapMapping() {
   // IDL errors for the cap must exist with the codes the backend matches on.
   const idl = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "idl", "aof_core.json"), "utf8"));
   const byName = Object.fromEntries(idl.errors.map((e: any) => [e.name, e.code]));
-  assert.equal(byName.IssuanceCapNotConfigured, 6097);
-  assert.equal(byName.IssuanceCapExceeded, 6098);
+  // Do not hardcode: Anchor error codes are positional (6000 + index in the
+  // `AofError` enum), so any variant inserted above the cap errors silently
+  // renumbers them - which is exactly how the backend ended up matching
+  // 6097/6098 while the program was already emitting 6098/6099.
+  const errs = fs.readFileSync(path.join(__dirname, "..", "..", "aof-core", "src", "errors.rs"), "utf8");
+  const enumBody = /pub enum AofError \{([\s\S]*?)\n\}/.exec(errs)![1];
+  const rustErrors = enumBody.split("\n").map((l) => l.trim().replace(/,$/, ""))
+    .filter((l) => /^[A-Z]\w*$/.test(l));
+  const rustCode = (name: string) => 6000 + rustErrors.indexOf(name);
+  for (const name of ["IssuanceCapNotConfigured", "IssuanceCapExceeded", "SupplyCapExceeded", "VaultGuardLimitExceeded"]) {
+    assert.equal(byName[name], rustCode(name), `IDL error ${name} drifted from errors.rs`);
+  }
   assert.ok(idl.instructions.find((i: any) => i.name === "mint_resource").accounts.some((a: any) => a.name === "issuance_cap"));
   assert.ok(idl.instructions.find((i: any) => i.name === "mint_resource_once").accounts.some((a: any) => a.name === "issuance_cap"));
 }

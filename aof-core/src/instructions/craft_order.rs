@@ -12,6 +12,13 @@ pub fn create_handler(
     premium_lamports: u64,
 ) -> Result<()> {
     require!(premium_lamports > 0, AofError::ZeroAmount);
+    // [AUDIT F-29] An order that asks for no resources still pays the premium
+    // to the first caller of `fulfill`. That is either a scam order or a
+    // frontend bug, and in both cases the premium must not be claimable.
+    require!(
+        wood_needed.checked_add(stone_needed).ok_or(AofError::MathOverflow)? > 0,
+        AofError::EmptyCraftOrder
+    );
     anchor_lang::system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),

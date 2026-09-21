@@ -46,6 +46,36 @@ pub struct SetPaused<'info> {
     pub authority: Signer<'info>,
 }
 
+// =====================================================================
+// [AUDIT F-02] Two-step authority rotation
+// =====================================================================
+
+#[derive(Accounts)]
+pub struct SetPendingAuthority<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ MarketError::Unauthorized)]
+    pub config: Account<'info, MarketConfig>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED],
+        bump = config.bump,
+        constraint = config.pending_authority == new_authority.key() @ MarketError::NotPendingAuthority
+    )]
+    pub config: Account<'info, MarketConfig>,
+    pub new_authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelPendingAuthority<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ MarketError::Unauthorized)]
+    pub config: Account<'info, MarketConfig>,
+    pub authority: Signer<'info>,
+}
+
 #[derive(Accounts)]
 #[instruction(rarity: u8)]
 pub struct InitPool<'info> {
@@ -218,6 +248,43 @@ pub mod aof_market {
         c.fee_bps = fee_bps;
         c.paused = false;
         c.bump = ctx.bumps.config;
+        // [AUDIT F-02] no rotation in flight at bootstrap.
+        c.pending_authority = Pubkey::default();
+        c.authority_updated_at = Clock::get()?.unix_timestamp;
+        Ok(())
+    }
+
+    // ===== [AUDIT F-02] two-step authority rotation =====
+    pub fn set_pending_authority(ctx: Context<SetPendingAuthority>, new_authority: Pubkey) -> Result<()> {
+        require!(new_authority != Pubkey::default(), MarketError::InvalidInput);
+        let c = &mut ctx.accounts.config;
+        let previous = c.authority;
+        c.pending_authority = new_authority;
+        emit!(AuthorityRotationProposed {
+            previous,
+            next: new_authority,
+            at: Clock::get()?.unix_timestamp,
+        });
+        Ok(())
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        let c = &mut ctx.accounts.config;
+        require!(c.pending_authority != Pubkey::default(), MarketError::NoPendingAuthority);
+        let previous = c.authority;
+        let next = ctx.accounts.new_authority.key();
+        let now = Clock::get()?.unix_timestamp;
+        c.authority = next;
+        c.pending_authority = Pubkey::default();
+        c.authority_updated_at = now;
+        emit!(AuthorityChanged { previous, next, at: now });
+        Ok(())
+    }
+
+    pub fn cancel_pending_authority(ctx: Context<CancelPendingAuthority>) -> Result<()> {
+        let c = &mut ctx.accounts.config;
+        require!(c.pending_authority != Pubkey::default(), MarketError::NoPendingAuthority);
+        c.pending_authority = Pubkey::default();
         Ok(())
     }
 
@@ -301,7 +368,9 @@ pub mod aof_market {
         rarity_index_ok(rarity)?;
         let now = Clock::get()?.unix_timestamp;
         let pool = &mut ctx.accounts.pool;
-        let hours_idle = (now - pool.last_trade_ts) / 3600;
+        // [AUDIT F-26] `now - pool.last_trade_ts` panicked on a backwards clock
+        // (validator clock skew / a pool seeded from a future timestamp).
+        let hours_idle = now.saturating_sub(pool.last_trade_ts) / 3600;
         if hours_idle >= 1 {
             pool.purchases_in_window = 0;
         }

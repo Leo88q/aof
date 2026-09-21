@@ -1049,6 +1049,83 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "set_pending_authority",
+      "discriminator": [
+        175,
+        71,
+        167,
+        223,
+        49,
+        144,
+        102,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "writable": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_pending_authority",
+      "discriminator": [
+        155,
+        52,
+        245,
+        225,
+        85,
+        73,
+        58,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1248,6 +1325,32 @@
         217,
         25
       ]
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "discriminator": [
+        76,
+        59,
+        57,
+        23,
+        22,
+        166,
+        253,
+        33
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
     }
   ],
   "errors": [
@@ -1305,6 +1408,21 @@
       "code": 6010,
       "name": "FeatureDisabled",
       "msg": "Feature disabled until its economic proof is implemented"
+    },
+    {
+      "code": 6011,
+      "name": "NoPendingAuthority",
+      "msg": "No authority rotation is pending"
+    },
+    {
+      "code": 6012,
+      "name": "NotPendingAuthority",
+      "msg": "Signer is not the pending authority"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidInput",
+      "msg": "Invalid input"
     }
   ],
   "types": [
@@ -1504,21 +1622,23 @@
           },
           {
             "name": "mascot_mint",
-            "docs": [
-              "Маскот-токен для наград (существующий официальный токен)"
-            ],
             "type": "pubkey"
           },
           {
             "name": "treasury_mascot",
-            "docs": [
-              "SPL аккаунт казны с маскот-токенами (откуда выдаются награды)"
-            ],
             "type": "pubkey"
           },
           {
             "name": "paused",
             "type": "bool"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority_updated_at",
+            "type": "i64"
           }
         ]
       }
@@ -1623,6 +1743,46 @@
           {
             "name": "active",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
           }
         ]
       }

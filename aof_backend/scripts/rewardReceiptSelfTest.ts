@@ -15,8 +15,15 @@ async function main() {
   const id = "stable-inbox-id", core = new PublicKey(idl.address);
   assert.deepEqual(inboxRewardId(id), inboxRewardId(id));
   assert.notDeepEqual(inboxRewardId(id), inboxRewardId(id + "2"));
-  const [pda, bump] = PublicKey.findProgramAddressSync([Buffer.from("reward_receipt"), inboxRewardId(id)], core);
-  assert.ok(pda.equals(rewardReceiptPda(id)));
+  // [AUDIT F-28] the receipt tombstone is namespaced by (recipient, reward_id).
+  const [pda, bump] = PublicKey.findProgramAddressSync([Buffer.from("reward_receipt"), recipient.toBuffer(), inboxRewardId(id)], core);
+  assert.ok(pda.equals(rewardReceiptPda(id, recipient)));
+  // Two wallets claiming the same logical reward must NOT collide: the old
+  // global namespace made the second claim impossible ("already claimed").
+  const other = Keypair.generate().publicKey;
+  assert.ok(!rewardReceiptPda(id, other).equals(pda));
+  assert.ok(rewardReceiptPda(id, other).equals(
+    PublicKey.findProgramAddressSync([Buffer.from("reward_receipt"), other.toBuffer(), inboxRewardId(id)], core)[0]));
   const coder = new BorshAccountsCoder(idl as any);
   const gross = new BN("1000000000");
   const data = await coder.encode("RewardReceipt", {
@@ -28,15 +35,15 @@ async function main() {
     return { owner: core, data, executable: false };
   } };
   const expected = { recipient: recipient.toBase58(), mint: mint.toBase58(), grossAmount: gross.toString() };
-  assert.deepEqual(await fetchRewardReceipt(rpc, id), expected);
+  assert.deepEqual(await fetchRewardReceipt(rpc, id, recipient), expected);
   assertRewardReceipt(expected, expected);
   for (const mismatch of [{ ...expected, recipient: mint.toBase58() }, { ...expected, mint: recipient.toBase58() }, { ...expected, grossAmount: "2" }]) {
     assert.throws(() => assertRewardReceipt(expected, mismatch), /conflicts/);
   }
-  assert.equal(await fetchRewardReceipt({ getAccountInfo: async () => null } as any, id), null);
-  await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => { throw Error("RPC timeout"); } } as any, id), /timeout/);
-  await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => ({ owner: mint, data }) } as any, id), /owner/);
-  await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => ({ owner: core, data: Buffer.alloc(121) }) } as any, id));
+  assert.equal(await fetchRewardReceipt({ getAccountInfo: async () => null } as any, id, recipient), null);
+  await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => { throw Error("RPC timeout"); } } as any, id, recipient), /timeout/);
+  await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => ({ owner: mint, data }) } as any, id, recipient), /owner/);
+  await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => ({ owner: core, data: Buffer.alloc(121) }) } as any, id, recipient));
 
   const instructions = new BorshInstructionCoder(idl as any);
   const encoded = instructions.encode("mint_resource_once", { kind: { Wood: {} }, amount: gross, reward_id: Array.from(inboxRewardId(id)) });
@@ -108,7 +115,9 @@ async function main() {
   assert.match(lib, /pub fn marketplace_buy\(ctx: Context<MarketplaceBuy>\)[\s\S]*?err!\(AofError::FeatureDisabled\)/);
   const context = lib.slice(lib.indexOf("pub struct MintResourceOnce"), lib.indexOf("pub struct BurnResource"));
   assert.match(context, /init, payer = authority, space = 8 \+ RewardReceipt::INIT_SPACE/);
-  assert.match(context, /seeds = \[b"reward_receipt", reward_id.as_ref\(\)\]/);
+  // [AUDIT F-28] the seed is (recipient, reward_id), not reward_id alone.
+  assert.match(context, /seeds = \[b"reward_receipt", token_account.owner.as_ref\(\), reward_id.as_ref\(\)\]/);
+  assert.doesNotMatch(context, /seeds = \[b"reward_receipt", reward_id.as_ref\(\)\]/);
   assert.doesNotMatch(context, /close\s*=/);
   for (const account of ["mint", "token_account", "treasury_token"]) assert.match(context, new RegExp(`pub ${account}:`));
   const inbox = readFileSync(path.join(root, "aof_backend/src/routes/inbox.ts"), "utf8");

@@ -1,5 +1,28 @@
 # On-chain issuance caps для `mint_resource` / `mint_resource_once` — дизайн
 
+> **⚠️ Корректировка от 2026-09-21 (полный аудит `AUDIT_FULL_2026-09-21.md`).**
+> Этот документ описывает **только один из трёх** тормозов эмиссии, и два его
+> утверждения больше не соответствуют коду:
+>
+> 1. **Cap покрывает 2 из 9 минтящих путей.** `IssuanceCap` проверяется только в
+>    `mint_resource` и `mint_resource_once`. `collect_mining`, `collect_flour`,
+>    `collect_bread`, `collect_well_water`, `craft_recipe`, `craft`,
+>    `claim_season_reward` и `explore_reveal` эмитировали без всякого лимита
+>    (F-03). Глобальный потолок теперь живёт в `MaterialMints.max_supply` и
+>    проверяется функцией `check_supply_cap()` на **всех** путях; `IssuanceCap`
+>    остаётся вторым, более детальным ограничителем уровнем ниже.
+> 2. **«Ротация authority через Squads» была невозможна** — ни в одной из шести
+>    программ не было инструкции смены authority (F-02). После аудита добавлена
+>    двухшаговая ротация `set_pending_authority` → `accept_authority`
+>    (+ `cancel_pending_authority`) в **пяти** программах (aof-core, market,
+>    quests, rebirth, liquidity). Squads- vault теперь может быть authority:
+>    он подписывает `accept_authority` как `new_authority`. `aof-session-keys`
+>    остаётся без ротации — там нет Config.
+>
+> Третий тормоз — `VaultGuard` (F-01): лимит на вывод из vault на один mint
+> (`max_per_tx`), на эпоху (`cap_per_epoch`) и «получатель обязан быть
+> существующим Player». Подробности и статус — в `REMEDIATION_STATUS.md`.
+
 _Статус: **реализовано в коде** (`aof-core` + backend + validator-тест `tests/aof_core.ts`), Rust собирается только в CI (`programs`/`anchor-test` — в песочнице SBPF-тулчейна нет). **Не деплоено.** Cap обязателен сразу (fail-closed), без промежуточного `Option`-релиза._
 
 ## Зачем
@@ -126,8 +149,11 @@ mint не двигает счётчик. Учитывается `amount` (gross)
 
 - `aof-core`: `IssuanceCap` PDA (`["issuance_cap", kind as u8]`), `init_issuance_cap`, `set_issuance_cap`
   (roll эпохи → set; счётчик не сбрасывается; `cap_per_epoch = 0` — стоп-кран), `charge()` в `execute_mint`
-  перед CPI для `mint_resource` и `mint_resource_once`. Ошибки 6097 `IssuanceCapNotConfigured`,
-  6098 `IssuanceCapExceeded`, 6099 `InvalidIssuanceCapParams`. Событие `IssuanceCapChanged`; в `ResourceIssued`
+  перед CPI для `mint_resource` и `mint_resource_once`. Ошибки **6098** `IssuanceCapNotConfigured`,
+  **6099** `IssuanceCapExceeded`, **6100** `InvalidIssuanceCapParams` (коды —
+  6000 + индекс варианта в `AofError`, поэтому они меняются при вставке
+  варианта в середину перечисления; в документации и в бэкенде раньше были
+  указаны устаревшие 6097/6098). Событие `IssuanceCapChanged`; в `ResourceIssued`
   есть `minted_in_epoch`/`cap_per_epoch` для индексера.
 - IDL (`aof_backend/src/idl/aof_core.{json,ts}`) обновлён вручную; `scripts/check-idl-drift.py` — без дрейфа.
   После реального `anchor build` в CI заменить на сгенерированный.

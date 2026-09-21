@@ -43,9 +43,15 @@ pub fn handler(ctx: Context<WithdrawGas>, amount: u64) -> Result<()> {
         .balance_micros
         .checked_sub(amount)
         .ok_or(AofError::MathOverflow)?;
-    // [ФИКС H1]: кулдаун 12ч реально взводится после вывода
-    ctx.accounts.gastank.cooldown_until = now
-        .checked_add(GASTANK_COOLDOWN_SECONDS)
-        .ok_or(AofError::MathOverflow)?;
+    // [AUDIT F-20] The 12h cooldown used to be armed by *every* withdrawal, so
+    // a player with 0.5 SOL deposited could not touch their own funds again for
+    // half a day, and a partial withdrawal burned the whole window. Small
+    // withdrawals stay instant; the rate limit still applies to the sizes that
+    // actually matter for draining the tank.
+    if amount > GASTANK_INSTANT_WITHDRAW_MICROS {
+        ctx.accounts.gastank.cooldown_until = now
+            .checked_add(GASTANK_COOLDOWN_SECONDS)
+            .ok_or(AofError::MathOverflow)?;
+    }
     Ok(())
 }

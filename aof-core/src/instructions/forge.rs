@@ -95,7 +95,17 @@ fn release_escrow<'info>(from: &AccountInfo<'info>, to: &AccountInfo<'info>, amo
     Ok(())
 }
 
+/// [AUDIT F-06] Disabled. The secret is chosen by the player, but by reveal
+/// time the commit slot's hash is public, so the player can compute the outcome
+/// off-chain and simply let the commit expire (full refund of the SOL fee plus
+/// re-mint of the burned resources) whenever the roll is bad. That turns every
+/// forge attempt into a free retry until it wins. The commit side is already
+/// disabled; the reveal is closed with it until a VRF (or a forced settlement
+/// that charges on expiry) exists.
 pub fn reveal_handler(ctx: Context<ForgeAttemptReveal>, secret: [u8; 32]) -> Result<()> {
+    require!(false, AofError::RandomnessDisabled);
+    #[allow(unreachable_code)]
+    {
     require!(
         hash_secret(&secret) == ctx.accounts.forge_commit.commit_hash,
         AofError::CommitMismatch
@@ -145,6 +155,7 @@ pub fn reveal_handler(ctx: Context<ForgeAttemptReveal>, secret: [u8; 32]) -> Res
         outcome,
     });
     Ok(())
+    }
 }
 
 /// Возврат по просроченному коммиту: строго после `COMMIT_EXPIRY_SLOTS`

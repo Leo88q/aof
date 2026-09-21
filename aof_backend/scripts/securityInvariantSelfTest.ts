@@ -83,7 +83,6 @@ const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [s
   { id: "exploration", route: "exploration.ts", code: /EXPLORATION_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/exploration.rs", /require!\(false, AofError::FeatureDisabled\)/] },
   { id: "drum", route: "drum.ts", code: /DRUM_COMMITS_DISABLED/, guard: ["programs/aof-quests/src/instructions/drum/drum_commit.rs", /require!\(false, QuestError::FeatureDisabled\)/] },
   { id: "hot_market", route: "hotMarket.ts", code: /HOT_MARKET_DISABLED/, guard: ["programs/aof-market/src/lib.rs", /err!\(MarketError::TradingDisabled\)/] },
-  { id: "collectors", route: "collectors.ts", code: /COLLECTOR_STAKING_DISABLED/, guard: ["aof-core/src/instructions/collector_stake.rs", /require!\(false, AofError::CollectorNotConfigured\)/] },
   { id: "rebirth", route: "rebirth.ts", code: /REBIRTH_DISABLED/, guard: ["programs/aof-rebirth/src/instructions/do_rebirth.rs", /require!\(false, RebirthError::FeatureDisabled\)/] },
   { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /require!\(false, SkError::AtomicBindingRequired\)/] },
 ];
@@ -94,6 +93,32 @@ for (const layer of disabledLayers) {
 }
 for (const id of ["lottery", "exploration", "reroll", "drum", "hot_market", "collectors", "rebirth", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
+}
+
+// [AUDIT F-16] Collector perks are no longer hard-disabled: the on-chain
+// `require!(false, AofError::CollectorNotConfigured)` is gone and eligibility is
+// a per-mint allowlist entry created by the authority. The invariant that must
+// hold is the opposite of the disabled layers above - the gate has to stay
+// fail-closed while becoming reachable once a canonical mint is registered.
+{
+  const stake = read("aof-core/src/instructions/collector_stake.rs");
+  assert.doesNotMatch(stake, /require!\(false, AofError::CollectorNotConfigured\)/,
+    "collector_stake is hard-disabled again: historian/medallion perks are dead");
+  assert.match(stake, /CollectorAllowEntry/, "collector_stake must bind the allowlist entry");
+  assert.match(section(core, "pub struct CollectorStake", "pub struct CollectorUnstake"),
+    /pub collector_allow:/, "CollectorStake must require the collector_allow PDA");
+  // Unregistered mints must be rejected by the program, not by the route.
+  const idlIx = coreIdl.instructions.find((ix: any) => ix.name === "collector_stake");
+  assert.ok(idlIx.accounts.find((a: any) => a.name === "collector_allow"),
+    "collector_allow missing from the committed IDL");
+  const route = backendRoute("collectors.ts");
+  assert.doesNotMatch(route, /COLLECTOR_STAKING_DISABLED/, "collectors route is disabled again");
+  assert.match(route, /collectorAllowPda/, "collectors.ts must derive the allowlist PDA");
+  assert.match(route, /collectorAllow,/, "collectors.ts must pass the allowlist account");
+  // Registration/revocation stays authority-only.
+  const admin = backendRoute("admin-config.ts");
+  assert.match(admin, /registerCollectorMint/);
+  assert.match(admin, /revokeCollectorMint/);
 }
 // Legacy pack recovery is retained: the price must be escrowed on the PackCommit PDA (no
 // treasury account in the commit context), released to the treasury only in

@@ -52,3 +52,18 @@ pub struct LimitOrderMatched {
     pub rarity: u8,
     pub price: u64,
 }
+
+/// [AUDIT F-02] Authority rotation, both steps.
+#[event]
+pub struct AuthorityRotationProposed {
+    pub previous: Pubkey,
+    pub next: Pubkey,
+    pub at: i64,
+}
+
+#[event]
+pub struct AuthorityChanged {
+    pub previous: Pubkey,
+    pub next: Pubkey,
+    pub at: i64,
+}

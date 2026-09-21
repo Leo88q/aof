@@ -161,10 +161,24 @@ pub struct SessionRevoke<'info> {
 /// собрать реальную транзакцию в target_program — проверяет и резервирует
 /// дневной лимит атомарно, чтобы гонка параллельных срабатываний правил
 /// не могла превысить max_spend_per_day.
+/// [AUDIT F-25] The session account used to be located only by
+/// `session.session_signer == session_signer`, with no PDA derivation: any
+/// SessionToken that happens to name the same session signer could be
+/// substituted, and the `Account<SessionToken>` owner check does not bind the
+/// account to this authority's namespace. The `authority` is now an explicit
+/// account and the session is derived from it, exactly like SessionRevoke does.
 #[derive(Accounts)]
 pub struct SessionCheckAndSpend<'info> {
     pub session_signer: Signer<'info>,
-    #[account(mut, constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized)]
+    /// CHECK: the wallet that owns the session; binds the PDA derivation below
+    /// and is re-checked against `session.authority` in the handler.
+    pub authority: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds = [SESSION_SEED, authority.key().as_ref()],
+        bump,
+        constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized
+    )]
     pub session: Account<'info, SessionToken>,
 }
 
@@ -244,13 +258,14 @@ pub mod aof_session_keys {
         // reservation and target CPI live in one atomic transaction path.
         require!(false, SkError::AtomicBindingRequired);
         let s = &mut ctx.accounts.session;
+        require!(s.authority == ctx.accounts.authority.key(), SkError::Unauthorized);
         require!(!s.revoked, SkError::SessionRevoked);
         require!(!s.paused, SkError::SessionRevoked);
         let now = Clock::get()?.unix_timestamp;
         require!(now <= s.valid_until, SkError::SessionExpired);
         require!(s.allowed_ixs & ix_bit == ix_bit, SkError::IxNotAllowed);
         require!(amount <= s.max_amount_per_tx, SkError::AmountExceedsLimit);
-        if now - s.day_start >= 86400 {
+        if now.saturating_sub(s.day_start) >= 86400 {
             s.day_start = now;
             s.spent_today = 0;
         }

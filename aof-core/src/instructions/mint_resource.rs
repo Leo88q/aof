@@ -9,40 +9,6 @@ use crate::errors::*;
 use crate::ResourceKind;
 use crate::events::ResourceIssued;
 
-fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
-    match kind {
-        // Старые ресурсы из Config
-        ResourceKind::Food => config.food_mint,
-        ResourceKind::Wood => config.wood_mint,
-        ResourceKind::Stone => config.stone_mint,
-        // [БЛОК L] Новые ресурсы из MaterialMints
-        ResourceKind::Seeds => material_mints.seeds,
-        ResourceKind::Wheat => material_mints.wheat,
-        ResourceKind::Flour => material_mints.flour,
-        ResourceKind::Bread => material_mints.bread,
-        ResourceKind::Water => material_mints.water,
-        ResourceKind::Coal => material_mints.coal,
-        ResourceKind::Meat => material_mints.meat,
-        ResourceKind::StoneBlue => material_mints.stone_blue,
-        ResourceKind::StonePurple => material_mints.stone_purple,
-        ResourceKind::StoneRed => material_mints.stone_red,
-        ResourceKind::SandWhite => material_mints.sand_white,
-        ResourceKind::SandPink => material_mints.sand_pink,
-        ResourceKind::SandYellow => material_mints.sand_yellow,
-        ResourceKind::GemBlue => material_mints.gem_blue,
-        ResourceKind::GemOrange => material_mints.gem_orange,
-        ResourceKind::GemWhite => material_mints.gem_white,
-        ResourceKind::GemGreen => material_mints.gem_green,
-        ResourceKind::FlaskBlue => material_mints.flask_blue,
-        ResourceKind::FlaskYellow => material_mints.flask_yellow,
-        ResourceKind::FlaskGreen => material_mints.flask_green,
-        ResourceKind::FlaskPink => material_mints.flask_pink,
-        ResourceKind::FlaskPurple => material_mints.flask_purple,
-        ResourceKind::LoveHeart => material_mints.love_heart,
-        ResourceKind::Potato => config.potato_mint,
-    }
-}
-
 /// Deterministic fee policy, NOT a random/unpredictable draw. Timing retries
 /// cannot change it, but choosing another wallet or amount can. Economic caps
 /// must not assume this hash prevents Sybil/amount selection. Receipts bind one
@@ -86,6 +52,10 @@ pub fn execute_mint<'info>(
     require!(amount > 0, AofError::ZeroAmount);
     let expected = mint_for_kind(config, material_mints, &kind);
     require!(mint.key() == expected, AofError::InvalidResourceKind);
+    // [AUDIT F-03] Global supply ceiling, on top of the per-epoch budget. This
+    // is the only bound that also applies to the paths that never touch
+    // IssuanceCap (collect_*, craft_recipe, claim_season_reward).
+    check_supply_cap(material_mints, kind, mint.supply, amount)?;
     require!(
         mint.mint_authority == COption::Some(auth.key()),
         AofError::Unauthorized

@@ -4,7 +4,7 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { SystemProgram } from "@solana/web3.js";
 import { AUTHORITY } from "../config";
 import { program } from "../provider";
-import { authPda, configPda, seasonPassPda, seasonPda } from "../lib/pda";
+import { authPda, configPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireAdmin } from "../middleware/adminAuth";
 
@@ -14,6 +14,7 @@ r.post("/init", requireAdmin, async (req, res) => {
   try {
     const seasonId = Number(req.body.seasonId);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [season] = seasonPda(seasonId);
 
     const ix = await (program.methods as any)
@@ -97,6 +98,7 @@ r.post("/reward/claim", requireAdmin, async (req, res) => {
     const premiumTrack = Boolean(req.body.premiumTrack);
     const woodMint = pk(req.body.woodMint);
     const [config] = configPda();
+    const [materialMints] = materialMintsPda();
     const [season] = seasonPda(seasonId);
     const [seasonPass] = seasonPassPda(owner, seasonId);
     const [auth] = authPda();
@@ -107,6 +109,7 @@ r.post("/reward/claim", requireAdmin, async (req, res) => {
       .accounts({
         config,
         authority: AUTHORITY.publicKey,
+        materialMints,
         season,
         seasonPass,
         woodMint,

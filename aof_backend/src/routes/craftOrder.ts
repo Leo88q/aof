@@ -71,11 +71,12 @@ r.post("/fulfill", async (req, res) => {
 r.post("/cancel", async (req, res) => {
   try {
     const creator = pk(req.body.creator);
+    const [config] = configPda();
     const [craftOrder] = craftOrderPda(creator);
 
     const ix = await (program.methods as any)
       .craftOrderCancel()
-      .accounts({ creator, craftOrder })
+      .accounts({ config, creator, craftOrder })
       .instruction();
 
     const tx = await coSign([ix], creator);

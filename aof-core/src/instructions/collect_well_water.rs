@@ -4,11 +4,19 @@ use crate::constants::*;
 use crate::state::*;
 use crate::errors::*;
 use crate::CollectWellWater;
+use crate::ResourceKind;
 
 /// [БЛОК L] Сбор воды из колодца.
 /// Вода копится пассивно: rate зависит от текущей погоды.
 /// mint Water = elapsed_seconds * rate(weather) / 3600
 pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
+    // [AUDIT F-11] The well was a free faucet for any wallet: create an
+    // account, wait a day, collect 120-480 WATER, repeat across 1 000 sybils.
+    // It is now gated on an existing Player with villagers — a Player PDA can
+    // only be created by the authority's resource mint, or by starting a mining
+    // session with a real tool NFT — and on the global WATER ceiling (F-03).
+    require!(ctx.accounts.player.villagers > 0, AofError::NoIdleVillagers);
+
     let well = &mut ctx.accounts.well_state;
     
     // Init if needed
@@ -48,6 +56,15 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
         .ok_or(AofError::MathOverflow)?;
 
     require!(water_amount > 0, AofError::WellEmpty);
+
+    // [AUDIT F-03] Water emission bypassed IssuanceCap entirely; the audit's
+    // sybil model produced 78.8 M WATER/year with no bound at all.
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        ResourceKind::Water,
+        ctx.accounts.water_mint.supply,
+        water_amount,
+    )?;
 
     // Mint Water
     let auth_bump = ctx.bumps.auth;

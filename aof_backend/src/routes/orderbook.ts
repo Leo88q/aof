@@ -77,11 +77,12 @@ r.post("/buy/cancel", async (req, res) => {
   try {
     const maker = pk(req.body.maker);
     const mint = pk(req.body.mint);
+    const [config] = configPda();
     const [order] = resourceOrderPda(maker, mint);
 
     const ix = await (program.methods as any)
       .cancelBuyOrder()
-      .accounts({ maker, mint, order })
+      .accounts({ config, maker, mint, order })
       .instruction();
 
     const tx = await coSign([ix], maker);
@@ -95,13 +96,14 @@ r.post("/sell/cancel", async (req, res) => {
   try {
     const maker = pk(req.body.maker);
     const mint = pk(req.body.mint);
+    const [config] = configPda();
     const [order] = resourceOrderPda(maker, mint);
     const orderVault = getAssociatedTokenAddressSync(mint, order, true);
     const makerToken = getAssociatedTokenAddressSync(mint, maker);
 
     const ix = await (program.methods as any)
       .cancelSellOrder()
-      .accounts({ maker, mint, order, orderVault, makerToken, tokenProgram: TOKEN_PROGRAM_ID })
+      .accounts({ config, maker, mint, order, orderVault, makerToken, tokenProgram: TOKEN_PROGRAM_ID })
       .instruction();
 
     const tx = await coSign([ix], maker);

@@ -1,5 +1,5 @@
 {
-  "note": "ChainTx rows: one ok, one failed with custom error 6098 (IssuanceCapExceeded)",
+  "note": "ChainTx rows: one ok, one failed with custom error 6099 (IssuanceCapExceeded)",
   "rows": [
     {
       "signature": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111",
@@ -16,7 +16,7 @@
       "blockTime": "2026-09-20T11:39:00.000Z",
       "success": false,
       "feePayer": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
-      "errorJson": "{\"InstructionError\":[0,{\"Custom\":6098}]}",
+      "errorJson": "{\"InstructionError\":[0,{\"Custom\":6099}]}",
       "programIds": "[\"HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq\"]"
     }
   ]

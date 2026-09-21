@@ -9,8 +9,14 @@ pub struct QuestConfig {
     /// SPL аккаунт казны с маскот-токенами (откуда выдаются награды)
     pub treasury_mascot: Pubkey,
     pub paused: bool,
+    /// [AUDIT F-02] Two-step authority rotation. Before this, the authority
+    /// captured by the first `initialize()` was permanent: no instruction in any
+    /// of the six programs could change it, so rotating a hot key or moving to a
+    /// multisig required a redeploy plus an account migration.
+    pub pending_authority: Pubkey,
+    pub authority_updated_at: i64,
 }
 
 impl QuestConfig {
-    pub const SIZE: usize = 8 + 32 + 1 + 32 + 32 + 1;
+    pub const SIZE: usize = (8 + 32 + 1 + 32 + 32 + 1) + 32 + 8;
 }

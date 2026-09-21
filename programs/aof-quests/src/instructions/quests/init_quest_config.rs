@@ -43,6 +43,9 @@ pub fn handler(
     config.mascot_mint = mascot_mint;
     config.treasury_mascot = treasury_mascot;
     config.paused = false;
+    // [AUDIT F-02] no rotation in flight at bootstrap.
+    config.pending_authority = Pubkey::default();
+    config.authority_updated_at = Clock::get()?.unix_timestamp;
 
     emit!(QuestConfigInitialized {
         authority: ctx.accounts.authority.key(),

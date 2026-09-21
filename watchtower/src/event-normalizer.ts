@@ -89,15 +89,21 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   QuestCompleted: ["QuestRewardClaimed", "AchievementUnlocked", "ExplorationCompleted", "ChallengeContributed"],
   StakeStarted: ["Staked", "CollectorStaked"],
   StakeEnded: ["Unstaked", "CollectorUnstaked"],
-  RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "PaidOut", "QuestRewardClaimed"],
+  RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "PaidOut", "QuestRewardClaimed", "LotteryRoundRefunded"],
   RewardClaimed: ["ResourceIssued"],
   TokenMinted: ["ResourceIssued", "ToolMinted"],
   TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult"],
   TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
-  TreasuryWithdrawn: ["PaidOut"],
+  TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
   LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched"],
-  ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted"],
+  ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
+    "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged"],
+  // [AUDIT F-02] The two-step authority rotation is now emitted by every
+  // program that has a Config, so both are native sources - the "unsupported,
+  // no multisig yet" reason in the catalog is obsolete.
+  AdminProposalCreated: ["AuthorityRotationProposed"],
+  AuthorityChanged: ["AuthorityChanged"],
   PausedToggled: ["PausedToggled"],
   EmergencyPause: ["PausedToggled"],
   WalletConnected: ["ReferralBound"],
@@ -279,6 +285,24 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("RewardGranted", { amount: str(d.amount), currency: LAMPORTS, attributes: { source: "vault", vaultBalanceAfter: str(d.vaultBalanceAfter) } });
       emit("TreasuryWithdrawn", { amount: str(d.amount), currency: LAMPORTS, attributes: { from: "gas_vault" } });
       break;
+    case "VaultWithdrawal":
+      // [AUDIT F-01] Every guarded payout out of the resource vault. The
+      // on-chain cap bounds a stolen key; this event is what makes a drain
+      // visible off-chain, so it is mapped rather than ignored.
+      emit("TreasuryWithdrawn", {
+        amount: str(d.amount),
+        currency: "RESOURCE",
+        asset: str(d.mint),
+        attributes: {
+          from: "resource_vault",
+          mint: str(d.mint),
+          recipient: pid(d.recipient),
+          withdrawnInEpoch: str(d.withdrawn_in_epoch),
+          capPerEpoch: str(d.cap_per_epoch),
+          slot: str(d.slot),
+        },
+      });
+      break;
     case "QuestRewardClaimed":
       emit("QuestCompleted", { attributes: { questId: str(d.questId) } });
       emit("RewardGranted", { asset: str(d.rewardMascot), amount: "1", currency: "NFT", attributes: { source: "quest", questId: str(d.questId) } });
@@ -330,6 +354,34 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "HotMarketEventStarted":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "hot_market_event", rarity: str(d.rarity), endTs: str(d.endTs), multiplierBps: str(d.multiplierBps) } });
+      break;
+    // ---- [AUDIT F-01/F-02/F-03/F-15/F-16/F-23/F-27] guard + admin events ----
+    // Every one of these is a privileged state change. They are mapped rather
+    // than ignored: an operator rotating authority, widening a supply cap or
+    // relaxing a vault guard must be visible off-chain.
+    case "VaultGuardChanged":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "vault_guard", mint: str(d.mint), epochSlots: str(d.epoch_slots), capPerEpoch: str(d.cap_per_epoch), maxPerTx: str(d.max_per_tx) } });
+      break;
+    case "AuthorityRotationProposed":
+      emit("AdminProposalCreated", { playerId: null, attributes: { setting: "authority", previous: pid(d.previous), next: pid(d.next), at: str(d.at) } });
+      break;
+    case "AuthorityChanged":
+      emit("AuthorityChanged", { playerId: null, attributes: { setting: "authority", previous: pid(d.previous), next: pid(d.next), at: str(d.at) } });
+      break;
+    case "MiningToggled":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "mining_enabled", enabled: bool(d.enabled) } });
+      break;
+    case "SupplyCapChanged":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "supply_cap", kind: str(d.kind), maxSupply: str(d.max_supply) } });
+      break;
+    case "CollectorMintRegistered":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "collector_mint", mint: str(d.mint), kind: str(d.kind), registered: bool(d.registered) } });
+      break;
+    case "PlayerCapacityChanged":
+      emit("ConfigUpdated", { playerId: pid(d.player), attributes: { setting: "player_capacity", previousVillagers: str(d.previous_villagers), nextVillagers: str(d.next_villagers), delta: str(d.delta), hasTent: bool(d.has_tent) } });
+      break;
+    case "LotteryRoundRefunded":
+      emit("RewardGranted", { playerId: null, amount: str(d.lamports), currency: LAMPORTS, attributes: { source: "lottery_refund", roundId: str(d.round_id), ticketsSold: str(d.tickets_sold) } });
       break;
     // Explicitly ignored: no Watchtower semantics, kept out on purpose.
     case "AuctionCreated": case "LotteryDrawn": case "HotMarketSkipped": case "DrumCommitted": case "DrumRevealed":

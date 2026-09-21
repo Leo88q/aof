@@ -15,6 +15,19 @@ declare_id!("4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb");
 pub mod aof_rebirth {
     use super::*;
 
+    // ===== [AUDIT F-02] two-step authority rotation =====
+    pub fn set_pending_authority(ctx: Context<SetPendingAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::authority::set_pending_authority_handler(ctx, new_authority)
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::authority::accept_authority_handler(ctx)
+    }
+
+    pub fn cancel_pending_authority(ctx: Context<CancelPendingAuthority>) -> Result<()> {
+        instructions::authority::cancel_pending_authority_handler(ctx)
+    }
+
     pub fn init_rebirth_config(
         ctx: Context<InitRebirthConfig>,
         bonus_per_rebirth_bps: u16,

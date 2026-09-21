@@ -15,6 +15,19 @@ declare_id!("4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU");
 pub mod aof_quests {
     use super::*;
 
+    // ===== [AUDIT F-02] two-step authority rotation =====
+    pub fn set_pending_authority(ctx: Context<SetPendingAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::quests::authority::set_pending_authority_handler(ctx, new_authority)
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::quests::authority::accept_authority_handler(ctx)
+    }
+
+    pub fn cancel_pending_authority(ctx: Context<CancelPendingAuthority>) -> Result<()> {
+        instructions::quests::authority::cancel_pending_authority_handler(ctx)
+    }
+
     pub fn init_quest_config(
         ctx: Context<InitQuestConfig>,
         mascot_mint: Pubkey,

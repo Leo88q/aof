@@ -38,6 +38,9 @@ pub fn handler(ctx: Context<InitLpConfig>, mascot_mint: Pubkey) -> Result<()> {
     config.bump = ctx.bumps.lp_config;
     config.mascot_mint = mascot_mint;
     config.paused = false;
+    // [AUDIT F-02] no rotation in flight at bootstrap.
+    config.pending_authority = Pubkey::default();
+    config.authority_updated_at = Clock::get()?.unix_timestamp;
 
     emit!(LpConfigInitialized {
         authority: ctx.accounts.authority.key(),

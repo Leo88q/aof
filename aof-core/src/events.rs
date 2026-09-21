@@ -355,3 +355,85 @@ pub struct ForgeCommitExpired {
     pub wood_refunded: u64,
     pub stone_refunded: u64,
 }
+
+/// [AUDIT F-01] Every authority withdrawal from the vault, with the guard
+/// budget it was charged against. Indexers/monitoring must alert on spikes
+/// here: the guard bounds a single key, it does not make it invisible.
+#[event]
+pub struct VaultWithdrawal {
+    pub mint: Pubkey,
+    pub recipient: Pubkey,
+    pub amount: u64,
+    pub withdrawn_in_epoch: u64,
+    pub cap_per_epoch: u64,
+    pub slot: u64,
+}
+
+/// [AUDIT F-01] Vault guard created or reconfigured.
+#[event]
+pub struct VaultGuardChanged {
+    pub mint: Pubkey,
+    pub epoch_slots: u64,
+    pub cap_per_epoch: u64,
+    pub max_per_tx: u64,
+    pub slot: u64,
+}
+
+/// [AUDIT F-02] Authority rotation, both steps. `previous`/`next` are recorded
+/// so an unauthorised rotation attempt is visible on-chain even when it fails.
+#[event]
+pub struct AuthorityRotationProposed {
+    pub previous: Pubkey,
+    pub next: Pubkey,
+    pub at: i64,
+}
+
+#[event]
+pub struct AuthorityChanged {
+    pub previous: Pubkey,
+    pub next: Pubkey,
+    pub at: i64,
+}
+
+/// [AUDIT F-27] Mining kill-switch flips.
+#[event]
+pub struct MiningToggled {
+    pub enabled: bool,
+    pub at: i64,
+}
+
+/// [AUDIT F-03] Global supply ceiling changed for one resource kind.
+#[event]
+pub struct SupplyCapChanged {
+    pub kind: u8,
+    pub max_supply: u64,
+    pub at: i64,
+}
+
+/// [AUDIT F-16] Collector perk allowlist changes.
+#[event]
+pub struct CollectorMintRegistered {
+    pub mint: Pubkey,
+    pub kind: u8,
+    pub registered: bool,
+}
+
+/// [AUDIT F-15] Villager capacity changes, with before/after for auditing.
+#[event]
+pub struct PlayerCapacityChanged {
+    pub player: Pubkey,
+    pub previous_villagers: u32,
+    pub next_villagers: u32,
+    pub delta: i32,
+    pub has_tent: bool,
+}
+
+/// [AUDIT F-23] A never-drawn lottery round was swept back to the treasury
+/// instead of stranding its pool.
+#[event]
+pub struct LotteryRoundRefunded {
+    pub round_id: u64,
+    pub lamports: u64,
+    pub tickets_sold: u64,
+    pub at: i64,
+}

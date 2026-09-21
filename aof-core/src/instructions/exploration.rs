@@ -75,7 +75,12 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [
     Ok(())
 }
 
+/// [AUDIT F-06] Disabled — same authority-secret commit/reveal weakness as the
+/// packs, and the trip cost is burned before the reveal exists.
 pub fn reveal_handler(ctx: Context<ExploreReveal>, secret: [u8; 32]) -> Result<()> {
+    require!(false, AofError::RandomnessDisabled);
+    #[allow(unreachable_code)]
+    {
     require!(
         hash_secret(&secret) == ctx.accounts.exploration_commit.commit_hash,
         AofError::CommitMismatch
@@ -134,11 +139,19 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, secret: [u8; 32]) -> Result<(
         stone_reward,
     });
     Ok(())
+    }
 }
 
 pub fn upgrade_tier_handler(ctx: Context<UpgradeExplorationTier>) -> Result<()> {
     let state = &mut ctx.accounts.exploration_state;
-    require!(state.tier < MAX_EXPLORATION_TIER, AofError::ExplorationMaxTier);
+    // [AUDIT F-12] A fresh ExplorationState has `tier == 0`, so the old
+    // `(state.tier - 1)` underflowed a u8 and panicked (overflow-checks = true
+    // in this workspace) for every new player. Tiers are 1..=MAX, and the cost
+    // table is indexed by "current tier - 1" only once the tier is valid.
+    require!(
+        state.tier >= 1 && state.tier < MAX_EXPLORATION_TIER,
+        AofError::InvalidExplorationTier
+    );
     let cost = EXPLORATION_UPGRADE_COST_PER_TIER[(state.tier - 1) as usize];
 
     for (mint, from) in [

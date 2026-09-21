@@ -18,13 +18,18 @@ import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
-// Anchor error codes for the issuance cap (aof_core.json errors 6097/6098).
-const ISSUANCE_CAP_ERROR_CODES = new Set([6097, 6098]);
+// Anchor error codes for the issuance cap: 6098 IssuanceCapNotConfigured,
+// 6099 IssuanceCapExceeded. These are POSITIONAL (6000 + index in the
+// `AofError` enum in aof-core/src/errors.rs), so they were wrong here for a
+// long time (mapped as 6097/6098) and the committed IDL was stale too; both
+// are now reconciled against the Rust enum. Re-check whenever a variant is
+// added anywhere but the end of that enum.
+const ISSUANCE_CAP_ERROR_CODES = new Set([6098, 6099]);
 function isIssuanceCapError(e: any): boolean {
   const code = Number(e?.error?.errorCode?.number ?? e?.code);
   if (ISSUANCE_CAP_ERROR_CODES.has(code)) return true;
   const msg = String(e?.message ?? e?.logs?.join("\n") ?? "");
-  return /IssuanceCapExceeded|IssuanceCapNotConfigured|custom program error: 0x17d[12]/i.test(msg);
+  return /IssuanceCapExceeded|IssuanceCapNotConfigured|custom program error: 0x17d[23]/i.test(msg);
 }
 
 // Маппинг типов наград → kind для mintResource (как в resources.ts)
@@ -198,11 +203,11 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
         const treasuryToken = getAssociatedTokenAddressSync(mintPk, treasury, true);
         const amount = BigInt(item.rewardAmount) * BigInt(RESOURCE_UNIT);
 
-        const receipt = await fetchRewardReceipt(connection, id);
+        const receipt = await fetchRewardReceipt(connection, id, ownerPk);
         if (receipt) {
           assertRewardReceipt(receipt, { recipient: item.user, mint: mintPk.toBase58(), grossAmount: amount.toString() });
           const recovered = await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "confirmed", read: true } });
-          return res.json({ item: recovered, reward: rewardResult, recoveredFromReceipt: rewardReceiptPda(id).toBase58() });
+          return res.json({ item: recovered, reward: rewardResult, recoveredFromReceipt: rewardReceiptPda(id, ownerPk).toBase58() });
         }
         const ix = await (program.methods as any)
           .mintResourceOnce(kind, new BN(amount.toString()), Array.from(inboxRewardId(id)))
@@ -217,7 +222,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
             player,
             issuanceCap: issuanceCapPda(kind)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
-            rewardReceipt: rewardReceiptPda(id),
+            rewardReceipt: rewardReceiptPda(id, ownerPk),
             systemProgram: SystemProgram.programId,
           })
           .instruction();

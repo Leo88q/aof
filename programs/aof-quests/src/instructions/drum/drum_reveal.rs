@@ -5,14 +5,21 @@ use crate::state::{DrumCommit, QuestConfig};
 use crate::errors::QuestError;
 use crate::events::DrumRevealed;
 
-/// [ФИКС] Таблица шансов барабана: (вес в bps, сумма маскотов).
+/// Таблица шансов барабана: (вес в bps, сумма маскотов).
 /// Сумма весов строго = 10000. Редкие крупные призы с малым весом.
+///
+/// [AUDIT F-13] The old table paid an expected **40** mascots per spin against
+/// a spin price of 5 (0.4*10 + 0.3*25 + 0.2*50 + 0.09*150 + 0.01*500), i.e. the
+/// treasury lost 8x the price on every spin — a ready-made printing press the
+/// moment `drum_commit` was switched on. The table below is calibrated to an
+/// expected value of 4.75 against the same price of 5 (95% RTP). The invariants
+/// (weights sum to 10000, EV <= price) are now asserted by `drum_odds_tests`.
 pub const DRUM_PRIZES: [(u16, u64); 5] = [
-    (4000, 10),   // 40% -> 10 маскотов
-    (3000, 25),   // 30% -> 25
-    (2000, 50),   // 20% -> 50
-    (900,  150),  //  9% -> 150
-    (100,  500),  //  1% -> 500 (джекпот)
+    (6000, 2),    // 60% -> 2 маскота
+    (2500, 5),    // 25% -> 5  (ровно стоимость спина)
+    (1000, 10),   // 10% -> 10
+    (400, 20),    //  4% -> 20
+    (100, 50),    //  1% -> 50 (джекпот)
 ];
 
 #[derive(Accounts)]
@@ -140,4 +147,101 @@ pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod slot_hash_tests {
+    use super::*;
+    use anchor_lang::solana_program::account_info::AccountInfo;
+
+    // [AUDIT G-07] This is the second copy of `get_slot_hash` (the first is
+    // `aof-core/src/randomness.rs`). The crates are independent, so the code
+    // cannot be shared without introducing a new workspace crate; instead both
+    // copies are pinned with the SAME golden fixture. Keep the two test modules
+    // in sync - the fixtures are the contract.
+
+    // Built at runtime (not `static Pubkey = ...`) so the test does not depend
+    // on whether `Pubkey::new_from_array` is a `const fn` in this toolchain.
+    static KEY: std::sync::OnceLock<Pubkey> = std::sync::OnceLock::new();
+    static OWNER: std::sync::OnceLock<Pubkey> = std::sync::OnceLock::new();
+    fn key() -> &'static Pubkey { KEY.get_or_init(|| Pubkey::new_from_array([1u8; 32])) }
+    fn owner() -> &'static Pubkey { OWNER.get_or_init(|| Pubkey::new_from_array([2u8; 32])) }
+
+    /// Sysvar layout: `u64` entry count, then `(u64 slot, [u8; 32] hash)` pairs
+    /// ordered from the newest slot to the oldest.
+    fn fixture() -> (Vec<u8>, [u8; 32], [u8; 32]) {
+        let hash_newest = [0x11u8; 32];
+        let hash_oldest = [0x22u8; 32];
+        let mut data = Vec::new();
+        data.extend_from_slice(&2u64.to_le_bytes());
+        data.extend_from_slice(&1_000u64.to_le_bytes());
+        data.extend_from_slice(&hash_newest);
+        data.extend_from_slice(&999u64.to_le_bytes());
+        data.extend_from_slice(&hash_oldest);
+        (data, hash_newest, hash_oldest)
+    }
+
+    fn sysvar<'a>(lamports: &'a mut u64, data: &'a mut [u8]) -> AccountInfo<'a> {
+        AccountInfo::new(key(), false, false, lamports, data, owner(), false, 0)
+    }
+
+    #[test]
+    fn reads_the_hash_of_a_slot_inside_the_window() {
+        let (mut data, hash_newest, hash_oldest) = fixture();
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut data);
+        assert_eq!(get_slot_hash(&info, 1_000).unwrap(), hash_newest);
+        assert_eq!(get_slot_hash(&info, 999).unwrap(), hash_oldest);
+    }
+
+    #[test]
+    fn rejects_a_slot_outside_the_window() {
+        let (mut data, _, _) = fixture();
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut data);
+        assert!(get_slot_hash(&info, 998).is_err());
+        assert!(get_slot_hash(&info, 1_001).is_err());
+        assert!(get_slot_hash(&info, 0).is_err());
+    }
+
+    #[test]
+    fn malformed_sysvar_data_errors_instead_of_panicking() {
+        let mut short = Vec::new();
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut short);
+        assert!(get_slot_hash(&info, 1_000).is_err());
+
+        let mut truncated = Vec::new();
+        truncated.extend_from_slice(&3u64.to_le_bytes());
+        truncated.extend_from_slice(&1_000u64.to_le_bytes());
+        truncated.extend_from_slice(&[0x11u8; 32]);
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut truncated);
+        assert!(get_slot_hash(&info, 1_000).is_ok());
+        assert!(get_slot_hash(&info, 999).is_err());
+    }
+}
+
+#[cfg(test)]
+mod drum_odds_tests {
+    use super::*;
+
+    #[test]
+    fn weights_sum_to_ten_thousand() {
+        let sum: u32 = DRUM_PRIZES.iter().map(|(w, _)| *w as u32).sum();
+        assert_eq!(sum, 10_000, "drum weights must form a full probability space");
+    }
+
+    #[test]
+    fn expected_payout_does_not_exceed_the_spin_price() {
+        const SPIN_COST: u128 = 5;
+        let ev: u128 = DRUM_PRIZES
+            .iter()
+            .map(|(w, amount)| (*w as u128) * (*amount as u128) / 10_000)
+            .sum();
+        assert!(
+            ev <= SPIN_COST,
+            "drum EV {ev} exceeds the spin price {SPIN_COST}: the treasury would bleed on every spin"
+        );
+    }
 }

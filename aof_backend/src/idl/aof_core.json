@@ -175,22 +175,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "seller",
@@ -210,27 +195,7 @@
         },
         {
           "name": "auction",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  99,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "auction_vault",
@@ -270,22 +235,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "mint",
@@ -293,27 +243,7 @@
         },
         {
           "name": "auction",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  99,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "seller",
@@ -329,31 +259,11 @@
         },
         {
           "name": "winner_token",
-          "docs": [
-            "\u043f\u043e\u0431\u0435\u0434\u0438\u0442\u0435\u043b\u044c (\u0438\u043b\u0438 \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446, \u0435\u0441\u043b\u0438 \u0441\u0442\u0430\u0432\u043e\u043a \u043d\u0435 \u0431\u044b\u043b\u043e) \u2014 \u043f\u043e\u043b\u0443\u0447\u0430\u0442\u0435\u043b\u044c NFT"
-          ],
           "writable": true
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -610,22 +520,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "buyer",
@@ -638,71 +533,15 @@
         },
         {
           "name": "lottery_round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "LotteryRound"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "lottery_ticket",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  116,
-                  105,
-                  99,
-                  107,
-                  101,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "LotteryRound"
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.tickets_sold",
-                "account": "LotteryRound"
-              }
-            ]
-          }
+          "writable": true
+        },
+        {
+          "name": "ticket_counter",
+          "writable": true
         },
         {
           "name": "system_program",
@@ -725,6 +564,9 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "maker",
           "writable": true,
           "signer": true
@@ -734,38 +576,7 @@
         },
         {
           "name": "order",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  115,
-                  111,
-                  117,
-                  114,
-                  99,
-                  101,
-                  95,
-                  111,
-                  114,
-                  100,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "maker"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         }
       ],
       "args": []
@@ -784,6 +595,9 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "maker",
           "writable": true,
           "signer": true
@@ -793,38 +607,7 @@
         },
         {
           "name": "order",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  115,
-                  111,
-                  117,
-                  114,
-                  99,
-                  101,
-                  95,
-                  111,
-                  114,
-                  100,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "maker"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "order_vault",
@@ -855,71 +638,14 @@
       ],
       "accounts": [
         {
-          "name": "lottery_round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "LotteryRound"
-              }
-            ]
-          }
+          "name": "config"
         },
         {
-          "name": "lottery_ticket",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  116,
-                  105,
-                  99,
-                  107,
-                  101,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "LotteryRound"
-              },
-              {
-                "kind": "account",
-                "path": "lottery_ticket.ticket_number",
-                "account": "LotteryTicket"
-              }
-            ]
-          }
+          "name": "lottery_round",
+          "writable": true
+        },
+        {
+          "name": "lottery_ticket"
         },
         {
           "name": "winner",
@@ -943,86 +669,21 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "season",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  97,
-                  115,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "season.season_id",
-                "account": "Season"
-              }
-            ]
-          }
+          "name": "material_mints"
+        },
+        {
+          "name": "season"
         },
         {
           "name": "season_pass",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  97,
-                  115,
-                  111,
-                  110,
-                  95,
-                  112,
-                  97,
-                  115,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "season_pass.owner",
-                "account": "SeasonPass"
-              },
-              {
-                "kind": "account",
-                "path": "season.season_id",
-                "account": "Season"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "wood_mint",
@@ -1033,20 +694,7 @@
           "writable": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "token_program",
@@ -1468,22 +1116,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -1491,98 +1124,20 @@
           "signer": true
         },
         {
-          "name": "material_mints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "player"
+        },
+        {
+          "name": "material_mints"
         },
         {
           "name": "well_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119,
-                  101,
-                  108,
-                  108,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "weather_state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119,
-                  101,
-                  97,
-                  116,
-                  104,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
+          "name": "weather_state"
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "water_mint",
@@ -1617,22 +1172,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -1648,21 +1188,7 @@
           "writable": true
         },
         {
-          "name": "vault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              }
-            ]
-          }
+          "name": "vault"
         },
         {
           "name": "vault_token",
@@ -1670,52 +1196,14 @@
         },
         {
           "name": "staked_collector",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  108,
-                  108,
-                  101,
-                  99,
-                  116,
-                  111,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
+        },
+        {
+          "name": "collector_allow"
         },
         {
           "name": "player",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -1978,29 +1466,11 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "user",
@@ -2009,48 +1479,11 @@
         },
         {
           "name": "gastank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  115,
-                  116,
-                  97,
-                  110,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "prev_tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "prev_mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "prev_mint",
@@ -2070,69 +1503,17 @@
         },
         {
           "name": "new_tool_data",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "new_mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "rarity_counter",
           "writable": true
         },
         {
-          "name": "craft_economy",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  114,
-                  97,
-                  102,
-                  116,
-                  95,
-                  101,
-                  99,
-                  111,
-                  110,
-                  111,
-                  109,
-                  121
-                ]
-              }
-            ]
-          }
+          "name": "craft_economy"
         },
         {
           "name": "wood_mint",
@@ -2228,37 +1609,16 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "creator",
           "writable": true,
           "signer": true
         },
         {
           "name": "craft_order",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  114,
-                  97,
-                  102,
-                  116,
-                  95,
-                  111,
-                  114,
-                  100,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "creator"
-              }
-            ]
-          }
+          "writable": true
         }
       ],
       "args": []
@@ -2466,22 +1826,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -2489,63 +1834,30 @@
           "signer": true
         },
         {
-          "name": "material_mints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
-          "name": "input_1_mint"
+          "name": "input_1_mint",
+          "writable": true
         },
         {
           "name": "input_1_acc",
           "writable": true
         },
         {
-          "name": "input_2_mint"
+          "name": "input_2_mint",
+          "writable": true
         },
         {
           "name": "input_2_acc",
           "writable": true
         },
         {
-          "name": "output_mint"
+          "name": "output_mint",
+          "writable": true
         },
         {
           "name": "output_acc",
@@ -4127,22 +3439,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "buyer",
@@ -4163,48 +3460,11 @@
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing_vault",
@@ -4239,32 +3499,15 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "mint",
           "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "seller",
@@ -4300,22 +3543,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "seller",
@@ -4335,27 +3563,7 @@
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing_vault",
@@ -4682,72 +3890,18 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
-          "name": "material_mints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "mint",
@@ -4763,60 +3917,11 @@
         },
         {
           "name": "player",
-          "docs": [
-            "\u0441\u043e\u0437\u0434\u0430\u0451\u043c \u0441 \u043d\u0443\u043b\u0435\u0432\u044b\u043c\u0438 \u043f\u0435\u0440\u043a\u0430\u043c\u0438 \u2014 mint_resource \u043d\u0435 \u0434\u043e\u043b\u0436\u0435\u043d \u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f",
-            "\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u044f."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_account.owner",
-                "account": "TokenAccount"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "issuance_cap",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "kind"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -4856,46 +3961,15 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "mint",
@@ -4906,25 +3980,12 @@
           "writable": true
         },
         {
+          "name": "recipient",
+          "writable": true
+        },
+        {
           "name": "tool_data",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -5075,33 +4136,14 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "mint"
         },
         {
           "name": "offer",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              },
-              {
-                "kind": "account",
-                "path": "buyer"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "buyer",
@@ -5527,46 +4569,14 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "vault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              }
-            ]
-          }
+          "name": "vault"
         },
         {
           "name": "mint",
@@ -5578,6 +4588,16 @@
         },
         {
           "name": "user_token",
+          "writable": true
+        },
+        {
+          "name": "player"
+        },
+        {
+          "name": "material_mints"
+        },
+        {
+          "name": "vault_guard",
           "writable": true
         },
         {
@@ -5606,46 +4626,14 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "vault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              }
-            ]
-          }
+          "name": "vault"
         },
         {
           "name": "mint",
@@ -5660,37 +4648,20 @@
           "writable": true
         },
         {
-          "name": "referral_link",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  102,
-                  101,
-                  114,
-                  114,
-                  97,
-                  108,
-                  95,
-                  108,
-                  105,
-                  110,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "referral_link.referred",
-                "account": "ReferralLink"
-              }
-            ]
-          }
+          "name": "referral_link"
         },
         {
           "name": "referrer_token",
+          "writable": true
+        },
+        {
+          "name": "player"
+        },
+        {
+          "name": "material_mints"
+        },
+        {
+          "name": "vault_guard",
           "writable": true
         },
         {
@@ -6428,6 +5399,9 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "caller",
           "signer": true
         },
@@ -6436,57 +5410,11 @@
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "rental_agreement",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  110,
-                  116,
-                  97,
-                  108,
-                  95,
-                  97,
-                  103,
-                  114,
-                  101,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "renter_refund",
@@ -6624,6 +5552,9 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "owner",
           "writable": true,
           "signer": true
@@ -6633,57 +5564,11 @@
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "rental_agreement",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  110,
-                  116,
-                  97,
-                  108,
-                  95,
-                  97,
-                  103,
-                  114,
-                  101,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "renter_refund",
@@ -6939,22 +5824,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -6963,48 +5833,11 @@
         },
         {
           "name": "gastank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  115,
-                  116,
-                  97,
-                  110,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "tool_a",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint_a"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "mint_a",
@@ -7016,24 +5849,7 @@
         },
         {
           "name": "tool_b",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint_b"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "mint_b",
@@ -7053,40 +5869,65 @@
         },
         {
           "name": "new_tool_data",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "new_mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
+        },
+        {
+          "name": "rarity_counter",
+          "writable": true
+        },
+        {
+          "name": "craft_economy"
+        },
+        {
+          "name": "wood_mint",
+          "writable": true
+        },
+        {
+          "name": "user_wood",
+          "writable": true
+        },
+        {
+          "name": "stone_mint",
+          "writable": true
+        },
+        {
+          "name": "user_stone",
+          "writable": true
+        },
+        {
+          "name": "food_mint",
+          "writable": true
+        },
+        {
+          "name": "user_food",
+          "writable": true
+        },
+        {
+          "name": "seeds_mint",
+          "writable": true
+        },
+        {
+          "name": "user_seeds",
+          "writable": true
+        },
+        {
+          "name": "water_mint",
+          "writable": true
+        },
+        {
+          "name": "user_water",
+          "writable": true
+        },
+        {
+          "name": "potato_mint",
+          "writable": true
+        },
+        {
+          "name": "user_potato",
+          "writable": true
         },
         {
           "name": "token_program",
@@ -8859,35 +7700,16 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "cranker",
           "writable": true,
           "signer": true
         },
         {
           "name": "weather_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119,
-                  101,
-                  97,
-                  116,
-                  104,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "system_program",
@@ -8982,72 +7804,18 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
-          "name": "material_mints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "mint",
@@ -9063,60 +7831,11 @@
         },
         {
           "name": "player",
-          "docs": [
-            "\u0441\u043e\u0437\u0434\u0430\u0451\u043c \u0441 \u043d\u0443\u043b\u0435\u0432\u044b\u043c\u0438 \u043f\u0435\u0440\u043a\u0430\u043c\u0438 \u2014 mint_resource \u043d\u0435 \u0434\u043e\u043b\u0436\u0435\u043d \u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f",
-            "\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u044f."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_account.owner",
-                "account": "TokenAccount"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "issuance_cap",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "kind"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -9124,34 +7843,7 @@
         },
         {
           "name": "reward_receipt",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  119,
-                  97,
-                  114,
-                  100,
-                  95,
-                  114,
-                  101,
-                  99,
-                  101,
-                  105,
-                  112,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "reward_id"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "system_program",
@@ -9196,22 +7888,7 @@
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "buyer",
@@ -9232,48 +7909,11 @@
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing_vault",
@@ -9472,6 +8112,355 @@
         },
         {
           "name": "cap_per_epoch",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_pending_authority",
+      "discriminator": [
+        175,
+        71,
+        167,
+        223,
+        49,
+        144,
+        102,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_pending_authority",
+      "discriminator": [
+        155,
+        52,
+        245,
+        225,
+        85,
+        73,
+        58,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_mining_enabled",
+      "discriminator": [
+        240,
+        237,
+        205,
+        117,
+        79,
+        7,
+        125,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "init_vault_guard",
+      "discriminator": [
+        20,
+        12,
+        78,
+        107,
+        5,
+        169,
+        61,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault_guard",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch_slots",
+          "type": "u64"
+        },
+        {
+          "name": "cap_per_epoch",
+          "type": "u64"
+        },
+        {
+          "name": "max_per_tx",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_vault_guard",
+      "discriminator": [
+        188,
+        146,
+        45,
+        181,
+        231,
+        183,
+        48,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault_guard",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch_slots",
+          "type": "u64"
+        },
+        {
+          "name": "cap_per_epoch",
+          "type": "u64"
+        },
+        {
+          "name": "max_per_tx",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_supply_cap",
+      "discriminator": [
+        26,
+        229,
+        174,
+        213,
+        12,
+        59,
+        220,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "material_mints",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "ResourceKind"
+            }
+          }
+        },
+        {
+          "name": "max_supply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "register_collector_mint",
+      "discriminator": [
+        230,
+        133,
+        88,
+        35,
+        115,
+        148,
+        172,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "entry",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "CollectorKind"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "revoke_collector_mint",
+      "discriminator": [
+        45,
+        151,
+        59,
+        119,
+        159,
+        240,
+        101,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "entry",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_lottery_round",
+      "discriminator": [
+        134,
+        87,
+        211,
+        115,
+        122,
+        237,
+        217,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
           "type": "u64"
         }
       ]
@@ -9957,6 +8946,45 @@
         80,
         180,
         96
+      ]
+    },
+    {
+      "name": "VaultGuard",
+      "discriminator": [
+        220,
+        164,
+        5,
+        99,
+        166,
+        92,
+        59,
+        223
+      ]
+    },
+    {
+      "name": "CollectorAllowEntry",
+      "discriminator": [
+        9,
+        80,
+        117,
+        174,
+        23,
+        102,
+        54,
+        192
+      ]
+    },
+    {
+      "name": "LotteryTicketCounter",
+      "discriminator": [
+        126,
+        104,
+        207,
+        207,
+        130,
+        79,
+        224,
+        114
       ]
     }
   ],
@@ -10519,6 +9547,123 @@
         14,
         80
       ]
+    },
+    {
+      "name": "VaultWithdrawal",
+      "discriminator": [
+        168,
+        109,
+        95,
+        252,
+        76,
+        240,
+        237,
+        56
+      ]
+    },
+    {
+      "name": "VaultGuardChanged",
+      "discriminator": [
+        148,
+        53,
+        106,
+        37,
+        249,
+        53,
+        129,
+        8
+      ]
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "discriminator": [
+        76,
+        59,
+        57,
+        23,
+        22,
+        166,
+        253,
+        33
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "MiningToggled",
+      "discriminator": [
+        204,
+        172,
+        223,
+        195,
+        227,
+        64,
+        84,
+        70
+      ]
+    },
+    {
+      "name": "SupplyCapChanged",
+      "discriminator": [
+        21,
+        238,
+        14,
+        188,
+        169,
+        140,
+        177,
+        255
+      ]
+    },
+    {
+      "name": "CollectorMintRegistered",
+      "discriminator": [
+        239,
+        48,
+        54,
+        51,
+        192,
+        8,
+        98,
+        193
+      ]
+    },
+    {
+      "name": "PlayerCapacityChanged",
+      "discriminator": [
+        75,
+        199,
+        132,
+        60,
+        25,
+        243,
+        242,
+        249
+      ]
+    },
+    {
+      "name": "LotteryRoundRefunded",
+      "discriminator": [
+        102,
+        158,
+        253,
+        89,
+        139,
+        160,
+        166,
+        61
+      ]
     }
   ],
   "errors": [
@@ -10844,183 +9989,268 @@
     },
     {
       "code": 6064,
+      "name": "LotteryDrawAlreadyCommitted",
+      "msg": "Lottery draw is already committed"
+    },
+    {
+      "code": 6065,
       "name": "InvalidHash",
       "msg": "Revealed secret does not match committed hash"
     },
     {
-      "code": 6065,
+      "code": 6066,
       "name": "EnergyDepleted",
       "msg": "Energy account depleted"
     },
     {
-      "code": 6066,
+      "code": 6067,
       "name": "InsufficientEnergy",
       "msg": "Energy cost exceeds available balance"
     },
     {
-      "code": 6067,
+      "code": 6068,
       "name": "FarmTileBusy",
       "msg": "Farm tile is busy (growing)"
     },
     {
-      "code": 6068,
+      "code": 6069,
       "name": "FarmTileNotReady",
       "msg": "Farm tile is not ready for harvest"
     },
     {
-      "code": 6069,
+      "code": 6070,
       "name": "FarmTileEmpty",
       "msg": "Farm tile is empty (nothing planted)"
     },
     {
-      "code": 6070,
+      "code": 6071,
       "name": "ToolBusy",
       "msg": "Tool is busy (mining), cannot harvest"
     },
     {
-      "code": 6071,
+      "code": 6072,
       "name": "MillInProgress",
       "msg": "Mill has active batch in progress"
     },
     {
-      "code": 6072,
+      "code": 6073,
       "name": "MillNotReady",
       "msg": "Mill batch is not ready yet"
     },
     {
-      "code": 6073,
+      "code": 6074,
       "name": "OvenInProgress",
       "msg": "Oven has active batch in progress"
     },
     {
-      "code": 6074,
+      "code": 6075,
       "name": "OvenNotReady",
       "msg": "Oven batch is not ready yet"
     },
     {
-      "code": 6075,
+      "code": 6076,
       "name": "InvalidBatchSize",
       "msg": "Invalid batch size (must be 1, 2, or 3)"
     },
     {
-      "code": 6076,
+      "code": 6077,
       "name": "InvalidFuelKind",
       "msg": "Invalid fuel kind (must be 0=wood or 1=coal)"
     },
     {
-      "code": 6077,
+      "code": 6078,
       "name": "MaterialNotRegistered",
       "msg": "Material mint is not registered in MaterialMints PDA"
     },
     {
-      "code": 6078,
+      "code": 6079,
       "name": "WeatherAlreadyUpdated",
       "msg": "Weather state already updated for this day"
     },
     {
-      "code": 6079,
+      "code": 6080,
       "name": "WellEmpty",
       "msg": "Well has no water to collect"
     },
     {
-      "code": 6080,
+      "code": 6081,
       "name": "RecipeNotFound",
       "msg": "Recipe not found in RecipeConfig"
     },
     {
-      "code": 6081,
+      "code": 6082,
       "name": "FortuneBoostExpired",
       "msg": "Fortune boost has expired"
     },
     {
-      "code": 6082,
+      "code": 6083,
       "name": "FortuneBoostAlreadyActive",
       "msg": "Fortune boost is already active"
     },
     {
-      "code": 6083,
+      "code": 6084,
       "name": "LoveHeartNotTransferable",
       "msg": "Love heart is not transferable"
     },
     {
-      "code": 6084,
+      "code": 6085,
       "name": "InvalidAmount",
       "msg": "Invalid amount"
     },
     {
-      "code": 6085,
+      "code": 6086,
       "name": "DurabilityOverflow",
       "msg": "Durability overflow"
     },
     {
-      "code": 6086,
+      "code": 6087,
       "name": "InvalidWeatherSeed",
       "msg": "Invalid weather seed (must be derived from slot hash)"
     },
     {
-      "code": 6087,
+      "code": 6088,
       "name": "InvalidReveal",
       "msg": "Invalid reveal: hash mismatch"
     },
     {
-      "code": 6088,
+      "code": 6089,
       "name": "AlreadyRevealed",
       "msg": "Commit already revealed"
     },
     {
-      "code": 6089,
+      "code": 6090,
       "name": "InvalidFlaskType",
       "msg": "Invalid flask type"
     },
     {
-      "code": 6090,
+      "code": 6091,
       "name": "EnergyCapExceeded",
       "msg": "Energy cap exceeded"
     },
     {
-      "code": 6091,
+      "code": 6092,
       "name": "InvalidToolType",
       "msg": "Tool type is not valid for this instruction"
     },
     {
-      "code": 6092,
+      "code": 6093,
       "name": "InvalidProgramData",
       "msg": "Program data does not contain a valid upgrade authority"
     },
     {
-      "code": 6093,
+      "code": 6094,
       "name": "FeatureDisabled",
       "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
     },
     {
-      "code": 6094,
+      "code": 6095,
       "name": "CommitNotExpired",
       "msg": "Commit is still inside its reveal window; it cannot be expired yet"
     },
     {
-      "code": 6095,
+      "code": 6096,
       "name": "PriceLimitExceeded",
       "msg": "Listing price exceeds the signed maximum"
     },
     {
-      "code": 6096,
+      "code": 6097,
       "name": "QuoteExpired",
       "msg": "Quote expired or its lifetime exceeds 300 seconds"
     },
     {
-      "code": 6097,
+      "code": 6098,
       "name": "IssuanceCapNotConfigured",
       "msg": "Issuance cap for this resource is not configured"
     },
     {
-      "code": 6098,
+      "code": 6099,
       "name": "IssuanceCapExceeded",
       "msg": "Issuance cap for this resource exceeded in the current epoch"
     },
     {
-      "code": 6099,
+      "code": 6100,
       "name": "InvalidIssuanceCapParams",
       "msg": "Issuance cap parameters out of bounds"
+    },
+    {
+      "code": 6101,
+      "name": "SupplyCapExceeded",
+      "msg": "Global supply cap for this resource would be exceeded"
+    },
+    {
+      "code": 6102,
+      "name": "VaultGuardNotConfigured",
+      "msg": "Vault withdrawal guard for this mint is not configured"
+    },
+    {
+      "code": 6103,
+      "name": "VaultGuardLimitExceeded",
+      "msg": "Vault withdrawal exceeds the per-transaction or per-epoch limit"
+    },
+    {
+      "code": 6104,
+      "name": "NotAResourceMint",
+      "msg": "Mint is not a configured resource mint; pay_out cannot move it"
+    },
+    {
+      "code": 6105,
+      "name": "InvalidVaultGuardParams",
+      "msg": "Vault withdrawal guard parameters out of bounds"
+    },
+    {
+      "code": 6106,
+      "name": "NoPendingAuthority",
+      "msg": "No authority rotation is pending"
+    },
+    {
+      "code": 6107,
+      "name": "NotPendingAuthority",
+      "msg": "Signer is not the pending authority"
+    },
+    {
+      "code": 6108,
+      "name": "MiningDisabled",
+      "msg": "Mining is disabled by the on-chain config"
+    },
+    {
+      "code": 6109,
+      "name": "CollectorMintNotAllowed",
+      "msg": "This NFT mint is not registered as a collector perk"
+    },
+    {
+      "code": 6110,
+      "name": "InvalidCapacityDelta",
+      "msg": "Capacity delta is out of bounds"
+    },
+    {
+      "code": 6111,
+      "name": "StillActive",
+      "msg": "Listing or auction is still active"
+    },
+    {
+      "code": 6112,
+      "name": "LotteryAlreadyDrawn",
+      "msg": "Lottery round has already been drawn"
+    },
+    {
+      "code": 6113,
+      "name": "LotteryRoundNotExpired",
+      "msg": "Lottery round refund timeout has not elapsed yet"
+    },
+    {
+      "code": 6114,
+      "name": "RandomnessDisabled",
+      "msg": "Randomness-dependent instruction is disabled until a VRF is integrated"
+    },
+    {
+      "code": 6115,
+      "name": "EmptyCraftOrder",
+      "msg": "Craft order must require at least one resource"
+    },
+    {
+      "code": 6116,
+      "name": "InvalidExplorationTier",
+      "msg": "Exploration tier is out of range"
     }
   ],
   "types": [
@@ -11242,6 +10472,18 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "mining_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority_updated_at",
+            "type": "i64"
           }
         ]
       }
@@ -11509,14 +10751,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -11637,14 +10871,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -11762,6 +10988,10 @@
           {
             "name": "cooldown_until",
             "type": "i64"
+          },
+          {
+            "name": "dust_lamports",
+            "type": "u64"
           }
         ]
       }
@@ -11910,6 +11140,10 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
           },
           {
             "name": "draw_committed",
@@ -12076,12 +11310,13 @@
             "type": "u8"
           },
           {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
+            "name": "max_supply",
+            "type": {
+              "array": [
+                "u64",
+                27
+              ]
+            }
           }
         ]
       }
@@ -12112,14 +11347,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -12304,14 +11531,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -12381,14 +11600,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -12785,14 +11996,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -12965,14 +12168,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -13293,14 +12488,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -13327,14 +12514,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -13667,6 +12846,302 @@
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultGuard",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch_slots",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "max_per_tx",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_start_slot",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "lifetime_withdrawn",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollectorAllowEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "CollectorKind"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LotteryTicketCounter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "count",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultWithdrawal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultGuardChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch_slots",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "max_per_tx",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MiningToggled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SupplyCapChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollectorMintRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "registered",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerCapacityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous_villagers",
+            "type": "u32"
+          },
+          {
+            "name": "next_villagers",
+            "type": "u32"
+          },
+          {
+            "name": "delta",
+            "type": "i32"
+          },
+          {
+            "name": "has_tent",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LotteryRoundRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u64"
+          },
+          {
+            "name": "at",
+            "type": "i64"
           }
         ]
       }

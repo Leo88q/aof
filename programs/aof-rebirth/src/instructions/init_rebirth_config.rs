@@ -48,6 +48,9 @@ pub fn handler(
     config.max_bonus_bps = max_bonus_bps;
     config.max_rebirths = max_rebirths;
     config.paused = false;
+    // [AUDIT F-02] no rotation in flight at bootstrap.
+    config.pending_authority = Pubkey::default();
+    config.authority_updated_at = Clock::get()?.unix_timestamp;
     // [ФИКС] цена возрождения + кулдаун
     config.treasury = treasury;
     config.rebirth_cost_lamports = rebirth_cost_lamports;

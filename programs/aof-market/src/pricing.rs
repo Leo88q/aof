@@ -56,7 +56,8 @@ pub fn current_price(
     now: i64,
 ) -> Result<u64> {
     let grown = apply_growth(base, growth_bps, purchases_in_window)?;
-    let hours_idle = (now - last_trade_ts) / 3600;
+    // [AUDIT F-26] saturating: a backwards clock must not panic the crank.
+    let hours_idle = now.saturating_sub(last_trade_ts) / 3600;
     apply_decay(grown, base, decay_bps_per_hour, hours_idle)
 }
 

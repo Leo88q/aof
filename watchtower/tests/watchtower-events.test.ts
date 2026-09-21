@@ -61,7 +61,7 @@ assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" },
 {
   const ok = normalizeChainTx(TXS[0], SALT), bad = normalizeChainTx(TXS[1], SALT);
   assert.equal(ok[0].type, "TransactionFinalized"); assert.equal(bad[0].type, "TransactionFailed");
-  assert.deepEqual(bad[0].attributes.error, { InstructionError: [0, { Custom: 6098 }] });
+  assert.deepEqual(bad[0].attributes.error, { InstructionError: [0, { Custom: 6099 }] });
   assert.deepEqual(validateEvents([...ok, ...bad]), []);
 }
 // Hash is salt-dependent (cross-game join requires the shared salt).

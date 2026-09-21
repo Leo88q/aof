@@ -95,6 +95,7 @@ r.post("/cancel", requireCircuitOpen, requireWalletLimits("marketplace__cancel")
   try {
     const seller = pk(req.body.seller);
     const mint = pk(req.body.mint);
+    const [config] = configPda();
     const [listing] = listingPda(mint);
     const listingVault = getAssociatedTokenAddressSync(mint, listing, true);
     const sellerToken = getAssociatedTokenAddressSync(mint, seller);
@@ -102,6 +103,7 @@ r.post("/cancel", requireCircuitOpen, requireWalletLimits("marketplace__cancel")
     const ix = await (program.methods as any)
       .marketplaceCancel()
       .accounts({
+        config,
         mint,
         listing,
         seller,

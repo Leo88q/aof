@@ -14,4 +14,12 @@ pub enum LiquidityError {
     ZeroAmount,
     #[msg("Math overflow")]
     MathOverflow,
+
+    // ===== [AUDIT F-02] authority rotation =====
+    #[msg("No authority rotation is pending")]
+    NoPendingAuthority,
+    #[msg("Signer is not the pending authority")]
+    NotPendingAuthority,
+    #[msg("Invalid input")]
+    InvalidInput,
 }
