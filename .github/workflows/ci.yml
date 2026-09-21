@@ -205,10 +205,16 @@ jobs:
           # Error headers first, then their locations, then the tail.
           def esc(line):
               return line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")[:900]
-          heads = [l for l in lines if re.match(r"^(error|warning: unused)", l)]
-          notes = [l for l in lines if l.strip().startswith("-->") or "panicked at" in l or "test result:" in l]
-          for line in (heads + notes)[:60]:
-              print("::error::" + esc(line))
+          # GitHub keeps only ~10 annotations per step, so emit errors only and
+          # pair each one with its source location on the same line.
+          heads = [l for l in lines if l.startswith("error")]
+          for i, line in enumerate(heads[:10]):
+              loc = ""
+              for j in range(i + 1, min(i + 8, len(lines))):
+                  if lines[j].strip().startswith("-->"):
+                      loc = lines[j].strip()
+                      break
+              print("::error::" + esc(line + ("  " + loc if loc else "")))
           if not heads and not notes:
               for line in lines[-40:]:
                   print("::error::" + esc(line))
