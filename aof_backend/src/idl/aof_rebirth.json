@@ -172,6 +172,83 @@
           "type": "i64"
         }
       ]
+    },
+    {
+      "name": "set_pending_authority",
+      "discriminator": [
+        175,
+        71,
+        167,
+        223,
+        49,
+        144,
+        102,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "rebirth_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "rebirth_config",
+          "writable": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_pending_authority",
+      "discriminator": [
+        155,
+        52,
+        245,
+        225,
+        85,
+        73,
+        58,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "rebirth_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -228,6 +305,32 @@
         113,
         43
       ]
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "discriminator": [
+        76,
+        59,
+        57,
+        23,
+        22,
+        166,
+        253,
+        33
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
     }
   ],
   "errors": [
@@ -270,6 +373,21 @@
       "code": 6007,
       "name": "FeatureDisabled",
       "msg": "Rebirth is disabled until the full reset is atomic"
+    },
+    {
+      "code": 6008,
+      "name": "NoPendingAuthority",
+      "msg": "No authority rotation is pending"
+    },
+    {
+      "code": 6009,
+      "name": "NotPendingAuthority",
+      "msg": "Signer is not the pending authority"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidInput",
+      "msg": "Invalid input"
     }
   ],
   "types": [
@@ -288,23 +406,14 @@
           },
           {
             "name": "bonus_per_rebirth_bps",
-            "docs": [
-              "Бонус за каждый ребёрт в bps (200 = +2%)"
-            ],
             "type": "u16"
           },
           {
             "name": "max_bonus_bps",
-            "docs": [
-              "Кап суммарного бонуса в bps (2000 = +20%)"
-            ],
             "type": "u16"
           },
           {
             "name": "max_rebirths",
-            "docs": [
-              "Максимум ребёртов"
-            ],
             "type": "u8"
           },
           {
@@ -321,6 +430,14 @@
           },
           {
             "name": "cooldown_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority_updated_at",
             "type": "i64"
           }
         ]
@@ -390,26 +507,66 @@
           {
             "name": "generation",
             "docs": [
-              "Текущее поколение (начинается с 1)"
+              "\u0422\u0435\u043a\u0443\u0449\u0435\u0435 \u043f\u043e\u043a\u043e\u043b\u0435\u043d\u0438\u0435 (\u043d\u0430\u0447\u0438\u043d\u0430\u0435\u0442\u0441\u044f \u0441 1)"
             ],
             "type": "u16"
           },
           {
             "name": "rebirth_count",
             "docs": [
-              "Сколько ребёртов совершено"
+              "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0440\u0435\u0431\u0451\u0440\u0442\u043e\u0432 \u0441\u043e\u0432\u0435\u0440\u0448\u0435\u043d\u043e"
             ],
             "type": "u8"
           },
           {
             "name": "permanent_bonus_bps",
             "docs": [
-              "Накопленный постоянный бонус в bps"
+              "\u041d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0439 \u043f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0439 \u0431\u043e\u043d\u0443\u0441 \u0432 bps"
             ],
             "type": "u16"
           },
           {
             "name": "last_rebirth_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
             "type": "i64"
           }
         ]

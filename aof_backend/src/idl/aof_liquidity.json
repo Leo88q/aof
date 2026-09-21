@@ -561,6 +561,83 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "set_pending_authority",
+      "discriminator": [
+        175,
+        71,
+        167,
+        223,
+        49,
+        144,
+        102,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "lp_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "lp_config",
+          "writable": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_pending_authority",
+      "discriminator": [
+        155,
+        52,
+        245,
+        225,
+        85,
+        73,
+        58,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "lp_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -643,6 +720,32 @@
         51,
         153
       ]
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "discriminator": [
+        76,
+        59,
+        57,
+        23,
+        22,
+        166,
+        253,
+        33
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
     }
   ],
   "errors": [
@@ -675,6 +778,21 @@
       "code": 6005,
       "name": "MathOverflow",
       "msg": "Math overflow"
+    },
+    {
+      "code": 6006,
+      "name": "NoPendingAuthority",
+      "msg": "No authority rotation is pending"
+    },
+    {
+      "code": 6007,
+      "name": "NotPendingAuthority",
+      "msg": "Signer is not the pending authority"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidInput",
+      "msg": "Invalid input"
     }
   ],
   "types": [
@@ -693,14 +811,19 @@
           },
           {
             "name": "mascot_mint",
-            "docs": [
-              "Маскот-токен для ликвидности (существующий официальный токен)"
-            ],
             "type": "pubkey"
           },
           {
             "name": "paused",
             "type": "bool"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority_updated_at",
+            "type": "i64"
           }
         ]
       }
@@ -761,21 +884,21 @@
           {
             "name": "total_shares",
             "docs": [
-              "Всего выпущено долей"
+              "\u0412\u0441\u0435\u0433\u043e \u0432\u044b\u043f\u0443\u0449\u0435\u043d\u043e \u0434\u043e\u043b\u0435\u0439"
             ],
             "type": "u64"
           },
           {
             "name": "mascot_reserve",
             "docs": [
-              "Резерв маскот-токена в пуле"
+              "\u0420\u0435\u0437\u0435\u0440\u0432 \u043c\u0430\u0441\u043a\u043e\u0442-\u0442\u043e\u043a\u0435\u043d\u0430 \u0432 \u043f\u0443\u043b\u0435"
             ],
             "type": "u64"
           },
           {
             "name": "accumulated_fees",
             "docs": [
-              "Накопленные комиссии от хот-маркета"
+              "\u041d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u043a\u043e\u043c\u0438\u0441\u0441\u0438\u0438 \u043e\u0442 \u0445\u043e\u0442-\u043c\u0430\u0440\u043a\u0435\u0442\u0430"
             ],
             "type": "u64"
           }
@@ -834,6 +957,46 @@
           {
             "name": "fees_received",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
           }
         ]
       }
