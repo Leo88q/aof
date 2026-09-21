@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, MintTo};
 use crate::constants::*;
+use crate::state::*;
 use crate::{InitSeason, PurchaseSeasonPass, GrantSeasonXp, ClaimSeasonReward};
 use crate::ResourceKind;
 use crate::errors::*;

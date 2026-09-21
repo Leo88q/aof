@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use crate::constants::{FEE_PER_CRAFT_MICROS, FEE_PER_NFT_MICROS};
 use crate::errors::AofError;
 use crate::Initialize;
 

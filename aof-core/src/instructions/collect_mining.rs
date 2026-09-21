@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, MintTo};
 use crate::constants::*;
 use crate::errors::*;
+use crate::state::*;
 use crate::events::MiningCollected;
 use crate::CollectMining;
 use crate::ResourceKind;
