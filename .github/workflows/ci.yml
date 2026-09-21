@@ -794,6 +794,7 @@ jobs:
           python3 scripts/test-mint-cost-model.py
           python3 scripts/test-reward-migrations.py
           python3 scripts/test-idl-drift.py
+          python3 scripts/test-mint-writable-gate.py
 
       - name: Self-test - wallet proof
         run: |

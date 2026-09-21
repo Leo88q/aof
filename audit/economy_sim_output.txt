@@ -10,13 +10,13 @@ AOF (Age of Farming) — экономическая симуляция по фа
   Редкость |  ед./час |  WOOD добыто |  STONE добыто | -WOOD ремонт | -STONE ремонт |   НЕТТО WOOD |   НЕТТО STONE |          вердикт
 ----------------------------------------------------------------------------------------------------------------------
     Common |     10.0 |          600 |           600 |          360 |           240 |          240 |           360 |        прибыльно
-  Uncommon |     11.5 |          690 |           690 |          720 |           480 |          -30 |           210 |         смешанно
-      Rare |     13.0 |          780 |           780 |        1,680 |         1,080 |         -900 |          -300 |   убыточно (оба)
-      Epic |     15.0 |          900 |           900 |        3,600 |         2,400 |       -2,700 |        -1,500 |   убыточно (оба)
- Legendary |     18.0 |        1,080 |         1,080 |        8,400 |         5,400 |       -7,320 |        -4,320 |   убыточно (оба)
+  Uncommon |     11.5 |          690 |           690 |          420 |           300 |          270 |           390 |        прибыльно
+      Rare |     13.0 |          780 |           780 |          480 |           300 |          300 |           480 |        прибыльно
+      Epic |     15.0 |          900 |           900 |          540 |           360 |          360 |           540 |        прибыльно
+ Legendary |     18.0 |        1,080 |         1,080 |          600 |           420 |          480 |           660 |        прибыльно
 
-Ключ: доходность растёт 10 -> 18 ед./ч (x1.8), а ремонт 3 -> 70 WOOD за единицу прочности (x23.3).
-=> Безоткатная эксплуатация инструмента становится убыточной уже с Uncommon.
+Ключ: доходность 10.0 -> 18.0 ед./ч (x1.8); ремонт WOOD 3.0 -> 5.0 ед./прочность (x1.7), STONE 2.0 -> 3.5 (x1.8).
+=> Все редкости прибыльны: инвариант Y > 2*repair_wood выполняется с запасом 4.0..8.0 ед./ч (пересчитано по F-08).
 
 ============================================================================================
 ТАБЛИЦА 2b. Точка безубыточности (WOOD) и lifetime-экономика одного инструмента
@@ -24,10 +24,10 @@ AOF (Age of Farming) — экономическая симуляция по фа
   Редкость |  безубыточных ч/день |   lifetime добыча |   lifetime ремонт W/S |   lifetime нетто W
 --------------------------------------------------------------------------------------------
     Common |              любое H |               200 |               60 / 40 |                140
-  Uncommon |              никогда |               230 |              120 / 80 |                110
-      Rare |              никогда |               260 |             280 / 180 |                -20
-      Epic |              никогда |               300 |             600 / 400 |               -300
- Legendary |              никогда |               360 |           1,400 / 900 |             -1,040
+  Uncommon |              любое H |               230 |               70 / 50 |                160
+      Rare |              любое H |               260 |               80 / 50 |                180
+      Epic |              любое H |               300 |               90 / 60 |                210
+ Legendary |              любое H |               360 |              100 / 70 |                260
 
 H сокращается: при 6 инструментах портфель 3 axe + 3 pick безубыточен по WOOD только при Y > 2*repair_wood.
 Ресурс прочности = 20 единиц = 20 часов майнинга за всё время жизни инструмента до ремонта.
@@ -98,8 +98,11 @@ BREAD не потребляется НИ ОДНОЙ инструкцией пр�
      1,000 |     87,600,000 |    131,400,000 |       78,840,000 |                  1,200.0
     10,000 |    876,000,000 |  1,314,000,000 |      788,400,000 |                 12,000.0
 
-Ни один из этих потоков НЕ ограничен issuance-капом: кап покрывает только
-mint_resource / mint_resource_once (админские выплаты). См. раздел F-02.
+Майнинг-эмиссия (collect_mining) ограничена ГЛОБАЛЬНЫМ потолком минтa:
+check_supply_cap() вызывается в collect_mining / collect_flour / collect_bread /
+collect_well_water / craft_recipe / mint_resource(+once) / claim_season_reward [F-03].
+Поэтапный issuance-кап (бюджет за эпоху) по-прежнему покрывает только
+mint_resource / mint_resource_once. WHEAT (harvest_wheat) не ограничен ни тем, ни другим.
 
 ====================================================================================================
 ТАБЛИЦА 7. Карта source / sink по каждому ресурсу (только по коду)
@@ -108,16 +111,16 @@ mint_resource / mint_resource_once (админские выплаты). См. р
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         WOOD | collect_mining(axe); mint_resource(admin); explore_reveal(DISABLED) | repair; craft; marketplace/auction fees - нет, это SOL; start_baking(топливо); referral_upgrade; exploration(выкл.)
        STONE | collect_mining(pick); mint_resource(admin); explore_reveal(DISABLED) | repair; craft; start_milling; referral_upgrade; exploration(выкл.)
-        FOOD | только mint_resource(admin) и claim_season_reward (пыль: level*100 атом.) | craft; referral_upgrade; exploration(выкл.); craft_recipe(сломан)
+        FOOD | только mint_resource(admin) и claim_season_reward (пыль: level*100 атом.) | craft; referral_upgrade; exploration(выкл.); craft_recipe [F-04 исправлен]
        WATER | collect_well_water (БЕСПЛАТНЫЙ кран, до 480/сутки на кошелёк); mint_resource | start_baking; craft
-       SEEDS | collect_mining(reaper); mint_resource; craft_recipe(сломан) | plant_seeds; craft; craft_recipe(сломан)
+       SEEDS | collect_mining(reaper); mint_resource; craft_recipe [F-04 исправлен] | plant_seeds; craft; craft_recipe [F-04 исправлен]
        WHEAT |                    harvest_wheat (из SEEDS x1.5) | start_milling
        FLOUR |                                    collect_flour | start_baking
        BREAD |                                    collect_bread | НЕТ. Ни одна инструкция не сжигает BREAD.
         MEAT |               collect_mining(bow); mint_resource | exploration(выкл.) -> sink = НЕТ
-        COAL | только mint_resource(admin); COAL_DROP_CHANCE_BPS не реализован | start_baking(fuel_kind=1)
-        GEM* |       только craft_recipe (СЛОМАН: mint без mut) | craft_recipe (сломан)
-      FLASK* |                     только craft_recipe (сломан) | use_flask НЕ СКОМПИЛИРОВАН (нет в mod.rs)
+        COAL | только mint_resource(admin); COAL_DROP_CHANCE_BPS нет в коде (проверено grep) | start_baking(fuel_kind=1)
+        GEM* | только craft_recipe [F-04: mint-аккаунты стали mut] | craft_recipe
+      FLASK* |                              только craft_recipe | НЕТ: use_flask удалён из крейта [G-01]; ни одна инструкция не сжигает FLASK
   LOVE_HEART |                      только mint_resource(admin) | НЕТ
       POTATO |      только mint_resource(admin) — внешний токен | craft
 

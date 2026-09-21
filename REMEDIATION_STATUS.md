@@ -66,10 +66,10 @@ authority). Ротация там = редеплой.
 |----|-----|--------|-----|
 | F-03 | Кап эмиссии только на 2 из 9 путей | ✅ | `MaterialMints.max_supply[27]` + `state::check_supply_cap()`; подключено в `execute_mint`, `collect_mining`, `collect_flour`, `collect_bread`, `collect_well_water`, `craft_recipe`, `claim_season_reward`; новая инструкция `set_supply_cap` |
 | F-04 | `craft_recipe` — минт-аккаунты без `mut` | ✅ | `lib.rs::CraftRecipe` — `mut` на `input_1_mint`, `input_2_mint`, `output_mint` |
-| F-05 | Гейт `check-mint-writable.py` слеп к CPI в макросах | ✅ | `scripts/check-mint-writable.py` разбирает `macro_rules!` и site вызова; проверено негативным тестом |
+| F-05 | Гейт `check-mint-writable.py` слеп к CPI в макросах | ✅ | `scripts/check-mint-writable.py` разбирает `macro_rules!` и site вызова; негативный тест — `scripts/test-mint-writable-gate.py` (4 кейса: прямой CPI, CPI из макроса, оба с `mut`, сам репозиторий); подключён в `.github/workflows/ci.yml` |
 | F-06 | LEGACY-randomness жива в 5 reveal-инструкциях | ✅ | `pack_open_reveal`, `reroll_random_reveal`, `explore_reveal`, `forge_attempt_reveal`, `draw_lottery`/`commit_lottery_draw` закрыты `RandomnessDisabled` с обоснованием в коде |
 | F-07 | API-ключи на `Math.random()`, без хэша и скоупа | ✅ | `middleware/apiKey.ts`: `randomBytes(32)`, в БД только `sha256(key)`, поиск по хэшу |
-| F-08 | Кривая ремонта ×23.3 против добычи ×1.8 | ✅ | `constants.rs` — ремонт пересчитан; правило `yield_per_hour > 2 × repair_per_unit` закреплено тестами `economy_tests` |
+| F-08 | Кривая ремонта ×23.3 против добычи ×1.8 | ✅ | `constants.rs` — ремонт пересчитан; правило `yield_per_hour > 2 × repair_per_unit` закреплено тестами `economy_tests`. `audit/economy_sim.py` пересчитан по новым константам (вывод: все редкости прибыльны, ремонт ×1.7 против добычи ×1.8, запас по инварианту 4.0..8.0 ед./ч) |
 | F-09 | `reroll` обходит сжигание ресурсов | ✅ | `Reroll` теперь жжёт тот же бандл, что и `craft` для целевой редкости, и двигает `rarity_counter`; бэкенд `/reroll/fuse` подставляет 6 минтов и PDA счётчика |
 | F-10 | Один листинг/аукцион на NFT на всю жизнь | ✅ | `init_if_needed` + `constraint = !listing.active` / `!auction.active` |
 | F-11 | Колодец — бесплатный кран (216 WATER/сут/кошелёк) | ✅ | `CollectWellWater` требует существующий `Player` с `villagers > 0`; плюс глобальный кап WATER (F-03) |
@@ -108,7 +108,7 @@ authority). Ротация там = редеплой.
 | F-30 | `usage: Map` растёт бесконечно | ✅ | GC по таймеру + жёсткий потолок `MAX_TRACKED_KEYS` + инлайн-свип |
 | F-31 | EOL-зависимости | ⚠️ | Перепроверено: RUSTSEC-2026-0144 бьёт anchor 1.0.0–1.0.1, здесь 0.30.1 — не актуально. Обновление Anchor/Solana = отдельный проект (миграция API), в этот заход не входит. Рекомендация: закрепить `@solana/web3.js` точной версией и добавить `cargo audit`/`npm audit` в CI |
 | F-32 | Валидация намерения только для `marketplace_buy` | ✅ | `frontend/src/lib/coreInstructions.ts` (генерируется из IDL) + `validateCoreInstructions()`: неизвестный дискриминатор, authority-only инструкция, неверное число аккаунтов, «кошелёк обязан быть подписывающей стороной» (52 инструкции). Генератор `scripts/gen-core-instruction-table.py --check` в CI |
-| F-33 | Покрытие тестами | ⚠️ | Добавлены: `cargo`-тесты логики (`state_tests`, `economy_tests`, `drum_odds_tests`) и FE-тесты политики кошелька. Валидаторские тесты на новые инструкции (ротация authority, кап, гвард, ре-лист) **написать и прогнать локально** |
+| F-33 | Покрытие тестами | ⚠️ | Добавлены: `cargo`-тесты логики (`state_tests`, `economy_tests`, `drum_odds_tests`), FE-тесты политики кошелька и **9 валидаторских тестов** в `tests/aof_core.ts` (блок «audit regressions 2026-09-21»: F-22, F-02, F-03, F-01, F-19, F-10, F-27, F-28, F-29). Остаётся ⚠️: ни один из них не запускался (нет валидатора в песочнице), fuzzing не добавлен |
 
 ---
 
@@ -128,6 +128,27 @@ authority). Ротация там = редеплой.
 
 ---
 
+## Найдено дополнительно (не из аудита)
+
+1. **Блокер компиляции `aof-core`.** `aof-core/src/lib.rs` вызывал новые
+   обработчики как `instructions::set_pending_authority(...)`,
+   `instructions::accept_authority(...)`, `instructions::cancel_pending_authority(...)`,
+   `instructions::set_mining_enabled(...)`, `instructions::set_supply_cap(...)` —
+   при том, что они лежат в `instructions::authority` / `instructions::admin_config`
+   и наружу не реэкспортировались. Крейт бы не собрался. ✅ Добавлены
+   `pub use authority::{...}` и `pub use admin_config::{...}` в
+   `aof-core/src/instructions/mod.rs`. `instructions::`-вызовы во всех шести
+   программах перепроверены скриптом: необъявленных больше нет.
+2. **Статическая сверка тестов с ABI.** Все вызовы `program.methods.*` в
+   `tests/aof_core.ts` сверены с Rust-контекстами (поля структуры ↔ ключи
+   `.accounts({...})`): расхождений нет после правок `mintTool` (`recipient`) и
+   `reward_receipt` (seed с получателем, F-28).
+3. **IDL.** Инструкции и списки аккаунтов в `aof_backend/src/idl/*.json`
+   1-в-1 соответствуют Rust (проверено для 17 измененных контекстов + полная
+   сверка имён инструкций по всем 6 программам).
+4. **`BASE_RATE_MINING`** — одна константа (`constants.rs:315`), используется
+   и в `yield_per_hour()`, и в `collect_mining.rs:64`; рассинхрона нет.
+
 ## Что проверено в песочнице
 
 - `python3 scripts/check-mint-writable.py` → `OK (61 checked)`; негативный тест (снять `mut` с `output_mint`) гейт ловит.
@@ -144,7 +165,9 @@ authority). Ротация там = редеплой.
 2. `cargo test -p aof-core` — `economy_tests`, `state_tests`.
 3. `anchor test` — прогнать `tests/aof_core.ts` (в нём есть `issuance_cap`,
    `mint_resource`, `pay_out`-сценарии; часть вызовов теперь требует
-   новых аккаунтов → см. § «Изменения ABI»).
+   новых аккаунтов → см. § «Изменения ABI»). Файл приведён к новой ABI и
+   дополнен блоком «audit regressions 2026-09-21» (8 новых тестов + 1
+   переписанный, см. ниже).
 4. `npm ci && npm test` в `frontend` и `aof_backend`.
 5. После `anchor build` — `python3 scripts/gen-core-instruction-table.py`
    (перегенерирует FE-таблицу) и обновить `aof_backend/src/idl/*.json` из
@@ -166,3 +189,31 @@ authority). Ротация там = редеплой.
 | `session_check_and_spend` | `authority` |
 
 Бэкенд-вызовы всех перечисленных инструкций обновлены; IDL обновлены.
+
+`tests/aof_core.ts` приведён к новой ABI: `mintTool()` передаёт `recipient`,
+PDA-чека `reward_receipt` считается как `("reward_receipt", получатель, reward_id)`,
+`pay_out` получает `materialMints`/`player`/`vaultGuard`. Сверка всех остальных
+вызовов с Rust-контекстами сделана статическим скриптом (сверка «поля контекста
+↔ ключи `.accounts({...})`»), не запуском: расхождений не найдено.
+
+## Регрессионные тесты (`tests/aof_core.ts`, блок «audit regressions 2026-09-21»)
+
+Добавлены в конец файла; каждый тест подписан номером находки. Тесты
+глобально меняют конфиг и **восстанавливают** его в своём теле
+(authority, `paused`, `mining_enabled`, капы), поэтому порядок запуска
+важен только в одном месте — блок идёт последним.
+
+| Тест | Что ловит |
+|---|---|
+| F-22 | `mint_tool` c `recipient` ≠ владелец ATA → `Unauthorized`; владелец `ToolData.owner` = объявленный получатель |
+| F-02 | `set_pending_authority` → чужой `accept_authority` → `NotPendingAuthority` → настоящий → возврат authority обратно |
+| F-03 | глобальный кап `MaterialMints.max_supply`: мимо капа → `SupplyCapExceeded`, ровно в кап → ок, +1 базовая единица → `SupplyCapExceeded`; снятие капа = `u64::MAX` |
+| F-01 | `pay_out` без гварда → `AccountNotInitialized`; с гвардом → сверх `max_per_tx` → `VaultGuardLimitExceeded`; 3×3 проходит, 4-я tx в эпохе → `VaultGuardLimitExceeded` |
+| F-19 | `paused = true` ломает `marketplace_cancel` → `Paused`; после снятия паузы отмена проходит |
+| F-10 | NFT листится повторно после `marketplace_cancel` (до правки второй `init` бился о мёртвый PDA), цена и `active` перечитаны с чейна |
+| F-27 | тумблер `mining_enabled`: при `false` `start_mining` → `MiningDisabled`; при `true` — проходит |
+| F-28 | чеки `reward_receipt`: тот же получатель + тот же `reward_id` → replay отклонён; **другой** получатель с тем же `reward_id` — проходит (старый глобальный namespace сжигал награду); свежий `reward_id` тому же получателю — проходит |
+| F-29 | `craft_order_create(0, 0, premium)` → `EmptyCraftOrder` |
+
+`[нужен локальный запуск]` — ни один из этих тестов не запускался: в песочнице
+нет валидатора. Проверен только синтаксис (`tsc --noEmit --noResolve`).

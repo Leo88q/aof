@@ -20,8 +20,11 @@ YIELD = {0: 10.0, 1: 11.5, 2: 13.0, 3: 15.0, 4: 18.0}   # units/hour
 # ---- state.rs Rarity::max_hours() -----------------------------------------
 MAX_HOURS = {0: 8, 1: 12, 2: 14, 3: 20, 4: 20}
 # ---- constants.rs repair costs, per durability point (display units) ------
-REPAIR_STONE = {0: 2, 1: 4, 2: 9, 3: 20, 4: 45}
-REPAIR_WOOD  = {0: 3, 1: 6, 2: 14, 3: 30, 4: 70}
+# [AUDIT F-08] re-read from constants.rs after the repair-curve rebalance:
+#   REPAIR_STONE_{COMMON,UNCOMMON,RARE,EPIC,LEGENDARY}
+#   REPAIR_WOOD_{COMMON,UNCOMMON,RARE,EPIC,LEGENDARY}
+REPAIR_STONE = {0: 2.0, 1: 2.5, 2: 2.5, 3: 3.0, 4: 3.5}
+REPAIR_WOOD  = {0: 3.0, 1: 3.5, 2: 4.0, 3: 4.5, 4: 5.0}
 MAX_DUR = 20
 DEFAULT_VILLAGERS = 6
 
@@ -164,8 +167,21 @@ def table2():
               f"{p['wood_rep']:>12,.0f} | {p['stone_rep']:>13,.0f} | {p['net_wood']:>12,.0f} | "
               f"{p['net_stone']:>13,.0f} | {v:>16}")
     print()
-    print("Ключ: доходность растёт 10 -> 18 ед./ч (x1.8), а ремонт 3 -> 70 WOOD за единицу прочности (x23.3).")
-    print("=> Безоткатная эксплуатация инструмента становится убыточной уже с Uncommon.")
+    # [AUDIT F-08] the text below is derived, not hardcoded: the repair curve was
+    # rebalanced in constants.rs, so the old "x23.3 / unprofitable from Uncommon"
+    # conclusion no longer holds and must not be re-asserted by hand.
+    y_min, y_max = YIELD[0], YIELD[4]
+    w_min, w_max = REPAIR_WOOD[0], REPAIR_WOOD[4]
+    s_min, s_max = REPAIR_STONE[0], REPAIR_STONE[4]
+    margins = [YIELD[r] - 2 * REPAIR_WOOD[r] for r in range(5)]
+    print(f"Ключ: доходность {y_min:.1f} -> {y_max:.1f} ед./ч (x{y_max / y_min:.1f}); ремонт WOOD {w_min:.1f} -> {w_max:.1f} "
+          f"ед./прочность (x{w_max / w_min:.1f}), STONE {s_min:.1f} -> {s_max:.1f} (x{s_max / s_min:.1f}).")
+    if all(m > 0 for m in margins):
+        print(f"=> Все редкости прибыльны: инвариант Y > 2*repair_wood выполняется с запасом "
+              f"{min(margins):.1f}..{max(margins):.1f} ед./ч (пересчитано по F-08).")
+    else:
+        bad = [RARITY_NAME[r] for r in range(5) if margins[r] <= 0]
+        print(f"=> НАРУШЕН инвариант Y > 2*repair_wood для: {', '.join(bad)}.")
     print()
 
 
@@ -199,18 +215,18 @@ def table_sinks():
         ("STONE",  "collect_mining(pick); mint_resource(admin); explore_reveal(DISABLED)",
                    "repair; craft; start_milling; referral_upgrade; exploration(выкл.)"),
         ("FOOD",   "только mint_resource(admin) и claim_season_reward (пыль: level*100 атом.)",
-                   "craft; referral_upgrade; exploration(выкл.); craft_recipe(сломан)"),
+                   "craft; referral_upgrade; exploration(выкл.); craft_recipe [F-04 исправлен]"),
         ("WATER",  "collect_well_water (БЕСПЛАТНЫЙ кран, до 480/сутки на кошелёк); mint_resource",
                    "start_baking; craft"),
-        ("SEEDS",  "collect_mining(reaper); mint_resource; craft_recipe(сломан)",
-                   "plant_seeds; craft; craft_recipe(сломан)"),
+        ("SEEDS",  "collect_mining(reaper); mint_resource; craft_recipe [F-04 исправлен]",
+                   "plant_seeds; craft; craft_recipe [F-04 исправлен]"),
         ("WHEAT",  "harvest_wheat (из SEEDS x1.5)", "start_milling"),
         ("FLOUR",  "collect_flour", "start_baking"),
         ("BREAD",  "collect_bread", "НЕТ. Ни одна инструкция не сжигает BREAD."),
         ("MEAT",   "collect_mining(bow); mint_resource", "exploration(выкл.) -> sink = НЕТ"),
-        ("COAL",   "только mint_resource(admin); COAL_DROP_CHANCE_BPS не реализован", "start_baking(fuel_kind=1)"),
-        ("GEM*",   "только craft_recipe (СЛОМАН: mint без mut)", "craft_recipe (сломан)"),
-        ("FLASK*", "только craft_recipe (сломан)", "use_flask НЕ СКОМПИЛИРОВАН (нет в mod.rs)"),
+        ("COAL",   "только mint_resource(admin); COAL_DROP_CHANCE_BPS нет в коде (проверено grep)", "start_baking(fuel_kind=1)"),
+        ("GEM*",   "только craft_recipe [F-04: mint-аккаунты стали mut]", "craft_recipe"),
+        ("FLASK*", "только craft_recipe", "НЕТ: use_flask удалён из крейта [G-01]; ни одна инструкция не сжигает FLASK"),
         ("LOVE_HEART", "только mint_resource(admin)", "НЕТ"),
         ("POTATO", "только mint_resource(admin) — внешний токен", "craft"),
     ]
@@ -271,8 +287,17 @@ def table5(days=365):
         print(f"{w:>10,} | {r['net_wood']:>14,.0f} | {r['net_stone']:>14,.0f} | "
               f"{r['water_faucet']:>16,.0f} | {sol:>24,.1f}")
     print()
-    print("Ни один из этих потоков НЕ ограничен issuance-капом: кап покрывает только")
-    print("mint_resource / mint_resource_once (админские выплаты). См. раздел F-02.")
+    # [AUDIT F-03] re-checked after the fix: check_supply_cap() runs in
+    # collect_mining, collect_flour, collect_bread, collect_well_water,
+    # craft_recipe, mint_resource(+once) and claim_season_reward, so the mining
+    # emission below IS bounded by the global per-mint ceiling. The per-epoch
+    # IssuanceCap still covers only the two admin mint paths, and WHEAT
+    # (harvest_wheat) is capped by neither.
+    print("Майнинг-эмиссия (collect_mining) ограничена ГЛОБАЛЬНЫМ потолком минтa:")
+    print("check_supply_cap() вызывается в collect_mining / collect_flour / collect_bread /")
+    print("collect_well_water / craft_recipe / mint_resource(+once) / claim_season_reward [F-03].")
+    print("Поэтапный issuance-кап (бюджет за эпоху) по-прежнему покрывает только")
+    print("mint_resource / mint_resource_once. WHEAT (harvest_wheat) не ограничен ни тем, ни другим.")
     print()
 
 

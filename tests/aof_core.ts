@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { createMint, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createMint, getMint, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
@@ -105,6 +105,8 @@ describe("aof-core: security & core flows", () => {
     const tokenAccount = await ensureAta(mint, to);
     await program.methods.mintTool(toolType, { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount,
+      // [AUDIT F-22] the destination ATA must belong to the declared recipient.
+      recipient: to,
       toolData: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();
     return { mint, tokenAccount };
@@ -209,7 +211,8 @@ describe("aof-core: security & core flows", () => {
     expect(new BN(state.mintedInEpoch.toString()).sub(alreadyMinted).toString()).to.equal(UNIT.muln(5).toString());
     // mint_resource_once shares the same budget and leaves no receipt behind on failure.
     const rewardId = Array.from(crypto.randomBytes(32));
-    const receipt = pda([B("reward_receipt"), Buffer.from(rewardId)]);
+    // [AUDIT F-28] the tombstone is namespaced by (recipient, reward_id).
+    const receipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(rewardId)]);
     await expectError(program.methods.mintResourceOnce({ potato: {} }, new BN(1), rewardId)
       .accounts({ ...mintAccounts, rewardReceipt: receipt }).rpc(), "IssuanceCapExceeded");
     expect(await provider.connection.getAccountInfo(receipt)).to.equal(null);
@@ -231,7 +234,8 @@ describe("aof-core: security & core flows", () => {
     const treasuryWood = await ensureAta(woodMint, authority);
     const treasuryStone = await ensureAta(stoneMint, authority);
     const rewardId = Array.from(crypto.randomBytes(32));
-    const rewardReceipt = pda([B("reward_receipt"), Buffer.from(rewardId)]);
+    // [AUDIT F-28] (recipient, reward_id), not reward_id alone.
+    const rewardReceipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(rewardId)]);
     const gross = UNIT.muln(2);
     const accounts = {
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("wood"),
@@ -262,23 +266,39 @@ describe("aof-core: security & core flows", () => {
     expect(receipt.mint.toBase58()).to.equal(woodMint.toBase58());
     expect(receipt.grossAmount.toString()).to.equal(gross.toString());
     expect((await balance(userWood)).add(await balance(treasuryWood)).sub(before).toString()).to.equal(gross.toString());
-    const after = (await balance(userWood)).toString();
-    for (const variant of [accounts, { ...accounts, tokenAccount: otherWood, player: playerPda(stranger.publicKey) },
-      { ...accounts, mint: stoneMint, tokenAccount: userStone, treasuryToken: treasuryStone }]) {
+    // [AUDIT F-28] Replay protection is per recipient: (recipient, reward_id)
+    // is replay-proof, but the same reward_id for a DIFFERENT wallet is a
+    // different tombstone. The old global namespace rejected it, which silently
+    // burned the other player's reward.
+    {
       let rejected = false;
       try {
-        await program.methods.mintResourceOnce({ wood: {} }, gross.addn(1), rewardId).accounts(variant).rpc();
+        await program.methods.mintResourceOnce({ wood: {} }, gross.addn(1), rewardId).accounts(accounts).rpc();
       } catch (error: any) {
         const log = `${error.message} ${(error.logs || []).join(" ")}`;
         expect(log).to.match(/already in use|already initialized|custom program error: 0x0/i);
         rejected = true;
       }
-      expect(rejected).to.equal(true);
+      expect(rejected, "same recipient + same reward_id must stay replay-protected").to.equal(true);
+
+      const strangerBefore = await balance(otherWood);
+      const strangerReceipt = pda([B("reward_receipt"), stranger.publicKey.toBuffer(), Buffer.from(rewardId)]);
+      await program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts({
+        ...accounts, tokenAccount: otherWood, player: playerPda(stranger.publicKey), rewardReceipt: strangerReceipt,
+      }).rpc();
+      expect((await program.account.rewardReceipt.fetch(strangerReceipt)).recipient.toBase58())
+        .to.equal(stranger.publicKey.toBase58());
+      expect((await balance(otherWood)).gt(strangerBefore)).to.equal(true);
+
+      // A fresh reward_id for the same recipient is a new tombstone, not a replay.
+      const freshId = Array.from(crypto.randomBytes(32));
+      const freshReceipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(freshId)]);
+      await program.methods.mintResourceOnce({ wood: {} }, UNIT, freshId)
+        .accounts({ ...accounts, rewardReceipt: freshReceipt }).rpc();
     }
-    expect((await balance(userWood)).toString()).to.equal(after);
     // Two different signed messages for one logical reward: exactly one mint.
     const concurrentId = Array.from(crypto.randomBytes(32));
-    const concurrentReceipt = pda([B("reward_receipt"), Buffer.from(concurrentId)]);
+    const concurrentReceipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(concurrentId)]);
     const results = await Promise.allSettled([gross, gross.addn(1)].map((amount) =>
       program.methods.mintResourceOnce({ wood: {} }, amount, concurrentId)
         .accounts({ ...accounts, rewardReceipt: concurrentReceipt }).rpc()));
@@ -703,4 +723,179 @@ describe("aof-core: security & core flows", () => {
       expect((await balance(userBread)).toString()).to.equal("0");
     }
   });
+  // ---------------------------------------------------------------------------
+  // Regressions for the 2026-09-21 audit (see REMEDIATION_STATUS.md). Each test
+  // names the finding it protects; they mutate global config (authority,
+  // paused, mining flag, supply caps) and always restore it.
+  // ---------------------------------------------------------------------------
+  describe("audit regressions 2026-09-21", () => {
+    it("F-22: mint_tool mints only to the declared recipient", async () => {
+      const to = Keypair.generate(); await airdrop(to);
+      const other = Keypair.generate();
+      const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+      const tokenAccount = await ensureAta(mint, to.publicKey);
+      const accounts = {
+        config: configPda, authority, auth: authPda, mint, tokenAccount,
+        recipient: other.publicKey, // not the ATA owner
+        toolData: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      };
+      await expectError(
+        program.methods.mintTool("axe", { common: {} }).accounts(accounts).rpc(),
+        "Unauthorized",
+      );
+      await program.methods.mintTool("axe", { common: {} })
+        .accounts({ ...accounts, recipient: to.publicKey }).rpc();
+      const td = await program.account.toolData.fetch(toolPda(mint));
+      expect(td.owner.toBase58()).to.equal(to.publicKey.toBase58());
+    });
+
+    it("F-02: two-step authority rotation", async () => {
+      const next = Keypair.generate(); await airdrop(next);
+      await program.methods.setPendingAuthority(next.publicKey).accounts({ config: configPda, authority }).rpc();
+      expect((await program.account.config.fetch(configPda)).pendingAuthority.toBase58())
+        .to.equal(next.publicKey.toBase58());
+      await expectError(
+        program.methods.acceptAuthority()
+          .accounts({ config: configPda, newAuthority: setupPayer.publicKey })
+          .signers([setupPayer]).rpc(),
+        "NotPendingAuthority",
+      );
+      await program.methods.acceptAuthority()
+        .accounts({ config: configPda, newAuthority: next.publicKey }).signers([next]).rpc();
+      expect((await program.account.config.fetch(configPda)).authority.toBase58())
+        .to.equal(next.publicKey.toBase58());
+      // Rotate back: the rest of the suite signs as the provider wallet.
+      await program.methods.setPendingAuthority(authority)
+        .accounts({ config: configPda, authority: next.publicKey }).signers([next]).rpc();
+      await program.methods.acceptAuthority()
+        .accounts({ config: configPda, newAuthority: authority }).rpc();
+      expect((await program.account.config.fetch(configPda)).authority.toBase58())
+        .to.equal(authority.toBase58());
+    });
+
+    it("F-03: the global supply cap blocks minting over the ceiling", async () => {
+      const user = Keypair.generate(); await airdrop(user);
+      const mintInfo = await getMint(provider.connection, woodMint);
+      const supply = new BN(mintInfo.supply.toString());
+      const setCap = (cap: BN) => program.methods.setSupplyCap({ wood: {} }, cap)
+        .accounts({ config: configPda, authority, materialMints: materialMintsPda }).rpc();
+      await setCap(supply.add(UNIT.muln(5)));
+      const acc = {
+        config: configPda, materialMints: materialMintsPda, authority, auth: authPda,
+        issuanceCap: issuanceCapPda("wood"), mint: woodMint,
+        tokenAccount: await ensureAta(woodMint, user.publicKey),
+        treasuryToken: await ensureAta(woodMint, authority),
+        player: playerPda(user.publicKey),
+        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      };
+      await expectError(
+        program.methods.mintResource({ wood: {} }, UNIT.muln(10)).accounts(acc).rpc(),
+        "SupplyCapExceeded",
+      );
+      await program.methods.mintResource({ wood: {} }, UNIT.muln(5)).accounts(acc).rpc();
+      await expectError(
+        program.methods.mintResource({ wood: {} }, UNIT.muln(1)).accounts(acc).rpc(),
+        "SupplyCapExceeded",
+      );
+      // u64::MAX == SUPPLY_CAP_UNLIMITED restores the un-capped behaviour.
+      await setCap(new BN("18446744073709551615"));
+    });
+
+    it("F-01: pay_out is bounded by its vault guard", async () => {
+      const recipient = Keypair.generate(); await airdrop(recipient);
+      await giveResource("wood", woodMint, recipient.publicKey, 1); // creates the Player PDA
+      const vaultToken = await ensureAta(woodMint, vaultPda);
+      await giveResource("wood", woodMint, vaultPda, 40); // fund the vault ATA
+      const guard = pda([B("vault_guard"), woodMint.toBuffer()]);
+      const pay = async (amount: BN) => program.methods.payOut(amount).accounts({
+        config: configPda, authority, materialMints: materialMintsPda, vaultGuard: guard,
+        player: playerPda(recipient.publicKey), vault: vaultPda, mint: woodMint, vaultToken,
+        userToken: await ensureAta(woodMint, recipient.publicKey), tokenProgram: TOKEN_PROGRAM_ID,
+      }).rpc();
+      // Un-configured mint: the guard PDA does not exist, so the withdrawal is
+      // impossible at all (fail closed).
+      await expectError(pay(UNIT), "AccountNotInitialized");
+      await program.methods.initVaultGuard(new BN(1_000), UNIT.muln(10), UNIT.muln(3))
+        .accounts({ config: configPda, authority, mint: woodMint, vaultGuard: guard, systemProgram: SystemProgram.programId })
+        .rpc();
+      await expectError(pay(UNIT.muln(5)), "VaultGuardLimitExceeded"); // above max_per_tx
+      await pay(UNIT.muln(3));
+      await pay(UNIT.muln(3));
+      await pay(UNIT.muln(3));
+      await expectError(pay(UNIT.muln(3)), "VaultGuardLimitExceeded"); // epoch budget spent
+    });
+
+    it("F-19: pause stops the cancel paths", async () => {
+      const seller = Keypair.generate(); await airdrop(seller);
+      const { mint, tokenAccount } = await mintTool(seller.publicKey);
+      const listing = pda([B("listing"), mint.toBuffer()]);
+      const listingVault = await ensureAta(mint, listing);
+      const listAcc = {
+        config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint),
+        sellerToken: tokenAccount, listing, listingVault,
+        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      };
+      await program.methods.marketplaceList(new BN(1_000)).accounts(listAcc).signers([seller]).rpc();
+      const cancel = () => program.methods.marketplaceCancel().accounts({
+        config: configPda, mint, listing, seller: seller.publicKey, listingVault,
+        sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([seller]).rpc();
+      await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
+      await expectError(cancel(), "Paused");
+      await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+      await cancel();
+    });
+
+    it("F-10: an NFT can be listed again after a cancel", async () => {
+      const seller = Keypair.generate(); await airdrop(seller);
+      const { mint, tokenAccount } = await mintTool(seller.publicKey);
+      const listing = pda([B("listing"), mint.toBuffer()]);
+      const listingVault = await ensureAta(mint, listing);
+      const listAcc = {
+        config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint),
+        sellerToken: tokenAccount, listing, listingVault,
+        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      };
+      await program.methods.marketplaceList(new BN(1_000)).accounts(listAcc).signers([seller]).rpc();
+      await program.methods.marketplaceCancel().accounts({
+        config: configPda, mint, listing, seller: seller.publicKey, listingVault,
+        sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([seller]).rpc();
+      // Before the fix the second `init` collided with the stale PDA and the
+      // NFT lost its liquidity permanently.
+      await program.methods.marketplaceList(new BN(2_000)).accounts(listAcc).signers([seller]).rpc();
+      expect((await program.account.listing.fetch(listing)).priceLamports.toString()).to.equal("2000");
+      expect((await program.account.listing.fetch(listing)).active).to.equal(true);
+    });
+
+    it("F-27: the on-chain mining kill-switch gates start_mining", async () => {
+      const user = Keypair.generate(); await airdrop(user);
+      const { mint, tokenAccount } = await mintTool(user.publicKey);
+      const vaultToken = await ensureAta(mint, vaultPda);
+      await program.methods.stake(new BN(3600)).accounts({
+        config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
+        userToken: tokenAccount, vault: vaultPda, vaultToken, tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([user]).rpc();
+      const sm = () => program.methods.startMining(2).accounts({
+        config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
+        player: playerPda(user.publicKey), systemProgram: SystemProgram.programId,
+      }).signers([user]).rpc();
+      await program.methods.setMiningEnabled(false).accounts({ config: configPda, authority }).rpc();
+      await expectError(sm(), "MiningDisabled");
+      await program.methods.setMiningEnabled(true).accounts({ config: configPda, authority }).rpc();
+      await sm();
+    });
+
+    it("F-29: a craft order must ask for at least one resource", async () => {
+      const creator = Keypair.generate(); await airdrop(creator);
+      const craftOrder = pda([B("craft_order"), creator.publicKey.toBuffer()]);
+      await expectError(
+        program.methods.craftOrderCreate(new BN(0), new BN(0), new BN(LAMPORTS_PER_SOL / 100))
+          .accounts({ config: configPda, creator: creator.publicKey, craftOrder, systemProgram: SystemProgram.programId })
+          .signers([creator]).rpc(),
+        "EmptyCraftOrder",
+      );
+    });
+  });
 });
+
