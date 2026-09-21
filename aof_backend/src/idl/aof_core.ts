@@ -7,14 +7,14 @@
 export type AofCore = {
   "address": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
   "metadata": {
-    "name": "aofCore",
+    "name": "aof_core",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Age of Farming core program"
   },
   "instructions": [
     {
-      "name": "adjustPlayerCapacity",
+      "name": "adjust_player_capacity",
       "discriminator": [
         207,
         232,
@@ -70,7 +70,7 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "player.owner",
-                "account": "player"
+                "account": "Player"
               }
             ]
           }
@@ -82,13 +82,13 @@ export type AofCore = {
           "type": "i32"
         },
         {
-          "name": "hasTent",
+          "name": "has_tent",
           "type": "bool"
         }
       ]
     },
     {
-      "name": "auctionBid",
+      "name": "auction_bid",
       "discriminator": [
         83,
         236,
@@ -152,11 +152,11 @@ export type AofCore = {
           }
         },
         {
-          "name": "previousBidder",
+          "name": "previous_bidder",
           "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -168,7 +168,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "auctionCreate",
+      "name": "auction_create",
       "discriminator": [
         127,
         58,
@@ -181,22 +181,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "seller",
@@ -211,59 +196,39 @@ export type AofCore = {
           "name": "tool"
         },
         {
-          "name": "sellerToken",
+          "name": "seller_token",
           "writable": true
         },
         {
           "name": "auction",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  99,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "auctionVault",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "auction_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "minBid",
+          "name": "min_bid",
           "type": "u64"
         },
         {
-          "name": "durationSeconds",
+          "name": "duration_seconds",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "auctionSettle",
+      "name": "auction_settle",
       "discriminator": [
         125,
         3,
@@ -276,22 +241,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "mint",
@@ -299,27 +249,7 @@ export type AofCore = {
         },
         {
           "name": "auction",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  99,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "seller",
@@ -330,46 +260,26 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "auctionVault",
+          "name": "auction_vault",
           "writable": true
         },
         {
-          "name": "winnerToken",
-          "docs": [
-            "победитель (или продавец, если ставок не было) — получатель NFT"
-          ],
+          "name": "winner_token",
           "writable": true
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "burnNft",
+      "name": "burn_nft",
       "discriminator": [
         119,
         13,
@@ -430,18 +340,18 @@ export type AofCore = {
           }
         },
         {
-          "name": "tokenAccount",
+          "name": "token_account",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "burnResource",
+      "name": "burn_resource",
       "discriminator": [
         252,
         54,
@@ -472,7 +382,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -507,11 +417,11 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "tokenAccount",
+          "name": "token_account",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
@@ -520,7 +430,7 @@ export type AofCore = {
           "name": "kind",
           "type": {
             "defined": {
-              "name": "resourceKind"
+              "name": "ResourceKind"
             }
           }
         },
@@ -531,7 +441,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "burnTool",
+      "name": "burn_tool",
       "discriminator": [
         149,
         3,
@@ -571,11 +481,11 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "tokenAccount",
+          "name": "token_account",
           "writable": true
         },
         {
-          "name": "toolData",
+          "name": "tool_data",
           "writable": true,
           "pda": {
             "seeds": [
@@ -596,14 +506,14 @@ export type AofCore = {
           }
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "buyLotteryTicket",
+      "name": "buy_lottery_ticket",
       "discriminator": [
         88,
         10,
@@ -616,22 +526,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "buyer",
@@ -643,82 +538,26 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "lotteryRound",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "lotteryRound"
-              }
-            ]
-          }
+          "name": "lottery_round",
+          "writable": true
         },
         {
-          "name": "lotteryTicket",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  116,
-                  105,
-                  99,
-                  107,
-                  101,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "lotteryRound"
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.tickets_sold",
-                "account": "lotteryRound"
-              }
-            ]
-          }
+          "name": "lottery_ticket",
+          "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "ticket_counter",
+          "writable": true
+        },
+        {
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "cancelBuyOrder",
+      "name": "cancel_buy_order",
       "discriminator": [
         168,
         199,
@@ -731,6 +570,9 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "maker",
           "writable": true,
           "signer": true
@@ -740,44 +582,13 @@ export type AofCore = {
         },
         {
           "name": "order",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  115,
-                  111,
-                  117,
-                  114,
-                  99,
-                  101,
-                  95,
-                  111,
-                  114,
-                  100,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "maker"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         }
       ],
       "args": []
     },
     {
-      "name": "cancelSellOrder",
+      "name": "cancel_sell_order",
       "discriminator": [
         35,
         49,
@@ -790,6 +601,9 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "maker",
           "writable": true,
           "signer": true
@@ -799,56 +613,25 @@ export type AofCore = {
         },
         {
           "name": "order",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  115,
-                  111,
-                  117,
-                  114,
-                  99,
-                  101,
-                  95,
-                  111,
-                  114,
-                  100,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "maker"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "orderVault",
           "writable": true
         },
         {
-          "name": "makerToken",
+          "name": "order_vault",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "maker_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "claimLotteryPrize",
+      "name": "claim_lottery_prize",
       "discriminator": [
         52,
         56,
@@ -861,71 +644,14 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "lotteryRound",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "lotteryRound"
-              }
-            ]
-          }
+          "name": "config"
         },
         {
-          "name": "lotteryTicket",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  116,
-                  105,
-                  99,
-                  107,
-                  101,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "lotteryRound"
-              },
-              {
-                "kind": "account",
-                "path": "lottery_ticket.ticket_number",
-                "account": "lotteryTicket"
-              }
-            ]
-          }
+          "name": "lottery_round",
+          "writable": true
+        },
+        {
+          "name": "lottery_ticket"
         },
         {
           "name": "winner",
@@ -936,7 +662,7 @@ export type AofCore = {
       "args": []
     },
     {
-      "name": "claimSeasonReward",
+      "name": "claim_season_reward",
       "discriminator": [
         129,
         96,
@@ -949,113 +675,35 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "season",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  97,
-                  115,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "season.season_id",
-                "account": "season"
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
-          "name": "seasonPass",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  97,
-                  115,
-                  111,
-                  110,
-                  95,
-                  112,
-                  97,
-                  115,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "season_pass.owner",
-                "account": "seasonPass"
-              },
-              {
-                "kind": "account",
-                "path": "season.season_id",
-                "account": "season"
-              }
-            ]
-          }
+          "name": "season"
         },
         {
-          "name": "woodMint",
+          "name": "season_pass",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "user_wood",
+          "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "auth"
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
@@ -1065,15 +713,15 @@ export type AofCore = {
           "type": "u8"
         },
         {
-          "name": "premiumTrack",
+          "name": "premium_track",
           "type": "bool"
         }
       ]
     },
     {
-      "name": "collectBread",
+      "name": "collect_bread",
       "docs": [
-        "[БЛОК L] Сбор готового хлеба с печи"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u0433\u043e\u0442\u043e\u0432\u043e\u0433\u043e \u0445\u043b\u0435\u0431\u0430 \u0441 \u043f\u0435\u0447\u0438"
       ],
       "discriminator": [
         34,
@@ -1110,7 +758,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -1136,7 +784,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "ovenState",
+          "name": "oven_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1179,24 +827,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "breadMint",
+          "name": "bread_mint",
           "writable": true
         },
         {
-          "name": "userBread",
+          "name": "user_bread",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "collectFlour",
+      "name": "collect_flour",
       "docs": [
-        "[БЛОК L] Сбор готовой муки с мельницы"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u0433\u043e\u0442\u043e\u0432\u043e\u0439 \u043c\u0443\u043a\u0438 \u0441 \u043c\u0435\u043b\u044c\u043d\u0438\u0446\u044b"
       ],
       "discriminator": [
         75,
@@ -1233,7 +881,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -1259,7 +907,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "millState",
+          "name": "mill_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1302,22 +950,22 @@ export type AofCore = {
           }
         },
         {
-          "name": "flourMint",
+          "name": "flour_mint",
           "writable": true
         },
         {
-          "name": "userFlour",
+          "name": "user_flour",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "collectMining",
+      "name": "collect_mining",
       "discriminator": [
         33,
         146,
@@ -1401,7 +1049,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -1443,24 +1091,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "payoutMint",
+          "name": "payout_mint",
           "writable": true
         },
         {
-          "name": "payoutToken",
+          "name": "payout_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "collectWellWater",
+      "name": "collect_well_water",
       "docs": [
-        "[БЛОК L] Сбор воды из колодца"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u0432\u043e\u0434\u044b \u0438\u0437 \u043a\u043e\u043b\u043e\u0434\u0446\u0430"
       ],
       "discriminator": [
         158,
@@ -1474,22 +1122,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -1497,120 +1130,42 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "player"
         },
         {
-          "name": "wellState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119,
-                  101,
-                  108,
-                  108,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
-          "name": "weatherState",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119,
-                  101,
-                  97,
-                  116,
-                  104,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "waterMint",
+          "name": "well_state",
           "writable": true
         },
         {
-          "name": "userWater",
+          "name": "weather_state"
+        },
+        {
+          "name": "auth"
+        },
+        {
+          "name": "water_mint",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "user_water",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "collectorStake",
+      "name": "collector_stake",
       "discriminator": [
         186,
         188,
@@ -1650,7 +1205,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
@@ -1671,11 +1226,11 @@ export type AofCore = {
           }
         },
         {
-          "name": "vaultToken",
+          "name": "vault_token",
           "writable": true
         },
         {
-          "name": "stakedCollector",
+          "name": "staked_collector",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1724,11 +1279,11 @@ export type AofCore = {
           }
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -1737,14 +1292,14 @@ export type AofCore = {
           "name": "kind",
           "type": {
             "defined": {
-              "name": "collectorKind"
+              "name": "CollectorKind"
             }
           }
         }
       ]
     },
     {
-      "name": "collectorUnstake",
+      "name": "collector_unstake",
       "discriminator": [
         121,
         45,
@@ -1784,7 +1339,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
@@ -1805,11 +1360,11 @@ export type AofCore = {
           }
         },
         {
-          "name": "vaultToken",
+          "name": "vault_token",
           "writable": true
         },
         {
-          "name": "stakedCollector",
+          "name": "staked_collector",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1882,14 +1437,14 @@ export type AofCore = {
           }
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "commitLotteryDraw",
+      "name": "commit_lottery_draw",
       "discriminator": [
         33,
         145,
@@ -1927,7 +1482,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "lotteryRound",
+          "name": "lottery_round",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1952,7 +1507,7 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "lottery_round.round_id",
-                "account": "lotteryRound"
+                "account": "LotteryRound"
               }
             ]
           }
@@ -1960,7 +1515,7 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "commitHash",
+          "name": "commit_hash",
           "type": {
             "array": [
               "u8",
@@ -1984,29 +1539,11 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "user",
@@ -2015,213 +1552,124 @@ export type AofCore = {
         },
         {
           "name": "gastank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  115,
-                  116,
-                  97,
-                  110,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
-        },
-        {
-          "name": "prevTool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "prevMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "prevMint",
           "writable": true
         },
         {
-          "name": "prevToken",
+          "name": "prev_tool",
           "writable": true
         },
         {
-          "name": "newMint",
+          "name": "prev_mint",
           "writable": true
         },
         {
-          "name": "newToken",
+          "name": "prev_token",
           "writable": true
         },
         {
-          "name": "newToolData",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "newMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "rarityCounter",
+          "name": "new_mint",
           "writable": true
         },
         {
-          "name": "craftEconomy",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  114,
-                  97,
-                  102,
-                  116,
-                  95,
-                  101,
-                  99,
-                  111,
-                  110,
-                  111,
-                  109,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "woodMint",
+          "name": "new_token",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "new_tool_data",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "auth"
+        },
+        {
+          "name": "rarity_counter",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "craft_economy"
+        },
+        {
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "foodMint",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "userFood",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "seedsMint",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "userSeeds",
+          "name": "food_mint",
           "writable": true
         },
         {
-          "name": "waterMint",
+          "name": "user_food",
           "writable": true
         },
         {
-          "name": "userWater",
+          "name": "seeds_mint",
           "writable": true
         },
         {
-          "name": "potatoMint",
+          "name": "user_seeds",
           "writable": true
         },
         {
-          "name": "userPotato",
+          "name": "water_mint",
           "writable": true
         },
         {
-          "name": "skrMint",
+          "name": "user_water",
           "writable": true
         },
         {
-          "name": "userSkr",
+          "name": "potato_mint",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "user_potato",
+          "writable": true
+        },
+        {
+          "name": "skr_mint",
+          "writable": true
+        },
+        {
+          "name": "user_skr",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "toolType",
+          "name": "tool_type",
           "type": "string"
         },
         {
           "name": "rarity",
           "type": {
             "defined": {
-              "name": "rarity"
+              "name": "Rarity"
             }
           }
         }
       ]
     },
     {
-      "name": "craftOrderCancel",
+      "name": "craft_order_cancel",
       "discriminator": [
         72,
         33,
@@ -2234,43 +1682,22 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "creator",
           "writable": true,
           "signer": true
         },
         {
-          "name": "craftOrder",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  114,
-                  97,
-                  102,
-                  116,
-                  95,
-                  111,
-                  114,
-                  100,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "creator"
-              }
-            ]
-          }
+          "name": "craft_order",
+          "writable": true
         }
       ],
       "args": []
     },
     {
-      "name": "craftOrderCreate",
+      "name": "craft_order_create",
       "discriminator": [
         206,
         24,
@@ -2306,7 +1733,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "craftOrder",
+          "name": "craft_order",
           "writable": true,
           "pda": {
             "seeds": [
@@ -2334,27 +1761,27 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "woodNeeded",
+          "name": "wood_needed",
           "type": "u64"
         },
         {
-          "name": "stoneNeeded",
+          "name": "stone_needed",
           "type": "u64"
         },
         {
-          "name": "premiumLamports",
+          "name": "premium_lamports",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "craftOrderFulfill",
+      "name": "craft_order_fulfill",
       "discriminator": [
         251,
         90,
@@ -2390,7 +1817,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "craftOrder",
+          "name": "craft_order",
           "writable": true,
           "pda": {
             "seeds": [
@@ -2413,13 +1840,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "craft_order.creator",
-                "account": "craftOrder"
+                "account": "CraftOrder"
               }
             ]
           }
         },
         {
-          "name": "creatorRefund",
+          "name": "creator_refund",
           "writable": true
         },
         {
@@ -2427,38 +1854,38 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "woodMint"
+          "name": "wood_mint"
         },
         {
-          "name": "fulfillerWood",
+          "name": "fulfiller_wood",
           "writable": true
         },
         {
-          "name": "creatorWood",
+          "name": "creator_wood",
           "writable": true
         },
         {
-          "name": "stoneMint"
+          "name": "stone_mint"
         },
         {
-          "name": "fulfillerStone",
+          "name": "fulfiller_stone",
           "writable": true
         },
         {
-          "name": "creatorStone",
+          "name": "creator_stone",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "craftRecipe",
+      "name": "craft_recipe",
       "docs": [
-        "[БЛОК L] Мгновенный крафт гемов/баночек (recipe_id 0-7)"
+        "[\u0411\u041b\u041e\u041a L] \u041c\u0433\u043d\u043e\u0432\u0435\u043d\u043d\u044b\u0439 \u043a\u0440\u0430\u0444\u0442 \u0433\u0435\u043c\u043e\u0432/\u0431\u0430\u043d\u043e\u0447\u0435\u043a (recipe_id 0-7)"
       ],
       "discriminator": [
         184,
@@ -2472,22 +1899,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -2495,82 +1907,49 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
-          "name": "input1Mint"
-        },
-        {
-          "name": "input1Acc",
+          "name": "input_1_mint",
           "writable": true
         },
         {
-          "name": "input2Mint"
-        },
-        {
-          "name": "input2Acc",
+          "name": "input_1_acc",
           "writable": true
         },
         {
-          "name": "outputMint"
-        },
-        {
-          "name": "outputAcc",
+          "name": "input_2_mint",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "input_2_acc",
+          "writable": true
+        },
+        {
+          "name": "output_mint",
+          "writable": true
+        },
+        {
+          "name": "output_acc",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
         {
-          "name": "recipeId",
+          "name": "recipe_id",
           "type": "u8"
         }
       ]
     },
     {
-      "name": "depositGas",
+      "name": "deposit_gas",
       "discriminator": [
         164,
         223,
@@ -2630,7 +2009,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -2642,7 +2021,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "drawLottery",
+      "name": "draw_lottery",
       "discriminator": [
         17,
         188,
@@ -2680,7 +2059,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "lotteryRound",
+          "name": "lottery_round",
           "writable": true,
           "pda": {
             "seeds": [
@@ -2705,13 +2084,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "lottery_round.round_id",
-                "account": "lotteryRound"
+                "account": "LotteryRound"
               }
             ]
           }
         },
         {
-          "name": "slotHashes",
+          "name": "slot_hashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
@@ -2728,7 +2107,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "exploreReveal",
+      "name": "explore_reveal",
       "discriminator": [
         16,
         121,
@@ -2766,7 +2145,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "explorationState",
+          "name": "exploration_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -2795,13 +2174,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "exploration_commit.user",
-                "account": "explorationCommit"
+                "account": "ExplorationCommit"
               }
             ]
           }
         },
         {
-          "name": "explorationCommit",
+          "name": "exploration_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -2831,7 +2210,7 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "exploration_commit.tool_mint",
-                "account": "explorationCommit"
+                "account": "ExplorationCommit"
               }
             ]
           }
@@ -2841,19 +2220,19 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
@@ -2873,11 +2252,11 @@ export type AofCore = {
           }
         },
         {
-          "name": "slotHashes",
+          "name": "slot_hashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
@@ -2894,7 +2273,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "forgeAttemptCommit",
+      "name": "forge_attempt_commit",
       "discriminator": [
         89,
         191,
@@ -2944,54 +2323,54 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "toolMint"
+                "path": "tool_mint"
               }
             ]
           }
         },
         {
-          "name": "toolMint"
+          "name": "tool_mint"
         },
         {
-          "name": "enchantSlot",
+          "name": "enchant_slot",
           "writable": true
         },
         {
-          "name": "forgeCommit",
+          "name": "forge_commit",
           "writable": true
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "slotType",
+          "name": "slot_type",
           "type": "u8"
         },
         {
-          "name": "commitHash",
+          "name": "commit_hash",
           "type": {
             "array": [
               "u8",
@@ -3000,13 +2379,13 @@ export type AofCore = {
           }
         },
         {
-          "name": "useProtector",
+          "name": "use_protector",
           "type": "bool"
         }
       ]
     },
     {
-      "name": "forgeAttemptReveal",
+      "name": "forge_attempt_reveal",
       "discriminator": [
         6,
         210,
@@ -3044,11 +2423,11 @@ export type AofCore = {
           ]
         },
         {
-          "name": "enchantSlot",
+          "name": "enchant_slot",
           "writable": true
         },
         {
-          "name": "forgeCommit",
+          "name": "forge_commit",
           "writable": true
         },
         {
@@ -3060,7 +2439,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "slotHashes",
+          "name": "slot_hashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
@@ -3077,7 +2456,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "forgeAttemptExpire",
+      "name": "forge_attempt_expire",
       "docs": [
         "Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent)."
       ],
@@ -3111,7 +2490,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "forgeCommit",
+          "name": "forge_commit",
           "writable": true
         },
         {
@@ -3135,30 +2514,30 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "grantSeasonXp",
+      "name": "grant_season_xp",
       "discriminator": [
         164,
         174,
@@ -3217,13 +2596,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "season.season_id",
-                "account": "season"
+                "account": "Season"
               }
             ]
           }
         },
         {
-          "name": "seasonPass",
+          "name": "season_pass",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3250,13 +2629,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "season.season_id",
-                "account": "season"
+                "account": "Season"
               }
             ]
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -3268,9 +2647,9 @@ export type AofCore = {
       ]
     },
     {
-      "name": "harvestWheat",
+      "name": "harvest_wheat",
       "docs": [
-        "[БЛОК L] Сбор пшеницы с готового тайла"
+        "[\u0411\u041b\u041e\u041a L] \u0421\u0431\u043e\u0440 \u043f\u0448\u0435\u043d\u0438\u0446\u044b \u0441 \u0433\u043e\u0442\u043e\u0432\u043e\u0433\u043e \u0442\u0430\u0439\u043b\u0430"
       ],
       "discriminator": [
         170,
@@ -3307,7 +2686,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -3333,7 +2712,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "energyAccount",
+          "name": "energy_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3364,11 +2743,11 @@ export type AofCore = {
           }
         },
         {
-          "name": "farmTile",
+          "name": "farm_tile",
           "writable": true
         },
         {
-          "name": "toolData",
+          "name": "tool_data",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3384,7 +2763,7 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "tool_data.mint",
-                "account": "toolData"
+                "account": "ToolData"
               }
             ]
           }
@@ -3406,31 +2785,31 @@ export type AofCore = {
           }
         },
         {
-          "name": "wheatMint",
+          "name": "wheat_mint",
           "writable": true
         },
         {
-          "name": "userWheat",
+          "name": "user_wheat",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "tileIndex",
+          "name": "tile_index",
           "type": "u8"
         }
       ]
     },
     {
-      "name": "initCraftEconomy",
+      "name": "init_craft_economy",
       "discriminator": [
         63,
         105,
@@ -3469,7 +2848,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "craftEconomy",
+          "name": "craft_economy",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3495,14 +2874,14 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "initLotteryRound",
+      "name": "init_lottery_round",
       "discriminator": [
         208,
         250,
@@ -3541,7 +2920,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "lotteryRound",
+          "name": "lottery_round",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3565,27 +2944,27 @@ export type AofCore = {
               },
               {
                 "kind": "arg",
-                "path": "roundId"
+                "path": "round_id"
               }
             ]
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "roundId",
+          "name": "round_id",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "initMaterialMints",
+      "name": "init_material_mints",
       "docs": [
-        "[БЛОК L] Инициализация MaterialMints PDA с адресами 23 минтов"
+        "[\u0411\u041b\u041e\u041a L] \u0418\u043d\u0438\u0446\u0438\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f MaterialMints PDA \u0441 \u0430\u0434\u0440\u0435\u0441\u0430\u043c\u0438 23 \u043c\u0438\u043d\u0442\u043e\u0432"
       ],
       "discriminator": [
         29,
@@ -3625,7 +3004,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3652,7 +3031,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -3686,73 +3065,73 @@ export type AofCore = {
           "type": "pubkey"
         },
         {
-          "name": "stoneBlue",
+          "name": "stone_blue",
           "type": "pubkey"
         },
         {
-          "name": "stonePurple",
+          "name": "stone_purple",
           "type": "pubkey"
         },
         {
-          "name": "stoneRed",
+          "name": "stone_red",
           "type": "pubkey"
         },
         {
-          "name": "sandWhite",
+          "name": "sand_white",
           "type": "pubkey"
         },
         {
-          "name": "sandPink",
+          "name": "sand_pink",
           "type": "pubkey"
         },
         {
-          "name": "sandYellow",
+          "name": "sand_yellow",
           "type": "pubkey"
         },
         {
-          "name": "gemBlue",
+          "name": "gem_blue",
           "type": "pubkey"
         },
         {
-          "name": "gemOrange",
+          "name": "gem_orange",
           "type": "pubkey"
         },
         {
-          "name": "gemWhite",
+          "name": "gem_white",
           "type": "pubkey"
         },
         {
-          "name": "gemGreen",
+          "name": "gem_green",
           "type": "pubkey"
         },
         {
-          "name": "flaskBlue",
+          "name": "flask_blue",
           "type": "pubkey"
         },
         {
-          "name": "flaskYellow",
+          "name": "flask_yellow",
           "type": "pubkey"
         },
         {
-          "name": "flaskGreen",
+          "name": "flask_green",
           "type": "pubkey"
         },
         {
-          "name": "flaskPink",
+          "name": "flask_pink",
           "type": "pubkey"
         },
         {
-          "name": "flaskPurple",
+          "name": "flask_purple",
           "type": "pubkey"
         },
         {
-          "name": "loveHeart",
+          "name": "love_heart",
           "type": "pubkey"
         }
       ]
     },
     {
-      "name": "initPackConfig",
+      "name": "init_pack_config",
       "discriminator": [
         12,
         9,
@@ -3791,25 +3170,25 @@ export type AofCore = {
           ]
         },
         {
-          "name": "packConfig",
+          "name": "pack_config",
           "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "packType",
+          "name": "pack_type",
           "type": "u8"
         },
         {
-          "name": "priceLamports",
+          "name": "price_lamports",
           "type": "u64"
         },
         {
-          "name": "oddsBps",
+          "name": "odds_bps",
           "type": {
             "array": [
               "u16",
@@ -3820,7 +3199,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "initRarityCounter",
+      "name": "init_rarity_counter",
       "discriminator": [
         129,
         105,
@@ -3859,11 +3238,11 @@ export type AofCore = {
           ]
         },
         {
-          "name": "rarityCounter",
+          "name": "rarity_counter",
           "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -3872,14 +3251,14 @@ export type AofCore = {
           "name": "rarity",
           "type": {
             "defined": {
-              "name": "rarity"
+              "name": "Rarity"
             }
           }
         }
       ]
     },
     {
-      "name": "initRerollConfig",
+      "name": "init_reroll_config",
       "discriminator": [
         39,
         188,
@@ -3918,7 +3297,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "rerollConfig",
+          "name": "reroll_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -3944,13 +3323,13 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "oddsBps",
+          "name": "odds_bps",
           "type": {
             "array": [
               "u16",
@@ -3961,7 +3340,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "initSeason",
+      "name": "init_season",
       "discriminator": [
         179,
         47,
@@ -4017,19 +3396,19 @@ export type AofCore = {
               },
               {
                 "kind": "arg",
-                "path": "seasonId"
+                "path": "season_id"
               }
             ]
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "seasonId",
+          "name": "season_id",
           "type": "u32"
         }
       ]
@@ -4105,10 +3484,10 @@ export type AofCore = {
           }
         },
         {
-          "name": "programData"
+          "name": "program_data"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -4120,7 +3499,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "marketplaceBuy",
+      "name": "marketplace_buy",
       "discriminator": [
         92,
         247,
@@ -4133,22 +3512,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "buyer",
@@ -4169,70 +3533,33 @@ export type AofCore = {
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "listingVault",
           "writable": true
         },
         {
-          "name": "buyerToken",
+          "name": "listing_vault",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "buyer_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "marketplaceCancel",
+      "name": "marketplace_cancel",
       "discriminator": [
         36,
         142,
@@ -4245,32 +3572,15 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "mint",
           "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "seller",
@@ -4278,22 +3588,22 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "listingVault",
+          "name": "listing_vault",
           "writable": true
         },
         {
-          "name": "sellerToken",
+          "name": "seller_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "marketplaceList",
+      "name": "marketplace_list",
       "discriminator": [
         126,
         197,
@@ -4306,22 +3616,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "seller",
@@ -4336,55 +3631,35 @@ export type AofCore = {
           "name": "tool"
         },
         {
-          "name": "sellerToken",
+          "name": "seller_token",
           "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "listingVault",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "listing_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "priceLamports",
+          "name": "price_lamports",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "matchResourceOrders",
+      "name": "match_resource_orders",
       "discriminator": [
         159,
         91,
@@ -4415,7 +3690,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -4444,7 +3719,7 @@ export type AofCore = {
           "name": "mint"
         },
         {
-          "name": "buyOrder",
+          "name": "buy_order",
           "writable": true,
           "pda": {
             "seeds": [
@@ -4469,7 +3744,7 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "buyOrder.maker",
+                "path": "buy_order.maker",
                 "account": "ResourceOrder"
               },
               {
@@ -4480,7 +3755,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "sellOrder",
+          "name": "sell_order",
           "writable": true,
           "pda": {
             "seeds": [
@@ -4506,7 +3781,7 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "sell_order.maker",
-                "account": "resourceOrder"
+                "account": "ResourceOrder"
               },
               {
                 "kind": "account",
@@ -4524,25 +3799,25 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "sellVault",
+          "name": "sell_vault",
           "writable": true
         },
         {
-          "name": "buyerToken",
+          "name": "buyer_token",
           "docs": [
-            "покупатель — владелец buy_order, получает ресурс"
+            "\u043f\u043e\u043a\u0443\u043f\u0430\u0442\u0435\u043b\u044c \u2014 \u0432\u043b\u0430\u0434\u0435\u043b\u0435\u0446 buy_order, \u043f\u043e\u043b\u0443\u0447\u0430\u0435\u0442 \u0440\u0435\u0441\u0443\u0440\u0441"
           ],
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "migrateTool",
+      "name": "migrate_tool",
       "discriminator": [
         178,
         226,
@@ -4573,7 +3848,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "migrationAuthority",
+          "name": "migration_authority",
           "writable": true,
           "signer": true
         },
@@ -4622,11 +3897,11 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "vaultTokenAccount",
+          "name": "vault_token_account",
           "writable": true
         },
         {
-          "name": "toolData",
+          "name": "tool_data",
           "writable": true,
           "pda": {
             "seeds": [
@@ -4647,24 +3922,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "toolType",
+          "name": "tool_type",
           "type": "string"
         },
         {
           "name": "rarity",
           "type": {
             "defined": {
-              "name": "rarity"
+              "name": "Rarity"
             }
           }
         },
@@ -4675,7 +3950,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "mintResource",
+      "name": "mint_resource",
       "discriminator": [
         2,
         118,
@@ -4688,148 +3963,45 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
-          "name": "materialMints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "mint",
           "writable": true
         },
         {
-          "name": "tokenAccount",
+          "name": "token_account",
           "writable": true
         },
         {
-          "name": "treasuryToken",
+          "name": "treasury_token",
           "writable": true
         },
         {
           "name": "player",
-          "docs": [
-            "создаём с нулевыми перками — mint_resource не должен блокироваться",
-            "отсутствием профиля."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_account.owner",
-                "account": "tokenAccount"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "issuanceCap",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "kind"
-              }
-            ]
-          }
+          "name": "issuance_cap",
+          "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -4838,7 +4010,7 @@ export type AofCore = {
           "name": "kind",
           "type": {
             "defined": {
-              "name": "resourceKind"
+              "name": "ResourceKind"
             }
           }
         },
@@ -4849,7 +4021,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "mintTool",
+      "name": "mint_tool",
       "discriminator": [
         9,
         202,
@@ -4862,102 +4034,58 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "mint",
           "writable": true
         },
         {
-          "name": "tokenAccount",
+          "name": "token_account",
           "writable": true
         },
         {
-          "name": "toolData",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "name": "recipient",
+          "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "tool_data",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "toolType",
+          "name": "tool_type",
           "type": "string"
         },
         {
           "name": "rarity",
           "type": {
             "defined": {
-              "name": "rarity"
+              "name": "Rarity"
             }
           }
         }
       ]
     },
     {
-      "name": "offerAccept",
+      "name": "offer_accept",
       "discriminator": [
         218,
         1,
@@ -5039,13 +4167,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "offer.buyer",
-                "account": "offer"
+                "account": "Offer"
               }
             ]
           }
         },
         {
-          "name": "buyerRefund",
+          "name": "buyer_refund",
           "writable": true
         },
         {
@@ -5053,22 +4181,22 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "sellerToken",
+          "name": "seller_token",
           "writable": true
         },
         {
-          "name": "buyerToken",
+          "name": "buyer_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "offerCancel",
+      "name": "offer_cancel",
       "discriminator": [
         243,
         115,
@@ -5081,33 +4209,14 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "mint"
         },
         {
           "name": "offer",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              },
-              {
-                "kind": "account",
-                "path": "buyer"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "buyer",
@@ -5118,7 +4227,7 @@ export type AofCore = {
       "args": []
     },
     {
-      "name": "offerCreate",
+      "name": "offer_create",
       "discriminator": [
         119,
         123,
@@ -5183,19 +4292,19 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "priceLamports",
+          "name": "price_lamports",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "packOpenCommit",
+      "name": "pack_open_commit",
       "discriminator": [
         119,
         24,
@@ -5238,7 +4347,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "packConfig"
+          "name": "pack_config"
         },
         {
           "name": "auth"
@@ -5247,7 +4356,7 @@ export type AofCore = {
           "name": "mint"
         },
         {
-          "name": "packCommit",
+          "name": "pack_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -5275,21 +4384,21 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "packType",
+          "name": "pack_type",
           "type": {
             "defined": {
-              "name": "packType"
+              "name": "PackType"
             }
           }
         },
         {
-          "name": "commitHash",
+          "name": "commit_hash",
           "type": {
             "array": [
               "u8",
@@ -5300,7 +4409,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packOpenReveal",
+      "name": "pack_open_reveal",
       "discriminator": [
         220,
         51,
@@ -5339,7 +4448,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "packCommit",
+          "name": "pack_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -5375,18 +4484,18 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "packConfig"
+          "name": "pack_config"
         },
         {
           "name": "mint",
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
-          "name": "toolData",
+          "name": "tool_data",
           "writable": true,
           "pda": {
             "seeds": [
@@ -5423,15 +4532,15 @@ export type AofCore = {
           }
         },
         {
-          "name": "slotHashes",
+          "name": "slot_hashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -5448,7 +4557,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packOpenExpire",
+      "name": "pack_open_expire",
       "docs": [
         "Refund an expired pack commit (escrow + rent back to the player)."
       ],
@@ -5482,7 +4591,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "packCommit",
+          "name": "pack_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -5520,7 +4629,7 @@ export type AofCore = {
       "args": []
     },
     {
-      "name": "payOut",
+      "name": "pay_out",
       "discriminator": [
         122,
         7,
@@ -5533,61 +4642,39 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "vault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              }
-            ]
-          }
+          "name": "vault"
         },
         {
           "name": "mint",
           "writable": true
         },
         {
-          "name": "vaultToken",
+          "name": "vault_token",
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "player"
+        },
+        {
+          "name": "material_mints"
+        },
+        {
+          "name": "vault_guard",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
@@ -5599,7 +4686,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "payOutWithReferral",
+      "name": "pay_out_with_referral",
       "discriminator": [
         250,
         198,
@@ -5612,95 +4699,46 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "vault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              }
-            ]
-          }
+          "name": "vault"
         },
         {
           "name": "mint",
           "writable": true
         },
         {
-          "name": "vaultToken",
+          "name": "vault_token",
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
-          "name": "referralLink",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  102,
-                  101,
-                  114,
-                  114,
-                  97,
-                  108,
-                  95,
-                  108,
-                  105,
-                  110,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "referral_link.referred",
-                "account": "referralLink"
-              }
-            ]
-          }
+          "name": "referral_link"
         },
         {
-          "name": "referrerToken",
+          "name": "referrer_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "player"
+        },
+        {
+          "name": "material_mints"
+        },
+        {
+          "name": "vault_guard",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
@@ -5712,7 +4750,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "placeBuyOrder",
+      "name": "place_buy_order",
       "discriminator": [
         47,
         253,
@@ -5751,7 +4789,7 @@ export type AofCore = {
           "name": "mint"
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -5812,7 +4850,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -5822,7 +4860,7 @@ export type AofCore = {
           "type": "u8"
         },
         {
-          "name": "priceLamportsPerUnit",
+          "name": "price_lamports_per_unit",
           "type": "u64"
         },
         {
@@ -5832,7 +4870,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "placeSellOrder",
+      "name": "place_sell_order",
       "discriminator": [
         254,
         177,
@@ -5871,7 +4909,7 @@ export type AofCore = {
           "name": "mint"
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -5897,7 +4935,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "makerToken",
+          "name": "maker_token",
           "writable": true
         },
         {
@@ -5936,15 +4974,15 @@ export type AofCore = {
           }
         },
         {
-          "name": "orderVault",
+          "name": "order_vault",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -5954,7 +4992,7 @@ export type AofCore = {
           "type": "u8"
         },
         {
-          "name": "priceLamportsPerUnit",
+          "name": "price_lamports_per_unit",
           "type": "u64"
         },
         {
@@ -5964,9 +5002,9 @@ export type AofCore = {
       ]
     },
     {
-      "name": "plantSeeds",
+      "name": "plant_seeds",
       "docs": [
-        "[БЛОК L] Посадка семян на полевой тайл"
+        "[\u0411\u041b\u041e\u041a L] \u041f\u043e\u0441\u0430\u0434\u043a\u0430 \u0441\u0435\u043c\u044f\u043d \u043d\u0430 \u043f\u043e\u043b\u0435\u0432\u043e\u0439 \u0442\u0430\u0439\u043b"
       ],
       "discriminator": [
         157,
@@ -6003,7 +5041,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -6029,7 +5067,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "energyAccount",
+          "name": "energy_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6060,29 +5098,29 @@ export type AofCore = {
           }
         },
         {
-          "name": "farmTile",
+          "name": "farm_tile",
           "writable": true
         },
         {
-          "name": "seedsMint",
+          "name": "seeds_mint",
           "writable": true
         },
         {
-          "name": "userSeeds",
+          "name": "user_seeds",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "tileIndex",
+          "name": "tile_index",
           "type": "u8"
         },
         {
@@ -6092,7 +5130,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "purchaseSeasonPass",
+      "name": "purchase_season_pass",
       "discriminator": [
         233,
         149,
@@ -6149,13 +5187,13 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "season.season_id",
-                "account": "season"
+                "account": "Season"
               }
             ]
           }
         },
         {
-          "name": "seasonPass",
+          "name": "season_pass",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6182,20 +5220,20 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "season.season_id",
-                "account": "season"
+                "account": "Season"
               }
             ]
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "referralBind",
+      "name": "referral_bind",
       "discriminator": [
         94,
         97,
@@ -6234,7 +5272,7 @@ export type AofCore = {
           "name": "referrer"
         },
         {
-          "name": "referrerPlayer",
+          "name": "referrer_player",
           "pda": {
             "seeds": [
               {
@@ -6256,7 +5294,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "referrerStats",
+          "name": "referrer_stats",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6287,7 +5325,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "referralLink",
+          "name": "referral_link",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6317,14 +5355,14 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "referralUpgrade",
+      "name": "referral_upgrade",
       "discriminator": [
         13,
         103,
@@ -6360,7 +5398,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "referralLink",
+          "name": "referral_link",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6390,38 +5428,38 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "foodMint",
+          "name": "food_mint",
           "writable": true
         },
         {
-          "name": "userFood",
+          "name": "user_food",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "rentalEnd",
+      "name": "rental_end",
       "discriminator": [
         164,
         124,
@@ -6434,6 +5472,9 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "caller",
           "signer": true
         },
@@ -6442,67 +5483,21 @@ export type AofCore = {
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "rentalAgreement",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  110,
-                  116,
-                  97,
-                  108,
-                  95,
-                  97,
-                  103,
-                  114,
-                  101,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "name": "rental_agreement",
+          "writable": true
         },
         {
-          "name": "renterRefund",
+          "name": "renter_refund",
           "writable": true
         }
       ],
       "args": []
     },
     {
-      "name": "rentalList",
+      "name": "rental_list",
       "discriminator": [
         117,
         211,
@@ -6562,7 +5557,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "rentalListing",
+          "name": "rental_listing",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6593,31 +5588,31 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "ownerSplitBps",
+          "name": "owner_split_bps",
           "type": "u16"
         },
         {
-          "name": "minDuration",
+          "name": "min_duration",
           "type": "i64"
         },
         {
-          "name": "maxDuration",
+          "name": "max_duration",
           "type": "i64"
         },
         {
-          "name": "pricePerHourLamports",
+          "name": "price_per_hour_lamports",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "rentalRevoke",
+      "name": "rental_revoke",
       "discriminator": [
         102,
         156,
@@ -6630,6 +5625,9 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "owner",
           "writable": true,
           "signer": true
@@ -6639,67 +5637,21 @@ export type AofCore = {
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "rentalAgreement",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  110,
-                  116,
-                  97,
-                  108,
-                  95,
-                  97,
-                  103,
-                  114,
-                  101,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "name": "rental_agreement",
+          "writable": true
         },
         {
-          "name": "renterRefund",
+          "name": "renter_refund",
           "writable": true
         }
       ],
       "args": []
     },
     {
-      "name": "rentalStart",
+      "name": "rental_start",
       "discriminator": [
         72,
         125,
@@ -6759,7 +5711,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "rentalListing",
+          "name": "rental_listing",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6798,7 +5750,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "rentalAgreement",
+          "name": "rental_agreement",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6831,13 +5783,13 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "durationSeconds",
+          "name": "duration_seconds",
           "type": "i64"
         }
       ]
@@ -6904,23 +5856,23 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
@@ -6945,22 +5897,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "user",
@@ -6969,149 +5906,120 @@ export type AofCore = {
         },
         {
           "name": "gastank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  115,
-                  116,
-                  97,
-                  110,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
-        },
-        {
-          "name": "toolA",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mintA"
-              }
-            ]
-          }
-        },
-        {
-          "name": "mintA",
           "writable": true
         },
         {
-          "name": "tokenA",
+          "name": "tool_a",
           "writable": true
         },
         {
-          "name": "toolB",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mintB"
-              }
-            ]
-          }
-        },
-        {
-          "name": "mintB",
+          "name": "mint_a",
           "writable": true
         },
         {
-          "name": "tokenB",
+          "name": "token_a",
           "writable": true
         },
         {
-          "name": "newMint",
+          "name": "tool_b",
           "writable": true
         },
         {
-          "name": "newToken",
+          "name": "mint_b",
           "writable": true
         },
         {
-          "name": "newToolData",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "newMint"
-              }
-            ]
-          }
+          "name": "token_b",
+          "writable": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "new_mint",
+          "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "new_token",
+          "writable": true
+        },
+        {
+          "name": "new_tool_data",
+          "writable": true
+        },
+        {
+          "name": "auth"
+        },
+        {
+          "name": "rarity_counter",
+          "writable": true
+        },
+        {
+          "name": "craft_economy"
+        },
+        {
+          "name": "wood_mint",
+          "writable": true
+        },
+        {
+          "name": "user_wood",
+          "writable": true
+        },
+        {
+          "name": "stone_mint",
+          "writable": true
+        },
+        {
+          "name": "user_stone",
+          "writable": true
+        },
+        {
+          "name": "food_mint",
+          "writable": true
+        },
+        {
+          "name": "user_food",
+          "writable": true
+        },
+        {
+          "name": "seeds_mint",
+          "writable": true
+        },
+        {
+          "name": "user_seeds",
+          "writable": true
+        },
+        {
+          "name": "water_mint",
+          "writable": true
+        },
+        {
+          "name": "user_water",
+          "writable": true
+        },
+        {
+          "name": "potato_mint",
+          "writable": true
+        },
+        {
+          "name": "user_potato",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "newType",
+          "name": "new_type",
           "type": "string"
         }
       ]
     },
     {
-      "name": "rerollRandomCommit",
+      "name": "reroll_random_commit",
       "discriminator": [
         116,
         32,
@@ -7171,7 +6079,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "burnTool",
+          "name": "burn_tool",
           "writable": true,
           "pda": {
             "seeds": [
@@ -7186,24 +6094,24 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "burnMint"
+                "path": "burn_mint"
               }
             ]
           }
         },
         {
-          "name": "burnMint",
+          "name": "burn_mint",
           "writable": true
         },
         {
-          "name": "burnToken",
+          "name": "burn_token",
           "writable": true
         },
         {
-          "name": "newMint"
+          "name": "new_mint"
         },
         {
-          "name": "rerollCommit",
+          "name": "reroll_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -7227,23 +6135,23 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "newMint"
+                "path": "new_mint"
               }
             ]
           }
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "commitHash",
+          "name": "commit_hash",
           "type": {
             "array": [
               "u8",
@@ -7254,7 +6162,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rerollRandomReveal",
+      "name": "reroll_random_reveal",
       "discriminator": [
         123,
         60,
@@ -7293,7 +6201,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "rerollConfig",
+          "name": "reroll_config",
           "pda": {
             "seeds": [
               {
@@ -7318,7 +6226,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "rerollCommit",
+          "name": "reroll_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -7342,7 +6250,7 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "newMint"
+                "path": "new_mint"
               }
             ]
           }
@@ -7352,15 +6260,15 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "newMint",
+          "name": "new_mint",
           "writable": true
         },
         {
-          "name": "newToken",
+          "name": "new_token",
           "writable": true
         },
         {
-          "name": "newToolData",
+          "name": "new_tool_data",
           "writable": true,
           "pda": {
             "seeds": [
@@ -7375,7 +6283,7 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "newMint"
+                "path": "new_mint"
               }
             ]
           }
@@ -7397,15 +6305,15 @@ export type AofCore = {
           }
         },
         {
-          "name": "slotHashes",
+          "name": "slot_hashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -7422,7 +6330,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "setCraftEconomy",
+      "name": "set_craft_economy",
       "discriminator": [
         120,
         212,
@@ -7460,7 +6368,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "craftEconomy",
+          "name": "craft_economy",
           "writable": true,
           "pda": {
             "seeds": [
@@ -7488,7 +6396,7 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "woodBase",
+          "name": "wood_base",
           "type": {
             "array": [
               "u64",
@@ -7497,7 +6405,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "stoneBase",
+          "name": "stone_base",
           "type": {
             "array": [
               "u64",
@@ -7506,7 +6414,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMult",
+          "name": "wood_mult",
           "type": {
             "array": [
               "u64",
@@ -7515,7 +6423,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "stoneMult",
+          "name": "stone_mult",
           "type": {
             "array": [
               "u64",
@@ -7526,7 +6434,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "setFees",
+      "name": "set_fees",
       "discriminator": [
         137,
         178,
@@ -7567,17 +6475,17 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "craftFee",
+          "name": "craft_fee",
           "type": "u64"
         },
         {
-          "name": "unstakeFee",
+          "name": "unstake_fee",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "setPackConfig",
+      "name": "set_pack_config",
       "discriminator": [
         184,
         55,
@@ -7615,17 +6523,17 @@ export type AofCore = {
           ]
         },
         {
-          "name": "packConfig",
+          "name": "pack_config",
           "writable": true
         }
       ],
       "args": [
         {
-          "name": "priceLamports",
+          "name": "price_lamports",
           "type": "u64"
         },
         {
-          "name": "oddsBps",
+          "name": "odds_bps",
           "type": {
             "array": [
               "u16",
@@ -7636,7 +6544,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "setPaused",
+      "name": "set_paused",
       "discriminator": [
         91,
         60,
@@ -7683,7 +6591,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "setRerollConfig",
+      "name": "set_reroll_config",
       "discriminator": [
         38,
         174,
@@ -7721,7 +6629,7 @@ export type AofCore = {
           ]
         },
         {
-          "name": "rerollConfig",
+          "name": "reroll_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -7749,7 +6657,7 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "oddsBps",
+          "name": "odds_bps",
           "type": {
             "array": [
               "u16",
@@ -7760,7 +6668,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "setResourceMints",
+      "name": "set_resource_mints",
       "discriminator": [
         111,
         179,
@@ -7801,27 +6709,27 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "foodMint",
+          "name": "food_mint",
           "type": "pubkey"
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "type": "pubkey"
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "type": "pubkey"
         },
         {
-          "name": "seedsMint",
+          "name": "seeds_mint",
           "type": "pubkey"
         },
         {
-          "name": "waterMint",
+          "name": "water_mint",
           "type": "pubkey"
         },
         {
-          "name": "potatoMint",
+          "name": "potato_mint",
           "type": "pubkey"
         }
       ]
@@ -7888,7 +6796,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
@@ -7909,25 +6817,25 @@ export type AofCore = {
           }
         },
         {
-          "name": "vaultToken",
+          "name": "vault_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
         {
-          "name": "lockSeconds",
+          "name": "lock_seconds",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "startBaking",
+      "name": "start_baking",
       "docs": [
-        "[БЛОК L] Запуск партии выпечки в печи (0=дрова, 1=уголь)"
+        "[\u0411\u041b\u041e\u041a L] \u0417\u0430\u043f\u0443\u0441\u043a \u043f\u0430\u0440\u0442\u0438\u0438 \u0432\u044b\u043f\u0435\u0447\u043a\u0438 \u0432 \u043f\u0435\u0447\u0438 (0=\u0434\u0440\u043e\u0432\u0430, 1=\u0443\u0433\u043e\u043b\u044c)"
       ],
       "discriminator": [
         97,
@@ -7964,7 +6872,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -7990,7 +6898,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "energyAccount",
+          "name": "energy_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8021,7 +6929,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "ovenState",
+          "name": "oven_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8048,59 +6956,59 @@ export type AofCore = {
           }
         },
         {
-          "name": "flourMint",
+          "name": "flour_mint",
           "writable": true
         },
         {
-          "name": "waterMint",
+          "name": "water_mint",
           "writable": true
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "coalMint",
+          "name": "coal_mint",
           "writable": true
         },
         {
-          "name": "userFlour",
+          "name": "user_flour",
           "writable": true
         },
         {
-          "name": "userWater",
+          "name": "user_water",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "userCoal",
+          "name": "user_coal",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "batchSize",
+          "name": "batch_size",
           "type": "u8"
         },
         {
-          "name": "fuelKind",
+          "name": "fuel_kind",
           "type": "u8"
         }
       ]
     },
     {
-      "name": "startExplorationCommit",
+      "name": "start_exploration_commit",
       "discriminator": [
         58,
         145,
@@ -8131,7 +7039,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -8162,7 +7070,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "explorationState",
+          "name": "exploration_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8196,7 +7104,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "toolMint"
+          "name": "tool_mint"
         },
         {
           "name": "tool",
@@ -8219,7 +7127,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "explorationCommit",
+          "name": "exploration_commit",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8248,55 +7156,55 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "toolMint"
+                "path": "tool_mint"
               }
             ]
           }
         },
         {
-          "name": "foodMint",
+          "name": "food_mint",
           "writable": true
         },
         {
-          "name": "userFood",
+          "name": "user_food",
           "writable": true
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "meatMint",
+          "name": "meat_mint",
           "writable": true
         },
         {
-          "name": "userMeat",
+          "name": "user_meat",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "commitHash",
+          "name": "commit_hash",
           "type": {
             "array": [
               "u8",
@@ -8307,9 +7215,9 @@ export type AofCore = {
       ]
     },
     {
-      "name": "startMilling",
+      "name": "start_milling",
       "docs": [
-        "[БЛОК L] Запуск партии помола на мельнице"
+        "[\u0411\u041b\u041e\u041a L] \u0417\u0430\u043f\u0443\u0441\u043a \u043f\u0430\u0440\u0442\u0438\u0438 \u043f\u043e\u043c\u043e\u043b\u0430 \u043d\u0430 \u043c\u0435\u043b\u044c\u043d\u0438\u0446\u0435"
       ],
       "discriminator": [
         12,
@@ -8346,7 +7254,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "materialMints",
+          "name": "material_mints",
           "pda": {
             "seeds": [
               {
@@ -8372,7 +7280,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "energyAccount",
+          "name": "energy_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8403,7 +7311,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "millState",
+          "name": "mill_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8430,39 +7338,39 @@ export type AofCore = {
           }
         },
         {
-          "name": "wheatMint",
+          "name": "wheat_mint",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userWheat",
+          "name": "user_wheat",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "batchSize",
+          "name": "batch_size",
           "type": "u8"
         }
       ]
     },
     {
-      "name": "startMining",
+      "name": "start_mining",
       "discriminator": [
         108,
         28,
@@ -8545,7 +7453,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -8557,7 +7465,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "sweepGasFees",
+      "name": "sweep_gas_fees",
       "discriminator": [
         114,
         3,
@@ -8614,7 +7522,7 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "gastank.owner",
-                "account": "gasTank"
+                "account": "GasTank"
               }
             ]
           }
@@ -8624,7 +7532,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -8692,7 +7600,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "userToken",
+          "name": "user_token",
           "writable": true
         },
         {
@@ -8737,18 +7645,18 @@ export type AofCore = {
           }
         },
         {
-          "name": "vaultToken",
+          "name": "vault_token",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "upgradeExplorationTier",
+      "name": "upgrade_exploration_tier",
       "discriminator": [
         36,
         77,
@@ -8784,7 +7692,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "explorationState",
+          "name": "exploration_state",
           "writable": true,
           "pda": {
             "seeds": [
@@ -8818,40 +7726,40 @@ export type AofCore = {
           }
         },
         {
-          "name": "woodMint",
+          "name": "wood_mint",
           "writable": true
         },
         {
-          "name": "userWood",
+          "name": "user_wood",
           "writable": true
         },
         {
-          "name": "stoneMint",
+          "name": "stone_mint",
           "writable": true
         },
         {
-          "name": "userStone",
+          "name": "user_stone",
           "writable": true
         },
         {
-          "name": "foodMint",
+          "name": "food_mint",
           "writable": true
         },
         {
-          "name": "userFood",
+          "name": "user_food",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
     },
     {
-      "name": "weatherCrank",
+      "name": "weather_crank",
       "docs": [
-        "[БЛОК L] Обновление погоды (permissionless, раз в сутки)"
+        "[\u0411\u041b\u041e\u041a L] \u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u043f\u043e\u0433\u043e\u0434\u044b (permissionless, \u0440\u0430\u0437 \u0432 \u0441\u0443\u0442\u043a\u0438)"
       ],
       "discriminator": [
         116,
@@ -8865,45 +7773,26 @@ export type AofCore = {
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "cranker",
           "writable": true,
           "signer": true
         },
         {
-          "name": "weatherState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119,
-                  101,
-                  97,
-                  116,
-                  104,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
+          "name": "weather_state",
+          "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "withdrawGas",
+      "name": "withdraw_gas",
       "discriminator": [
         35,
         60,
@@ -8963,7 +7852,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -8975,7 +7864,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "mintResourceOnce",
+      "name": "mint_resource_once",
       "discriminator": [
         112,
         16,
@@ -8988,179 +7877,49 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
-          "name": "materialMints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "material_mints"
         },
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
+          "name": "auth"
         },
         {
           "name": "mint",
           "writable": true
         },
         {
-          "name": "tokenAccount",
+          "name": "token_account",
           "writable": true
         },
         {
-          "name": "treasuryToken",
+          "name": "treasury_token",
           "writable": true
         },
         {
           "name": "player",
-          "docs": [
-            "создаём с нулевыми перками — mint_resource не должен блокироваться",
-            "отсутствием профиля."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenAccount.owner",
-                "account": "tokenAccount"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "issuanceCap",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "kind"
-              }
-            ]
-          }
+          "name": "issuance_cap",
+          "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "rewardReceipt",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  119,
-                  97,
-                  114,
-                  100,
-                  95,
-                  114,
-                  101,
-                  99,
-                  101,
-                  105,
-                  112,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "rewardId"
-              }
-            ]
-          }
+          "name": "reward_receipt",
+          "writable": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -9169,7 +7928,7 @@ export type AofCore = {
           "name": "kind",
           "type": {
             "defined": {
-              "name": "resourceKind"
+              "name": "ResourceKind"
             }
           }
         },
@@ -9178,7 +7937,7 @@ export type AofCore = {
           "type": "u64"
         },
         {
-          "name": "rewardId",
+          "name": "reward_id",
           "type": {
             "array": [
               "u8",
@@ -9189,7 +7948,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "marketplaceBuyBounded",
+      "name": "marketplace_buy_bounded",
       "discriminator": [
         219,
         1,
@@ -9202,22 +7961,7 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "config"
         },
         {
           "name": "buyer",
@@ -9238,79 +7982,42 @@ export type AofCore = {
         },
         {
           "name": "tool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "listing",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  105,
-                  115,
-                  116,
-                  105,
-                  110,
-                  103
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "listingVault",
           "writable": true
         },
         {
-          "name": "buyerToken",
+          "name": "listing_vault",
           "writable": true
         },
         {
-          "name": "tokenProgram",
+          "name": "buyer_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "maxPriceLamports",
+          "name": "max_price_lamports",
           "type": "u64"
         },
         {
-          "name": "expiresAt",
+          "name": "expires_at",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "initIssuanceCap",
+      "name": "init_issuance_cap",
       "discriminator": [
         7,
         110,
@@ -9346,7 +8053,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "issuanceCap",
+          "name": "issuance_cap",
           "writable": true,
           "pda": {
             "seeds": [
@@ -9375,7 +8082,7 @@ export type AofCore = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -9384,22 +8091,22 @@ export type AofCore = {
           "name": "kind",
           "type": {
             "defined": {
-              "name": "resourceKind"
+              "name": "ResourceKind"
             }
           }
         },
         {
-          "name": "epochSlots",
+          "name": "epoch_slots",
           "type": "u64"
         },
         {
-          "name": "capPerEpoch",
+          "name": "cap_per_epoch",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "setIssuanceCap",
+      "name": "set_issuance_cap",
       "discriminator": [
         227,
         134,
@@ -9434,7 +8141,7 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "issuanceCap",
+          "name": "issuance_cap",
           "writable": true,
           "pda": {
             "seeds": [
@@ -9468,16 +8175,365 @@ export type AofCore = {
           "name": "kind",
           "type": {
             "defined": {
-              "name": "resourceKind"
+              "name": "ResourceKind"
             }
           }
         },
         {
-          "name": "epochSlots",
+          "name": "epoch_slots",
           "type": "u64"
         },
         {
-          "name": "capPerEpoch",
+          "name": "cap_per_epoch",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_pending_authority",
+      "discriminator": [
+        175,
+        71,
+        167,
+        223,
+        49,
+        144,
+        102,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_pending_authority",
+      "discriminator": [
+        155,
+        52,
+        245,
+        225,
+        85,
+        73,
+        58,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_mining_enabled",
+      "discriminator": [
+        240,
+        237,
+        205,
+        117,
+        79,
+        7,
+        125,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "init_vault_guard",
+      "discriminator": [
+        20,
+        12,
+        78,
+        107,
+        5,
+        169,
+        61,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault_guard",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch_slots",
+          "type": "u64"
+        },
+        {
+          "name": "cap_per_epoch",
+          "type": "u64"
+        },
+        {
+          "name": "max_per_tx",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_vault_guard",
+      "discriminator": [
+        188,
+        146,
+        45,
+        181,
+        231,
+        183,
+        48,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault_guard",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch_slots",
+          "type": "u64"
+        },
+        {
+          "name": "cap_per_epoch",
+          "type": "u64"
+        },
+        {
+          "name": "max_per_tx",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_supply_cap",
+      "discriminator": [
+        26,
+        229,
+        174,
+        213,
+        12,
+        59,
+        220,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "material_mints",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "ResourceKind"
+            }
+          }
+        },
+        {
+          "name": "max_supply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "register_collector_mint",
+      "discriminator": [
+        230,
+        133,
+        88,
+        35,
+        115,
+        148,
+        172,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "entry",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "CollectorKind"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "revoke_collector_mint",
+      "discriminator": [
+        45,
+        151,
+        59,
+        119,
+        159,
+        240,
+        101,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "entry",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_lottery_round",
+      "discriminator": [
+        134,
+        87,
+        211,
+        115,
+        122,
+        237,
+        217,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
           "type": "u64"
         }
       ]
@@ -9485,7 +8541,7 @@ export type AofCore = {
   ],
   "accounts": [
     {
-      "name": "auction",
+      "name": "Auction",
       "discriminator": [
         218,
         94,
@@ -9498,7 +8554,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "config",
+      "name": "Config",
       "discriminator": [
         155,
         12,
@@ -9511,7 +8567,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "craftEconomy",
+      "name": "CraftEconomy",
       "discriminator": [
         98,
         22,
@@ -9524,7 +8580,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "craftOrder",
+      "name": "CraftOrder",
       "discriminator": [
         13,
         150,
@@ -9537,7 +8593,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "enchantSlot",
+      "name": "EnchantSlot",
       "discriminator": [
         66,
         202,
@@ -9550,7 +8606,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "energyAccount",
+      "name": "EnergyAccount",
       "discriminator": [
         233,
         243,
@@ -9563,7 +8619,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "explorationCommit",
+      "name": "ExplorationCommit",
       "discriminator": [
         172,
         26,
@@ -9576,7 +8632,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "explorationState",
+      "name": "ExplorationState",
       "discriminator": [
         13,
         185,
@@ -9589,7 +8645,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "farmTile",
+      "name": "FarmTile",
       "discriminator": [
         214,
         122,
@@ -9602,7 +8658,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "forgeCommit",
+      "name": "ForgeCommit",
       "discriminator": [
         38,
         243,
@@ -9615,7 +8671,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "gasTank",
+      "name": "GasTank",
       "discriminator": [
         130,
         160,
@@ -9628,7 +8684,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "listing",
+      "name": "Listing",
       "discriminator": [
         218,
         32,
@@ -9641,7 +8697,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "lotteryRound",
+      "name": "LotteryRound",
       "discriminator": [
         35,
         19,
@@ -9654,7 +8710,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "lotteryTicket",
+      "name": "LotteryTicket",
       "discriminator": [
         228,
         213,
@@ -9667,7 +8723,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "materialMints",
+      "name": "MaterialMints",
       "discriminator": [
         69,
         169,
@@ -9680,7 +8736,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "millState",
+      "name": "MillState",
       "discriminator": [
         22,
         37,
@@ -9693,7 +8749,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "offer",
+      "name": "Offer",
       "discriminator": [
         215,
         88,
@@ -9706,7 +8762,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "ovenState",
+      "name": "OvenState",
       "discriminator": [
         204,
         31,
@@ -9719,7 +8775,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packCommit",
+      "name": "PackCommit",
       "discriminator": [
         198,
         228,
@@ -9732,7 +8788,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packConfig",
+      "name": "PackConfig",
       "discriminator": [
         124,
         1,
@@ -9745,7 +8801,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "player",
+      "name": "Player",
       "discriminator": [
         205,
         222,
@@ -9758,7 +8814,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rarityCounter",
+      "name": "RarityCounter",
       "discriminator": [
         45,
         47,
@@ -9771,7 +8827,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "referralLink",
+      "name": "ReferralLink",
       "discriminator": [
         30,
         231,
@@ -9784,7 +8840,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "referrerStats",
+      "name": "ReferrerStats",
       "discriminator": [
         181,
         235,
@@ -9797,7 +8853,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rentalAgreement",
+      "name": "RentalAgreement",
       "discriminator": [
         84,
         206,
@@ -9810,7 +8866,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rentalListing",
+      "name": "RentalListing",
       "discriminator": [
         76,
         239,
@@ -9823,7 +8879,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rerollCommit",
+      "name": "RerollCommit",
       "discriminator": [
         88,
         236,
@@ -9836,7 +8892,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rerollConfig",
+      "name": "RerollConfig",
       "discriminator": [
         115,
         207,
@@ -9849,7 +8905,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "resourceOrder",
+      "name": "ResourceOrder",
       "discriminator": [
         220,
         6,
@@ -9862,7 +8918,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "season",
+      "name": "Season",
       "discriminator": [
         76,
         67,
@@ -9875,7 +8931,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "seasonPass",
+      "name": "SeasonPass",
       "discriminator": [
         133,
         43,
@@ -9888,7 +8944,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "stakedCollector",
+      "name": "StakedCollector",
       "discriminator": [
         56,
         7,
@@ -9901,7 +8957,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "toolData",
+      "name": "ToolData",
       "discriminator": [
         81,
         51,
@@ -9914,7 +8970,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "weatherState",
+      "name": "WeatherState",
       "discriminator": [
         220,
         116,
@@ -9927,7 +8983,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "wellState",
+      "name": "WellState",
       "discriminator": [
         208,
         65,
@@ -9940,7 +8996,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rewardReceipt",
+      "name": "RewardReceipt",
       "discriminator": [
         116,
         154,
@@ -9953,7 +9009,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "issuanceCap",
+      "name": "IssuanceCap",
       "discriminator": [
         112,
         197,
@@ -9964,9 +9020,243 @@ export type AofCore = {
         180,
         96
       ]
+    },
+    {
+      "name": "VaultGuard",
+      "discriminator": [
+        220,
+        164,
+        5,
+        99,
+        166,
+        92,
+        59,
+        223
+      ]
+    },
+    {
+      "name": "CollectorAllowEntry",
+      "discriminator": [
+        9,
+        80,
+        117,
+        174,
+        23,
+        102,
+        54,
+        192
+      ]
+    },
+    {
+      "name": "LotteryTicketCounter",
+      "discriminator": [
+        126,
+        104,
+        207,
+        207,
+        130,
+        79,
+        224,
+        114
+      ]
     }
   ],
   "events": [
+    {
+      "name": "AuctionBid",
+      "discriminator": [
+        113,
+        186,
+        124,
+        132,
+        210,
+        152,
+        98,
+        191
+      ]
+    },
+    {
+      "name": "AuctionCreated",
+      "discriminator": [
+        133,
+        190,
+        194,
+        65,
+        172,
+        0,
+        70,
+        178
+      ]
+    },
+    {
+      "name": "AuctionSettled",
+      "discriminator": [
+        61,
+        151,
+        131,
+        170,
+        95,
+        203,
+        219,
+        147
+      ]
+    },
+    {
+      "name": "CollectorStaked",
+      "discriminator": [
+        119,
+        109,
+        3,
+        15,
+        186,
+        127,
+        185,
+        15
+      ]
+    },
+    {
+      "name": "CollectorUnstaked",
+      "discriminator": [
+        110,
+        6,
+        128,
+        255,
+        116,
+        95,
+        103,
+        167
+      ]
+    },
+    {
+      "name": "CraftEvent",
+      "discriminator": [
+        157,
+        113,
+        231,
+        112,
+        84,
+        151,
+        190,
+        130
+      ]
+    },
+    {
+      "name": "CraftOrderFulfilled",
+      "discriminator": [
+        150,
+        221,
+        178,
+        144,
+        73,
+        115,
+        46,
+        29
+      ]
+    },
+    {
+      "name": "ExplorationCompleted",
+      "discriminator": [
+        33,
+        185,
+        143,
+        12,
+        76,
+        137,
+        142,
+        255
+      ]
+    },
+    {
+      "name": "ForgeAttempted",
+      "discriminator": [
+        121,
+        198,
+        10,
+        106,
+        224,
+        195,
+        235,
+        72
+      ]
+    },
+    {
+      "name": "GasFeesSwept",
+      "discriminator": [
+        29,
+        224,
+        233,
+        42,
+        150,
+        4,
+        124,
+        136
+      ]
+    },
+    {
+      "name": "ListingCreated",
+      "discriminator": [
+        94,
+        164,
+        167,
+        255,
+        246,
+        186,
+        12,
+        96
+      ]
+    },
+    {
+      "name": "ListingSold",
+      "discriminator": [
+        199,
+        212,
+        98,
+        147,
+        91,
+        49,
+        85,
+        138
+      ]
+    },
+    {
+      "name": "LotteryClaimed",
+      "discriminator": [
+        4,
+        123,
+        87,
+        190,
+        39,
+        9,
+        228,
+        222
+      ]
+    },
+    {
+      "name": "LotteryDrawn",
+      "discriminator": [
+        38,
+        250,
+        156,
+        196,
+        171,
+        79,
+        154,
+        208
+      ]
+    },
+    {
+      "name": "LotteryTicketBought",
+      "discriminator": [
+        14,
+        53,
+        100,
+        96,
+        154,
+        172,
+        216,
+        160
+      ]
+    },
     {
       "name": "MiningCollected",
       "discriminator": [
@@ -9981,202 +9271,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "auctionBid",
-      "discriminator": [
-        113,
-        186,
-        124,
-        132,
-        210,
-        152,
-        98,
-        191
-      ]
-    },
-    {
-      "name": "auctionCreated",
-      "discriminator": [
-        133,
-        190,
-        194,
-        65,
-        172,
-        0,
-        70,
-        178
-      ]
-    },
-    {
-      "name": "auctionSettled",
-      "discriminator": [
-        61,
-        151,
-        131,
-        170,
-        95,
-        203,
-        219,
-        147
-      ]
-    },
-    {
-      "name": "collectorStaked",
-      "discriminator": [
-        119,
-        109,
-        3,
-        15,
-        186,
-        127,
-        185,
-        15
-      ]
-    },
-    {
-      "name": "collectorUnstaked",
-      "discriminator": [
-        110,
-        6,
-        128,
-        255,
-        116,
-        95,
-        103,
-        167
-      ]
-    },
-    {
-      "name": "craftOrderFulfilled",
-      "discriminator": [
-        150,
-        221,
-        178,
-        144,
-        73,
-        115,
-        46,
-        29
-      ]
-    },
-    {
-      "name": "explorationCompleted",
-      "discriminator": [
-        33,
-        185,
-        143,
-        12,
-        76,
-        137,
-        142,
-        255
-      ]
-    },
-    {
-      "name": "forgeAttempted",
-      "discriminator": [
-        121,
-        198,
-        10,
-        106,
-        224,
-        195,
-        235,
-        72
-      ]
-    },
-    {
-      "name": "forgeCommitExpired",
-      "discriminator": [
-        24,
-        244,
-        189,
-        74,
-        234,
-        139,
-        170,
-        174
-      ]
-    },
-    {
-      "name": "gasFeesSwept",
-      "discriminator": [
-        29,
-        224,
-        233,
-        42,
-        150,
-        4,
-        124,
-        136
-      ]
-    },
-    {
-      "name": "listingCreated",
-      "discriminator": [
-        94,
-        164,
-        167,
-        255,
-        246,
-        186,
-        12,
-        96
-      ]
-    },
-    {
-      "name": "listingSold",
-      "discriminator": [
-        199,
-        212,
-        98,
-        147,
-        91,
-        49,
-        85,
-        138
-      ]
-    },
-    {
-      "name": "lotteryClaimed",
-      "discriminator": [
-        4,
-        123,
-        87,
-        190,
-        39,
-        9,
-        228,
-        222
-      ]
-    },
-    {
-      "name": "lotteryDrawn",
-      "discriminator": [
-        38,
-        250,
-        156,
-        196,
-        171,
-        79,
-        154,
-        208
-      ]
-    },
-    {
-      "name": "lotteryTicketBought",
-      "discriminator": [
-        14,
-        53,
-        100,
-        96,
-        154,
-        172,
-        216,
-        160
-      ]
-    },
-    {
-      "name": "offerAccepted",
+      "name": "OfferAccepted",
       "discriminator": [
         81,
         238,
@@ -10189,7 +9284,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "offerCreated",
+      "name": "OfferCreated",
       "discriminator": [
         31,
         236,
@@ -10202,7 +9297,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "orderMatched",
+      "name": "OrderMatched",
       "discriminator": [
         211,
         0,
@@ -10215,7 +9310,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "orderPlaced",
+      "name": "OrderPlaced",
       "discriminator": [
         96,
         130,
@@ -10228,7 +9323,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packOpened",
+      "name": "PackOpened",
       "discriminator": [
         107,
         111,
@@ -10241,20 +9336,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packCommitExpired",
-      "discriminator": [
-        10,
-        107,
-        17,
-        86,
-        143,
-        248,
-        135,
-        69
-      ]
-    },
-    {
-      "name": "paidOut",
+      "name": "PaidOut",
       "discriminator": [
         6,
         137,
@@ -10267,7 +9349,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "referralBound",
+      "name": "ReferralBound",
       "discriminator": [
         12,
         28,
@@ -10280,7 +9362,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "referralPayout",
+      "name": "ReferralPayout",
       "discriminator": [
         29,
         218,
@@ -10293,7 +9375,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rentalEnded",
+      "name": "RentalEnded",
       "discriminator": [
         62,
         183,
@@ -10306,7 +9388,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rentalStarted",
+      "name": "RentalStarted",
       "discriminator": [
         61,
         99,
@@ -10319,7 +9401,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "rerollResult",
+      "name": "RerollResult",
       "discriminator": [
         37,
         127,
@@ -10332,7 +9414,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "seasonPassPurchased",
+      "name": "SeasonPassPurchased",
       "discriminator": [
         206,
         98,
@@ -10345,7 +9427,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "seasonRewardClaimed",
+      "name": "SeasonRewardClaimed",
       "discriminator": [
         77,
         35,
@@ -10358,7 +9440,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "staked",
+      "name": "Staked",
       "discriminator": [
         11,
         146,
@@ -10371,7 +9453,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "toolBurned",
+      "name": "ToolBurned",
       "discriminator": [
         194,
         234,
@@ -10384,7 +9466,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "toolCrafted",
+      "name": "ToolCrafted",
       "discriminator": [
         41,
         221,
@@ -10397,7 +9479,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "toolMinted",
+      "name": "ToolMinted",
       "discriminator": [
         175,
         54,
@@ -10410,7 +9492,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "toolRepaired",
+      "name": "ToolRepaired",
       "discriminator": [
         243,
         97,
@@ -10423,7 +9505,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "unstaked",
+      "name": "Unstaked",
       "discriminator": [
         27,
         179,
@@ -10436,7 +9518,33 @@ export type AofCore = {
       ]
     },
     {
-      "name": "resourceIssued",
+      "name": "PackCommitExpired",
+      "discriminator": [
+        10,
+        107,
+        17,
+        86,
+        143,
+        248,
+        135,
+        69
+      ]
+    },
+    {
+      "name": "ForgeCommitExpired",
+      "discriminator": [
+        24,
+        244,
+        189,
+        74,
+        234,
+        139,
+        170,
+        174
+      ]
+    },
+    {
+      "name": "ResourceIssued",
       "discriminator": [
         8,
         244,
@@ -10449,7 +9557,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "issuanceCapChanged",
+      "name": "IssuanceCapChanged",
       "discriminator": [
         120,
         48,
@@ -10462,7 +9570,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "pausedToggled",
+      "name": "PausedToggled",
       "discriminator": [
         77,
         42,
@@ -10475,7 +9583,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "feesUpdated",
+      "name": "FeesUpdated",
       "discriminator": [
         65,
         34,
@@ -10488,7 +9596,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "resourceMintsUpdated",
+      "name": "ResourceMintsUpdated",
       "discriminator": [
         68,
         174,
@@ -10501,7 +9609,7 @@ export type AofCore = {
       ]
     },
     {
-      "name": "craftEconomyUpdated",
+      "name": "CraftEconomyUpdated",
       "discriminator": [
         143,
         160,
@@ -10511,6 +9619,123 @@ export type AofCore = {
         207,
         14,
         80
+      ]
+    },
+    {
+      "name": "VaultWithdrawal",
+      "discriminator": [
+        168,
+        109,
+        95,
+        252,
+        76,
+        240,
+        237,
+        56
+      ]
+    },
+    {
+      "name": "VaultGuardChanged",
+      "discriminator": [
+        148,
+        53,
+        106,
+        37,
+        249,
+        53,
+        129,
+        8
+      ]
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "discriminator": [
+        76,
+        59,
+        57,
+        23,
+        22,
+        166,
+        253,
+        33
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "MiningToggled",
+      "discriminator": [
+        204,
+        172,
+        223,
+        195,
+        227,
+        64,
+        84,
+        70
+      ]
+    },
+    {
+      "name": "SupplyCapChanged",
+      "discriminator": [
+        21,
+        238,
+        14,
+        188,
+        169,
+        140,
+        177,
+        255
+      ]
+    },
+    {
+      "name": "CollectorMintRegistered",
+      "discriminator": [
+        239,
+        48,
+        54,
+        51,
+        192,
+        8,
+        98,
+        193
+      ]
+    },
+    {
+      "name": "PlayerCapacityChanged",
+      "discriminator": [
+        75,
+        199,
+        132,
+        60,
+        25,
+        243,
+        242,
+        249
+      ]
+    },
+    {
+      "name": "LotteryRoundRefunded",
+      "discriminator": [
+        102,
+        158,
+        253,
+        89,
+        139,
+        160,
+        166,
+        61
       ]
     }
   ],
@@ -10698,7 +9923,7 @@ export type AofCore = {
     {
       "code": 6036,
       "name": "CommitExpired",
-      "msg": "Commit has expired (SlotHashes window passed) — abort and refund"
+      "msg": "Commit has expired (SlotHashes window passed) \u2014 abort and refund"
     },
     {
       "code": 6037,
@@ -10773,7 +9998,7 @@ export type AofCore = {
     {
       "code": 6051,
       "name": "RentalGraceNotExpired",
-      "msg": "Rental is still active — cannot revoke without grace period"
+      "msg": "Rental is still active \u2014 cannot revoke without grace period"
     },
     {
       "code": 6052,
@@ -10837,220 +10062,273 @@ export type AofCore = {
     },
     {
       "code": 6064,
+      "name": "LotteryDrawAlreadyCommitted",
+      "msg": "Lottery draw is already committed"
+    },
+    {
+      "code": 6065,
       "name": "InvalidHash",
       "msg": "Revealed secret does not match committed hash"
     },
     {
-      "code": 6065,
+      "code": 6066,
       "name": "EnergyDepleted",
       "msg": "Energy account depleted"
     },
     {
-      "code": 6066,
+      "code": 6067,
       "name": "InsufficientEnergy",
       "msg": "Energy cost exceeds available balance"
     },
     {
-      "code": 6067,
+      "code": 6068,
       "name": "FarmTileBusy",
       "msg": "Farm tile is busy (growing)"
     },
     {
-      "code": 6068,
+      "code": 6069,
       "name": "FarmTileNotReady",
       "msg": "Farm tile is not ready for harvest"
     },
     {
-      "code": 6069,
+      "code": 6070,
       "name": "FarmTileEmpty",
       "msg": "Farm tile is empty (nothing planted)"
     },
     {
-      "code": 6070,
+      "code": 6071,
       "name": "ToolBusy",
       "msg": "Tool is busy (mining), cannot harvest"
     },
     {
-      "code": 6071,
+      "code": 6072,
       "name": "MillInProgress",
       "msg": "Mill has active batch in progress"
     },
     {
-      "code": 6072,
+      "code": 6073,
       "name": "MillNotReady",
       "msg": "Mill batch is not ready yet"
     },
     {
-      "code": 6073,
+      "code": 6074,
       "name": "OvenInProgress",
       "msg": "Oven has active batch in progress"
     },
     {
-      "code": 6074,
+      "code": 6075,
       "name": "OvenNotReady",
       "msg": "Oven batch is not ready yet"
     },
     {
-      "code": 6075,
+      "code": 6076,
       "name": "InvalidBatchSize",
       "msg": "Invalid batch size (must be 1, 2, or 3)"
     },
     {
-      "code": 6076,
+      "code": 6077,
       "name": "InvalidFuelKind",
       "msg": "Invalid fuel kind (must be 0=wood or 1=coal)"
     },
     {
-      "code": 6077,
+      "code": 6078,
       "name": "MaterialNotRegistered",
       "msg": "Material mint is not registered in MaterialMints PDA"
     },
     {
-      "code": 6078,
+      "code": 6079,
       "name": "WeatherAlreadyUpdated",
       "msg": "Weather state already updated for this day"
     },
     {
-      "code": 6079,
+      "code": 6080,
       "name": "WellEmpty",
       "msg": "Well has no water to collect"
     },
     {
-      "code": 6080,
+      "code": 6081,
       "name": "RecipeNotFound",
       "msg": "Recipe not found in RecipeConfig"
     },
     {
-      "code": 6081,
+      "code": 6082,
       "name": "FortuneBoostExpired",
       "msg": "Fortune boost has expired"
     },
     {
-      "code": 6082,
+      "code": 6083,
       "name": "FortuneBoostAlreadyActive",
       "msg": "Fortune boost is already active"
     },
     {
-      "code": 6083,
+      "code": 6084,
       "name": "LoveHeartNotTransferable",
       "msg": "Love heart is not transferable"
     },
     {
-      "code": 6084,
+      "code": 6085,
       "name": "InvalidAmount",
       "msg": "Invalid amount"
     },
     {
-      "code": 6085,
+      "code": 6086,
       "name": "DurabilityOverflow",
       "msg": "Durability overflow"
     },
     {
-      "code": 6086,
+      "code": 6087,
       "name": "InvalidWeatherSeed",
       "msg": "Invalid weather seed (must be derived from slot hash)"
     },
     {
-      "code": 6087,
+      "code": 6088,
       "name": "InvalidReveal",
       "msg": "Invalid reveal: hash mismatch"
     },
     {
-      "code": 6088,
+      "code": 6089,
       "name": "AlreadyRevealed",
       "msg": "Commit already revealed"
     },
     {
-      "code": 6089,
+      "code": 6090,
       "name": "InvalidFlaskType",
       "msg": "Invalid flask type"
     },
     {
-      "code": 6090,
+      "code": 6091,
       "name": "EnergyCapExceeded",
       "msg": "Energy cap exceeded"
     },
     {
-      "code": 6091,
+      "code": 6092,
       "name": "InvalidToolType",
       "msg": "Tool type is not valid for this instruction"
     },
     {
-      "code": 6092,
+      "code": 6093,
       "name": "InvalidProgramData",
       "msg": "Program data does not contain a valid upgrade authority"
     },
     {
-      "code": 6093,
+      "code": 6094,
       "name": "FeatureDisabled",
       "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
     },
     {
-      "code": 6094,
+      "code": 6095,
       "name": "CommitNotExpired",
       "msg": "Commit is still inside its reveal window; it cannot be expired yet"
     },
     {
-      "code": 6095,
-      "name": "priceLimitExceeded",
+      "code": 6096,
+      "name": "PriceLimitExceeded",
       "msg": "Listing price exceeds the signed maximum"
     },
     {
-      "code": 6096,
-      "name": "quoteExpired",
+      "code": 6097,
+      "name": "QuoteExpired",
       "msg": "Quote expired or its lifetime exceeds 300 seconds"
     },
     {
-      "code": 6097,
+      "code": 6098,
       "name": "IssuanceCapNotConfigured",
       "msg": "Issuance cap for this resource is not configured"
     },
     {
-      "code": 6098,
+      "code": 6099,
       "name": "IssuanceCapExceeded",
       "msg": "Issuance cap for this resource exceeded in the current epoch"
     },
     {
-      "code": 6099,
+      "code": 6100,
       "name": "InvalidIssuanceCapParams",
       "msg": "Issuance cap parameters out of bounds"
+    },
+    {
+      "code": 6101,
+      "name": "SupplyCapExceeded",
+      "msg": "Global supply cap for this resource would be exceeded"
+    },
+    {
+      "code": 6102,
+      "name": "VaultGuardNotConfigured",
+      "msg": "Vault withdrawal guard for this mint is not configured"
+    },
+    {
+      "code": 6103,
+      "name": "VaultGuardLimitExceeded",
+      "msg": "Vault withdrawal exceeds the per-transaction or per-epoch limit"
+    },
+    {
+      "code": 6104,
+      "name": "NotAResourceMint",
+      "msg": "Mint is not a configured resource mint; pay_out cannot move it"
+    },
+    {
+      "code": 6105,
+      "name": "InvalidVaultGuardParams",
+      "msg": "Vault withdrawal guard parameters out of bounds"
+    },
+    {
+      "code": 6106,
+      "name": "NoPendingAuthority",
+      "msg": "No authority rotation is pending"
+    },
+    {
+      "code": 6107,
+      "name": "NotPendingAuthority",
+      "msg": "Signer is not the pending authority"
+    },
+    {
+      "code": 6108,
+      "name": "MiningDisabled",
+      "msg": "Mining is disabled by the on-chain config"
+    },
+    {
+      "code": 6109,
+      "name": "CollectorMintNotAllowed",
+      "msg": "This NFT mint is not registered as a collector perk"
+    },
+    {
+      "code": 6110,
+      "name": "InvalidCapacityDelta",
+      "msg": "Capacity delta is out of bounds"
+    },
+    {
+      "code": 6111,
+      "name": "StillActive",
+      "msg": "Listing or auction is still active"
+    },
+    {
+      "code": 6112,
+      "name": "LotteryAlreadyDrawn",
+      "msg": "Lottery round has already been drawn"
+    },
+    {
+      "code": 6113,
+      "name": "LotteryRoundNotExpired",
+      "msg": "Lottery round refund timeout has not elapsed yet"
+    },
+    {
+      "code": 6114,
+      "name": "RandomnessDisabled",
+      "msg": "Randomness-dependent instruction is disabled until a VRF is integrated"
+    },
+    {
+      "code": 6115,
+      "name": "EmptyCraftOrder",
+      "msg": "Craft order must require at least one resource"
+    },
+    {
+      "code": 6116,
+      "name": "InvalidExplorationTier",
+      "msg": "Exploration tier is out of range"
     }
   ],
   "types": [
     {
-      "name": "MiningCollected",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "toolMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "resourceMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "hours",
-            "type": "u8"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "durabilityAfter",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "auction",
+      "name": "Auction",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11063,19 +10341,19 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "minBid",
+            "name": "min_bid",
             "type": "u64"
           },
           {
-            "name": "currentBid",
+            "name": "current_bid",
             "type": "u64"
           },
           {
-            "name": "currentBidder",
+            "name": "current_bidder",
             "type": "pubkey"
           },
           {
-            "name": "endTime",
+            "name": "end_time",
             "type": "i64"
           },
           {
@@ -11086,7 +10364,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "auctionBid",
+      "name": "AuctionBid",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11106,7 +10384,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "auctionCreated",
+      "name": "AuctionCreated",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11119,18 +10397,18 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "minBid",
+            "name": "min_bid",
             "type": "u64"
           },
           {
-            "name": "endTime",
+            "name": "end_time",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "auctionSettled",
+      "name": "AuctionSettled",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11150,21 +10428,21 @@ export type AofCore = {
       }
     },
     {
-      "name": "collectorKind",
+      "name": "CollectorKind",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "historian"
+            "name": "Historian"
           },
           {
-            "name": "medallion"
+            "name": "Medallion"
           }
         ]
       }
     },
     {
-      "name": "collectorStaked",
+      "name": "CollectorStaked",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11180,19 +10458,19 @@ export type AofCore = {
             "name": "kind",
             "type": {
               "defined": {
-                "name": "collectorKind"
+                "name": "CollectorKind"
               }
             }
           },
           {
-            "name": "unlockAt",
+            "name": "unlock_at",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "collectorUnstaked",
+      "name": "CollectorUnstaked",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11208,7 +10486,7 @@ export type AofCore = {
             "name": "kind",
             "type": {
               "defined": {
-                "name": "collectorKind"
+                "name": "CollectorKind"
               }
             }
           }
@@ -11216,7 +10494,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "config",
+      "name": "Config",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11229,23 +10507,35 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "foodMint",
+            "name": "food_mint",
             "type": "pubkey"
           },
           {
-            "name": "woodMint",
+            "name": "wood_mint",
             "type": "pubkey"
           },
           {
-            "name": "stoneMint",
+            "name": "stone_mint",
             "type": "pubkey"
           },
           {
-            "name": "craftFee",
+            "name": "seeds_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "water_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "potato_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "craft_fee",
             "type": "u64"
           },
           {
-            "name": "unstakeFee",
+            "name": "unstake_fee",
             "type": "u64"
           },
           {
@@ -11255,21 +10545,33 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "mining_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority_updated_at",
+            "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "craftEconomy",
+      "name": "CraftEconomy",
       "docs": [
-        "Настраиваемые параметры bonding-curve крафта (базы и множители по",
-        "редкости), меняются владельцем через set_craft_economy без редеплоя."
+        "\u041d\u0430\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u0435\u043c\u044b\u0435 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b bonding-curve \u043a\u0440\u0430\u0444\u0442\u0430 (\u0431\u0430\u0437\u044b \u0438 \u043c\u043d\u043e\u0436\u0438\u0442\u0435\u043b\u0438 \u043f\u043e",
+        "\u0440\u0435\u0434\u043a\u043e\u0441\u0442\u0438), \u043c\u0435\u043d\u044f\u044e\u0442\u0441\u044f \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0435\u043c \u0447\u0435\u0440\u0435\u0437 set_craft_economy \u0431\u0435\u0437 \u0440\u0435\u0434\u0435\u043f\u043b\u043e\u044f."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "woodBase",
+            "name": "wood_base",
             "type": {
               "array": [
                 "u64",
@@ -11278,7 +10580,7 @@ export type AofCore = {
             }
           },
           {
-            "name": "stoneBase",
+            "name": "stone_base",
             "type": {
               "array": [
                 "u64",
@@ -11287,7 +10589,7 @@ export type AofCore = {
             }
           },
           {
-            "name": "woodMult",
+            "name": "food_base",
             "type": {
               "array": [
                 "u64",
@@ -11296,7 +10598,79 @@ export type AofCore = {
             }
           },
           {
-            "name": "stoneMult",
+            "name": "seeds_base",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "water_base",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "potato_base",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "wood_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "stone_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "food_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "seeds_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "water_mult",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "potato_mult",
             "type": {
               "array": [
                 "u64",
@@ -11312,7 +10686,51 @@ export type AofCore = {
       }
     },
     {
-      "name": "craftOrder",
+      "name": "CraftEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "tool_type",
+            "type": "string"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "wood_cost",
+            "type": "u64"
+          },
+          {
+            "name": "stone_cost",
+            "type": "u64"
+          },
+          {
+            "name": "food_cost",
+            "type": "u64"
+          },
+          {
+            "name": "seeds_cost",
+            "type": "u64"
+          },
+          {
+            "name": "water_cost",
+            "type": "u64"
+          },
+          {
+            "name": "potato_cost",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CraftOrder",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11321,15 +10739,15 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "woodNeeded",
+            "name": "wood_needed",
             "type": "u64"
           },
           {
-            "name": "stoneNeeded",
+            "name": "stone_needed",
             "type": "u64"
           },
           {
-            "name": "premiumLamports",
+            "name": "premium_lamports",
             "type": "u64"
           },
           {
@@ -11340,7 +10758,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "craftOrderFulfilled",
+      "name": "CraftOrderFulfilled",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11353,23 +10771,23 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "premiumLamports",
+            "name": "premium_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "enchantSlot",
+      "name": "EnchantSlot",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "toolMint",
+            "name": "tool_mint",
             "type": "pubkey"
           },
           {
-            "name": "slotType",
+            "name": "slot_type",
             "type": "u8"
           },
           {
@@ -11380,9 +10798,9 @@ export type AofCore = {
       }
     },
     {
-      "name": "energyAccount",
+      "name": "EnergyAccount",
       "docs": [
-        "EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)"
+        "EnergyAccount \u2014 \u043b\u0435\u043d\u0438\u0432\u0430\u044f \u044d\u043d\u0435\u0440\u0433\u0438\u044f \u0438\u0433\u0440\u043e\u043a\u0430 (\u0440\u0435\u0433\u0435\u043d +1 \u0437\u0430 30 \u043c\u0438\u043d \u0434\u043e \u043a\u0430\u043f\u0430 20)"
       ],
       "type": {
         "kind": "struct",
@@ -11396,7 +10814,7 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "lastRegenAt",
+            "name": "last_regen_at",
             "type": "i64"
           },
           {
@@ -11406,12 +10824,20 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
+            "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "explorationCommit",
+      "name": "ExplorationCommit",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11420,11 +10846,11 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "toolMint",
+            "name": "tool_mint",
             "type": "pubkey"
           },
           {
-            "name": "commitHash",
+            "name": "commit_hash",
             "type": {
               "array": [
                 "u8",
@@ -11433,14 +10859,14 @@ export type AofCore = {
             }
           },
           {
-            "name": "commitSlot",
+            "name": "commit_slot",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "explorationCompleted",
+      "name": "ExplorationCompleted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11449,7 +10875,7 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "toolMint",
+            "name": "tool_mint",
             "type": "pubkey"
           },
           {
@@ -11457,18 +10883,18 @@ export type AofCore = {
             "type": "bool"
           },
           {
-            "name": "woodReward",
+            "name": "wood_reward",
             "type": "u64"
           },
           {
-            "name": "stoneReward",
+            "name": "stone_reward",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "explorationState",
+      "name": "ExplorationState",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11481,24 +10907,24 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "lastTripAt",
+            "name": "last_trip_at",
             "type": "i64"
           },
           {
-            "name": "tripsToday",
+            "name": "trips_today",
             "type": "u8"
           },
           {
-            "name": "dayStart",
+            "name": "day_start",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "farmTile",
+      "name": "FarmTile",
       "docs": [
-        "FarmTile — состояние полевого тайла (пусто/растёт/готово)"
+        "FarmTile \u2014 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u043f\u043e\u043b\u0435\u0432\u043e\u0433\u043e \u0442\u0430\u0439\u043b\u0430 (\u043f\u0443\u0441\u0442\u043e/\u0440\u0430\u0441\u0442\u0451\u0442/\u0433\u043e\u0442\u043e\u0432\u043e)"
       ],
       "type": {
         "kind": "struct",
@@ -11512,26 +10938,34 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "plantedAt",
+            "name": "planted_at",
             "type": "i64"
           },
           {
-            "name": "readyAt",
+            "name": "ready_at",
             "type": "i64"
           },
           {
-            "name": "seedsAmount",
+            "name": "seeds_amount",
             "type": "u64"
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "forgeAttempted",
+      "name": "ForgeAttempted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11540,19 +10974,19 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "toolMint",
+            "name": "tool_mint",
             "type": "pubkey"
           },
           {
-            "name": "slotType",
+            "name": "slot_type",
             "type": "u8"
           },
           {
-            "name": "levelBefore",
+            "name": "level_before",
             "type": "u8"
           },
           {
-            "name": "levelAfter",
+            "name": "level_after",
             "type": "u8"
           },
           {
@@ -11563,7 +10997,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "forgeCommitExpired",
+      "name": "ForgeCommit",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11572,47 +11006,15 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "toolMint",
+            "name": "tool_mint",
             "type": "pubkey"
           },
           {
-            "name": "slotType",
+            "name": "slot_type",
             "type": "u8"
           },
           {
-            "name": "refundedLamports",
-            "type": "u64"
-          },
-          {
-            "name": "woodRefunded",
-            "type": "u64"
-          },
-          {
-            "name": "stoneRefunded",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "forgeCommit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "toolMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "slotType",
-            "type": "u8"
-          },
-          {
-            "name": "commitHash",
+            "name": "commit_hash",
             "type": {
               "array": [
                 "u8",
@@ -11621,30 +11023,30 @@ export type AofCore = {
             }
           },
           {
-            "name": "commitSlot",
+            "name": "commit_slot",
             "type": "u64"
           },
           {
-            "name": "useProtector",
+            "name": "use_protector",
             "type": "bool"
           },
           {
-            "name": "paidLamports",
+            "name": "paid_lamports",
             "type": "u64"
           },
           {
-            "name": "woodBurned",
+            "name": "wood_burned",
             "type": "u64"
           },
           {
-            "name": "stoneBurned",
+            "name": "stone_burned",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "gasFeesSwept",
+      "name": "GasFeesSwept",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11653,14 +11055,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "amountLamports",
+            "name": "amount_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "gasTank",
+      "name": "GasTank",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11669,18 +11071,22 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "balanceMicros",
+            "name": "balance_micros",
             "type": "u64"
           },
           {
-            "name": "cooldownUntil",
+            "name": "cooldown_until",
             "type": "i64"
+          },
+          {
+            "name": "dust_lamports",
+            "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "listing",
+      "name": "Listing",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11693,7 +11099,7 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           },
           {
@@ -11704,7 +11110,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "listingCreated",
+      "name": "ListingCreated",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11717,14 +11123,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "listingSold",
+      "name": "ListingSold",
       "type": {
         "kind": "struct",
         "fields": [
@@ -11741,19 +11147,19 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "lotteryClaimed",
+      "name": "LotteryClaimed",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "roundId",
+            "name": "round_id",
             "type": "u64"
           },
           {
@@ -11768,44 +11174,44 @@ export type AofCore = {
       }
     },
     {
-      "name": "lotteryDrawn",
+      "name": "LotteryDrawn",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "roundId",
+            "name": "round_id",
             "type": "u64"
           },
           {
-            "name": "winningTicket",
+            "name": "winning_ticket",
             "type": "u64"
           },
           {
-            "name": "poolLamports",
+            "name": "pool_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "lotteryRound",
+      "name": "LotteryRound",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "roundId",
+            "name": "round_id",
             "type": "u64"
           },
           {
-            "name": "poolLamports",
+            "name": "pool_lamports",
             "type": "u64"
           },
           {
-            "name": "ticketsSold",
+            "name": "tickets_sold",
             "type": "u64"
           },
           {
-            "name": "drawSlot",
+            "name": "draw_slot",
             "type": "u64"
           },
           {
@@ -11813,7 +11219,7 @@ export type AofCore = {
             "type": "bool"
           },
           {
-            "name": "winningTicket",
+            "name": "winning_ticket",
             "type": "u64"
           },
           {
@@ -11825,15 +11231,19 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "drawCommitted",
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "draw_committed",
             "type": "bool"
           },
           {
-            "name": "drawCommitSlot",
+            "name": "draw_commit_slot",
             "type": "u64"
           },
           {
-            "name": "drawCommitHash",
+            "name": "draw_commit_hash",
             "type": {
               "array": [
                 "u8",
@@ -11845,16 +11255,16 @@ export type AofCore = {
       }
     },
     {
-      "name": "lotteryTicket",
+      "name": "LotteryTicket",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "roundId",
+            "name": "round_id",
             "type": "u64"
           },
           {
-            "name": "ticketNumber",
+            "name": "ticket_number",
             "type": "u64"
           },
           {
@@ -11865,12 +11275,12 @@ export type AofCore = {
       }
     },
     {
-      "name": "lotteryTicketBought",
+      "name": "LotteryTicketBought",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "roundId",
+            "name": "round_id",
             "type": "u64"
           },
           {
@@ -11878,16 +11288,16 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "ticketNumber",
+            "name": "ticket_number",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "materialMints",
+      "name": "MaterialMints",
       "docs": [
-        "MaterialMints — singleton PDA, хранит адреса всех 23 минтов ресурсов"
+        "MaterialMints \u2014 singleton PDA, \u0445\u0440\u0430\u043d\u0438\u0442 \u0430\u0434\u0440\u0435\u0441\u0430 \u0432\u0441\u0435\u0445 23 \u043c\u0438\u043d\u0442\u043e\u0432 \u0440\u0435\u0441\u0443\u0440\u0441\u043e\u0432"
       ],
       "type": {
         "kind": "struct",
@@ -11921,80 +11331,89 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "stoneBlue",
+            "name": "stone_blue",
             "type": "pubkey"
           },
           {
-            "name": "stonePurple",
+            "name": "stone_purple",
             "type": "pubkey"
           },
           {
-            "name": "stoneRed",
+            "name": "stone_red",
             "type": "pubkey"
           },
           {
-            "name": "sandWhite",
+            "name": "sand_white",
             "type": "pubkey"
           },
           {
-            "name": "sandPink",
+            "name": "sand_pink",
             "type": "pubkey"
           },
           {
-            "name": "sandYellow",
+            "name": "sand_yellow",
             "type": "pubkey"
           },
           {
-            "name": "gemBlue",
+            "name": "gem_blue",
             "type": "pubkey"
           },
           {
-            "name": "gemOrange",
+            "name": "gem_orange",
             "type": "pubkey"
           },
           {
-            "name": "gemWhite",
+            "name": "gem_white",
             "type": "pubkey"
           },
           {
-            "name": "gemGreen",
+            "name": "gem_green",
             "type": "pubkey"
           },
           {
-            "name": "flaskBlue",
+            "name": "flask_blue",
             "type": "pubkey"
           },
           {
-            "name": "flaskYellow",
+            "name": "flask_yellow",
             "type": "pubkey"
           },
           {
-            "name": "flaskGreen",
+            "name": "flask_green",
             "type": "pubkey"
           },
           {
-            "name": "flaskPink",
+            "name": "flask_pink",
             "type": "pubkey"
           },
           {
-            "name": "flaskPurple",
+            "name": "flask_purple",
             "type": "pubkey"
           },
           {
-            "name": "loveHeart",
+            "name": "love_heart",
             "type": "pubkey"
           },
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "max_supply",
+            "type": {
+              "array": [
+                "u64",
+                27
+              ]
+            }
           }
         ]
       }
     },
     {
-      "name": "millState",
+      "name": "MillState",
       "docs": [
-        "MillState — мельница игрока (одна активная партия одновременно)"
+        "MillState \u2014 \u043c\u0435\u043b\u044c\u043d\u0438\u0446\u0430 \u0438\u0433\u0440\u043e\u043a\u0430 (\u043e\u0434\u043d\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u0430\u044f \u043f\u0430\u0440\u0442\u0438\u044f \u043e\u0434\u043d\u043e\u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e)"
       ],
       "type": {
         "kind": "struct",
@@ -12004,26 +11423,66 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "inProgress",
+            "name": "in_progress",
             "type": "bool"
           },
           {
-            "name": "readyAt",
+            "name": "ready_at",
             "type": "i64"
           },
           {
-            "name": "outputFlour",
+            "name": "output_flour",
             "type": "u64"
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "offer",
+      "name": "MiningCollected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "tool_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "resource_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "hours",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "durability_after",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Offer",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12036,7 +11495,7 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           },
           {
@@ -12047,7 +11506,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "offerAccepted",
+      "name": "OfferAccepted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12064,14 +11523,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "offerCreated",
+      "name": "OfferCreated",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12084,23 +11543,23 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "orderMatched",
+      "name": "OrderMatched",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "buyOrder",
+            "name": "buy_order",
             "type": "pubkey"
           },
           {
-            "name": "sellOrder",
+            "name": "sell_order",
             "type": "pubkey"
           },
           {
@@ -12108,14 +11567,14 @@ export type AofCore = {
             "type": "u64"
           },
           {
-            "name": "priceLamportsPerUnit",
+            "name": "price_lamports_per_unit",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "orderPlaced",
+      "name": "OrderPlaced",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12124,11 +11583,11 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "isBuy",
+            "name": "is_buy",
             "type": "bool"
           },
           {
-            "name": "priceLamportsPerUnit",
+            "name": "price_lamports_per_unit",
             "type": "u64"
           },
           {
@@ -12139,9 +11598,9 @@ export type AofCore = {
       }
     },
     {
-      "name": "ovenState",
+      "name": "OvenState",
       "docs": [
-        "OvenState — печь игрока (одна активная партия одновременно)"
+        "OvenState \u2014 \u043f\u0435\u0447\u044c \u0438\u0433\u0440\u043e\u043a\u0430 (\u043e\u0434\u043d\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u0430\u044f \u043f\u0430\u0440\u0442\u0438\u044f \u043e\u0434\u043d\u043e\u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e)"
       ],
       "type": {
         "kind": "struct",
@@ -12151,30 +11610,38 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "inProgress",
+            "name": "in_progress",
             "type": "bool"
           },
           {
-            "name": "readyAt",
+            "name": "ready_at",
             "type": "i64"
           },
           {
-            "name": "outputBread",
+            "name": "output_bread",
             "type": "u64"
           },
           {
-            "name": "fuelKind",
+            "name": "fuel_kind",
             "type": "u8"
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "packCommit",
+      "name": "PackCommit",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12187,11 +11654,11 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "packType",
+            "name": "pack_type",
             "type": "u8"
           },
           {
-            "name": "commitHash",
+            "name": "commit_hash",
             "type": {
               "array": [
                 "u8",
@@ -12200,7 +11667,7 @@ export type AofCore = {
             }
           },
           {
-            "name": "commitSlot",
+            "name": "commit_slot",
             "type": "u64"
           },
           {
@@ -12208,27 +11675,27 @@ export type AofCore = {
             "type": "bool"
           },
           {
-            "name": "paidLamports",
+            "name": "paid_lamports",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "packConfig",
+      "name": "PackConfig",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "packType",
+            "name": "pack_type",
             "type": "u8"
           },
           {
-            "name": "priceLamports",
+            "name": "price_lamports",
             "type": "u64"
           },
           {
-            "name": "oddsBps",
+            "name": "odds_bps",
             "type": {
               "array": [
                 "u16",
@@ -12239,12 +11706,20 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
+            "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "packOpened",
+      "name": "PackOpened",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12257,67 +11732,43 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "packType",
+            "name": "pack_type",
             "type": "u8"
           },
           {
             "name": "rarity",
             "type": {
               "defined": {
-                "name": "rarity"
+                "name": "Rarity"
               }
             }
           },
           {
-            "name": "toolType",
+            "name": "tool_type",
             "type": "string"
           }
         ]
       }
     },
     {
-      "name": "packCommitExpired",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "packType",
-            "type": "u8"
-          },
-          {
-            "name": "refundedLamports",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "packType",
+      "name": "PackType",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "small"
+            "name": "Small"
           },
           {
-            "name": "medium"
+            "name": "Medium"
           },
           {
-            "name": "big"
+            "name": "Big"
           }
         ]
       }
     },
     {
-      "name": "paidOut",
+      "name": "PaidOut",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12330,14 +11781,14 @@ export type AofCore = {
             "type": "u64"
           },
           {
-            "name": "vaultBalanceAfter",
+            "name": "vault_balance_after",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "player",
+      "name": "Player",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12346,11 +11797,11 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "cooldownUntil",
+            "name": "cooldown_until",
             "type": "i64"
           },
           {
-            "name": "hasTent",
+            "name": "has_tent",
             "type": "bool"
           },
           {
@@ -12358,51 +11809,51 @@ export type AofCore = {
             "type": "u32"
           },
           {
-            "name": "villagersAvailable",
+            "name": "villagers_available",
             "type": "u32"
           },
           {
-            "name": "historianCount",
+            "name": "historian_count",
             "type": "u8"
           },
           {
-            "name": "medallionCount",
+            "name": "medallion_count",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "rarity",
+      "name": "Rarity",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "common"
+            "name": "Common"
           },
           {
-            "name": "uncommon"
+            "name": "Uncommon"
           },
           {
-            "name": "rare"
+            "name": "Rare"
           },
           {
-            "name": "epic"
+            "name": "Epic"
           },
           {
-            "name": "legendary"
+            "name": "Legendary"
           }
         ]
       }
     },
     {
-      "name": "rarityCounter",
+      "name": "RarityCounter",
       "docs": [
-        "Глобальный счётчик заминченных инструментов по редкости — bonding-curve",
-        "эскалация цены крафта. [ФАКТ, из аудита index.js реального Ronin-бэкенда]:",
-        "там цена крафта росла как `cost.wood + mintedCount * mult`; в присланных",
-        "файлах этой механики не было вовсе (craft ничего не тратил, кроме",
-        "фикс. SOL-комиссии) — восстанавливаю на Solana."
+        "\u0413\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u044b\u0439 \u0441\u0447\u0451\u0442\u0447\u0438\u043a \u0437\u0430\u043c\u0438\u043d\u0447\u0435\u043d\u043d\u044b\u0445 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u043e\u0432 \u043f\u043e \u0440\u0435\u0434\u043a\u043e\u0441\u0442\u0438 \u2014 bonding-curve",
+        "\u044d\u0441\u043a\u0430\u043b\u0430\u0446\u0438\u044f \u0446\u0435\u043d\u044b \u043a\u0440\u0430\u0444\u0442\u0430. [\u0424\u0410\u041a\u0422, \u0438\u0437 \u0430\u0443\u0434\u0438\u0442\u0430 index.js \u0440\u0435\u0430\u043b\u044c\u043d\u043e\u0433\u043e Ronin-\u0431\u044d\u043a\u0435\u043d\u0434\u0430]:",
+        "\u0442\u0430\u043c \u0446\u0435\u043d\u0430 \u043a\u0440\u0430\u0444\u0442\u0430 \u0440\u043e\u0441\u043b\u0430 \u043a\u0430\u043a `cost.wood + mintedCount * mult`; \u0432 \u043f\u0440\u0438\u0441\u043b\u0430\u043d\u043d\u044b\u0445",
+        "\u0444\u0430\u0439\u043b\u0430\u0445 \u044d\u0442\u043e\u0439 \u043c\u0435\u0445\u0430\u043d\u0438\u043a\u0438 \u043d\u0435 \u0431\u044b\u043b\u043e \u0432\u043e\u0432\u0441\u0435 (craft \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0442\u0440\u0430\u0442\u0438\u043b, \u043a\u0440\u043e\u043c\u0435",
+        "\u0444\u0438\u043a\u0441. SOL-\u043a\u043e\u043c\u0438\u0441\u0441\u0438\u0438) \u2014 \u0432\u043e\u0441\u0441\u0442\u0430\u043d\u0430\u0432\u043b\u0438\u0432\u0430\u044e \u043d\u0430 Solana."
       ],
       "type": {
         "kind": "struct",
@@ -12412,14 +11863,14 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "mintedCount",
+            "name": "minted_count",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "referralBound",
+      "name": "ReferralBound",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12435,7 +11886,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "referralLink",
+      "name": "ReferralLink",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12452,14 +11903,14 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "boundAt",
+            "name": "bound_at",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "referralPayout",
+      "name": "ReferralPayout",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12479,7 +11930,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "referrerStats",
+      "name": "ReferrerStats",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12488,14 +11939,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "activeCount",
+            "name": "active_count",
             "type": "u32"
           }
         ]
       }
     },
     {
-      "name": "rentalAgreement",
+      "name": "RentalAgreement",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12520,14 +11971,14 @@ export type AofCore = {
             "type": "i64"
           },
           {
-            "name": "revokeRequestedAt",
+            "name": "revoke_requested_at",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "rentalEnded",
+      "name": "RentalEnded",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12543,7 +11994,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "rentalListing",
+      "name": "RentalListing",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12556,18 +12007,18 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "ownerSplitBps",
+            "name": "owner_split_bps",
             "docs": [
-              "[ФИКС] Доля владельца от платы за аренду (0..=10000 bps), читается в start_handler"
+              "[\u0424\u0418\u041a\u0421] \u0414\u043e\u043b\u044f \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0430 \u043e\u0442 \u043f\u043b\u0430\u0442\u044b \u0437\u0430 \u0430\u0440\u0435\u043d\u0434\u0443 (0..=10000 bps), \u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044f \u0432 start_handler"
             ],
             "type": "u16"
           },
           {
-            "name": "minDuration",
+            "name": "min_duration",
             "type": "i64"
           },
           {
-            "name": "maxDuration",
+            "name": "max_duration",
             "type": "i64"
           },
           {
@@ -12575,9 +12026,9 @@ export type AofCore = {
             "type": "bool"
           },
           {
-            "name": "pricePerHourLamports",
+            "name": "price_per_hour_lamports",
             "docs": [
-              "[ФИКС] Цена аренды за час в lamports (раньше аренда была бесплатной)"
+              "[\u0424\u0418\u041a\u0421] \u0426\u0435\u043d\u0430 \u0430\u0440\u0435\u043d\u0434\u044b \u0437\u0430 \u0447\u0430\u0441 \u0432 lamports (\u0440\u0430\u043d\u044c\u0448\u0435 \u0430\u0440\u0435\u043d\u0434\u0430 \u0431\u044b\u043b\u0430 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e\u0439)"
             ],
             "type": "u64"
           }
@@ -12585,7 +12036,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "rentalStarted",
+      "name": "RentalStarted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12602,14 +12053,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "endTime",
+            "name": "end_time",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "rerollCommit",
+      "name": "RerollCommit",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12618,15 +12069,15 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "burnMint",
+            "name": "burn_mint",
             "type": "pubkey"
           },
           {
-            "name": "newMint",
+            "name": "new_mint",
             "type": "pubkey"
           },
           {
-            "name": "commitHash",
+            "name": "commit_hash",
             "type": {
               "array": [
                 "u8",
@@ -12635,19 +12086,19 @@ export type AofCore = {
             }
           },
           {
-            "name": "commitSlot",
+            "name": "commit_slot",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "rerollConfig",
+      "name": "RerollConfig",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "oddsBps",
+            "name": "odds_bps",
             "type": {
               "array": [
                 "u16",
@@ -12658,12 +12109,20 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
+            "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "rerollResult",
+      "name": "RerollResult",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12672,119 +12131,119 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "burnedMint",
+            "name": "burned_mint",
             "type": "pubkey"
           },
           {
-            "name": "newMint",
+            "name": "new_mint",
             "type": "pubkey"
           },
           {
             "name": "rarity",
             "type": {
               "defined": {
-                "name": "rarity"
+                "name": "Rarity"
               }
             }
           },
           {
-            "name": "toolType",
+            "name": "tool_type",
             "type": "string"
           }
         ]
       }
     },
     {
-      "name": "resourceKind",
+      "name": "ResourceKind",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "food"
+            "name": "Food"
           },
           {
-            "name": "wood"
+            "name": "Wood"
           },
           {
-            "name": "stone"
+            "name": "Stone"
           },
           {
-            "name": "seeds"
+            "name": "Seeds"
           },
           {
-            "name": "wheat"
+            "name": "Wheat"
           },
           {
-            "name": "flour"
+            "name": "Flour"
           },
           {
-            "name": "bread"
+            "name": "Bread"
           },
           {
-            "name": "water"
+            "name": "Water"
           },
           {
-            "name": "coal"
+            "name": "Coal"
           },
           {
-            "name": "meat"
+            "name": "Meat"
           },
           {
-            "name": "stoneBlue"
+            "name": "StoneBlue"
           },
           {
-            "name": "stonePurple"
+            "name": "StonePurple"
           },
           {
-            "name": "stoneRed"
+            "name": "StoneRed"
           },
           {
-            "name": "sandWhite"
+            "name": "SandWhite"
           },
           {
-            "name": "sandPink"
+            "name": "SandPink"
           },
           {
-            "name": "sandYellow"
+            "name": "SandYellow"
           },
           {
-            "name": "gemBlue"
+            "name": "GemBlue"
           },
           {
-            "name": "gemOrange"
+            "name": "GemOrange"
           },
           {
-            "name": "gemWhite"
+            "name": "GemWhite"
           },
           {
-            "name": "gemGreen"
+            "name": "GemGreen"
           },
           {
-            "name": "flaskBlue"
+            "name": "FlaskBlue"
           },
           {
-            "name": "flaskYellow"
+            "name": "FlaskYellow"
           },
           {
-            "name": "flaskGreen"
+            "name": "FlaskGreen"
           },
           {
-            "name": "flaskPink"
+            "name": "FlaskPink"
           },
           {
-            "name": "flaskPurple"
+            "name": "FlaskPurple"
           },
           {
-            "name": "loveHeart"
+            "name": "LoveHeart"
           },
           {
-            "name": "potato"
+            "name": "Potato"
           }
         ]
       }
     },
     {
-      "name": "resourceOrder",
+      "name": "ResourceOrder",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12797,15 +12256,15 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "isBuy",
+            "name": "is_buy",
             "type": "bool"
           },
           {
-            "name": "priceLamportsPerUnit",
+            "name": "price_lamports_per_unit",
             "type": "u64"
           },
           {
-            "name": "amountRemaining",
+            "name": "amount_remaining",
             "type": "u64"
           },
           {
@@ -12816,27 +12275,35 @@ export type AofCore = {
       }
     },
     {
-      "name": "season",
+      "name": "Season",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "seasonId",
+            "name": "season_id",
             "type": "u32"
           },
           {
-            "name": "startTime",
+            "name": "start_time",
             "type": "i64"
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "seasonPass",
+      "name": "SeasonPass",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12845,7 +12312,7 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "seasonId",
+            "name": "season_id",
             "type": "u32"
           },
           {
@@ -12857,14 +12324,14 @@ export type AofCore = {
             "type": "bool"
           },
           {
-            "name": "claimedBitmap",
+            "name": "claimed_bitmap",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "seasonPassPurchased",
+      "name": "SeasonPassPurchased",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12873,14 +12340,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "seasonId",
+            "name": "season_id",
             "type": "u32"
           }
         ]
       }
     },
     {
-      "name": "seasonRewardClaimed",
+      "name": "SeasonRewardClaimed",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12896,7 +12363,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "staked",
+      "name": "Staked",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12912,7 +12379,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "stakedCollector",
+      "name": "StakedCollector",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12928,19 +12395,19 @@ export type AofCore = {
             "name": "kind",
             "type": {
               "defined": {
-                "name": "collectorKind"
+                "name": "CollectorKind"
               }
             }
           },
           {
-            "name": "unlockAt",
+            "name": "unlock_at",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "toolBurned",
+      "name": "ToolBurned",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12956,7 +12423,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "toolCrafted",
+      "name": "ToolCrafted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -12965,38 +12432,38 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "burnedMint",
+            "name": "burned_mint",
             "type": "pubkey"
           },
           {
-            "name": "mintedMint",
+            "name": "minted_mint",
             "type": "pubkey"
           },
           {
             "name": "rarity",
             "type": {
               "defined": {
-                "name": "rarity"
+                "name": "Rarity"
               }
             }
           },
           {
-            "name": "woodCost",
+            "name": "wood_cost",
             "type": "u64"
           },
           {
-            "name": "stoneCost",
+            "name": "stone_cost",
             "type": "u64"
           },
           {
-            "name": "mintedCountAfter",
+            "name": "minted_count_after",
             "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "toolData",
+      "name": "ToolData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13009,14 +12476,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "toolType",
+            "name": "tool_type",
             "type": "string"
           },
           {
             "name": "rarity",
             "type": {
               "defined": {
-                "name": "rarity"
+                "name": "Rarity"
               }
             }
           },
@@ -13025,15 +12492,15 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "isMining",
+            "name": "is_mining",
             "type": "bool"
           },
           {
-            "name": "miningEnd",
+            "name": "mining_end",
             "type": "i64"
           },
           {
-            "name": "lastMinedHours",
+            "name": "last_mined_hours",
             "type": "u8"
           },
           {
@@ -13041,7 +12508,7 @@ export type AofCore = {
             "type": "bool"
           },
           {
-            "name": "unlockAt",
+            "name": "unlock_at",
             "type": "i64"
           },
           {
@@ -13052,7 +12519,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "toolMinted",
+      "name": "ToolMinted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13065,14 +12532,14 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "toolType",
+            "name": "tool_type",
             "type": "string"
           },
           {
             "name": "rarity",
             "type": {
               "defined": {
-                "name": "rarity"
+                "name": "Rarity"
               }
             }
           }
@@ -13080,7 +12547,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "toolRepaired",
+      "name": "ToolRepaired",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13089,26 +12556,30 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "mint",
+            "name": "tool_mint",
             "type": "pubkey"
           },
           {
-            "name": "amount",
+            "name": "repaired_amount",
             "type": "u8"
           },
           {
-            "name": "stoneCost",
+            "name": "stone_cost",
             "type": "u64"
           },
           {
-            "name": "durabilityAfter",
+            "name": "wood_cost",
+            "type": "u64"
+          },
+          {
+            "name": "new_durability",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "unstaked",
+      "name": "Unstaked",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13124,15 +12595,15 @@ export type AofCore = {
       }
     },
     {
-      "name": "weatherState",
+      "name": "WeatherState",
       "docs": [
-        "WeatherState — глобальная погода (обновляется permissionless-кранком раз в сутки)"
+        "WeatherState \u2014 \u0433\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u0430\u044f \u043f\u043e\u0433\u043e\u0434\u0430 (\u043e\u0431\u043d\u043e\u0432\u043b\u044f\u0435\u0442\u0441\u044f permissionless-\u043a\u0440\u0430\u043d\u043a\u043e\u043c \u0440\u0430\u0437 \u0432 \u0441\u0443\u0442\u043a\u0438)"
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "dayId",
+            "name": "day_id",
             "type": "u32"
           },
           {
@@ -13140,20 +12611,28 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "updatedAt",
+            "name": "updated_at",
             "type": "i64"
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "wellState",
+      "name": "WellState",
       "docs": [
-        "WellState — колодец игрока (копит воду из погоды)"
+        "WellState \u2014 \u043a\u043e\u043b\u043e\u0434\u0435\u0446 \u0438\u0433\u0440\u043e\u043a\u0430 (\u043a\u043e\u043f\u0438\u0442 \u0432\u043e\u0434\u0443 \u0438\u0437 \u043f\u043e\u0433\u043e\u0434\u044b)"
       ],
       "type": {
         "kind": "struct",
@@ -13163,27 +12642,91 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "waterBuffer",
+            "name": "water_buffer",
             "type": "u64"
           },
           {
-            "name": "lastCollectedAt",
+            "name": "last_collected_at",
             "type": "i64"
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "buff_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "buff_type",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "rewardReceipt",
+      "name": "PackCommitExpired",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "rewardId",
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "pack_type",
+            "type": "u8"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForgeCommitExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "tool_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot_type",
+            "type": "u8"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "wood_refunded",
+            "type": "u64"
+          },
+          {
+            "name": "stone_refunded",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RewardReceipt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "reward_id",
             "type": {
               "array": [
                 "u8",
@@ -13200,11 +12743,11 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "grossAmount",
+            "name": "gross_amount",
             "type": "u64"
           },
           {
-            "name": "claimedSlot",
+            "name": "claimed_slot",
             "type": "u64"
           },
           {
@@ -13215,7 +12758,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "issuanceCap",
+      "name": "IssuanceCap",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13224,23 +12767,23 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "epochSlots",
+            "name": "epoch_slots",
             "type": "u64"
           },
           {
-            "name": "capPerEpoch",
+            "name": "cap_per_epoch",
             "type": "u64"
           },
           {
-            "name": "epochStartSlot",
+            "name": "epoch_start_slot",
             "type": "u64"
           },
           {
-            "name": "mintedInEpoch",
+            "name": "minted_in_epoch",
             "type": "u64"
           },
           {
-            "name": "lifetimeMinted",
+            "name": "lifetime_minted",
             "type": "u128"
           },
           {
@@ -13251,7 +12794,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "resourceIssued",
+      "name": "ResourceIssued",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13276,15 +12819,15 @@ export type AofCore = {
             "type": "u64"
           },
           {
-            "name": "mintedInEpoch",
+            "name": "minted_in_epoch",
             "type": "u64"
           },
           {
-            "name": "capPerEpoch",
+            "name": "cap_per_epoch",
             "type": "u64"
           },
           {
-            "name": "epochStartSlot",
+            "name": "epoch_start_slot",
             "type": "u64"
           },
           {
@@ -13295,7 +12838,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "issuanceCapChanged",
+      "name": "IssuanceCapChanged",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13304,15 +12847,15 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "epochSlots",
+            "name": "epoch_slots",
             "type": "u64"
           },
           {
-            "name": "capPerEpoch",
+            "name": "cap_per_epoch",
             "type": "u64"
           },
           {
-            "name": "mintedInEpoch",
+            "name": "minted_in_epoch",
             "type": "u64"
           },
           {
@@ -13323,7 +12866,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "pausedToggled",
+      "name": "PausedToggled",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13343,16 +12886,16 @@ export type AofCore = {
       }
     },
     {
-      "name": "feesUpdated",
+      "name": "FeesUpdated",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "craftFee",
+            "name": "craft_fee",
             "type": "u64"
           },
           {
-            "name": "unstakeFee",
+            "name": "unstake_fee",
             "type": "u64"
           },
           {
@@ -13367,7 +12910,7 @@ export type AofCore = {
       }
     },
     {
-      "name": "resourceMintsUpdated",
+      "name": "ResourceMintsUpdated",
       "type": {
         "kind": "struct",
         "fields": [
@@ -13401,12 +12944,12 @@ export type AofCore = {
       }
     },
     {
-      "name": "craftEconomyUpdated",
+      "name": "CraftEconomyUpdated",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "woodBase",
+            "name": "wood_base",
             "type": {
               "array": [
                 "u64",
@@ -13415,7 +12958,7 @@ export type AofCore = {
             }
           },
           {
-            "name": "stoneBase",
+            "name": "stone_base",
             "type": {
               "array": [
                 "u64",
@@ -13424,7 +12967,7 @@ export type AofCore = {
             }
           },
           {
-            "name": "woodMult",
+            "name": "wood_mult",
             "type": {
               "array": [
                 "u64",
@@ -13433,7 +12976,7 @@ export type AofCore = {
             }
           },
           {
-            "name": "stoneMult",
+            "name": "stone_mult",
             "type": {
               "array": [
                 "u64",
@@ -13448,6 +12991,302 @@ export type AofCore = {
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultGuard",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch_slots",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "max_per_tx",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_start_slot",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "lifetime_withdrawn",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollectorAllowEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "CollectorKind"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LotteryTicketCounter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "count",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultWithdrawal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn_in_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultGuardChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch_slots",
+            "type": "u64"
+          },
+          {
+            "name": "cap_per_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "max_per_tx",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MiningToggled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SupplyCapChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollectorMintRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "registered",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerCapacityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous_villagers",
+            "type": "u32"
+          },
+          {
+            "name": "next_villagers",
+            "type": "u32"
+          },
+          {
+            "name": "delta",
+            "type": "i32"
+          },
+          {
+            "name": "has_tent",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LotteryRoundRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "tickets_sold",
+            "type": "u64"
+          },
+          {
+            "name": "at",
+            "type": "i64"
           }
         ]
       }
