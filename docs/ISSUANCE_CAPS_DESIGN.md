@@ -149,8 +149,11 @@ mint не двигает счётчик. Учитывается `amount` (gross)
 
 - `aof-core`: `IssuanceCap` PDA (`["issuance_cap", kind as u8]`), `init_issuance_cap`, `set_issuance_cap`
   (roll эпохи → set; счётчик не сбрасывается; `cap_per_epoch = 0` — стоп-кран), `charge()` в `execute_mint`
-  перед CPI для `mint_resource` и `mint_resource_once`. Ошибки 6097 `IssuanceCapNotConfigured`,
-  6098 `IssuanceCapExceeded`, 6099 `InvalidIssuanceCapParams`. Событие `IssuanceCapChanged`; в `ResourceIssued`
+  перед CPI для `mint_resource` и `mint_resource_once`. Ошибки **6098** `IssuanceCapNotConfigured`,
+  **6099** `IssuanceCapExceeded`, **6100** `InvalidIssuanceCapParams` (коды —
+  6000 + индекс варианта в `AofError`, поэтому они меняются при вставке
+  варианта в середину перечисления; в документации и в бэкенде раньше были
+  указаны устаревшие 6097/6098). Событие `IssuanceCapChanged`; в `ResourceIssued`
   есть `minted_in_epoch`/`cap_per_epoch` для индексера.
 - IDL (`aof_backend/src/idl/aof_core.{json,ts}`) обновлён вручную; `scripts/check-idl-drift.py` — без дрейфа.
   После реального `anchor build` в CI заменить на сгенерированный.

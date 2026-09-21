@@ -150,6 +150,79 @@ pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
 }
 
 #[cfg(test)]
+mod slot_hash_tests {
+    use super::*;
+    use anchor_lang::solana_program::account_info::AccountInfo;
+
+    // [AUDIT G-07] This is the second copy of `get_slot_hash` (the first is
+    // `aof-core/src/randomness.rs`). The crates are independent, so the code
+    // cannot be shared without introducing a new workspace crate; instead both
+    // copies are pinned with the SAME golden fixture. Keep the two test modules
+    // in sync - the fixtures are the contract.
+
+    // Built at runtime (not `static Pubkey = ...`) so the test does not depend
+    // on whether `Pubkey::new_from_array` is a `const fn` in this toolchain.
+    static KEY: std::sync::OnceLock<Pubkey> = std::sync::OnceLock::new();
+    static OWNER: std::sync::OnceLock<Pubkey> = std::sync::OnceLock::new();
+    fn key() -> &'static Pubkey { KEY.get_or_init(|| Pubkey::new_from_array([1u8; 32])) }
+    fn owner() -> &'static Pubkey { OWNER.get_or_init(|| Pubkey::new_from_array([2u8; 32])) }
+
+    /// Sysvar layout: `u64` entry count, then `(u64 slot, [u8; 32] hash)` pairs
+    /// ordered from the newest slot to the oldest.
+    fn fixture() -> (Vec<u8>, [u8; 32], [u8; 32]) {
+        let hash_newest = [0x11u8; 32];
+        let hash_oldest = [0x22u8; 32];
+        let mut data = Vec::new();
+        data.extend_from_slice(&2u64.to_le_bytes());
+        data.extend_from_slice(&1_000u64.to_le_bytes());
+        data.extend_from_slice(&hash_newest);
+        data.extend_from_slice(&999u64.to_le_bytes());
+        data.extend_from_slice(&hash_oldest);
+        (data, hash_newest, hash_oldest)
+    }
+
+    fn sysvar<'a>(lamports: &'a mut u64, data: &'a mut [u8]) -> AccountInfo<'a> {
+        AccountInfo::new(key(), false, false, lamports, data, owner(), false, 0)
+    }
+
+    #[test]
+    fn reads_the_hash_of_a_slot_inside_the_window() {
+        let (mut data, hash_newest, hash_oldest) = fixture();
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut data);
+        assert_eq!(get_slot_hash(&info, 1_000).unwrap(), hash_newest);
+        assert_eq!(get_slot_hash(&info, 999).unwrap(), hash_oldest);
+    }
+
+    #[test]
+    fn rejects_a_slot_outside_the_window() {
+        let (mut data, _, _) = fixture();
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut data);
+        assert!(get_slot_hash(&info, 998).is_err());
+        assert!(get_slot_hash(&info, 1_001).is_err());
+        assert!(get_slot_hash(&info, 0).is_err());
+    }
+
+    #[test]
+    fn malformed_sysvar_data_errors_instead_of_panicking() {
+        let mut short = Vec::new();
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut short);
+        assert!(get_slot_hash(&info, 1_000).is_err());
+
+        let mut truncated = Vec::new();
+        truncated.extend_from_slice(&3u64.to_le_bytes());
+        truncated.extend_from_slice(&1_000u64.to_le_bytes());
+        truncated.extend_from_slice(&[0x11u8; 32]);
+        let mut lamports = 0u64;
+        let info = sysvar(&mut lamports, &mut truncated);
+        assert!(get_slot_hash(&info, 1_000).is_ok());
+        assert!(get_slot_hash(&info, 999).is_err());
+    }
+}
+
+#[cfg(test)]
 mod drum_odds_tests {
     use super::*;
 

@@ -4,7 +4,7 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { SystemProgram } from "@solana/web3.js";
 import { AUTHORITY } from "../config";
 import { program } from "../provider";
-import { collectorPda, configPda, gastankPda, playerPda, vaultPda } from "../lib/pda";
+import { collectorAllowPda, collectorPda, configPda, gastankPda, playerPda, vaultPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireAdmin } from "../middleware/adminAuth";
 
@@ -15,21 +15,26 @@ const kindMap: Record<string, any> = {
   medallion: { medallion: {} },
 };
 
-// There is no canonical Historian/Medallion mint registry in Config yet.
-// Do not let a caller stake an arbitrary NFT to obtain economic perks.
-r.post("/stake", (_req, res) => {
-  res.status(503).json({ error: "COLLECTOR_STAKING_DISABLED_UNTIL_CANONICAL_MINTS_CONFIGURED" });
-});
-
-/*
+// [AUDIT F-16] The on-chain handler used to open with
+// `require!(false, CollectorNotConfigured)`, so Historian/Medallion perks (mint
+// fee discounts, referral bonus cap 5 -> 30) were unreachable and the site kept
+// advertising them. Eligibility is now the per-mint allowlist entry
+// (`collector_allow`) that the authority creates with
+// POST /admin/config/collector-mint. With no entry the instruction still fails
+// closed (CollectorMintNotAllowed) - an arbitrary NFT cannot buy the perks.
 r.post("/stake", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const mint = pk(req.body.mint);
     const kind = kindMap[req.body.kind];
+    if (!kind) {
+      res.status(400).json({ error: "unknown collector kind (historian|medallion)" });
+      return;
+    }
     const [config] = configPda();
     const [vault] = vaultPda();
     const [stakedCollector] = collectorPda(mint);
+    const [collectorAllow] = collectorAllowPda(mint);
     const [player] = playerPda(user);
     const userToken = getAssociatedTokenAddressSync(mint, user);
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
@@ -44,6 +49,7 @@ r.post("/stake", async (req, res) => {
         vault,
         vaultToken,
         stakedCollector,
+        collectorAllow,
         player,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -56,13 +62,7 @@ r.post("/stake", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
-*/
 
-r.post("/unstake", (_req, res) => {
-  res.status(503).json({ error: "COLLECTOR_STAKING_DISABLED_UNTIL_CANONICAL_MINTS_CONFIGURED" });
-});
-
-/*
 r.post("/unstake", async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -97,7 +97,6 @@ r.post("/unstake", async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
-*/
 
 r.post("/adjust-capacity", requireAdmin, async (req, res) => {
   try {

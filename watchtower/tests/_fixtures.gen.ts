@@ -12,7 +12,7 @@ const dir = join(__dirname, "..", "events", "fixtures");
 const ser = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? x.toString() : x), 2) + "\n";
 const files: Record<string, string> = {
   "chain-events.input.json": ser({ note: "ChainEvent rows as written by aof_backend/services/chain-indexer (synthetic deterministic wallets/mints)", salt: SALT, rows: EVENTS }),
-  "chain-txs.input.json": ser({ note: "ChainTx rows: one ok, one failed with custom error 6098 (IssuanceCapExceeded)", rows: TXS }),
+  "chain-txs.input.json": ser({ note: "ChainTx rows: one ok, one failed with custom error 6099 (IssuanceCapExceeded)", rows: TXS }),
   "watchtower-events.expected.json": ser({ parserVersion: "aof-v1", events: [...TXS.flatMap((t) => normalizeChainTx(t, SALT)), ...EVENTS.flatMap((e) => normalizeChainEvent(e, SALT, { treasury: W.treasury }))] }),
 };
 if (process.argv.includes("--check")) {

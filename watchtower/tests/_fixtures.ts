@@ -35,6 +35,6 @@ export const EVENTS = [
 
 export const TXS = [
   { signature: sig(1), slot: BigInt(400_000_001), blockTime: new Date(t0 + 60_000), success: true, feePayer: W.alice, errorJson: null, programIds: JSON.stringify([CORE]) },
-  { signature: sig(99), slot: BigInt(400_000_099), blockTime: new Date(t0 + 99 * 60_000), success: false, feePayer: W.bob, errorJson: JSON.stringify({ InstructionError: [0, { Custom: 6098 }] }), programIds: JSON.stringify([CORE]) },
+  { signature: sig(99), slot: BigInt(400_000_099), blockTime: new Date(t0 + 99 * 60_000), success: false, feePayer: W.bob, errorJson: JSON.stringify({ InstructionError: [0, { Custom: 6099 }] }), programIds: JSON.stringify([CORE]) },
 ];
 export const SALT = "fixture-salt";

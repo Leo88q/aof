@@ -44,9 +44,7 @@ function sweepUsage(now: number): void {
       if (excess-- <= 0) break;
       usage.delete(key);
     }
-    logger.warn("apiKey usage map hit its ceiling; evicting cold entries", {
-      maxTrackedKeys: MAX_TRACKED_KEYS,
-    });
+    logger.warn({ maxTrackedKeys: MAX_TRACKED_KEYS }, "apiKey usage map hit its ceiling; evicting cold entries");
   }
 }
 

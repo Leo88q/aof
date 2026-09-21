@@ -84,7 +84,7 @@ authority). Ротация там = редеплой.
 |----|-----|--------|-----|
 | F-14 | Сезонные награды без `RESOURCE_UNIT` (пыль) | ✅ | `season.rs`: `level × SEASON_REWARD_UNITS_PER_LEVEL × RESOURCE_UNIT`, + кап (F-03) |
 | F-15 | `adjust_player_capacity` без границ | ✅ | `|delta| <= MAX_CAPACITY_DELTA`, нельзя увести ниже занятых жителей, событие `PlayerCapacityChanged` |
-| F-16 | Перки коллекционера недостижимы | ✅ | `CollectorAllowEntry` PDA + `register_collector_mint` / `revoke_collector_mint`; `collector_stake` больше не начинается с `require!(false)` |
+| F-16 | Перки коллекционера недостижимы | ✅ | `CollectorAllowEntry` PDA + `register_collector_mint` / `revoke_collector_mint`; `collector_stake` больше не начинается с `require!(false)`; **бэкенд-роут `/collectors/stake` и `/unstake` включены** (передают `collectorAllow`), текст механики на сайте обновлён; инвариант в `securityInvariantSelfTest` переписан с «выключено» на «включено, но закрыто allow-list’ом» |
 | F-17 | Несогласованная типизация инструментов | ✅ | `state::TOOL_KINDS` / `is_valid_tool_type` / `canonical_tool_type`; канонизация в `mint_tool`, `craft`, `reroll`; «spear» мапится в Meat как «bow» |
 | F-18 | В reroll-конфиге нет запрета Legendary | ✅ | `init_config`/`set_config`: `require!(odds_bps[4] == 0, InvalidOddsWeights)` |
 | F-19 | Пауза не покрывает cancel/claim/crank | ✅ | `config` + `!config.paused` добавлены в `MarketplaceCancel`, `OfferCancelCtx`, `CancelBuyOrder`, `CancelSellOrder`, `RentalEndCtx`, `RentalRevokeCtx`, `WeatherCrank`, `CraftOrderCancelCtx`, `CraftOrderFulfillCtx`, `ClaimLotteryPrize` |
@@ -106,9 +106,9 @@ authority). Ротация там = редеплой.
 | F-28 | `RewardReceipt` в глобальном пространстве имён | ✅ | seed `["reward_receipt", recipient, reward_id]`; `rewardReceiptPda(id, recipient)` в бэкенде |
 | F-29 | Заказ крафта с нулевой ценой | ✅ | `require!(wood_needed + stone_needed > 0, EmptyCraftOrder)` |
 | F-30 | `usage: Map` растёт бесконечно | ✅ | GC по таймеру + жёсткий потолок `MAX_TRACKED_KEYS` + инлайн-свип |
-| F-31 | EOL-зависимости | ⚠️ | Перепроверено: RUSTSEC-2026-0144 бьёт anchor 1.0.0–1.0.1, здесь 0.30.1 — не актуально. Обновление Anchor/Solana = отдельный проект (миграция API), в этот заход не входит. Рекомендация: закрепить `@solana/web3.js` точной версией и добавить `cargo audit`/`npm audit` в CI |
+| F-31 | EOL-зависимости | ⚠️ | Перепроверено: RUSTSEC-2026-0144 бьёт anchor 1.0.0–1.0.1, здесь 0.30.1 — не актуально. `@solana/web3.js` закреплён **точной версией 1.98.4** в `frontend` и `aof_backend` (+ синхронно в package-lock; `npm ci` перепроверен в песочнице) — диапазон больше не допускает отозванные 1.95.6/1.95.7. В CI добавлены `rustsec/audit-check` и `npm audit --omit=dev --audit-level=high` (не блокирующие). **Остаётся ⚠️:** HIGH `GHSA-3gc7-fjrx-p6mg` (buffer overflow в `bigint-buffer`) приходит транзитивно через `@solana/spl-token` 0.1.8, на котором сидит и `@coral-xyz/anchor` 0.30.1 — лечится только миграцией на Anchor 1.x (отдельный проект). Фронтенд: HIGH/CRITICAL = 0, 12 moderate |
 | F-32 | Валидация намерения только для `marketplace_buy` | ✅ | `frontend/src/lib/coreInstructions.ts` (генерируется из IDL) + `validateCoreInstructions()`: неизвестный дискриминатор, authority-only инструкция, неверное число аккаунтов, «кошелёк обязан быть подписывающей стороной» (52 инструкции). Генератор `scripts/gen-core-instruction-table.py --check` в CI |
-| F-33 | Покрытие тестами | ⚠️ | Добавлены: `cargo`-тесты логики (`state_tests`, `economy_tests`, `drum_odds_tests`), FE-тесты политики кошелька и **9 валидаторских тестов** в `tests/aof_core.ts` (блок «audit regressions 2026-09-21»: F-22, F-02, F-03, F-01, F-19, F-10, F-27, F-28, F-29). Остаётся ⚠️: ни один из них не запускался (нет валидатора в песочнице), fuzzing не добавлен |
+| F-33 | Покрытие тестами | ⚠️ | **CI-дыра закрыта:** `cargo test --locked` в `.github/workflows/ci.yml` дополнен `-p aof-quests` (иначе `drum_odds_tests` — регрессия F-13 — и новый фикстурный тест G-07 вообще не запускались). Добавлены: `cargo`-тесты логики (`state_tests`, `economy_tests`, `drum_odds_tests`, `slot_hash_tests` ×2 крейта), FE-тесты политики кошелька и **9 валидаторских тестов** в `tests/aof_core.ts` (блок «audit regressions 2026-09-21»: F-22, F-02, F-03, F-01, F-19, F-10, F-27, F-28, F-29). Остаётся ⚠️: ни один из них не запускался (нет валидатора в песочнице), fuzzing не добавлен |
 
 ---
 
@@ -122,7 +122,7 @@ authority). Ротация там = редеплой.
 | G-04 (`ANALYSIS.md` помечает отключённое как «Готово») | ✅ | В §2 добавлена таблица реальных статусов и поправлены строки |
 | G-05 («шесть способов торговли» при выключенном `aof-market`) | ✅ | `TradeMethod.live`, в UI метка «не запущено» |
 | G-06 (две копии `mint_for_kind`) | ✅ | Единственная реализация в `state.rs`; дубли из `mint_resource.rs` и `burn_resource.rs` удалены |
-| G-07 (две копии `get_slot_hash`) | ⚠️ | Разные крейты (`aof-core` и `aof-quests`); шарить нечего без отдельного крейта. Оставлено, зафиксировано здесь |
+| G-07 (две копии `get_slot_hash`) | ⚠️ | Разные крейты (`aof-core` и `aof-quests`); общий код потребовал бы path-зависимости `aof-quests → aof-core` и правки `Cargo.lock`, которую здесь нельзя проверить (`cargo test --locked` в CI). Вместо дедупликации: обе копии прибиты **одинаковым** golden-фикстурным тестом (`slot_hash_tests` в `aof-core/src/randomness.rs` и в `drum_reveal.rs`) — расхождение в разборе sysvar уронит `cargo test`. Реализации построчно сверены: идентичны, разница только в типе ошибки |
 | G-08 (дубль инициализации `ToolData`) | ✅ | `state::init_tool_data()`; три сайта вызова |
 | G-09 (мёртвые `buff_expires_at`/`buff_type`) | ✅ | Полей нет в Rust; удалены из IDL (9 структур) — иначе бэкенд декодировал бы мусор |
 
@@ -148,6 +148,32 @@ authority). Ротация там = редеплой.
    сверка имён инструкций по всем 6 программам).
 4. **`BASE_RATE_MINING`** — одна константа (`constants.rs:315`), используется
    и в `yield_per_hour()`, и в `collect_mining.rs:64`; рассинхрона нет.
+5. **Расхождение кодов ошибок (боевое).** Коды Anchor позиционные
+   (`6000 + индекс варианта` в `AofError`). Бэкенд матчил кап эмиссии как
+   `[6097, 6098]`, тогда как программа отдаёт **6098/6099** — и committed-IDL
+   был таким же устаревшим, поэтому самопроверка это не ловила. Исправлено:
+   `aof_backend/src/routes/inbox.ts` (`ISSUANCE_CAP_ERROR_CODES` и hex-фолбэк
+   `0x17d[12]` → `0x17d[23]`), `scripts/adminAuthSelfTest.ts` теперь **выводит**
+   коды из `errors.rs` вместо хардкода, `docs/ISSUANCE_CAPS_DESIGN.md`
+   (6097/6098/6099 → 6098/6099/6100), фикстура watchtower `Custom: 6098` →
+   `6099`. Проверено: коды IDL ≡ кодам Rust (117/117).
+6. **`logger.warn()` с перепутанными аргументами** в `apiKey.ts` (правка F-30)
+   — единственная реальная ошибка `tsc` бэкенда. Исправлено на
+   `logger.warn({ ... }, "message")` по сигнатуре pino.
+7. **`rewardReceiptSelfTest.ts` не был обновлён под F-28** — падал на
+   `rewardReceiptPda(id)` без получателя. Обновлён (все 5 вызовов) и дополнен
+   проверкой «разные получатели → разные PDA» + статической проверкой нового
+   seed в `lib.rs`.
+8. **Watchtower не знал 8 новых событий** (`VaultWithdrawal`, `VaultGuardChanged`,
+   `AuthorityRotationProposed`/`AuthorityChanged` в трёх программах,
+   `MiningToggled`, `SupplyCapChanged`, `CollectorMintRegistered`,
+   `PlayerCapacityChanged`, `LotteryRoundRefunded`) — тест
+   «IDL event is neither mapped nor ignored» падал. Все отображены в
+   `event-normalizer.ts`; `AuthorityChanged` и `AdminProposalCreated` в
+   каталоге переведены из `unsupported` в `native`; фикстуры перегенерированы.
+9. **F-16 был доделан только наполовину:** на цепи перк включён (allow-list),
+   но `POST /collectors/stake` по-прежнему отвечал 503, а рабочий код висел в
+   комментарии. Роут включён и передаёт `collector_allow`.
 
 ## Что проверено в песочнице
 
@@ -156,19 +182,30 @@ authority). Ротация там = редеплой.
 - `python3 scripts/gen-core-instruction-table.py --check` → актуально.
 - `scripts/test-idl-drift.py`, `scripts/test-mint-cost-model.py`, `scripts/test-reward-migrations.py` → OK.
 - TypeScript: изменённые файлы бэкенда и фронтенда проверены `tsc --noEmit` (внешние зависимости подложены из npm; `node_modules` проекта в песочницу не ставились).
+- **[новое] Полный прогон в песочнице (npm-сеть доступна):** `frontend`: `npm ci` + `tsc --noEmit` → **0 ошибок**, `npm run build` (tsc + vite) → успешно.
+- **[новое] `aof_backend`: `npm ci` + 8 самопроверок — все PASS** (`wallet-proof`, `security-invariants`, `audit-security`, `admin-auth`, `fraud-signals`, `watchtower`, `chain-indexer`, `reward-receipts`, `resource-registry`).
+- **[новое] `watchtower`: 5 тестов PASS** (`events`, `decoder`, `replay`, `readonly`, `fixtures --check`).
+- **[новое] Оговорка про Prisma:** `prisma generate` в песочнице недоступен (`binaries.prisma.sh` не отвечает), поэтому `@prisma/client` подменён заглушкой **только в `node_modules`** (в репозитории её нет). `tsc -p .` по бэкенду показывает 46 ошибок — все типа `TS7006/TS2305` в файлах, которых эта работа не касалась (`economyMonitor.ts`, `trustFormula.ts`, `rating.ts`, `admin-chain.ts`, …) и все они — следствие отсутствия сгенерированных типов Prisma. Локально при рабочем `prisma generate` их не будет; проверить командой из § «Что обязательно сделать локально».
+- **[новое] `npm audit --omit=dev`:** frontend 0 high / 12 moderate; backend 1 high (`GHSA-3gc7-fjrx-p6mg`, транзитивно через `@solana/spl-token` 0.1.8) + 10 moderate.
+- **[новое] `npm ci` перепроверен** после закрепления `@solana/web3.js` `1.98.4` (frontend и backend): lockfile согласован.
 
 ## Что обязательно сделать локально
 
 1. `anchor build` — **ничего из Rust не компилировалось**. Ожидаемые места, где
    может понадобиться ручная правка: порядок полей в новых структурах, типы
    аргументов новых инструкций, `COLLECTOR_ALLOW_SPACE`/`VAULT_GUARD_SPACE`.
-2. `cargo test -p aof-core` — `economy_tests`, `state_tests`.
+2. `cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib` —
+   `economy_tests`, `state_tests`, `drum_odds_tests`, `slot_hash_tests` (оба
+   крейта). `-p aof-quests` добавлен в CI, локально прогоните тем же составом.
 3. `anchor test` — прогнать `tests/aof_core.ts` (в нём есть `issuance_cap`,
    `mint_resource`, `pay_out`-сценарии; часть вызовов теперь требует
    новых аккаунтов → см. § «Изменения ABI»). Файл приведён к новой ABI и
    дополнен блоком «audit regressions 2026-09-21» (8 новых тестов + 1
    переписанный, см. ниже).
-4. `npm ci && npm test` в `frontend` и `aof_backend`.
+4. `npm ci && npm test` в `frontend` и `aof_backend`; в `aof_backend` перед
+   этим `npm run build` (`prisma generate && tsc -p .`) — в песочнице
+   `prisma generate` недоступен, поэтому часть проверок типов там была
+   ослаблена (см. оговорку выше).
 5. После `anchor build` — `python3 scripts/gen-core-instruction-table.py`
    (перегенерирует FE-таблицу) и обновить `aof_backend/src/idl/*.json` из
    `target/idl/`.

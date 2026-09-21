@@ -18,13 +18,18 @@ import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
-// Anchor error codes for the issuance cap (aof_core.json errors 6097/6098).
-const ISSUANCE_CAP_ERROR_CODES = new Set([6097, 6098]);
+// Anchor error codes for the issuance cap: 6098 IssuanceCapNotConfigured,
+// 6099 IssuanceCapExceeded. These are POSITIONAL (6000 + index in the
+// `AofError` enum in aof-core/src/errors.rs), so they were wrong here for a
+// long time (mapped as 6097/6098) and the committed IDL was stale too; both
+// are now reconciled against the Rust enum. Re-check whenever a variant is
+// added anywhere but the end of that enum.
+const ISSUANCE_CAP_ERROR_CODES = new Set([6098, 6099]);
 function isIssuanceCapError(e: any): boolean {
   const code = Number(e?.error?.errorCode?.number ?? e?.code);
   if (ISSUANCE_CAP_ERROR_CODES.has(code)) return true;
   const msg = String(e?.message ?? e?.logs?.join("\n") ?? "");
-  return /IssuanceCapExceeded|IssuanceCapNotConfigured|custom program error: 0x17d[12]/i.test(msg);
+  return /IssuanceCapExceeded|IssuanceCapNotConfigured|custom program error: 0x17d[23]/i.test(msg);
 }
 
 // Маппинг типов наград → kind для mintResource (как в resources.ts)

@@ -180,8 +180,20 @@ jobs:
           solana --version
           cargo-build-sbf --version
 
-      - name: Core energy and LP arithmetic unit tests
-        run: cargo test --locked -p aof-core -p aof-liquidity --lib
+      - name: Core energy, LP and drum arithmetic unit tests
+        # [AUDIT F-33] `-p aof-quests` was missing here, so `drum_odds_tests`
+        # (the F-13 EV regression) and the G-07 slot-hash fixture never ran.
+        run: cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib
+
+      - name: Rust advisory audit (advisory, non-blocking)
+        # [AUDIT F-31] anchor-lang 0.30.1 / solana-program 1.18.26 are an EOL
+        # line; the migration is a separate project, so this reports rather
+        # than gates. RUSTSEC-2026-0144 was checked manually: it affects
+        # anchor 1.0.0-1.0.1 only, not 0.30.1.
+        continue-on-error: true
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create throwaway provider wallet
         run: |
@@ -777,6 +789,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Dependency audit - runtime deps (advisory, non-blocking)
+        # [AUDIT F-31] The known HIGH is GHSA-3gc7-fjrx-p6mg (bigint-buffer
+        # buffer overflow) pulled in transitively by @solana/spl-token 0.1.8,
+        # which @coral-xyz/anchor 0.30.1 also depends on. There is no fix that
+        # does not go through the Anchor 1.x migration, so this reports.
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Build (prisma generate + tsc)
         run: |
           set -uo pipefail
@@ -1071,8 +1091,10 @@ jobs:
           [ -f target/artifact-Anchor.toml ] || { echo "::error::target/artifact-Anchor.toml is missing from the artifact"; bad=1; }
           exit "$bad"
 
-      - name: Core energy and LP arithmetic unit tests
-        run: cargo test --locked -p aof-core -p aof-liquidity --lib
+      - name: Core energy, LP and drum arithmetic unit tests
+        # [AUDIT F-33] `-p aof-quests` was missing here, so `drum_odds_tests`
+        # (the F-13 EV regression) and the G-07 slot-hash fixture never ran.
+        run: cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib
 
       - name: Create throwaway provider wallet
         run: |
@@ -1330,6 +1352,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Dependency audit - runtime deps (advisory, non-blocking)
+        # [AUDIT F-31] @solana/web3.js is pinned exactly (1.98.4) so a lockfile
+        # regeneration cannot pull the withdrawn 1.95.6/1.95.7. Remaining
+        # advisories are moderate and transitive (wallet-adapter / uuid).
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Build (tsc + vite build)
         id: fe_build
