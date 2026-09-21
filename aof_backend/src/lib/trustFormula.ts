@@ -21,11 +21,34 @@ export interface TrustBreakdown {
 }
 
 // Компонент 1: Возраст аккаунта (макс 100 за 180 дней)
-async function calcAgeScore(user: string): Promise<number> {
-  const firstActivity = await db.streak.findUnique({ where: { user } });
-  if (!firstActivity?.lastLogin) return 0;
-  const days = (Date.now() - new Date(firstActivity.lastLogin).getTime()) / 86400000;
+// Источник — первое on-chain событие кошелька в леджере индексера: его нельзя
+// подделать и оно не «сбрасывается» при каждом логине (старая версия брала
+// Streak.lastLogin, т.е. фактически возраст последнего входа). Пока индексер
+// не догнал историю (backfill), используем самую раннюю off-chain запись —
+// AuditLog / DeviceFingerprint — как нижнюю оценку, а не ноль.
+export function ageScoreFromDays(days: number): number {
+  if (!Number.isFinite(days) || days <= 0) return 0;
   return Math.min(100, Math.floor((days * 100) / 180));
+}
+
+export async function walletFirstSeen(user: string): Promise<{ at: Date; source: "chain" | "audit" | "device" } | null> {
+  const chain = await db.chainEvent.findFirst({ where: { wallet: user, blockTime: { not: null } }, orderBy: { slot: "asc" }, select: { blockTime: true } });
+  if (chain?.blockTime) return { at: chain.blockTime, source: "chain" };
+  const [audit, device] = await Promise.all([
+    db.auditLog.findFirst({ where: { user }, orderBy: { timestamp: "asc" }, select: { timestamp: true } }),
+    db.deviceFingerprint.findFirst({ where: { user }, orderBy: { firstSeen: "asc" }, select: { firstSeen: true } }),
+  ]);
+  const candidates: { at: Date; source: "audit" | "device" }[] = [];
+  if (audit) candidates.push({ at: audit.timestamp, source: "audit" });
+  if (device) candidates.push({ at: device.firstSeen, source: "device" });
+  candidates.sort((a, b) => a.at.getTime() - b.at.getTime());
+  return candidates[0] ?? null;
+}
+
+async function calcAgeScore(user: string): Promise<number> {
+  const first = await walletFirstSeen(user);
+  if (!first) return 0;
+  return ageScoreFromDays((Date.now() - first.at.getTime()) / 86400000);
 }
 
 // Компонент 2: Здоровье реферальной сети (макс 150)

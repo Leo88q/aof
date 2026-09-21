@@ -107,7 +107,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 | Приоритет | Задача | Комментарий |
 |---|---|---|
 | ~~P1~~ done | Сигналы: funding source, wallet age (реальный, через первый tx), IP/device cluster, reward velocity | `src/lib/fraudSignals.ts`: `fresh_wallet_reward`, `reward_velocity`, `shared_funding` (fee payer ≠ authority), `device_cluster`, `wash_trade_pair` — из `ChainEvent/ChainTx` + `DeviceFingerprint`. Пороги через `FRAUD_*` env. Тест `test:fraud-signals`. |
-| P1 | Trust Index: убрать placeholder-возраст и rebirth-заглушку, staking из on-chain stake | Проверить `services/trust-worker/formula.js`. |
+| P1 (частично) | Trust Index: убрать placeholder-возраст и rebirth-заглушку, staking из on-chain stake | **Возраст сделан**: `walletFirstSeen()` — первое on-chain событие из индексера (fallback: самая ранняя запись AuditLog/DeviceFingerprint до окончания backfill), больше не `Streak.lastLogin`. Rebirth/staking — проверить `services/trust-worker/formula.js`. |
 | ~~P1~~ done | Fraud review queue + аудит каждой резолюции, **без авто-бана** | Таблица `FraudCase` (одна открытая на пару wallet/signal через `openKey`), `/admin/fraud/cases`, `/wallet/:w` (read), `/scan`, `/cases/:id/resolve` (ops; note обязателен; CAS — двое не закроют один кейс; `AuditLog fraud_case_resolve`). Скан по таймеру `FRAUD_SCAN_INTERVAL_MIN`. Ничего не enforce'ит — политика применяется оператором осознанно. |
 
 ---

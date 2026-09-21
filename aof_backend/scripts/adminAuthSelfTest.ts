@@ -184,14 +184,33 @@ async function testIssuanceCapMapping() {
   assert.ok(idl.instructions.find((i: any) => i.name === "mint_resource_once").accounts.some((a: any) => a.name === "issuance_cap"));
 }
 
+async function testTrustAge() {
+  const { ageScoreFromDays } = await import("../src/lib/trustFormula");
+  assert.equal(ageScoreFromDays(0), 0);
+  assert.equal(ageScoreFromDays(-5), 0);
+  assert.equal(ageScoreFromDays(NaN), 0);
+  assert.equal(ageScoreFromDays(1), 0);
+  assert.equal(ageScoreFromDays(9), 5);
+  assert.equal(ageScoreFromDays(90), 50);
+  assert.equal(ageScoreFromDays(180), 100);
+  assert.equal(ageScoreFromDays(10_000), 100);
+  // Source of truth must be the indexer ledger, not the last login.
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(require.resolve("../src/lib/trustFormula.ts"), "utf8");
+  const body = src.slice(src.indexOf("async function calcAgeScore"), src.indexOf("// Компонент 2:"));
+  assert.ok(!/lastLogin/.test(body), "age score must not be derived from Streak.lastLogin");
+  assert.ok(/walletFirstSeen/.test(body));
+}
+
 async function main() {
+  await testTrustAge();
   await testIssuanceCapMapping();
   await testRoleSplit();
   await testProductionGate();
   await testAuditActor();
   await testFingerprint();
   await testEconomyQuality();
-  console.log("admin auth tests: issuance-cap kind mapping/IDL, read/ops split, production gating of send-tx/test-grant, audit actor attribution, wallet-independent fingerprint and economy data-quality flags passed");
+  console.log("admin auth tests: trust age from indexer, issuance-cap kind mapping/IDL, read/ops split, production gating of send-tx/test-grant, audit actor attribution, wallet-independent fingerprint and economy data-quality flags passed");
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });
