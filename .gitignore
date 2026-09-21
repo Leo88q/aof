@@ -100,3 +100,8 @@ dist-workers/
 # Python check caches
 __pycache__/
 *.pyc
+
+# watchtower exporter: node_modules is a symlink to aof_backend/node_modules; .env holds the exporter token/salt
+watchtower/node_modules
+watchtower/.env
+watchtower/dist/

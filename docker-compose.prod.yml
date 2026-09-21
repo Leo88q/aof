@@ -132,7 +132,19 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
-  chain-indexer:
+  # Read-only Watchtower exporter (watchtower/README.md). Shares the ledger DB
+  # with chain-indexer; never loads the authority key (AUTHORITY_SECRET_KEY is
+  # deleted from its env at startup) and serves GET only on :8790.
+  watchtower-exporter:
+    profiles: [indexer]
+    build:
+      context: .
+      dockerfile: watchtower/Dockerfile
+      args:
+        PRISMA_SCHEMA: ${PRISMA_SCHEMA:-prisma/schema.prisma}
+    restart: unless-stopped
+    depends_on:
+      chain-indexer:
     profiles: [indexer]
     build: ./aof_backend
     restart: unless-stopped

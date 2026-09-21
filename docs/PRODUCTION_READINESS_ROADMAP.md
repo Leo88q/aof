@@ -102,6 +102,14 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 | P1 | `AuditLog.action` → бизнес-тип | Вместе с indexer'ом, единый словарь событий. |
 | P1 | Daily player facts | Материализованная таблица от indexer + AuditLog. |
 
+### 2.3b Watchtower integration (внешний мониторинг)
+
+| Статус | Что | Где |
+|---|---|---|
+| done (код) | Read-only exporter по спеке `GAME_REPO_DELIVERABLES.md`: manifest, schema, 50 типов событий (22 native / 11 derived / 17 unsupported с причинами), 13 endpoints, finalized lag, backfill/replay через cursor, hashed playerId, no-signer/no-writes гарантии в тестах | `watchtower/` (README) |
+| ждёт | `lastVerifiedAt` в манифесте — после запуска против реального индексера с `backfillComplete` и общим `WATCHTOWER_PLAYER_HASH_SALT` | `watchtower/README.md` → checklist |
+| ждёт | `PausedToggled`/`AuthorityChanged` как on-chain события — сейчас `set_paused`/`set_authority` не эмитят Anchor event; добавить в `aof-core` при следующем upgrade программы | `aof-core/src/events.rs` |
+
 ### 2.4 Anti-fraud
 
 | Приоритет | Задача | Комментарий |

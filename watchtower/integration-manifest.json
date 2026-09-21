@@ -1,0 +1,102 @@
+{
+  "gameId": "aof",
+  "name": "Age of Farming",
+  "network": "devnet",
+  "programIds": [
+    "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+    "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+    "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
+  ],
+  "programs": [
+    {
+      "name": "aof_core",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+    },
+    {
+      "name": "aof_market",
+      "programId": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
+    },
+    {
+      "name": "aof_quests",
+      "programId": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
+    }
+  ],
+  "mintAddresses": [],
+  "mintAddressesNote": "resource/tool mints are created per deployment (set_resource_mints / init_material_mints); read them from the Config and MaterialMints PDAs listed below or from /watchtower/config at runtime",
+  "treasuryAddresses": [],
+  "treasuryAddressesNote": "TREASURY_PUBKEY of the deployment; exporter reports it in /watchtower/treasury",
+  "pdaAccounts": [
+    {
+      "name": "config",
+      "seeds": [
+        "config"
+      ],
+      "program": "aof_core"
+    },
+    {
+      "name": "material_mints",
+      "seeds": [
+        "material_mints"
+      ],
+      "program": "aof_core"
+    },
+    {
+      "name": "auth",
+      "seeds": [
+        "auth"
+      ],
+      "program": "aof_core"
+    },
+    {
+      "name": "vault",
+      "seeds": [
+        "vault"
+      ],
+      "program": "aof_core"
+    },
+    {
+      "name": "issuance_cap",
+      "seeds": [
+        "issuance_cap",
+        "<kind:u8>"
+      ],
+      "program": "aof_core"
+    },
+    {
+      "name": "player",
+      "seeds": [
+        "player",
+        "<wallet>"
+      ],
+      "program": "aof_core"
+    },
+    {
+      "name": "reward_receipt",
+      "seeds": [
+        "reward_receipt",
+        "<reward_id:32>"
+      ],
+      "program": "aof_core"
+    }
+  ],
+  "idlVersion": "0.1.0",
+  "idlFiles": [
+    "aof_backend/src/idl/aof_core.json",
+    "aof_backend/src/idl/aof_market.json",
+    "aof_backend/src/idl/aof_quests.json"
+  ],
+  "parserVersion": "aof-v1",
+  "dataQuality": "partial",
+  "dataQualityNote": "becomes complete when IndexerCursor.backfillComplete is true for all three programs; /watchtower/config reports the live value",
+  "writes": false,
+  "signerCapability": false,
+  "commitment": "finalized",
+  "exporter": {
+    "port": 8790,
+    "basePath": "/watchtower",
+    "auth": "Bearer WATCHTOWER_EXPORTER_TOKEN",
+    "source": "aof_backend chain-indexer ledger (shared database, read-only)"
+  },
+  "playerIdScheme": "sha256(WATCHTOWER_PLAYER_HASH_SALT|wallet)",
+  "lastVerifiedAt": null
+}
