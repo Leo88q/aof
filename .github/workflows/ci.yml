@@ -199,11 +199,19 @@ jobs:
           path = "/tmp/unit-tests.log"
           if not os.path.exists(path):
               raise SystemExit(0)
-          lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
-          keep = [l for l in lines if re.search(r"(^error|panicked|FAILED|test result:|^\s+--> )", l)]
-          for line in keep[:80]:
-              safe = line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")
-              print("::error::" + safe[:900])
+          raw = open(path, encoding="utf-8", errors="replace").read()
+          text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", raw)          # ANSI colour
+          lines = [l for l in text.splitlines() if l.strip()]
+          # Error headers first, then their locations, then the tail.
+          def esc(line):
+              return line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")[:900]
+          heads = [l for l in lines if re.match(r"^(error|warning: unused)", l)]
+          notes = [l for l in lines if l.strip().startswith("-->") or "panicked at" in l or "test result:" in l]
+          for line in (heads + notes)[:60]:
+              print("::error::" + esc(line))
+          if not heads and not notes:
+              for line in lines[-40:]:
+                  print("::error::" + esc(line))
           PY
 
       - name: Rust advisory audit (advisory, non-blocking)
