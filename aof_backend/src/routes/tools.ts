@@ -2,7 +2,7 @@ import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram, PublicKey } from "@solana/web3.js";
-import { AUTHORITY, MINING_ENABLED } from "../config";
+import { AUTHORITY } from "../config";
 import { program } from "../provider";
 import {
   authPda,
@@ -19,6 +19,7 @@ import {
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
+import { miningEnabledOnChain } from "../lib/configState";
 import { Keypair, Transaction } from "@solana/web3.js";
 import { MINT_SIZE, createInitializeMintInstruction, createAssociatedTokenAccountIdempotentInstruction } from "@solana/spl-token";
 import { connection } from "../provider";
@@ -358,8 +359,9 @@ r.post("/unstake", requireCircuitOpen, requireWalletLimits("tools_unstake"), asy
 // durability, and frees the villager. No authority payout worker or
 // second transaction is involved.
 r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_mining"), async (req, res) => {
-  if (!MINING_ENABLED) {
-    return res.status(503).json({ error: "MINING_DISABLED_UNTIL_ONCHAIN_VERIFIED" });
+  // [AUDIT F-27] read the flag from the chain, not from `.env`.
+  if (!(await miningEnabledOnChain())) {
+    return res.status(503).json({ error: "MINING_DISABLED_ONCHAIN" });
   }
   try {
     const user = pk(req.body.user);
@@ -392,8 +394,9 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
 });
 
 r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect_mining"), async (req, res) => {
-  if (!MINING_ENABLED) {
-    return res.status(503).json({ error: "MINING_DISABLED_UNTIL_ONCHAIN_VERIFIED" });
+  // [AUDIT F-27] read the flag from the chain, not from `.env`.
+  if (!(await miningEnabledOnChain())) {
+    return res.status(503).json({ error: "MINING_DISABLED_ONCHAIN" });
   }
   try {
     const user = pk(req.body.user);
