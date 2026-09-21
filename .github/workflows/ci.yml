@@ -655,6 +655,15 @@ jobs:
           python3 scripts/check-mint-writable.py 2>&1 | tee -a /tmp/anchor-build.log
           exit "${PIPESTATUS[0]}"
 
+      - name: Frontend core-instruction table gate (wallet guard coverage)
+        # Blocking. [AUDIT F-32] the wallet guard can only reject an instruction
+        # it can name, so frontend/src/lib/coreInstructions.ts must stay in step
+        # with the committed IDL (and therefore with the Rust contexts).
+        run: |
+          set -uo pipefail
+          python3 scripts/gen-core-instruction-table.py --check 2>&1 | tee -a /tmp/anchor-build.log
+          exit "${PIPESTATUS[0]}"
+
       - name: IDL drift gate (source account contexts vs committed IDL)
         # Blocking. The IDL builder is upstream-blocked, so the backend, the
         # frontend and the Anchor test suite all run against the committed
