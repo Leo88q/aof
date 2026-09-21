@@ -373,8 +373,14 @@ describe("aof-core: security & core flows", () => {
     const user = Keypair.generate(); await airdrop(user);
     const acc = { config: configPda, user: user.publicKey, gastank: gastankPda(user.publicKey), systemProgram: SystemProgram.programId };
     await program.methods.depositGas(new BN(1_000_000_000)).accounts(acc).signers([user]).rpc();
-    await program.methods.withdrawGas(new BN(100_000)).accounts(acc).signers([user]).rpc();
-    await expectError(program.methods.withdrawGas(new BN(100_000)).accounts(acc).signers([user]).rpc(), "CooldownNotExpired");
+    // [AUDIT F-20] The 12h window is armed only above
+    // GASTANK_INSTANT_WITHDRAW_MICROS (200_000 micros = 0.2 SOL), so a player
+    // keeps access to small amounts of their own funds. Pin the threshold from
+    // both sides: exactly at it stays instant, one micro over arms the cooldown.
+    await program.methods.withdrawGas(new BN(200_000)).accounts(acc).signers([user]).rpc();
+    await program.methods.withdrawGas(new BN(200_001)).accounts(acc).signers([user]).rpc();
+    // Once armed, even a 1-micro withdrawal must wait out the full cooldown.
+    await expectError(program.methods.withdrawGas(new BN(1)).accounts(acc).signers([user]).rpc(), "CooldownNotExpired");
   });
 
   it("unstake до unlock падает (C6)", async () => {
@@ -607,7 +613,11 @@ describe("aof-core: security & core flows", () => {
     // re-mint them after the reveal window. Level-0 attempt: 200 wood + 200
     // stone + 33_000_000 lamports (+ 20_000_000 with the protector).
     const user = Keypair.generate(); await airdrop(user);
-    const { mint: toolMint } = await mintTool(user.publicKey, "pickaxe");
+    // [AUDIT F-17] mint_tool canonicalises tool_type against TOOL_KINDS and
+    // rejects anything outside that set, so the fixture has to use a canonical
+    // kind ("pick"); "pickaxe" now dies in setup with InvalidToolType before the
+    // forge call is ever sent.
+    const { mint: toolMint } = await mintTool(user.publicKey, "pick");
     const userWood = await giveResource("wood", woodMint, user.publicKey, 1000);
     const userStone = await giveResource("stone", stoneMint, user.publicKey, 1000);
     const woodBefore = await balance(userWood);
