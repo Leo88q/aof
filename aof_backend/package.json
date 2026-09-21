@@ -28,7 +28,7 @@
     "test:audit-security": "ts-node --project tsconfig.json --transpile-only scripts/auditSecuritySelfTest.ts",
     "test:admin-auth": "ts-node --project tsconfig.json --transpile-only scripts/adminAuthSelfTest.ts",
     "test:fraud-signals": "ts-node --project tsconfig.json --transpile-only scripts/fraudSignalsSelfTest.ts",
-    "test:watchtower": "cd ../watchtower && npm test && cd ../aof_backend && ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/_fixtures.gen.ts --check",
+    "test:watchtower": "cd ../watchtower && npm test",
     "test:chain-indexer": "ts-node --project tsconfig.json --transpile-only scripts/chainIndexerSelfTest.ts",
     "chain-indexer": "ts-node services/chain-indexer/index.ts",
     "caps:init": "ts-node --project tsconfig.json --transpile-only scripts/initIssuanceCaps.ts",

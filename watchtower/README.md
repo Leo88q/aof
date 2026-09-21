@@ -106,7 +106,7 @@ without a decision.
 
 ```bash
 # dev (uses aof_backend's node_modules / Prisma client / .env)
-cd watchtower && cp config.example.env .env && npm run dev
+cd watchtower && cp config.example.env .env && npm run dev   # resolves packages via NODE_PATH=../aof_backend/node_modules
 # tests
 npm test                      # or: cd aof_backend && npm run test:watchtower
 # production
