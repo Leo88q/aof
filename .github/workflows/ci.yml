@@ -183,7 +183,28 @@ jobs:
       - name: Core energy, LP and drum arithmetic unit tests
         # [AUDIT F-33] `-p aof-quests` was missing here, so `drum_odds_tests`
         # (the F-13 EV regression) and the G-07 slot-hash fixture never ran.
-        run: cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib
+        run: |
+          set -o pipefail
+          cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib 2>&1 | tee /tmp/unit-tests.log
+
+      - name: Mirror unit-test output into check annotations
+        if: failure()
+        # results-receiver.actions.githubusercontent.com is unreachable from
+        # some environments, so a red run there is undiagnosable. The compiler
+        # and assertion output is repeated as check-run annotations, which are
+        # readable through the API.
+        run: |
+          python3 - <<'PY'
+          import os, re
+          path = "/tmp/unit-tests.log"
+          if not os.path.exists(path):
+              raise SystemExit(0)
+          lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+          keep = [l for l in lines if re.search(r"(^error|panicked|FAILED|test result:|^\s+--> )", l)]
+          for line in keep[:80]:
+              safe = line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+              print("::error::" + safe[:900])
+          PY
 
       - name: Rust advisory audit (advisory, non-blocking)
         # [AUDIT F-31] anchor-lang 0.30.1 / solana-program 1.18.26 are an EOL
@@ -806,7 +827,23 @@ jobs:
           exit "$rc"
 
       - name: Compile workers
-        run: npm run build:workers
+        run: |
+          set -o pipefail
+          npm run build:workers 2>&1 | tee /tmp/workers-build.log
+
+      - name: Mirror worker type errors into check annotations
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os, re
+          path = "/tmp/workers-build.log"
+          if not os.path.exists(path):
+              raise SystemExit(0)
+          keep = [l for l in open(path, encoding="utf-8", errors="replace").read().splitlines()
+                  if re.search(r"error TS", l)]
+          for line in keep[:60]:
+              print("::error::" + line.replace("%", "%25").replace("\r", "")[:900])
+          PY
 
       - name: Offline mint cost model tests
         working-directory: .
