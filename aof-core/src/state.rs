@@ -1436,9 +1436,11 @@ mod property_tests {
         for kind in TOOL_KINDS {
             for variant in [kind.to_string(), kind.to_uppercase(), kind.to_lowercase()] {
                 let c = canonical_tool_type(&variant).unwrap_or_else(|| panic!("{variant:?} must canonicalise"));
-                assert_eq!(c, *kind, "case changed the canonical value of {variant:?}");
+                // `kind` is already a `&str` (arrays iterate by value here);
+                // `*kind` would be an unsized `str`.
+                assert_eq!(c, kind, "case changed the canonical value of {variant:?}");
                 assert!(is_valid_tool_type(c));
-                assert_eq!(canonical_tool_type(c), Some(*kind), "canonicalisation is not idempotent");
+                assert_eq!(canonical_tool_type(c), Some(kind), "canonicalisation is not idempotent");
             }
         }
         const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ";
