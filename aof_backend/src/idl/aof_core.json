@@ -10751,14 +10751,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -10878,14 +10870,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -11364,14 +11348,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -11555,14 +11531,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -11632,14 +11600,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -12036,14 +11996,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -12216,14 +12168,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]
@@ -12544,14 +12488,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
-            "type": "u8"
           }
         ]
       }
@@ -12578,14 +12514,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buff_expires_at",
-            "type": "i64"
-          },
-          {
-            "name": "buff_type",
             "type": "u8"
           }
         ]

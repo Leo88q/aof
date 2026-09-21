@@ -10757,14 +10757,6 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
-            "type": "u8"
           }
         ]
       }
@@ -10884,14 +10876,6 @@ export type AofCore = {
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
             "type": "u8"
           }
         ]
@@ -11370,14 +11354,6 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
-            "type": "u8"
           }
         ]
       }
@@ -11561,14 +11537,6 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
-            "type": "u8"
           }
         ]
       }
@@ -11638,14 +11606,6 @@ export type AofCore = {
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
             "type": "u8"
           }
         ]
@@ -12042,14 +12002,6 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
-            "type": "u8"
           }
         ]
       }
@@ -12222,14 +12174,6 @@ export type AofCore = {
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
             "type": "u8"
           }
         ]
@@ -12550,14 +12494,6 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
-            "type": "u8"
           }
         ]
       }
@@ -12584,14 +12520,6 @@ export type AofCore = {
           },
           {
             "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "buffExpiresAt",
-            "type": "i64"
-          },
-          {
-            "name": "buffType",
             "type": "u8"
           }
         ]
