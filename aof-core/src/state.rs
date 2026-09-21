@@ -1417,7 +1417,9 @@ mod property_tests {
             for _ in 0..25 {
                 let roll = rng.next_u64();
                 let idx = weighted_pick(roll, &weights);
-                let r = roll % 10_000;
+                // u32 on both sides: `weighted_pick` reduces the roll modulo
+                // 10_000 and the bucket sums are accumulated as u32.
+                let r = (roll % 10_000) as u32;
                 let inclusive: u32 = weights[..=idx].iter().map(|w| *w as u32).sum();
                 let exclusive: u32 = weights[..idx].iter().map(|w| *w as u32).sum();
                 assert!(idx < weights.len(), "index {idx} out of range");
