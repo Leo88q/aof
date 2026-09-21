@@ -4,6 +4,7 @@ use crate::constants::*;
 use crate::errors::*;
 use crate::events::MiningCollected;
 use crate::CollectMining;
+use crate::ResourceKind;
 
 // Mining is settled in the same instruction that closes the session. The
 // previous flow reset ToolData first and asked a backend worker to calculate

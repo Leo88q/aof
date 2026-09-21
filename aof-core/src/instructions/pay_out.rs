@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 use crate::constants::*;
 use crate::state::*;
-use crate::PayOut;
+use crate::{InitVaultGuard, PayOut, SetVaultGuard};
 use crate::errors::*;
 use crate::events::*;
 

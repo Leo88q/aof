@@ -3,7 +3,7 @@ use anchor_spl::token;
 use crate::constants::*;
 use crate::errors::*;
 use crate::events::*;
-use crate::state::Rarity;
+use crate::state::{canonical_tool_type, init_tool_data, Rarity};
 use crate::Craft;
 
 pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {
