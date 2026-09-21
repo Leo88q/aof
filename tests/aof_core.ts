@@ -32,10 +32,10 @@ describe("aof-core: security & core flows", () => {
   const playerPda = (u: PublicKey) => pda([B("player"), u.toBuffer()]);
   const gastankPda = (u: PublicKey) => pda([B("gastank"), u.toBuffer()]);
   const UNIT_RAW = new BN(1_000_000_000);
-  // Must match the ResourceKind enum order in aof-core/src/lib.rs (seed = kind as u8).
-  const RESOURCE_KINDS = ["food", "wood", "stone", "seeds", "wheat", "flour", "bread", "water", "coal",
-    "fish", "milk", "eggs", "meat", "stones", "sands", "gems", "gemBlue", "gemYellow", "gemGreen", "gemPink",
-    "gemPurple", "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple", "loveHeart", "potato"];
+  // ResourceKind variants in enum order, taken from the IDL the suite runs
+  // against (seed = kind as u8 = variant index); lowerCamel for Anchor's JS enum encoding.
+  const RESOURCE_KINDS: string[] = (idlJson.types.find((t: any) => t.name === "ResourceKind").type.variants as any[])
+    .map((v: any) => v.name[0].toLowerCase() + v.name.slice(1));
   const issuanceCapPda = (kind: string) => {
     const idx = RESOURCE_KINDS.indexOf(kind);
     if (idx < 0) throw new Error(`unknown kind ${kind}`);
