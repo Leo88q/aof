@@ -4,6 +4,7 @@ use crate::constants::*;
 use crate::state::*;
 use crate::errors::*;
 use crate::CollectFlour;
+use crate::ResourceKind;
 
 /// [БЛОК L] Сбор готовой муки с мельницы.
 /// Требует now >= ready_at. Минтит Flour, сбрасывает mill_state.
@@ -17,6 +18,16 @@ pub fn handler(ctx: Context<CollectFlour>) -> Result<()> {
 
     let output = mill.output_flour;
     require!(output > 0, AofError::ZeroAmount);
+
+    // [AUDIT F-03] Flour is minted by `start_milling`/`collect_flour` and by
+    // `craft_recipe`; neither path ever touched IssuanceCap. The global supply
+    // ceiling is checked before the CPI so a rejected mint changes nothing.
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        ResourceKind::Flour,
+        ctx.accounts.flour_mint.supply,
+        output,
+    )?;
 
     // Auth PDA signer
     let auth_bump = ctx.bumps.auth;

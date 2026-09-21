@@ -4,6 +4,7 @@ use crate::constants::*;
 use crate::state::*;
 use crate::errors::*;
 use crate::CollectBread;
+use crate::ResourceKind;
 
 /// [БЛОК L] Сбор готового хлеба с печи.
 /// Требует now >= ready_at. Минтит Bread, сбрасывает oven_state.
@@ -17,6 +18,14 @@ pub fn handler(ctx: Context<CollectBread>) -> Result<()> {
 
     let output = oven.output_bread;
     require!(output > 0, AofError::ZeroAmount);
+
+    // [AUDIT F-03] see collect_flour: bread emission bypassed IssuanceCap.
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        ResourceKind::Bread,
+        ctx.accounts.bread_mint.supply,
+        output,
+    )?;
 
     let auth_bump = ctx.bumps.auth;
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];

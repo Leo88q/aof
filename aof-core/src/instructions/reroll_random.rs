@@ -16,6 +16,11 @@ use crate::randomness::*;
 pub fn init_config_handler(ctx: Context<InitRerollConfig>, odds_bps: [u16; 5]) -> Result<()> {
     let sum: u32 = odds_bps.iter().map(|x| *x as u32).sum();
     require!(sum == 10_000, AofError::InvalidOddsWeights);
+    // [AUDIT F-18] `pack_config.rs` rejects a non-zero Legendary weight, the
+    // reroll config did not. A single typo in the odds table would have turned
+    // reroll into an unlimited Legendary press that never touches the craft
+    // curve. Legendary is craft/reroll-fuse only, never a direct roll.
+    require!(odds_bps[4] == 0, AofError::InvalidOddsWeights);
     let c = &mut ctx.accounts.reroll_config;
     c.odds_bps = odds_bps;
     c.bump = ctx.bumps.reroll_config;
@@ -25,6 +30,9 @@ pub fn init_config_handler(ctx: Context<InitRerollConfig>, odds_bps: [u16; 5]) -
 pub fn set_config_handler(ctx: Context<SetRerollConfig>, odds_bps: [u16; 5]) -> Result<()> {
     let sum: u32 = odds_bps.iter().map(|x| *x as u32).sum();
     require!(sum == 10_000, AofError::InvalidOddsWeights);
+    // [AUDIT F-18] see init_config_handler: Legendary must stay unreachable
+    // from a single roll.
+    require!(odds_bps[4] == 0, AofError::InvalidOddsWeights);
     ctx.accounts.reroll_config.odds_bps = odds_bps;
     Ok(())
 }
@@ -75,7 +83,12 @@ pub fn commit_handler(ctx: Context<RerollRandomCommit>, commit_hash: [u8; 32]) -
     Ok(())
 }
 
+/// [AUDIT F-06] Disabled — authority-held secret, no forced settlement, and
+/// the tool is burned at commit time so a withheld reveal is an outright loss.
 pub fn reveal_handler(ctx: Context<RerollRandomReveal>, secret: [u8; 32]) -> Result<()> {
+    require!(false, AofError::RandomnessDisabled);
+    #[allow(unreachable_code)]
+    {
     require!(
         hash_secret(&secret) == ctx.accounts.reroll_commit.commit_hash,
         AofError::CommitMismatch
@@ -128,4 +141,5 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, secret: [u8; 32]) -> Res
         tool_type,
     });
     Ok(())
+    }
 }

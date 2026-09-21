@@ -124,5 +124,11 @@ pub fn handler(
     mm.flask_purple = flask_purple;
     mm.love_heart = love_heart;
     mm.bump = ctx.bumps.material_mints;
+    // [AUDIT F-03] No ceiling configured at deploy time: every resource starts
+    // at `SUPPLY_CAP_UNLIMITED` (u64::MAX) and the authority is expected to
+    // tighten the interesting kinds with `set_supply_cap` before launch.
+    // Starting at 0 would mean "halted", which would break the whole economy
+    // before anybody had a chance to configure it.
+    mm.max_supply = [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT];
     Ok(())
 }

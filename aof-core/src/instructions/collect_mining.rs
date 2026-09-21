@@ -3,55 +3,53 @@ use anchor_spl::token::{self, MintTo};
 use crate::constants::*;
 use crate::errors::*;
 use crate::events::MiningCollected;
-use crate::state::{MaterialMints, Rarity};
 use crate::CollectMining;
 
-/// Mining is settled in the same instruction that closes the session.  The
-/// previous flow reset ToolData first and asked a backend worker to calculate
-/// and pay the reward in a second transaction; a failed or stale worker could
-/// therefore leave the player with no payout. Keep the reward formula
-/// deterministic (10 display units per hour, represented in 9-decimal
-/// atomic units) and derive the destination mint from the canonical registry.
-fn resource_mint_for_tool(
-    config: &crate::state::Config,
-    materials: &MaterialMints,
-    tool_type: &str,
-) -> Option<Pubkey> {
+// Mining is settled in the same instruction that closes the session. The
+// previous flow reset ToolData first and asked a backend worker to calculate
+// and pay the reward in a second transaction; a failed or stale worker could
+// therefore leave the player with no payout. The reward formula stays
+// deterministic (BASE_RATE_MINING display units per hour, scaled by
+// `Rarity::yield_bps`) and the destination mint comes from the canonical
+// registry in `state::mint_for_kind`.
+//
+// Canonical tool -> resource mapping. [AUDIT F-17]: the previous mapping
+// silently dropped "spear" (one of the three types `PACK_TOOL_TYPES` can
+// produce), leaving those tools with no yield at all.
+fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
     if tool_type.eq_ignore_ascii_case("axe") {
-        Some(config.wood_mint)
+        Some(ResourceKind::Wood)
     } else if tool_type.eq_ignore_ascii_case("pick") {
-        Some(config.stone_mint)
+        Some(ResourceKind::Stone)
     } else if tool_type.eq_ignore_ascii_case("bow") {
-        Some(materials.meat)
+        Some(ResourceKind::Meat)
+    } else if tool_type.eq_ignore_ascii_case("spear") {
+        // Spear is a hunting tool: same resource as the bow.
+        Some(ResourceKind::Meat)
     } else if tool_type.eq_ignore_ascii_case("reaper") {
-        Some(materials.seeds)
+        Some(ResourceKind::Seeds)
     } else {
         None
     }
 }
 
-fn yield_bps(rarity: Rarity) -> u64 {
-    match rarity {
-        Rarity::Common => 10_000,
-        Rarity::Uncommon => 11_500,
-        Rarity::Rare => 13_000,
-        Rarity::Epic => 15_000,
-        Rarity::Legendary => 18_000,
-    }
-}
-
 pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
+    // [AUDIT F-27] The kill-switch now lives on-chain. Before this, mining was
+    // only gated by a backend env var, so a direct RPC call bypassed it.
+    require!(ctx.accounts.config.mining_enabled, AofError::MiningDisabled);
+
     let now = Clock::get()?.unix_timestamp;
     require!(now >= ctx.accounts.tool.mining_end, AofError::MiningNotComplete);
 
     let hours = ctx.accounts.tool.last_mined_hours;
     require!(hours > 0, AofError::InvalidAmount);
-    let expected_mint = resource_mint_for_tool(
+    let kind = resource_kind_for_tool(&ctx.accounts.tool.tool_type)
+        .ok_or(AofError::InvalidResourceKind)?;
+    let expected_mint = crate::state::mint_for_kind(
         &ctx.accounts.config,
         &ctx.accounts.material_mints,
-        &ctx.accounts.tool.tool_type,
-    )
-    .ok_or(AofError::InvalidResourceKind)?;
+        &kind,
+    );
     require!(
         ctx.accounts.payout_mint.key() == expected_mint,
         AofError::InvalidResourceKind
@@ -63,14 +61,23 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
     );
 
     let amount = (hours as u64)
-        .checked_mul(10)
+        .checked_mul(BASE_RATE_MINING)
         .and_then(|base| base.checked_mul(RESOURCE_UNIT))
         .ok_or(AofError::MathOverflow)?
-        .checked_mul(yield_bps(ctx.accounts.tool.rarity))
+        .checked_mul(ctx.accounts.tool.rarity.yield_bps())
         .ok_or(AofError::MathOverflow)?
         .checked_div(10_000)
         .ok_or(AofError::MathOverflow)?;
     require!(amount > 0, AofError::ZeroAmount);
+
+    // [AUDIT F-03] Mining is the single largest emission path in the game and
+    // it never touched IssuanceCap. The global supply ceiling closes that.
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        kind,
+        ctx.accounts.payout_mint.supply,
+        amount,
+    )?;
 
     let auth_bump = ctx.bumps.auth;
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];

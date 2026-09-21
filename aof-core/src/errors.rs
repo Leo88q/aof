@@ -216,4 +216,41 @@ pub enum AofError {
     IssuanceCapExceeded,
     #[msg("Issuance cap parameters out of bounds")]
     InvalidIssuanceCapParams,
+
+    // ===== [AUDIT 2026-09-21] new variants =====
+    // Appended at the end on purpose: Anchor error codes are positional, so
+    // inserting a variant in the middle would silently renumber every error
+    // the backend and the frontend already map by code.
+    #[msg("Global supply cap for this resource would be exceeded")]
+    SupplyCapExceeded,
+    #[msg("Vault withdrawal guard for this mint is not configured")]
+    VaultGuardNotConfigured,
+    #[msg("Vault withdrawal exceeds the per-transaction or per-epoch limit")]
+    VaultGuardLimitExceeded,
+    #[msg("Mint is not a configured resource mint; pay_out cannot move it")]
+    NotAResourceMint,
+    #[msg("Vault withdrawal guard parameters out of bounds")]
+    InvalidVaultGuardParams,
+    #[msg("No authority rotation is pending")]
+    NoPendingAuthority,
+    #[msg("Signer is not the pending authority")]
+    NotPendingAuthority,
+    #[msg("Mining is disabled by the on-chain config")]
+    MiningDisabled,
+    #[msg("This NFT mint is not registered as a collector perk")]
+    CollectorMintNotAllowed,
+    #[msg("Capacity delta is out of bounds")]
+    InvalidCapacityDelta,
+    #[msg("Listing or auction is still active")]
+    StillActive,
+    #[msg("Lottery round has already been drawn")]
+    LotteryAlreadyDrawn,
+    #[msg("Lottery round refund timeout has not elapsed yet")]
+    LotteryRoundNotExpired,
+    #[msg("Randomness-dependent instruction is disabled until a VRF is integrated")]
+    RandomnessDisabled,
+    #[msg("Craft order must require at least one resource")]
+    EmptyCraftOrder,
+    #[msg("Exploration tier is out of range")]
+    InvalidExplorationTier,
 }

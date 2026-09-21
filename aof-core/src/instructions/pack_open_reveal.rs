@@ -7,7 +7,16 @@ use crate::events::*;
 use crate::state::Rarity;
 use crate::randomness::*;
 
+/// [AUDIT F-06] Disabled. `randomness.rs` documents itself as "NOT a VRF …
+/// secret holders can withhold unfavorable reveals … new economic commitments
+/// using this module must remain disabled". The commit side is already
+/// `require!(false)`, so keeping only the reveal callable created a window
+/// where an authority-held secret could pick the rarity of a paid pack.
+/// Re-enable together with `pack_open_commit` once a real VRF is wired in.
 pub fn handler(ctx: Context<PackOpenReveal>, secret: [u8; 32]) -> Result<()> {
+    require!(false, AofError::RandomnessDisabled);
+    #[allow(unreachable_code)]
+    {
     require!(!ctx.accounts.pack_commit.revealed, AofError::CommitMismatch);
     require!(
         hash_secret(&secret) == ctx.accounts.pack_commit.commit_hash,
@@ -85,4 +94,5 @@ pub fn handler(ctx: Context<PackOpenReveal>, secret: [u8; 32]) -> Result<()> {
         tool_type,
     });
     Ok(())
+    }
 }

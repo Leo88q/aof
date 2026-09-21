@@ -148,6 +148,191 @@ pub struct SetResourceMints<'info> {
     pub authority: Signer<'info>,
 }
 
+// =====================================================================
+// [AUDIT F-02] Authority rotation
+//
+// Not one of the six programs shipped an instruction that changes
+// `Config.authority`, so the value captured by the very first `initialize()`
+// was permanent: rotating the hot key (or moving to a Squads vault, as
+// docs/ISSUANCE_CAPS_DESIGN.md §5 proposes) was impossible without redeploying
+// the program and migrating every account. The rotation is deliberately
+// two-step — the current authority proposes, the new authority accepts — so a
+// typo in the new pubkey cannot lock the program out, and a key that is no
+// longer controlled cannot be "rotated into".
+// =====================================================================
+
+#[derive(Accounts)]
+pub struct SetPendingAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED], bump = config.bump,
+        constraint = config.pending_authority == new_authority.key() @ AofError::NotPendingAuthority
+    )]
+    pub config: Account<'info, Config>,
+    pub new_authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelPendingAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+}
+
+/// [AUDIT F-27] Mining kill-switch: `MINING_ENABLED` used to exist only as a
+/// backend env var, which any player could bypass with a direct RPC call.
+#[derive(Accounts)]
+pub struct SetMiningEnabled<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+}
+
+// =====================================================================
+// [AUDIT F-01] Vault withdrawal guards
+// =====================================================================
+
+#[derive(Accounts)]
+pub struct InitVaultGuard<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = authority,
+        space = VAULT_GUARD_SPACE,
+        seeds = [VAULT_GUARD_SEED, mint.key().as_ref()],
+        bump
+    )]
+    pub vault_guard: Account<'info, VaultGuard>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SetVaultGuard<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        seeds = [VAULT_GUARD_SEED, mint.key().as_ref()],
+        bump = vault_guard.bump
+    )]
+    pub vault_guard: Account<'info, VaultGuard>,
+}
+
+// =====================================================================
+// [AUDIT F-03] Global supply ceilings (MaterialMints::max_supply)
+// =====================================================================
+
+#[derive(Accounts)]
+pub struct SetSupplyCap<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+}
+
+// =====================================================================
+// [AUDIT F-16] Collector perk allowlist
+// =====================================================================
+
+#[derive(Accounts)]
+#[instruction(kind: CollectorKind)]
+pub struct RegisterCollectorMint<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = authority,
+        space = COLLECTOR_ALLOW_SPACE,
+        seeds = [COLLECTOR_ALLOW_SEED, mint.key().as_ref()],
+        bump
+    )]
+    pub entry: Account<'info, CollectorAllowEntry>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RevokeCollectorMint<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        close = authority,
+        seeds = [COLLECTOR_ALLOW_SEED, mint.key().as_ref()],
+        bump = entry.bump
+    )]
+    pub entry: Account<'info, CollectorAllowEntry>,
+}
+
+// =====================================================================
+// [AUDIT F-23] Lottery round recovery
+// =====================================================================
+
+#[derive(Accounts)]
+#[instruction(round_id: u64)]
+pub struct RefundLotteryRound<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        mut,
+        close = treasury,
+        seeds = [LOTTERY_ROUND_SEED, &round_id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, LotteryRound>,
+    /// CHECK: configured treasury, receives the stranded pool and the rent.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+}
+
 #[derive(Accounts)]
 pub struct SetCraftEconomy<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
@@ -838,6 +1023,21 @@ pub struct BurnNft<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// [AUDIT F-01] `pay_out` used to be "move `amount` of `mint` from the vault to
+/// any token account", with the recipient validated only by
+/// `user_token.mint == mint`. A leaked authority key — the backend holds it in
+/// process, see F-02 — could therefore sweep the whole vault, staked NFTs
+/// included, and `ToolData.staked` would still say the tool was staked, so the
+/// real owner could neither unstake nor prove the theft.
+///
+/// Three independent brakes now apply, all fail-closed:
+///  1. the mint must be a configured *resource* mint, so no staked tool NFT can
+///     ever leave the vault through this path;
+///  2. the recipient must be an existing `Player` PDA, which only the authority
+///     can create — a thief cannot drain to a freshly generated wallet;
+///  3. the amount is charged against a per-mint `VaultGuard` budget
+///     (per-transaction ceiling + per-epoch cap), so even a fully compromised
+///     key is bounded by the guard instead of by the vault balance.
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct PayOut<'info> {
@@ -846,17 +1046,27 @@ pub struct PayOut<'info> {
         has_one = authority @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     pub authority: Signer<'info>,
     /// CHECK: vault PDA
     #[account(seeds = [VAULT_SEED], bump)]
     pub vault: UncheckedAccount<'info>,
     #[account(mut)]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = vault_token.mint == mint.key(), constraint = vault_token.owner == vault.key())]
-    pub vault_token: Account<'info, TokenAccount>,
+    pub vault_token: Box<Account<'info, TokenAccount>>,
     #[account(mut, constraint = user_token.mint == mint.key())]
-    pub user_token: Account<'info, TokenAccount>,
+    pub user_token: Box<Account<'info, TokenAccount>>,
+    /// Recipient must be a known player: blocks withdrawals to throwaway wallets.
+    #[account(
+        seeds = [PLAYER_SEED, user_token.owner.as_ref()], bump,
+        constraint = player.owner == user_token.owner @ AofError::Unauthorized
+    )]
+    pub player: Box<Account<'info, Player>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(mut, seeds = [VAULT_GUARD_SEED, mint.key().as_ref()], bump = vault_guard.bump)]
+    pub vault_guard: Box<Account<'info, VaultGuard>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1363,6 +1573,9 @@ pub struct ReferralUpgradeCtx<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// [AUDIT F-01] Same three brakes as `PayOut`. The referral split is a split of
+/// one authority-decided `amount`, not extra issuance (see referral.rs), but it
+/// still moved vault funds, so it gets the identical guard.
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct PayOutWithReferral<'info> {
@@ -1386,6 +1599,15 @@ pub struct PayOutWithReferral<'info> {
     pub referral_link: Account<'info, ReferralLink>,
     #[account(mut, constraint = referrer_token.mint == mint.key(), constraint = referrer_token.owner == referral_link.referrer)]
     pub referrer_token: Account<'info, TokenAccount>,
+    #[account(
+        seeds = [PLAYER_SEED, referral_link.referred.as_ref()], bump,
+        constraint = player.owner == referral_link.referred @ AofError::Unauthorized
+    )]
+    pub player: Account<'info, Player>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(mut, seeds = [VAULT_GUARD_SEED, mint.key().as_ref()], bump = vault_guard.bump)]
+    pub vault_guard: Account<'info, VaultGuard>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1516,6 +1738,16 @@ pub struct BuyLotteryTicket<'info> {
         bump
     )]
     pub lottery_ticket: Account<'info, LotteryTicket>,
+    /// [AUDIT] Per-wallet ticket counter enforcing `LOTTERY_MAX_TICKETS_PER_DAY`
+    /// on-chain instead of trusting the backend's off-chain limit.
+    #[account(
+        init_if_needed,
+        payer = buyer,
+        space = LOTTERY_TICKET_COUNTER_SPACE,
+        seeds = [LOTTERY_TICKET_SEED, b"count", &lottery_round.round_id.to_le_bytes(), buyer.key().as_ref()],
+        bump
+    )]
+    pub ticket_counter: Account<'info, LotteryTicketCounter>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1542,6 +1774,9 @@ pub struct CommitLotteryDraw<'info> {
 
 #[derive(Accounts)]
 pub struct ClaimLotteryPrize<'info> {
+    /// [AUDIT F-19] the emergency pause must also stop prize payouts.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
     pub lottery_round: Account<'info, LotteryRound>,
     #[account(
@@ -2176,6 +2411,15 @@ pub struct CollectWellWater<'info> {
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub user: Signer<'info>,
+    /// [AUDIT F-11] The wallet must already be a player (villagers > 0). A
+    /// Player PDA is only created by the authority's resource mint, or by
+    /// starting a mining session with a real tool NFT, so the well is no longer
+    /// a faucet for freshly generated sybil wallets.
+    #[account(
+        seeds = [PLAYER_SEED, user.key().as_ref()], bump,
+        constraint = player.owner == user.key() @ AofError::Unauthorized
+    )]
+    pub player: Box<Account<'info, Player>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(
@@ -2212,12 +2456,20 @@ pub struct CraftRecipe<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
+    // `mut` on ALL THREE mints [AUDIT F-04]: SPL Token rewrites `mint.supply`
+    // on every mint_to/burn, so a read-only mint account makes the runtime
+    // reject the instruction with "writable privilege escalated". All eight
+    // recipes were dead on arrival; scripts/check-mint-writable.py missed it
+    // because the CPI is generated inside a `macro_rules!` (see F-05).
+    #[account(mut)]
     pub input_1_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = input_1_acc.mint == input_1_mint.key(), constraint = input_1_acc.owner == user.key())]
     pub input_1_acc: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
     pub input_2_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = input_2_acc.mint == input_2_mint.key(), constraint = input_2_acc.owner == user.key())]
     pub input_2_acc: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
     pub output_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = output_acc.mint == output_mint.key(), constraint = output_acc.owner == user.key())]
     pub output_acc: Box<Account<'info, TokenAccount>>,
@@ -2455,6 +2707,8 @@ pub struct ClaimSeasonReward<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(seeds = [SEASON_SEED, &season.season_id.to_le_bytes()], bump = season.bump)]
     pub season: Account<'info, Season>,
     #[account(mut, seeds = [SEASON_PASS_SEED, season_pass.owner.as_ref(), &season.season_id.to_le_bytes()], bump)]

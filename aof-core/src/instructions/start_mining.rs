@@ -11,6 +11,8 @@ use crate::constants::DEFAULT_VILLAGERS;
 /// майнинг. Подключаю здесь: инструмент нельзя запустить без свободного
 /// жителя, и требуемые часы теперь ограничены Rarity::max_hours().
 pub fn handler(ctx: Context<StartMining>, hours: u8) -> Result<()> {
+    // [AUDIT F-27] on-chain kill-switch (see collect_mining).
+    require!(ctx.accounts.config.mining_enabled, AofError::MiningDisabled);
     require!(hours > 0, AofError::ZeroAmount);
     require!(hours <= ctx.accounts.tool.durability, AofError::InsufficientDurability);
     require!(

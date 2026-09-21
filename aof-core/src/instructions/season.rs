@@ -3,6 +3,7 @@ use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, MintTo};
 use crate::constants::*;
 use crate::{InitSeason, PurchaseSeasonPass, GrantSeasonXp, ClaimSeasonReward};
+use crate::ResourceKind;
 use crate::errors::*;
 use crate::events::*;
 
@@ -75,10 +76,25 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
         require!(ctx.accounts.season_pass.premium, AofError::SeasonPremiumRequired);
     }
 
-    // Награда — фиксированная сумма WOOD за уровень (пример; конкретные
-    // награды по уровням — продуктовое решение, задаётся authority при
-    // вызове через amount ниже в реальном проде вынести в конфиг).
-    let reward_amount = (level as u64) * 100;
+    // [AUDIT F-14 / G-12] The old formula was `(level as u64) * 100` in ATOMIC
+    // units, i.e. 0.0000042 WOOD at the maximum level — season rewards existed
+    // on paper and were dust in practice. Everything else in the program is
+    // denominated in RESOURCE_UNIT (1e9 atomic); the reward now is too.
+    // Per-level amounts stay a product decision, but the scale is fixed here so
+    // `level` cannot silently mean "atomic units" again.
+    let reward_amount = (level as u64)
+        .checked_mul(SEASON_REWARD_UNITS_PER_LEVEL)
+        .and_then(|v| v.checked_mul(RESOURCE_UNIT))
+        .ok_or(AofError::MathOverflow)?;
+    require!(reward_amount > 0, AofError::ZeroAmount);
+
+    // [AUDIT F-03] Season rewards are another mint path that never saw a cap.
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        ResourceKind::Wood,
+        ctx.accounts.wood_mint.supply,
+        reward_amount,
+    )?;
     let auth_bump = ctx.bumps.auth;
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
     token::mint_to(

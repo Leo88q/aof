@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::constants::*;
+use crate::ResourceKind;
 
 #[account]
 #[derive(InitSpace)]
@@ -16,6 +17,54 @@ pub struct Config {
     pub unstake_fee: u64,           // 8
     pub paused: bool,               // 1
     pub bump: u8,                   // 1
+    // ===== [AUDIT F-27] on-chain kill-switch for mining =====
+    // MINING_ENABLED previously lived only in the backend env
+    // (`config.ts: MINING_ENABLED = !isProduction && ...`). Anybody could
+    // bypass it by calling `start_mining`/`collect_mining` straight through
+    // RPC. The flag now lives on-chain and is enforced by both instructions.
+    pub mining_enabled: bool,       // 1
+    // ===== [AUDIT F-02] two-step authority rotation =====
+    // `set_pending_authority` (current authority) -> `accept_authority`
+    // (new authority). `pending_authority == Pubkey::default()` means "no
+    // rotation in flight". Without this pair the deployed Config.authority
+    // was frozen forever at the value captured during the first initialize().
+    pub pending_authority: Pubkey,  // 32
+    pub authority_updated_at: i64,  // 8
+}
+
+impl Config {
+    pub fn is_resource_mint(&self, materials: &MaterialMints, mint: &Pubkey) -> bool {
+        let m = mint;
+        *m == self.food_mint
+            || *m == self.wood_mint
+            || *m == self.stone_mint
+            || *m == self.seeds_mint
+            || *m == self.water_mint
+            || *m == self.potato_mint
+            || *m == materials.seeds
+            || *m == materials.wheat
+            || *m == materials.flour
+            || *m == materials.bread
+            || *m == materials.water
+            || *m == materials.coal
+            || *m == materials.meat
+            || *m == materials.stone_blue
+            || *m == materials.stone_purple
+            || *m == materials.stone_red
+            || *m == materials.sand_white
+            || *m == materials.sand_pink
+            || *m == materials.sand_yellow
+            || *m == materials.gem_blue
+            || *m == materials.gem_orange
+            || *m == materials.gem_white
+            || *m == materials.gem_green
+            || *m == materials.flask_blue
+            || *m == materials.flask_yellow
+            || *m == materials.flask_green
+            || *m == materials.flask_pink
+            || *m == materials.flask_purple
+            || *m == materials.love_heart
+    }
 }
 
 #[account]
@@ -116,16 +165,6 @@ impl Rarity {
         }
     }
 
-    pub fn income_multiplier(&self) -> u64 {
-        match self {
-            Rarity::Common => 1,
-            Rarity::Uncommon => 2,
-            Rarity::Rare => 4,
-            Rarity::Epic => 8,
-            Rarity::Legendary => 16,
-        }
-    }
-
     // ===== [НОВОЕ] =====
 
     /// Индекс в craft/craft-economy таблицах (только крафтящиеся редкости,
@@ -142,6 +181,19 @@ impl Rarity {
 
     /// Стоимость ремонта (STONE за 1 юнит прочности) — тот же паттерн,
     /// что max_hours()/income_multiplier(), константы см. constants.rs.
+    /// Yield multiplier in bps for mining. Single source of truth: it used to
+    /// be duplicated between `constants::YIELD_BPS_*` and a private
+    /// `yield_bps()` inside `collect_mining.rs`, and the two could drift.
+    pub fn yield_bps(&self) -> u64 {
+        match self {
+            Rarity::Common => YIELD_BPS_COMMON as u64,
+            Rarity::Uncommon => YIELD_BPS_UNCOMMON as u64,
+            Rarity::Rare => YIELD_BPS_RARE as u64,
+            Rarity::Epic => YIELD_BPS_EPIC as u64,
+            Rarity::Legendary => YIELD_BPS_LEGENDARY as u64,
+        }
+    }
+
     pub fn repair_stone_cost_per_unit(&self) -> u64 {
         match self {
             Rarity::Common => REPAIR_STONE_COMMON,
@@ -226,6 +278,24 @@ pub struct StakedCollector {
     pub unlock_at: i64,    // 8
 }
 
+/// [AUDIT F-16] Allowlist entry for the Historian/Medallion perks.
+///
+/// `collector_stake` used to start with `require!(false, CollectorNotConfigured)`,
+/// which made the perks — and therefore `MINT_FEE_MEDALLION_*`,
+/// `REFERRAL_MEDALLION_BONUS_CAP`/`REFERRAL_HISTORIAN_BONUS_CAP` — permanently
+/// unreachable while the site kept advertising them. There is no canonical
+/// collection mint registry on-chain, so instead of trusting a caller-supplied
+/// mint the authority registers each eligible NFT mint explicitly here
+/// (`register_collector_mint`) and `collector_stake` requires the entry to
+/// exist and to carry the declared `CollectorKind`.
+#[account]
+#[derive(InitSpace)]
+pub struct CollectorAllowEntry {
+    pub mint: Pubkey,
+    pub kind: CollectorKind,
+    pub bump: u8,
+}
+
 // =====================================================================
 // [НОВОЕ] Полная реализация TOR v4 — см. AUDIT_V4_FULL_IMPLEMENTATION.md
 // =====================================================================
@@ -255,8 +325,6 @@ pub struct PackConfig {
     pub price_lamports: u64,
     pub odds_bps: [u16; 5], // Common,Uncommon,Rare,Epic,Legendary
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 #[account]
@@ -281,8 +349,6 @@ pub struct PackCommit {
 pub struct RerollConfig {
     pub odds_bps: [u16; 5],
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 #[account]
@@ -336,18 +402,11 @@ pub struct ReferrerStats {
 
 // ----- Кузница риска (Enchant) -----
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
-pub enum EnchantSlotType {
-    Speed,
-    Durability,
-    EnergyEfficiency,
-}
-
 #[account]
 #[derive(InitSpace)]
 pub struct EnchantSlot {
     pub tool_mint: Pubkey,
-    pub slot_type: u8, // EnchantSlotType as u8
+    pub slot_type: u8, // 0=Speed, 1=Durability, 2=EnergyEfficiency
     pub level: u8,      // 0..=ENCHANT_MAX_LEVEL
 }
 
@@ -381,6 +440,9 @@ pub struct LotteryRound {
     pub winning_ticket: u64,
     pub claimed: bool,
     pub bump: u8,
+    /// [AUDIT F-23] Round creation time; starts the refund timeout that stops
+    /// an unrevealed round from stranding its pool forever.
+    pub created_at: i64,
     // [ФИКС] commit-reveal поля для розыгрыша (закрывают вектор гриферства)
     pub draw_committed: bool,
     pub draw_commit_slot: u64,
@@ -393,6 +455,19 @@ pub struct LotteryTicket {
     pub round_id: u64,
     pub ticket_number: u64,
     pub buyer: Pubkey,
+}
+
+/// [AUDIT] Per-wallet, per-round ticket counter. `LOTTERY_MAX_TICKETS_PER_DAY`
+/// existed as a constant but was never enforced anywhere; the backend limit was
+/// trivially bypassed by calling the program directly. The PDA is derived from
+/// (round, buyer) so the counter cannot be shared or reset.
+#[account]
+#[derive(InitSpace)]
+pub struct LotteryTicketCounter {
+    pub buyer: Pubkey,
+    pub round_id: u64,
+    pub count: u8,
+    pub bump: u8,
 }
 
 // ----- Рынок -----
@@ -485,8 +560,6 @@ pub struct Season {
     pub season_id: u32,
     pub start_time: i64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 #[account]
@@ -531,8 +604,145 @@ pub struct MaterialMints {
     pub flask_purple: Pubkey,
     pub love_heart: Pubkey,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
+    /// [AUDIT F-03] Hard ceiling on the total supply of every resource,
+    /// indexed by `ResourceKind as u8` (see `RESOURCE_KIND_COUNT`).
+    ///
+    /// `IssuanceCap` only ever guarded `mint_resource`/`mint_resource_once`,
+    /// so `collect_mining`, `collect_flour`, `collect_bread`,
+    /// `collect_well_water`, `explore_reveal`, `craft_recipe` and
+    /// `claim_season_reward` could emit without any bound. This array is
+    /// checked by every minting path, whatever the caller, because the check
+    /// is a pure function of the mint account supply.
+    ///
+    /// `SUPPLY_CAP_UNLIMITED` (u64::MAX) means "no ceiling configured"; the
+    /// authority is expected to lower the interesting kinds right after
+    /// `init_material_mints`, and can tighten them at any time with
+    /// `set_supply_cap`. Lowering below the current supply halts that kind.
+    pub max_supply: [u64; RESOURCE_KIND_COUNT],
+}
+
+/// One canonical mapping ResourceKind -> mint. Previously duplicated in
+/// `mint_resource.rs` and `burn_resource.rs`, where the two copies could
+/// silently diverge ([AUDIT G-06]).
+pub fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
+    match kind {
+        // Старые ресурсы из Config
+        ResourceKind::Food => config.food_mint,
+        ResourceKind::Wood => config.wood_mint,
+        ResourceKind::Stone => config.stone_mint,
+        // [БЛОК L] Новые ресурсы из MaterialMints
+        ResourceKind::Seeds => material_mints.seeds,
+        ResourceKind::Wheat => material_mints.wheat,
+        ResourceKind::Flour => material_mints.flour,
+        ResourceKind::Bread => material_mints.bread,
+        ResourceKind::Water => material_mints.water,
+        ResourceKind::Coal => material_mints.coal,
+        ResourceKind::Meat => material_mints.meat,
+        ResourceKind::StoneBlue => material_mints.stone_blue,
+        ResourceKind::StonePurple => material_mints.stone_purple,
+        ResourceKind::StoneRed => material_mints.stone_red,
+        ResourceKind::SandWhite => material_mints.sand_white,
+        ResourceKind::SandPink => material_mints.sand_pink,
+        ResourceKind::SandYellow => material_mints.sand_yellow,
+        ResourceKind::GemBlue => material_mints.gem_blue,
+        ResourceKind::GemOrange => material_mints.gem_orange,
+        ResourceKind::GemWhite => material_mints.gem_white,
+        ResourceKind::GemGreen => material_mints.gem_green,
+        ResourceKind::FlaskBlue => material_mints.flask_blue,
+        ResourceKind::FlaskYellow => material_mints.flask_yellow,
+        ResourceKind::FlaskGreen => material_mints.flask_green,
+        ResourceKind::FlaskPink => material_mints.flask_pink,
+        ResourceKind::FlaskPurple => material_mints.flask_purple,
+        ResourceKind::LoveHeart => material_mints.love_heart,
+        ResourceKind::Potato => config.potato_mint,
+    }
+}
+
+/// Check the global supply ceiling for `kind` BEFORE the mint CPI runs, so a
+/// rejected mint leaves no state change behind. `u64::MAX` means unlimited.
+pub fn check_supply_cap(
+    material_mints: &MaterialMints,
+    kind: ResourceKind,
+    current_supply: u64,
+    amount: u64,
+) -> core::result::Result<(), crate::errors::AofError> {
+    use crate::errors::AofError;
+    let cap = material_mints.max_supply[kind as usize];
+    if cap == SUPPLY_CAP_UNLIMITED {
+        return Ok(());
+    }
+    let next = current_supply
+        .checked_add(amount)
+        .ok_or(AofError::MathOverflow)?;
+    if next > cap {
+        return Err(AofError::SupplyCapExceeded);
+    }
+    Ok(())
+}
+
+/// Per-mint rate limiter for authority withdrawals from the staking vault
+/// ([AUDIT F-01]). `pay_out` used to be an unbounded "move any amount of any
+/// mint to any wallet" primitive, so a single leaked hot key meant total loss
+/// of everything the vault held. The guard is a required account: a missing
+/// guard PDA fails account resolution, i.e. an un-configured mint cannot be
+/// withdrawn at all.
+#[account]
+#[derive(InitSpace)]
+pub struct VaultGuard {
+    pub mint: Pubkey,
+    pub epoch_slots: u64,
+    pub cap_per_epoch: u64,      // 0 = withdrawals of this mint halted
+    pub max_per_tx: u64,         // 0 = no per-transaction ceiling
+    pub epoch_start_slot: u64,
+    pub withdrawn_in_epoch: u64,
+    pub lifetime_withdrawn: u128,
+    pub bump: u8,
+}
+
+impl VaultGuard {
+    pub fn roll_epoch(&mut self, slot: u64) {
+        if self.epoch_slots == 0 {
+            return;
+        }
+        let end = self.epoch_start_slot.saturating_add(self.epoch_slots);
+        if slot < end {
+            return;
+        }
+        let elapsed = slot - self.epoch_start_slot;
+        let full = elapsed / self.epoch_slots;
+        self.epoch_start_slot = self
+            .epoch_start_slot
+            .saturating_add(full.saturating_mul(self.epoch_slots));
+        self.withdrawn_in_epoch = 0;
+    }
+
+    pub fn charge(
+        &mut self,
+        amount: u64,
+        slot: u64,
+    ) -> core::result::Result<(), crate::errors::AofError> {
+        use crate::errors::AofError;
+        if self.cap_per_epoch == 0 || self.epoch_slots == 0 {
+            return Err(AofError::VaultGuardNotConfigured);
+        }
+        if self.max_per_tx > 0 && amount > self.max_per_tx {
+            return Err(AofError::VaultGuardLimitExceeded);
+        }
+        self.roll_epoch(slot);
+        let next = self
+            .withdrawn_in_epoch
+            .checked_add(amount)
+            .ok_or(AofError::MathOverflow)?;
+        if next > self.cap_per_epoch {
+            return Err(AofError::VaultGuardLimitExceeded);
+        }
+        self.withdrawn_in_epoch = next;
+        self.lifetime_withdrawn = self
+            .lifetime_withdrawn
+            .checked_add(amount as u128)
+            .ok_or(AofError::MathOverflow)?;
+        Ok(())
+    }
 }
 
 /// EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)
@@ -544,8 +754,6 @@ pub struct EnergyAccount {
     pub last_regen_at: i64,
     pub cap: u8,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 impl EnergyAccount {
@@ -574,7 +782,7 @@ impl EnergyAccount {
 mod energy_tests {
     use super::*;
     fn energy(current: u8) -> EnergyAccount {
-        EnergyAccount { owner: Pubkey::default(), current, last_regen_at: 100, cap: 10, bump: 0, buff_expires_at: 0, buff_type: 0 }
+        EnergyAccount { owner: Pubkey::default(), current, last_regen_at: 100, cap: 10, bump: 0 }
     }
     #[test]
     fn long_absence_and_full_cap_do_not_wrap_or_bank() {
@@ -611,8 +819,6 @@ pub struct FarmTile {
     pub ready_at: i64,
     pub seeds_amount: u64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// WeatherState — глобальная погода (обновляется permissionless-кранком раз в сутки)
@@ -623,8 +829,6 @@ pub struct WeatherState {
     pub weather: u8,
     pub updated_at: i64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// WellState — колодец игрока (копит воду из погоды)
@@ -635,8 +839,6 @@ pub struct WellState {
     pub water_buffer: u64,
     pub last_collected_at: i64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// MillState — мельница игрока (одна активная партия одновременно)
@@ -648,8 +850,6 @@ pub struct MillState {
     pub ready_at: i64,
     pub output_flour: u64,
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// OvenState — печь игрока (одна активная партия одновременно)
@@ -662,30 +862,6 @@ pub struct OvenState {
     pub output_bread: u64,
     pub fuel_kind: u8, // 0=дрова, 1=уголь
     pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
-}
-
-/// LoveProgress — прогресс сердец любви игрока
-#[account]
-#[derive(InitSpace)]
-pub struct LoveProgress {
-    pub owner: Pubkey,
-    pub hearts: u64,
-    pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
-}
-
-/// FortuneBoost — активный буст удачи (для forge)
-#[account]
-#[derive(InitSpace)]
-pub struct FortuneBoost {
-    pub owner: Pubkey,
-    pub expires_at: i64,
-    pub bump: u8,
-    pub buff_expires_at: i64,    // [НОВОЕ] Время окончания бафта от флакона
-    pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
 /// Per-ResourceKind issuance budget. Lives outside Config so the deployed
