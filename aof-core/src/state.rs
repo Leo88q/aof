@@ -1030,18 +1030,15 @@ pub struct RewardReceipt {
     pub bump: u8,
 }
 
-/// [AUDIT F-03 / F-01 / F-17] Unit tests for the pure helpers the audit's
-/// findings turned into. They need no validator: `cargo test -p aof-core` runs
-/// them. `tests/aof_core.ts` covers the wiring; these cover the arithmetic and
-/// the boundary conditions that decide whether funds move at all.
+/// Shared fixtures for the unit/property suites below. `MaterialMints` has no
+/// `Default`, so the 25-field literal lives here exactly once.
 #[cfg(test)]
-mod state_tests {
+pub(crate) mod test_support {
     use super::*;
     use crate::constants::{RESOURCE_KIND_COUNT, SUPPLY_CAP_UNLIMITED};
-    use crate::errors::AofError;
 
-    fn mm(cap: u64) -> MaterialMints {
-        let mut m = MaterialMints {
+    pub fn material_mints() -> MaterialMints {
+        MaterialMints {
             seeds: Pubkey::default(),
             wheat: Pubkey::default(),
             flour: Pubkey::default(),
@@ -1067,9 +1064,42 @@ mod state_tests {
             love_heart: Pubkey::default(),
             bump: 0,
             max_supply: [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT],
-        };
-        m.max_supply[ResourceKind::Wood as usize] = cap;
+        }
+    }
+
+    pub fn with_supply_cap(kind: ResourceKind, cap: u64) -> MaterialMints {
+        let mut m = material_mints();
+        m.max_supply[kind as usize] = cap;
         m
+    }
+
+    pub fn vault_guard(epoch_slots: u64, cap_per_epoch: u64, max_per_tx: u64) -> VaultGuard {
+        VaultGuard {
+            mint: Pubkey::default(),
+            epoch_slots,
+            cap_per_epoch,
+            max_per_tx,
+            epoch_start_slot: 1_000,
+            withdrawn_in_epoch: 0,
+            lifetime_withdrawn: 0,
+            bump: 0,
+        }
+    }
+}
+
+/// [AUDIT F-03 / F-01 / F-17] Unit tests for the pure helpers the audit's
+/// findings turned into. They need no validator: `cargo test -p aof-core` runs
+/// them. `tests/aof_core.ts` covers the wiring; these cover the arithmetic and
+/// the boundary conditions that decide whether funds move at all.
+#[cfg(test)]
+mod state_tests {
+    use super::test_support::with_supply_cap;
+    use super::*;
+    use crate::constants::{RESOURCE_KIND_COUNT, SUPPLY_CAP_UNLIMITED};
+    use crate::errors::AofError;
+
+    fn mm(cap: u64) -> MaterialMints {
+        with_supply_cap(ResourceKind::Wood, cap)
     }
 
     #[test]
@@ -1213,5 +1243,215 @@ mod state_tests {
         assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Wood), cfg.wood_mint);
         assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Stone), cfg.stone_mint);
         assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Food), cfg.food_mint);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// [AUDIT F-33] Property tests.
+//
+// The suite was example-based only. These drive the same pure helpers with a
+// seeded generator so that the INVARIANT is asserted instead of a handful of
+// hand-picked inputs - the audit asked for fuzzing of the money-moving
+// arithmetic. `proptest` would mean a new dev-dependency plus a Cargo.lock
+// edit that CI (`cargo test --locked`) could not be re-verified from an
+// environment without cargo, so the generator is 20 lines of xorshift64*:
+// deterministic, dependency-free and reproducible from the failing input.
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod property_tests {
+    use super::test_support::vault_guard;
+    use super::test_support::with_supply_cap;
+    use super::*;
+    use crate::constants::SUPPLY_CAP_UNLIMITED;
+    use crate::errors::AofError;
+    use crate::randomness::weighted_pick;
+
+    struct Rng(u64);
+
+    impl Rng {
+        fn new(seed: u64) -> Self { Self(seed | 1) }
+        fn next_u64(&mut self) -> u64 {
+            let mut x = self.0;
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.0 = x;
+            x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+        }
+        fn below(&mut self, n: u64) -> u64 { if n == 0 { 0 } else { self.next_u64() % n } }
+        /// Biased towards what an attacker actually sends: 0, 1, u64::MAX and
+        /// small numbers, not just a uniform spread.
+        fn extreme(&mut self) -> u64 {
+            match self.below(8) {
+                0 => 0,
+                1 => 1,
+                2 => u64::MAX,
+                3 => u64::MAX - 1,
+                4 => self.next_u64() & 0xffff,
+                _ => self.next_u64(),
+            }
+        }
+    }
+
+    /// [F-03] The cap must be exactly `supply + amount <= cap`, nothing more
+    /// and nothing less, for every input including the overflow edges.
+    #[test]
+    fn supply_cap_is_exactly_the_arithmetic_predicate() {
+        let mut rng = Rng::new(0xA0F_2026);
+        for _ in 0..20_000 {
+            let cap = rng.extreme();
+            let supply = rng.extreme();
+            let amount = rng.extreme();
+            let mints = with_supply_cap(ResourceKind::Wood, cap);
+            let sum = supply.checked_add(amount);
+            let expected = cap == SUPPLY_CAP_UNLIMITED || matches!(sum, Some(total) if total <= cap);
+            let got = check_supply_cap(&mints, ResourceKind::Wood, supply, amount);
+            assert_eq!(got.is_ok(), expected, "cap={cap} supply={supply} amount={amount}");
+            if !expected {
+                match sum {
+                    None => assert!(matches!(got.unwrap_err(), AofError::MathOverflow)),
+                    Some(_) => assert!(matches!(got.unwrap_err(), AofError::SupplyCapExceeded)),
+                }
+            }
+        }
+    }
+
+    /// [F-01] A stolen authority key is bounded by the guard, so the guard must
+    /// never let the epoch budget or the per-transaction ceiling slip.
+    #[test]
+    fn vault_guard_never_releases_more_than_its_budget() {
+        let mut rng = Rng::new(0xF01_2026);
+        for _ in 0..2_000 {
+            let epoch = 1 + rng.below(100_000);
+            let cap = rng.extreme();
+            let max_tx = rng.extreme();
+            if cap == 0 { continue; } // "halted": covered by the unit tests
+            let mut guard = vault_guard(epoch, cap, max_tx);
+            for _ in 0..8 {
+                let amount = rng.extreme();
+                let slot = 1_000 + rng.below(epoch);
+                let before = guard.withdrawn_in_epoch;
+                let lifetime = guard.lifetime_withdrawn;
+                match guard.charge(amount, slot) {
+                    Ok(()) => {
+                        assert!(max_tx == 0 || amount <= max_tx, "per-tx ceiling ignored: {amount} > {max_tx}");
+                        assert_eq!(guard.withdrawn_in_epoch, before + amount, "cumulative accounting drifted");
+                        assert!(guard.withdrawn_in_epoch <= cap, "epoch budget exceeded");
+                        assert_eq!(guard.lifetime_withdrawn, lifetime + amount as u128);
+                    }
+                    Err(AofError::VaultGuardLimitExceeded) => {
+                        let over_tx = max_tx > 0 && amount > max_tx;
+                        let over_epoch = before.checked_add(amount).map_or(false, |n| n > cap);
+                        assert!(over_tx || over_epoch,
+                            "rejected without a reason: amount={amount} before={before} cap={cap} max_tx={max_tx}");
+                        assert_eq!(guard.withdrawn_in_epoch, before, "a rejected charge moved the counter");
+                    }
+                    Err(AofError::MathOverflow) => {
+                        assert!(before.checked_add(amount).is_none(), "overflow reported for a bounded sum");
+                    }
+                    Err(other) => panic!("unexpected error {other:?}"),
+                }
+            }
+            // A later epoch restores exactly one budget - never two.
+            guard.charge(0, 1_000 + epoch).unwrap();
+            assert_eq!(guard.withdrawn_in_epoch, 0, "the epoch roll did not reset the budget");
+        }
+    }
+
+    /// [F-03] Same invariant for the per-epoch issuance budget.
+    #[test]
+    fn issuance_cap_never_releases_more_than_its_budget() {
+        let mut rng = Rng::new(0x103_2026);
+        for _ in 0..2_000 {
+            let epoch = 1 + rng.below(100_000);
+            let cap = rng.extreme();
+            if cap == 0 { continue; }
+            let mut c = IssuanceCap {
+                kind: 3,
+                epoch_slots: epoch,
+                cap_per_epoch: cap,
+                epoch_start_slot: 1_000,
+                minted_in_epoch: 0,
+                lifetime_minted: 0,
+                bump: 0,
+            };
+            for _ in 0..8 {
+                let amount = rng.extreme();
+                let slot = 1_000 + rng.below(epoch);
+                let before = c.minted_in_epoch;
+                match c.charge(3, amount, slot) {
+                    Ok(()) => {
+                        assert_eq!(c.minted_in_epoch, before + amount);
+                        assert!(c.minted_in_epoch <= cap, "epoch budget exceeded");
+                    }
+                    Err(AofError::IssuanceCapExceeded) => {
+                        assert!(before.checked_add(amount).map_or(false, |n| n > cap),
+                            "rejected without a reason: amount={amount} before={before} cap={cap}");
+                        assert_eq!(c.minted_in_epoch, before, "a rejected charge moved the counter");
+                    }
+                    Err(AofError::MathOverflow) => {
+                        assert!(before.checked_add(amount).is_none(), "overflow reported for a bounded sum");
+                    }
+                    Err(other) => panic!("unexpected error {other:?}"),
+                }
+            }
+        }
+    }
+
+    /// [F-13] The drum/pack/forge odds tables all funnel through
+    /// `weighted_pick`; a bucket that does not contain the roll would silently
+    /// re-price every prize.
+    #[test]
+    fn weighted_pick_returns_the_bucket_that_contains_the_roll() {
+        let mut rng = Rng::new(0x0D5_2026);
+        for _ in 0..2_000 {
+            let mut weights = [0u16; 5];
+            let mut used = 0u32;
+            // 4 x < 2_000 keeps `10_000 - used` positive: the release profile
+            // runs with overflow-checks on, so a subtraction wrap would panic.
+            for w in weights.iter_mut().take(4) {
+                *w = rng.below(2_000) as u16;
+                used += *w as u32;
+            }
+            weights[4] = (10_000 - used) as u16;
+            for _ in 0..25 {
+                let roll = rng.next_u64();
+                let idx = weighted_pick(roll, &weights);
+                let r = roll % 10_000;
+                let inclusive: u32 = weights[..=idx].iter().map(|w| *w as u32).sum();
+                let exclusive: u32 = weights[..idx].iter().map(|w| *w as u32).sum();
+                assert!(idx < weights.len(), "index {idx} out of range");
+                assert!(inclusive > r, "bucket {idx} does not contain roll {r} (weights {weights:?})");
+                assert!(idx == 0 || exclusive <= r, "bucket {idx} starts after roll {r}");
+            }
+        }
+    }
+
+    /// [F-17] Case-insensitive canonicalisation must be total (no junk
+    /// canonicalises to a tool) and idempotent, or "Axe" and "axe" remain two
+    /// different tools downstream.
+    #[test]
+    fn tool_type_canonicalisation_is_total_and_idempotent() {
+        let mut rng = Rng::new(0x117_2026);
+        for kind in TOOL_KINDS {
+            for variant in [kind.to_string(), kind.to_uppercase(), kind.to_lowercase()] {
+                let c = canonical_tool_type(&variant).unwrap_or_else(|| panic!("{variant:?} must canonicalise"));
+                assert_eq!(c, *kind, "case changed the canonical value of {variant:?}");
+                assert!(is_valid_tool_type(c));
+                assert_eq!(canonical_tool_type(c), Some(*kind), "canonicalisation is not idempotent");
+            }
+        }
+        const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ";
+        for _ in 0..5_000 {
+            let len = 1 + rng.below(12) as usize;
+            let junk: String = (0..len)
+                .map(|_| ALPHABET[rng.below(ALPHABET.len() as u64) as usize] as char)
+                .collect();
+            if let Some(c) = canonical_tool_type(&junk) {
+                assert!(TOOL_KINDS.contains(&c), "junk {junk:?} canonicalised to {c:?}");
+                assert!(junk.eq_ignore_ascii_case(c), "{junk:?} does not match {c:?} case-insensitively");
+            }
+            assert_eq!(is_valid_tool_type(&junk), canonical_tool_type(&junk).is_some());
+        }
     }
 }

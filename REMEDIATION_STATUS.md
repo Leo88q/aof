@@ -108,7 +108,7 @@ authority). Ротация там = редеплой.
 | F-30 | `usage: Map` растёт бесконечно | ✅ | GC по таймеру + жёсткий потолок `MAX_TRACKED_KEYS` + инлайн-свип |
 | F-31 | EOL-зависимости | ⚠️ | Перепроверено: RUSTSEC-2026-0144 бьёт anchor 1.0.0–1.0.1, здесь 0.30.1 — не актуально. `@solana/web3.js` закреплён **точной версией 1.98.4** в `frontend` и `aof_backend` (+ синхронно в package-lock; `npm ci` перепроверен в песочнице) — диапазон больше не допускает отозванные 1.95.6/1.95.7. В CI добавлены `rustsec/audit-check` и `npm audit --omit=dev --audit-level=high` (не блокирующие). **Остаётся ⚠️:** HIGH `GHSA-3gc7-fjrx-p6mg` (buffer overflow в `bigint-buffer`) приходит транзитивно через `@solana/spl-token` 0.1.8, на котором сидит и `@coral-xyz/anchor` 0.30.1 — лечится только миграцией на Anchor 1.x (отдельный проект). Фронтенд: HIGH/CRITICAL = 0, 12 moderate |
 | F-32 | Валидация намерения только для `marketplace_buy` | ✅ | `frontend/src/lib/coreInstructions.ts` (генерируется из IDL) + `validateCoreInstructions()`: неизвестный дискриминатор, authority-only инструкция, неверное число аккаунтов, «кошелёк обязан быть подписывающей стороной» (52 инструкции). Генератор `scripts/gen-core-instruction-table.py --check` в CI |
-| F-33 | Покрытие тестами | ⚠️ | **CI-дыра закрыта:** `cargo test --locked` в `.github/workflows/ci.yml` дополнен `-p aof-quests` (иначе `drum_odds_tests` — регрессия F-13 — и новый фикстурный тест G-07 вообще не запускались). Добавлены: `cargo`-тесты логики (`state_tests`, `economy_tests`, `drum_odds_tests`, `slot_hash_tests` ×2 крейта), FE-тесты политики кошелька и **9 валидаторских тестов** в `tests/aof_core.ts` (блок «audit regressions 2026-09-21»: F-22, F-02, F-03, F-01, F-19, F-10, F-27, F-28, F-29). Остаётся ⚠️: ни один из них не запускался (нет валидатора в песочнице), fuzzing не добавлен |
+| F-33 | Покрытие тестами | ⚠️ | **CI-дыра закрыта:** `cargo test --locked` в `.github/workflows/ci.yml` дополнен `-p aof-quests` (иначе `drum_odds_tests` — регрессия F-13 — и новый фикстурный тест G-07 вообще не запускались). Добавлены: `cargo`-тесты логики (`state_tests`, `economy_tests`, `drum_odds_tests`, `slot_hash_tests` ×2 крейта), FE-тесты политики кошелька и **9 валидаторских тестов** в `tests/aof_core.ts` (блок «audit regressions 2026-09-21»: F-22, F-02, F-03, F-01, F-19, F-10, F-27, F-28, F-29). **Добавлены property-тесты** `property_tests` в `aof-core/src/state.rs` (детерминированный xorshift64\*, без новых зависимостей — `proptest` потребовал бы правки `Cargo.lock`, а CI запускает `cargo test --locked`): кап поставки = арифметический предикат `supply + amount <= cap` на 20 000 входах; бюджет `VaultGuard` и `IssuanceCap` не пробивается и сбрасывается ровно на один бюджет за эпоху; `weighted_pick` возвращает корзину, содержащую ролл; канонизация типов инструментов тотальна и идемпотентна. Общие фикстуры вынесены в `test_support` (один литерал `MaterialMints` на все тесты). Остаётся ⚠️: **Rust ни разу не компилировался**, валидаторские тесты не запускались |
 
 ---
 
@@ -195,8 +195,9 @@ authority). Ротация там = редеплой.
    может понадобиться ручная правка: порядок полей в новых структурах, типы
    аргументов новых инструкций, `COLLECTOR_ALLOW_SPACE`/`VAULT_GUARD_SPACE`.
 2. `cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib` —
-   `economy_tests`, `state_tests`, `drum_odds_tests`, `slot_hash_tests` (оба
-   крейта). `-p aof-quests` добавлен в CI, локально прогоните тем же составом.
+   `economy_tests`, `state_tests`, `property_tests`, `drum_odds_tests`,
+   `slot_hash_tests` (оба крейта). `-p aof-quests` добавлен в CI, локально
+   прогоните тем же составом.
 3. `anchor test` — прогнать `tests/aof_core.ts` (в нём есть `issuance_cap`,
    `mint_resource`, `pay_out`-сценарии; часть вызовов теперь требует
    новых аккаунтов → см. § «Изменения ABI»). Файл приведён к новой ABI и
