@@ -1113,8 +1113,10 @@ mod state_tests {
         ));
         // Unlimited kinds never block, whatever the supply.
         assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX - 1, 1).is_ok());
-        // Overflowing supply+amount is an error, not a panic.
-        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX, u64::MAX).is_err());
+        // Overflowing supply+amount is an error, not a panic - on a CAPPED
+        // kind. An unlimited kind returns before the addition (there is no
+        // ceiling to compare against), so it stays Ok by design.
+        assert!(check_supply_cap(&capped, ResourceKind::Wood, u64::MAX, u64::MAX).is_err());
     }
 
     fn guard(cap: u64, max_tx: u64) -> VaultGuard {
