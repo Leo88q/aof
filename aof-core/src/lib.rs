@@ -277,7 +277,7 @@ pub struct MintResource<'info> {
         has_one = authority @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     /// CHECK: [БЛОК L] MaterialMints PDA для новых ресурсов (Box — stack overflow fix)
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
@@ -287,16 +287,16 @@ pub struct MintResource<'info> {
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     #[account(mut)]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         constraint = token_account.mint == mint.key() @ AofError::InvalidMint
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ]: withdraw-fee bps по перкам (см. instructions::mint_resource,
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
     #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
-    pub treasury_token: Account<'info, TokenAccount>,
+    pub treasury_token: Box<Account<'info, TokenAccount>>,
     /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
     /// создаём с нулевыми перками — mint_resource не должен блокироваться
     /// отсутствием профиля.
@@ -304,7 +304,7 @@ pub struct MintResource<'info> {
         init_if_needed, payer = authority, space = PLAYER_SPACE,
         seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
     )]
-    pub player: Account<'info, Player>,
+    pub player: Box<Account<'info, Player>>,
     /// Per-kind issuance budget. Required: a missing PDA fails account
     /// resolution, so an un-initialised cap can never mean "unlimited".
     #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
@@ -321,7 +321,7 @@ pub struct MintResourceOnce<'info> {
         has_one = authority @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     /// CHECK: [БЛОК L] MaterialMints PDA для новых ресурсов (Box — stack overflow fix)
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
@@ -331,16 +331,16 @@ pub struct MintResourceOnce<'info> {
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     #[account(mut)]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         constraint = token_account.mint == mint.key() @ AofError::InvalidMint
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ]: withdraw-fee bps по перкам (см. instructions::mint_resource,
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
     #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
-    pub treasury_token: Account<'info, TokenAccount>,
+    pub treasury_token: Box<Account<'info, TokenAccount>>,
     /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
     /// создаём с нулевыми перками — mint_resource не должен блокироваться
     /// отсутствием профиля.
@@ -348,14 +348,14 @@ pub struct MintResourceOnce<'info> {
         init_if_needed, payer = authority, space = PLAYER_SPACE,
         seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
     )]
-    pub player: Account<'info, Player>,
+    pub player: Box<Account<'info, Player>>,
     /// Per-kind issuance budget (see MintResource).
     #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
     pub issuance_cap: Box<Account<'info, IssuanceCap>>,
     pub token_program: Program<'info, Token>,
     #[account(init, payer = authority, space = 8 + RewardReceipt::INIT_SPACE,
         seeds = [b"reward_receipt", reward_id.as_ref()], bump)]
-    pub reward_receipt: Account<'info, RewardReceipt>,
+    pub reward_receipt: Box<Account<'info, RewardReceipt>>,
     pub system_program: Program<'info, System>,
 }
 
