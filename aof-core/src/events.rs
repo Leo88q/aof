@@ -27,6 +27,69 @@ pub struct Unstaked {
     pub mint: Pubkey,
 }
 
+/// Emitted by every mint path once the cap has been charged. The chain
+/// indexer uses this (not SPL MintTo deltas) as the authoritative issuance
+/// record, and the cap fields let dashboards show headroom per epoch.
+#[event]
+pub struct ResourceIssued {
+    pub kind: u8,
+    pub mint: Pubkey,
+    pub recipient: Pubkey,
+    pub gross: u64,
+    pub fee: u64,
+    pub minted_in_epoch: u64,
+    pub cap_per_epoch: u64,
+    pub epoch_start_slot: u64,
+    pub slot: u64,
+}
+
+#[event]
+pub struct IssuanceCapChanged {
+    pub kind: u8,
+    pub epoch_slots: u64,
+    pub cap_per_epoch: u64,
+    pub minted_in_epoch: u64,
+    pub slot: u64,
+}
+
+/// Emitted by set_paused. `authority` identifies who flipped the switch.
+#[event]
+pub struct PausedToggled {
+    pub paused: bool,
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+/// Emitted by set_fees (values in base units).
+#[event]
+pub struct FeesUpdated {
+    pub craft_fee: u64,
+    pub unstake_fee: u64,
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+/// Emitted by set_resource_mints; previous values are included so a
+/// mint swap (a critical config change) is fully reconstructible from logs.
+#[event]
+pub struct ResourceMintsUpdated {
+    pub previous: [Pubkey; 6],
+    pub current: [Pubkey; 6],
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+/// Emitted by set_craft_economy.
+#[event]
+pub struct CraftEconomyUpdated {
+    pub wood_base: [u64; 4],
+    pub stone_base: [u64; 4],
+    pub wood_mult: [u64; 4],
+    pub stone_mult: [u64; 4],
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
 #[event]
 pub struct PaidOut {
     pub user: Pubkey,

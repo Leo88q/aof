@@ -17,9 +17,11 @@ import {
   sessionConfigPda,
   sessionProgramDataPda,
   programDataPda,
+  issuanceCapPda,
+  RESOURCE_KIND_ORDER,
 } from "../lib/pda";
 import { authorityOnly, pk, coSign } from "../lib/tx";
-import { requireAdmin } from "../middleware/adminAuth";
+import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
 import { simulateTransaction } from "../security/txSimulator";
 
 const r = Router();
@@ -267,7 +269,9 @@ r.post("/migrate-tool", async (req, res) => {
 
 
 // [FIXED] Тестовая выдача ресурса игроку — правильные аккаунты tokenAccount + treasuryToken + player + авто-создание ATA
-r.post("/mint-resource", async (req, res) => {
+// Bulk manual minting is a devnet/staging tool. In production resources are
+// issued only through audited flows (inbox rewards with on-chain receipts).
+r.post("/mint-resource", nonProductionOnly, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const kind = req.body.kind;
@@ -312,6 +316,7 @@ r.post("/mint-resource", async (req, res) => {
         tokenAccount: userAta,
         treasuryToken: treasuryAta,
         player: playerPda(owner)[0],
+        issuanceCap: issuanceCapPda(kindMap[kind])[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -367,7 +372,7 @@ r.post("/init-craft-economy", async (req, res) => {
 
 
 // [ТЕСТ] Начисление всех ресурсов и инструментов для ручного тестирования
-r.post("/test-grant", async (req, res) => {
+r.post("/test-grant", nonProductionOnly, async (req, res) => {
   try {
     const user = pk(req.body.user);
     const [config] = configPda();
@@ -477,6 +482,7 @@ r.post("/test-grant", async (req, res) => {
             tokenAccount: userAta,
             treasuryToken: treasuryAta,
             player: playerPda(user)[0],
+            issuanceCap: issuanceCapPda(kind)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
@@ -520,7 +526,7 @@ r.post("/test-grant", async (req, res) => {
 });
 
 // [ТЕСТ] Начисление POTATO (отдельно, через Config)
-r.post("/test-grant-potato", async (req, res) => {
+r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
   try {
     const user = pk(req.body.user);
     const amount = Number(req.body.amount || 10000);
@@ -560,6 +566,7 @@ r.post("/test-grant-potato", async (req, res) => {
         tokenAccount: userAta,
         treasuryToken: treasuryAta,
         player: playerPda(user)[0],
+        issuanceCap: issuanceCapPda(RESOURCE_KIND_BY_NAME.POTATO)[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -576,7 +583,7 @@ r.post("/test-grant-potato", async (req, res) => {
 
 // Tool grants stay disabled: the old endpoint had an incomplete account map and
 // must not advertise a transaction that cannot be built against the deployed IDL.
-r.post("/test-grant-tools", (_req, res) => {
+r.post("/test-grant-tools", nonProductionOnly, (_req, res) => {
   res.status(503).json({ error: "TOOL_GRANT_DISABLED_UNTIL_ACCOUNT_MAP_IS_IMPLEMENTED" });
 });
 
@@ -673,8 +680,76 @@ r.post("/init-material-mints", async (req, res) => {
 });
 
 
-// ===== Отправка подписанной транзакции =====
-r.post("/send-tx", async (req, res) => {
+// ===== Issuance caps (per-ResourceKind on-chain mint budget) =====
+// Both endpoints sign with config.authority. After the Squads migration this
+// key is the multisig and these routes become read-only helpers that only
+// build the instruction for the vault to sign.
+const SLOTS_PER_DAY = 216_000; // ~400ms slots
+
+r.get("/issuance-caps", async (_req, res) => {
+  try {
+    const out: any[] = [];
+    for (const name of RESOURCE_KIND_ORDER) {
+      const [pda] = issuanceCapPda(name);
+      const acc: any = await fetchOne("issuanceCap", pda).catch(() => null);
+      out.push(acc ? {
+        kind: name, pda: pda.toBase58(), configured: true,
+        epochSlots: acc.epochSlots.toString(), capPerEpoch: acc.capPerEpoch.toString(),
+        epochStartSlot: acc.epochStartSlot.toString(), mintedInEpoch: acc.mintedInEpoch.toString(),
+        lifetimeMinted: acc.lifetimeMinted.toString(),
+        headroom: (BigInt(acc.capPerEpoch.toString()) - BigInt(acc.mintedInEpoch.toString())).toString(),
+      } : { kind: name, pda: pda.toBase58(), configured: false });
+    }
+    res.json({ caps: out, note: "unconfigured kinds cannot be minted (fail-closed)" });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** POST /admin/issuance-caps/init { kind, epochSlots?, capPerEpoch } — one-time per kind. */
+r.post("/issuance-caps/init", async (req, res) => {
+  try {
+    const kind = String(req.body.kind);
+    if (!(RESOURCE_KIND_ORDER as readonly string[]).includes(kind)) return res.status(400).json({ error: "unknown kind" });
+    const epochSlots = new BN(String(req.body.epochSlots ?? SLOTS_PER_DAY));
+    const capPerEpoch = new BN(String(req.body.capPerEpoch));
+    if (capPerEpoch.lten(0)) return res.status(400).json({ error: "capPerEpoch must be > 0" });
+    const [config] = configPda();
+    const ix = await (program.methods as any)
+      .initIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
+      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0], systemProgram: SystemProgram.programId })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** POST /admin/issuance-caps/set { kind, epochSlots, capPerEpoch } — capPerEpoch=0 halts that kind. */
+r.post("/issuance-caps/set", async (req, res) => {
+  try {
+    const kind = String(req.body.kind);
+    if (!(RESOURCE_KIND_ORDER as readonly string[]).includes(kind)) return res.status(400).json({ error: "unknown kind" });
+    const epochSlots = new BN(String(req.body.epochSlots ?? SLOTS_PER_DAY));
+    const capPerEpoch = new BN(String(req.body.capPerEpoch));
+    const [config] = configPda();
+    const ix = await (program.methods as any)
+      .setIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
+      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0] })
+      .instruction();
+    const sig = await authorityOnly([ix]);
+    res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ===== Relay of an arbitrary pre-signed transaction =====
+// Devnet debugging aid only. It is NOT available in production: an operator
+// token would otherwise become a universal relay for any transaction that
+// passes simulation. Production operators use the CLI / multisig directly.
+r.post("/send-tx", nonProductionOnly, async (req, res) => {
   try {
     const { tx: txBase64 } = req.body;
     if (!txBase64) return res.status(400).json({ error: "tx required" });

@@ -55,3 +55,4 @@ pub mod craft_order;
 pub mod season;
 
 pub mod mint_resource_once;
+pub mod issuance_cap;

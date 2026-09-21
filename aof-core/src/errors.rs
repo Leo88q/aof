@@ -210,4 +210,10 @@ pub enum AofError {
     PriceLimitExceeded,
     #[msg("Quote expired or its lifetime exceeds 300 seconds")]
     QuoteExpired,
+    #[msg("Issuance cap for this resource is not configured")]
+    IssuanceCapNotConfigured,
+    #[msg("Issuance cap for this resource exceeded in the current epoch")]
+    IssuanceCapExceeded,
+    #[msg("Issuance cap parameters out of bounds")]
+    InvalidIssuanceCapParams,
 }

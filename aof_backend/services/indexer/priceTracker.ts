@@ -15,7 +15,13 @@ import { createServer } from "http";
 import marketIdl from "../../src/idl/aof_market.json";
 
 const db = new PrismaClient();
-const connection = new Connection("http://127.0.0.1:8899", "confirmed");
+// Same RPC as the API process; a hard-coded localhost URL made the worker
+// silently index nothing outside a developer machine.
+const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8899";
+if (process.env.NODE_ENV === "production" && (!process.env.RPC_URL || /devnet|localhost|127\.0\.0\.1/i.test(RPC_URL))) {
+  throw new Error("[indexer] Production requires an explicit non-devnet RPC_URL");
+}
+const connection = new Connection(RPC_URL, "confirmed");
 
 const provider = new AnchorProvider(connection, new Wallet(new Keypair()), {
   commitment: "confirmed",

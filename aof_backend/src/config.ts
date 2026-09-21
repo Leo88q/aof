@@ -26,6 +26,28 @@ export const AUTHORITY: Keypair = Keypair.fromSecretKey(
 export const TREASURY = new PublicKey(process.env.TREASURY_PUBKEY);
 export const PORT = Number(process.env.PORT || 8080);
 
+// Optional read-only admin credential (audit logs, economy snapshots, security
+// stats). Must differ from the operator token, otherwise the split is moot.
+export const ADMIN_READ_TOKEN = process.env.ADMIN_READ_TOKEN || "";
+if (ADMIN_READ_TOKEN) {
+  if (ADMIN_READ_TOKEN.length < 32) throw new Error("ADMIN_READ_TOKEN must be at least 32 characters");
+  if (ADMIN_READ_TOKEN === process.env.ADMIN_TOKEN) throw new Error("ADMIN_READ_TOKEN must differ from ADMIN_TOKEN");
+}
+
+// Number of trusted reverse-proxy hops in front of Express (nginx, Caddy, a
+// cloud load balancer). Rate limiting and audit IPs are derived from
+// X-Forwarded-For only up to this depth; anything beyond is attacker-controlled.
+// 0 disables proxy trust entirely. Production must set it explicitly so the
+// per-IP limiter does not collapse every client into the proxy's address.
+const trustProxyRaw = process.env.TRUST_PROXY_HOPS;
+if (isProduction && (trustProxyRaw === undefined || trustProxyRaw === "")) {
+  throw new Error("Production requires TRUST_PROXY_HOPS (0 if the app is exposed directly)");
+}
+export const TRUST_PROXY_HOPS = Number(trustProxyRaw ?? 0);
+if (!Number.isInteger(TRUST_PROXY_HOPS) || TRUST_PROXY_HOPS < 0 || TRUST_PROXY_HOPS > 10) {
+  throw new Error("TRUST_PROXY_HOPS must be an integer between 0 and 10");
+}
+
 // Mining remains fail-closed until the on-chain program and validator suite
 // have been verified. Set explicitly in the test environment first; do not
 // enable in production as part of a build-only deploy.

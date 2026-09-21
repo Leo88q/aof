@@ -1,0 +1,5 @@
+{
+  "extends": "../aof_backend/tsconfig.json",
+  "compilerOptions": { "rootDir": "..", "outDir": "dist", "resolveJsonModule": true, "esModuleInterop": true, "typeRoots": ["../aof_backend/node_modules/@types"], "baseUrl": "../aof_backend/node_modules", "paths": { "*": ["*"] } },
+  "include": ["src", "tests", "../aof_backend/src/lib/chainIndexerCore.ts", "../aof_backend/src/idl/*.json"]
+}

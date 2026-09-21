@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://watchtower/schemas/aof/event.json",
+  "title": "AOF Watchtower event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "gameId",
+    "type",
+    "category",
+    "occurredAt",
+    "slot",
+    "signature",
+    "playerId",
+    "confidence",
+    "parserVersion",
+    "source",
+    "attributes"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,128}:(-?\\d+|tx):\\d+$",
+      "description": "signature:eventIndex:n \u2014 stable across replays"
+    },
+    "gameId": {
+      "const": "aof"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "WalletConnected",
+        "PlayerJoined",
+        "SessionStarted",
+        "SessionEnded",
+        "FirstAction",
+        "RetentionDay1",
+        "RetentionDay3",
+        "RetentionDay7",
+        "RetentionDay14",
+        "RetentionDay30",
+        "MatchStarted",
+        "MatchFinished",
+        "RaceStarted",
+        "RaceFinished",
+        "QuestCompleted",
+        "CraftCompleted",
+        "AssetCreated",
+        "AssetTransferred",
+        "PackOpened",
+        "FusionCompleted",
+        "StakeStarted",
+        "StakeEnded",
+        "PurchaseCompleted",
+        "PaymentSettled",
+        "RewardGranted",
+        "RewardClaimed",
+        "RewardQuarantined",
+        "TokenMinted",
+        "TokenBurned",
+        "TreasuryDeposited",
+        "TreasuryWithdrawn",
+        "LiabilityCreated",
+        "LiabilitySettled",
+        "AuthorityChanged",
+        "ConfigUpdated",
+        "PausedToggled",
+        "EmergencyPause",
+        "AdminProposalCreated",
+        "AdminProposalApproved",
+        "AdminProposalExecuted",
+        "FraudSignalCreated",
+        "PlayerQuarantined",
+        "TransactionSubmitted",
+        "TransactionConfirmed",
+        "TransactionFinalized",
+        "TransactionFailed",
+        "TransactionExpired",
+        "RpcError",
+        "IndexerGapDetected",
+        "IndexerGapHealed"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "players",
+        "gameplay",
+        "economy",
+        "security",
+        "reliability"
+      ]
+    },
+    "occurredAt": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "slot": {
+      "type": "string",
+      "pattern": "^\\d+$"
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 32
+    },
+    "playerId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256(WATCHTOWER_PLAYER_HASH_SALT|wallet); never a raw wallet"
+    },
+    "counterpartyId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "asset": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "amount": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^-?\\d+$",
+      "description": "integer base units as decimal string"
+    },
+    "currency": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "finalized",
+        "derived"
+      ]
+    },
+    "parserVersion": {
+      "type": "string",
+      "pattern": "^aof-v\\d+$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program",
+        "event",
+        "eventIndex"
+      ],
+      "properties": {
+        "program": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "eventIndex": {
+          "type": "integer"
+        }
+      }
+    },
+    "attributes": {
+      "type": "object"
+    }
+  }
+}

@@ -11,6 +11,14 @@ pub const GASTANK_SEED: &[u8] = b"gastank";
 pub const TOOL_SEED: &[u8] = b"tool";
 // [НОВОЕ] seeds для добавленных PDA (см. AUDIT_AND_CHANGES.md / AUDIT_V2 / AUDIT_V3)
 pub const RARITY_COUNTER_SEED: &[u8] = b"rarity_counter";
+/// Per-ResourceKind issuance cap PDA: seeds = [ISSUANCE_CAP_SEED, &[kind as u8]].
+pub const ISSUANCE_CAP_SEED: &[u8] = b"issuance_cap";
+/// Upper bound for an epoch (~30 days at 400ms slots) so a typo cannot
+/// silently create a near-permanent window.
+pub const ISSUANCE_EPOCH_MAX_SLOTS: u64 = 6_480_000;
+/// Lower bound (~10 minutes) so an epoch cannot be made short enough to
+/// render the cap meaningless.
+pub const ISSUANCE_EPOCH_MIN_SLOTS: u64 = 1_500;
 pub const CRAFT_ECONOMY_SEED: &[u8] = b"craft_economy";
 pub const COLLECTOR_SEED: &[u8] = b"collector";
 

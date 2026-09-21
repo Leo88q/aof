@@ -1,0 +1,23 @@
+{
+  "note": "ChainTx rows: one ok, one failed with custom error 6098 (IssuanceCapExceeded)",
+  "rows": [
+    {
+      "signature": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111",
+      "slot": "400000001",
+      "blockTime": "2026-09-20T10:01:00.000Z",
+      "success": true,
+      "feePayer": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "errorJson": null,
+      "programIds": "[\"HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq\"]"
+    },
+    {
+      "signature": "Pot9JGPEi3BTTxZGMDbXevokgxBQoVo292R1Bc6zZdwQte1TT2P5L2v1tXQx8d3K8Hy3jCWY9TSXmA111111111",
+      "slot": "400000099",
+      "blockTime": "2026-09-20T11:39:00.000Z",
+      "success": false,
+      "feePayer": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+      "errorJson": "{\"InstructionError\":[0,{\"Custom\":6098}]}",
+      "programIds": "[\"HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq\"]"
+    }
+  ]
+}

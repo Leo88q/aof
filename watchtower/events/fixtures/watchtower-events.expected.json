@@ -1,0 +1,742 @@
+{
+  "parserVersion": "aof-v1",
+  "events": [
+    {
+      "gameId": "aof",
+      "occurredAt": "2026-09-20T10:01:00.000Z",
+      "slot": "400000001",
+      "signature": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ChainTx",
+        "eventIndex": -1
+      },
+      "eventId": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111:tx:0",
+      "type": "TransactionFinalized",
+      "category": "reliability",
+      "attributes": {
+        "programs": [
+          "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+        ]
+      }
+    },
+    {
+      "gameId": "aof",
+      "occurredAt": "2026-09-20T11:39:00.000Z",
+      "slot": "400000099",
+      "signature": "Pot9JGPEi3BTTxZGMDbXevokgxBQoVo292R1Bc6zZdwQte1TT2P5L2v1tXQx8d3K8Hy3jCWY9TSXmA111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ChainTx",
+        "eventIndex": -1
+      },
+      "eventId": "Pot9JGPEi3BTTxZGMDbXevokgxBQoVo292R1Bc6zZdwQte1TT2P5L2v1tXQx8d3K8Hy3jCWY9TSXmA111111111:tx:0",
+      "type": "TransactionFailed",
+      "category": "reliability",
+      "attributes": {
+        "programs": [
+          "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+        ],
+        "error": {
+          "InstructionError": [
+            0,
+            {
+              "Custom": 6098
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eventId": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111:0:0",
+      "gameId": "aof",
+      "type": "AssetCreated",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:01:00.000Z",
+      "slot": "400000001",
+      "signature": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": null,
+      "asset": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ToolMinted",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "toolType": "2",
+        "rarity": "1"
+      }
+    },
+    {
+      "eventId": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111:0:1",
+      "gameId": "aof",
+      "type": "TokenMinted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:01:00.000Z",
+      "slot": "400000001",
+      "signature": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": null,
+      "asset": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": "1",
+      "currency": "NFT",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ToolMinted",
+        "eventIndex": 0
+      },
+      "attributes": {}
+    },
+    {
+      "eventId": "RuwuzMFQWcfKTFN6uR7ixvNeiptEgBFt1hhWBGwbruzt1runnQtq1pNgDr7eJB6V7MesHtMhmFBmg1111111111:0:0",
+      "gameId": "aof",
+      "type": "RewardGranted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:02:00.000Z",
+      "slot": "400000002",
+      "signature": "RuwuzMFQWcfKTFN6uR7ixvNeiptEgBFt1hhWBGwbruzt1runnQtq1pNgDr7eJB6V7MesHtMhmFBmg1111111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": null,
+      "asset": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+      "amount": "8000000000",
+      "currency": "RESOURCE",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "MiningCollected",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "source": "mining",
+        "toolMint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+        "hours": "4",
+        "durabilityAfter": "96"
+      }
+    },
+    {
+      "eventId": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111:0:0",
+      "gameId": "aof",
+      "type": "PurchaseCompleted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:03:00.000Z",
+      "slot": "400000003",
+      "signature": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "asset": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": "250000000",
+      "currency": "SOL_LAMPORTS",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ListingSold",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "venue": "listing"
+      }
+    },
+    {
+      "eventId": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111:0:1",
+      "gameId": "aof",
+      "type": "PaymentSettled",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:03:00.000Z",
+      "slot": "400000003",
+      "signature": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "asset": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": "250000000",
+      "currency": "SOL_LAMPORTS",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ListingSold",
+        "eventIndex": 0
+      },
+      "attributes": {}
+    },
+    {
+      "eventId": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111:0:2",
+      "gameId": "aof",
+      "type": "AssetTransferred",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:03:00.000Z",
+      "slot": "400000003",
+      "signature": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "asset": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ListingSold",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "reason": "sale"
+      }
+    },
+    {
+      "eventId": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111:0:0",
+      "gameId": "aof",
+      "type": "RewardClaimed",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:04:00.000Z",
+      "slot": "400000004",
+      "signature": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA",
+      "amount": "5000000000",
+      "currency": "RESOURCE",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ResourceIssued",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "kind": "26",
+        "fee": "400000000"
+      }
+    },
+    {
+      "eventId": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111:0:1",
+      "gameId": "aof",
+      "type": "TokenMinted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:04:00.000Z",
+      "slot": "400000004",
+      "signature": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA",
+      "amount": "5000000000",
+      "currency": "RESOURCE",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ResourceIssued",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "kind": "26",
+        "mintedInEpoch": "5000000000",
+        "capPerEpoch": "1000000000000",
+        "epochStartSlot": "399999000"
+      }
+    },
+    {
+      "eventId": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111:0:2",
+      "gameId": "aof",
+      "type": "TreasuryDeposited",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:04:00.000Z",
+      "slot": "400000004",
+      "signature": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA",
+      "amount": "400000000",
+      "currency": "RESOURCE",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ResourceIssued",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "source": "issuance_fee",
+        "destination": "treasury_ata"
+      }
+    },
+    {
+      "eventId": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111:0:0",
+      "gameId": "aof",
+      "type": "CraftCompleted",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:05:00.000Z",
+      "slot": "400000005",
+      "signature": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ToolCrafted",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "burned": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+        "rarity": "2",
+        "woodCost": "3000000000",
+        "stoneCost": "1000000000",
+        "mintedCountAfter": "17"
+      }
+    },
+    {
+      "eventId": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111:0:1",
+      "gameId": "aof",
+      "type": "AssetCreated",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:05:00.000Z",
+      "slot": "400000005",
+      "signature": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ToolCrafted",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "rarity": "2"
+      }
+    },
+    {
+      "eventId": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111:0:2",
+      "gameId": "aof",
+      "type": "TokenBurned",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:05:00.000Z",
+      "slot": "400000005",
+      "signature": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": "1",
+      "currency": "NFT",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ToolCrafted",
+        "eventIndex": 0
+      },
+      "attributes": {}
+    },
+    {
+      "eventId": "fc347HAaV4jQLqXEums4iqdam8RyBj4UHzo3uYw1JbAaKNGaqNpZeFXvZiTFneTaYHWj5XeftbSjqACEFA11111:0:0",
+      "gameId": "aof",
+      "type": "ConfigUpdated",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:06:00.000Z",
+      "slot": "400000006",
+      "signature": "fc347HAaV4jQLqXEums4iqdam8RyBj4UHzo3uYw1JbAaKNGaqNpZeFXvZiTFneTaYHWj5XeftbSjqACEFA11111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "IssuanceCapChanged",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "setting": "issuance_cap",
+        "kind": "26",
+        "epochSlots": "216000",
+        "capPerEpoch": "0",
+        "mintedInEpoch": "5000000000",
+        "halted": true
+      }
+    },
+    {
+      "eventId": "vqLiwEPZkMTEPj723ZUSw5ND1QQrw8n7fHjYhVjL9EomgAnSzFjqPSqjaFNPdHP3eqDcsYjPyLo23wP79ug1111:0:0",
+      "gameId": "aof",
+      "type": "PurchaseCompleted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:07:00.000Z",
+      "slot": "400000007",
+      "signature": "vqLiwEPZkMTEPj723ZUSw5ND1QQrw8n7fHjYhVjL9EomgAnSzFjqPSqjaFNPdHP3eqDcsYjPyLo23wP79ug1111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": null,
+      "amount": "120000000",
+      "currency": "core",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+        "event": "HotMarketBought",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "venue": "hot_market",
+        "rarity": "1",
+        "soldSinceStart": "3"
+      }
+    },
+    {
+      "eventId": "vqLiwEPZkMTEPj723ZUSw5ND1QQrw8n7fHjYhVjL9EomgAnSzFjqPSqjaFNPdHP3eqDcsYjPyLo23wP79ug1111:0:1",
+      "gameId": "aof",
+      "type": "PaymentSettled",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:07:00.000Z",
+      "slot": "400000007",
+      "signature": "vqLiwEPZkMTEPj723ZUSw5ND1QQrw8n7fHjYhVjL9EomgAnSzFjqPSqjaFNPdHP3eqDcsYjPyLo23wP79ug1111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": null,
+      "amount": "120000000",
+      "currency": "core",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+        "event": "HotMarketBought",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "venue": "hot_market"
+      }
+    },
+    {
+      "eventId": "vKhMvrtgqtpZXMHsLfCF7wZAHjk7iobmZTJQVbQhqx1wj5gdy1VPd9jc69g2pqEEDqcCAmHPTw6gpw111111111:0:0",
+      "gameId": "aof",
+      "type": "QuestCompleted",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:08:00.000Z",
+      "slot": "400000008",
+      "signature": "vKhMvrtgqtpZXMHsLfCF7wZAHjk7iobmZTJQVbQhqx1wj5gdy1VPd9jc69g2pqEEDqcCAmHPTw6gpw111111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": null,
+      "asset": "5zY9NgLTLpSBrFVnrzWD1xVTaxDJbMNNvYU9Erw95yia",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+        "event": "QuestRewardClaimed",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "questId": "7"
+      }
+    },
+    {
+      "eventId": "vKhMvrtgqtpZXMHsLfCF7wZAHjk7iobmZTJQVbQhqx1wj5gdy1VPd9jc69g2pqEEDqcCAmHPTw6gpw111111111:0:1",
+      "gameId": "aof",
+      "type": "RewardGranted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:08:00.000Z",
+      "slot": "400000008",
+      "signature": "vKhMvrtgqtpZXMHsLfCF7wZAHjk7iobmZTJQVbQhqx1wj5gdy1VPd9jc69g2pqEEDqcCAmHPTw6gpw111111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": null,
+      "asset": "5zY9NgLTLpSBrFVnrzWD1xVTaxDJbMNNvYU9Erw95yia",
+      "amount": "1",
+      "currency": "NFT",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+        "event": "QuestRewardClaimed",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "source": "quest",
+        "questId": "7"
+      }
+    },
+    {
+      "eventId": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111:0:0",
+      "gameId": "aof",
+      "type": "WalletConnected",
+      "category": "players",
+      "occurredAt": "2026-09-20T10:09:00.000Z",
+      "slot": "400000009",
+      "signature": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ReferralBound",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "via": "referral"
+      }
+    },
+    {
+      "eventId": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111:0:1",
+      "gameId": "aof",
+      "type": "LiabilityCreated",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:09:00.000Z",
+      "slot": "400000009",
+      "signature": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ReferralBound",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "liability": "referral_reward_pending"
+      }
+    },
+    {
+      "eventId": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111:0:0",
+      "gameId": "aof",
+      "type": "PackOpened",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:10:00.000Z",
+      "slot": "400000010",
+      "signature": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PackOpened",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "packType": "1",
+        "rarity": "3",
+        "toolType": "4"
+      }
+    },
+    {
+      "eventId": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111:0:1",
+      "gameId": "aof",
+      "type": "PurchaseCompleted",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:10:00.000Z",
+      "slot": "400000010",
+      "signature": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PackOpened",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "venue": "pack"
+      }
+    },
+    {
+      "eventId": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111:0:2",
+      "gameId": "aof",
+      "type": "AssetCreated",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:10:00.000Z",
+      "slot": "400000010",
+      "signature": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111",
+      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
+      "counterpartyId": null,
+      "asset": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PackOpened",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "rarity": "3",
+        "toolType": "4"
+      }
+    },
+    {
+      "eventId": "aZwocJRrmQDXqU5Y97tPLn3GaFJJuDFXWtnLzj6ULxUoGNa7NA5DYiGaszKfAR3hyk3gH1m81EDSKpg11111111:0:0",
+      "gameId": "aof",
+      "type": "TreasuryDeposited",
+      "category": "economy",
+      "occurredAt": "2026-09-20T10:11:00.000Z",
+      "slot": "400000011",
+      "signature": "aZwocJRrmQDXqU5Y97tPLn3GaFJJuDFXWtnLzj6ULxUoGNa7NA5DYiGaszKfAR3hyk3gH1m81EDSKpg11111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": "9000000",
+      "currency": "SOL_LAMPORTS",
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "GasFeesSwept",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "source": "gas_fees",
+        "destination": "treasury"
+      }
+    },
+    {
+      "eventId": "4WPkdfSfCwoiEdK1S9kZMVLDZzzrFgUF1tuhpeNeCbTKbcUtLyLkojbDRbMhKC9tbfVxQRQ1111111111111111:0:0",
+      "gameId": "aof",
+      "type": "StakeStarted",
+      "category": "gameplay",
+      "occurredAt": "2026-09-20T10:13:00.000Z",
+      "slot": "400000013",
+      "signature": "4WPkdfSfCwoiEdK1S9kZMVLDZzzrFgUF1tuhpeNeCbTKbcUtLyLkojbDRbMhKC9tbfVxQRQ1111111111111111",
+      "playerId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
+      "counterpartyId": null,
+      "asset": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "Staked",
+        "eventIndex": 0
+      },
+      "attributes": {}
+    },
+    {
+      "eventId": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111:0:0",
+      "gameId": "aof",
+      "type": "PausedToggled",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:14:00.000Z",
+      "slot": "400000014",
+      "signature": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PausedToggled",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "paused": true,
+        "authority": "config_authority"
+      }
+    },
+    {
+      "eventId": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111:0:1",
+      "gameId": "aof",
+      "type": "EmergencyPause",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:14:00.000Z",
+      "slot": "400000014",
+      "signature": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "PausedToggled",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "authority": "config_authority"
+      }
+    },
+    {
+      "eventId": "aJrRbRoqYpnivAzm8ooKAqyb2ykGYoGG6fNVSZYjYNfW9ZoWAySnypTPvZTfSvH4DjS3vJzNKgKvQ1111111111:0:0",
+      "gameId": "aof",
+      "type": "ConfigUpdated",
+      "category": "security",
+      "occurredAt": "2026-09-20T10:15:00.000Z",
+      "slot": "400000015",
+      "signature": "aJrRbRoqYpnivAzm8ooKAqyb2ykGYoGG6fNVSZYjYNfW9ZoWAySnypTPvZTfSvH4DjS3vJzNKgKvQ1111111111",
+      "playerId": null,
+      "counterpartyId": null,
+      "asset": null,
+      "amount": null,
+      "currency": null,
+      "confidence": "finalized",
+      "parserVersion": "aof-v1",
+      "source": {
+        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+        "event": "ResourceMintsUpdated",
+        "eventIndex": 0
+      },
+      "attributes": {
+        "setting": "resource_mints",
+        "changed": [
+          "potato"
+        ],
+        "previous": {
+          "food": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "wood": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "stone": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "seeds": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "water": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "potato": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA"
+        },
+        "current": {
+          "food": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "wood": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "stone": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "seeds": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "water": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "potato": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh"
+        }
+      }
+    }
+  ]
+}

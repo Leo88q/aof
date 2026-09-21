@@ -16,7 +16,10 @@
  *   5. an in_progress operation younger than the stale window is not reclaimable.
  *
  * Usage (from aof_backend/):
- *   npm run test:idempotency-db
+ *   npm run test:idempotency-db                       # temp SQLite via prisma db push
+ *   IDEMPOTENCY_TEST_DATABASE_URL=postgresql://... \
+ *     npm run test:idempotency-db:pg                  # PostgreSQL: generate PG client,
+ *                                                     # prisma migrate deploy (baseline), run
  *
  * Requirements: `prisma generate` and `prisma db push` must be able to run, i.e.
  * the Prisma engines must be available (they are in CI; in offline sandboxes
@@ -30,27 +33,49 @@ import os from "os";
 import path from "path";
 
 async function main(): Promise<void> {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aof-idem-"));
-  const dbFile = path.join(tmp, "idempotency-test.db");
-  // SQLite is single-writer. Prisma's own guidance for SQLite is
-  // `connection_limit=1`; without it, concurrent writers through the pool
-  // surface as "database is locked" instead of the unique-constraint P2002 the
-  // CAS relies on. Production DATABASE_URL must carry the same parameter (see
-  // aof_backend/.env.example and docs/DATABASE_MIGRATIONS.md).
-  process.env.DATABASE_URL = `file:${dbFile}?connection_limit=1`;
-  console.log(`idempotency integration test: DATABASE_URL=file:<tmp>/idempotency-test.db?connection_limit=1`);
-
   const root = path.resolve(__dirname, "..");
   const prismaBin = path.join(root, "node_modules", ".bin", "prisma");
-  try {
-    execFileSync(prismaBin, ["db", "push", "--schema", "prisma/schema.prisma", "--skip-generate", "--accept-data-loss"], {
-      cwd: root,
-      stdio: "pipe",
-      env: { ...process.env, DATABASE_URL: `file:${dbFile}` },
-    });
-  } catch (e: any) {
-    const out = `${e?.stdout ?? ""}${e?.stderr ?? ""}`;
-    throw new Error(`prisma db push failed - Prisma engines unavailable or schema invalid:\n${out.slice(-1500)}`);
+  const pgUrl = process.env.IDEMPOTENCY_TEST_DATABASE_URL;
+  const isPostgres = !!pgUrl && /^postgres(ql)?:/.test(pgUrl);
+  let cleanup: () => void = () => {};
+
+  if (isPostgres) {
+    // PostgreSQL mode (CI service container). The generated Prisma client must
+    // come from prisma/postgres/schema.prisma (a client generated for the
+    // sqlite provider refuses a postgres URL), and the schema is applied with
+    // the real baseline migration - so this run also proves the PG migration
+    // set deploys cleanly, not just that the CAS works.
+    process.env.DATABASE_URL = pgUrl;
+    console.log("idempotency integration test: PostgreSQL mode (IDEMPOTENCY_TEST_DATABASE_URL)");
+    try {
+      execFileSync(prismaBin, ["migrate", "deploy", "--schema", "prisma/postgres/schema.prisma"], {
+        cwd: root, stdio: "pipe", env: { ...process.env, DATABASE_URL: pgUrl },
+      });
+    } catch (e: any) {
+      const out = `${e?.stdout ?? ""}${e?.stderr ?? ""}`;
+      throw new Error(`prisma migrate deploy (postgres) failed:\n${out.slice(-1500)}`);
+    }
+  } else {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aof-idem-"));
+    const dbFile = path.join(tmp, "idempotency-test.db");
+    cleanup = () => fs.rmSync(tmp, { recursive: true, force: true });
+    // SQLite is single-writer. Prisma's own guidance for SQLite is
+    // `connection_limit=1`; without it, concurrent writers through the pool
+    // surface as "database is locked" instead of the unique-constraint P2002 the
+    // CAS relies on. Production DATABASE_URL must carry the same parameter (see
+    // aof_backend/.env.example and docs/DATABASE_MIGRATIONS.md).
+    process.env.DATABASE_URL = `file:${dbFile}?connection_limit=1`;
+    console.log(`idempotency integration test: DATABASE_URL=file:<tmp>/idempotency-test.db?connection_limit=1`);
+    try {
+      execFileSync(prismaBin, ["db", "push", "--schema", "prisma/schema.prisma", "--skip-generate", "--accept-data-loss"], {
+        cwd: root,
+        stdio: "pipe",
+        env: { ...process.env, DATABASE_URL: `file:${dbFile}` },
+      });
+    } catch (e: any) {
+      const out = `${e?.stdout ?? ""}${e?.stderr ?? ""}`;
+      throw new Error(`prisma db push failed - Prisma engines unavailable or schema invalid:\n${out.slice(-1500)}`);
+    }
   }
 
   // Import after DATABASE_URL is set so the singleton client binds to the temp DB.
@@ -62,6 +87,9 @@ async function main(): Promise<void> {
   }
 
   try {
+    // PG databases persist across steps in CI; start from a clean table.
+    await db.idempotencyRecord.deleteMany({ where: { operationKey: { startsWith: "itest:" } } });
+
     // 1. concurrent first claims -> exactly one winner
     const key1 = "itest:concurrent-claim";
     const results = await Promise.all(Array.from({ length: 32 }, () => checkIdempotency(key1)));
@@ -98,14 +126,31 @@ async function main(): Promise<void> {
     const fresh = await checkIdempotency(key4);
     assert.deepEqual(fresh, { allowed: false, alreadyProcessed: false });
 
+    // FraudCase review queue: openKey uniqueness + resolve CAS (same migration set).
+    await db.fraudCase.deleteMany({ where: { wallet: "itest-wallet" } });
+    const { persistFindings } = await import("../src/lib/fraudSignals");
+    const finding = { wallet: "itest-wallet", signal: "reward_velocity" as const, severity: 2 as const, score: 10, evidence: { n: 1 } };
+    const first = await persistFindings([finding]);
+    const second = await persistFindings([{ ...finding, severity: 3, score: 30 }]);
+    assert.deepEqual([first.opened, second.opened, second.refreshed], [1, 0, 1], "one open case per (wallet, signal)");
+    const open = await db.fraudCase.findMany({ where: { wallet: "itest-wallet", status: "open" } });
+    assert.equal(open.length, 1);
+    assert.deepEqual([open[0].hits, open[0].severity, open[0].score], [2, 3, 30]);
+    const resolves = await Promise.all(["confirmed", "dismissed"].map((status) =>
+      db.fraudCase.updateMany({ where: { id: open[0].id, status: "open" }, data: { status, openKey: null, resolvedBy: "itest", resolvedAt: new Date(), resolution: "x" } })));
+    assert.equal(resolves.map((r) => r.count).reduce((a, b) => a + b, 0), 1, "exactly one reviewer wins the resolve CAS");
+    const reopened = await persistFindings([finding]);
+    assert.equal(reopened.opened, 1, "a new case can be opened after resolution (openKey freed)");
+    assert.equal(await db.fraudCase.count({ where: { wallet: "itest-wallet" } }), 2);
+
     // Invalid key is rejected before touching the database.
     await assert.rejects(() => checkIdempotency(""), /Invalid idempotency key/);
     await assert.rejects(() => checkIdempotency("x".repeat(201)), /Invalid idempotency key/);
 
-    console.log("idempotency integration test (Prisma + SQLite): concurrent claim, replay, failed/stale reclaim CAS passed");
+    console.log(`idempotency integration test (Prisma + ${isPostgres ? "PostgreSQL" : "SQLite"}): concurrent claim, replay, failed/stale reclaim CAS, fraud-case openKey/resolve CAS passed`);
   } finally {
     await db.$disconnect();
-    fs.rmSync(tmp, { recursive: true, force: true });
+    cleanup();
   }
 }
 

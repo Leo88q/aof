@@ -7,7 +7,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
 import { AUTHORITY } from "../config";
 import { program, connection } from "../provider";
-import { authPda, configPda, materialMintsPda, playerPda } from "../lib/pda";
+import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { fetchOne } from "../lib/decode";
 import { authorityOnly, pk } from "../lib/tx";
 import { logger } from "../lib/logger";
@@ -17,6 +17,15 @@ import { requireAdmin } from "../middleware/adminAuth";
 import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
+
+// Anchor error codes for the issuance cap (aof_core.json errors 6097/6098).
+const ISSUANCE_CAP_ERROR_CODES = new Set([6097, 6098]);
+function isIssuanceCapError(e: any): boolean {
+  const code = Number(e?.error?.errorCode?.number ?? e?.code);
+  if (ISSUANCE_CAP_ERROR_CODES.has(code)) return true;
+  const msg = String(e?.message ?? e?.logs?.join("\n") ?? "");
+  return /IssuanceCapExceeded|IssuanceCapNotConfigured|custom program error: 0x17d[12]/i.test(msg);
+}
 
 // Маппинг типов наград → kind для mintResource (как в resources.ts)
 const kindMap: Record<string, any> = {
@@ -206,6 +215,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
             tokenAccount,
             treasuryToken,
             player,
+            issuanceCap: issuanceCapPda(kind)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
             rewardReceipt: rewardReceiptPda(id),
             systemProgram: SystemProgram.programId,
@@ -233,6 +243,16 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
         });
       }
     } catch (e: any) {
+      // On-chain issuance budget for this resource is exhausted for the current
+      // epoch. Nothing was minted (the cap is charged before any CPI), so the
+      // reward goes back to unclaimed and the client is told to retry later.
+      // This is an operator signal (P0): either the cap is mis-calibrated or
+      // the authority key is being abused.
+      if (isIssuanceCapError(e)) {
+        await db.inboxItem.update({ where: { id }, data: { claimed: false, claimState: "unclaimed", claimSignature: null } });
+        logger.error({ inboxId: id, rewardType: item.rewardType, err: String(e?.message || e) }, "ISSUANCE_CAP: reward mint blocked by on-chain cap");
+        return res.status(503).json({ error: "ISSUANCE_CAP_EXCEEDED", retryable: true });
+      }
       if (e instanceof RewardReceiptConflict) {
         await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "quarantined" } });
         logger.error({ inboxId: id }, "Reward receipt conflict; manual review required");

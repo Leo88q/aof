@@ -2,10 +2,10 @@ import { startCronJobs } from "./lib/cron";
 import express from "express";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
-import { generalLimiter, txLimiter } from "./middleware/rateLimit";
+import { generalLimiter, txLimiter, readLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
 import cors from "cors";
-import { PORT } from "./config";
+import { PORT, TRUST_PROXY_HOPS } from "./config";
 import { connection } from "./provider";
 import admin from "./routes/admin";
 import gastank from "./routes/gastank";
@@ -69,13 +69,19 @@ import friend from "./routes/friend";
 import chain from "./routes/chain";
 import adminAudit from "./routes/admin-audit";
 import adminEconomy from "./routes/admin-economy";
+import adminChain from "./routes/admin-chain";
+import adminFraud from "./routes/admin-fraud";
 import rating from "./routes/rating";
 import { sentinelAutoAudit } from "./middleware/audit";
-import { requireAdmin } from "./middleware/adminAuth";
+import { adminByMethod } from "./middleware/adminAuth";
 import { startCommitRevealer } from "./lib/commitRevealer";
 import { requireMappedWalletProof } from "./security/walletProof";
 
 const app = express();
+// Must be set before any middleware reads req.ip (rate limiter, audit log).
+// A fixed hop count, never `true`: trusting every X-Forwarded-For would let
+// clients spoof their IP and bypass per-IP limits.
+app.set("trust proxy", TRUST_PROXY_HOPS);
 const configuredOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim())
@@ -97,6 +103,12 @@ app.use(requireMappedWalletProof());
 app.use(sentinelAutoAudit());
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/health" } }));
 app.use("/admin", txLimiter);
+// Read-heavy public endpoints proxy RPC / DB scans; they get the read limiter
+// on top of the general one so a single client cannot saturate the RPC quota.
+app.use("/query", readLimiter);
+app.use("/whale-alerts", readLimiter);
+app.use("/market-data", readLimiter);
+app.use("/public", readLimiter);
 app.use("/hot-market", txLimiter);
 app.use("/orderbook", txLimiter);
 app.use("/marketplace", txLimiter);
@@ -114,6 +126,8 @@ app.use("/exploration", txLimiter);
 app.use("/admin", admin);
 app.use("/admin/audit", adminAudit);
 app.use("/admin/economy", adminEconomy);
+app.use("/admin/chain", adminChain);
+app.use("/admin/fraud", adminFraud);
 app.use("/rating", rating);
 app.use("/gastank", gastank);
 app.use("/resources", resources);
@@ -133,7 +147,7 @@ app.use("/orderbook", orderbook);
 app.use("/craft-order", craftOrder);
 app.use("/season", season);
 app.use("/query", query);
-app.use("/security", requireAdmin, security);
+app.use("/security", adminByMethod, security);
 app.use("/hot-market", hotMarket);
 app.use("/session", session);
 app.use("/quests", quests);
@@ -176,7 +190,28 @@ app.use("/notifications", notifications);
 app.use("/privileges", txLimiter);
 app.use("/privileges", privileges);
 app.use(errorHandler);
+// Liveness: process is up. Never touches DB/RPC so a dependency outage does
+// not make the orchestrator restart-loop the API.
 app.get("/health", (_req, res) => res.json({ ok: true }));
+// Readiness: can this instance serve real traffic right now? Checks the DB
+// and the RPC with short timeouts; 503 on any failure so a load balancer
+// drains the instance instead of routing users into errors.
+app.get("/ready", async (_req, res) => {
+  const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+  const checks: Record<string, { ok: boolean; ms: number; error?: string }> = {};
+  const run = async (name: string, fn: () => Promise<unknown>) => {
+    const t = Date.now();
+    try { await withTimeout(fn(), 3000); checks[name] = { ok: true, ms: Date.now() - t }; }
+    catch (e: any) { checks[name] = { ok: false, ms: Date.now() - t, error: String(e?.message || e) }; }
+  };
+  await Promise.all([
+    run("db", async () => { const { db } = await import("./lib/db"); await db.$queryRaw`SELECT 1`; }),
+    run("rpc", () => connection.getSlot("processed")),
+  ]);
+  const ok = Object.values(checks).every((c) => c.ok);
+  res.status(ok ? 200 : 503).json({ ok, checks });
+});
 // Validate the actual cluster before any signing worker can start. URL names
 // are not proof of network identity (a custom RPC can point at any cluster).
 async function start(): Promise<void> {

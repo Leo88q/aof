@@ -790,6 +790,10 @@ jobs:
         run: |
           set -uo pipefail
           npm run test:audit-security 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          npm run test:admin-auth 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          npm run test:chain-indexer 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          npm run test:fraud-signals 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          npm run test:watchtower 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
           npm run test:wallet-proof 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
@@ -817,6 +821,9 @@ jobs:
           set -uo pipefail
           npm run test:idempotency-db 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
+
+      - name: Generated PostgreSQL schema/baseline is up to date
+        run: npm run prisma:postgres:check
 
       - name: Migration gate - prisma/migrations matches schema.prisma
         run: |
@@ -850,6 +857,100 @@ jobs:
         with:
           name: backend-log
           path: /tmp/backend-build.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  backend-postgres:
+    name: Backend on PostgreSQL (migrations + idempotency CAS)
+    # The production target is PostgreSQL (docs/POSTGRES_MIGRATION.md) while
+    # the default schema is still SQLite. This job keeps the PG path honest:
+    #   1. the generated prisma/postgres/migrations baseline deploys onto a
+    #      real postgres:16 and matches prisma/postgres/schema.prisma exactly;
+    #   2. src/security/idempotency.ts keeps its exactly-once guarantees under
+    #      a real multi-connection pool (SQLite hides pool races behind
+    #      connection_limit=1; Postgres does not).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: aof_backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: aof
+          POSTGRES_PASSWORD: aof
+          POSTGRES_DB: aof
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aof -d aof"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PG_URL: postgresql://aof:aof@localhost:5432/aof?schema=public
+      PG_SHADOW_URL: postgresql://aof:aof@localhost:5432/aof?schema=shadow
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: aof_backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generated PostgreSQL schema/baseline is up to date
+        run: npm run prisma:postgres:check
+
+      - name: Migration gate - prisma/postgres/migrations matches prisma/postgres/schema.prisma
+        # Same gate as the SQLite one, but against a real Postgres shadow
+        # schema, so provider-specific DDL translation errors surface here.
+        run: |
+          set -uo pipefail
+          npx prisma migrate diff \
+            --from-migrations prisma/postgres/migrations \
+            --to-schema-datamodel prisma/postgres/schema.prisma \
+            --shadow-database-url "$PG_SHADOW_URL" \
+            --exit-code 2>&1 | tee -a /tmp/backend-pg.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Deploy baseline + typecheck against the PostgreSQL client
+        # prisma generate for the PG provider, then tsc: proves the backend
+        # compiles against the Postgres-flavoured client (types are identical
+        # today; this catches a future provider-specific divergence).
+        run: |
+          set -uo pipefail
+          npx prisma generate --schema prisma/postgres/schema.prisma 2>&1 | tee -a /tmp/backend-pg.log
+          DATABASE_URL="$PG_URL" npx prisma migrate deploy --schema prisma/postgres/schema.prisma 2>&1 | tee -a /tmp/backend-pg.log
+          npx tsc -p . --noEmit 2>&1 | tee -a /tmp/backend-pg.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Integration test - Prisma idempotency CAS (PostgreSQL)
+        env:
+          IDEMPOTENCY_TEST_DATABASE_URL: ${{ env.PG_URL }}
+        run: |
+          set -uo pipefail
+          npm run test:idempotency-db:pg 2>&1 | tee -a /tmp/backend-pg.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Publish failure log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ../.github/scripts/publish-failure-log.sh /tmp/backend-pg.log "Backend on PostgreSQL" 10
+
+      - name: Upload backend-postgres log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-postgres-log
+          path: /tmp/backend-pg.log
           if-no-files-found: warn
           retention-days: 7
 
@@ -1176,6 +1277,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-test.log "Anchor test (local validator)" 10
+
+  secrets-scan:
+    name: Secret scan (full git history)
+    # Permanent gate replacing the one-off history scan documented in
+    # docs/PRODUCTION_READINESS_ROADMAP.md §4. fetch-depth 0 is required:
+    # a shallow clone would only scan the tip commit.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_ENABLE_SUMMARY: "true"
+          GITLEAKS_CONFIG: .gitleaks.toml
 
   frontend:
     name: Frontend build (frontend/)

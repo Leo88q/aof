@@ -42,6 +42,34 @@ export const playerPda = (owner: PublicKey) => find([enc("player"), owner.toBuff
 export const gastankPda = (owner: PublicKey) => find([enc("gastank"), owner.toBuffer()]);
 export const toolPda = (mint: PublicKey) => find([enc("tool"), mint.toBuffer()]);
 export const rarityCounterPda = (rarity: number) => find([enc("rarity_counter"), u8(rarity)]);
+
+/**
+ * ResourceKind discriminants in declaration order (aof-core/src/lib.rs). The
+ * issuance-cap PDA is seeded with `kind as u8`, so this order must match the
+ * Rust enum exactly; the Anchor enum object `{ gemBlue: {} }` does not carry
+ * the index.
+ */
+export const RESOURCE_KIND_ORDER = [
+  "food", "wood", "stone",
+  "seeds", "wheat", "flour", "bread", "water", "coal", "meat",
+  "stoneBlue", "stonePurple", "stoneRed",
+  "sandWhite", "sandPink", "sandYellow",
+  "gemBlue", "gemOrange", "gemWhite", "gemGreen",
+  "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
+  "loveHeart",
+  "potato",
+] as const;
+
+/** `kind` may be an Anchor enum object (`{ gemBlue: {} }`), a camelCase name or a numeric index. */
+export function resourceKindIndex(kind: unknown): number {
+  if (typeof kind === "number") { if (!Number.isInteger(kind) || kind < 0 || kind >= RESOURCE_KIND_ORDER.length) throw new Error("invalid resource kind index"); return kind; }
+  const name = typeof kind === "string" ? kind : (kind && typeof kind === "object" ? Object.keys(kind as object)[0] : undefined);
+  const idx = RESOURCE_KIND_ORDER.indexOf(name as any);
+  if (idx < 0) throw new Error(`unknown resource kind: ${String(name)}`);
+  return idx;
+}
+
+export const issuanceCapPda = (kind: unknown) => find([enc("issuance_cap"), u8(resourceKindIndex(kind))]);
 export const craftEconomyPda = () => find([enc("craft_economy")]);
 export const collectorPda = (mint: PublicKey) => find([enc("collector"), mint.toBuffer()]);
 export const packConfigPda = (packType: number) => find([enc("pack_config"), u8(packType)]);

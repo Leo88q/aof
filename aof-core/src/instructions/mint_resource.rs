@@ -7,6 +7,7 @@ use crate::MintResource;
 use crate::state::*;
 use crate::errors::*;
 use crate::ResourceKind;
+use crate::events::ResourceIssued;
 
 fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
     match kind {
@@ -67,7 +68,8 @@ fn pick_fee_bps(user: &Pubkey, amount: u64, has_medallion: bool, has_historian: 
 
 pub fn handler(ctx: Context<MintResource>, kind: ResourceKind, amount: u64) -> Result<()> {
     execute_mint(&ctx.accounts.config, &ctx.accounts.material_mints,
-        &mut ctx.accounts.player, &ctx.accounts.mint, &ctx.accounts.token_account,
+        &mut ctx.accounts.player, &mut ctx.accounts.issuance_cap,
+        &ctx.accounts.mint, &ctx.accounts.token_account,
         &ctx.accounts.treasury_token, &ctx.accounts.auth, &ctx.accounts.token_program,
         ctx.bumps.auth, kind, amount)
 }
@@ -75,6 +77,7 @@ pub fn handler(ctx: Context<MintResource>, kind: ResourceKind, amount: u64) -> R
 // One canonical economic path for both legacy admin mints and replay-protected rewards.
 pub fn execute_mint<'info>(
     config: &Config, material_mints: &MaterialMints, player: &mut Player,
+    issuance_cap: &mut IssuanceCap,
     mint: &Account<'info, Mint>, token_account: &Account<'info, TokenAccount>,
     treasury_token: &Account<'info, TokenAccount>, auth: &UncheckedAccount<'info>,
     token_program: &Program<'info, Token>, auth_bump: u8,
@@ -87,6 +90,13 @@ pub fn execute_mint<'info>(
         mint.mint_authority == COption::Some(auth.key()),
         AofError::Unauthorized
     );
+
+    // Charge the per-kind budget BEFORE any CPI: a rejected mint must not
+    // move the counter, and the counter must be charged for the gross amount
+    // (the treasury fee is issuance too). Errors abort the whole instruction,
+    // so the epoch roll performed inside charge() is also discarded on failure.
+    let slot = Clock::get()?.slot;
+    issuance_cap.charge(kind as u8, amount, slot)?;
 
     if player.owner == Pubkey::default() {
         player.owner = token_account.owner;
@@ -133,5 +143,16 @@ pub fn execute_mint<'info>(
             fee_cut,
         )?;
     }
+    emit!(ResourceIssued {
+        kind: kind as u8,
+        mint: mint.key(),
+        recipient: token_account.owner,
+        gross: amount,
+        fee: fee_cut,
+        minted_in_epoch: issuance_cap.minted_in_epoch,
+        cap_per_epoch: issuance_cap.cap_per_epoch,
+        epoch_start_slot: issuance_cap.epoch_start_slot,
+        slot,
+    });
     Ok(())
 }

@@ -1,6 +1,9 @@
 import { db } from "./db";
 import { connection } from "./../provider";
 import { PublicKey } from "@solana/web3.js";
+import { DataQuality, EconomyFieldQuality, ECONOMY_FIELD_QUALITY, worstQuality } from "./dataQuality";
+export { ECONOMY_FIELD_QUALITY, worstQuality } from "./dataQuality";
+export type { DataQuality, EconomyFieldQuality } from "./dataQuality";
 
 /**
  * OpenClaw Economy Monitor
@@ -17,9 +20,15 @@ export interface EconomyMetrics {
   totalTxs24h: number;
   failedTxs24h: number;
   topHolders: { address: string; balance: bigint }[];
-  /** Explicitly surfaced because event/holder indexing is not complete yet. */
-  dataQuality: "partial" | "complete";
+  /** Overall quality: the worst of the per-field values below. */
+  dataQuality: DataQuality;
+  /**
+   * Per-field provenance. Consumers MUST NOT render an `unavailable` field as
+   * a numeric fact (a zero from an unimplemented indexer is not "0 minted").
+   */
+  fieldQuality: EconomyFieldQuality;
 }
+
 
 // Константы для алертов
 const THRESHOLDS = {
@@ -39,6 +48,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   const last1h = new Date(now.getTime() - 3600 * 1000);
 
   // Параллельно собираем все метрики
+  const potatoMint = await getPotatoMint();
+  const indexer = await getIndexerCoverage(last24h);
+  const topHolders = await getTopHolders(potatoMint);
   const [
     supplyData,
     burnEvents,
@@ -49,9 +61,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     totalTxs,
     failedTxs,
   ] = await Promise.all([
-    getPOTATOSupply(),
-    getBurnEvents(last24h),
-    getMintEvents(last24h),
+    getPOTATOSupply(potatoMint),
+    getBurnEvents(last24h, potatoMint),
+    getMintEvents(last24h, potatoMint),
     // Compare with a snapshot at least 24h old. The previous implementation
     // compared to the latest five-minute snapshot while labelling the result
     // "24h", which made the alert metric materially wrong.
@@ -59,36 +71,30 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
       where: { timestamp: { lte: last24h } },
       orderBy: { timestamp: "desc" },
     }),
-    db.auditLog.findMany({
-      where: { 
-        timestamp: { gte: last24h },
-        result: "success",
-        OR: [
-          { action: { contains: "craft" } },
-          { action: { contains: "tools" } },
-          { action: { contains: "packs" } },
-          { action: { contains: "forge" } },
-        ],
-      },
-      select: { user: true }
-    }).then(logs => new Set(logs.map((l: any) => l.user)).size),
-    db.auditLog.findMany({
-      where: {
-        timestamp: { gte: last24h },
-        result: "success",
-        OR: [
-          { action: { contains: "orderbook" } },
-          { action: { contains: "marketplace" } },
-          { action: { contains: "auction" } },
-        ],
-      },
-      select: { user: true }
-    }).then(logs => new Set(logs.map((l: any) => l.user)).size),
-    db.auditLog.count({ where: { timestamp: { gte: last24h } } }),
-    db.auditLog.count({ where: { timestamp: { gte: last24h }, result: "fail" } }),
+    countActors(indexer.quality, last24h, CRAFT_EVENTS, ["craft", "tools", "packs", "forge"]),
+    countActors(indexer.quality, last24h, TRADE_EVENTS, ["orderbook", "marketplace", "auction", "hot-market", "offer"]),
+    countTxs(indexer.quality, last24h, undefined),
+    countTxs(indexer.quality, last24h, false),
   ]);
 
   const supply = supplyData.supply;
+  const fieldQuality: EconomyFieldQuality = {
+    ...ECONOMY_FIELD_QUALITY,
+    potatoSupply: supplyData.ok ? "complete" : "unavailable",
+    // Mint/burn come from the chain indexer's per-tx supply deltas. They are
+    // complete only when the indexer has a contiguous window covering the
+    // whole 24h; while backfill is running or the cursor is stale they are
+    // partial; with no indexed data at all they stay unavailable.
+    potatoMinted24h: indexer.quality,
+    potatoBurned24h: indexer.quality,
+    // Activity switches from the off-chain AuditLog to the on-chain ledger as
+    // soon as the indexer fully covers the window; until then it is partial.
+    activity24h: indexer.quality === "complete" ? "complete" : "partial",
+    topHolders: topHolders.length > 0 ? "complete" : "unavailable",
+    // Without a 24h-old snapshot the baseline is the current supply and the
+    // inflation figure is 0 by construction, not by measurement.
+    inflation24h: supplyData.ok && baselineSnapshot ? "partial" : "unavailable",
+  };
   const burned = burnEvents.reduce((sum, e) => sum + e.amount, 0n);
   const minted = mintEvents.reduce((sum, e) => sum + e.amount, 0n);
 
@@ -100,8 +106,6 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     ? Number((supply - baselineSupply) * 10000n / baselineSupply) / 100
     : 0;
 
-  // Топ холдеры (упрощённо — из audit logs)
-  const topHolders = await getTopHolders();
 
   const metrics: EconomyMetrics = {
     potatoSupply: supply,
@@ -113,9 +117,8 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     totalTxs24h: totalTxs,
     failedTxs24h: failedTxs,
     topHolders,
-    // Mint/burn event and holder indexing are still TODO; do not present the
-    // zero-valued breakdown as a complete economic accounting.
-    dataQuality: "partial",
+    dataQuality: worstQuality(fieldQuality),
+    fieldQuality,
   };
 
   // Сохраняем snapshot
@@ -133,6 +136,7 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
         address: h.address,
         balance: h.balance.toString(),
       }))),
+      fieldQuality: JSON.stringify(fieldQuality),
     },
   });
 
@@ -220,39 +224,121 @@ async function createAlert(data: {
 
 // === Вспомогательные функции ===
 
-async function getPOTATOSupply(): Promise<{ supply: bigint }> {
+async function getPotatoMint(): Promise<PublicKey | null> {
   try {
-    // Читаем из Config PDA
     const { configPda } = await import("./pda");
     const { fetchOne } = await import("./decode");
     const [config] = configPda();
     const cfg: any = await fetchOne("config", config);
-    
-    if (!cfg?.potatoMint) {
-      return { supply: 0n };
-    }
-
-    // Читаем mint account
-    const mintInfo = await connection.getParsedAccountInfo(new PublicKey(cfg.potatoMint));
-    const supply = BigInt((mintInfo.value?.data as any)?.parsed?.info?.supply || "0");
-    
-    return { supply };
-  } catch (e) {
-    return { supply: 0n };
+    return cfg?.potatoMint ? new PublicKey(cfg.potatoMint.toString()) : null;
+  } catch {
+    return null;
   }
 }
 
-async function getBurnEvents(since: Date): Promise<{ amount: bigint }[]> {
-  // TODO: парсить events из on-chain (BurnResource events)
-  return [];
+async function getPOTATOSupply(potatoMint: PublicKey | null): Promise<{ supply: bigint; ok: boolean }> {
+  try {
+    if (!potatoMint) return { supply: 0n, ok: false };
+    const mintInfo = await connection.getParsedAccountInfo(potatoMint);
+    const rawSupply = (mintInfo.value?.data as any)?.parsed?.info?.supply;
+    if (rawSupply === undefined || rawSupply === null) return { supply: 0n, ok: false };
+    return { supply: BigInt(rawSupply), ok: true };
+  } catch (e) {
+    return { supply: 0n, ok: false };
+  }
 }
 
-async function getMintEvents(since: Date): Promise<{ amount: bigint }[]> {
-  // TODO: парсить events из on-chain (MintResource events)
-  return [];
+/**
+ * How much of the last 24h the chain indexer actually covers for aof_core.
+ *   complete   — cursor fresh (< 10 min) and backfill done or oldest indexed
+ *                tx is older than the window start
+ *   partial    — some data but the window is not fully covered
+ *   unavailable— no indexer rows at all
+ */
+async function getIndexerCoverage(since: Date): Promise<{ quality: "complete" | "partial" | "unavailable" }> {
+  try {
+    const { PROGRAM_ID } = await import("../provider");
+    const cursor = await db.indexerCursor.findUnique({ where: { programId: PROGRAM_ID.toBase58() } });
+    if (!cursor || !cursor.newestSignature) return { quality: "unavailable" };
+    const fresh = Date.now() - cursor.updatedAt.getTime() < 10 * 60 * 1000;
+    if (!fresh) return { quality: "partial" };
+    if (cursor.backfillComplete) return { quality: "complete" };
+    const oldest = await db.chainTx.findFirst({ orderBy: { slot: "asc" }, select: { blockTime: true } });
+    if (oldest?.blockTime && oldest.blockTime <= since) return { quality: "complete" };
+    return { quality: "partial" };
+  } catch {
+    return { quality: "unavailable" };
+  }
 }
 
-async function getTopHolders(): Promise<{ address: string; balance: bigint }[]> {
-  // TODO: индексировать top holders через Helius/Shyft
-  return [];
+/** Sum of positive / negative supply deltas for one mint in the window. */
+async function sumMintDeltas(since: Date, mint: PublicKey | null, sign: 1 | -1): Promise<{ amount: bigint }[]> {
+  if (!mint) return [];
+  const rows = await db.chainMintDelta.findMany({
+    where: { mint: mint.toBase58(), blockTime: { gte: since } },
+    select: { delta: true },
+  });
+  let total = 0n;
+  for (const r of rows) {
+    const d = BigInt(r.delta);
+    if (sign === 1 && d > 0n) total += d;
+    if (sign === -1 && d < 0n) total += -d;
+  }
+  return total > 0n ? [{ amount: total }] : [];
+}
+
+async function getBurnEvents(since: Date, potatoMint: PublicKey | null): Promise<{ amount: bigint }[]> {
+  return sumMintDeltas(since, potatoMint, -1);
+}
+
+async function getMintEvents(since: Date, potatoMint: PublicKey | null): Promise<{ amount: bigint }[]> {
+  return sumMintDeltas(since, potatoMint, 1);
+}
+
+// Event types that count as "crafting" / "trading" activity on-chain.
+const CRAFT_EVENTS = ["CraftEvent", "ToolCrafted", "ToolMinted", "PackOpened", "ForgeAttempted", "ToolRepaired", "RerollResult", "MiningCollected"];
+const TRADE_EVENTS = ["ListingSold", "ListingCreated", "AuctionBid", "AuctionSettled", "OfferAccepted", "OrderPlaced", "OrderMatched", "HotMarketBought", "HotMarketSold", "LimitOrderPlaced", "LimitOrderMatched"];
+
+/** Distinct actors: on-chain events when the ledger is complete, AuditLog otherwise. */
+async function countActors(quality: "complete" | "partial" | "unavailable", since: Date, eventTypes: string[], auditFragments: string[]): Promise<number> {
+  if (quality === "complete") {
+    const rows = await db.chainEvent.findMany({
+      where: { blockTime: { gte: since }, eventType: { in: eventTypes }, wallet: { not: null } },
+      distinct: ["wallet"], select: { wallet: true },
+    });
+    return rows.length;
+  }
+  const logs = await db.auditLog.findMany({
+    where: { timestamp: { gte: since }, result: "success", OR: auditFragments.map((f) => ({ action: { contains: f } })) },
+    select: { user: true },
+  });
+  return new Set(logs.map((l: any) => l.user)).size;
+}
+
+/** Tx count (all or failed only) from the same source selection as countActors. */
+async function countTxs(quality: "complete" | "partial" | "unavailable", since: Date, success: boolean | undefined): Promise<number> {
+  if (quality === "complete") {
+    return db.chainTx.count({ where: { blockTime: { gte: since }, ...(success === undefined ? {} : { success }) } });
+  }
+  return db.auditLog.count({ where: { timestamp: { gte: since }, ...(success === undefined ? {} : { result: success ? "success" : "fail" }) } });
+}
+
+/**
+ * Top-20 holders straight from the RPC (getTokenLargestAccounts). Enough for
+ * whale/concentration alerts; a full holder census needs a DAS provider.
+ */
+async function getTopHolders(potatoMint: PublicKey | null): Promise<{ address: string; balance: bigint }[]> {
+  if (!potatoMint) return [];
+  try {
+    const largest = await connection.getTokenLargestAccounts(potatoMint, "confirmed");
+    const accounts = largest.value.slice(0, 20);
+    if (accounts.length === 0) return [];
+    const infos = await connection.getMultipleParsedAccounts(accounts.map((a) => a.address), { commitment: "confirmed" });
+    return accounts.map((a, i) => {
+      const owner = (infos.value[i]?.data as any)?.parsed?.info?.owner;
+      return { address: typeof owner === "string" ? owner : a.address.toBase58(), balance: BigInt(a.amount) };
+    });
+  } catch {
+    return [];
+  }
 }

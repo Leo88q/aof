@@ -530,6 +530,10 @@ model EconomySnapshot {
   totalTxs24h       Int
   failedTxs24h      Int
   
+  // Provenance at snapshot time (JSON of EconomyFieldQuality). Null = taken
+  // before provenance existed; treat as "partial" at best.
+  fieldQuality   String?
+
   // Топ кошельки (JSON)
   topHolders     String   // JSON array [{address, balance}]
   
@@ -590,9 +594,114 @@ model CommitSecret {
   @@index([expiresAt])
 }
 
+// ---------------------------------------------------------------------------
+// On-chain event indexer (services/chain-indexer). Source of truth for
+// economic metrics; AuditLog is the off-chain intent log, not the ledger.
+// Only finalized transactions are indexed, so there is no reorg handling.
+// ---------------------------------------------------------------------------
+
+// One row per finalized transaction that touched an indexed program.
+model ChainTx {
+  signature  String   @id
+  slot       BigInt
+  blockTime  DateTime?
+  success    Boolean
+  feePayer   String
+  programIds String   // JSON array of indexed program ids present in the tx
+  errorJson  String?  // meta.err for failed txs
+  indexedAt  DateTime @default(now())
+
+  events     ChainEvent[]
+  mintDeltas ChainMintDelta[]
+
+  @@index([blockTime])
+  @@index([success, blockTime])
+  @@index([feePayer, blockTime])
+}
+
+// One row per Anchor event decoded from the tx logs.
+model ChainEvent {
+  id         String   @id @default(cuid())
+  signature  String
+  eventIndex Int      // position within the tx log stream (dedup key with signature)
+  slot       BigInt
+  blockTime  DateTime?
+  programId  String
+  eventType  String   // Anchor event name, e.g. "MiningCollected"
+  wallet     String?  // primary actor pubkey if the event has one
+  walletHash String?  // sha256(WALLET_HASH_SALT|wallet) for public/aggregate surfaces
+  mint       String?
+  amount     String?  // u64 as decimal string (SQLite has no unsigned 64-bit)
+  success    Boolean
+  data       String   // full decoded payload, JSON (BN -> string, Pubkey -> base58)
+
+  tx         ChainTx  @relation(fields: [signature], references: [signature])
+
+  @@unique([signature, eventIndex])
+  @@index([eventType, blockTime])
+  @@index([wallet, blockTime])
+  @@index([programId, slot])
+}
+
+// Net SPL supply change per (tx, mint), derived from pre/post token balances:
+// transfers cancel out, so a non-zero sum is mint_to (+) or burn (-). This is
+// how issuance is measured without a dedicated on-chain event.
+model ChainMintDelta {
+  id        String   @id @default(cuid())
+  signature String
+  mint      String
+  delta     String   // signed integer as decimal string
+  blockTime DateTime?
+  slot      BigInt
+
+  tx        ChainTx  @relation(fields: [signature], references: [signature])
+
+  @@unique([signature, mint])
+  @@index([mint, blockTime])
+}
+
+// Per-program sync state. newest/oldest bound the contiguous indexed window;
+// forward sync extends newest, backfill extends oldest until exhausted.
+model IndexerCursor {
+  programId        String   @id
+  newestSignature  String?
+  oldestSignature  String?
+  newestSlot       BigInt?
+  backfillComplete Boolean  @default(false)
+  txIndexed        Int      @default(0)
+  lastError        String?
+  updatedAt        DateTime @updatedAt
+}
+
 // Persist pagination even when the one-shot reconciler exits or is restarted.
 model ReconciliationCursor {
   name      String   @id
   lastId    String?
   updatedAt DateTime @updatedAt
+}
+
+// ---- Anti-fraud review queue (no auto-ban) ----------------------------------
+// One open case per (wallet, signal). Signals are computed from the chain
+// indexer ledger + device registry by src/lib/fraudSignals.ts; a human resolves
+// each case via /admin/fraud/cases/:id/resolve, and every resolution is written
+// to AuditLog. Nothing here changes a player's rights by itself.
+model FraudCase {
+  id         String    @id @default(cuid())
+  wallet     String
+  signal     String    // fresh_wallet_reward | reward_velocity | shared_funding | device_cluster | wash_trade_pair
+  severity   Int       // 1 = info, 2 = review, 3 = urgent review
+  score      Float     // signal-specific magnitude (e.g. rewards/hour, cluster size)
+  evidence   String    // JSON: signatures, counterpart wallets, windows
+  status     String    @default("open") // open | confirmed | dismissed
+  openKey    String?   // `${wallet}|${signal}` while open, NULL once resolved → one open case per pair
+  firstSeen  DateTime  @default(now())
+  lastSeen   DateTime  @default(now())
+  hits       Int       @default(1)
+  resolvedBy String?
+  resolvedAt DateTime?
+  resolution String?   // free-text note by the reviewer
+
+  @@unique([openKey])
+  @@index([status, severity, lastSeen])
+  @@index([wallet])
 }

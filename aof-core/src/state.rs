@@ -688,6 +688,111 @@ pub struct FortuneBoost {
     pub buff_type: u8,           // [НОВОЕ] 1=Wood/Stone boost, 2=Craft speed, 3=Food yield
 }
 
+/// Per-ResourceKind issuance budget. Lives outside Config so the deployed
+/// Config layout is untouched. Epochs are measured in slots, not wall time.
+///
+/// Invariants enforced by `charge`:
+///  * an epoch that has fully elapsed resets `minted_in_epoch` to zero and
+///    snaps `epoch_start_slot` forward on the fixed grid — skipped epochs do
+///    NOT accumulate unused budget;
+///  * `cap_per_epoch == 0` means "not configured" and rejects every mint
+///    (fail-closed), it is not "unlimited";
+///  * changing the cap never resets `minted_in_epoch` (see set_issuance_cap).
+#[account]
+#[derive(InitSpace)]
+pub struct IssuanceCap {
+    pub kind: u8,               // ResourceKind as u8
+    pub epoch_slots: u64,
+    pub cap_per_epoch: u64,     // gross units (before fee split)
+    pub epoch_start_slot: u64,
+    pub minted_in_epoch: u64,
+    pub lifetime_minted: u128,  // monotonic, for audit/indexer cross-checks
+    pub bump: u8,
+}
+
+impl IssuanceCap {
+    /// Roll the epoch window forward if `slot` is past the current one.
+    /// Safe to call repeatedly; does nothing inside the current epoch.
+    pub fn roll_epoch(&mut self, slot: u64) {
+        if self.epoch_slots == 0 { return; }
+        let end = self.epoch_start_slot.saturating_add(self.epoch_slots);
+        if slot < end { return; }
+        let elapsed = slot - self.epoch_start_slot;
+        let full = elapsed / self.epoch_slots;
+        self.epoch_start_slot = self.epoch_start_slot.saturating_add(full.saturating_mul(self.epoch_slots));
+        self.minted_in_epoch = 0;
+    }
+
+    /// Reserve `amount` from the current epoch budget. Errors leave state
+    /// unchanged except for the (idempotent) epoch roll.
+    pub fn charge(&mut self, kind: u8, amount: u64, slot: u64) -> core::result::Result<(), crate::errors::AofError> {
+        use crate::errors::AofError;
+        if self.kind != kind { return Err(AofError::InvalidResourceKind); }
+        if self.cap_per_epoch == 0 || self.epoch_slots == 0 { return Err(AofError::IssuanceCapNotConfigured); }
+        self.roll_epoch(slot);
+        let next = self.minted_in_epoch.checked_add(amount).ok_or(AofError::MathOverflow)?;
+        if next > self.cap_per_epoch { return Err(AofError::IssuanceCapExceeded); }
+        let lifetime = self.lifetime_minted.checked_add(amount as u128).ok_or(AofError::MathOverflow)?;
+        self.minted_in_epoch = next;
+        self.lifetime_minted = lifetime;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod issuance_cap_tests {
+    use super::*;
+    use crate::errors::AofError;
+    fn cap(epoch: u64, limit: u64) -> IssuanceCap {
+        IssuanceCap { kind: 3, epoch_slots: epoch, cap_per_epoch: limit, epoch_start_slot: 1_000, minted_in_epoch: 0, lifetime_minted: 0, bump: 0 }
+    }
+    #[test]
+    fn exact_cap_passes_and_one_more_fails_without_moving_counter() {
+        let mut c = cap(100, 50);
+        assert!(c.charge(3, 30, 1_000).is_ok());
+        assert!(c.charge(3, 20, 1_050).is_ok());
+        assert_eq!(c.minted_in_epoch, 50);
+        assert!(matches!(c.charge(3, 1, 1_099), Err(AofError::IssuanceCapExceeded)));
+        assert_eq!(c.minted_in_epoch, 50);
+        assert_eq!(c.lifetime_minted, 50);
+    }
+    #[test]
+    fn epoch_roll_snaps_to_grid_and_does_not_bank_skipped_epochs() {
+        let mut c = cap(100, 50);
+        c.charge(3, 50, 1_000).unwrap();
+        // 1 epoch later: budget resets, window starts at 1_100
+        c.charge(3, 50, 1_100).unwrap();
+        assert_eq!(c.epoch_start_slot, 1_100);
+        // 2.5 epochs later (slot 1_350): window is [1_300, 1_400), budget is 50 not 150
+        c.charge(3, 50, 1_350).unwrap();
+        assert_eq!(c.epoch_start_slot, 1_300);
+        assert!(matches!(c.charge(3, 1, 1_399), Err(AofError::IssuanceCapExceeded)));
+        // 1000 epochs later still exactly one budget
+        c.charge(3, 50, 1_300 + 100 * 1000).unwrap();
+        assert_eq!(c.epoch_start_slot, 101_300);
+        assert!(matches!(c.charge(3, 1, 101_300), Err(AofError::IssuanceCapExceeded)));
+        assert_eq!(c.lifetime_minted, 200);
+    }
+    #[test]
+    fn unconfigured_wrong_kind_and_overflow_are_rejected() {
+        let mut c = cap(100, 0);
+        assert!(matches!(c.charge(3, 1, 1_000), Err(AofError::IssuanceCapNotConfigured)));
+        let mut c = cap(0, 10);
+        assert!(matches!(c.charge(3, 1, 1_000), Err(AofError::IssuanceCapNotConfigured)));
+        let mut c = cap(100, 10);
+        assert!(matches!(c.charge(4, 1, 1_000), Err(AofError::InvalidResourceKind)));
+        let mut c = cap(100, u64::MAX);
+        c.minted_in_epoch = u64::MAX - 1;
+        assert!(matches!(c.charge(3, 2, 1_000), Err(AofError::MathOverflow)));
+        assert_eq!(c.minted_in_epoch, u64::MAX - 1);
+        // slot before epoch start (clock skew / stale slot) does not roll or panic
+        let mut c = cap(100, 10);
+        c.charge(3, 5, 500).unwrap();
+        assert_eq!(c.epoch_start_slot, 1_000);
+        assert_eq!(c.minted_in_epoch, 5);
+    }
+}
+
 /// Permanent replay tombstone. Never close/recycle this PDA: rent recovery would
 /// restore the ability to mint the same logical reward after a DB rollback.
 #[account]

@@ -1,0 +1,397 @@
+{
+  "version": "aof-v1",
+  "gameId": "aof",
+  "generatedFrom": "watchtower/src/event-normalizer.ts",
+  "types": [
+    {
+      "name": "WalletConnected",
+      "category": "players",
+      "support": "native",
+      "sources": [
+        "ReferralBound"
+      ]
+    },
+    {
+      "name": "PlayerJoined",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "SessionStarted",
+      "category": "players",
+      "support": "unsupported",
+      "reason": "no on-chain notion of a session in AOF; off-chain AuditLog is not authoritative"
+    },
+    {
+      "name": "SessionEnded",
+      "category": "players",
+      "support": "unsupported",
+      "reason": "same as SessionStarted"
+    },
+    {
+      "name": "FirstAction",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "RetentionDay1",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "RetentionDay3",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "RetentionDay7",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "RetentionDay14",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "RetentionDay30",
+      "category": "players",
+      "support": "derived"
+    },
+    {
+      "name": "MatchStarted",
+      "category": "gameplay",
+      "support": "unsupported",
+      "reason": "AOF is a farming game: no matches"
+    },
+    {
+      "name": "MatchFinished",
+      "category": "gameplay",
+      "support": "unsupported",
+      "reason": "no matches"
+    },
+    {
+      "name": "RaceStarted",
+      "category": "gameplay",
+      "support": "unsupported",
+      "reason": "no races"
+    },
+    {
+      "name": "RaceFinished",
+      "category": "gameplay",
+      "support": "unsupported",
+      "reason": "no races"
+    },
+    {
+      "name": "QuestCompleted",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "QuestRewardClaimed",
+        "AchievementUnlocked",
+        "ExplorationCompleted",
+        "ChallengeContributed"
+      ]
+    },
+    {
+      "name": "CraftCompleted",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "ToolCrafted",
+        "CraftEvent",
+        "ToolRepaired"
+      ]
+    },
+    {
+      "name": "AssetCreated",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "ToolMinted",
+        "ToolCrafted",
+        "PackOpened",
+        "RerollResult"
+      ]
+    },
+    {
+      "name": "AssetTransferred",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "ListingSold",
+        "OfferAccepted",
+        "AuctionSettled",
+        "RentalStarted",
+        "RentalEnded"
+      ]
+    },
+    {
+      "name": "PackOpened",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "PackOpened"
+      ]
+    },
+    {
+      "name": "FusionCompleted",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "RerollResult",
+        "ForgeAttempted"
+      ]
+    },
+    {
+      "name": "StakeStarted",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "Staked",
+        "CollectorStaked"
+      ]
+    },
+    {
+      "name": "StakeEnded",
+      "category": "gameplay",
+      "support": "native",
+      "sources": [
+        "Unstaked",
+        "CollectorUnstaked"
+      ]
+    },
+    {
+      "name": "PurchaseCompleted",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "ListingSold",
+        "OfferAccepted",
+        "AuctionSettled",
+        "HotMarketBought",
+        "LotteryTicketBought",
+        "SeasonPassPurchased",
+        "PackOpened"
+      ]
+    },
+    {
+      "name": "PaymentSettled",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "ListingSold",
+        "OfferAccepted",
+        "AuctionSettled",
+        "OrderMatched",
+        "LimitOrderMatched",
+        "HotMarketBought",
+        "HotMarketSold",
+        "CraftOrderFulfilled"
+      ]
+    },
+    {
+      "name": "RewardGranted",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "MiningCollected",
+        "ExplorationCompleted",
+        "ReferralPayout",
+        "LotteryClaimed",
+        "SeasonRewardClaimed",
+        "PaidOut",
+        "QuestRewardClaimed"
+      ]
+    },
+    {
+      "name": "RewardClaimed",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "ResourceIssued"
+      ]
+    },
+    {
+      "name": "RewardQuarantined",
+      "category": "economy",
+      "support": "unsupported",
+      "reason": "inbox quarantine state exists off-chain (InboxItem.claimState=quarantined); exposed via FraudSignalCreated/alerts, not as a ledger event"
+    },
+    {
+      "name": "TokenMinted",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "ResourceIssued",
+        "ToolMinted"
+      ]
+    },
+    {
+      "name": "TokenBurned",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "ToolBurned",
+        "ToolCrafted",
+        "RerollResult"
+      ]
+    },
+    {
+      "name": "TreasuryDeposited",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "ResourceIssued",
+        "GasFeesSwept"
+      ]
+    },
+    {
+      "name": "TreasuryWithdrawn",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "PaidOut"
+      ]
+    },
+    {
+      "name": "LiabilityCreated",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "AuctionBid",
+        "OrderPlaced",
+        "LimitOrderPlaced",
+        "OfferCreated",
+        "ListingCreated",
+        "ReferralBound"
+      ]
+    },
+    {
+      "name": "LiabilitySettled",
+      "category": "economy",
+      "support": "native",
+      "sources": [
+        "PackCommitExpired",
+        "ForgeCommitExpired",
+        "AuctionSettled",
+        "OrderMatched",
+        "LimitOrderMatched"
+      ]
+    },
+    {
+      "name": "AuthorityChanged",
+      "category": "security",
+      "support": "unsupported",
+      "reason": "aof_core has no authority-transfer instruction (authority is set at initialize); will arrive with the Squads migration"
+    },
+    {
+      "name": "ConfigUpdated",
+      "category": "security",
+      "support": "native",
+      "sources": [
+        "IssuanceCapChanged",
+        "FeesUpdated",
+        "ResourceMintsUpdated",
+        "CraftEconomyUpdated",
+        "QuestConfigInitialized",
+        "HotMarketCranked",
+        "HotMarketEventStarted"
+      ]
+    },
+    {
+      "name": "PausedToggled",
+      "category": "security",
+      "support": "native",
+      "sources": [
+        "PausedToggled"
+      ]
+    },
+    {
+      "name": "EmergencyPause",
+      "category": "security",
+      "support": "native",
+      "sources": [
+        "PausedToggled"
+      ]
+    },
+    {
+      "name": "AdminProposalCreated",
+      "category": "security",
+      "support": "unsupported",
+      "reason": "no multisig yet (Squads pending)"
+    },
+    {
+      "name": "AdminProposalApproved",
+      "category": "security",
+      "support": "unsupported",
+      "reason": "no multisig yet"
+    },
+    {
+      "name": "AdminProposalExecuted",
+      "category": "security",
+      "support": "unsupported",
+      "reason": "no multisig yet"
+    },
+    {
+      "name": "FraudSignalCreated",
+      "category": "security",
+      "support": "derived"
+    },
+    {
+      "name": "PlayerQuarantined",
+      "category": "security",
+      "support": "unsupported",
+      "reason": "no truthful source"
+    },
+    {
+      "name": "TransactionSubmitted",
+      "category": "reliability",
+      "support": "unsupported",
+      "reason": "exporter only sees finalized transactions from the ledger"
+    },
+    {
+      "name": "TransactionConfirmed",
+      "category": "reliability",
+      "support": "unsupported",
+      "reason": "ledger reads at finalized commitment only"
+    },
+    {
+      "name": "TransactionFinalized",
+      "category": "reliability",
+      "support": "native",
+      "sources": [
+        "*"
+      ]
+    },
+    {
+      "name": "TransactionFailed",
+      "category": "reliability",
+      "support": "native",
+      "sources": [
+        "*"
+      ]
+    },
+    {
+      "name": "TransactionExpired",
+      "category": "reliability",
+      "support": "unsupported",
+      "reason": "blockhash expiry is not observable on-chain; backend lifecycle logs are off-chain"
+    },
+    {
+      "name": "RpcError",
+      "category": "reliability",
+      "support": "derived"
+    },
+    {
+      "name": "IndexerGapDetected",
+      "category": "reliability",
+      "support": "derived"
+    },
+    {
+      "name": "IndexerGapHealed",
+      "category": "reliability",
+      "support": "derived"
+    }
+  ]
+}

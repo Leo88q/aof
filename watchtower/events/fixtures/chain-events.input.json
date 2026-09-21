@@ -1,0 +1,295 @@
+{
+  "note": "ChainEvent rows as written by aof_backend/services/chain-indexer (synthetic deterministic wallets/mints)",
+  "salt": "fixture-salt",
+  "rows": [
+    {
+      "signature": "XdJLZAZ3MW325EZfEQ8wYojuNVGHGxxPqJjRmwaP1uSqrLWexquEzx8xsiWxSDzr8n6edggVL3DZ5GJA1111111",
+      "eventIndex": 0,
+      "slot": "400000001",
+      "blockTime": "2026-09-20T10:01:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "ToolMinted",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": null,
+      "success": true,
+      "data": {
+        "to": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "mint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+        "toolType": 2,
+        "rarity": 1
+      }
+    },
+    {
+      "signature": "RuwuzMFQWcfKTFN6uR7ixvNeiptEgBFt1hhWBGwbruzt1runnQtq1pNgDr7eJB6V7MesHtMhmFBmg1111111111",
+      "eventIndex": 0,
+      "slot": "400000002",
+      "blockTime": "2026-09-20T10:02:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "MiningCollected",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+      "amount": "8000000000",
+      "success": true,
+      "data": {
+        "user": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "toolMint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+        "resourceMint": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+        "hours": 4,
+        "amount": "8000000000",
+        "durabilityAfter": 96
+      }
+    },
+    {
+      "signature": "bCVUBHgcMuG6siEycnc4q8dtcGrnRaogaHZR9UBecNs7sBZgAviuorsaMVXMmwYgFxxRDPTkGJnnt3wg1111111",
+      "eventIndex": 0,
+      "slot": "400000003",
+      "blockTime": "2026-09-20T10:03:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "ListingSold",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+      "amount": "250000000",
+      "success": true,
+      "data": {
+        "seller": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "buyer": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+        "mint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+        "priceLamports": "250000000"
+      }
+    },
+    {
+      "signature": "X3HbLJcpeyvWdgPFuK9Kc3wcW3Gm3YyKPAPbJw2nULZurY6dA3gkQt5F1MgzTEAwxbKUAeSpDR72xg111111111",
+      "eventIndex": 0,
+      "slot": "400000004",
+      "blockTime": "2026-09-20T10:04:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "ResourceIssued",
+      "wallet": null,
+      "mint": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA",
+      "amount": "5000000000",
+      "success": true,
+      "data": {
+        "kind": 26,
+        "mint": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA",
+        "recipient": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+        "gross": "5000000000",
+        "fee": "400000000",
+        "mintedInEpoch": "5000000000",
+        "capPerEpoch": "1000000000000",
+        "epochStartSlot": "399999000",
+        "slot": "400000004"
+      }
+    },
+    {
+      "signature": "snNZqg6Ate6dDd4hf62PGJktDnhhB44QXuwzA5MDBt3gzEQH8RLsHsEgmeenZPU4WB88sFD3Srq5g9BV7w11111",
+      "eventIndex": 0,
+      "slot": "400000005",
+      "blockTime": "2026-09-20T10:05:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "ToolCrafted",
+      "wallet": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+      "mint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "success": true,
+      "data": {
+        "user": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+        "burnedMint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
+        "mintedMint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+        "rarity": 2,
+        "woodCost": "3000000000",
+        "stoneCost": "1000000000",
+        "mintedCountAfter": 17
+      }
+    },
+    {
+      "signature": "fc347HAaV4jQLqXEums4iqdam8RyBj4UHzo3uYw1JbAaKNGaqNpZeFXvZiTFneTaYHWj5XeftbSjqACEFA11111",
+      "eventIndex": 0,
+      "slot": "400000006",
+      "blockTime": "2026-09-20T10:06:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "IssuanceCapChanged",
+      "wallet": null,
+      "mint": null,
+      "amount": null,
+      "success": true,
+      "data": {
+        "kind": 26,
+        "epochSlots": "216000",
+        "capPerEpoch": "0",
+        "mintedInEpoch": "5000000000",
+        "slot": "400000006"
+      }
+    },
+    {
+      "signature": "vqLiwEPZkMTEPj723ZUSw5ND1QQrw8n7fHjYhVjL9EomgAnSzFjqPSqjaFNPdHP3eqDcsYjPyLo23wP79ug1111",
+      "eventIndex": 0,
+      "slot": "400000007",
+      "blockTime": "2026-09-20T10:07:00.000Z",
+      "programId": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+      "eventType": "HotMarketBought",
+      "wallet": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+      "mint": null,
+      "amount": "120000000",
+      "success": true,
+      "data": {
+        "buyer": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+        "rarity": 1,
+        "currency": "core",
+        "price": "120000000",
+        "soldSinceStart": 3
+      }
+    },
+    {
+      "signature": "vKhMvrtgqtpZXMHsLfCF7wZAHjk7iobmZTJQVbQhqx1wj5gdy1VPd9jc69g2pqEEDqcCAmHPTw6gpw111111111",
+      "eventIndex": 0,
+      "slot": "400000008",
+      "blockTime": "2026-09-20T10:08:00.000Z",
+      "programId": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+      "eventType": "QuestRewardClaimed",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": "5zY9NgLTLpSBrFVnrzWD1xVTaxDJbMNNvYU9Erw95yia",
+      "amount": null,
+      "success": true,
+      "data": {
+        "user": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "questId": 7,
+        "rewardMascot": "5zY9NgLTLpSBrFVnrzWD1xVTaxDJbMNNvYU9Erw95yia"
+      }
+    },
+    {
+      "signature": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111",
+      "eventIndex": 0,
+      "slot": "400000009",
+      "blockTime": "2026-09-20T10:09:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "ReferralBound",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": null,
+      "amount": null,
+      "success": true,
+      "data": {
+        "referrer": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "referred": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3"
+      }
+    },
+    {
+      "signature": "64ZXnFnPgNzG9WCsXuemxor3VUKVR645m5NPxMXvdQGoJ1a94wb1MqqAXFLiEpNaNUe7qGwHcLHeNA111111111",
+      "eventIndex": 0,
+      "slot": "400000010",
+      "blockTime": "2026-09-20T10:10:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "PackOpened",
+      "wallet": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+      "mint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "success": true,
+      "data": {
+        "user": "GwCXyJ8AesaucFMTUSZmiFVMhVngpeBxaBC7mQJiZct3",
+        "mint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+        "packType": 1,
+        "rarity": 3,
+        "toolType": 4
+      }
+    },
+    {
+      "signature": "aZwocJRrmQDXqU5Y97tPLn3GaFJJuDFXWtnLzj6ULxUoGNa7NA5DYiGaszKfAR3hyk3gH1m81EDSKpg11111111",
+      "eventIndex": 0,
+      "slot": "400000011",
+      "blockTime": "2026-09-20T10:11:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "GasFeesSwept",
+      "wallet": "CUUhhTN6BawoxcbezNa6EhUDbHa18kbS9vo1GsPprPyy",
+      "mint": null,
+      "amount": "9000000",
+      "success": true,
+      "data": {
+        "to": "CUUhhTN6BawoxcbezNa6EhUDbHa18kbS9vo1GsPprPyy",
+        "amountLamports": "9000000"
+      }
+    },
+    {
+      "signature": "FiZV46sd4tYtyoyq1nogXHYMwNkLUWL8ob3qUZXDhoN4vRmqFnfrMXipM5DTujw7TKXGdDVAU8sA11111111111",
+      "eventIndex": 0,
+      "slot": "400000012",
+      "blockTime": "2026-09-20T10:12:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "AuctionCreated",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": null,
+      "amount": null,
+      "success": true,
+      "data": {
+        "seller": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "mint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+        "minBid": "1",
+        "endTime": "1790000000"
+      }
+    },
+    {
+      "signature": "4WPkdfSfCwoiEdK1S9kZMVLDZzzrFgUF1tuhpeNeCbTKbcUtLyLkojbDRbMhKC9tbfVxQRQ1111111111111111",
+      "eventIndex": 0,
+      "slot": "400000013",
+      "blockTime": "2026-09-20T10:13:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "Staked",
+      "wallet": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+      "mint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
+      "amount": null,
+      "success": true,
+      "data": {
+        "user": "FPP21sbqhr2LPjSnJkw5NBetPubeFG4PsQFBxHj8noTq",
+        "mint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh"
+      }
+    },
+    {
+      "signature": "j8Y9SwDxabdxxjEqk91jH8ibhJS99P5fZmu5RPdPNcyt7qToY1LYUtHpMQgg7LHoJXmBWj1dJtuphDg11111111",
+      "eventIndex": 0,
+      "slot": "400000014",
+      "blockTime": "2026-09-20T10:14:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "PausedToggled",
+      "wallet": "81fApSJeWfeE6Tk2Ys4836QmmCvHJKufKx4ZVStrqXB2",
+      "mint": null,
+      "amount": null,
+      "success": true,
+      "data": {
+        "paused": true,
+        "authority": "81fApSJeWfeE6Tk2Ys4836QmmCvHJKufKx4ZVStrqXB2",
+        "slot": "400000014"
+      }
+    },
+    {
+      "signature": "aJrRbRoqYpnivAzm8ooKAqyb2ykGYoGG6fNVSZYjYNfW9ZoWAySnypTPvZTfSvH4DjS3vJzNKgKvQ1111111111",
+      "eventIndex": 0,
+      "slot": "400000015",
+      "blockTime": "2026-09-20T10:15:00.000Z",
+      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "eventType": "ResourceMintsUpdated",
+      "wallet": "81fApSJeWfeE6Tk2Ys4836QmmCvHJKufKx4ZVStrqXB2",
+      "mint": null,
+      "amount": null,
+      "success": true,
+      "data": {
+        "previous": [
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA"
+        ],
+        "current": [
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh"
+        ],
+        "authority": "81fApSJeWfeE6Tk2Ys4836QmmCvHJKufKx4ZVStrqXB2",
+        "slot": "400000015"
+      }
+    }
+  ]
+}

@@ -4,13 +4,17 @@ import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
 
-// Лента крупных сделок (публичная, как в крипто-ботах)
+// Лента крупных сделок (публичная, как в крипто-ботах).
+// Отдаёт только агрегированные поля (type/mint/amount/price/ts) — кошельков
+// в модели нет. Защищена readLimiter на уровне server.ts.
 r.get("/feed", async (req, res) => {
   try {
-    const limit = Number(req.query.limit || 20);
+    const parsed = Number(req.query.limit);
+    const limit = Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 100) : 20;
     const alerts = await db.whaleAlert.findMany({
       orderBy: { ts: "desc" },
-      take: Math.min(limit, 100),
+      take: limit,
+      select: { id: true, type: true, mint: true, amount: true, price: true, ts: true },
     });
     res.json({ alerts });
   } catch (e: any) {

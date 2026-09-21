@@ -1,0 +1,23 @@
+# gitleaks configuration for AOF. Extends the default ruleset; allowlist covers
+# documented placeholders and Solana public keys (base58 32-byte pubkeys are
+# not secrets; 64-byte keypairs are and remain detected by the default rules).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders, examples, and public identifiers"
+paths = [
+  '''aof_backend/\.env\.example$''',
+  '''frontend/\.env\.example$''',
+  '''package-lock\.json$''',
+  '''Cargo\.lock$''',
+  '''src/idl/.*\.json$''',
+  '''^idl_raw\.json$''',
+]
+regexes = [
+  '''<long random string>''',
+  '''<different long random string>''',
+  '''<random string>''',
+  '''postgresql://user:pass@host''',
+  '''file:(\.\./|/app/|/abs/)''',
+]

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::SetResourceMints;
 use crate::errors::AofError;
+use crate::events::ResourceMintsUpdated;
 
 /// Устанавливает 6 ресурсных минтов в Config:
 /// food, wood, stone, seeds, water, potato (POTATO — внешний токен коллаборации)
@@ -23,11 +24,13 @@ pub fn handler(
     }
 
     let cfg = &mut ctx.accounts.config;
+    let previous = [cfg.food_mint, cfg.wood_mint, cfg.stone_mint, cfg.seeds_mint, cfg.water_mint, cfg.potato_mint];
     cfg.food_mint = food_mint;
     cfg.wood_mint = wood_mint;
     cfg.stone_mint = stone_mint;
     cfg.seeds_mint = seeds_mint;
     cfg.water_mint = water_mint;
     cfg.potato_mint = potato_mint;
+    emit!(ResourceMintsUpdated { previous, current: mints, authority: ctx.accounts.authority.key(), slot: Clock::get()?.slot });
     Ok(())
 }

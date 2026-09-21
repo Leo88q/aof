@@ -31,10 +31,12 @@ export async function checkWalletLimits(
 
   const windowStart = new Date(Date.now() - WINDOW_MS);
 
-  // Keep the read/check/write in one SQLite transaction. Separate count and
-  // insert calls allowed concurrent requests to all observe the same old
-  // count and exceed the per-wallet cap.
-  await db.$transaction(async (tx: any) => {
+  // Read/check/write must be one atomic unit. On SQLite the single writer
+  // lock already serialises this; on PostgreSQL the default READ COMMITTED
+  // level lets two concurrent requests both observe the old count and both
+  // insert, exceeding the cap. Run SERIALIZABLE and retry on serialization
+  // failure (P2034) so the guarantee holds on both providers.
+  await withSerializableRetry(() => db.$transaction(async (tx: any) => {
     const opCount = await tx.walletOperation.count({
       where: {
         wallet: walletAddress,
@@ -71,7 +73,29 @@ export async function checkWalletLimits(
         createdAt: new Date(),
       },
     });
-  });
+  }, { isolationLevel: "Serializable" }));
+}
+
+const SERIALIZATION_RETRIES = 5;
+
+/**
+ * Prisma raises P2034 when a Serializable transaction conflicts (PostgreSQL
+ * 40001) and P2028/SQLITE_BUSY-flavoured errors when SQLite cannot acquire the
+ * write lock. Both are transient: back off briefly and retry a bounded number
+ * of times, then surface the error.
+ */
+async function withSerializableRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      const transient = e?.code === "P2034" || /SQLITE_BUSY|database is locked|deadlock detected|could not serialize/i.test(String(e?.message ?? ""));
+      if (!transient || attempt >= SERIALIZATION_RETRIES) throw e;
+      attempt += 1;
+      await new Promise((r) => setTimeout(r, 10 * 2 ** attempt + Math.floor(Math.random() * 20)));
+    }
+  }
 }
 
 /**
