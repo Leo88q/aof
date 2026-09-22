@@ -1,0 +1,9 @@
+[package]
+name = "watchtower-os-actix"
+version = "3.0.0"
+edition = "2021"
+description = "Watchtower OS v3 Actix gateway (stage prototype) — same API contract as src/os/server.js"
+
+[dependencies]
+actix-web = "4"
+serde_json = "1"

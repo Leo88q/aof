@@ -70,7 +70,9 @@ storybook-static/
 
 # === AIDER И ДРУГИЕ ИИ-ТУЛЫ ===
 .aider*
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 .cursor/
 
 # === FIREBASE (если не нужен) ===
