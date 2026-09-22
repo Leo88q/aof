@@ -1,0 +1,19 @@
+{
+  "findings": [
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `drum_commit` uses `user` as a seed, but `user` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "./programs/aof-quests/src/instructions/drum/drum_reveal.rs",
+        "line": 27,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `user`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false
+    }
+  ],
+  "files_scanned": 23,
+  "files_parsed": 23,
+  "parse_failures": []
+}
