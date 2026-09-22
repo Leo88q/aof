@@ -32,4 +32,8 @@ pub enum QuestError {
     NotPendingAuthority,
     #[msg("Invalid input")]
     InvalidInput,
+    #[msg("Invalid data")]
+    InvalidData,
+    #[msg("Already initialized")]
+    AlreadyInitialized,
 }

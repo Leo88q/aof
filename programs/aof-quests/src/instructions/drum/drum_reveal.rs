@@ -71,13 +71,15 @@ pub struct DrumReveal<'info> {
 fn get_slot_hash(info: &AccountInfo, target_slot: u64) -> Result<[u8; 32]> {
     let data = info.try_borrow_data()?;
     require!(data.len() >= 8, QuestError::CommitExpired);
-    let entries = u64::from_le_bytes(data[0..8].try_into().unwrap()) as usize;
+    let entries_bytes: [u8; 8] = data[0..8].try_into().map_err(|_| QuestError::InvalidData)?;
+    let entries = u64::from_le_bytes(entries_bytes) as usize;
     let mut offset = 8usize;
     for _ in 0..entries {
         if offset + 40 > data.len() {
             break;
         }
-        let slot = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+        let slot_bytes: [u8; 8] = data[offset..offset + 8].try_into().map_err(|_| QuestError::InvalidData)?;
+        let slot = u64::from_le_bytes(slot_bytes);
         if slot == target_slot {
             let mut hash = [0u8; 32];
             hash.copy_from_slice(&data[offset + 8..offset + 40]);
@@ -110,7 +112,8 @@ pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
     // server can no longer grind a winning secret before publishing the commit.
     let entropy = hashv(&[&secret, &slot_hash]);
     let hash_bytes = entropy.to_bytes();
-    let roll = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap()) % 10_000;
+    let roll_bytes: [u8; 8] = hash_bytes[0..8].try_into().map_err(|_| QuestError::InvalidHash)?;
+    let roll = u64::from_le_bytes(roll_bytes) % 10_000;
     let mut acc: u64 = 0;
     let mut prize_amount: u64 = 0;
     for (weight, amount) in DRUM_PRIZES.iter() {

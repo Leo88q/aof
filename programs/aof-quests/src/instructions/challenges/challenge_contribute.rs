@@ -22,7 +22,7 @@ pub struct ChallengeContribute<'info> {
     pub challenge_round: Account<'info, ChallengeRound>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = user,
         space = ChallengeContribution::SIZE,
         seeds = [b"challenge_contrib", user.key().as_ref(), week_number.to_le_bytes().as_ref()],
