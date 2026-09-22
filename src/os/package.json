@@ -1,0 +1,17 @@
+{
+  "name": "watchtower-os-v3",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Watchtower OS v3 — AOF ideal free stack (33 components, 19 control panels). Zero runtime dependencies.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "smoke": "node smoke-devnet.js",
+    "smoke:offline": "node smoke-devnet.js --offline"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

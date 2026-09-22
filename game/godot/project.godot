@@ -1,0 +1,22 @@
+; AOF — Age of Farming (game_id aof) — Godot client for Watchtower OS v3
+config_version=5
+
+[application]
+config/name="AOF — Age of Farming"
+config/description="farming crafting trading marketplace — tenant aof, network stage/prototype"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.2")
+
+[autoload]
+WatchtowerOS="*res://autoload/watchtower_os.gd"
+
+[aof]
+game_id="aof"
+tenant_id="aof"
+network="stage"
+stage="prototype"
+os_api="/api"
+program_core="AOF_CORE_PROGRAM_ID"
+program_cginv="CgInv111..."
+program_sesskeys="SessKeys111..."
+program_treasury="STrEaSuRy111..."
