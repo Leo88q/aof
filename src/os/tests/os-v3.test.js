@@ -248,6 +248,22 @@ test("GET /api/game-signals/config?gameId=aof — ML 60M+, churn 14d >85%", asyn
   assert.equal(churn.threshold, 0.85);
 });
 
+test("GET /api/l2/router?gameId=aof&tps=low&ux=gasless — MagicBlock ER sub-10ms gasless", async () => {
+  const { status, body } = await getJson("/api/l2/router?gameId=aof&tps=low&ux=gasless");
+  assert.equal(status, 200);
+  assert.equal(body.gameId, "aof");
+  assert.deepEqual(body.input, { tps: "low", ux: "gasless" });
+  assert.equal(body.route.primary, "magicblock-er");
+  assert.ok(body.route.latencyMs <= 10);
+  assert.deepEqual(body.route.flow, ["delegate", "executeGasless", "commit state"]);
+  assert.ok(body.route.magicActions.includes("auto-harvest"));
+  const high = await getJson("/api/l2/router?gameId=aof&tps=high&ux=private");
+  assert.equal(high.body.route.primary, "sonic-hypergrid");
+  assert.equal(high.body.privacy.confidential, "arcium");
+  const bad = await getJson("/api/l2/router?gameId=aof&tps=moon");
+  assert.equal(bad.status, 400);
+});
+
 test("GET /api/assets/strategy?gameId=aof&itemType=common&rarity=common", async () => {
   const { status, body } = await getJson("/api/assets/strategy?gameId=aof&itemType=common&rarity=common");
   assert.equal(status, 200);

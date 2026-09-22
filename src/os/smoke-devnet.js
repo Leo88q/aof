@@ -71,6 +71,7 @@ async function run(base) {
     ["GET /api/infra/actix", "/api/infra/actix?gameId=aof", (b) => typeof b.entry === "string"],
     ["GET /api/infra/overview", "/api/infra/overview?gameId=aof", (b) => Array.isArray(b.components)],
     ["GET /api/game-signals/config", "/api/game-signals/config?gameId=aof", (b) => b.gameId === "aof" && b.ml.trainingCorpus.transactions === "60M+" && b.ml.models.some((m) => m.name === "churn-14d" && m.threshold === 0.85)],
+    ["GET /api/l2/router", "/api/l2/router?gameId=aof&tps=low&ux=gasless", (b) => b.gameId === "aof" && b.route.primary === "magicblock-er" && b.route.magicActions.includes("auto-harvest")],
     ["GET /api/assets/strategy", "/api/assets/strategy?gameId=aof&itemType=common&rarity=common", (b) => b.gameId === "aof" && b.standard === "cNft" && b.compression.mintCostUsdPerMillion === 110],
     ["GET /api/os/control-panels", "/api/os/control-panels?gameId=aof", (b) => b.total === 19 && b.panels.length === 19],
     ["GET /api/os/handoff", "/api/os/handoff?gameId=aof", (b) => b.crossGame.studioPda.seeds.includes("studio_profile") && b.crossGame.linkedWallets.providers.includes("RACE")],

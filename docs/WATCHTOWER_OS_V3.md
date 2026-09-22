@@ -14,6 +14,7 @@
 | `infra-configs.js` | infra: arc, bolt, depin, actix, preset, xandeum, pst, core-attributes, arcium, access, idosgames, crossgame, overview |
 | `game-signals.js` | Game Signals ML: 60M+ tx, 12 games, churn-14d >85%, funnel/LTV/retention |
 | `assets-strategy.js` | itemType×rarity → cNFT $110/M (Bubblegum v2, MCC, Tensor) vs Standard NFT (ME) |
+| `l2-router.js` | L2-роутинг: tps=low→MagicBlock ER (gasless, REPLA L3), tps=high→Sonic HyperGrid; ux=private→Arcium+PST |
 | `control-panels-v3.js` | **19 control panels** (view/act контролы по доменам) |
 | `handoff-v3.js` | handoff-v3 протокол (idempotent handoffId, retry×5) + final report **20 пунктов** |
 | `server.js` | zero-dep HTTP API (GET only, CORS, bind 0.0.0.0:8787) |

@@ -15,6 +15,7 @@
  *                                     xandeum | pst | core-attributes | arcium |
  *                                     access | idosgames | crossgame | overview
  * GET /api/game-signals/config?gameId=aof
+ * GET /api/l2/router?gameId=aof&tps=low&ux=gasless   (tps=low|high, ux=gasless|cheap|private|settled)
  * GET /api/assets/strategy?gameId=aof&itemType=common&rarity=common
  * GET /api/health
  *
@@ -28,6 +29,7 @@ const { SDKS, SDK_IDS, getSdk } = require("./sdk-configs");
 const { INFRA, INFRA_IDS } = require("./infra-configs");
 const { gameSignalsConfig } = require("./game-signals");
 const { strategyFor, strategyMatrix, ITEM_TYPES, RARITIES } = require("./assets-strategy");
+const { l2Route, TPS_VALUES, UX_VALUES } = require("./l2-router");
 const { CONTROL_PANELS_V3, PANELS_TOTAL, getPanel } = require("./control-panels-v3");
 const { buildHandoff, buildFinalReport, FINAL_REPORT_POINTS } = require("./handoff-v3");
 
@@ -79,6 +81,7 @@ function osConfig() {
       sdk: SDK_IDS.map((id) => `/api/sdk/${id}?gameId=aof`),
       infra: INFRA_IDS.map((id) => `/api/infra/${id}?gameId=aof`),
       gameSignals: "/api/game-signals/config?gameId=aof",
+      l2Router: "/api/l2/router?gameId=aof&tps=low&ux=gasless",
       assets: "/api/assets/strategy?gameId=aof&itemType=common&rarity=common",
       health: "/api/health",
     },
@@ -152,6 +155,14 @@ function route(url) {
 
   if (path === "/api/game-signals/config" || path === "/api/game-signals") {
     return { status: 200, body: gameSignalsConfig() };
+  }
+
+  if (path === "/api/l2/router" || path === "/api/l2") {
+    try {
+      return { status: 200, body: l2Route(q.get("tps") ?? undefined, q.get("ux") ?? undefined) };
+    } catch (e) {
+      return { status: e.status || 500, body: { error: e.message, tps: { known: TPS_VALUES }, ux: { known: UX_VALUES } } };
+    }
   }
 
   if (path === "/api/assets/strategy") {

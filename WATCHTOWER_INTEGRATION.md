@@ -86,6 +86,8 @@ API: `GET /api/infra/arc|bolt|depin|actix|preset|xandeum|pst|core-attributes|arc
 **Magic Actions** auto harvest + **REPLA L3** Anchor settle MagicBlock sequencer ·
 **Sonic HyperGrid** · **Arcium** confidential privacy best free · **PST** private ·
 **Xandeum** exabyte — ideal free L2 privacy storage.
+Роутинг: `GET /api/l2/router?gameId=aof&tps=low&ux=gasless` (tps=low→MagicBlock ER,
+tps=high→Sonic HyperGrid; ux=gasless→Magic Actions, ux=private→Arcium+PST).
 
 ## Indexer
 
@@ -157,6 +159,7 @@ handoff: `src/os/handoff-v3.js` → `GET /api/os/handoff?gameId=aof`.
 | `GET /api/sdk/arcium?gameId=aof` | confidential |
 | `GET /api/infra/*?gameId=aof` | arc bolt depin actix preset xandeum pst core-attributes arcium access idosgames crossgame overview |
 | `GET /api/game-signals/config?gameId=aof` | best free ML 60M+, churn >85% |
+| `GET /api/l2/router?gameId=aof&tps=low&ux=gasless` | L2-роутинг: MagicBlock ER gasless / Sonic HyperGrid (+ Arcium/PST private, REPLA L3) |
 | `GET /api/assets/strategy?gameId=aof&itemType=common&rarity=common` | cNFT $110/M vs Standard NFT |
 | `GET /api/os/control-panels?gameId=aof` | 19 control panels |
 | `GET /api/os/handoff?gameId=aof` | handoff-v3 cross-game + agents |

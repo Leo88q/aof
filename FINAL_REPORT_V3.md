@@ -22,7 +22,7 @@
 16. Engines: Unity/Godot project — v1 7 layers + v2 12 products + v3 13 best-free SDK; Godot detailed SDK (SolanaClient, WalletAdapter, AnchorProgram, Candy Machine, SPL builders, session keys analog) + Claude Skill + Security Auditing Skill.
 17. AI Agents: Husks crop fighters + RitArena crop tournament (lifecycle retry events) + relayzero + StealthSDK; handoff-v3 с идемпотентными handoffId и retry-политикой.
 18. Cross-chain/cross-game: PDA studio_profile, ARC Entity IDs, Bolt entity IDs, linked wallets RACE + idosgames bridge, cross-game материалы (ARC Entity-Component + Core Attributes + Xandeum).
-19. API проверки: /api/os/config (v3, 33), /api/sdk/* (14 SDK), /api/infra/* , /api/game-signals/config, /api/assets/strategy, /api/os/control-panels (19), /api/os/handoff, /api/os/final-report — все с ?gameId=aof.
+19. API проверки: /api/os/config (v3, 33), /api/sdk/* (14 SDK), /api/infra/*, /api/l2/router, /api/game-signals/config, /api/assets/strategy, /api/os/control-panels (19), /api/os/handoff, /api/os/final-report — все с ?gameId=aof.
 20. Tests + Runtime smoke devnet + Docs: node:test suite (src/os/tests), smoke-devnet.js (API + devnet RPC probe), WATCHTOWER_INTEGRATION.md + docs/WATCHTOWER_OS_V3.md + FINAL_REPORT_V3.md (20 пунктов).
 
 ---
