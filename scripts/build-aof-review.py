@@ -38,14 +38,15 @@ for f, (needle, status, reason, consequence) in zip(base['findings'], reviews):
     finding.update(baselineLocation=f['location'], location=dict(path=path, line=line, column=1),
                    reviewStatus=status, resolution='open-pending-independent-validation',
                    reason=reason, economicConsequence=consequence, acceptedRisk=False,
-                   owner=None, blockingReason='Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending')
+                   owner=None, blockingReason='Host Rust tests passed at e7f1223; complete per-finding SVM transaction coverage and independent rescan still pending')
     findings.append(finding)
 result = dict(schemaVersion=1, gameId='aof', reportType='remediation-review-NOT-external-rescan',
               reviewedOn='2026-09-23', hubRevision='1aea14c7c9422022d8581abcca25649e8d2edd24',
               baselineSha256=hashlib.sha256((ROOT/'reports/aof-hub-baseline.json').read_bytes()).hexdigest(),
-              productionReady=False, maturityClaim='L1; partial W1 remediation, NOT L3/L4',
+              productionReady=False, maturityClaim='L1; partial W1 remediation and partial b-09 issuance journal, NOT L3/L4',
               externalScanners={'Sentio':'not-run', 'SolGuard':'not-run', 'SLAM':'not-run'},
-              hostRustEvidence={'commit':'072e6d0', 'run':'https://github.com/Leo88q/aof/actions/runs/35896805255', 'step':'Workspace security and economic property tests', 'status':'success'},
+              hostRustEvidence={'commit':'e7f1223', 'run':'https://github.com/Leo88q/aof/actions/runs/35909612132', 'step':'Workspace security and economic property tests', 'status':'success'},
+              priorFullCIEvidence={'commit':'02f8223','run':'https://github.com/Leo88q/aof/actions/runs/35897321190','status':'success','includes':'SBF, existing local-validator suite, backend/PG/frontend/secrets'},
               files_scanned=None, files_parsed=None,
               unresolvedBaselineBySeverity=dict(collections.Counter(f['severity'] for f in findings)),
               formalAcceptedRisks=[], findings=findings,
@@ -53,6 +54,10 @@ result = dict(schemaVersion=1, gameId='aof', reportType='remediation-review-NOT-
                   dict(id='AOF-RLS-01', severity='high', location={'path':'src/os/sql/cross_game_materials.sql','line':34}, status='patched-tested-postgresql', reason='OR tenant=aof leaked rows; role-scoped policy and isolated cached view now tested'),
                   dict(id='AOF-SPACE-01', severity='high', location={'path':'programs/aof-session-keys/src/lib.rs','line':10}, status='patched-host-rust-tested', reason='SESSION_SPACE omitted two i64 timestamps'),
                   dict(id='AOF-EV-01', severity='medium', location={'path':'programs/aof-quests/src/instructions/drum/drum_reveal.rs','line':239}, status='patched-host-rust-tested', reason='Drum EV test truncated each term; compare weighted numerator to price*10000'),
+                  dict(id='AOF-LOTTERY-02', severity='high', location={'path':'aof-core/src/instructions/lottery.rs','line':200}, status='patched-host-rust-tested', acceptedRisk=False, owner=None,
+                       reason='Full liability or error: old min(pool, available) could consume claimed after partial payment', economicConsequence='Winner could permanently lose the unpaid portion of an underfunded prize', evidence='Host settlement/account/property tests passed at e7f1223; not live-deployment evidence'),
+                  dict(id='AOF-FORGE-CAP-01', severity='high', location={'path':'aof-core/src/instructions/forge.rs','line':174}, status='open-legacy-refund-design', acceptedRisk=False, owner=None,
+                       reason='Legacy expiry re-mints recorded burns without a global supply cap check; new commitments remain disabled. Needs reserved refund budget/migration, not a naive guard that strands legitimate refunds.', economicConsequence='If outstanding legacy commits exist and other issuance consumes capacity, expiry can exceed a global cap; live exposure unverified'),
               ])
 (ROOT/'reports/aof-audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
 rows=['# Непринятые findings внешнего baseline', '',
