@@ -8,6 +8,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { hashPlayer, normalizeChainEvent, normalizeChainTx, type WatchtowerEvent } from "./event-normalizer";
 
+import { issuanceJournal } from "./issuance-journal";
+import addresses from "../addresses.json";
+
 export type ReadModelDeps = { db: PrismaClient; salt: string; treasury: string | null; programIds: string[] };
 
 export type DataQuality = "complete" | "partial" | "unavailable";
@@ -198,6 +201,7 @@ export async function economy(deps: ReadModelDeps, days: number) {
   }
   const snapshot = await deps.db.economySnapshot.findFirst({ orderBy: { timestamp: "desc" } });
   return {
+    issuanceJournal: await resourceIssuanceJournal(deps, since),
     mints: [...perMint].map(([mint, m]) => ({ mint, minted: m.minted.toString(), burned: m.burned.toString(), net: (m.minted - m.burned).toString(),
       daily: [...m.daily].sort(([a], [b]) => a.localeCompare(b)).map(([day, v]) => ({ day, minted: v.minted.toString(), burned: v.burned.toString() })) })),
     latestSnapshot: snapshot ? {
@@ -206,6 +210,21 @@ export async function economy(deps: ReadModelDeps, days: number) {
       fieldQuality: snapshot.fieldQuality ? JSON.parse(snapshot.fieldQuality) : null,
     } : null,
   };
+}
+
+/** Bounded complete transactions: do not truncate a multi-event mint mid-tx. */
+export async function resourceIssuanceJournal(deps: ReadModelDeps, since: Date) {
+  const limit = 200;
+  const rows = await deps.db.chainTx.findMany({
+    where: { blockTime: { gte: since } },
+    orderBy: [{ slot: "desc" }, { signature: "desc" }], take: limit + 1,
+    include: { events: { orderBy: { eventIndex: "asc" } }, mintDeltas: true },
+  });
+  const report = issuanceJournal(rows.slice(0, limit), {
+    coreProgramId: addresses.programs.find(p => p.name === "aof_core")!.address,
+    salt: deps.salt, truncated: rows.length > limit,
+  });
+  return { ...report, transactionLimit: limit, truncated: rows.length > limit };
 }
 
 export async function treasury(deps: ReadModelDeps, days: number) {

@@ -147,6 +147,10 @@ async function main(): Promise<void> {
     await assert.rejects(() => checkIdempotency(""), /Invalid idempotency key/);
     await assert.rejects(() => checkIdempotency("x".repeat(201)), /Invalid idempotency key/);
 
+    // Exercise Watchtower's real SELECT projection on BOTH database providers.
+    const { testIssuanceJournalDatabase } = await import("../../watchtower/tests/watchtower-journal-db.test");
+    await testIssuanceJournalDatabase(db);
+
     console.log(`idempotency integration test (Prisma + ${isPostgres ? "PostgreSQL" : "SQLite"}): concurrent claim, replay, failed/stale reclaim CAS, fraud-case openKey/resolve CAS passed`);
   } finally {
     await db.$disconnect();

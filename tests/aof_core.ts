@@ -330,16 +330,30 @@ describe("aof-core: security & core flows", () => {
     expect(await provider.connection.getBalance(buyer.publicKey)).to.equal(before);
     expect((await balance(buyerToken)).toNumber()).to.equal(0);
     const sellerBefore = await provider.connection.getBalance(seller.publicKey);
-    const treasuryBefore = await provider.connection.getBalance(authority);
     const returnedRent = (await provider.connection.getBalance(listing)) + (await provider.connection.getBalance(listingVault));
     const signature = await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).signers([buyer]).rpc();
-    const saleTx = await provider.connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-    expect(saleTx?.meta, "sale transaction metadata").to.not.equal(null);
+    // Confirmed signature and RPC transaction-history availability are distinct.
+    let saleTx = await provider.connection.getParsedTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    for (let attempt = 0; !saleTx?.meta && attempt < 20; attempt++) {
+      await sleep(250);
+      saleTx = await provider.connection.getParsedTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    }
+    expect(saleTx?.meta, "confirmed sale transaction metadata within 5 seconds").to.exist;
+    expect(saleTx!.meta!.err).to.equal(null);
     const fee = price.muln(300).divn(10_000).toNumber();
     expect(before - await provider.connection.getBalance(buyer.publicKey)).to.equal(price.toNumber());
     expect(await provider.connection.getBalance(seller.publicKey) - sellerBefore).to.equal(price.toNumber() - fee + returnedRent);
-    // Authority is also transaction fee payer in this fixture.
-    expect(await provider.connection.getBalance(authority) - treasuryBefore + saleTx!.meta!.fee).to.equal(fee);
+    // The validator's provider treasury may hold >2^53 lamports: JSON numeric
+    // balance subtraction would round. Verify the successful System transfer's
+    // small exact amount instead (network fees are not System transfers).
+    const treasuryTransfers = saleTx!.meta!.innerInstructions!.flatMap(inner => inner.instructions)
+      .filter((ix: any) => ix.program === "system" && ix.parsed?.type === "transfer"
+        && ix.parsed.info.source === buyer.publicKey.toBase58()
+        && ix.parsed.info.destination === authority.toBase58());
+    expect(treasuryTransfers.length).to.equal(1);
+    const paidFee = (treasuryTransfers[0] as any).parsed.info.lamports;
+    expect(Number.isSafeInteger(paidFee)).to.equal(true);
+    expect(paidFee).to.equal(fee);
     expect((await balance(buyerToken)).toNumber()).to.equal(1);
     const buyerAfter = await provider.connection.getBalance(buyer.publicKey);
     // A distinct signed message, not an RPC retry of an already-successful tx.

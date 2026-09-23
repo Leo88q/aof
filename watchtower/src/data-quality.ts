@@ -11,7 +11,7 @@ export function domainQuality(quality: DataQuality, provider: string, saltConfig
   return {
     players: !saltConfigured ? { dataQuality: "unavailable", reason: "Shared player hash salt is not configured" }
       : domain("Wallet connection/session telemetry is not authoritative; ledger actors only"),
-    economy: domain("No complete event-to-double-entry-ledger reconciliation evidence"),
+    economy: domain("ResourceIssued double-entry flow reconciliation only; no complete gameplay ledger or on-chain balance reconciliation"),
     craft: domain("Craft mappings exist; plot/plant/harvest and full resource provenance are not verified"),
     market: domain("Core market events only; hot-market placement and matching remain disabled"),
     security: domain("Session/LP/rebirth streams and deployed custody are not verified"),

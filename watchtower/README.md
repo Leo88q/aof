@@ -152,3 +152,13 @@ fresh `IndexerCursor` (`WATCHTOWER_STALE_CURSOR_MS`, default 10 min).
 - `test:quality` checks route registration and coverage logic, **not 14 live endpoint
   acceptances**. Hub accepted/duplicate acceptance and authenticated ingestion remain
   blocked until a real deployment/RPC is available. See `reports/AOF_READINESS.md`.
+
+## Issuance accounting (partial b-09)
+
+`/watchtower/economy` now includes `data.issuanceJournal`: per-mint double-entry
+ResourceIssued flow postings reconciled against the indexer's transaction mint
+deltas. Read-only, latest 200 complete transactions, deterministic rebuild and
+replay conflict checks. Missing/mismatched/invalid sources do not create postings.
+No wallet balances are invented (`walletBalances:null`); full economy coverage
+remains partial/unavailable. See `docs/AOF_ECONOMIC_INVARIANTS.md` for limitations,
+privacy, tests and interpretation of negative issuance source counters.
