@@ -54,10 +54,9 @@ export function startHealth(o: { db: PrismaClient; rpc: Connection | null; rpcFa
         checks.indexer = { ok: lag.indexedSlot !== null && !lag.cursorStale, detail: { indexedSlot: lag.indexedSlot, cursorAgeMs: lag.cursorAgeMs, providerMode: o.providerMode } };
         checks.rpc = { ok: !o.rpc || lag.rpc !== "unreachable", detail: lag.rpc };
       }
-      // In mock provider mode an empty ledger is expected: report ready with a
-      // partial flag rather than failing, so Watchtower can still probe config.
-      const ready = checks.database?.ok === true && (o.providerMode === "mock" || checks.indexer?.ok === true) && checks.rpc?.ok !== false;
-      return { ready, providerMode: o.providerMode, checks, finalizedLag: lag };
+      // Liveness remains available in mock mode; readiness must not certify it.
+      const ready = checks.database?.ok === true && o.providerMode === "indexer" && checks.indexer?.ok === true && checks.rpc?.ok !== false;
+      return { ready, writes: false, signerCapability: false, providerMode: o.providerMode, checks, finalizedLag: lag };
     },
   };
 }

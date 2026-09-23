@@ -44,8 +44,8 @@ pub struct DrumReveal<'info> {
     /// CHECK: authority проверяет секрет офчейн, здесь только верификация хеша
     pub authority: Signer<'info>,
 
-    /// CHECK: пользователь-получатель награды, личность через seeds в drum_commit
-    #[account(mut)]
+    /// CHECK: recipient is the stored commit owner, not an authorization signer.
+    #[account(mut, address = drum_commit.user @ QuestError::Unauthorized)]
     pub user: UncheckedAccount<'info>,
 
     /// CHECK: validated against the canonical SlotHashes sysvar address.
@@ -240,10 +240,10 @@ mod drum_odds_tests {
         const SPIN_COST: u128 = 5;
         let ev: u128 = DRUM_PRIZES
             .iter()
-            .map(|(w, amount)| (*w as u128) * (*amount as u128) / 10_000)
+            .map(|(w, amount)| (*w as u128) * (*amount as u128))
             .sum();
         assert!(
-            ev <= SPIN_COST,
+            ev <= SPIN_COST * 10_000,
             "drum EV {ev} exceeds the spin price {SPIN_COST}: the treasury would bleed on every spin"
         );
     }

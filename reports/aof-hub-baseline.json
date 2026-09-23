@@ -1,0 +1,211 @@
+{
+  "findings": [
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `rebirth_record` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "./programs/aof-rebirth/src/instructions/do_rebirth.rs",
+        "line": 16,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW008",
+      "severity": "high",
+      "message": "Function `cancel_limit_order` writes to an account after a CPI call to `token::transfer` without reloading; account data may be stale.",
+      "location": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 415,
+        "column": 12
+      },
+      "help": "Call account.reload()? after the CPI to refresh account data before reading or writing.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `set_fees` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 291,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `set_paused` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 297,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `cancel_limit_order` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 407,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `lp_pool` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "./programs/aof-liquidity/src/instructions/lp_deposit.rs",
+        "line": 18,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `lp_position` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "./programs/aof-liquidity/src/instructions/lp_deposit.rs",
+        "line": 27,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW024",
+      "severity": "high",
+      "message": "`assets` used as divisor in `/` without a zero-check; if zero at runtime the transaction will panic",
+      "location": {
+        "path": "./programs/aof-liquidity/src/state/lp_pool.rs",
+        "line": 27,
+        "column": 22
+      },
+      "help": "Use checked_div() or checked_rem() and handle the None case, or add require!(divisor != 0, ...) before the operation.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW024",
+      "severity": "high",
+      "message": "`(total as u128)` used as divisor in `/` without a zero-check; if zero at runtime the transaction will panic",
+      "location": {
+        "path": "./programs/aof-liquidity/src/state/lp_pool.rs",
+        "line": 36,
+        "column": 9
+      },
+      "help": "Use checked_div() or checked_rem() and handle the None case, or add require!(divisor != 0, ...) before the operation.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW001",
+      "severity": "critical",
+      "message": "Account `authority` appears to be an authority but has no signer constraint and no is_signer guard; an attacker can pass an unsigned account.",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 173,
+        "column": 1
+      },
+      "help": "Use Signer<'info> as the field type, add #[account(signer)], or add require!(account.is_signer, ...) in the instruction handler.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `trust` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 127,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `session` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 145,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `trust` uses `user` as a seed, but `user` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 127,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `user`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `session` uses `authority` as a seed, but `authority` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 176,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `authority`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `session_revoke` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 245,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `session_pause` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 250,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false
+    },
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `drum_commit` uses `user` as a seed, but `user` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "./programs/aof-quests/src/instructions/drum/drum_reveal.rs",
+        "line": 27,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `user`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false
+    }
+  ],
+  "files_scanned": 52,
+  "files_parsed": 52,
+  "parse_failures": []
+}

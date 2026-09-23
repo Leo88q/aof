@@ -6,15 +6,16 @@
     {
       "name": "WalletConnected",
       "category": "players",
-      "support": "native",
-      "sources": [
-        "ReferralBound"
-      ]
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "ReferralBound is not proof of a wallet connection; no authenticated client emitter"
     },
     {
       "name": "PlayerJoined",
       "category": "players",
-      "support": "derived"
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "Cohort first-seen metrics exist but no durable deduplicated PlayerJoined event emitter"
     },
     {
       "name": "SessionStarted",
@@ -403,6 +404,62 @@
       "name": "IndexerGapHealed",
       "category": "reliability",
       "support": "derived"
+    },
+    {
+      "name": "PlotCreated",
+      "category": "gameplay",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "No verified plot creation emitter/decoder in this adapter"
+    },
+    {
+      "name": "PlotPlanted",
+      "category": "gameplay",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "No verified planting emitter/decoder in this adapter"
+    },
+    {
+      "name": "CropHarvested",
+      "category": "gameplay",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "MiningCollected is not a verified crop harvest event"
+    },
+    {
+      "name": "ResourceMinted",
+      "category": "economy",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "Legacy TokenMinted mapping exists; canonical ResourceMinted contract not agreed with hub"
+    },
+    {
+      "name": "ResourceBurned",
+      "category": "economy",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "Legacy TokenBurned mapping exists; canonical ResourceBurned contract not agreed with hub"
+    },
+    {
+      "name": "MarketOrderPlaced",
+      "category": "economy",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "Placement is disabled in aof-market; canonical hub order event mapping not verified"
+    },
+    {
+      "name": "MarketOrderCancelled",
+      "category": "economy",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "LimitOrderCancelled exists on chain; canonical hub order event mapping not verified"
+    },
+    {
+      "name": "SecurityEvent",
+      "category": "security",
+      "support": "unsupported",
+      "dataQuality": "unavailable",
+      "reason": "Typed security events exist; generic hub SecurityEvent contract not agreed"
     }
   ]
 }

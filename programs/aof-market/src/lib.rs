@@ -415,7 +415,8 @@ pub mod aof_market {
         let amount_escrowed = ctx.accounts.order.amount_escrowed;
         let bump = ctx.bumps.order;
         // SW008: effects-before-interactions — flip the order state *before* the
-        // SPL CPI so no account is read after any CPI (no reload needed).
+        // SPL CPI. Reload only the token accounts mutated by SPL below,
+        // NEVER the order (reload would discard this in-memory state change).
         ctx.accounts.order.active = false;
         let mut refunded: u64 = 0;
         if is_buy {
@@ -433,9 +434,41 @@ pub mod aof_market {
                 ),
                 refund,
             )?;
+            ctx.accounts.order_vault.reload()?;
+            ctx.accounts.maker_currency.reload()?;
             refunded = refund;
         }
         emit!(LimitOrderCancelled { maker: maker_key, rarity, refunded });
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod reload_tests {
+    use super::*;
+    use anchor_lang::solana_program::{program_option::COption, program_pack::Pack};
+
+    #[test]
+    fn spl_account_cache_is_stale_until_reload() {
+        // Simulate the data mutation performed by SPL CPI. This is a host unit
+        // test of Anchor's cache semantics, not validator transaction evidence.
+        let key = Pubkey::new_unique();
+        let owner = anchor_spl::token::ID;
+        let mut lamports = 1_000_000;
+        let mut bytes = vec![0; anchor_spl::token::spl_token::state::Account::LEN];
+        let mut raw = anchor_spl::token::spl_token::state::Account {
+            mint: Pubkey::new_unique(), owner: Pubkey::new_unique(), amount: 100,
+            delegate: COption::None,
+            state: anchor_spl::token::spl_token::state::AccountState::Initialized,
+            is_native: COption::None, delegated_amount: 0, close_authority: COption::None,
+        };
+        anchor_spl::token::spl_token::state::Account::pack(raw, &mut bytes).unwrap();
+        let info = AccountInfo::new(&key, false, true, &mut lamports, &mut bytes, &owner, false, 0);
+        let mut cached = Account::<TokenAccount>::try_from(&info).unwrap();
+        raw.amount = 40;
+        anchor_spl::token::spl_token::state::Account::pack(raw, &mut info.try_borrow_mut_data().unwrap()).unwrap();
+        assert_eq!(cached.amount, 100);
+        cached.reload().unwrap();
+        assert_eq!(cached.amount, 40);
     }
 }

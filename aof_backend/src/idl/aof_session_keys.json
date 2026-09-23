@@ -77,7 +77,8 @@
           "signer": true
         },
         {
-          "name": "authority"
+          "name": "authority",
+          "signer": true
         },
         {
           "name": "session",

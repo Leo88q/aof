@@ -7,7 +7,7 @@ pub const SESSION_SEED: &[u8] = b"session";
 pub const TRUST_SEED: &[u8] = b"trust_snapshot";
 
 pub const CONFIG_SPACE: usize = 8 + 32 + 32 + 1;
-pub const SESSION_SPACE: usize = 8 + 32 + 32 + 32 + 8 + 8 + 8 + 1 + 1;
+pub const SESSION_SPACE: usize = 8 + SessionToken::INIT_SPACE;
 pub const TRUST_SPACE: usize = 8 + 32 + 2 + 1 + 8 + 32;
 
 // [ФАКТ, спека v2 §2.1]: "allowed_ixs НИКОГДА не включает withdraw/transfer/
@@ -138,11 +138,13 @@ pub struct TrustSnapshotUpdate<'info> {
     pub config: Account<'info, SkConfig>,
     #[account(mut)]
     pub oracle_authority: Signer<'info>,
-    /// CHECK: чей снапшот обновляется
+    /// CHECK: oracle-signed subject, restricted to a system-owned wallet.
+    #[account(owner = anchor_lang::system_program::ID)]
     pub user: UncheckedAccount<'info>,
     #[account(
         init_if_needed, payer = oracle_authority, space = TRUST_SPACE,
-        seeds = [TRUST_SEED, user.key().as_ref()], bump
+        seeds = [TRUST_SEED, user.key().as_ref()], bump,
+        constraint = trust.user == Pubkey::default() || trust.user == user.key() @ SkError::Unauthorized
     )]
     pub trust: Account<'info, TrustSnapshot>,
     pub system_program: Program<'info, System>,
@@ -156,10 +158,11 @@ pub struct SessionCreate<'info> {
     pub session_signer: UncheckedAccount<'info>,
     /// CHECK: программа, на которую распространяются права (Marketplace/Auction/Orderbook/HotMarket)
     pub target_program: UncheckedAccount<'info>,
-    #[account(seeds = [TRUST_SEED, authority.key().as_ref()], bump)]
+    #[account(seeds = [TRUST_SEED, authority.key().as_ref()], bump,
+        constraint = trust.user == authority.key() @ SkError::Unauthorized)]
     pub trust: Account<'info, TrustSnapshot>,
     #[account(
-        init_if_needed, payer = authority, space = SESSION_SPACE,
+        init, payer = authority, space = SESSION_SPACE,
         seeds = [SESSION_SEED, authority.key().as_ref()], bump
     )]
     pub session: Account<'info, SessionToken>,
@@ -186,14 +189,14 @@ pub struct SessionRevoke<'info> {
 #[derive(Accounts)]
 pub struct SessionCheckAndSpend<'info> {
     pub session_signer: Signer<'info>,
-    /// CHECK: the wallet that owns the session; binds the PDA derivation below
-    /// and is re-checked against `session.authority` in the handler.
-    pub authority: UncheckedAccount<'info>,
+    /// Owner co-signature is required while delegated spending is disabled.
+    /// Do not remove it without an audited, atomically bound target CPI.
+    pub authority: Signer<'info>,
     #[account(
         mut,
         seeds = [SESSION_SEED, authority.key().as_ref()],
         bump,
-        // SW001: bind the non-signing session owner to the stored authority so a
+        // SW001/SW013: bind the signing session owner to the stored authority so a
         // session cannot be driven on behalf of a different wallet.
         constraint = session.authority == authority.key() @ SkError::Unauthorized,
         constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized
@@ -224,6 +227,9 @@ pub mod aof_session_keys {
         require!(score <= 1000, SkError::MathOverflow);
         require!(tier >= 1 && tier <= 5, SkError::MathOverflow);
         let t = &mut ctx.accounts.trust;
+        // Updates may not roll back a previously attested epoch. No close,
+        // realloc, assign or lamport-drain path exists for TrustSnapshot.
+        require!(epoch >= t.computed_epoch, SkError::InvalidTtl);
         t.user = ctx.accounts.user.key();
         t.score = score;
         t.tier = tier;
@@ -305,3 +311,6 @@ pub mod aof_session_keys {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod security_tests;

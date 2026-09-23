@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "gameId": "aof",
+  "network": "devnet",
+  "programs": [
+    {
+      "name": "aof_core",
+      "address": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "status": "reference-unverified",
+      "source": "aof-core/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_core.json",
+      "rpcVerifiedAt": null
+    },
+    {
+      "name": "aof_market",
+      "address": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+      "status": "reference-unverified",
+      "source": "programs/aof-market/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_market.json",
+      "rpcVerifiedAt": null
+    },
+    {
+      "name": "aof_quests",
+      "address": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+      "status": "reference-unverified",
+      "source": "programs/aof-quests/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_quests.json",
+      "rpcVerifiedAt": null
+    },
+    {
+      "name": "aof_rebirth",
+      "address": "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
+      "status": "reference-unverified",
+      "source": "programs/aof-rebirth/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_rebirth.json",
+      "rpcVerifiedAt": null
+    },
+    {
+      "name": "aof_liquidity",
+      "address": "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
+      "status": "reference-unverified",
+      "source": "programs/aof-liquidity/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_liquidity.json",
+      "rpcVerifiedAt": null
+    },
+    {
+      "name": "aof_session_keys",
+      "address": "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+      "status": "reference-unverified",
+      "source": "programs/aof-session-keys/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_session_keys.json",
+      "rpcVerifiedAt": null
+    }
+  ],
+  "placeholders": [
+    {
+      "name": "aof_cginv",
+      "symbol": "CgInv111...",
+      "address": null,
+      "status": "placeholder",
+      "reason": "No implemented/deployed program verified"
+    },
+    {
+      "name": "aof_treasury",
+      "symbol": "STrEaSuRy111...",
+      "address": null,
+      "status": "placeholder",
+      "reason": "No separate treasury program verified; core vaults are not this placeholder"
+    }
+  ],
+  "writes": false
+}

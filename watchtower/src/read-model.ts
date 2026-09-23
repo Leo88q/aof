@@ -23,11 +23,16 @@ export async function coverage(deps: ReadModelDeps) {
     deps.db.chainTx.findFirst({ orderBy: { slot: "asc" }, select: { slot: true, blockTime: true } }),
     deps.db.chainTx.findFirst({ orderBy: { slot: "desc" }, select: { slot: true, blockTime: true } }),
   ]);
-  const backfillComplete = deps.programIds.every((p) => cursors.find((c) => c.programId === p)?.backfillComplete);
-  const tracked = deps.programIds.every((p) => cursors.some((c) => c.programId === p));
-  const quality: DataQuality = !tracked || !newest ? "unavailable" : backfillComplete ? "complete" : "partial";
+  const backfillComplete = deps.programIds.length > 0 && deps.programIds.every((p) => cursors.find((c) => c.programId === p)?.backfillComplete);
+  const tracked = deps.programIds.length > 0 && deps.programIds.every((p) => cursors.some((c) => c.programId === p));
+  const fresh = tracked && deps.programIds.every((p) => {
+    const c = cursors.find((cursor) => cursor.programId === p);
+    const age = c ? Date.now() - new Date(c.updatedAt).getTime() : NaN;
+    return c?.newestSlot != null && !c.lastError && age >= 0 && age <= 10 * 60_000;
+  });
+  const quality: DataQuality = !tracked || !newest || !fresh ? "unavailable" : backfillComplete ? "complete" : "partial";
   return {
-    quality, backfillComplete, tracked,
+    quality, backfillComplete, tracked, fresh,
     oldest: oldest ? { slot: oldest.slot.toString(), blockTime: oldest.blockTime } : null,
     newest: newest ? { slot: newest.slot.toString(), blockTime: newest.blockTime } : null,
     cursors: cursors.map((c) => ({ programId: c.programId, newestSlot: c.newestSlot?.toString() ?? null, backfillComplete: c.backfillComplete, txIndexed: c.txIndexed, lastError: c.lastError, updatedAt: c.updatedAt })),
@@ -65,7 +70,10 @@ export function decodeCursor(s: string | undefined): EventCursor | null {
 export async function events(deps: ReadModelDeps, q: { after?: EventCursor | null; sinceSlot?: bigint; limit: number; types?: string[]; includeTx?: boolean }) {
   const fromSlot = q.after?.slot ?? q.sinceSlot ?? 0n;
   const txs = await deps.db.chainTx.findMany({
-    where: { slot: { gte: fromSlot } },
+    where: q.after ? { OR: [
+      { slot: { gt: q.after.slot } },
+      { slot: q.after.slot, signature: { gte: q.after.signature } },
+    ] } : { slot: { gte: fromSlot } },
     orderBy: [{ slot: "asc" }, { signature: "asc" }],
     take: Math.min(q.limit, 500) + 1,
     include: { events: { orderBy: { eventIndex: "asc" } } },
@@ -74,7 +82,8 @@ export async function events(deps: ReadModelDeps, q: { after?: EventCursor | nul
   let last: EventCursor | null = q.after ?? null;
   for (const tx of txs) {
     const rows: { idx: number; evs: WatchtowerEvent[] }[] = [];
-    if (q.includeTx !== false) rows.push({ idx: -1, evs: normalizeChainTx(tx, deps.salt) });
+    // Even an empty/ignored transaction must advance the source cursor.
+    rows.push({ idx: -1, evs: q.includeTx !== false ? normalizeChainTx(tx, deps.salt) : [] });
     for (const ev of tx.events) rows.push({ idx: ev.eventIndex, evs: normalizeChainEvent(ev, deps.salt, { treasury: deps.treasury }) });
     for (const r of rows) {
       const pos: EventCursor = { slot: tx.slot, signature: tx.signature, eventIndex: r.idx };
@@ -85,7 +94,7 @@ export async function events(deps: ReadModelDeps, q: { after?: EventCursor | nul
     }
     if (out.length >= q.limit) break;
   }
-  return { events: out, nextCursor: last ? encodeCursor(last) : null, hasMore: txs.length > q.limit };
+  return { events: out, nextCursor: last ? encodeCursor(last) : null, hasMore: out.length >= q.limit || txs.length > q.limit };
 }
 
 function compareCursor(a: EventCursor, b: EventCursor): number {

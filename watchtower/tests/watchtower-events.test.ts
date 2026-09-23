@@ -53,8 +53,8 @@ assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" },
   const all = EVENTS.flatMap((e) => normalizeChainEvent(e, SALT, { treasury: W.treasury }));
   const blob = JSON.stringify(all);
   for (const w of Object.values(W)) assert.ok(!blob.includes(w), `raw wallet leaked: ${w}`);
-  // 12 mapped fixtures (AuctionCreated ignored) → 2+1+3+3+3+1+2+2+2+3+1+1 +2 (pause) +1 (mints) = 27 normalized events
-  assert.equal(all.length, 27, `fan-out count changed: ${all.map((e) => e.type).join(",")}`);
+  // WalletConnected was removed: referral binding is not a client connection.
+  assert.equal(all.length, 26, `fan-out count changed: ${all.map((e) => e.type).join(",")}`);
   assert.deepEqual(validateEvents(all), [], "every normalized event validates against events/schema.json");
 }
 // Tx-level reliability events.
@@ -70,7 +70,7 @@ assert.match(hashPlayer(W.alice, SALT), /^[0-9a-f]{64}$/);
 // event-types.json is in sync with the normalizer's support tables and the spec's 50 types.
 {
   const catalog = JSON.parse(readFileSync(join(__dirname, "..", "events", "event-types.json"), "utf8"));
-  assert.equal(catalog.types.length, 50); assert.equal(EVENT_TYPES.length, 50);
+  assert.equal(catalog.types.length, 58); assert.equal(EVENT_TYPES.length, 58);
   for (const t of catalog.types) {
     const expected = t.name in SUPPORTED_NATIVE ? "native" : UNSUPPORTED.includes(t.name) ? "unsupported" : "derived";
     assert.equal(t.support, expected, `${t.name} support drifted; regenerate events/event-types.json`);
@@ -83,3 +83,27 @@ assert.match(hashPlayer(W.alice, SALT), /^[0-9a-f]{64}$/);
   }
 }
 console.log("watchtower-events: mapping, fan-out, hashing, ignore list, schema, catalog sync passed");
+
+// Failed transaction logs describe rolled-back effects, never settled economics.
+assert.deepEqual(normalizeChainEvent({ ...by("ListingSold"), success: false }, SALT), []);
+const referral = normalizeChainEvent(by("ReferralBound"), SALT);
+assert.deepEqual(referral.map(e => e.type), ["LiabilityCreated"]);
+assert.equal(referral[0].eventId, `${by("ReferralBound").signature}:0:1`);
+
+// Required farming contract: a mapped fixture or an explicit unavailable reason.
+{
+  const catalog = JSON.parse(readFileSync(join(__dirname, "../events/event-types.json"), "utf8"));
+  const required = ["PlayerJoined", "WalletConnected", "PlotCreated", "PlotPlanted", "CropHarvested",
+    "ResourceMinted", "ResourceBurned", "CraftCompleted", "MarketOrderPlaced", "MarketOrderCancelled",
+    "RewardGranted", "TransactionFailed", "SecurityEvent"];
+  const samples = [...EVENTS.flatMap(e => normalizeChainEvent(e, SALT)), ...TXS.flatMap(t => normalizeChainTx(t, SALT))];
+  for (const name of required) {
+    const entry = catalog.types.find((t: any) => t.name === name);
+    assert.ok(entry, `missing required event ${name}`);
+    if (entry.support === "unsupported") {
+      assert.equal(entry.dataQuality, "unavailable"); assert.ok(entry.reason);
+    } else {
+      assert.ok(samples.some(e => e.type === name), `no mapped fixture for ${name}`);
+    }
+  }
+}

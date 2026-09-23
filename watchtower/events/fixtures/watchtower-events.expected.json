@@ -477,30 +477,6 @@
       }
     },
     {
-      "eventId": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111:0:0",
-      "gameId": "aof",
-      "type": "WalletConnected",
-      "category": "players",
-      "occurredAt": "2026-09-20T10:09:00.000Z",
-      "slot": "400000009",
-      "signature": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111",
-      "playerId": "262bf33ff2bc76b44ac974fc9f01625516e3045e839a33b84cea06c20201528f",
-      "counterpartyId": "a173c8662359ebee6876790962e881bfe0735f689f8a20c2d72b55d8c68d35a5",
-      "asset": null,
-      "amount": null,
-      "currency": null,
-      "confidence": "finalized",
-      "parserVersion": "aof-v1",
-      "source": {
-        "program": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
-        "event": "ReferralBound",
-        "eventIndex": 0
-      },
-      "attributes": {
-        "via": "referral"
-      }
-    },
-    {
       "eventId": "4qjgpuQi7Wvhm4a9N8kVyPLZbtNT66AewKfdGamWH8NVHB4wtNbPuqXXVLAuy5bM4c4dpQ7eTvkcg1111111111:0:1",
       "gameId": "aof",
       "type": "LiabilityCreated",

@@ -1,0 +1,465 @@
+{
+  "schemaVersion": 1,
+  "gameId": "aof",
+  "reportType": "remediation-review-NOT-external-rescan",
+  "reviewedOn": "2026-09-23",
+  "hubRevision": "1aea14c7c9422022d8581abcca25649e8d2edd24",
+  "baselineSha256": "e6becb83641b6c75614ed7c215aa1c492204e1a2f8efbc8a0e02e530158a1c95",
+  "productionReady": false,
+  "maturityClaim": "L1; partial W1 remediation, NOT L3/L4",
+  "externalScanners": {
+    "Sentio": "not-run",
+    "SolGuard": "not-run",
+    "SLAM": "not-run"
+  },
+  "files_scanned": null,
+  "files_parsed": null,
+  "unresolvedBaselineBySeverity": {
+    "high": 11,
+    "low": 5,
+    "critical": 1
+  },
+  "formalAcceptedRisks": [],
+  "findings": [
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `rebirth_record` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "programs/aof-rebirth/src/instructions/do_rebirth.rs",
+        "line": 8,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-rebirth/src/instructions/do_rebirth.rs",
+        "line": 16,
+        "column": 1
+      },
+      "reviewStatus": "mitigated-disabled",
+      "resolution": "open-pending-independent-validation",
+      "reason": "Fail-closed FeatureDisabled до изменения экономики; init_if_needed сохранён для повторного rebirth.",
+      "economicConsequence": "Без атомарного сброса прогресса включение создаст бонус без положенного sink.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW008",
+      "severity": "high",
+      "message": "Function `cancel_limit_order` writes to an account after a CPI call to `token::transfer` without reloading; account data may be stale.",
+      "location": {
+        "path": "programs/aof-market/src/lib.rs",
+        "line": 409,
+        "column": 1
+      },
+      "help": "Call account.reload()? after the CPI to refresh account data before reading or writing.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 415,
+        "column": 12
+      },
+      "reviewStatus": "patched-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "Reload обоих SPL token accounts после CPI; order не reload, иначе теряется active=false.",
+      "economicConsequence": "Stale balance или повторная отмена могут искажать escrow/refund.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `set_fees` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "programs/aof-market/src/lib.rs",
+        "line": 291,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 291,
+        "column": 1
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "GlobalFeesUpdated уже был в исходном checkout; защита от удаления emit в CI.",
+      "economicConsequence": "Неучтённая смена fees искажает доходность и сверку treasury.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `set_paused` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "programs/aof-market/src/lib.rs",
+        "line": 298,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 297,
+        "column": 1
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "GlobalPausedUpdated уже был в исходном checkout.",
+      "economicConsequence": "Невидимый pause затрудняет остановку потерь.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `cancel_limit_order` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "programs/aof-market/src/lib.rs",
+        "line": 409,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-market/src/lib.rs",
+        "line": 407,
+        "column": 1
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "LimitOrderCancelled уже был в исходном checkout.",
+      "economicConsequence": "Без события отмены ledger сохраняет фиктивную liability.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `lp_pool` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "programs/aof-liquidity/src/instructions/lp_deposit.rs",
+        "line": 26,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-liquidity/src/instructions/lp_deposit.rs",
+        "line": 18,
+        "column": 1
+      },
+      "reviewStatus": "review-required",
+      "resolution": "open-pending-independent-validation",
+      "reason": "init_if_needed нужен для повторного депозита; checked_add сохраняет counters; close/assign/drain путей нет.",
+      "economicConsequence": "Сброс shares/reserve способен обесценить LP-позиции.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `lp_position` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "programs/aof-liquidity/src/instructions/lp_deposit.rs",
+        "line": 37,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-liquidity/src/instructions/lp_deposit.rs",
+        "line": 27,
+        "column": 1
+      },
+      "reviewStatus": "review-required",
+      "resolution": "open-pending-independent-validation",
+      "reason": "init_if_needed нужен для повторного депозита; shares прибавляются, deposited_at заполняется лишь один раз; проверены user/rarity.",
+      "economicConsequence": "Сброс или подмена позиции нарушает право на резерв.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW024",
+      "severity": "high",
+      "message": "`assets` used as divisor in `/` without a zero-check; if zero at runtime the transaction will panic",
+      "location": {
+        "path": "programs/aof-liquidity/src/state/lp_pool.rs",
+        "line": 31,
+        "column": 1
+      },
+      "help": "Use checked_div() or checked_rem() and handle the None case, or add require!(divisor != 0, ...) before the operation.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-liquidity/src/state/lp_pool.rs",
+        "line": 27,
+        "column": 22
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "checked_div уже присутствовал; добавлено 10000 детерминированных full-u64 property случаев.",
+      "economicConsequence": "Нулевые assets либо overflow не должны создавать shares или блокировать процесс panic.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW024",
+      "severity": "high",
+      "message": "`(total as u128)` used as divisor in `/` without a zero-check; if zero at runtime the transaction will panic",
+      "location": {
+        "path": "programs/aof-liquidity/src/state/lp_pool.rs",
+        "line": 45,
+        "column": 1
+      },
+      "help": "Use checked_div() or checked_rem() and handle the None case, or add require!(divisor != 0, ...) before the operation.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-liquidity/src/state/lp_pool.rs",
+        "line": 36,
+        "column": 9
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "checked_div и shares<=total уже присутствовали; дополнены экстремальные случаи.",
+      "economicConsequence": "Вывод не должен превысить principal/fees резервы.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW001",
+      "severity": "critical",
+      "message": "Account `authority` appears to be an authority but has no signer constraint and no is_signer guard; an attacker can pass an unsigned account.",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 190,
+        "column": 1
+      },
+      "help": "Use Signer<'info> as the field type, add #[account(signer)], or add require!(account.is_signer, ...) in the instruction handler.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 173,
+        "column": 1
+      },
+      "reviewStatus": "patched-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "authority теперь Signer; добавлен негативный Anchor try_accounts тест; spending по-прежнему отключён.",
+      "economicConsequence": "Без авторизации можно резервировать чужой spending budget; атомарная привязка CPI всё ещё отсутствует.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `trust` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 136,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 127,
+        "column": 1
+      },
+      "reviewStatus": "review-required",
+      "resolution": "open-pending-independent-validation",
+      "reason": "Oracle signer/has_one, system owner субъекта, identity constraint, monotonic epoch; overwrite score является авторизованным обновлением, не reset budget.",
+      "economicConsequence": "Компрометация oracle меняет trust tier и будущие лимиты; signer владельца не заменяет oracle governance.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW016",
+      "severity": "high",
+      "message": "Account `session` uses `init_if_needed`; review for re-initialization or state-reset risk.",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 154,
+        "column": 1
+      },
+      "help": "Prefer #[account(init, ...)] when possible. If init_if_needed is necessary, confirm the account cannot be abused to reset state.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 145,
+        "column": 1
+      },
+      "reviewStatus": "patched-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "init вместо init_if_needed; исправлен SESSION_SPACE с 130 на 146; создание остаётся disabled.",
+      "economicConsequence": "Повторное создание не должно сбрасывать spent_today/revocation.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `trust` uses `user` as a seed, but `user` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 136,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `user`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 127,
+        "column": 1
+      },
+      "reviewStatus": "patched-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "Владелец user проверяется через owner=System; stored trust.user связан с seed; oracle подписывает обновление.",
+      "economicConsequence": "Чужой snapshot не должен увеличивать лимит игрока.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `session` uses `authority` as a seed, but `authority` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 190,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `authority`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 176,
+        "column": 1
+      },
+      "reviewStatus": "patched-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "Signer authority + seeds + stored authority/session_signer constraints; негативные тесты подмены.",
+      "economicConsequence": "Подмена namespace может использовать чужой лимит.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `session_revoke` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 270,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 245,
+        "column": 1
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "SessionRevokedEvent уже присутствовал; source regression запрещает удаление.",
+      "economicConsequence": "Необнаруженная ревокация позволяет off-chain ботам продолжать попытки расхода.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW027",
+      "severity": "low",
+      "message": "Function `session_pause` writes to account state but has no emit!() or msg!(); off-chain observers cannot track this state change.",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 280,
+        "column": 1
+      },
+      "help": "Add emit!(MyEvent { ... }) or a structured msg!(\"...\") after state changes so indexers and dashboards can observe transitions.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-session-keys/src/lib.rs",
+        "line": 250,
+        "column": 1
+      },
+      "reviewStatus": "present-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "SessionPausedEvent уже присутствовал.",
+      "economicConsequence": "Невидимый pause мешает security monitoring и остановке бота.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    },
+    {
+      "rule_id": "SW013",
+      "severity": "high",
+      "message": "PDA `drum_commit` uses `user` as a seed, but `user` is an unvalidated AccountInfo — an attacker can supply any account as the seed input",
+      "location": {
+        "path": "programs/aof-quests/src/instructions/drum/drum_reveal.rs",
+        "line": 26,
+        "column": 1
+      },
+      "help": "Add `owner`, `address`, or `signer` constraint to `user`, or change its type to Signer<'info> or Program<'info, T>.",
+      "suppressed": false,
+      "baselineLocation": {
+        "path": "./programs/aof-quests/src/instructions/drum/drum_reveal.rs",
+        "line": 27,
+        "column": 1
+      },
+      "reviewStatus": "patched-awaiting-runtime",
+      "resolution": "open-pending-independent-validation",
+      "reason": "user явно address=drum_commit.user; seeds, stored relation, authority signer и close сохраняются.",
+      "economicConsequence": "Подмена получателя или повторный reveal выводят prize treasury.",
+      "acceptedRisk": false,
+      "owner": null,
+      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+    }
+  ],
+  "additionalFindings": [
+    {
+      "id": "AOF-RLS-01",
+      "severity": "high",
+      "location": {
+        "path": "src/os/sql/cross_game_materials.sql",
+        "line": 34
+      },
+      "status": "patched-tested-postgresql",
+      "reason": "OR tenant=aof leaked rows; role-scoped policy and isolated cached view now tested"
+    },
+    {
+      "id": "AOF-SPACE-01",
+      "severity": "high",
+      "location": {
+        "path": "programs/aof-session-keys/src/lib.rs",
+        "line": 10
+      },
+      "status": "patched-awaiting-rust-test",
+      "reason": "SESSION_SPACE omitted two i64 timestamps"
+    },
+    {
+      "id": "AOF-EV-01",
+      "severity": "medium",
+      "location": {
+        "path": "programs/aof-quests/src/instructions/drum/drum_reveal.rs",
+        "line": 239
+      },
+      "status": "patched-awaiting-rust-test",
+      "reason": "Drum EV test truncated each term; compare weighted numerator to price*10000"
+    }
+  ]
+}

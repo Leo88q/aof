@@ -27,6 +27,7 @@ import { startHealth } from "./health";
 import { initTelemetry, recordRequest } from "./metrics";
 import { validateEvents } from "./event-decoder";
 import { watchtowerRoot } from "./paths";
+import { domainQuality, liveQuality } from "./data-quality";
 
 const env = (k: string, d?: string) => process.env[k] ?? d;
 if (env("WATCHTOWER_ENABLE_WRITES", "false") === "true") {
@@ -72,21 +73,22 @@ async function envelope(payload: unknown, extra: { dataQuality: rm.DataQuality; 
   const lag = await health.finalizedLag();
   return {
     gameId: manifest.gameId, network: CLUSTER, parserVersion: PARSER_VERSION, generatedAt: new Date().toISOString(),
-    commitment: "finalized", finalizedLag: lag, dataQuality: extra.dataQuality, confidence: extra.confidence ?? "finalized",
+    writes: false, commitment: "finalized", finalizedLag: lag, dataQuality: liveQuality(extra.dataQuality, PROVIDER),
+    dataQualityByDomain: domainQuality(extra.dataQuality, PROVIDER, !!SALT), confidence: extra.confidence ?? "finalized",
     window: extra.window ?? null, data: payload,
   };
 }
 
 // ------------------------------------------------------------------- routes
 
-const routes: Record<string, Handler> = {
+const routes: Partial<Record<string, Handler>> = {
   "/watchtower/health": async () => health.liveness(),
   "/watchtower/readyz": async () => health.readiness(),
   "/watchtower/config": async () => {
     const cov = await rm.coverage(deps);
     return {
       ...manifest,
-      network: CLUSTER, parserVersion: PARSER_VERSION, dataQuality: cov.quality, writes: false, signerCapability: false,
+      network: CLUSTER, parserVersion: PARSER_VERSION, dataQuality: liveQuality(cov.quality, PROVIDER), dataQualityByDomain: domainQuality(cov.quality, PROVIDER, !!SALT), writes: false, signerCapability: false,
       eventProvider: PROVIDER, playerIdScheme: "sha256(WATCHTOWER_PLAYER_HASH_SALT|wallet)", saltConfigured: !!SALT,
       coverage: cov, eventTypes: { supportedNative: Object.keys(SUPPORTED_NATIVE), supportedDerived: SUPPORTED_DERIVED, unsupported: UNSUPPORTED, catalog: eventTypes.version },
       lastVerifiedAt: manifest.lastVerifiedAt,
@@ -111,15 +113,15 @@ const routes: Record<string, Handler> = {
   "/watchtower/players/cohorts": async (url) => {
     const weeks = num(url.searchParams.get("weeks"), 12, 104);
     const cov = await rm.coverage(deps);
-    return envelope(await rm.cohorts(deps, weeks), { dataQuality: cov.backfillComplete ? "complete" : "partial", confidence: "derived", window: { weeks } });
+    return envelope(await rm.cohorts(deps, weeks), { dataQuality: cov.quality, confidence: "derived", window: { weeks } });
   },
   "/watchtower/players/retention": async () => {
     const cov = await rm.coverage(deps);
-    return envelope(await rm.retention(deps), { dataQuality: cov.backfillComplete ? "complete" : "partial", confidence: "derived" });
+    return envelope(await rm.retention(deps), { dataQuality: cov.quality, confidence: "derived" });
   },
   "/watchtower/players/cross-game": async (url) => {
     const cov = await rm.coverage(deps);
-    return envelope(await rm.crossGame(deps, num(url.searchParams.get("limit"), 1000, 10_000)), { dataQuality: SALT ? (cov.backfillComplete ? "complete" : "partial") : "unavailable", confidence: "derived" });
+    return envelope(await rm.crossGame(deps, num(url.searchParams.get("limit"), 1000, 10_000)), { dataQuality: SALT ? (cov.quality) : "unavailable", confidence: "derived" });
   },
   "/watchtower/economy": async (url) => {
     const days = num(url.searchParams.get("days"), 30, 365);
@@ -136,11 +138,12 @@ const routes: Record<string, Handler> = {
   "/watchtower/security": async (url) => {
     const days = num(url.searchParams.get("days"), 30, 365);
     const cov = await rm.coverage(deps);
-    return envelope(await rm.security(deps, days), { dataQuality: cov.quality === "unavailable" ? "partial" : cov.quality, window: { days } });
+    return envelope(await rm.security(deps, days), { dataQuality: cov.quality, window: { days } });
   },
   "/watchtower/alerts": async (url) => {
     const days = num(url.searchParams.get("days"), 30, 365);
-    return envelope(await rm.alerts(deps, days), { dataQuality: "complete", confidence: "derived", window: { days } });
+    const cov = await rm.coverage(deps);
+    return envelope(await rm.alerts(deps, days), { dataQuality: cov.quality, confidence: "derived", window: { days } });
   },
   "/watchtower/funnels": async (url) => {
     const days = num(url.searchParams.get("days"), 30, 365);
@@ -166,7 +169,7 @@ const server = createServer(async (req, res) => {
     telemetry.captureException(e);
     json(res, e.status ?? (String(e.message).includes("cursor") ? 400 : 500), { error: e.message, details: e.details });
   } finally {
-    recordRequest(url.pathname, res.statusCode, Date.now() - started);
+    recordRequest(route ? url.pathname : "unmatched", res.statusCode, Date.now() - started);
   }
 });
 
