@@ -1,7 +1,7 @@
 import { BN } from "bn.js";
 import { Router } from "express";
 import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { configPda, lotteryRoundPda, lotteryTicketPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -20,7 +20,7 @@ r.post("/round/init", requireAdmin, async (req, res) => {
       .initLotteryRound(roundId as any)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         lotteryRound,
         systemProgram: SystemProgram.programId,
       })
@@ -81,7 +81,7 @@ r.post("/draw/commit", requireAdmin, async (req, res) => {
       .commitLotteryDraw(hash)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         lotteryRound,
       })
       .instruction();
@@ -107,7 +107,7 @@ r.post("/draw/reveal", requireAdmin, async (req, res) => {
       .drawLottery(secret)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         lotteryRound,
         slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
       })

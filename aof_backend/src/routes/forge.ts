@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY, TREASURY } from "../config";
+import {TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { authPda, configPda, enchantSlotPda, forgeCommitPda, toolPda, bowCommitPda, skinPda, materialMintsPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -58,7 +58,7 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("forge_reveal"), requi
       .forgeAttemptReveal(secret)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         enchantSlot,
         forgeCommit,
         payer: user,
@@ -149,7 +149,7 @@ r.post("/bow/reveal", async (req, res) => {
       .bowRewardReveal(secret, skinId)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         bowCommit,
         payer: user,
         skinMint,

@@ -17,7 +17,18 @@ async fn os_config() -> impl Responder {
     // Delegate to the same stack-v3 data in production; stub returns the header facts.
     HttpResponse::Ok().json(serde_json::json!({
         "gameId": "aof", "version": "v3", "componentsTotal": 33,
-        "programIds": ["AOF_CORE_PROGRAM_ID", "CgInv111...", "SessKeys111...", "STrEaSuRy111..."],
+        // [AUDIT AOF-H2] real Anchor.toml program ids (localnet == devnet);
+        // the two spec placeholders stay as non-address markers.
+        "programIds": [
+            "AOF_CORE_PROGRAM_ID",
+            "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+            "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+            "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
+            "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
+            "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+            "CgInv111...",
+            "STrEaSuRy111..."
+        ],
         "controlPanels": { "total": 19 }
     }))
 }

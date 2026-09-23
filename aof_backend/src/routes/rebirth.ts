@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { rebirthProgram } from "../provider";
 import { rebirthConfigPda, rebirthProgramDataPda, rebirthRecordPda } from "../lib/pda";
 import { authorityOnly, pk } from "../lib/tx";
@@ -34,7 +34,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       )
       .accounts({
         rebirthConfig,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         programData,
         systemProgram: SystemProgram.programId,
       })

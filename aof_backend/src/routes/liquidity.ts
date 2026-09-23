@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { liquidityProgram } from "../provider";
 import { lpConfigPda, liquidityProgramDataPda, lpPoolPda, lpPositionPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -23,7 +23,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       .initLpConfig(mascotMint)
       .accounts({
         lpConfig,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         programData,
         systemProgram: SystemProgram.programId,
       })

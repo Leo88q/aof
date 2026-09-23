@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { questsProgram } from "../provider";
 import {
   questConfigPda,
@@ -27,7 +27,7 @@ r.post("/init", requireAdmin, async (req, res) => {
       .accounts({
         questConfig,
         challengeRound,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         systemProgram: SystemProgram.programId,
       })
       .instruction();

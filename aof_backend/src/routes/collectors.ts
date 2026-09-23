@@ -2,7 +2,7 @@ import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { collectorAllowPda, collectorPda, configPda, gastankPda, playerPda, vaultPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -108,7 +108,7 @@ r.post("/adjust-capacity", requireAdmin, async (req, res) => {
 
     const ix = await (program.methods as any)
       .adjustPlayerCapacity(delta, hasTent)
-      .accounts({ config, authority: AUTHORITY.publicKey, player })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, player })
       .instruction();
 
     const sig = await authorityOnly([ix]);

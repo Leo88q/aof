@@ -2,7 +2,7 @@ import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { authPda, configPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -21,7 +21,7 @@ r.post("/init", requireAdmin, async (req, res) => {
       .initSeason(seasonId)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         season,
         systemProgram: SystemProgram.programId,
       })
@@ -75,7 +75,7 @@ r.post("/xp/grant", requireAdmin, async (req, res) => {
       .grantSeasonXp(amount)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         user,
         season,
         seasonPass,
@@ -108,7 +108,7 @@ r.post("/reward/claim", requireAdmin, async (req, res) => {
       .claimSeasonReward(level, premiumTrack)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         materialMints,
         season,
         seasonPass,

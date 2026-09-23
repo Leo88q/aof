@@ -18,6 +18,15 @@ import "dotenv/config";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { AUTHORITY } from "../src/config";
+// [AUDIT AOF-H1] bootstrap scripts need a hot authority key by design;
+// refuse to run (loudly) under AUTHORITY_MODE=read-only.
+if (!AUTHORITY) {
+  throw new Error(
+    "Deploy script requires AUTHORITY_MODE=hot + AUTHORITY_SECRET_KEY [AOF-H1]; "
+    + "read-only mode cannot bootstrap programs.",
+  );
+}
+
 import { connection, program } from "../src/provider";
 import { configPda, issuanceCapPda, RESOURCE_KIND_ORDER } from "../src/lib/pda";
 import { authorityOnly } from "../src/lib/tx";

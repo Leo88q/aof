@@ -2,7 +2,7 @@ import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram, PublicKey } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import {
   authPda,
@@ -66,7 +66,7 @@ r.post("/mint", requireAdmin, async (req, res) => {
       .mintTool(toolType, rarity)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         mint,
         tokenAccount,
@@ -165,7 +165,7 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
       .craft(toolType, rarity)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         user,
         gastank,
         prevTool,
@@ -506,7 +506,7 @@ r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("tools_
       .payOut(amount as any)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         materialMints,
         vaultGuard,
         player,

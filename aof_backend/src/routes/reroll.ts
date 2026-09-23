@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import {
   authPda,
@@ -166,7 +166,7 @@ r.post("/random/reveal", requireCircuitOpen, requireWalletLimits("reroll_reveal"
       .rerollRandomReveal(secret)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         rerollConfig,
         rerollCommit,
         payer: user,
@@ -197,7 +197,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       .initRerollConfig(oddsBps)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         rerollConfig,
         systemProgram: SystemProgram.programId,
       })

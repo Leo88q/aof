@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { marketProgram } from "../provider";
 import { marketConfigPda, marketProgramDataPda, hotMarketPoolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -36,7 +36,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       .initMarketConfig(feeBps)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         coreMint,
         gemMint,
         treasury,
@@ -76,7 +76,7 @@ r.post("/pool/init", requireAdmin, async (req, res) => {
       )
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         pool,
         systemProgram: SystemProgram.programId,
       })
@@ -212,7 +212,7 @@ r.post("/event/start", requireAdmin, async (req, res) => {
     const [pool] = hotMarketPoolPda(rarity);
     const ix = await (marketProgram.methods as any)
       .startMarketEvent(rarity, durationSeconds, multiplierBps)
-      .accounts({ config, authority: AUTHORITY.publicKey, pool })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, pool })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });

@@ -2,7 +2,7 @@ import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import {
   configPda,
@@ -104,7 +104,7 @@ r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("referr
       .payOutWithReferral(amount as any)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         materialMints,
         vaultGuard,
         player,

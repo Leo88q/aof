@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { questsProgram } from "../provider";
 import { drumCommitPda, questConfigPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -66,7 +66,7 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("drum_reveal"), requir
       .accounts({
         drumCommit,
         questConfig,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         user,
         slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
         treasuryMascot: config.treasuryMascot,

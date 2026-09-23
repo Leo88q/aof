@@ -16,6 +16,101 @@ C2 / H11 / M16 / L5 / I2, вердикт «не готово к mainnet»).
 
 ---
 
+## Фаза 2 — доводка до production-деплоя (аудит 2026-09-23, работы 2026-09-24)
+
+Закрытие кодовых находок `AUDIT_aof_2026-09-23.md` в ветке
+`arena/01a0d008-aof`. Всё, что исполнялось, исполнено зелёным в песочнице;
+всё остальное — в списке «Действия оператора» внизу раздела.
+
+### AOF-M1 — 409-replay тест реального middleware ✅
+- Новый `aof_backend/scripts/walletProofMiddlewareTest.ts`
+  (`npm run test:wallet-proof-middleware`): гоняет **реальный**
+  `requireWalletProof` + реальный `checkIdempotency`/`completeIdempotency`
+  (подменён только Prisma-клиент). 5 сценариев: валидная подпись → next(),
+  **реплей той же подписи → 409**, свежая подпись (новый nonce) → ок,
+  подменённая подпись → 401, отказ хранилища → 503.
+- Мутация AM-2 (удаление 409-guard) **убивается** новым тестом — проверено
+  временно сняв guard и вернув его.
+- В CI (job `backend`, шаг «Self-test - wallet proof»).
+
+### AOF-M2 — `max_per_tx = 0` не может отключить контроль ✅
+- `aof-core/src/instructions/pay_out.rs`: `init_vault_guard_handler` и
+  `set_vault_guard_handler` теперь отклоняют `max_per_tx = 0`
+  (`InvalidVaultGuardParams`). Экстренный тормоз — `cap_per_epoch = 0`.
+- Комментарий-контракт в `aof-core/src/state.rs` (уровень состояния
+  `charge()` не менялся: legacy-аккаунты продолжают работать, новые
+  конфигурации без потолка — невозможны).
+- Компиляция Rust недоступна в песочнице → верификация в CI (`anchor build`)
+  + `cargo test` локально (см. «Что обязательно сделать локально»).
+
+### AOF-M5 — бэкап-файлы убраны из репозитория ✅
+- `git rm aof_backend/src/lib/secretStore.ts.old.1788693410`
+- `git rm create_session_keys.sh.save`
+- Секретных значений в обоих файлах не найдено (grep-проверка перед удалением).
+
+### AOF-H1 — hot `AUTHORITY_SECRET_KEY` в env: fail-closed гейт ✅ (кодовая часть)
+- Новый чистый модуль `aof_backend/src/security/authorityGate.ts` +
+  self-check `npm run test:authority-gate` (11 кейсов production-матрицы,
+  в CI).
+- `aof_backend/src/config.ts` применяет гейт на старте:
+  - `AUTHORITY_MODE=hot` (по умолчанию, devnet-постура): в production
+    **отказывается старт** без явного `ALLOW_HOT_AUTHORITY_KEY=1`
+    (громко, ревьюится в манифесте деплоя, grep-ится).
+  - `AUTHORITY_MODE=read-only` (требуемая production-постура до Squads/KMS):
+    **запрещён** `AUTHORITY_SECRET_KEY` в env (наличие = отказ старта),
+    нужен `AUTHORITY_PUBKEY`; бэкенд стартует, но **любая** попытка
+    подписи (lib/tx.ts `coSign`/`authorityOnly`) → **503**.
+- Все ~70 мест использования заменены с `AUTHORITY.publicKey` на
+  `AUTHORITY_PUBKEY` (работает в обоих режимах); `AUTHORITY: Keypair | null`.
+- **Настоящее** устранение (Squads multisig / KMS, чтобы бэкенд не держал
+  секрет вообще) — действие оператора, см. ниже.
+
+### AOF-H2 — паспорт и OS-конфиг: реальные Program ID, честные статусы ✅
+- `WATCHTOWER_INTEGRATION.md`: таблица program_ids переписана — 6 реальных
+  program crates из `Anchor.toml` (localnet == devnet) с адресами и
+  статусом «reference-unverified / RPC-проверка не выполнена / mainnet
+  отсутствует»; заглушки `CgInv111...`/`STrEaSuRy111...` помечены «нет
+  адреса, RPC-использование запрещено»; раздел «Статус деплоя»; блок
+  «33 компонента» озаглавен как целевой состав без подключённых сервисов.
+- `src/os/config.js`: program_ids теперь из `watchtower/addresses.json`
+  (6 реальных + 2 заглушки с `programId: null`); `SESSION_KEYS.program` =
+  реальный `6ZnnyKkv…`. OS-тесты 43/43, smoke 28/28.
+- `src/os/actix-gateway/src/main.rs` (stub) — тот же честный список.
+- `src/os/smoke-devnet.js` — RPC-проба пропускает заглушки с `programId: null`.
+
+### AOF-H3 — самопроверки: CI покрывает 12/12, ложное «8 PASS» исправлено ✅
+- `.github/workflows/ci.yml`: добавлены `test:wallet-proof-middleware` и
+  `test:authority-gate`; ранее CI уже гонял все prisma-зависимые
+  (`audit-security`, `admin-auth`, `fraud-signals`, `idempotency-db`,
+  `chain-indexer`, `reward-receipts`, `resource-registry`, `security-invariants`,
+  `wallet-proof`, `watchtower`).
+- Неверная строка «8 самопроверок — все PASS» в § «Что проверено в
+  песочнице» заменена точной (см. там).
+
+### AOF-M4 — `tsc` бэкенда (36 ошибок без `prisma generate`) — статус
+- Ошибки — следствие отсутствия сгенерированных типов Prisma, а не кода.
+  В песочнице `prisma generate` невозможен (нет доступа к
+  `binaries.prisma.sh`). **Верифицируется в CI**: job `backend`
+  (`npm run build` = prisma generate + tsc) + job `backend-postgres`.
+
+### Действия оператора (невозможны в песочнице)
+1. **Squads/KMS** для authority-ключа: перевести production на
+   `AUTHORITY_MODE=read-only` (подпись 503), пока не подключён внешний
+   signing; либо явный `ALLOW_HOT_AUTHORITY_KEY=1` — только как
+   задокументированный риск на переходный период.
+2. **RPC-верификация адресов**: `cd src/os && npm run smoke` (без
+   `--offline`) с доступным devnet-RPC; после mainnet-деплоя — заново и
+   прописать `rpcVerifiedAt` в `watchtower/addresses.json`.
+3. **Mainnet-деплой 6 программ** (сейчас только localnet/devnet в
+   `Anchor.toml`) + установка `EXPECTED_GENESIS_HASH` mainnet.
+4. `anchor build` + `cargo test` (Rust-тулчейна в песочнице нет) —
+   особенно после AOF-M2 (`pay_out.rs`) и правок `state.rs`.
+5. Внешний аудит (протоколы + бэкенд) перед mainnet; legal/ToS.
+6. `.env` production: проверить, что `AUTHORITY_SECRET_KEY` вынесен из
+   окружения бэкенда (гейт AOF-H1 это теперь принудительно).
+
+---
+
 ## Критические
 
 ### F-01 — неограниченный вывод из vault (`pay_out`, `pay_out_with_referral`) ✅
@@ -183,7 +278,15 @@ authority). Ротация там = редеплой.
 - `scripts/test-idl-drift.py`, `scripts/test-mint-cost-model.py`, `scripts/test-reward-migrations.py` → OK.
 - TypeScript: изменённые файлы бэкенда и фронтенда проверены `tsc --noEmit` (внешние зависимости подложены из npm; `node_modules` проекта в песочницу не ставились).
 - **[новое] Полный прогон в песочнице (npm-сеть доступна):** `frontend`: `npm ci` + `tsc --noEmit` → **0 ошибок**, `npm run build` (tsc + vite) → успешно.
-- **[новое] `aof_backend`: `npm ci` + 8 самопроверок — все PASS** (`wallet-proof`, `security-invariants`, `audit-security`, `admin-auth`, `fraud-signals`, `watchtower`, `chain-indexer`, `reward-receipts`, `resource-registry`).
+- `aof_backend`: `npm ci` + самопроверки — **исполняемых в песочнице: 9/12**
+  (`wallet-proof`, `wallet-proof-middleware` [AOF-M1], `authority-gate` [AOF-H1],
+  `security-invariants`, `chain-indexer`, `reward-receipts`, `resource-registry` —
+  все PASS). Три prisma-зависимых (`audit-security`, `admin-auth`, `fraud-signals`)
+  в песочнице без `prisma generate` не исполняются, но **все 12 прогоняются в CI**
+  (`.github/workflows/ci.yml`, job `backend`: шаги «Self-test…» +
+  «Integration test - Prisma idempotency CAS»). Предыдущая формулировка
+  «8 самопроверок — все PASS» была неточной (перечисляло 9 скриптов и
+  приписывала им песочницу) — исправлено аудитом 2026-09-23 [AOF-H3].
 - **[новое] `watchtower`: 5 тестов PASS** (`events`, `decoder`, `replay`, `readonly`, `fixtures --check`).
 - **[новое] Оговорка про Prisma:** `prisma generate` в песочнице недоступен (`binaries.prisma.sh` не отвечает), поэтому `@prisma/client` подменён заглушкой **только в `node_modules`** (в репозитории её нет). `tsc -p .` по бэкенду показывает 46 ошибок — все типа `TS7006/TS2305` в файлах, которых эта работа не касалась (`economyMonitor.ts`, `trustFormula.ts`, `rating.ts`, `admin-chain.ts`, …) и все они — следствие отсутствия сгенерированных типов Prisma. Локально при рабочем `prisma generate` их не будет; проверить командой из § «Что обязательно сделать локально».
 - **[новое] `npm audit --omit=dev`:** frontend 0 high / 12 moderate; backend 1 high (`GHSA-3gc7-fjrx-p6mg`, транзитивно через `@solana/spl-token` 0.1.8) + 10 moderate.

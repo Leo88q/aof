@@ -740,7 +740,11 @@ pub struct VaultGuard {
     pub mint: Pubkey,
     pub epoch_slots: u64,
     pub cap_per_epoch: u64,      // 0 = withdrawals of this mint halted
-    pub max_per_tx: u64,         // 0 = no per-transaction ceiling
+    // [AUDIT AOF-M2] init/set_vault_guard reject 0: the per-transaction
+    // ceiling is mandatory. Legacy accounts written before that hardening
+    // keep 0 = "no per-tx ceiling" at the state level (charge() below), but
+    // no new account can be configured without a ceiling.
+    pub max_per_tx: u64,
     pub epoch_start_slot: u64,
     pub withdrawn_in_epoch: u64,
     pub lifetime_withdrawn: u128,

@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate";
 import { gastankDepositSchema } from "../lib/validation";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
+import { AUTHORITY_PUBKEY } from "../config";
 import { configPda, gastankPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
@@ -59,14 +60,13 @@ r.post("/sweep", requireAdmin, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
     const treasury = pk(req.body.treasury);
-    const { AUTHORITY } = await import("../config");
     const [config] = configPda();
     const [gastank] = gastankPda(owner);
     const ix = await (program.methods as any)
       .sweepGasFees()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         gastank,
         treasury,
         systemProgram: SystemProgram.programId,

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { authPda, configPda, explorationCommitPda, explorationStatePda, materialMintsPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -84,7 +84,7 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("exploration_reveal"),
       .exploreReveal(secret)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         explorationState,
         explorationCommit,
         payer: user,

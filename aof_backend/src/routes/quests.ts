@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { questsProgram } from "../provider";
 import {
   questConfigPda,
@@ -29,7 +29,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       .initQuestConfig(mascotMint, treasuryMascot)
       .accounts({
         questConfig,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         programData,
         systemProgram: SystemProgram.programId,
       })
@@ -55,7 +55,7 @@ r.post("/quest/init", requireAdmin, async (req, res) => {
       .accounts({
         questConfig,
         questTemplate,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -87,7 +87,7 @@ r.post("/quest/claim", requireCircuitOpen, requireWalletLimits("quests_claim"), 
         questTemplate,
         questProgress,
         user,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         treasuryMascot: config.treasuryMascot,
         userMascot,
         tokenProgram: TOKEN_PROGRAM_ID,

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { SystemProgram, Transaction, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
-import { AUTHORITY, TREASURY } from "../config";
+import {AUTHORITY, TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { fetchOne } from "../lib/decode";
 import { program, connection, sessionProgram } from "../provider";
 import {
@@ -67,7 +67,7 @@ r.post("/initialize", async (req, res) => {
       .initialize(TREASURY)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         vault,
         programData,
@@ -83,14 +83,14 @@ r.post("/initialize", async (req, res) => {
 
 r.post("/session-config/init", async (req, res) => {
   try {
-    const oracleAuthority = pk(req.body.oracleAuthority || AUTHORITY.publicKey.toBase58());
+    const oracleAuthority = pk(req.body.oracleAuthority || AUTHORITY_PUBKEY.toBase58());
     const [config] = sessionConfigPda();
     const [programData] = sessionProgramDataPda();
     const ix = await (sessionProgram.methods as any)
       .initConfig()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         oracleAuthority,
         programData,
         systemProgram: SystemProgram.programId,
@@ -110,7 +110,7 @@ r.post("/set-fees", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setFees(craftFee, unstakeFee)
-      .accounts({ config, authority: AUTHORITY.publicKey })
+      .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -125,7 +125,7 @@ r.post("/set-paused", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setPaused(paused)
-      .accounts({ config, authority: AUTHORITY.publicKey })
+      .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -145,7 +145,7 @@ r.post("/set-resource-mints", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setResourceMints(foodMint, woodMint, stoneMint, seedsMint, waterMint, potatoMint)
-      .accounts({ config, authority: AUTHORITY.publicKey })
+      .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -162,7 +162,7 @@ r.post("/craft-economy/init", async (req, res) => {
       .initCraftEconomy()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         craftEconomy,
         systemProgram: SystemProgram.programId,
       })
@@ -188,7 +188,7 @@ r.post("/craft-economy/set", async (req, res) => {
     
     const ix = await (program.methods as any)
       .setCraftEconomy(woodBase, stoneBase, woodMult, stoneMult)
-      .accounts({ config, authority: AUTHORITY.publicKey, craftEconomy })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, craftEconomy })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -213,7 +213,7 @@ r.post("/rarity-counter/init", async (req, res) => {
       .initRarityCounter(rarityMap[rarityIdx])
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         rarityCounter,
         systemProgram: SystemProgram.programId,
       })
@@ -227,7 +227,6 @@ r.post("/rarity-counter/init", async (req, res) => {
 
 r.post("/migrate-tool", async (req, res) => {
   try {
-    const migrationAuthorityKeypair = AUTHORITY;
     const mint = pk(req.body.mint);
     const toolType = req.body.toolType;
     const rarityMap: Record<string, any> = {
@@ -248,8 +247,8 @@ r.post("/migrate-tool", async (req, res) => {
       .migrateTool(toolType, rarity, durability)
       .accounts({
         config,
-        migrationAuthority: migrationAuthorityKeypair.publicKey,
-        authority: AUTHORITY.publicKey,
+        migrationAuthority: AUTHORITY_PUBKEY,
+        authority: AUTHORITY_PUBKEY,
         auth,
         vault,
         mint,
@@ -299,10 +298,10 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
     };
 
     const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY.publicKey, userAta, owner, mintPk
+      AUTHORITY_PUBKEY, userAta, owner, mintPk
     );
     const createTreasuryAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY.publicKey, treasuryAta, cfg.treasury, mintPk
+      AUTHORITY_PUBKEY, treasuryAta, cfg.treasury, mintPk
     );
 
     const ix = await (program.methods as any)
@@ -310,7 +309,7 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
       .accounts({
         config,
         materialMints,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         mint: mintPk,
         tokenAccount: userAta,
@@ -347,7 +346,7 @@ r.post("/init-craft-economy", async (req, res) => {
       .initCraftEconomy()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         craftEconomy,
         systemProgram: SystemProgram.programId,
       })
@@ -357,7 +356,7 @@ r.post("/init-craft-economy", async (req, res) => {
       .setCraftEconomy(woodBase, stoneBase, woodMult, stoneMult)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         craftEconomy,
       })
       .instruction();
@@ -449,7 +448,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
         if (!userInfo) {
           instructions.push(
             createAssociatedTokenAccountIdempotentInstruction(
-              AUTHORITY.publicKey,
+              AUTHORITY_PUBKEY,
               userAta,
               user,
               mintPk,
@@ -459,7 +458,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
         if (!treasuryInfo) {
           instructions.push(
             createAssociatedTokenAccountIdempotentInstruction(
-              AUTHORITY.publicKey,
+              AUTHORITY_PUBKEY,
               treasuryAta,
               treasury,
               mintPk,
@@ -476,7 +475,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
           .accounts({
             config,
             materialMints,
-            authority: AUTHORITY.publicKey,
+            authority: AUTHORITY_PUBKEY,
             auth,
             mint: mintPk,
             tokenAccount: userAta,
@@ -547,10 +546,10 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
     // Идемпотентно создаём ATA игрока и казны.
     const instructions: any[] = [
       createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY.publicKey, userAta, user, mintPk,
+        AUTHORITY_PUBKEY, userAta, user, mintPk,
       ),
       createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY.publicKey, treasuryAta, treasury, mintPk,
+        AUTHORITY_PUBKEY, treasuryAta, treasury, mintPk,
       ),
     ];
     
@@ -560,7 +559,7 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
       .accounts({
         config,
         materialMints,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         mint: mintPk,
         tokenAccount: userAta,
@@ -661,13 +660,13 @@ r.post("/init-material-mints", async (req, res) => {
       )
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         materialMints,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     
-    const tx = await coSign([ix], AUTHORITY.publicKey);
+    const tx = await coSign([ix], AUTHORITY_PUBKEY);
     
     res.json({ 
       success: true, 
@@ -717,7 +716,7 @@ r.post("/issuance-caps/init", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .initIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
-      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0], systemProgram: SystemProgram.programId })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, issuanceCap: issuanceCapPda(kind)[0], systemProgram: SystemProgram.programId })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });
@@ -736,7 +735,7 @@ r.post("/issuance-caps/set", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
-      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0] })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, issuanceCap: issuanceCapPda(kind)[0] })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });

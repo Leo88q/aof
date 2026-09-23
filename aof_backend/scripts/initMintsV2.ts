@@ -10,6 +10,15 @@
 import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { createMint } from "@solana/spl-token";
 import { AUTHORITY, PROGRAM_ID } from "../src/config";
+// [AUDIT AOF-H1] bootstrap scripts need a hot authority key by design;
+// refuse to run (loudly) under AUTHORITY_MODE=read-only.
+if (!AUTHORITY) {
+  throw new Error(
+    "Deploy script requires AUTHORITY_MODE=hot + AUTHORITY_SECRET_KEY [AOF-H1]; "
+    + "read-only mode cannot bootstrap programs.",
+  );
+}
+
 
 // Используем Helius RPC если есть, иначе devnet (публичный)
 const RPC_URL = process.env.HELIUS_RPC_URL || process.env.RPC_URL || clusterApiUrl("devnet");

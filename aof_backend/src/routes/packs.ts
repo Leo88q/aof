@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY, TREASURY } from "../config";
+import {TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { authPda, configPda, packCommitPda, packConfigPda, toolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -66,7 +66,7 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("packs_reveal"), requi
       .packOpenReveal(secret)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         packCommit,
         user,
         treasury: TREASURY,
@@ -101,7 +101,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       .initPackConfig(packType, priceLamports, oddsBps)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         packConfig,
         systemProgram: SystemProgram.programId,
       })
@@ -124,7 +124,7 @@ r.post("/config/set", requireAdmin, async (req, res) => {
 
     const ix = await (program.methods as any)
       .setPackConfig(priceLamports, oddsBps)
-      .accounts({ config, authority: AUTHORITY.publicKey, packConfig })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, packConfig })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });

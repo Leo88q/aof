@@ -92,6 +92,11 @@ pub fn init_vault_guard_handler(
         AofError::InvalidVaultGuardParams
     );
     require!(cap_per_epoch > 0, AofError::InvalidVaultGuardParams);
+    // [AUDIT AOF-M2] 0 = "no per-transaction ceiling" was a trap: an operator
+    // entering 0 to "turn the brake off" only removed the per-tx bound while
+    // believing they disabled the guard. The per-tx ceiling is now mandatory;
+    // halting withdrawals entirely is `cap_per_epoch = 0` in set_vault_guard.
+    require!(max_per_tx > 0, AofError::InvalidVaultGuardParams);
     let slot = Clock::get()?.slot;
     let g = &mut ctx.accounts.vault_guard;
     g.mint = ctx.accounts.mint.key();
@@ -125,6 +130,10 @@ pub fn set_vault_guard_handler(
         epoch_slots >= ISSUANCE_EPOCH_MIN_SLOTS && epoch_slots <= ISSUANCE_EPOCH_MAX_SLOTS,
         AofError::InvalidVaultGuardParams
     );
+    // [AUDIT AOF-M2] same as init: the per-tx ceiling stays mandatory when the
+    // budget is reconfigured (the emergency brake is `cap_per_epoch = 0`, not
+    // `max_per_tx = 0`).
+    require!(max_per_tx > 0, AofError::InvalidVaultGuardParams);
     let slot = Clock::get()?.slot;
     let g = &mut ctx.accounts.vault_guard;
     g.roll_epoch(slot);

@@ -5,6 +5,15 @@ import { connection } from "../src/provider";
 import { configPda, programDataPda, authPda, vaultPda } from "../src/lib/pda";
 import { program } from "../src/provider";
 import { AUTHORITY, TREASURY } from "../src/config";
+// [AUDIT AOF-H1] bootstrap scripts need a hot authority key by design;
+// refuse to run (loudly) under AUTHORITY_MODE=read-only.
+if (!AUTHORITY) {
+  throw new Error(
+    "Deploy script requires AUTHORITY_MODE=hot + AUTHORITY_SECRET_KEY [AOF-H1]; "
+    + "read-only mode cannot bootstrap programs.",
+  );
+}
+
 import { SystemProgram } from "@solana/web3.js";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";

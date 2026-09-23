@@ -5,7 +5,7 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program, connection } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { fetchOne } from "../lib/decode";
@@ -214,7 +214,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
           .accounts({
             config,
             materialMints,
-            authority: AUTHORITY.publicKey,
+            authority: AUTHORITY_PUBKEY,
             auth,
             mint: mintPk,
             tokenAccount,
@@ -228,10 +228,10 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
           .instruction();
 
         const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY.publicKey, tokenAccount, ownerPk, mintPk,
+          AUTHORITY_PUBKEY, tokenAccount, ownerPk, mintPk,
         );
         const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY.publicKey, treasuryToken, treasury, mintPk,
+          AUTHORITY_PUBKEY, treasuryToken, treasury, mintPk,
         );
         onchainSig = await authorityOnly([createUserAta, createTreasuryAta, ix], async (signature) => {
           await db.inboxItem.update({
