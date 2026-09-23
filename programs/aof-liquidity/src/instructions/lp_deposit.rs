@@ -20,7 +20,8 @@ pub struct LpDeposit<'info> {
         payer = user,
         space = LpPool::SIZE,
         seeds = [b"lp_pool".as_ref(), &[rarity]],
-        bump
+        bump,
+        constraint = lp_pool.rarity == 0 || lp_pool.rarity == rarity @ LiquidityError::InvalidRarity
     )]
     pub lp_pool: Account<'info, LpPool>,
 
@@ -29,7 +30,9 @@ pub struct LpDeposit<'info> {
         payer = user,
         space = LpPosition::SIZE,
         seeds = [b"lp_position".as_ref(), user.key().as_ref(), &[rarity]],
-        bump
+        bump,
+        constraint = lp_position.user == Pubkey::default() || lp_position.user == user.key() @ LiquidityError::Unauthorized,
+        constraint = lp_position.rarity == 0 || lp_position.rarity == rarity @ LiquidityError::InvalidRarity
     )]
     pub lp_position: Account<'info, LpPosition>,
 

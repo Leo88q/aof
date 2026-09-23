@@ -86,8 +86,8 @@
     "aof_backend/src/idl/aof_quests.json"
   ],
   "parserVersion": "aof-v1",
-  "dataQuality": "partial",
-  "dataQualityNote": "becomes complete when IndexerCursor.backfillComplete is true for all three programs; /watchtower/config reports the live value",
+  "dataQuality": "unavailable",
+  "dataQualityNote": "Static passport is not runtime evidence. Live /watchtower/config reports coverage and per-domain limitations; no RPC or hub acceptance has been verified.",
   "writes": false,
   "signerCapability": false,
   "commitment": "finalized",
@@ -98,5 +98,6 @@
     "source": "aof_backend chain-indexer ledger (shared database, read-only)"
   },
   "playerIdScheme": "sha256(WATCHTOWER_PLAYER_HASH_SALT|wallet)",
-  "lastVerifiedAt": null
+  "lastVerifiedAt": null,
+  "addressRegistry": "watchtower/addresses.json"
 }

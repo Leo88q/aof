@@ -80,8 +80,7 @@ pub fn execute_mint<'info>(
         player.has_medallion(),
         player.has_historian(),
     );
-    let fee_cut = ((amount as u128) * (bps as u128) / 10_000) as u64;
-    let user_cut = amount.checked_sub(fee_cut).ok_or(AofError::MathOverflow)?;
+    let (user_cut, fee_cut) = crate::economics::split_bps(amount, bps)?;
 
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
 

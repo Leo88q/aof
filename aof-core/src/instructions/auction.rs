@@ -66,9 +66,14 @@ pub fn bid_handler(ctx: Context<AuctionBidCtx>, amount: u64) -> Result<()> {
 
     // возврат предыдущему ставившему, если был
     if ctx.accounts.auction.current_bid > 0 {
-        **ctx.accounts.auction.to_account_info().try_borrow_mut_lamports()? -=
-            ctx.accounts.auction.current_bid;
-        **ctx.accounts.previous_bidder.try_borrow_mut_lamports()? += ctx.accounts.auction.current_bid;
+        let auction_info = ctx.accounts.auction.to_account_info();
+        // Preserve the new bid as well as rent when refunding the previous one.
+        let reserve = Rent::get()?.minimum_balance(auction_info.data_len())
+            .checked_add(amount).ok_or(AofError::MathOverflow)?;
+        crate::economics::transfer_owned_lamports(
+            &auction_info, &ctx.accounts.previous_bidder.to_account_info(),
+            ctx.accounts.auction.current_bid, reserve,
+        )?;
     }
 
     let a = &mut ctx.accounts.auction;
@@ -96,12 +101,17 @@ pub fn settle_handler(ctx: Context<AuctionSettleCtx>) -> Result<()> {
 
     let amount = ctx.accounts.auction.current_bid;
     if amount > 0 {
-        let fee = amount.checked_mul(AUCTION_FEE_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
-        let seller_cut = amount.checked_sub(fee).ok_or(AofError::MathOverflow)?;
+        let (seller_cut, fee) = crate::economics::split_bps(amount, AUCTION_FEE_BPS)?;
 
-        **ctx.accounts.auction.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **ctx.accounts.seller.try_borrow_mut_lamports()? += seller_cut;
-        **ctx.accounts.treasury.try_borrow_mut_lamports()? += fee;
+        let auction_info = ctx.accounts.auction.to_account_info();
+        let reserve = Rent::get()?.minimum_balance(auction_info.data_len());
+        // Sequential checked credits also support seller == treasury.
+        crate::economics::transfer_owned_lamports(
+            &auction_info, &ctx.accounts.seller.to_account_info(), seller_cut, reserve,
+        )?;
+        crate::economics::transfer_owned_lamports(
+            &auction_info, &ctx.accounts.treasury.to_account_info(), fee, reserve,
+        )?;
 
         let bump = ctx.bumps.auction;
         let mint_key = ctx.accounts.mint.key();

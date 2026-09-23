@@ -3,6 +3,7 @@ use anchor_spl::token::{Token, TokenAccount, Mint};
 
 pub mod constants;
 pub mod errors;
+pub mod economics;
 pub mod events;
 pub mod instructions;
 pub mod state;

@@ -6,13 +6,15 @@
     "build": "cd ../aof_backend && ./node_modules/.bin/tsc -p ../watchtower/tsconfig.json --outDir ../watchtower/dist",
     "start": "NODE_PATH=../aof_backend/node_modules node dist/watchtower/src/watchtower-exporter.js",
     "dev": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/src/watchtower-exporter.ts",
-    "test": "npm run test:events && npm run test:decoder && npm run test:replay && npm run test:readonly && npm run test:fixtures",
+    "test": "npm run test:events && npm run test:decoder && npm run test:replay && npm run test:readonly && npm run test:fixtures && npm run test:quality && npm run test:journal",
     "test:events": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/watchtower-events.test.ts",
     "test:decoder": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/watchtower-decoder.test.ts",
     "test:replay": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/watchtower-replay.test.ts",
     "test:readonly": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/watchtower-readonly.test.ts",
     "test:fixtures": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/_fixtures.gen.ts --check",
     "fixtures:gen": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/_fixtures.gen.ts",
-    "typecheck": "cd ../aof_backend && ./node_modules/.bin/tsc -p ../watchtower/tsconfig.json --noEmit"
+    "typecheck": "cd ../aof_backend && ./node_modules/.bin/tsc -p ../watchtower/tsconfig.json --noEmit",
+    "test:quality": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/watchtower-quality.test.ts",
+    "test:journal": "cd ../aof_backend && NODE_PATH=$PWD/node_modules ./node_modules/.bin/ts-node --project ../watchtower/tsconfig.json --transpile-only ../watchtower/tests/watchtower-journal.test.ts"
   }
 }

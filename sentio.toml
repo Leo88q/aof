@@ -1,4 +1,3 @@
 [scan]
-# SW013 false positive — user уже Signer<'info>, проверено вручную
-# SW016 уже пофикшен init_if_needed -> init, но оставляем игнор на всякий
-ignore = ["SW013"]
+# No blanket suppressions. Per-finding review is tracked in reports/aof-audit.json.
+ignore = []

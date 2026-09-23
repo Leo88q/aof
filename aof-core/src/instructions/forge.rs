@@ -87,12 +87,8 @@ pub fn commit_handler(
 
 /// Перевод escrow с PDA коммита на получателя (оба аккаунта уже `mut`).
 fn release_escrow<'info>(from: &AccountInfo<'info>, to: &AccountInfo<'info>, amount: u64) -> Result<()> {
-    if amount == 0 {
-        return Ok(());
-    }
-    **from.try_borrow_mut_lamports()? = from.lamports().checked_sub(amount).ok_or(AofError::MathOverflow)?;
-    **to.try_borrow_mut_lamports()? = to.lamports().checked_add(amount).ok_or(AofError::MathOverflow)?;
-    Ok(())
+    let reserve = Rent::get()?.minimum_balance(from.data_len());
+    crate::economics::transfer_owned_lamports(from, to, amount, reserve)
 }
 
 /// [AUDIT F-06] Disabled. The secret is chosen by the player, but by reveal

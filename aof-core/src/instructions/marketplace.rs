@@ -37,8 +37,7 @@ pub fn buy_handler(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expire
         expires_at, Clock::get()?.unix_timestamp)?;
     require!(ctx.accounts.listing.active, AofError::NotActive);
     let price = ctx.accounts.listing.price_lamports;
-    let fee = price.checked_mul(MARKETPLACE_FEE_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
-    let seller_cut = price.checked_sub(fee).ok_or(AofError::MathOverflow)?;
+    let (seller_cut, fee) = crate::economics::split_bps(price, MARKETPLACE_FEE_BPS)?;
 
     system_program::transfer(
         CpiContext::new(

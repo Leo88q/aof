@@ -8,6 +8,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { hashPlayer, normalizeChainEvent, normalizeChainTx, type WatchtowerEvent } from "./event-normalizer";
 
+import { issuanceJournal } from "./issuance-journal";
+import addresses from "../addresses.json";
+
 export type ReadModelDeps = { db: PrismaClient; salt: string; treasury: string | null; programIds: string[] };
 
 export type DataQuality = "complete" | "partial" | "unavailable";
@@ -23,11 +26,16 @@ export async function coverage(deps: ReadModelDeps) {
     deps.db.chainTx.findFirst({ orderBy: { slot: "asc" }, select: { slot: true, blockTime: true } }),
     deps.db.chainTx.findFirst({ orderBy: { slot: "desc" }, select: { slot: true, blockTime: true } }),
   ]);
-  const backfillComplete = deps.programIds.every((p) => cursors.find((c) => c.programId === p)?.backfillComplete);
-  const tracked = deps.programIds.every((p) => cursors.some((c) => c.programId === p));
-  const quality: DataQuality = !tracked || !newest ? "unavailable" : backfillComplete ? "complete" : "partial";
+  const backfillComplete = deps.programIds.length > 0 && deps.programIds.every((p) => cursors.find((c) => c.programId === p)?.backfillComplete);
+  const tracked = deps.programIds.length > 0 && deps.programIds.every((p) => cursors.some((c) => c.programId === p));
+  const fresh = tracked && deps.programIds.every((p) => {
+    const c = cursors.find((cursor) => cursor.programId === p);
+    const age = c ? Date.now() - new Date(c.updatedAt).getTime() : NaN;
+    return c?.newestSlot != null && !c.lastError && age >= 0 && age <= 10 * 60_000;
+  });
+  const quality: DataQuality = !tracked || !newest || !fresh ? "unavailable" : backfillComplete ? "complete" : "partial";
   return {
-    quality, backfillComplete, tracked,
+    quality, backfillComplete, tracked, fresh,
     oldest: oldest ? { slot: oldest.slot.toString(), blockTime: oldest.blockTime } : null,
     newest: newest ? { slot: newest.slot.toString(), blockTime: newest.blockTime } : null,
     cursors: cursors.map((c) => ({ programId: c.programId, newestSlot: c.newestSlot?.toString() ?? null, backfillComplete: c.backfillComplete, txIndexed: c.txIndexed, lastError: c.lastError, updatedAt: c.updatedAt })),
@@ -65,7 +73,10 @@ export function decodeCursor(s: string | undefined): EventCursor | null {
 export async function events(deps: ReadModelDeps, q: { after?: EventCursor | null; sinceSlot?: bigint; limit: number; types?: string[]; includeTx?: boolean }) {
   const fromSlot = q.after?.slot ?? q.sinceSlot ?? 0n;
   const txs = await deps.db.chainTx.findMany({
-    where: { slot: { gte: fromSlot } },
+    where: q.after ? { OR: [
+      { slot: { gt: q.after.slot } },
+      { slot: q.after.slot, signature: { gte: q.after.signature } },
+    ] } : { slot: { gte: fromSlot } },
     orderBy: [{ slot: "asc" }, { signature: "asc" }],
     take: Math.min(q.limit, 500) + 1,
     include: { events: { orderBy: { eventIndex: "asc" } } },
@@ -74,7 +85,8 @@ export async function events(deps: ReadModelDeps, q: { after?: EventCursor | nul
   let last: EventCursor | null = q.after ?? null;
   for (const tx of txs) {
     const rows: { idx: number; evs: WatchtowerEvent[] }[] = [];
-    if (q.includeTx !== false) rows.push({ idx: -1, evs: normalizeChainTx(tx, deps.salt) });
+    // Even an empty/ignored transaction must advance the source cursor.
+    rows.push({ idx: -1, evs: q.includeTx !== false ? normalizeChainTx(tx, deps.salt) : [] });
     for (const ev of tx.events) rows.push({ idx: ev.eventIndex, evs: normalizeChainEvent(ev, deps.salt, { treasury: deps.treasury }) });
     for (const r of rows) {
       const pos: EventCursor = { slot: tx.slot, signature: tx.signature, eventIndex: r.idx };
@@ -85,7 +97,7 @@ export async function events(deps: ReadModelDeps, q: { after?: EventCursor | nul
     }
     if (out.length >= q.limit) break;
   }
-  return { events: out, nextCursor: last ? encodeCursor(last) : null, hasMore: txs.length > q.limit };
+  return { events: out, nextCursor: last ? encodeCursor(last) : null, hasMore: out.length >= q.limit || txs.length > q.limit };
 }
 
 function compareCursor(a: EventCursor, b: EventCursor): number {
@@ -189,6 +201,7 @@ export async function economy(deps: ReadModelDeps, days: number) {
   }
   const snapshot = await deps.db.economySnapshot.findFirst({ orderBy: { timestamp: "desc" } });
   return {
+    issuanceJournal: await resourceIssuanceJournal(deps, since),
     mints: [...perMint].map(([mint, m]) => ({ mint, minted: m.minted.toString(), burned: m.burned.toString(), net: (m.minted - m.burned).toString(),
       daily: [...m.daily].sort(([a], [b]) => a.localeCompare(b)).map(([day, v]) => ({ day, minted: v.minted.toString(), burned: v.burned.toString() })) })),
     latestSnapshot: snapshot ? {
@@ -197,6 +210,21 @@ export async function economy(deps: ReadModelDeps, days: number) {
       fieldQuality: snapshot.fieldQuality ? JSON.parse(snapshot.fieldQuality) : null,
     } : null,
   };
+}
+
+/** Bounded complete transactions: do not truncate a multi-event mint mid-tx. */
+export async function resourceIssuanceJournal(deps: ReadModelDeps, since: Date) {
+  const limit = 200;
+  const rows = await deps.db.chainTx.findMany({
+    where: { blockTime: { gte: since } },
+    orderBy: [{ slot: "desc" }, { signature: "desc" }], take: limit + 1,
+    include: { events: { orderBy: { eventIndex: "asc" } }, mintDeltas: true },
+  });
+  const report = issuanceJournal(rows.slice(0, limit), {
+    coreProgramId: addresses.programs.find(p => p.name === "aof_core")!.address,
+    salt: deps.salt, truncated: rows.length > limit,
+  });
+  return { ...report, transactionLimit: limit, truncated: rows.length > limit };
 }
 
 export async function treasury(deps: ReadModelDeps, days: number) {

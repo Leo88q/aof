@@ -312,7 +312,7 @@ describe("aof-core: security & core flows", () => {
     const listing = pda([B("listing"), mint.toBuffer()]);
     const listingVault = await ensureAta(mint, listing);
     const buyerToken = await ensureAta(mint, buyer.publicKey);
-    const price = new BN(1_000_000);
+    const price = new BN(1_000_001); // exercises floor rounding of the fee
     await program.methods.marketplaceList(price).accounts({ config: configPda, seller: seller.publicKey,
       mint, tool: toolPda(mint), sellerToken: tokenAccount, listing, listingVault,
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).signers([seller]).rpc();
@@ -329,7 +329,36 @@ describe("aof-core: security & core flows", () => {
     await expectError(program.methods.marketplaceBuy().accounts(accounts).signers([buyer]).rpc(), "FeatureDisabled");
     expect(await provider.connection.getBalance(buyer.publicKey)).to.equal(before);
     expect((await balance(buyerToken)).toNumber()).to.equal(0);
-    await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).signers([buyer]).rpc();
+    const sellerBefore = await provider.connection.getBalance(seller.publicKey);
+    const returnedRent = (await provider.connection.getBalance(listing)) + (await provider.connection.getBalance(listingVault));
+    const signature = await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).signers([buyer]).rpc();
+    // Confirmed signature and RPC transaction-history availability are distinct.
+    let saleTx = await provider.connection.getParsedTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    for (let attempt = 0; !saleTx?.meta && attempt < 20; attempt++) {
+      await sleep(250);
+      saleTx = await provider.connection.getParsedTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    }
+    expect(saleTx?.meta, "confirmed sale transaction metadata within 5 seconds").to.exist;
+    expect(saleTx!.meta!.err).to.equal(null);
+    const fee = price.muln(300).divn(10_000).toNumber();
+    expect(before - await provider.connection.getBalance(buyer.publicKey)).to.equal(price.toNumber());
+    expect(await provider.connection.getBalance(seller.publicKey) - sellerBefore).to.equal(price.toNumber() - fee + returnedRent);
+    // The validator's provider treasury may hold >2^53 lamports: JSON numeric
+    // balance subtraction would round. Verify the successful System transfer's
+    // small exact amount instead (network fees are not System transfers).
+    const treasuryTransfers = saleTx!.meta!.innerInstructions!.flatMap(inner => inner.instructions)
+      .filter((ix: any) => ix.program === "system" && ix.parsed?.type === "transfer"
+        && ix.parsed.info.source === buyer.publicKey.toBase58()
+        && ix.parsed.info.destination === authority.toBase58());
+    expect(treasuryTransfers.length).to.equal(1);
+    const paidFee = (treasuryTransfers[0] as any).parsed.info.lamports;
+    expect(Number.isSafeInteger(paidFee)).to.equal(true);
+    expect(paidFee).to.equal(fee);
+    expect((await balance(buyerToken)).toNumber()).to.equal(1);
+    const buyerAfter = await provider.connection.getBalance(buyer.publicKey);
+    // A distinct signed message, not an RPC retry of an already-successful tx.
+    await expectError(program.methods.marketplaceBuyBounded(price.addn(1), deadline).accounts(accounts).signers([buyer]).rpc(), "AccountNotInitialized");
+    expect(await provider.connection.getBalance(buyer.publicKey)).to.equal(buyerAfter);
     expect((await balance(buyerToken)).toNumber()).to.equal(1);
     expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(buyer.publicKey.toBase58());
   });
@@ -541,11 +570,17 @@ describe("aof-core: security & core flows", () => {
       previousBidder: currentBidder, systemProgram: SystemProgram.programId
     }).signers([b1]).rpc(), "Paused");
     await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+    const auctionRent = await provider.connection.getBalance(auctionPda);
     await bid(b1, 10_000_000);
     const before = await provider.connection.getBalance(b1.publicKey);
     await bid(b2, 20_000_000);
     const after = await provider.connection.getBalance(b1.publicKey);
-    expect(after - before).to.be.within(9_990_000, 10_000_000);
+    expect(after - before).to.equal(10_000_000);
+    expect(await provider.connection.getBalance(auctionPda)).to.equal(auctionRent + 20_000_000);
+    const selfBidBefore = await provider.connection.getBalance(b2.publicKey);
+    await bid(b2, 30_000_000); // previous_bidder aliases bidder, but not escrow
+    expect(selfBidBefore - await provider.connection.getBalance(b2.publicKey)).to.equal(10_000_000);
+    expect(await provider.connection.getBalance(auctionPda)).to.equal(auctionRent + 30_000_000);
   });
 
   it("orderbook: полное сведение не ломает rent (C2)", async () => {
@@ -918,5 +953,50 @@ describe("aof-core: security & core flows", () => {
       );
     });
   });
+  it("craft recipe: burns/mint match the recipe; failed second burn or cap rolls everything back", async () => {
+    const user = Keypair.generate(); await airdrop(user);
+    const registry = await program.account.materialMints.fetch(materialMintsPda);
+    const gemMint: PublicKey = registry.gemBlue;
+    const outputMint: PublicKey = registry.flaskBlue;
+    const gems = await giveResource("gemBlue", gemMint, user.publicKey, 5);
+    const food = await giveResource("food", foodMint, user.publicKey, 1);
+    const output = await ensureAta(outputMint, user.publicKey);
+    const accounts = { config: configPda, user: user.publicKey, materialMints: materialMintsPda, auth: authPda,
+      input1Mint: gemMint, input1Acc: gems, input2Mint: foodMint, input2Acc: food,
+      outputMint, outputAcc: output, tokenProgram: TOKEN_PROGRAM_ID };
+    const snapshot = async () => ({
+      gems: (await balance(gems)).toString(), food: (await balance(food)).toString(), output: (await balance(output)).toString(),
+      gemSupply: (await getMint(provider.connection, gemMint)).supply.toString(),
+      foodSupply: (await getMint(provider.connection, foodMint)).supply.toString(),
+      outputSupply: (await getMint(provider.connection, outputMint)).supply.toString(),
+    });
+    const craft = () => program.methods.craftRecipe(3).accounts(accounts).signers([user]).rpc();
+    const beforeFailure = await snapshot();
+    await expectError(craft(), "InsufficientBalance"); // first CPI burn already ran
+    expect(await snapshot()).to.deep.equal(beforeFailure);
+    await giveResource("food", foodMint, user.publicKey, 10);
+    const funded = await snapshot();
+    const supply = new BN(funded.outputSupply);
+    await program.methods.setSupplyCap({ flaskBlue: {} }, supply)
+      .accounts({ config: configPda, authority, materialMints: materialMintsPda }).rpc();
+    try {
+      await expectError(craft(), "SupplyCapExceeded"); // both input burns rolled back
+      expect(await snapshot()).to.deep.equal(funded);
+      await program.methods.setSupplyCap({ flaskBlue: {} }, supply.add(UNIT))
+        .accounts({ config: configPda, authority, materialMints: materialMintsPda }).rpc();
+      await craft(); // exact cap passes
+      const after = await snapshot();
+      expect(new BN(funded.gems).sub(new BN(after.gems)).toString()).to.equal(UNIT.muln(2).toString());
+      expect(new BN(funded.food).sub(new BN(after.food)).toString()).to.equal(UNIT.muln(5).toString());
+      expect(new BN(after.output).sub(new BN(funded.output)).toString()).to.equal(UNIT.toString());
+      expect(new BN(funded.gemSupply).sub(new BN(after.gemSupply)).toString()).to.equal(UNIT.muln(2).toString());
+      expect(new BN(funded.foodSupply).sub(new BN(after.foodSupply)).toString()).to.equal(UNIT.muln(5).toString());
+      expect(new BN(after.outputSupply).sub(new BN(funded.outputSupply)).toString()).to.equal(UNIT.toString());
+    } finally {
+      await program.methods.setSupplyCap({ flaskBlue: {} }, new BN("18446744073709551615"))
+        .accounts({ config: configPda, authority, materialMints: materialMintsPda }).rpc();
+    }
+  });
+
 });
 

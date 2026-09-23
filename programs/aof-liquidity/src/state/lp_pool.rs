@@ -77,4 +77,39 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn full_range_share_and_solvency_properties() {
+        // Fixed seed makes failures reproducible; include zero/MAX separately.
+        let mut seed = 0x7a1f_c39d_825e_601bu64;
+        let mut next = || { seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17; seed };
+        for _ in 0..10_000 {
+            let reserve = next();
+            let fees = next();
+            let total = next().max(1);
+            let deposit = next();
+            let p = LpPool { accumulated_fees: fees, ..pool(reserve, total) };
+            let assets = reserve as u128 + fees as u128;
+            if assets == 0 {
+                assert!(p.shares_for_deposit(deposit).is_err());
+                continue;
+            }
+            let expected = deposit as u128 * total as u128 / assets;
+            match p.shares_for_deposit(deposit) {
+                Ok(minted) => assert_eq!(minted as u128, expected),
+                Err(_) => assert!(expected > u64::MAX as u128),
+            }
+            let shares = next() % total;
+            let principal = pro_rata(reserve, shares, total).unwrap();
+            let fee_share = pro_rata(fees, shares, total).unwrap();
+            assert!(principal <= reserve && fee_share <= fees);
+            assert!(principal as u128 + fee_share as u128 <= assets);
+        }
+        for v in [0, 1, u64::MAX] {
+            assert!(pro_rata(v, 0, 0).is_err());
+            assert_eq!(pro_rata(v, u64::MAX, u64::MAX).unwrap(), v);
+            assert!(pool(0, 1).shares_for_deposit(v).is_err());
+        }
+        assert!(pool(1, u64::MAX).shares_for_deposit(u64::MAX).is_err());
+    }
+
 }

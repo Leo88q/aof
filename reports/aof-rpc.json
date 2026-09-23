@@ -1,0 +1,11 @@
+{
+  "gameId": "aof",
+  "network": "devnet",
+  "checkedAt": "2026-09-23T17:30:39.237Z",
+  "writes": false,
+  "deploymentMatchesSource": false,
+  "custodyVerified": false,
+  "status": "unavailable",
+  "programs": [],
+  "error": "rpc_unreachable_or_rejected"
+}

@@ -36,12 +36,12 @@ pub fn create_handler(ctx: Context<OfferCreateCtx>, price_lamports: u64) -> Resu
 pub fn accept_handler(ctx: Context<OfferAcceptCtx>) -> Result<()> {
     require!(ctx.accounts.offer.active, AofError::NotActive);
     let price = ctx.accounts.offer.price_lamports;
-    let fee = price.checked_mul(OFFER_FEE_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
-    let seller_cut = price.checked_sub(fee).ok_or(AofError::MathOverflow)?;
+    let (seller_cut, fee) = crate::economics::split_bps(price, OFFER_FEE_BPS)?;
 
-    **ctx.accounts.offer.to_account_info().try_borrow_mut_lamports()? -= price;
-    **ctx.accounts.seller.try_borrow_mut_lamports()? += seller_cut;
-    **ctx.accounts.treasury.try_borrow_mut_lamports()? += fee;
+    let escrow = ctx.accounts.offer.to_account_info();
+    let reserve = Rent::get()?.minimum_balance(escrow.data_len());
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.seller.to_account_info(), seller_cut, reserve)?;
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.treasury.to_account_info(), fee, reserve)?;
 
     token::transfer(
         CpiContext::new(
@@ -71,8 +71,9 @@ pub fn accept_handler(ctx: Context<OfferAcceptCtx>) -> Result<()> {
 pub fn cancel_handler(ctx: Context<OfferCancelCtx>) -> Result<()> {
     require!(ctx.accounts.offer.active, AofError::NotActive);
     let amount = ctx.accounts.offer.price_lamports;
-    **ctx.accounts.offer.to_account_info().try_borrow_mut_lamports()? -= amount;
-    **ctx.accounts.buyer.try_borrow_mut_lamports()? += amount;
+    let escrow = ctx.accounts.offer.to_account_info();
+    let reserve = Rent::get()?.minimum_balance(escrow.data_len());
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.buyer.to_account_info(), amount, reserve)?;
     ctx.accounts.offer.active = false;
     Ok(())
 }

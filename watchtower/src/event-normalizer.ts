@@ -67,6 +67,8 @@ const CATEGORY: Record<string, WatchtowerEvent["category"]> = {
   MatchStarted: "gameplay", MatchFinished: "gameplay", RaceStarted: "gameplay", RaceFinished: "gameplay", QuestCompleted: "gameplay",
   CraftCompleted: "gameplay", AssetCreated: "gameplay", AssetTransferred: "gameplay", PackOpened: "gameplay", FusionCompleted: "gameplay",
   StakeStarted: "gameplay", StakeEnded: "gameplay",
+  PlotCreated: "gameplay", PlotPlanted: "gameplay", CropHarvested: "gameplay",
+  ResourceMinted: "economy", ResourceBurned: "economy", MarketOrderPlaced: "economy", MarketOrderCancelled: "economy", SecurityEvent: "security",
   PurchaseCompleted: "economy", PaymentSettled: "economy", RewardGranted: "economy", RewardClaimed: "economy", RewardQuarantined: "economy",
   TokenMinted: "economy", TokenBurned: "economy", TreasuryDeposited: "economy", TreasuryWithdrawn: "economy", LiabilityCreated: "economy", LiabilitySettled: "economy",
   AuthorityChanged: "security", ConfigUpdated: "security", PausedToggled: "security", EmergencyPause: "security",
@@ -106,13 +108,12 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   AuthorityChanged: ["AuthorityChanged"],
   PausedToggled: ["PausedToggled"],
   EmergencyPause: ["PausedToggled"],
-  WalletConnected: ["ReferralBound"],
   TransactionFinalized: ["*"],
   TransactionFailed: ["*"],
 };
 
 /** Types the exporter derives from the ledger rather than a single event. */
-export const SUPPORTED_DERIVED = ["PlayerJoined", "FirstAction", "RetentionDay1", "RetentionDay3", "RetentionDay7", "RetentionDay14", "RetentionDay30",
+export const SUPPORTED_DERIVED = ["FirstAction", "RetentionDay1", "RetentionDay3", "RetentionDay7", "RetentionDay14", "RetentionDay30",
   "FraudSignalCreated", "IndexerGapDetected", "IndexerGapHealed", "RpcError"];
 
 /** Types AOF cannot produce truthfully (no on-chain / off-chain source). */
@@ -123,6 +124,7 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.length ? 
 const bool = (v: unknown) => v === true || v === "true" || v === 1;
 
 export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { treasury?: string | null } = {}): WatchtowerEvent[] {
+  if (!row.success) return [];
   const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<string, unknown>;
   const occurredAt = row.blockTime ? new Date(row.blockTime).toISOString() : null;
   const slot = String(row.slot);
@@ -272,7 +274,9 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("RewardGranted", { playerId: pid(d.referrer), counterpartyId: pid(d.referred), amount: str(d.amount), currency: "RESOURCE", attributes: { source: "referral" } });
       break;
     case "ReferralBound":
-      emit("WalletConnected", { playerId: pid(d.referred), counterpartyId: pid(d.referrer), attributes: { via: "referral" } });
+      // Referral binding is NOT a wallet connection. Preserve the removed
+      // fan-out ordinal so existing LiabilityCreated IDs do not change.
+      n++;
       emit("LiabilityCreated", { playerId: pid(d.referrer), counterpartyId: pid(d.referred), attributes: { liability: "referral_reward_pending" } });
       break;
     case "LotteryClaimed":

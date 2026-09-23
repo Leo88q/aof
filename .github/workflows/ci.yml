@@ -180,12 +180,12 @@ jobs:
           solana --version
           cargo-build-sbf --version
 
-      - name: Core energy, LP and drum arithmetic unit tests
+      - name: Workspace security and economic property tests
         # [AUDIT F-33] `-p aof-quests` was missing here, so `drum_odds_tests`
         # (the F-13 EV regression) and the G-07 slot-hash fixture never ran.
         run: |
           set -o pipefail
-          cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib 2>&1 | tee /tmp/unit-tests.log
+          cargo test --locked --workspace --lib 2>&1 | tee /tmp/unit-tests.log
 
       - name: Mirror unit-test output into check annotations
         if: failure()
@@ -1148,10 +1148,10 @@ jobs:
           [ -f target/artifact-Anchor.toml ] || { echo "::error::target/artifact-Anchor.toml is missing from the artifact"; bad=1; }
           exit "$bad"
 
-      - name: Core energy, LP and drum arithmetic unit tests
+      - name: Workspace security and economic property tests
         # [AUDIT F-33] `-p aof-quests` was missing here, so `drum_odds_tests`
         # (the F-13 EV regression) and the G-07 slot-hash fixture never ran.
-        run: cargo test --locked -p aof-core -p aof-liquidity -p aof-quests --lib
+        run: cargo test --locked --workspace --lib
 
       - name: Create throwaway provider wallet
         run: |

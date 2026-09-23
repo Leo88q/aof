@@ -27,15 +27,17 @@ const GAME = Object.freeze({
  * `key`/`symbolic` are exactly the spec strings (grep-friendly), `programId` is
  * the resolved key used by clients, `deployedId` the key already on devnet.
  */
+const ADDRESS_REGISTRY = require("../../watchtower/addresses.json");
+const addressOf = name => ADDRESS_REGISTRY.programs.find(p => p.name === name).address;
 const PROGRAMS = Object.freeze([
   Object.freeze({
     key: "AOF_CORE_PROGRAM_ID",
     symbolic: "AOF_CORE_PROGRAM_ID",
     alias: "aof_core",
-    programId: "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
-    deployedId: "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+    programId: addressOf("aof_core"),
+    deployedId: null,
     role: "core farming / crafting / player state",
-    status: "deployed-devnet",
+    status: "reference-unverified",
   }),
   Object.freeze({
     key: "CgInv111...",
@@ -50,10 +52,10 @@ const PROGRAMS = Object.freeze([
     key: "SessKeys111...",
     symbolic: "SessKeys111...",
     alias: "aof_session_keys",
-    programId: "SessKeys11111111111111111111111111111111111",
-    deployedId: "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
-    role: "session keys: createSession / topUp / expiry",
-    status: "stage-prototype-placeholder",
+    programId: addressOf("aof_session_keys"),
+    deployedId: null,
+    role: "session keys: spending disabled pending atomic CPI binding",
+    status: "reference-unverified",
   }),
   Object.freeze({
     key: "STrEaSuRy111...",
