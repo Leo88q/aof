@@ -22,19 +22,17 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
     let minted = ctx.accounts.rarity_counter.minted_count;
     let econ = &*ctx.accounts.craft_economy;
 
-    let wood_cost = econ.wood_base[idx].checked_add(minted.checked_mul(econ.wood_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
-    let stone_cost = econ.stone_base[idx].checked_add(minted.checked_mul(econ.stone_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
-    let food_cost = econ.food_base[idx].checked_add(minted.checked_mul(econ.food_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
-    let seeds_cost = econ.seeds_base[idx].checked_add(minted.checked_mul(econ.seeds_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
-    let water_cost = econ.water_base[idx].checked_add(minted.checked_mul(econ.water_mult[idx]).ok_or(AofError::MathOverflow)?).ok_or(AofError::MathOverflow)?;
+    let wood_cost = crate::economics::linear_cost(econ.wood_base[idx], econ.wood_mult[idx], minted)?;
+    let stone_cost = crate::economics::linear_cost(econ.stone_base[idx], econ.stone_mult[idx], minted)?;
+    let food_cost = crate::economics::linear_cost(econ.food_base[idx], econ.food_mult[idx], minted)?;
+    let seeds_cost = crate::economics::linear_cost(econ.seeds_base[idx], econ.seeds_mult[idx], minted)?;
+    let water_cost = crate::economics::linear_cost(econ.water_base[idx], econ.water_mult[idx], minted)?;
     // SKR's canonical mint is not stored in Config/MaterialMints yet. Do not
     // accept an arbitrary caller-supplied mint as proof of eligibility: that
     // would let anyone manufacture the discount. The account remains in the
     // context for IDL compatibility, but the discount is fail-closed until a
     // canonical mint is configured.
-    let potato_cost = econ.potato_base[idx]
-        .checked_add(minted.checked_mul(econ.potato_mult[idx]).ok_or(AofError::MathOverflow)?)
-        .ok_or(AofError::MathOverflow)?;
+    let potato_cost = crate::economics::linear_cost(econ.potato_base[idx], econ.potato_mult[idx], minted)?;
 
     require!(
         ctx.accounts.gastank.balance_micros >= ctx.accounts.config.craft_fee,

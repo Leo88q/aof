@@ -67,12 +67,12 @@ pub fn fulfill_handler(ctx: Context<CraftOrderFulfillCtx>) -> Result<()> {
     )?;
 
     let premium = ctx.accounts.craft_order.premium_lamports;
-    let fee = premium.checked_mul(CRAFT_ORDER_FEE_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
-    let fulfiller_cut = premium.checked_sub(fee).ok_or(AofError::MathOverflow)?;
+    let (fulfiller_cut, fee) = crate::economics::split_bps(premium, CRAFT_ORDER_FEE_BPS)?;
 
-    **ctx.accounts.craft_order.to_account_info().try_borrow_mut_lamports()? -= premium;
-    **ctx.accounts.fulfiller.try_borrow_mut_lamports()? += fulfiller_cut;
-    **ctx.accounts.treasury.try_borrow_mut_lamports()? += fee;
+    let escrow = ctx.accounts.craft_order.to_account_info();
+    let reserve = Rent::get()?.minimum_balance(escrow.data_len());
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.fulfiller.to_account_info(), fulfiller_cut, reserve)?;
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.treasury.to_account_info(), fee, reserve)?;
 
     ctx.accounts.craft_order.active = false;
 
@@ -87,8 +87,9 @@ pub fn fulfill_handler(ctx: Context<CraftOrderFulfillCtx>) -> Result<()> {
 pub fn cancel_handler(ctx: Context<CraftOrderCancelCtx>) -> Result<()> {
     require!(ctx.accounts.craft_order.active, AofError::NotActive);
     let amount = ctx.accounts.craft_order.premium_lamports;
-    **ctx.accounts.craft_order.to_account_info().try_borrow_mut_lamports()? -= amount;
-    **ctx.accounts.creator.try_borrow_mut_lamports()? += amount;
+    let escrow = ctx.accounts.craft_order.to_account_info();
+    let reserve = Rent::get()?.minimum_balance(escrow.data_len());
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.creator.to_account_info(), amount, reserve)?;
     ctx.accounts.craft_order.active = false;
     Ok(())
 }

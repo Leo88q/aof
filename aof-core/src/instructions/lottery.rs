@@ -37,8 +37,7 @@ pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
     require!(!ctx.accounts.lottery_round.drawn, AofError::LotteryRoundClosed);
 
     let price = LOTTERY_TICKET_PRICE_LAMPORTS;
-    let pool_cut = price.checked_mul(LOTTERY_POOL_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
-    let dev_cut = price.checked_sub(pool_cut).ok_or(AofError::MathOverflow)?;
+    let (dev_cut, pool_cut) = crate::economics::split_bps(price, LOTTERY_POOL_BPS)?;
 
     system_program::transfer(
         CpiContext::new(
@@ -154,28 +153,16 @@ pub fn draw_handler(_ctx: Context<DrawLottery>, _secret: [u8; 32]) -> Result<()>
 pub fn claim_prize_handler(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
     // [AUDIT F-19] `set_paused` used to leave the prize claim path open.
     require!(!ctx.accounts.config.paused, AofError::Paused);
-    let round = &mut ctx.accounts.lottery_round;
-    require!(round.drawn, AofError::LotteryNotDrawn);
-    require!(!round.claimed, AofError::LotteryRoundClosed);
-    require!(
-        ctx.accounts.lottery_ticket.ticket_number == round.winning_ticket,
-        AofError::NotWinningTicket
-    );
-
-    let amount = round.pool_lamports;
-    round.claimed = true;
-    // The round PDA must keep its rent-exempt reserve, so the payout is capped
-    // by whatever sits above that reserve — never the reserve itself.
     let min_rent = Rent::get()?.minimum_balance(LOTTERY_ROUND_SPACE);
-    let round_lamports = round.to_account_info().lamports();
-    let payout = amount.min(round_lamports.saturating_sub(min_rent));
-    require!(payout > 0, AofError::VaultInsufficient);
-
-    **round.to_account_info().try_borrow_mut_lamports()? -= payout;
-    **ctx.accounts.winner.try_borrow_mut_lamports()? += payout;
+    let round_info = ctx.accounts.lottery_round.to_account_info();
+    let payout = settle_prize(
+        &mut ctx.accounts.lottery_round,
+        ctx.accounts.lottery_ticket.ticket_number,
+        &round_info, &ctx.accounts.winner.to_account_info(), min_rent,
+    )?;
 
     emit!(LotteryClaimed {
-        round_id: round.round_id,
+        round_id: ctx.accounts.lottery_round.round_id,
         winner: ctx.accounts.winner.key(),
         amount: payout,
     });
@@ -206,4 +193,76 @@ pub fn refund_round_handler(ctx: Context<RefundLotteryRound>, _round_id: u64) ->
     // `close = treasury` in the Accounts struct moves every remaining lamport
     // (pool + rent) to the configured treasury after this handler returns.
     Ok(())
+}
+
+/// Shared by the handler and host account tests. An underfunded prize is a
+/// liability, not a smaller prize: NEVER consume claimed on partial payment.
+fn settle_prize<'info>(
+    round: &mut crate::state::LotteryRound, ticket_number: u64,
+    source: &AccountInfo<'info>, winner: &AccountInfo<'info>, min_rent: u64,
+) -> Result<u64> {
+    require!(round.drawn, AofError::LotteryNotDrawn);
+    require!(!round.claimed, AofError::LotteryRoundClosed);
+    require!(ticket_number == round.winning_ticket, AofError::NotWinningTicket);
+    let amount = round.pool_lamports;
+    require!(amount > 0, AofError::VaultInsufficient);
+    crate::economics::transfer_owned_lamports(source, winner, amount, min_rent)?;
+    round.claimed = true;
+    Ok(amount)
+}
+
+#[cfg(test)]
+mod settlement_tests {
+    use super::*;
+    use crate::state::LotteryRound;
+
+    fn round() -> LotteryRound {
+        LotteryRound { round_id: 1, pool_lamports: 100, tickets_sold: 2, draw_slot: 10,
+            drawn: true, winning_ticket: 1, claimed: false, bump: 0, created_at: 0,
+            draw_committed: true, draw_commit_slot: 9, draw_commit_hash: [0; 32] }
+    }
+
+    #[test]
+    fn full_prize_or_no_mutation_and_no_second_claim() {
+        let source_key = Pubkey::new_unique(); let winner_key = Pubkey::new_unique();
+        let system = anchor_lang::system_program::ID; let owner = crate::ID;
+        let mut source_balance = 109; let mut winner_balance = 7;
+        let mut source_data = []; let mut winner_data = [];
+        let source = AccountInfo::new(&source_key, false, true, &mut source_balance, &mut source_data, &owner, false, 0);
+        let winner = AccountInfo::new(&winner_key, true, true, &mut winner_balance, &mut winner_data, &system, false, 0);
+        let mut state = round();
+        // Old code paid 99 and permanently marked the 100-unit prize claimed.
+        assert!(settle_prize(&mut state, 1, &source, &winner, 10).is_err());
+        assert!(!state.claimed);
+        assert_eq!((source.lamports(), winner.lamports()), (109, 7));
+        **source.try_borrow_mut_lamports().unwrap() = 110; // fixture replenishment
+        assert!(settle_prize(&mut state, 0, &source, &winner, 10).is_err());
+        assert!(!state.claimed);
+        state.drawn = false;
+        assert!(settle_prize(&mut state, 1, &source, &winner, 10).is_err());
+        state.drawn = true;
+        assert_eq!(settle_prize(&mut state, 1, &source, &winner, 10).unwrap(), 100);
+        for _ in 0..100 {
+            assert!(settle_prize(&mut state, 1, &source, &winner, 10).is_err());
+            assert_eq!((source.lamports(), winner.lamports()), (10, 107));
+        }
+        assert!(state.claimed);
+    }
+
+    #[test]
+    fn receiver_overflow_and_zero_prize_do_not_consume_claim() {
+        let source_key = Pubkey::new_unique(); let winner_key = Pubkey::new_unique();
+        let system = anchor_lang::system_program::ID; let owner = crate::ID;
+        let mut source_balance = 110; let mut winner_balance = u64::MAX;
+        let mut source_data = []; let mut winner_data = [];
+        let source = AccountInfo::new(&source_key, false, true, &mut source_balance, &mut source_data, &owner, false, 0);
+        let winner = AccountInfo::new(&winner_key, true, true, &mut winner_balance, &mut winner_data, &system, false, 0);
+        let mut state = round();
+        assert!(settle_prize(&mut state, 1, &source, &winner, 10).is_err());
+        assert!(!state.claimed);
+        state.pool_lamports = 0;
+        assert!(settle_prize(&mut state, 1, &source, &winner, 10).is_err());
+        assert!(!state.claimed);
+        assert_eq!((source.lamports(), winner.lamports()), (110, u64::MAX));
+    }
 }
