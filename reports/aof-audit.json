@@ -12,6 +12,12 @@
     "SolGuard": "not-run",
     "SLAM": "not-run"
   },
+  "hostRustEvidence": {
+    "commit": "072e6d0",
+    "run": "https://github.com/Leo88q/aof/actions/runs/35896805255",
+    "step": "Workspace security and economic property tests",
+    "status": "success"
+  },
   "files_scanned": null,
   "files_parsed": null,
   "unresolvedBaselineBySeverity": {
@@ -43,7 +49,7 @@
       "economicConsequence": "Без атомарного сброса прогресса включение создаст бонус без положенного sink.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW008",
@@ -67,7 +73,7 @@
       "economicConsequence": "Stale balance или повторная отмена могут искажать escrow/refund.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW027",
@@ -91,7 +97,7 @@
       "economicConsequence": "Неучтённая смена fees искажает доходность и сверку treasury.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW027",
@@ -115,7 +121,7 @@
       "economicConsequence": "Невидимый pause затрудняет остановку потерь.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW027",
@@ -139,7 +145,7 @@
       "economicConsequence": "Без события отмены ledger сохраняет фиктивную liability.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW016",
@@ -163,7 +169,7 @@
       "economicConsequence": "Сброс shares/reserve способен обесценить LP-позиции.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW016",
@@ -187,7 +193,7 @@
       "economicConsequence": "Сброс или подмена позиции нарушает право на резерв.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW024",
@@ -211,7 +217,7 @@
       "economicConsequence": "Нулевые assets либо overflow не должны создавать shares или блокировать процесс panic.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW024",
@@ -235,7 +241,7 @@
       "economicConsequence": "Вывод не должен превысить principal/fees резервы.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW001",
@@ -259,7 +265,7 @@
       "economicConsequence": "Без авторизации можно резервировать чужой spending budget; атомарная привязка CPI всё ещё отсутствует.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW016",
@@ -283,7 +289,7 @@
       "economicConsequence": "Компрометация oracle меняет trust tier и будущие лимиты; signer владельца не заменяет oracle governance.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW016",
@@ -307,7 +313,7 @@
       "economicConsequence": "Повторное создание не должно сбрасывать spent_today/revocation.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW013",
@@ -331,7 +337,7 @@
       "economicConsequence": "Чужой snapshot не должен увеличивать лимит игрока.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW013",
@@ -355,7 +361,7 @@
       "economicConsequence": "Подмена namespace может использовать чужой лимит.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW027",
@@ -379,7 +385,7 @@
       "economicConsequence": "Необнаруженная ревокация позволяет off-chain ботам продолжать попытки расхода.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW027",
@@ -403,7 +409,7 @@
       "economicConsequence": "Невидимый pause мешает security monitoring и остановке бота.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     },
     {
       "rule_id": "SW013",
@@ -427,7 +433,7 @@
       "economicConsequence": "Подмена получателя или повторный reveal выводят prize treasury.",
       "acceptedRisk": false,
       "owner": null,
-      "blockingReason": "Rust/SVM negative execution and independent rescan not available in this sandbox"
+      "blockingReason": "Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending"
     }
   ],
   "additionalFindings": [
@@ -448,7 +454,7 @@
         "path": "programs/aof-session-keys/src/lib.rs",
         "line": 10
       },
-      "status": "patched-awaiting-rust-test",
+      "status": "patched-host-rust-tested",
       "reason": "SESSION_SPACE omitted two i64 timestamps"
     },
     {
@@ -458,7 +464,7 @@
         "path": "programs/aof-quests/src/instructions/drum/drum_reveal.rs",
         "line": 239
       },
-      "status": "patched-awaiting-rust-test",
+      "status": "patched-host-rust-tested",
       "reason": "Drum EV test truncated each term; compare weighted numerator to price*10000"
     }
   ]

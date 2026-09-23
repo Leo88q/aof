@@ -38,20 +38,21 @@ for f, (needle, status, reason, consequence) in zip(base['findings'], reviews):
     finding.update(baselineLocation=f['location'], location=dict(path=path, line=line, column=1),
                    reviewStatus=status, resolution='open-pending-independent-validation',
                    reason=reason, economicConsequence=consequence, acceptedRisk=False,
-                   owner=None, blockingReason='Rust/SVM negative execution and independent rescan not available in this sandbox')
+                   owner=None, blockingReason='Host Rust unit tests passed in CI at 072e6d0; SVM negative transaction execution and independent rescan still pending')
     findings.append(finding)
 result = dict(schemaVersion=1, gameId='aof', reportType='remediation-review-NOT-external-rescan',
               reviewedOn='2026-09-23', hubRevision='1aea14c7c9422022d8581abcca25649e8d2edd24',
               baselineSha256=hashlib.sha256((ROOT/'reports/aof-hub-baseline.json').read_bytes()).hexdigest(),
               productionReady=False, maturityClaim='L1; partial W1 remediation, NOT L3/L4',
               externalScanners={'Sentio':'not-run', 'SolGuard':'not-run', 'SLAM':'not-run'},
+              hostRustEvidence={'commit':'072e6d0', 'run':'https://github.com/Leo88q/aof/actions/runs/35896805255', 'step':'Workspace security and economic property tests', 'status':'success'},
               files_scanned=None, files_parsed=None,
               unresolvedBaselineBySeverity=dict(collections.Counter(f['severity'] for f in findings)),
               formalAcceptedRisks=[], findings=findings,
               additionalFindings=[
                   dict(id='AOF-RLS-01', severity='high', location={'path':'src/os/sql/cross_game_materials.sql','line':34}, status='patched-tested-postgresql', reason='OR tenant=aof leaked rows; role-scoped policy and isolated cached view now tested'),
-                  dict(id='AOF-SPACE-01', severity='high', location={'path':'programs/aof-session-keys/src/lib.rs','line':10}, status='patched-awaiting-rust-test', reason='SESSION_SPACE omitted two i64 timestamps'),
-                  dict(id='AOF-EV-01', severity='medium', location={'path':'programs/aof-quests/src/instructions/drum/drum_reveal.rs','line':239}, status='patched-awaiting-rust-test', reason='Drum EV test truncated each term; compare weighted numerator to price*10000'),
+                  dict(id='AOF-SPACE-01', severity='high', location={'path':'programs/aof-session-keys/src/lib.rs','line':10}, status='patched-host-rust-tested', reason='SESSION_SPACE omitted two i64 timestamps'),
+                  dict(id='AOF-EV-01', severity='medium', location={'path':'programs/aof-quests/src/instructions/drum/drum_reveal.rs','line':239}, status='patched-host-rust-tested', reason='Drum EV test truncated each term; compare weighted numerator to price*10000'),
               ])
 (ROOT/'reports/aof-audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
 rows=['# Непринятые findings внешнего baseline', '',
@@ -59,6 +60,6 @@ rows=['# Непринятые findings внешнего baseline', '',
       '| Rule | Severity | Текущий файл:строка | Причина / изменение | Экономическое последствие |',
       '|---|---|---|---|---|']
 for f in findings:
-    rows.append(f"| {f['rule_id']} | {f['severity']} | `{f['location']['path']}:{f['location']['line']}` | {f['reason']} Не принят: нет Rust/SVM execution + независимого rescan. | {f['economicConsequence']} |")
+    rows.append(f"| {f['rule_id']} | {f['severity']} | `{f['location']['path']}:{f['location']['line']}` | {f['reason']} Не принят: нет SVM transaction evidence + независимого rescan (host Rust CI прошёл). | {f['economicConsequence']} |")
 (ROOT/'reports/AOF_FINDINGS.md').write_text('\n'.join(rows)+'\n')
 print('Wrote review: original 1 critical / 11 high / 5 low remain pending validation, NOT a clean audit.')

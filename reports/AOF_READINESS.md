@@ -107,7 +107,7 @@ Severity ниже — release-risk assessment этого review, не вывод
 | f-01…f-12 | `game/godot/autoload/watchtower_os.gd:1`, `programs/aof-session-keys/src/lib.rs:241` | Не проверен полный Godot inventory/market/onboarding/a11y/ru-en UX; session spending disabled | high | UI не должен обещать подтверждённые средства и автоматический вывод |
 | i-01/i-03/i-04/i-05/i-11 | `src/os/handoff-v3.js:16`, `src/os/sql/cross_game_materials.sql:1` | Config/view не являются реализованным cross-game transfer, общим identity или budget/proposal протоколом с e2e evidence | high | Двойной учёт актива и автономная эмиссия между играми |
 | i-06/i-07/i-09/i-10/i-12 | `src/os/stack-v3.js:1` | Нет совместной приёмки календаря/rewards/analytics/alerts/KYT и bridge лимитов | high | Cross-game/bridge награды могут выйти за per-game budget |
-| Секреты / supply chain | `.github/workflows/ci.yml:1370` | Локальный Gitleaks binary download недоступен; существующий CI full-history gate ещё не проверен для PR | high | Нельзя заявлять аудиторское «0 секретов» без scanner result |
+| Supply chain / W4 | `.github/workflows/ci.yml:1370` | Gitleaks full-history CI прошёл; SBOM/CVE/release gate ещё не завершён | high | Чистый secret scan не исключает уязвимые зависимости |
 
 ## D — Проверки и границы доказательств
 
@@ -138,6 +138,20 @@ Severity ниже — release-risk assessment этого review, не вывод
 - Полный Gitleaks scan — download release asset завершился network EOF; секретные
   значения не создавались, но formal zero-secrets claim пока отсутствует.
 
+### Дополнение: результаты удалённого CI для commit `072e6d0`
+
+- [AOF readiness regressions](https://github.com/Leo88q/aof/actions/runs/35896805202):
+  **success**, оба jobs (`evidence`, PostgreSQL 16 `tenant-isolation`).
+- [Основной CI](https://github.com/Leo88q/aof/actions/runs/35896805255): шаг
+  **Workspace security and economic property tests — success**. Таким образом,
+  новые Rust host-тесты скомпилированы и выполнены в GitHub Actions, несмотря на
+  отсутствие локального toolchain. Это не SVM/validator transaction suite.
+- Frontend, backend/self-tests, PostgreSQL migrations/idempotency и **Secret scan
+  (full git history) — success**. Локальный download scanner был заблокирован,
+  но удалённый Gitleaks gate отработал успешно в рамках `.gitleaks.toml`.
+- На момент проверки SBF compile ещё выполняется; весь Anchor workflow не объявляется
+  зелёным. Независимый rescan, hub acceptance и custody evidence всё ещё отсутствуют.
+
 ## E — Приёмка / rollout
 
 1. Согласовать правильную ревизию отсутствующего hub contract и адрес read-only
@@ -164,7 +178,8 @@ Severity ниже — release-risk assessment этого review, не вывод
 - [ ] RPC/bytecode/custody, полная IDL regeneration, hub acceptance.
 - [ ] Double-entry reconciliation, rewards no-double-claim e2e, i-01/i-03/i-04/i-05/i-11.
 - [ ] Полный Godot UX, SLO/load/DR drills, external audit/SBOM/CVE.
-- [ ] Проверенный CI secret scan / release approval.
+- [x] Full-history CI secret scan прошёл для commit `072e6d0`.
+- [ ] Release approval / независимый аудит.
 
 PR должен оставаться **draft**, main не изменять. Этот набор исправлений сам по себе
 не повышает игру до L3/L4 и не разрешает включать денежные операции.
