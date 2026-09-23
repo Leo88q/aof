@@ -23,8 +23,13 @@ impl LpPool {
         let assets = (self.mascot_reserve as u128)
             .checked_add(self.accumulated_fees as u128)
             .ok_or(LiquidityError::MathOverflow)?;
-        require!(assets > 0, LiquidityError::ZeroAmount);
-        let shares = (amount as u128) * (self.total_shares as u128) / assets;
+        // SW024: checked_mul/checked_div keep the divisor guard explicit even if
+        // the enclosing require! is ever refactored away.
+        let shares = (amount as u128)
+            .checked_mul(self.total_shares as u128)
+            .ok_or(LiquidityError::MathOverflow)?
+            .checked_div(assets)
+            .ok_or(LiquidityError::ZeroAmount)?;
         u64::try_from(shares).map_err(|_| LiquidityError::MathOverflow.into())
     }
 }
@@ -33,7 +38,13 @@ impl LpPool {
 /// because the intermediate product exceeds u64.
 pub fn pro_rata(value: u64, shares: u64, total: u64) -> Result<u64> {
     require!(total > 0 && shares <= total, LiquidityError::NotEnoughShares);
-    Ok(((value as u128) * (shares as u128) / (total as u128)) as u64)
+    // SW024: explicit checked_div in addition to the require! above.
+    let out = (value as u128)
+        .checked_mul(shares as u128)
+        .ok_or(LiquidityError::MathOverflow)?
+        .checked_div(total as u128)
+        .ok_or(LiquidityError::NotEnoughShares)?;
+    Ok(out as u64)
 }
 
 #[cfg(test)]

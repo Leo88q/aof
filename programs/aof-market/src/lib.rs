@@ -291,11 +291,13 @@ pub mod aof_market {
     pub fn set_fees(ctx: Context<SetFees>, fee_bps: u16) -> Result<()> {
         require!(fee_bps <= 1_000, MarketError::InvalidFee);
         ctx.accounts.config.fee_bps = fee_bps;
+        emit!(GlobalFeesUpdated { authority: ctx.accounts.authority.key(), fee_bps });
         Ok(())
     }
 
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
         ctx.accounts.config.paused = paused;
+        emit!(GlobalPausedUpdated { authority: ctx.accounts.authority.key(), paused });
         Ok(())
     }
 
@@ -407,11 +409,18 @@ pub mod aof_market {
     pub fn cancel_limit_order(ctx: Context<CancelLimitOrder>, rarity: u8) -> Result<()> {
         rarity_index_ok(rarity)?;
         require!(ctx.accounts.order.active, MarketError::OrderNotActive);
-        if ctx.accounts.order.is_buy {
-            let maker_key = ctx.accounts.maker.key();
-            let bump = ctx.bumps.order;
+        let maker_key = ctx.accounts.maker.key();
+        let is_buy = ctx.accounts.order.is_buy;
+        let limit_price = ctx.accounts.order.limit_price;
+        let amount_escrowed = ctx.accounts.order.amount_escrowed;
+        let bump = ctx.bumps.order;
+        // SW008: effects-before-interactions — flip the order state *before* the
+        // SPL CPI so no account is read after any CPI (no reload needed).
+        ctx.accounts.order.active = false;
+        let mut refunded: u64 = 0;
+        if is_buy {
             let seeds: &[&[u8]] = &[LIMIT_ORDER_SEED, maker_key.as_ref(), &[rarity], &[bump]];
-            let refund = ctx.accounts.order.limit_price.checked_mul(ctx.accounts.order.amount_escrowed).ok_or(MarketError::MathOverflow)?;
+            let refund = limit_price.checked_mul(amount_escrowed).ok_or(MarketError::MathOverflow)?;
             token::transfer(
                 CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
@@ -424,8 +433,9 @@ pub mod aof_market {
                 ),
                 refund,
             )?;
+            refunded = refund;
         }
-        ctx.accounts.order.active = false;
+        emit!(LimitOrderCancelled { maker: maker_key, rarity, refunded });
         Ok(())
     }
 }

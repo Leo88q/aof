@@ -26,6 +26,22 @@ pub const IX_HOT_MARKET_LIMIT: u64 = 1 << 8;
 
 pub const FORBIDDEN_IXS_MASK: u64 = (1 << 60) | (1 << 61) | (1 << 62) | (1 << 63);
 
+/// SW027: revoke is a security-relevant state change; make it observable.
+#[event]
+pub struct SessionRevokedEvent {
+    pub authority: Pubkey,
+    pub session: Pubkey,
+    pub revoked: bool,
+}
+
+/// SW027: pause/unpause of a session must be trackable by indexers.
+#[event]
+pub struct SessionPausedEvent {
+    pub authority: Pubkey,
+    pub session: Pubkey,
+    pub paused: bool,
+}
+
 #[error_code]
 pub enum SkError {
     #[msg("Unauthorized")]
@@ -177,6 +193,9 @@ pub struct SessionCheckAndSpend<'info> {
         mut,
         seeds = [SESSION_SEED, authority.key().as_ref()],
         bump,
+        // SW001: bind the non-signing session owner to the stored authority so a
+        // session cannot be driven on behalf of a different wallet.
+        constraint = session.authority == authority.key() @ SkError::Unauthorized,
         constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized
     )]
     pub session: Account<'info, SessionToken>,
@@ -244,11 +263,21 @@ pub mod aof_session_keys {
 
     pub fn session_revoke(ctx: Context<SessionRevoke>) -> Result<()> {
         ctx.accounts.session.revoked = true;
+        emit!(SessionRevokedEvent {
+            authority: ctx.accounts.authority.key(),
+            session: ctx.accounts.session.key(),
+            revoked: true,
+        });
         Ok(())
     }
 
     pub fn session_pause(ctx: Context<SessionRevoke>, paused: bool) -> Result<()> {
         ctx.accounts.session.paused = paused;
+        emit!(SessionPausedEvent {
+            authority: ctx.accounts.authority.key(),
+            session: ctx.accounts.session.key(),
+            paused,
+        });
         Ok(())
     }
 

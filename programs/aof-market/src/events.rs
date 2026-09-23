@@ -67,3 +67,25 @@ pub struct AuthorityChanged {
     pub next: Pubkey,
     pub at: i64,
 }
+
+/// SW027: admin fee change is observable off-chain (Helika/GameSight/Game Signals).
+#[event]
+pub struct GlobalFeesUpdated {
+    pub authority: Pubkey,
+    pub fee_bps: u16,
+}
+
+/// SW027: pause toggle must be trackable by indexers and the Watchtower.
+#[event]
+pub struct GlobalPausedUpdated {
+    pub authority: Pubkey,
+    pub paused: bool,
+}
+
+/// SW027: cancelling a resting limit order returns escrow — emit for attribution.
+#[event]
+pub struct LimitOrderCancelled {
+    pub maker: Pubkey,
+    pub rarity: u8,
+    pub refunded: u64,
+}
