@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import {
   TOOL_ICONS, RARITY_LABEL, RARITY_COLOR, rarityKey,
   fmtSol, shortAddr, useTreasury, useFlash,
@@ -115,7 +116,7 @@ export function OfferPage() {
             return (
               <button key={t.mint} onClick={() => setSelOwn(t.mint)}
                 className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs ${selOwn === t.mint ? "border-wheat-500 bg-wheat-500/10 text-parchment" : "border-straw/15 bg-soil-800/60 text-straw"}`}>
-                <span>{TOOL_ICONS[t.toolType] || "🛠️"}</span>
+                <ArtPlate src={TOOL_ICONS[t.toolType]} alt={t.toolType || "Инструмент"} size={36} />
                 <span>{t.toolType}</span>
                 <span className={RARITY_COLOR[rk]}>· {RARITY_LABEL[rk]}</span>
               </button>

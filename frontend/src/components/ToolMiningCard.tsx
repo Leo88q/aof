@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { RARITY_META, TOOL_ICON, rarityKey } from "../lib/toolMeta";
+import { ArtPlate } from "./visual/ArtPlate";
 import { useCountdown } from "../lib/useCountdown";
 import { api } from "../lib/api";
 import { handleTxResponse } from "../lib/txFlow";
@@ -101,15 +102,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
     >
       {/* Header with NFT image */}
       <div className="flex items-start gap-3">
-        <div className="w-20 h-28 rounded-lg overflow-hidden flex-shrink-0 relative"
-             style={{ border: `1px solid ${meta.color}50` }}>
-          <span role="img" aria-label={tool.toolType || "Инструмент"}
-            className="flex h-full items-center justify-center overflow-hidden">
-              {icon.startsWith("/")
-                ? <img src={icon} alt="tool" className="h-full w-full object-cover" />
-                : <span className="text-4xl">{icon}</span>}
-            </span>
-        </div>
+        <ArtPlate src={icon} alt={tool.toolType || "Инструмент"} size={84} />
         <div className="flex-1 min-w-0 pt-1">
           <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{tool.toolType || "Инструмент"}</div>
           <div className="text-xs font-medium mt-0.5" style={{ color: meta.color }}>{meta.label}</div>

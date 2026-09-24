@@ -6,6 +6,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
 import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { WeatherOverlay } from "../../components/farm/WeatherOverlay";
 import { toNum, useFlash } from "../../lib/marketUtils";
 
@@ -123,7 +124,7 @@ export function FarmPlot() {
                 } ${tool ? "cursor-pointer" : "cursor-default"}`}>
                 {tool ? (
                   <span className="relative">
-                    {BUILDING[tool.toolType]?.emoji || TOOL_ICON[tool.toolType] || "🛠️"}
+                    <ArtPlate src={TOOL_ICON[tool.toolType]} alt={tool.toolType || "Инструмент"} size={36} />
                     {tool.isMining && !done && (
                       <span className="absolute -top-2 -right-2 text-xs animate-pulse">💨</span>
                     )}
@@ -171,7 +172,7 @@ export function FarmPlot() {
             <Card className="bg-soil-900/95 backdrop-blur-xl border border-soil-700">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-parchment font-semibold flex items-center gap-2">
-                  <span className="text-2xl">{BUILDING[selected.toolType]?.emoji || TOOL_ICON[selected.toolType] || "🛠️"}</span>
+                  <ArtPlate src={TOOL_ICON[selected.toolType]} alt={selected.toolType || "Инструмент"} size={36} />
                   {BUILDING[selected.toolType]?.name || "Постройка"}
                 </h3>
                 <button onClick={() => setSelected(null)} className="text-straw px-2">✕</button>

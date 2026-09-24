@@ -6,6 +6,7 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import {
   TOOL_ICONS, RARITY_LABEL, RARITY_COLOR, rarityKey,
   fmtSol, shortAddr, timeLeftStr, toNum, useNow, useTreasury, useFlash,
@@ -156,7 +157,7 @@ export function AuctionPage() {
               transition={{ delay: i * 0.04 }}>
               <Card className={`border ${lastFiveMin ? "border-wheat-500 animate-pulse" : "border-straw/10"}`}>
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">{TOOL_ICONS[a.tool?.toolType] || "🛠️"}</span>
+                  <ArtPlate src={TOOL_ICONS[a.tool?.toolType]} alt={a.tool?.toolType || "Инструмент"} size={56} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
                       <span className="text-parchment font-semibold text-sm">{a.tool?.toolType || "Инструмент"}</span>
@@ -226,7 +227,7 @@ export function AuctionPage() {
               return (
                 <button key={t.mint} onClick={() => setSelMint(t.mint)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left ${selMint === t.mint ? "border-wheat-500 bg-wheat-500/10" : "border-straw/15 bg-soil-800/60"}`}>
-                  <span className="text-xl">{TOOL_ICONS[t.toolType] || "🛠️"}</span>
+                  <ArtPlate src={TOOL_ICONS[t.toolType]} alt={t.toolType || "Инструмент"} size={36} />
                   <span className="flex-1 text-sm text-parchment">
                     {t.toolType} <span className={`text-xs ${RARITY_COLOR[rk]}`}>({RARITY_LABEL[rk]})</span>
                   </span>

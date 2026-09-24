@@ -57,6 +57,8 @@ export function ToolsHome() {
             onClick={() => go("craft", <CraftPage />, "Крафт")} />
           <ListRow icon="🩹" iconBg="rgba(232, 163, 61, 0.2)" label="Ремонт"
             onClick={() => go("repair", <RepairPage />, "Ремонт")} />
+          <ListRow icon="▣" iconBg="rgba(94, 231, 255, 0.16)" label="Коллекция · 26 ресурсов и 25 NFT"
+            onClick={() => go("collection", <CollectionPage />, "Коллекция")} />
         </div>
       </Section>
 

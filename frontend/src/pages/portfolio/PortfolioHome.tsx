@@ -6,6 +6,7 @@ import { Card } from "../../components/ui/Card";
 import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
 import { ProgressRing } from "../../components/ProgressRing";
 import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum } from "../../lib/marketUtils";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useStore } from "../../store/useStore";
@@ -245,7 +246,7 @@ export function PortfolioHome() {
               return (
                 <div key={t.pubkey} className="p-2 rounded-lg bg-soil-800/60">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">{TOOL_ICON[t.toolType] || "🛠️"}</span>
+                    <ArtPlate src={TOOL_ICON[t.toolType]} alt={t.toolType || "Инструмент"} size={36} />
                     <div className="flex-1">
                       <p className="text-parchment text-[10px] font-medium capitalize">{t.toolType}</p>
                       <p className="text-[9px]" style={{ color: RARITY_META[rk]?.color }}>
