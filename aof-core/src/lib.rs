@@ -16,42 +16,44 @@ pub use errors::*;
 declare_id!("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+// REBRAND_MAP.md: варианты переименованы AOF → NeuroForge, но ПОРЯДОК
+// (дискриминанты) сохранён — бинарная совместимость. Не переставлять!
 pub enum ResourceKind {
-    // Базовые ресурсы (существующие)
-    Food,
-    Wood,
-    Stone,
-    // [НОВОЕ] Блок L: хлебная цепочка
-    Seeds,
-    Wheat,
-    Flour,
-    Bread,
-    Water,
-    Coal,
-    Meat,
-    // Камни
-    StoneBlue,
-    StonePurple,
-    StoneRed,
-    // Песок
-    SandWhite,
-    SandPink,
-    SandYellow,
-    // Гемы
-    GemBlue,
-    GemOrange,
-    GemWhite,
-    GemGreen,
-    // Баночки (флаконы)
-    FlaskBlue,
-    FlaskYellow,
-    FlaskGreen,
-    FlaskPink,
-    FlaskPurple,
+    // Базовые ресурсы
+    Data,       // was Food
+    Circuit,    // was Wood
+    Silicon,    // was Stone
+    // Блок L: цепочка тренировки модели
+    Neuron,     // was Seeds
+    Synapse,    // was Wheat
+    Signal,     // was Flour
+    Model,      // was Bread
+    Power,      // was Water
+    Compute,    // was Coal
+    Dataset,    // was Meat
+    // Ядра
+    BlueCore,     // was StoneBlue
+    PurpleCore,   // was StonePurple
+    RedCore,      // was StoneRed
+    // Кварцы
+    ClearQuartz,  // was SandWhite
+    RoseQuartz,   // was SandPink
+    AmberQuartz,  // was SandYellow
+    // Биты/чипы
+    QuantumBit,   // was GemBlue
+    NeuralChip,   // was GemOrange
+    PhotonBit,    // was GemWhite
+    BioChip,      // was GemGreen
+    // Флюиды
+    CryoFluid,     // was FlaskBlue
+    VoltFluid,     // was FlaskYellow
+    BioFluid,      // was FlaskGreen
+    NanoFluid,     // was FlaskPink
+    QuantumFluid,  // was FlaskPurple
     // Особое
-    LoveHeart,
+    SoulCore,  // was LoveHeart
     // Utility resource configured in Config (kept last to preserve existing enum discriminants).
-    Potato,
+    Mind,  // was Potato
 }
 
 // =====================================================================
