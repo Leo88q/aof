@@ -46,7 +46,7 @@ const SAFE_PROGRAMS = new Set([
   COMPUTE_BUDGET_PROGRAM_ID,   // Compute budget
 ]);
 
-// These are the six deployed AOF programs from Anchor.toml. A transaction
+// These are the six deployed NeuroForge programs from Anchor.toml. A transaction
 // guard must not treat an arbitrary program as safe merely because simulation
 // succeeded: simulation proves execution, not user intent.
 const AOF_PROGRAMS = [

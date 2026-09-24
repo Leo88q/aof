@@ -10,7 +10,7 @@ export type AofCore = {
     "name": "aofCore",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Age of Farming core program"
+    "description": "NeuroForge — Age of Intelligence core program"
   },
   "instructions": [
     {

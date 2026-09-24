@@ -108,7 +108,7 @@ export async function signWalletMessage(message: string): Promise<string> {
   return adapter.signMessage(message);
 }
 
-const WALLET_PROOF_DOMAIN = (import.meta as any).env?.VITE_WALLET_PROOF_DOMAIN || "AOF_API";
+const WALLET_PROOF_DOMAIN = (import.meta as any).env?.VITE_WALLET_PROOF_DOMAIN || "NEUROFORGE_API";
 
 export interface WalletProof {
   message: string;

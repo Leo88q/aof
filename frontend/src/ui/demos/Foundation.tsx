@@ -13,7 +13,7 @@ export function Foundation() {
   return (
     <main className="aof-foundation" data-testid="aof-foundation">
       <section className="aof-foundation__paper">
-        <h1>AOF · Основание UI</h1>
+        <h1>NeuroForge · Основание UI</h1>
         <p>Honest Craft Solarpunk. Стенд токенов, локальных шрифтов и доступности.</p>
         <h2>Палитра · {AOF_COLOR_NAMES.length} токенов</h2>
         <ul className="aof-foundation__palette">

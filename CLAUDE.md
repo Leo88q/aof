@@ -39,12 +39,31 @@
 - **Authority:** `solana/keys/aof-authority-devnet.json` (100 SOL на localnet)
 - **Ветка:** `feat/solana-migration`
 
-## ⚠️ Запрещённые команды
+## ⚠️ Запрещённые команды и известные проблемы сборки
 - `cargo build --features idl-build` (используй только `anchor build`)
 - `anchor clean` (стирает кэш, 10+ мин перекомпиляции)
-- Даунгрейды тулчейна
-- Файлы `rust-toolchain` в репо
 - `solana-test-validator --reset` если программа уже задеплоена
+
+### 🛠️ Фикс ошибки `proc-macro2: cannot find type SourceFile` / `Building IDL failed`
+**Причина:** anchor-syn 0.30.1 требует `proc-macro2::Span::source_file()` — этот метод есть только в proc-macro2 <=1.0.94 (удалён в 1.0.95).
+Но 1.0.94 не компилится на Rust nightly / Rust >=1.90 из-за удаления `proc_macro::SourceFile`.
+CI помечает IDL-сборку как `continue-on-error` и билдит только `anchor build --no-idl`, а IDL берёт из `aof_backend/src/idl/`.
+
+**Фикс (добавлен в репо):**
+- `rust-toolchain.toml` пинит Rust 1.89.0 (документированный тулчейн: Agave 4.2.1 / rustc 1.89.0 / Anchor 0.30.1)
+- `Cargo.lock` запинен на `proc-macro2 = 1.0.94`
+- Для локальной сборки используй:
+  ```bash
+  rustup toolchain install 1.89.0
+  rustup default 1.89.0
+  cargo update -p proc-macro2 --precise 1.0.94
+  bash scripts/build-local.sh   # делает anchor build --no-idl + seed IDL
+  # или вручную:
+  anchor build --no-idl
+  node scripts/ensure-idl.mjs
+  anchor test --skip-build
+  ```
+- `Anchor.toml` [scripts] test теперь сам вызывает `ensure-idl.mjs` перед mocha.
 
 ## 📋 Следующий шаг
 Дозавершить `functions/index.solana.js` — заменить все Ronin handlers на Solana:

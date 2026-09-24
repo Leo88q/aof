@@ -15,7 +15,7 @@ export function TokenDemo({
     <main className="aof-token-demo-page">
       <article className={`aof-token-demo aof-token-demo--${material}`}>
         <span className="aof-token-demo__fastener" aria-hidden="true" />
-        <p className="aof-token-demo__eyebrow">AOF · МАТЕРИАЛЬНЫЙ СТЕНД</p>
+        <p className="aof-token-demo__eyebrow">NeuroForge · МАТЕРИАЛЬНЫЙ СТЕНД</p>
         <h1>{title}</h1>
         <p>{description}</p>
         <dl className="aof-token-demo__stats">
