@@ -1,0 +1,8 @@
+[toolchain]
+# Pinned to the version documented in CLAUDE.md and CI (.github/workflows/ci.yml)
+# Agave 4.2.1 / rustc 1.89.0 / Anchor 0.30.1 / platform-tools v1.56
+# Without this, rustup may pick a newer toolchain where proc-macro2 1.0.94
+# fails with `cannot find type SourceFile in crate proc_macro` (see CI
+# comments about proc_macro::SourceFile removal).
+channel = "1.89.0"
+components = ["rustfmt", "clippy"]

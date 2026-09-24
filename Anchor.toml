@@ -54,4 +54,8 @@ wallet = "solana/keys/aof-authority-devnet.json"
 upgradeable = true
 
 [scripts]
-test = "npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"
+# IDL builder is upstream-blocked (anchor-syn 0.30.1 + proc-macro2 1.0.94 vs newer rustc).
+# CI seeds target/idl from aof_backend/src/idl and runs with --skip-build.
+# This wrapper does the same locally so `anchor test` doesn't fail with
+# "Building IDL failed" / "cannot find type SourceFile".
+test = "node scripts/ensure-idl.mjs && npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"
