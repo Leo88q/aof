@@ -7,7 +7,8 @@
 # Usage:
 #   scripts/verify-programs.sh <cluster: devnet|mainnet-beta|localnet|URL> [expected_authority_pubkey] [target/deploy dir]
 #
-# Exit code is non-zero on any mismatch. Requires: solana CLI, python3, sha256sum.
+# Exit code is non-zero on any mismatch. Requires: solana CLI, python3,
+# sha256sum (GNU) или shasum (есть на macOS).
 #
 # Why sha256 of a dump and not of the .so file directly: the on-chain
 # ProgramData account is padded to its allocated size, so the dump is truncated
@@ -32,7 +33,27 @@ SECTION="programs.devnet"
 [[ "$CLUSTER" == "localnet" ]] && SECTION="programs.localnet"
 [[ "$CLUSTER" == "mainnet-beta" ]] && SECTION="programs.mainnet"
 
-mapfile -t ENTRIES < <(python3 - "$SECTION" <<'PY'
+# Портативные хелперы (macOS: BSD stat + shasum вместо GNU stat/sha256sum;
+# bash 3.2: нет mapfile).
+file_size() {
+  if stat -c %s "$1" >/dev/null 2>&1; then
+    stat -c %s "$1"          # GNU
+  else
+    stat -f%z "$1"           # BSD / macOS
+  fi
+}
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256_file() { sha256sum "$1" | cut -d' ' -f1; }
+elif command -v shasum >/dev/null 2>&1; then
+  sha256_file() { shasum -a 256 "$1" | cut -d' ' -f1; }
+else
+  echo "need sha256sum or shasum" >&2; exit 2
+fi
+
+ENTRIES=()
+while IFS= read -r entry; do
+  ENTRIES+=("$entry")
+done < <(python3 - "$SECTION" <<'PY'
 import sys, re
 section = sys.argv[1]
 text = open("Anchor.toml").read()
@@ -47,10 +68,10 @@ for line in m.group(1).splitlines():
 PY
 )
 
-if [[ ${#ENTRIES[@]} -eq 0 ]]; then echo "no programs in [$SECTION]" >&2; exit 2; fi
+if [ ${#ENTRIES[@]} -eq 0 ]; then echo "no programs in [$SECTION]" >&2; exit 2; fi
 
 fail=0
-tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/aofverify.XXXXXX")"; trap 'rm -rf "$tmp"' EXIT
 
 printf '%-18s %-46s %-10s %-46s %s\n' PROGRAM ID STATUS AUTHORITY BYTECODE
 for entry in "${ENTRIES[@]}"; do
@@ -76,7 +97,7 @@ for entry in "${ENTRIES[@]}"; do
     so="$DEPLOY_DIR/$name.so"
     if [[ -f "$so" ]]; then
       if solana program dump "$pid" "$tmp/$name.dump" --url "$URL" >/dev/null 2>&1; then
-        local_len=$(stat -c %s "$so"); chain_len=$(stat -c %s "$tmp/$name.dump")
+        local_len=$(file_size "$so"); chain_len=$(file_size "$tmp/$name.dump")
         if (( local_len > chain_len )); then
           bytecode="MISMATCH(local>chain)"; fail=1
         else
@@ -84,8 +105,8 @@ for entry in "${ENTRIES[@]}"; do
           # Remaining on-chain bytes past the local length must be zero padding.
           if tail -c +"$((local_len+1))" "$tmp/$name.dump" | tr -d '\0' | head -c1 | grep -q .; then
             bytecode="MISMATCH(trailing)"; fail=1
-          elif [[ "$(sha256sum "$so" | cut -d' ' -f1)" == "$(sha256sum "$tmp/$name.trunc" | cut -d' ' -f1)" ]]; then
-            bytecode="match $(sha256sum "$so" | cut -c1-12)"
+          elif [[ "$(sha256_file "$so")" == "$(sha256_file "$tmp/$name.trunc")" ]]; then
+            bytecode="match $(sha256_file "$so" | cut -c1-12)"
           else
             bytecode="MISMATCH(hash)"; fail=1
           fi

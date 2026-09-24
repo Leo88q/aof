@@ -20,4 +20,8 @@ regexes = [
   '''<random string>''',
   '''postgresql://user:pass@host''',
   '''file:(\.\./|/app/|/abs/)''',
+  # Solana 32-byte public keys: base58, 43-44 chars, no 0/O/I/l (documented
+  # in the header above). \b on both sides so an 88-char base58 64-byte
+  # secret key can never match a 43-44 window inside itself.
+  '''\b[1-9A-HJ-NP-Za-km-z]{43,44}\b''',
 ]

@@ -30,6 +30,16 @@ aof_quests = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
 aof_market = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
 aof_core = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
 
+# Канонические ID (те же declare_id!); нужны release.sh/verify-programs.sh
+# для mainnet-ветки. Сам деплой остаётся за release gates (NO-GO, docs/PRODUCTION_CHECKLIST.md).
+[programs.mainnet]
+aof_session_keys = "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5"
+aof_liquidity = "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv"
+aof_rebirth = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb"
+aof_quests = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
+aof_market = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
+aof_core = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+
 [registry]
 url = "https://api.apr.dev"
 

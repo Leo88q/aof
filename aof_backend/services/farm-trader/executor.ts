@@ -114,6 +114,16 @@ async function executeSellIntoQueueReal(params: ExecutionParams): Promise<{
   signature?: string;
   error?: string;
 }> {
+  // [AUDIT AOF-H1] Fail-closed: в AUTHORITY_MODE=read-only authority-секрета
+  // нет — комиссию платит authority, поэтому сделка не может быть подписана.
+  if (!AUTHORITY) {
+    return {
+      success: false,
+      error:
+        "Authority signing is disabled (AUTHORITY_MODE=read-only). " +
+        "Wire Squads/KMS or run with AUTHORITY_MODE=hot [AOF-H1].",
+    };
+  }
   if (!params.mint) {
     return { success: false, error: "auto-sell: mint инструмента не выбран (нет резолва инвентаря)" };
   }

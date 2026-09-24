@@ -16,42 +16,54 @@ pub use errors::*;
 declare_id!("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+// REBRAND_MAP.md: AOF → NeuroForge renames. Variant ORDER (discriminants)
+// must NOT change — binary compatibility. Every variant sits on its own line
+// as `Name,` because adminAuthSelfTest.ts parses this enum line-by-line.
+//
+// Food→Data, Wood→Circuit, Stone→Silicon, Seeds→Neuron, Wheat→Synapse,
+// Flour→Signal, Bread→Model, Water→Power, Coal→Compute, Meat→Dataset,
+// StoneBlue→BlueCore, StonePurple→PurpleCore, StoneRed→RedCore,
+// SandWhite→ClearQuartz, SandPink→RoseQuartz, SandYellow→AmberQuartz,
+// GemBlue→QuantumBit, GemOrange→NeuralChip, GemWhite→PhotonBit,
+// GemGreen→BioChip, FlaskBlue→CryoFluid, FlaskYellow→VoltFluid,
+// FlaskGreen→BioFluid, FlaskPink→NanoFluid, FlaskPurple→QuantumFluid,
+// LoveHeart→SoulCore, Potato→Mind.
 pub enum ResourceKind {
-    // Базовые ресурсы (существующие)
-    Food,
-    Wood,
-    Stone,
-    // [НОВОЕ] Блок L: хлебная цепочка
-    Seeds,
-    Wheat,
-    Flour,
-    Bread,
-    Water,
-    Coal,
-    Meat,
-    // Камни
-    StoneBlue,
-    StonePurple,
-    StoneRed,
-    // Песок
-    SandWhite,
-    SandPink,
-    SandYellow,
-    // Гемы
-    GemBlue,
-    GemOrange,
-    GemWhite,
-    GemGreen,
-    // Баночки (флаконы)
-    FlaskBlue,
-    FlaskYellow,
-    FlaskGreen,
-    FlaskPink,
-    FlaskPurple,
+    // Базовые ресурсы
+    Data,
+    Circuit,
+    Silicon,
+    // Блок L: цепочка тренировки модели
+    Neuron,
+    Synapse,
+    Signal,
+    Model,
+    Power,
+    Compute,
+    Dataset,
+    // Ядра
+    BlueCore,
+    PurpleCore,
+    RedCore,
+    // Кварцы
+    ClearQuartz,
+    RoseQuartz,
+    AmberQuartz,
+    // Биты/чипы
+    QuantumBit,
+    NeuralChip,
+    PhotonBit,
+    BioChip,
+    // Флюиды
+    CryoFluid,
+    VoltFluid,
+    BioFluid,
+    NanoFluid,
+    QuantumFluid,
     // Особое
-    LoveHeart,
+    SoulCore,
     // Utility resource configured in Config (kept last to preserve existing enum discriminants).
-    Potato,
+    Mind,
 }
 
 // =====================================================================
