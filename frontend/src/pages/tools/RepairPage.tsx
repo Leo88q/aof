@@ -4,7 +4,8 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
-import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, useFlash } from "../../lib/marketUtils";
 
@@ -125,7 +126,7 @@ export function RepairPage() {
               return (
                 <button key={t.mint} onClick={() => { setSelected(t.mint); setReceipt(null); }}
                   className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs ${selected === t.mint ? "border-wheat-500 bg-wheat-500/10 text-parchment" : "border-straw/15 bg-soil-800/60 text-straw"}`}>
-                  <ArtPlate src={TOOL_ICON[t.toolType]} alt={t.toolType || "Инструмент"} size={28} />
+                  <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={28} />
                   <span style={{ color: RARITY_META[rk]?.color }}>{RARITY_META[rk]?.label}</span>
                   <span>· {Number(t.durability)}/{MAX_DURABILITY}</span>
                 </button>
@@ -137,7 +138,7 @@ export function RepairPage() {
             <Card>
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <ArtPlate src={TOOL_ICON[tool.toolType]} alt={tool.toolType || "Инструмент"} size={72} />
+                  <ArtPlate src={toolPlate(tool.toolType, rarityKey(tool.rarity))} alt={tool.toolType || "Инструмент"} size={72} />
                   {critical && <span className="absolute -top-1 -right-2 text-lg">💔</span>}
                 </div>
                 <div className="flex-1">

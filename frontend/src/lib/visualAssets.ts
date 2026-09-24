@@ -61,11 +61,11 @@ export const PLAYABLE_RESOURCES: ResourceVisual[] = [
   { id: "neuralChip", name: "Нейрочип", en: "Neural Chip", plate: "/assets/nfts/resources/neural-chip.jpg", icon: "/assets/icons/neural-chip.jpg", group: "playable" },
   { id: "photonBit", name: "Фотонный бит", en: "Photon Bit", plate: "/assets/nfts/resources/photon-bit.jpg", icon: "/assets/icons/photon-bit.jpg", group: "playable" },
   { id: "bioChip", name: "Биочип", en: "Bio Chip", plate: "/assets/nfts/resources/bio-chip.jpg", icon: "/assets/icons/bio-chip.jpg", group: "playable" },
-  { id: "cryoFluid", name: "Крио-флюид", en: "Cryo-Fluid", plate: "/assets/nfts/resources/cryo-fluid.jpg", group: "playable" },
-  { id: "voltFluid", name: "Вольт-флюид", en: "Volt-Fluid", plate: "/assets/nfts/resources/volt-fluid.jpg", group: "playable" },
-  { id: "bioFluid", name: "Био-флюид", en: "Bio-Fluid", plate: "/assets/nfts/resources/bio-fluid.jpg", group: "playable" },
-  { id: "nanoFluid", name: "Нано-флюид", en: "Nano-Fluid", plate: "/assets/nfts/resources/nano-fluid.jpg", group: "playable" },
-  { id: "quantumFluid", name: "Квантовый флюид", en: "Quantum-Fluid", plate: "/assets/nfts/resources/quantum-fluid.jpg", group: "playable" },
+  { id: "cryoFluid", name: "Крио-флюид", en: "Cryo-Fluid", plate: "/assets/nfts/resources/cryo-fluid.jpg", icon: "/assets/icons/cryo-fluid.jpg", group: "playable" },
+  { id: "voltFluid", name: "Вольт-флюид", en: "Volt-Fluid", plate: "/assets/nfts/resources/volt-fluid.jpg", icon: "/assets/icons/volt-fluid.jpg", group: "playable" },
+  { id: "bioFluid", name: "Био-флюид", en: "Bio-Fluid", plate: "/assets/nfts/resources/bio-fluid.jpg", icon: "/assets/icons/bio-fluid.jpg", group: "playable" },
+  { id: "nanoFluid", name: "Нано-флюид", en: "Nano-Fluid", plate: "/assets/nfts/resources/nano-fluid.jpg", icon: "/assets/icons/nano-fluid.jpg", group: "playable" },
+  { id: "quantumFluid", name: "Квантовый флюид", en: "Quantum-Fluid", plate: "/assets/nfts/resources/quantum-fluid.jpg", icon: "/assets/icons/quantum-fluid.jpg", group: "playable" },
   { id: "mind", name: "MIND", en: "MIND", plate: "/assets/nfts/resources/mind.jpg", icon: "/assets/icons/mind.jpg", group: "playable" },
 ];
 
@@ -118,11 +118,32 @@ export const TOOL_NFTS = [
   { id: "neural_seeder", name: "Нейральный сеятель", base: "/assets/nfts/neural-seeder.jpg" },
 ] as const;
 
-/** 5×5 = 25. Only Base is generated; other rarities stay empty until the next batches. */
-export function toolPlate(toolId?: string | null, rarity: ToolRarity = "common"): string | undefined {
-  const tool = TOOL_NFTS.find((t) => t.id === toolId);
+const LEGACY_TOOL_ID: Record<string, string> = {
+  axe: "plasma_cutter",
+  pick: "silicon_extractor",
+  spear: "data_harvester",
+  bow: "quantum_transmitter",
+  reaper: "neural_seeder",
+};
+
+/** Rarity plates that exist on disk. Missing rarities fall back to Base. */
+const TOOL_RARITY_PLATE: Record<string, Partial<Record<ToolRarity, string>>> = {
+  plasma_cutter: { uncommon: "/assets/nfts/plasma-cutter-uncommon.jpg" },
+  silicon_extractor: { uncommon: "/assets/nfts/silicon-extractor-uncommon.jpg" },
+  data_harvester: { uncommon: "/assets/nfts/data-harvester-uncommon.jpg" },
+  quantum_transmitter: { uncommon: "/assets/nfts/quantum-transmitter-uncommon.jpg" },
+  neural_seeder: { uncommon: "/assets/nfts/neural-seeder-uncommon.jpg" },
+};
+
+/** 5×5 = 25. Base and Enhanced exist; Quantum, Singularity, Transcendent are still empty. */
+export function toolPlate(toolId?: string | null, rarity: string = "common"): string | undefined {
+  if (!toolId) return undefined;
+  const raw = toolId.toLowerCase();
+  const id = LEGACY_TOOL_ID[raw] || raw;
+  const tool = TOOL_NFTS.find((t) => t.id === id);
   if (!tool) return undefined;
-  return rarity === "common" ? tool.base : undefined;
+  const key = rarity.toLowerCase() as ToolRarity;
+  return TOOL_RARITY_PLATE[id]?.[key] || tool.base;
 }
 
 export const RESOURCE_ART: Record<string, string> = Object.fromEntries(

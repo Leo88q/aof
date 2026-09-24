@@ -1,4 +1,4 @@
-import { PLAYABLE_RESOURCES, SPECIAL_RESOURCES, TOOL_NFTS, TOOL_RARITIES } from "../../lib/visualAssets";
+import { PLAYABLE_RESOURCES, SPECIAL_RESOURCES, TOOL_NFTS, TOOL_RARITIES, toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 
 const RARITY_RU = ["Базовый", "Усиленный", "Квантовый", "Сингулярность", "Трансцендентный"];
@@ -37,7 +37,7 @@ export function CollectionPage() {
 
       <section>
         <h2 className="text-parchment font-semibold mb-1">25 NFT · 5 × 5</h2>
-        <p className="text-straw text-xs mb-3">Готова базовая пластина. Редкости выше — следующие пачки, без обрезки.</p>
+        <p className="text-straw text-xs mb-3">Базовая и усиленная пластины готовы. Квантовая, сингулярность и трансцендентная — следующие пачки, без обрезки.</p>
         <div className="space-y-4">
           {TOOL_NFTS.map((tool) => (
             <div key={tool.id}>
@@ -46,7 +46,7 @@ export function CollectionPage() {
                 {TOOL_RARITIES.map((rarity, i) => (
                   <div key={rarity} className="min-w-0">
                     <ArtPlate
-                      src={i === 0 ? tool.base : undefined}
+                      src={toolPlate(tool.id, rarity)}
                       alt={`${tool.name} · ${RARITY_RU[i]}`}
                       size="100%"
                     />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { RARITY_META, TOOL_ICON, rarityKey } from "../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../lib/toolMeta";
+import { toolPlate } from "../lib/visualAssets";
 import { ArtPlate } from "./visual/ArtPlate";
 import { useCountdown } from "../lib/useCountdown";
 import { api } from "../lib/api";
@@ -27,7 +28,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   const { address } = useWalletStore();
   const rk = rarityKey(tool.rarity);
   const meta = RARITY_META[rk] || RARITY_META.common;
-  const icon = TOOL_ICON[tool.toolType?.toLowerCase?.()] || "🛠️";
+  const icon = toolPlate(tool.toolType, rk) || "🛠️";
 
   const [hours, setHours] = useState(4);
   const [busy, setBusy] = useState(false);
