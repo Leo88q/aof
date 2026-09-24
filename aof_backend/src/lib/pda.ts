@@ -51,10 +51,47 @@ export const rarityCounterPda = (rarity: number) => find([enc("rarity_counter"),
  */
 export const RESOURCE_KIND_ORDER = ["data", "circuit", "silicon", "neuron", "synapse", "signal", "model", "power", "compute", "dataset", "blueCore", "purpleCore", "redCore", "clearQuartz", "roseQuartz", "amberQuartz", "quantumBit", "neuralChip", "photonBit", "bioChip", "cryoFluid", "voltFluid", "bioFluid", "nanoFluid", "quantumFluid", "soulCore", "mind"] as const;
 
-/** `kind` may be an Anchor enum object (`{ quantumBit: {} }`), a camelCase name or a numeric index. */
+/**
+ * Legacy AOF resource keys → NeuroForge names (REBRAND_MAP.md).
+ * Discriminant indexes are identical on both sides (pure rename), so old
+ * clients/IDLs that still send `gemBlue`/`potato` resolve to the same
+ * issuance-cap PDA as `quantumBit`/`mind`.
+ */
+const LEGACY_RESOURCE_KIND_ALIAS: Record<string, string> = {
+  food: "data",
+  wood: "circuit",
+  stone: "silicon",
+  potato: "mind",
+  seeds: "neuron",
+  wheat: "synapse",
+  flour: "signal",
+  bread: "model",
+  water: "power",
+  coal: "compute",
+  meat: "dataset",
+  stoneBlue: "blueCore",
+  stonePurple: "purpleCore",
+  stoneRed: "redCore",
+  sandWhite: "clearQuartz",
+  sandPink: "roseQuartz",
+  sandYellow: "amberQuartz",
+  gemBlue: "quantumBit",
+  gemOrange: "neuralChip",
+  gemWhite: "photonBit",
+  gemGreen: "bioChip",
+  flaskBlue: "cryoFluid",
+  flaskYellow: "voltFluid",
+  flaskGreen: "bioFluid",
+  flaskPink: "nanoFluid",
+  flaskPurple: "quantumFluid",
+  loveHeart: "soulCore",
+};
+
+/** `kind` may be an Anchor enum object (`{ quantumBit: {} }`), a camelCase name (legacy AOF keys accepted) or a numeric index. */
 export function resourceKindIndex(kind: unknown): number {
   if (typeof kind === "number") { if (!Number.isInteger(kind) || kind < 0 || kind >= RESOURCE_KIND_ORDER.length) throw new Error("invalid resource kind index"); return kind; }
-  const name = typeof kind === "string" ? kind : (kind && typeof kind === "object" ? Object.keys(kind as object)[0] : undefined);
+  let name = typeof kind === "string" ? kind : (kind && typeof kind === "object" ? Object.keys(kind as object)[0] : undefined);
+  if (name !== undefined && name in LEGACY_RESOURCE_KIND_ALIAS) name = LEGACY_RESOURCE_KIND_ALIAS[name];
   const idx = RESOURCE_KIND_ORDER.indexOf(name as any);
   if (idx < 0) throw new Error(`unknown resource kind: ${String(name)}`);
   return idx;

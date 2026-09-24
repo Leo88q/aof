@@ -16,44 +16,54 @@ pub use errors::*;
 declare_id!("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-// REBRAND_MAP.md: варианты переименованы AOF → NeuroForge, но ПОРЯДОК
-// (дискриминанты) сохранён — бинарная совместимость. Не переставлять!
+// REBRAND_MAP.md: AOF → NeuroForge renames. Variant ORDER (discriminants)
+// must NOT change — binary compatibility. Every variant sits on its own line
+// as `Name,` because adminAuthSelfTest.ts parses this enum line-by-line.
+//
+// Food→Data, Wood→Circuit, Stone→Silicon, Seeds→Neuron, Wheat→Synapse,
+// Flour→Signal, Bread→Model, Water→Power, Coal→Compute, Meat→Dataset,
+// StoneBlue→BlueCore, StonePurple→PurpleCore, StoneRed→RedCore,
+// SandWhite→ClearQuartz, SandPink→RoseQuartz, SandYellow→AmberQuartz,
+// GemBlue→QuantumBit, GemOrange→NeuralChip, GemWhite→PhotonBit,
+// GemGreen→BioChip, FlaskBlue→CryoFluid, FlaskYellow→VoltFluid,
+// FlaskGreen→BioFluid, FlaskPink→NanoFluid, FlaskPurple→QuantumFluid,
+// LoveHeart→SoulCore, Potato→Mind.
 pub enum ResourceKind {
     // Базовые ресурсы
-    Data,       // was Food
-    Circuit,    // was Wood
-    Silicon,    // was Stone
+    Data,
+    Circuit,
+    Silicon,
     // Блок L: цепочка тренировки модели
-    Neuron,     // was Seeds
-    Synapse,    // was Wheat
-    Signal,     // was Flour
-    Model,      // was Bread
-    Power,      // was Water
-    Compute,    // was Coal
-    Dataset,    // was Meat
+    Neuron,
+    Synapse,
+    Signal,
+    Model,
+    Power,
+    Compute,
+    Dataset,
     // Ядра
-    BlueCore,     // was StoneBlue
-    PurpleCore,   // was StonePurple
-    RedCore,      // was StoneRed
+    BlueCore,
+    PurpleCore,
+    RedCore,
     // Кварцы
-    ClearQuartz,  // was SandWhite
-    RoseQuartz,   // was SandPink
-    AmberQuartz,  // was SandYellow
+    ClearQuartz,
+    RoseQuartz,
+    AmberQuartz,
     // Биты/чипы
-    QuantumBit,   // was GemBlue
-    NeuralChip,   // was GemOrange
-    PhotonBit,    // was GemWhite
-    BioChip,      // was GemGreen
+    QuantumBit,
+    NeuralChip,
+    PhotonBit,
+    BioChip,
     // Флюиды
-    CryoFluid,     // was FlaskBlue
-    VoltFluid,     // was FlaskYellow
-    BioFluid,      // was FlaskGreen
-    NanoFluid,     // was FlaskPink
-    QuantumFluid,  // was FlaskPurple
+    CryoFluid,
+    VoltFluid,
+    BioFluid,
+    NanoFluid,
+    QuantumFluid,
     // Особое
-    SoulCore,  // was LoveHeart
+    SoulCore,
     // Utility resource configured in Config (kept last to preserve existing enum discriminants).
-    Mind,  // was Potato
+    Mind,
 }
 
 // =====================================================================
