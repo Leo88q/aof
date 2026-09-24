@@ -75,8 +75,8 @@ export function MillPanel() {
     setMilling(true);
     try {
       const [wheatMint, stoneMint] = await Promise.all([
-        getMintAsync("WHEAT"),
-        getMintAsync("STONE"),
+        getMintAsync("SYNAPSE"),
+        getMintAsync("SILICON"),
       ]);
       if (!wheatMint || !stoneMint) {
         toast.show("❌ Mint-адреса не найдены");
@@ -90,7 +90,7 @@ export function MillPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`⚙️ Мельница запущена! Помол: ${m.wheat} пшеницы → ${m.flour} муки`);
+        toast.show(`⚙️ Переработка запущена! Помол: ${m.wheat} синапсов → ${m.flour} сигнала`);
         await loadState();
       } else {
         toast.show(`❌ ${r.error || "Error запуска"}`);
@@ -106,7 +106,7 @@ export function MillPanel() {
     if (!walletAddr || !millState) return;
     setMilling(true);
     try {
-      const flourMint = await getMintAsync("FLOUR");
+      const flourMint = await getMintAsync("SIGNAL");
       if (!flourMint) { toast.show("❌ Mint FLOUR не найден"); return; }
       const resp = await api.chain.collectFlour({
         user: walletAddr,
@@ -114,7 +114,7 @@ export function MillPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🥣 Собрано ${millState.flourReady} муки!`);
+        toast.show(`🥣 Собрано ${millState.flourReady} сигнала!`);
         await loadState();
       } else {
         toast.show(`❌ ${r.error || "Error сбора"}`);
@@ -138,7 +138,7 @@ export function MillPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg">⚙️ Мельница</h3>
+        <h3 className="text-parchment font-bold text-lg">⚙️ Переработка</h3>
         <p className="text-straw text-sm text-center py-4">Подключите кошелёк</p>
       </Card>
     );
@@ -146,7 +146,7 @@ export function MillPanel() {
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg">⚙️ Мельница</h3>
+      <h3 className="text-parchment font-bold text-lg">⚙️ Переработка</h3>
 
       {!millState && (
         <>
@@ -168,8 +168,8 @@ export function MillPanel() {
           </div>
 
           <div className="bg-soil-800/50 rounded-lg p-3 space-y-1 text-xs">
-            <div className="flex justify-between"><span className="text-straw">Пшеница:</span><span className="text-parchment">{m.wheat} 🌾</span></div>
-            <div className="flex justify-between"><span className="text-straw">Камень:</span><span className="text-parchment">{m.stone} 🪨</span></div>
+            <div className="flex justify-between"><span className="text-straw">Синапс:</span><span className="text-parchment">{m.wheat} 🌾</span></div>
+            <div className="flex justify-between"><span className="text-straw">Кремний:</span><span className="text-parchment">{m.stone} 🪨</span></div>
             <div className="flex justify-between"><span className="text-straw">На выходе:</span><span className="text-wheat-500 font-bold">{m.flour} 🥣</span></div>
             <div className="flex justify-between"><span className="text-straw">Время:</span><span className="text-parchment">{formatTime(m.time)}</span></div>
           </div>
@@ -195,7 +195,7 @@ export function MillPanel() {
               </>
             ) : (
               <>
-                <p className="text-parchment font-bold">Мука готова!</p>
+                <p className="text-parchment font-bold">Сигнал готова!</p>
                 <p className="text-wheat-500 text-2xl font-bold">{millState.flourReady} 🥣</p>
               </>
             )}

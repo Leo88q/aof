@@ -118,18 +118,18 @@ pub const SUPPLY_CAP_UNLIMITED: u64 = u64::MAX;
 // =====================================================================
 const HALF_UNIT: u64 = RESOURCE_UNIT / 2;
 
-pub const REPAIR_STONE_COMMON: u64 = 2 * RESOURCE_UNIT;
-pub const REPAIR_STONE_UNCOMMON: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
-pub const REPAIR_STONE_RARE: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
-pub const REPAIR_STONE_EPIC: u64 = 3 * RESOURCE_UNIT;
-pub const REPAIR_STONE_LEGENDARY: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_SILICON_COMMON: u64 = 2 * RESOURCE_UNIT;
+pub const REPAIR_SILICON_UNCOMMON: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_SILICON_RARE: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_SILICON_EPIC: u64 = 3 * RESOURCE_UNIT;
+pub const REPAIR_SILICON_LEGENDARY: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
 
 // Стоимость ремонта в WOOD за единицу прочности
-pub const REPAIR_WOOD_COMMON: u64 = 3 * RESOURCE_UNIT;
-pub const REPAIR_WOOD_UNCOMMON: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
-pub const REPAIR_WOOD_RARE: u64 = 4 * RESOURCE_UNIT;
-pub const REPAIR_WOOD_EPIC: u64 = 4 * RESOURCE_UNIT + HALF_UNIT;
-pub const REPAIR_WOOD_LEGENDARY: u64 = 5 * RESOURCE_UNIT;
+pub const REPAIR_CIRCUIT_COMMON: u64 = 3 * RESOURCE_UNIT;
+pub const REPAIR_CIRCUIT_UNCOMMON: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_CIRCUIT_RARE: u64 = 4 * RESOURCE_UNIT;
+pub const REPAIR_CIRCUIT_EPIC: u64 = 4 * RESOURCE_UNIT + HALF_UNIT;
+pub const REPAIR_CIRCUIT_LEGENDARY: u64 = 5 * RESOURCE_UNIT;
 
 // [НОВОЕ] Дефолты bonding-curve цены крафта (см. CraftEconomy в state.rs).
 // Индекс массива = rarity.craft_index() (Uncommon=0..Legendary=3).
@@ -147,19 +147,19 @@ pub const REPAIR_WOOD_LEGENDARY: u64 = 5 * RESOURCE_UNIT;
 // Индексы: [0=Uncommon, 1=Rare, 2=Epic, 3=Legendary]
 // Base = ~1 час гринда, Mult = рост цены при массовом крафте
 
-pub const CRAFT_WOOD_BASE: [u64; 4] = [100 * RESOURCE_UNIT, 150 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT];
-pub const CRAFT_STONE_BASE: [u64; 4] = [100 * RESOURCE_UNIT, 120 * RESOURCE_UNIT, 400 * RESOURCE_UNIT, 1_500 * RESOURCE_UNIT];
-pub const CRAFT_FOOD_BASE: [u64; 4] = [50 * RESOURCE_UNIT, 80 * RESOURCE_UNIT, 300 * RESOURCE_UNIT, 1_000 * RESOURCE_UNIT];
-pub const CRAFT_SEEDS_BASE: [u64; 4] = [20 * RESOURCE_UNIT, 40 * RESOURCE_UNIT, 150 * RESOURCE_UNIT, 500 * RESOURCE_UNIT];
-pub const CRAFT_WATER_BASE: [u64; 4] = [10 * RESOURCE_UNIT, 30 * RESOURCE_UNIT, 100 * RESOURCE_UNIT, 400 * RESOURCE_UNIT];
-pub const CRAFT_POTATO_BASE: [u64; 4] = [10 * RESOURCE_UNIT, 20 * RESOURCE_UNIT, 100 * RESOURCE_UNIT, 500 * RESOURCE_UNIT];
+pub const CRAFT_CIRCUIT_BASE: [u64; 4] = [100 * RESOURCE_UNIT, 150 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT];
+pub const CRAFT_SILICON_BASE: [u64; 4] = [100 * RESOURCE_UNIT, 120 * RESOURCE_UNIT, 400 * RESOURCE_UNIT, 1_500 * RESOURCE_UNIT];
+pub const CRAFT_DATA_BASE: [u64; 4] = [50 * RESOURCE_UNIT, 80 * RESOURCE_UNIT, 300 * RESOURCE_UNIT, 1_000 * RESOURCE_UNIT];
+pub const CRAFT_NEURON_BASE: [u64; 4] = [20 * RESOURCE_UNIT, 40 * RESOURCE_UNIT, 150 * RESOURCE_UNIT, 500 * RESOURCE_UNIT];
+pub const CRAFT_POWER_BASE: [u64; 4] = [10 * RESOURCE_UNIT, 30 * RESOURCE_UNIT, 100 * RESOURCE_UNIT, 400 * RESOURCE_UNIT];
+pub const CRAFT_MIND_BASE: [u64; 4] = [10 * RESOURCE_UNIT, 20 * RESOURCE_UNIT, 100 * RESOURCE_UNIT, 500 * RESOURCE_UNIT];
 
-pub const CRAFT_WOOD_MULT: [u64; 4] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 50 * RESOURCE_UNIT];
-pub const CRAFT_STONE_MULT: [u64; 4] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 50 * RESOURCE_UNIT];
-pub const CRAFT_FOOD_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
-pub const CRAFT_SEEDS_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
-pub const CRAFT_WATER_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
-pub const CRAFT_POTATO_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильная утилити-валюта
+pub const CRAFT_CIRCUIT_MULT: [u64; 4] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 50 * RESOURCE_UNIT];
+pub const CRAFT_SILICON_MULT: [u64; 4] = [1 * RESOURCE_UNIT, 2 * RESOURCE_UNIT, 10 * RESOURCE_UNIT, 50 * RESOURCE_UNIT];
+pub const CRAFT_DATA_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
+pub const CRAFT_NEURON_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
+pub const CRAFT_POWER_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильный спрос
+pub const CRAFT_MIND_MULT: [u64; 4] = [0, 0, 0, 0]; // Стабильная утилити-валюта
 pub const PACK_CONFIG_SEED: &[u8] = b"pack_config";
 pub const PACK_COMMIT_SEED: &[u8] = b"pack_commit";
 pub const REROLL_CONFIG_SEED: &[u8] = b"reroll_config";
@@ -194,7 +194,7 @@ pub const PACK_SMALL_ODDS_BPS: [u16; 5] = [6_000, 3_200, 700, 100, 0];
 pub const PACK_MEDIUM_ODDS_BPS: [u16; 5] = [5_000, 3_500, 1_000, 500, 0];
 pub const PACK_BIG_ODDS_BPS: [u16; 5] = [3_500, 4_000, 1_500, 1_000, 0];
 // [ФАКТ]: из паков выпадают только Axe/Pick/Spear (3 типа, без Bow).
-pub const PACK_TOOL_TYPES: [&str; 3] = ["axe", "pick", "spear"];
+pub const PACK_TOOL_TYPES: [&str; 3] = ["plasma_cutter", "silicon_extractor", "data_harvester"]; // [REBRAND] ex axe/pick/spear
 
 // ----- Reroll (честный, RNG) — своя таблица шансов, настраиваемая отдельно -----
 pub const REROLL_ODDS_BPS_DEFAULT: [u16; 5] = [5_500, 3_000, 1_100, 400, 0];
@@ -321,7 +321,7 @@ pub const YIELD_BPS_LEGENDARY: u16 = 18000;
 
 // Ферма: рост пшеницы
 pub const WHEAT_GROW_DURATION: i64 = 6 * 3600; // 6 часов
-pub const WHEAT_YIELD_MULT_BPS: u16 = 15000; // ×1.5 от посева
+pub const SYNAPSE_YIELD_MULT_BPS: u16 = 15000; // ×1.5 от посева
 
 // Мельница: время помола по партиям (в секундах)
 pub const MILL_TIME_SMALL: i64 = 1 * 3600;   // 1 час
@@ -342,16 +342,16 @@ pub const ENERGY_COST_MILL: u8 = 2;
 pub const ENERGY_COST_OVEN: u8 = 2;
 
 // Погода (enum значения)
-pub const WEATHER_DROUGHT: u8 = 0;
-pub const WEATHER_SUNNY: u8 = 1;
-pub const WEATHER_RAIN: u8 = 2;
-pub const WEATHER_FESTIVAL: u8 = 3;
+pub const WEATHER_BLACKOUT: u8 = 0;
+pub const WEATHER_NOMINAL: u8 = 1;
+pub const WEATHER_SURGE: u8 = 2;
+pub const WEATHER_FRENZY: u8 = 3;
 
 // Ставки колодца (Water/час по погоде)
-pub const WELL_RATE_DROUGHT: u64 = 0;
-pub const WELL_RATE_SUNNY: u64 = 5 * RESOURCE_UNIT;
-pub const WELL_RATE_RAIN: u64 = 15 * RESOURCE_UNIT;
-pub const WELL_RATE_FESTIVAL: u64 = 20 * RESOURCE_UNIT;
+pub const WELL_RATE_BLACKOUT: u64 = 0;
+pub const WELL_RATE_NOMINAL: u64 = 5 * RESOURCE_UNIT;
+pub const WELL_RATE_SURGE: u64 = 15 * RESOURCE_UNIT;
+pub const WELL_RATE_FRENZY: u64 = 20 * RESOURCE_UNIT;
 /// Maximum accrual window per collection. Excess elapsed time is discarded,
 /// preventing an account from minting an unbounded backlog after a long absence.
 pub const WELL_MAX_ACCRUAL_SECONDS: u64 = 24 * 60 * 60;
@@ -443,7 +443,7 @@ mod economy_tests {
     #[test]
     fn resource_kind_count_matches_enum() {
         assert_eq!(
-            ResourceKind::Potato as usize + 1,
+            ResourceKind::Mind as usize + 1,
             RESOURCE_KIND_COUNT,
             "RESOURCE_KIND_COUNT is stale - MaterialMints::max_supply would be mis-sized"
         );

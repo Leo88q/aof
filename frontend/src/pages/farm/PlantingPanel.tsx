@@ -64,7 +64,7 @@ export function PlantingPanel() {
     if (selectedPlot === null || !walletAddr) return;
     setPlanting(true);
     try {
-      const seedsMint = await getMintAsync("SEEDS");
+      const seedsMint = await getMintAsync("NEURON");
       if (!seedsMint) {
         toast.show("❌ Mint SEEDS не найден. Проверьте деплой контракта.");
         return;
@@ -94,7 +94,7 @@ export function PlantingPanel() {
     if (!walletAddr) return;
     setHarvesting(tileIndex);
     try {
-      const wheatMint = await getMintAsync("WHEAT");
+      const wheatMint = await getMintAsync("SYNAPSE");
       if (!wheatMint) {
         toast.show("❌ Mint WHEAT не найден");
         return;
@@ -113,7 +113,7 @@ export function PlantingPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🌾 Урожай собран с тайла ${tileIndex + 1}!`);
+        toast.show(`🧠 Сбор завершён с кластера ${tileIndex + 1}!`);
         setTimeout(loadTiles, 2000);
       } else {
         toast.show(`❌ ${r.error || "Error сбора"}`);
@@ -203,7 +203,7 @@ export function PlantingPanel() {
         <div className="bg-soil-800/50 rounded-lg p-3 space-y-2">
           <p className="text-straw text-xs">Посадка на <b className="text-parchment">Тайл {selectedPlot + 1}</b></p>
           <div className="flex items-center gap-2">
-            <span className="text-straw text-xs">🌰 Семена:</span>
+            <span className="text-straw text-xs">🌰 Нейрон:</span>
             <input
               type="range"
               min="1"

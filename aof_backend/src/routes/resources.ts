@@ -2,7 +2,7 @@ import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -15,18 +15,18 @@ const r = Router();
 
 const kindMap: Record<string, any> = {
   // Базовые ресурсы
-  food: { food: {} },
-  wood: { wood: {} },
-  stone: { stone: {} },
-  potato: { potato: {} },
+  data: { data: {} },
+  circuit: { circuit: {} },
+  silicon: { silicon: {} },
+  mind: { mind: {} },
   // [БЛОК L] Хлебная цепочка
-  seeds: { seeds: {} },
-  wheat: { wheat: {} },
-  flour: { flour: {} },
-  bread: { bread: {} },
-  water: { water: {} },
-  coal: { coal: {} },
-  meat: { meat: {} },
+  neuron: { neuron: {} },
+  synapse: { synapse: {} },
+  signal: { signal: {} },
+  model: { model: {} },
+  power: { power: {} },
+  compute: { compute: {} },
+  dataset: { dataset: {} },
   // Камни
   stoneBlue: { stoneBlue: {} },
   stonePurple: { stonePurple: {} },
@@ -76,7 +76,7 @@ r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
       .accounts({
         config,
         materialMints,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         mint,
         tokenAccount,
@@ -89,10 +89,10 @@ r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
       .instruction();
 
     const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY.publicKey, tokenAccount, owner, mint,
+      AUTHORITY_PUBKEY, tokenAccount, owner, mint,
     );
     const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY.publicKey, treasuryToken, treasury, mint,
+      AUTHORITY_PUBKEY, treasuryToken, treasury, mint,
     );
     const sig = await authorityOnly([createTreasuryAta, createUserAta, ix]);
     res.json({ sig });

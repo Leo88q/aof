@@ -60,7 +60,7 @@ export function RentalPage() {
     if (durS < minS) durS = minS;
     if (maxS > 0 && durS > maxS) durS = maxS;
     try {
-      flash("Инструмент уезжает на вашу ферму…");
+      flash("Инструмент переходит в вашу лабораторию…");
       const resp = await api.rental.start({ renter: address, mint: l.mint, durationSeconds: String(durS) });
       const r = await handleTxResponse(resp);
       flash(r.success ? `✅ Аренда начата: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
@@ -136,7 +136,7 @@ export function RentalPage() {
         </button>
       </div>
       <p className="text-straw text-xs">
-        Чужой инструмент работает на вашей ферме и делится добычей. Владелец задаёт долю, срок и цену часа.
+        Чужой инструмент работает в вашей лаборатории и делится добычей. Владелец задаёт долю, срок и цену часа.
       </p>
 
       {txStatus && (

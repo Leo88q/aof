@@ -2,7 +2,7 @@ import { Router } from "express";
 import { SystemProgram, Transaction, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
-import { AUTHORITY, TREASURY } from "../config";
+import {AUTHORITY, TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { fetchOne } from "../lib/decode";
 import { program, connection, sessionProgram } from "../provider";
 import {
@@ -28,33 +28,33 @@ const r = Router();
 r.use(requireAdmin);
 
 const RESOURCE_KIND_BY_NAME: Record<string, any> = {
-  FOOD: { food: {} },
-  WOOD: { wood: {} },
-  STONE: { stone: {} },
-  POTATO: { potato: {} },
-  SEEDS: { seeds: {} },
-  WHEAT: { wheat: {} },
-  FLOUR: { flour: {} },
-  BREAD: { bread: {} },
-  WATER: { water: {} },
-  COAL: { coal: {} },
-  MEAT: { meat: {} },
-  STONE_BLUE: { stoneBlue: {} },
-  STONE_PURPLE: { stonePurple: {} },
-  STONE_RED: { stoneRed: {} },
-  SAND_WHITE: { sandWhite: {} },
-  SAND_PINK: { sandPink: {} },
-  SAND_YELLOW: { sandYellow: {} },
-  GEM_BLUE: { gemBlue: {} },
-  GEM_ORANGE: { gemOrange: {} },
-  GEM_WHITE: { gemWhite: {} },
-  GEM_GREEN: { gemGreen: {} },
-  FLASK_BLUE: { flaskBlue: {} },
-  FLASK_YELLOW: { flaskYellow: {} },
-  FLASK_GREEN: { flaskGreen: {} },
-  FLASK_PINK: { flaskPink: {} },
-  FLASK_PURPLE: { flaskPurple: {} },
-  LOVE_HEART: { loveHeart: {} },
+  DATA: { data: {} },
+  CIRCUIT: { circuit: {} },
+  SILICON: { silicon: {} },
+  MIND: { mind: {} },
+  NEURON: { neuron: {} },
+  SYNAPSE: { synapse: {} },
+  SIGNAL: { signal: {} },
+  MODEL: { model: {} },
+  POWER: { power: {} },
+  COMPUTE: { compute: {} },
+  DATASET: { dataset: {} },
+  BLUE_CORE: { blueCore: {} },
+  PURPLE_CORE: { purpleCore: {} },
+  RED_CORE: { redCore: {} },
+  CLEAR_QUARTZ: { clearQuartz: {} },
+  ROSE_QUARTZ: { roseQuartz: {} },
+  AMBER_QUARTZ: { amberQuartz: {} },
+  QUANTUM_BIT: { quantumBit: {} },
+  NEURAL_CHIP: { neuralChip: {} },
+  PHOTON_BIT: { photonBit: {} },
+  BIO_CHIP: { bioChip: {} },
+  CRYO_FLUID: { cryoFluid: {} },
+  VOLT_FLUID: { voltFluid: {} },
+  BIO_FLUID: { bioFluid: {} },
+  NANO_FLUID: { nanoFluid: {} },
+  QUANTUM_FLUID: { quantumFluid: {} },
+  SOUL_CORE: { soulCore: {} },
 };
 
 r.post("/initialize", async (req, res) => {
@@ -67,7 +67,7 @@ r.post("/initialize", async (req, res) => {
       .initialize(TREASURY)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         vault,
         programData,
@@ -83,14 +83,14 @@ r.post("/initialize", async (req, res) => {
 
 r.post("/session-config/init", async (req, res) => {
   try {
-    const oracleAuthority = pk(req.body.oracleAuthority || AUTHORITY.publicKey.toBase58());
+    const oracleAuthority = pk(req.body.oracleAuthority || AUTHORITY_PUBKEY.toBase58());
     const [config] = sessionConfigPda();
     const [programData] = sessionProgramDataPda();
     const ix = await (sessionProgram.methods as any)
       .initConfig()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         oracleAuthority,
         programData,
         systemProgram: SystemProgram.programId,
@@ -110,7 +110,7 @@ r.post("/set-fees", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setFees(craftFee, unstakeFee)
-      .accounts({ config, authority: AUTHORITY.publicKey })
+      .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -125,7 +125,7 @@ r.post("/set-paused", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setPaused(paused)
-      .accounts({ config, authority: AUTHORITY.publicKey })
+      .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -145,7 +145,7 @@ r.post("/set-resource-mints", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setResourceMints(foodMint, woodMint, stoneMint, seedsMint, waterMint, potatoMint)
-      .accounts({ config, authority: AUTHORITY.publicKey })
+      .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -162,7 +162,7 @@ r.post("/craft-economy/init", async (req, res) => {
       .initCraftEconomy()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         craftEconomy,
         systemProgram: SystemProgram.programId,
       })
@@ -188,7 +188,7 @@ r.post("/craft-economy/set", async (req, res) => {
     
     const ix = await (program.methods as any)
       .setCraftEconomy(woodBase, stoneBase, woodMult, stoneMult)
-      .accounts({ config, authority: AUTHORITY.publicKey, craftEconomy })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, craftEconomy })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
@@ -213,7 +213,7 @@ r.post("/rarity-counter/init", async (req, res) => {
       .initRarityCounter(rarityMap[rarityIdx])
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         rarityCounter,
         systemProgram: SystemProgram.programId,
       })
@@ -227,7 +227,6 @@ r.post("/rarity-counter/init", async (req, res) => {
 
 r.post("/migrate-tool", async (req, res) => {
   try {
-    const migrationAuthorityKeypair = AUTHORITY;
     const mint = pk(req.body.mint);
     const toolType = req.body.toolType;
     const rarityMap: Record<string, any> = {
@@ -248,8 +247,8 @@ r.post("/migrate-tool", async (req, res) => {
       .migrateTool(toolType, rarity, durability)
       .accounts({
         config,
-        migrationAuthority: migrationAuthorityKeypair.publicKey,
-        authority: AUTHORITY.publicKey,
+        migrationAuthority: AUTHORITY_PUBKEY,
+        authority: AUTHORITY_PUBKEY,
         auth,
         vault,
         mint,
@@ -292,17 +291,17 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
     const userAta = getAssociatedTokenAddressSync(mintPk, owner, true);
     const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
     const kindMap: Record<string, any> = {
-      Food: { food: {} },
-      Wood: { wood: {} },
-      Stone: { stone: {} },
-      Potato: { potato: {} },
+      data: { data: {} },
+      circuit: { circuit: {} },
+      silicon: { silicon: {} },
+      mind: { mind: {} },
     };
 
     const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY.publicKey, userAta, owner, mintPk
+      AUTHORITY_PUBKEY, userAta, owner, mintPk
     );
     const createTreasuryAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY.publicKey, treasuryAta, cfg.treasury, mintPk
+      AUTHORITY_PUBKEY, treasuryAta, cfg.treasury, mintPk
     );
 
     const ix = await (program.methods as any)
@@ -310,7 +309,7 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
       .accounts({
         config,
         materialMints,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         mint: mintPk,
         tokenAccount: userAta,
@@ -347,7 +346,7 @@ r.post("/init-craft-economy", async (req, res) => {
       .initCraftEconomy()
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         craftEconomy,
         systemProgram: SystemProgram.programId,
       })
@@ -357,7 +356,7 @@ r.post("/init-craft-economy", async (req, res) => {
       .setCraftEconomy(woodBase, stoneBase, woodMult, stoneMult)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         craftEconomy,
       })
       .instruction();
@@ -389,40 +388,40 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
     
     // Базовые ресурсы из Config (FOOD/WOOD/STONE) - много для тестов
     const baseResources = [
-      { name: "FOOD", mint: cfg.foodMint, amount: 10000 },
-      { name: "WOOD", mint: cfg.woodMint, amount: 10000 },
-      { name: "STONE", mint: cfg.stoneMint, amount: 10000 },
-      { name: "POTATO", mint: cfg.potatoMint, amount: 10000 },
+      { name: "DATA", mint: cfg.foodMint, amount: 10000 },
+      { name: "CIRCUIT", mint: cfg.woodMint, amount: 10000 },
+      { name: "SILICON", mint: cfg.stoneMint, amount: 10000 },
+      { name: "MIND", mint: cfg.potatoMint, amount: 10000 },
     ];
     
     // Все ресурсы из MaterialMints
     const materialResources = [
-      { name: "SEEDS", mint: mm.seeds, amount: 500 },
-      { name: "WHEAT", mint: mm.wheat, amount: 1000 },
-      { name: "FLOUR", mint: mm.flour, amount: 500 },
-      { name: "BREAD", mint: mm.bread, amount: 200 },
-      { name: "WATER", mint: mm.water, amount: 2000 },
-      { name: "COAL", mint: mm.coal, amount: 500 },
-      { name: "MEAT", mint: mm.meat, amount: 300 },
+      { name: "NEURON", mint: mm.seeds, amount: 500 },
+      { name: "SYNAPSE", mint: mm.wheat, amount: 1000 },
+      { name: "SIGNAL", mint: mm.flour, amount: 500 },
+      { name: "MODEL", mint: mm.bread, amount: 200 },
+      { name: "POWER", mint: mm.water, amount: 2000 },
+      { name: "COMPUTE", mint: mm.coal, amount: 500 },
+      { name: "DATASET", mint: mm.meat, amount: 300 },
       // Камни
-      { name: "STONE_BLUE", mint: mm.stoneBlue, amount: 100 },
-      { name: "STONE_PURPLE", mint: mm.stonePurple, amount: 100 },
-      { name: "STONE_RED", mint: mm.stoneRed, amount: 100 },
+      { name: "BLUE_CORE", mint: mm.stone_blue, amount: 100 },
+      { name: "PURPLE_CORE", mint: mm.stone_purple, amount: 100 },
+      { name: "RED_CORE", mint: mm.stone_red, amount: 100 },
       // Песок
-      { name: "SAND_WHITE", mint: mm.sandWhite, amount: 100 },
-      { name: "SAND_PINK", mint: mm.sandPink, amount: 100 },
-      { name: "SAND_YELLOW", mint: mm.sandYellow, amount: 100 },
+      { name: "CLEAR_QUARTZ", mint: mm.sand_white, amount: 100 },
+      { name: "ROSE_QUARTZ", mint: mm.sand_pink, amount: 100 },
+      { name: "AMBER_QUARTZ", mint: mm.sand_yellow, amount: 100 },
       // Гемы
-      { name: "GEM_BLUE", mint: mm.gemBlue, amount: 50 },
-      { name: "GEM_ORANGE", mint: mm.gemOrange, amount: 50 },
-      { name: "GEM_WHITE", mint: mm.gemWhite, amount: 50 },
-      { name: "GEM_GREEN", mint: mm.gemGreen, amount: 50 },
+      { name: "QUANTUM_BIT", mint: mm.gem_blue, amount: 50 },
+      { name: "NEURAL_CHIP", mint: mm.gem_orange, amount: 50 },
+      { name: "PHOTON_BIT", mint: mm.gem_white, amount: 50 },
+      { name: "BIO_CHIP", mint: mm.gem_green, amount: 50 },
       // Флаконы
-      { name: "FLASK_BLUE", mint: mm.flaskBlue, amount: 20 },
-      { name: "FLASK_YELLOW", mint: mm.flaskYellow, amount: 20 },
-      { name: "FLASK_GREEN", mint: mm.flaskGreen, amount: 20 },
-      { name: "FLASK_PINK", mint: mm.flaskPink, amount: 20 },
-      { name: "FLASK_PURPLE", mint: mm.flaskPurple, amount: 20 },
+      { name: "CRYO_FLUID", mint: mm.flask_blue, amount: 20 },
+      { name: "VOLT_FLUID", mint: mm.flask_yellow, amount: 20 },
+      { name: "BIO_FLUID", mint: mm.flask_green, amount: 20 },
+      { name: "NANO_FLUID", mint: mm.flask_pink, amount: 20 },
+      { name: "QUANTUM_FLUID", mint: mm.flask_purple, amount: 20 },
     ];
     
     const allResources = [...baseResources, ...materialResources];
@@ -449,7 +448,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
         if (!userInfo) {
           instructions.push(
             createAssociatedTokenAccountIdempotentInstruction(
-              AUTHORITY.publicKey,
+              AUTHORITY_PUBKEY,
               userAta,
               user,
               mintPk,
@@ -459,7 +458,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
         if (!treasuryInfo) {
           instructions.push(
             createAssociatedTokenAccountIdempotentInstruction(
-              AUTHORITY.publicKey,
+              AUTHORITY_PUBKEY,
               treasuryAta,
               treasury,
               mintPk,
@@ -476,7 +475,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
           .accounts({
             config,
             materialMints,
-            authority: AUTHORITY.publicKey,
+            authority: AUTHORITY_PUBKEY,
             auth,
             mint: mintPk,
             tokenAccount: userAta,
@@ -547,10 +546,10 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
     // Идемпотентно создаём ATA игрока и казны.
     const instructions: any[] = [
       createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY.publicKey, userAta, user, mintPk,
+        AUTHORITY_PUBKEY, userAta, user, mintPk,
       ),
       createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY.publicKey, treasuryAta, treasury, mintPk,
+        AUTHORITY_PUBKEY, treasuryAta, treasury, mintPk,
       ),
     ];
     
@@ -560,7 +559,7 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
       .accounts({
         config,
         materialMints,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         auth,
         mint: mintPk,
         tokenAccount: userAta,
@@ -615,14 +614,7 @@ r.post("/init-material-mints", async (req, res) => {
     }
     
     // Проверяем что все необходимые mint'ы есть
-    const required = [
-      "seeds", "wheat", "flour", "bread", "water", "coal", "meat",
-      "stoneBlue", "stonePurple", "stoneRed",
-      "sandWhite", "sandPink", "sandYellow",
-      "gemBlue", "gemOrange", "gemWhite", "gemGreen",
-      "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
-      "loveHeart"
-    ];
+    const required = ["neuron", "synapse", "signal", "model", "power", "compute", "dataset", "blueCore", "purpleCore", "redCore", "clearQuartz", "roseQuartz", "amberQuartz", "quantumBit", "neuralChip", "photonBit", "bioChip", "cryoFluid", "voltFluid", "bioFluid", "nanoFluid", "quantumFluid", "soulCore"];
     const missing = required.filter(k => !mintKeys[k]);
     if (missing.length > 0) {
       return res.status(400).json({ 
@@ -635,39 +627,39 @@ r.post("/init-material-mints", async (req, res) => {
     // Порядок аргументов должен точно совпадать с pub fn init_material_mints
     const ix = await (program.methods as any)
       .initMaterialMints(
-        mintKeys.seeds,
-        mintKeys.wheat,
-        mintKeys.flour,
-        mintKeys.bread,
-        mintKeys.water,
-        mintKeys.coal,
-        mintKeys.meat,
-        mintKeys.stoneBlue,
-        mintKeys.stonePurple,
-        mintKeys.stoneRed,
-        mintKeys.sandWhite,
-        mintKeys.sandPink,
-        mintKeys.sandYellow,
-        mintKeys.gemBlue,
-        mintKeys.gemOrange,
-        mintKeys.gemWhite,
-        mintKeys.gemGreen,
-        mintKeys.flaskBlue,
-        mintKeys.flaskYellow,
-        mintKeys.flaskGreen,
-        mintKeys.flaskPink,
-        mintKeys.flaskPurple,
-        mintKeys.loveHeart
+        mintKeys.neuron,
+        mintKeys.synapse,
+        mintKeys.signal,
+        mintKeys.model,
+        mintKeys.power,
+        mintKeys.compute,
+        mintKeys.dataset,
+        mintKeys.blueCore,
+        mintKeys.purpleCore,
+        mintKeys.redCore,
+        mintKeys.clearQuartz,
+        mintKeys.roseQuartz,
+        mintKeys.amberQuartz,
+        mintKeys.quantumBit,
+        mintKeys.neuralChip,
+        mintKeys.photonBit,
+        mintKeys.bioChip,
+        mintKeys.cryoFluid,
+        mintKeys.voltFluid,
+        mintKeys.bioFluid,
+        mintKeys.nanoFluid,
+        mintKeys.quantumFluid,
+        mintKeys.soulCore
       )
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         materialMints,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     
-    const tx = await coSign([ix], AUTHORITY.publicKey);
+    const tx = await coSign([ix], AUTHORITY_PUBKEY);
     
     res.json({ 
       success: true, 
@@ -717,7 +709,7 @@ r.post("/issuance-caps/init", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .initIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
-      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0], systemProgram: SystemProgram.programId })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, issuanceCap: issuanceCapPda(kind)[0], systemProgram: SystemProgram.programId })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });
@@ -736,7 +728,7 @@ r.post("/issuance-caps/set", async (req, res) => {
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setIssuanceCap({ [kind]: {} }, epochSlots, capPerEpoch)
-      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: issuanceCapPda(kind)[0] })
+      .accounts({ config, authority: AUTHORITY_PUBKEY, issuanceCap: issuanceCapPda(kind)[0] })
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ success: true, signature: sig, kind, epochSlots: epochSlots.toString(), capPerEpoch: capPerEpoch.toString() });

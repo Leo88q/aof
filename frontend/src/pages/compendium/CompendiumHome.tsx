@@ -5,19 +5,20 @@ import { Card } from "../../components/ui/Card";
 import { useWalletStr } from "../../lib/useWalletStr";
 
 const toolTypes = [
-  { id: "axe", icon: "🪓", label: "Топор" },
-  { id: "pick", icon: "⛏️", label: "Кирка" },
-  { id: "spear", icon: "🗡️", label: "Копьё" },
-  { id: "bow", icon: "🏹", label: "Лук" },
-  { id: "reaper", icon: "🌾", label: "Жнец" },
+  // [REBRAND] ids = канонические NeuroForge (бэкенд нормализует legacy при mark-seen)
+  { id: "plasma_cutter", icon: "⚡", label: "Плазменный резак" },
+  { id: "silicon_extractor", icon: "🔲", label: "Кремниевый экстрактор" },
+  { id: "data_harvester", icon: "📡", label: "Сборщик данных" },
+  { id: "quantum_transmitter", icon: "🛰️", label: "Квантовый передатчик" },
+  { id: "neural_seeder", icon: "🧠", label: "Нейральный посев" },
 ];
 
 const rarities = [
-  { id: "common", label: "Обычный", color: "border-straw/40" },
-  { id: "uncommon", label: "Необычный", color: "border-sprout-500/40" },
-  { id: "rare", label: "Редкий", color: "border-water-500/40" },
-  { id: "epic", label: "Эпический", color: "border-wheat-500/40" },
-  { id: "legendary", label: "Легендарный", color: "border-gold/60" },
+  { id: "common", label: "Базовый", color: "border-straw/40" },
+  { id: "uncommon", label: "Усиленный", color: "border-sprout-500/40" },
+  { id: "rare", label: "Квантовый", color: "border-water-500/40" },
+  { id: "epic", label: "Сингулярность", color: "border-wheat-500/40" },
+  { id: "legendary", label: "Трансцендентный", color: "border-gold/60" },
 ];
 
 export function CompendiumHome() {
@@ -52,8 +53,8 @@ export function CompendiumHome() {
 
   return (
     <div className="p-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold mb-2">Компендиум</h1>
-      <p className="text-straw text-sm mb-4">Дневник фермера: собери все инструменты</p>
+      <h1 className="text-2xl font-bold mb-2">Каталог</h1>
+      <p className="text-straw text-sm mb-4">Каталог инструментов: собери всю коллекцию</p>
 
       <Card className="mb-4">
         <div className="flex justify-between items-center mb-2">

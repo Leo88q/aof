@@ -19,19 +19,16 @@ use crate::ResourceKind;
 // silently dropped "spear" (one of the three types `PACK_TOOL_TYPES` can
 // produce), leaving those tools with no yield at all.
 fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
-    if tool_type.eq_ignore_ascii_case("axe") {
-        Some(ResourceKind::Wood)
-    } else if tool_type.eq_ignore_ascii_case("pick") {
-        Some(ResourceKind::Stone)
-    } else if tool_type.eq_ignore_ascii_case("bow") {
-        Some(ResourceKind::Meat)
-    } else if tool_type.eq_ignore_ascii_case("spear") {
-        // Spear is a hunting tool: same resource as the bow.
-        Some(ResourceKind::Meat)
-    } else if tool_type.eq_ignore_ascii_case("reaper") {
-        Some(ResourceKind::Seeds)
-    } else {
-        None
+    // Normalise first: new canonical ids AND legacy pre-rebrand ids
+    // (axe/pick/spear/bow/reaper) both resolve through canonical_tool_type.
+    let canonical = crate::state::canonical_tool_type(tool_type)?;
+    match canonical {
+        "plasma_cutter" => Some(ResourceKind::Circuit),
+        "silicon_extractor" => Some(ResourceKind::Silicon),
+        // Both hunting tools yield the same resource.
+        "data_harvester" | "quantum_transmitter" => Some(ResourceKind::Dataset),
+        "neural_seeder" => Some(ResourceKind::Neuron),
+        _ => None,
     }
 }
 

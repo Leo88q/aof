@@ -1,6 +1,6 @@
 import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { RPC_URL, AUTHORITY, PROGRAM_ID as CONFIG_PROGRAM_ID } from "./config";
+import { RPC_URL, AUTHORITY, AUTHORITY_PUBKEY, PROGRAM_ID as CONFIG_PROGRAM_ID } from "./config";
 import idl from "./idl/aof_core.json";
 import marketIdl from "./idl/aof_market.json";
 import questsIdl from "./idl/aof_quests.json";
@@ -9,7 +9,34 @@ import liquidityIdl from "./idl/aof_liquidity.json";
 import sessionIdl from "./idl/aof_session_keys.json";
 
 export const connection = new Connection(RPC_URL, "confirmed");
-export const wallet = new Wallet(AUTHORITY);
+// [AUDIT AOF-H1] AUTHORITY is null in AUTHORITY_MODE=read-only: the provider
+// wallet then becomes a throwaway placeholder whose sign methods REFUSE to
+// sign (503) — never a broadcast transaction with a foreign key. The payer
+// identity stays the REAL authority public key so messages and PDAs are
+// built against the correct on-chain identity in both modes.
+let providerWallet: Wallet;
+if (AUTHORITY) {
+  providerWallet = new Wallet(AUTHORITY);
+} else {
+  // Structural Wallet: payer identity = the real authority public key; both
+  // sign methods refuse (503) so no transaction can ever be broadcast from
+  // this process in read-only mode. No foreign key material is generated.
+  const refuseSigning = (): never => {
+    const error = new Error(
+      "Authority signing is disabled (AUTHORITY_MODE=read-only) [AOF-H1].",
+    );
+    (error as { status?: number }).status = 503;
+    (error as { expose?: boolean }).expose = true;
+    throw error;
+  };
+  providerWallet = {
+    publicKey: AUTHORITY_PUBKEY,
+    secretKey: new Uint8Array(64), // never used — sign* methods refuse above
+    signTransaction: refuseSigning,
+    signAllTransactions: refuseSigning,
+  } as unknown as Wallet;
+}
+export const wallet: Wallet = providerWallet;
 export const provider = new AnchorProvider(connection, wallet, {
   commitment: "confirmed",
 });

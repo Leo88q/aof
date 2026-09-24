@@ -14,37 +14,37 @@ function makeAccounts(): {
   ) as Record<string, any>;
   return {
     config: {
-      foodMint: addresses.FOOD,
-      woodMint: addresses.WOOD,
-      stoneMint: addresses.STONE,
-      potatoMint: addresses.POTATO,
-      seedsMint: addresses.SEEDS,
-      waterMint: addresses.WATER,
+      foodMint: addresses.DATA,
+      woodMint: addresses.CIRCUIT,
+      stoneMint: addresses.SILICON,
+      potatoMint: addresses.MIND,
+      seedsMint: addresses.NEURON,
+      waterMint: addresses.POWER,
     },
     material: {
-      seeds: addresses.SEEDS,
-      wheat: addresses.WHEAT,
-      flour: addresses.FLOUR,
-      bread: addresses.BREAD,
-      water: addresses.WATER,
-      coal: addresses.COAL,
-      meat: addresses.MEAT,
-      stoneBlue: addresses.STONE_BLUE,
-      stonePurple: addresses.STONE_PURPLE,
-      stoneRed: addresses.STONE_RED,
-      sandWhite: addresses.SAND_WHITE,
-      sandPink: addresses.SAND_PINK,
-      sandYellow: addresses.SAND_YELLOW,
-      gemBlue: addresses.GEM_BLUE,
-      gemOrange: addresses.GEM_ORANGE,
-      gemWhite: addresses.GEM_WHITE,
-      gemGreen: addresses.GEM_GREEN,
-      flaskBlue: addresses.FLASK_BLUE,
-      flaskYellow: addresses.FLASK_YELLOW,
-      flaskGreen: addresses.FLASK_GREEN,
-      flaskPink: addresses.FLASK_PINK,
-      flaskPurple: addresses.FLASK_PURPLE,
-      loveHeart: addresses.LOVE_HEART,
+      seeds: addresses.NEURON,
+      wheat: addresses.SYNAPSE,
+      flour: addresses.SIGNAL,
+      bread: addresses.MODEL,
+      water: addresses.POWER,
+      coal: addresses.COMPUTE,
+      meat: addresses.DATASET,
+      stone_blue: addresses.BLUE_CORE,
+      stone_purple: addresses.PURPLE_CORE,
+      stone_red: addresses.RED_CORE,
+      sand_white: addresses.CLEAR_QUARTZ,
+      sand_pink: addresses.ROSE_QUARTZ,
+      sand_yellow: addresses.AMBER_QUARTZ,
+      gem_blue: addresses.QUANTUM_BIT,
+      gem_orange: addresses.NEURAL_CHIP,
+      gem_white: addresses.PHOTON_BIT,
+      gem_green: addresses.BIO_CHIP,
+      flask_blue: addresses.CRYO_FLUID,
+      flask_yellow: addresses.VOLT_FLUID,
+      flask_green: addresses.BIO_FLUID,
+      flask_pink: addresses.NANO_FLUID,
+      flask_purple: addresses.QUANTUM_FLUID,
+      love_heart: addresses.SOUL_CORE,
     },
   };
 }
@@ -58,22 +58,22 @@ function main(): void {
 
   const missing = buildCanonicalResourceMints(
     valid.config,
-    { ...valid.material, loveHeart: undefined },
+    { ...valid.material, love_heart: undefined },
   );
-  assert.ok(missing.errors.some((error) => error === "LOVE_HEART:missing_or_default"));
+  assert.ok(missing.errors.some((error) => error === "SOUL_CORE:missing_or_default"));
   assert.equal(missing.mints, null);
 
   const duplicate = buildCanonicalResourceMints(
     valid.config,
     { ...valid.material, wheat: (valid.material as any).seeds },
   );
-  assert.ok(duplicate.errors.some((error) => error === "WHEAT:duplicate_of_SEEDS"));
+  assert.ok(duplicate.errors.some((error) => error === "SYNAPSE:duplicate_of_NEURON"));
 
   const mismatchedAlias = buildCanonicalResourceMints(
     { ...valid.config, waterMint: Keypair.generate().publicKey },
     valid.material,
   );
-  assert.ok(mismatchedAlias.errors.some((error) => error === "WATER:config_material_mismatch"));
+  assert.ok(mismatchedAlias.errors.some((error) => error === "POWER:config_material_mismatch"));
 
   console.log("resource registry self-test: 27-key completeness, default, duplicate and alias checks passed");
 }

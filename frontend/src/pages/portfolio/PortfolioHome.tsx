@@ -12,31 +12,31 @@ import { useStore } from "../../store/useStore";
 import { motion } from "framer-motion";
 
 const RESOURCE_META: Record<string, { icon: string; label: string }> = {
-  FOOD: { icon: "🌾", label: "Зерно" },
-  WOOD: { icon: "🪵", label: "Древесина" },
-  STONE: { icon: "🪨", label: "Камень" },
-  SEEDS: { icon: "🌰", label: "Семена" },
-  WHEAT: { icon: "🌾", label: "Пшеница" },
-  FLOUR: { icon: "🥣", label: "Мука" },
-  BREAD: { icon: "🍞", label: "Хлеб" },
-  WATER: { icon: "💧", label: "Вода" },
-  COAL: { icon: "⬛", label: "Уголь" },
-  MEAT: { icon: "🍖", label: "Мясо" },
-  STONE_BLUE: { icon: "🔵", label: "Сапфир" },
-  STONE_PURPLE: { icon: "🟣", label: "Аметист" },
-  STONE_RED: { icon: "🔴", label: "Рубин" },
-  SAND_WHITE: { icon: "⚪", label: "Кварцевый песок" },
-  SAND_PINK: { icon: "💗", label: "Розовый песок" },
-  SAND_YELLOW: { icon: "🟡", label: "Янтарный песок" },
-  GEM_BLUE: { icon: "💎", label: "Сапфировый гем" },
-  GEM_ORANGE: { icon: "🟠", label: "Янтарный гем" },
-  GEM_WHITE: { icon: "⚪", label: "Кварцевый гем" },
-  GEM_GREEN: { icon: "🟢", label: "Изумрудный гем" },
-  FLASK_BLUE: { icon: "🧪", label: "Зелье энергии" },
-  FLASK_YELLOW: { icon: "🧪", label: "Зелье газа" },
-  FLASK_GREEN: { icon: "🧪", label: "Зелье роста" },
-  FLASK_PINK: { icon: "🧪", label: "Зелье любви" },
-  FLASK_PURPLE: { icon: "🧪", label: "Зелье удачи" },
+  FOOD: { icon: "🌾", label: "Данные" },
+  WOOD: { icon: "🪵", label: "Схема" },
+  STONE: { icon: "🪨", label: "Кремний" },
+  SEEDS: { icon: "🌰", label: "Нейрон" },
+  WHEAT: { icon: "🌾", label: "Синапс" },
+  FLOUR: { icon: "🥣", label: "Сигнал" },
+  BREAD: { icon: "🍞", label: "Модель" },
+  WATER: { icon: "💧", label: "Энергопоток" },
+  COAL: { icon: "⬛", label: "Вычисления" },
+  MEAT: { icon: "🍖", label: "Датасет" },
+  STONE_BLUE: { icon: "🔵", label: "Голубое ядро" },
+  STONE_PURPLE: { icon: "🟣", label: "Фиолетовое ядро" },
+  STONE_RED: { icon: "🔴", label: "Красное ядро" },
+  SAND_WHITE: { icon: "⚪", label: "Чистый кварц" },
+  SAND_PINK: { icon: "💗", label: "Розовый кварц" },
+  SAND_YELLOW: { icon: "🟡", label: "Янтарный кварц" },
+  GEM_BLUE: { icon: "💎", label: "Квантовый бит" },
+  GEM_ORANGE: { icon: "🟠", label: "Нейрочип" },
+  GEM_WHITE: { icon: "⚪", label: "Фотон-бит" },
+  GEM_GREEN: { icon: "🟢", label: "Био-чип" },
+  FLASK_BLUE: { icon: "🧪", label: "Крио-флюид" },
+  FLASK_YELLOW: { icon: "🧪", label: "Вольт-флюид" },
+  FLASK_GREEN: { icon: "🧪", label: "Био-флюид" },
+  FLASK_PINK: { icon: "🧪", label: "Нано-флюид" },
+  FLASK_PURPLE: { icon: "🧪", label: "Квантовый флюид" },
 };
 
 export function PortfolioHome() {
@@ -335,7 +335,7 @@ export function PortfolioHome() {
           </div>
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-2xl font-bold text-wheat-500">{portfolio.stats?.compendiumPct ?? 0}%</p>
-            <p className="text-straw text-[10px]">Компендиум</p>
+            <p className="text-straw text-[10px]">Каталог</p>
           </div>
         </div>
       </Card>

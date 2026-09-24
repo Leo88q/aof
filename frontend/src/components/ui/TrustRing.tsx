@@ -6,13 +6,13 @@ interface TrustRingProps {
   size?: number;
 }
 
-// Метафора роста: росток → саженец → колос → полный урожай
+// Метафора роста модели: нейрон → сеть → сигнал → сингулярность
 const tierMeta: Record<number, { icon: string; label: string; color: string }> = {
-  1: { icon: "🌱", label: "Росток", color: "#6bbf59" },
-  2: { icon: "🌿", label: "Саженец", color: "#4e9d42" },
-  3: { icon: "🌾", label: "Колос", color: "#e8a33d" },
-  4: { icon: "🌻", label: "Урожай", color: "#d97941" },
-  5: { icon: "👑", label: "Полный урожай", color: "#b8863b" },
+  1: { icon: "🌱", label: "Нейрон", color: "#6bbf59" },
+  2: { icon: "🔗", label: "Сеть", color: "#4e9d42" },
+  3: { icon: "📡", label: "Сигнал", color: "#e8a33d" },
+  4: { icon: "🤖", label: "Модель", color: "#d97941" },
+  5: { icon: "👑", label: "Сингулярность", color: "#b8863b" },
 };
 
 export function TrustRing({ score, tier, size = 120 }: TrustRingProps) {

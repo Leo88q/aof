@@ -10,17 +10,17 @@ import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
 
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 const RARITY_RU: Record<string, string> = {
-  common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический", legendary: "Легендарный",
+  common: "Базовый", uncommon: "Усиленный", rare: "Квантовый", epic: "Сингулярность", legendary: "Трансцендентный",
 };
 
 // [НОВОЕ] Метаданные всех 6 ресурсов
 const RES_META: Record<string, { icon: string; label: string; color: string }> = {
-  wood:   { icon: "🪵", label: "Дерево",   color: "text-amber-400" },
-  stone:  { icon: "🪨", label: "Камень",   color: "text-stone-400" },
+  wood:   { icon: "🪵", label: "Схема",   color: "text-amber-400" },
+  stone:  { icon: "🪨", label: "Кремний",   color: "text-stone-400" },
   food:   { icon: "🌾", label: "Еда",      color: "text-yellow-500" },
-  seeds:  { icon: "🌱", label: "Семена",   color: "text-sprout-500" },
-  water:  { icon: "💧", label: "Вода",     color: "text-water-500" },
-  potato: { icon: "🥔", label: "POTATO",   color: "text-wheat-500" },
+  seeds:  { icon: "🌱", label: "Нейрон",   color: "text-sprout-500" },
+  water:  { icon: "💧", label: "Энергопоток",     color: "text-water-500" },
+  potato: { icon: "🥔", label: "MIND",   color: "text-wheat-500" },
 };
 
 export function CraftPage() {

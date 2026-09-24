@@ -1,6 +1,6 @@
-# Watchtower OS v3 — AOF (Ideal Free Stack, 33 компонента)
+# Watchtower OS v3 — NeuroForge (ex-AOF; Ideal Free Stack, 33 компонента)
 
-Архитектура операционного слоя поверх AOF (tenant `aof`, network `stage` /
+Архитектура операционного слоя поверх NeuroForge (tenant `aof`, network `stage` /
 `prototype`). Канонический JSON: `GET /api/os/config`. Состав стека и дедупликация:
 `src/os/stack-v3.js`. Интеграционный чеклист: `WATCHTOWER_INTEGRATION.md`.
 

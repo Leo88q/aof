@@ -109,6 +109,10 @@ async function run(base) {
     report("devnet RPC getHealth", ok, JSON.stringify(health?.result ?? health?.error ?? {}).slice(0, 80));
     for (const p of PROGRAMS) {
       const id = p.deployedId || p.programId;
+      if (!id) {
+        notes.push(`program ${p.key}: placeholder (programId null) — RPC probe skipped`);
+        continue;
+      }
       try {
         const r = await rpc("getAccountInfo", [id, { encoding: "base64" }]);
         const found = Boolean(r?.result?.value);

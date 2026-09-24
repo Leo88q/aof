@@ -11,7 +11,7 @@ import {
 
 // 6 основных вкладок игры
 const TABS: { key: string; label: string; icon: React.ReactNode }[] = [
-  { key: "farm", label: "Ферма", icon: <FarmIcon size={20} /> },
+  { key: "farm", label: "Лаборатория", icon: <FarmIcon size={20} /> },
   { key: "tools", label: "Мастерская", icon: <ToolsIcon size={20} /> },
   { key: "economy", label: "Экономика", icon: <EconomyIcon size={20} /> },
   { key: "market", label: "Рынок", icon: <MarketIcon size={20} /> },

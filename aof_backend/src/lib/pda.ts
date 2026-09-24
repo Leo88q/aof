@@ -46,21 +46,12 @@ export const rarityCounterPda = (rarity: number) => find([enc("rarity_counter"),
 /**
  * ResourceKind discriminants in declaration order (aof-core/src/lib.rs). The
  * issuance-cap PDA is seeded with `kind as u8`, so this order must match the
- * Rust enum exactly; the Anchor enum object `{ gemBlue: {} }` does not carry
+ * Rust enum exactly; the Anchor enum object `{ quantumBit: {} }` does not carry
  * the index.
  */
-export const RESOURCE_KIND_ORDER = [
-  "food", "wood", "stone",
-  "seeds", "wheat", "flour", "bread", "water", "coal", "meat",
-  "stoneBlue", "stonePurple", "stoneRed",
-  "sandWhite", "sandPink", "sandYellow",
-  "gemBlue", "gemOrange", "gemWhite", "gemGreen",
-  "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
-  "loveHeart",
-  "potato",
-] as const;
+export const RESOURCE_KIND_ORDER = ["data", "circuit", "silicon", "neuron", "synapse", "signal", "model", "power", "compute", "dataset", "blueCore", "purpleCore", "redCore", "clearQuartz", "roseQuartz", "amberQuartz", "quantumBit", "neuralChip", "photonBit", "bioChip", "cryoFluid", "voltFluid", "bioFluid", "nanoFluid", "quantumFluid", "soulCore", "mind"] as const;
 
-/** `kind` may be an Anchor enum object (`{ gemBlue: {} }`), a camelCase name or a numeric index. */
+/** `kind` may be an Anchor enum object (`{ quantumBit: {} }`), a camelCase name or a numeric index. */
 export function resourceKindIndex(kind: unknown): number {
   if (typeof kind === "number") { if (!Number.isInteger(kind) || kind < 0 || kind >= RESOURCE_KIND_ORDER.length) throw new Error("invalid resource kind index"); return kind; }
   const name = typeof kind === "string" ? kind : (kind && typeof kind === "object" ? Object.keys(kind as object)[0] : undefined);

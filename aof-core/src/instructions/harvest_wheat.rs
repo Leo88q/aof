@@ -21,7 +21,7 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     // rental/delegate model: the current operator, not only the owner, signs.
     let tool = &mut ctx.accounts.tool_data;
     require!(tool.operator == ctx.accounts.user.key(), AofError::NotToolOperator);
-    require!(tool.tool_type.eq_ignore_ascii_case("reaper"), AofError::InvalidRarityForCraft); // переиспользуем ошибку
+    require!(crate::state::canonical_tool_type(&tool.tool_type) == Some("neural_seeder"), AofError::InvalidRarityForCraft); // [REBRAND] reaper -> neural_seeder (legacy id still accepted)
     require!(!tool.is_mining, AofError::ToolBusy);
 
     // Проверка что тайл готов
@@ -60,7 +60,7 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     };
     
     let wheat_amount = seeds_amount
-        .checked_mul(WHEAT_YIELD_MULT_BPS as u64)
+        .checked_mul(SYNAPSE_YIELD_MULT_BPS as u64)
         .ok_or(AofError::MathOverflow)?
         .checked_mul(yield_bps as u64)
         .ok_or(AofError::MathOverflow)?

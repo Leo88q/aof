@@ -3,16 +3,31 @@ import { api } from "./api";
 
 // Ресурсные минты (заданы /admin/set-resource-mints) + kind из контракта (ResourceKind)
 export const RESOURCE_MINTS = [
-  { key: "food", mint: "", kind: 0, label: "Зерно", icon: "🌾" },
-  { key: "wood", mint: "", kind: 1, label: "Древесина", icon: "🪵" },
-  { key: "stone", mint: "", kind: 2, label: "Камень", icon: "🪨" },
-  { key: "potato", mint: "", kind: 26, label: "POTATO", icon: "🥔" },
+  // [REBRAND] NeuroForge: keys = API-имена ресурсов (lowercase), kind = дискриминант ResourceKind
+  { key: "data", mint: "", kind: 0, label: "Данные", icon: "📊" },
+  { key: "circuit", mint: "", kind: 1, label: "Схема", icon: "🔌" },
+  { key: "silicon", mint: "", kind: 2, label: "Кремний", icon: "🧱" },
+  { key: "mind", mint: "", kind: 26, label: "MIND", icon: "🧠" },
 ];
 
-export const TOOL_ICONS: Record<string, string> = { axe: "🪓", pick: "⛏️", spear: "🗡️", bow: "🏹" };
+const IMG = {
+  plasma_cutter: "/assets/nfts/plasma-cutter.png",
+  silicon_extractor: "/assets/nfts/silicon-extractor.png",
+  data_harvester: "/assets/nfts/data-harvester.png",
+  quantum_transmitter: "/assets/nfts/quantum-transmitter.png",
+  neural_seeder: "/assets/nfts/neural-seeder.png",
+};
+// [REBRAND] NeuroForge tool art; legacy pre-rebrand ids alias to the same images.
+export const TOOL_ICONS: Record<string, string> = {
+  plasma_cutter: IMG.plasma_cutter, silicon_extractor: IMG.silicon_extractor,
+  data_harvester: IMG.data_harvester, quantum_transmitter: IMG.quantum_transmitter,
+  neural_seeder: IMG.neural_seeder,
+  axe: IMG.plasma_cutter, pick: IMG.silicon_extractor, spear: IMG.data_harvester,
+  bow: IMG.quantum_transmitter, reaper: IMG.neural_seeder,
+};
 
 export const RARITY_LABEL: Record<string, string> = {
-  common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический", legendary: "Легендарный",
+  common: "Базовый", uncommon: "Усиленный", rare: "Квантовый", epic: "Сингулярность", legendary: "Трансцендентный",
 };
 
 // Предметный визуальный язык рынка (ТЗ v3 §0): редкость = цвет урожая
@@ -96,31 +111,31 @@ export type TradeResource = { key: string; label: string; icon: string; mint: st
 
 export const ALL_TRADE_RESOURCES: TradeResource[] = [
   // ResourceKind discriminants are kept in the same order as aof-core.
-  { key: "FOOD", label: "Зерно", icon: "🌾", mint: "", kind: 0 },
-  { key: "WOOD", label: "Древесина", icon: "🪵", mint: "", kind: 1 },
-  { key: "STONE", label: "Камень", icon: "🪨", mint: "", kind: 2 },
-  { key: "SEEDS", label: "Семена", icon: "🌰", mint: "", kind: 3 },
-  { key: "WHEAT", label: "Пшеница", icon: "🌾", mint: "", kind: 4 },
-  { key: "FLOUR", label: "Мука", icon: "🥣", mint: "", kind: 5 },
-  { key: "BREAD", label: "Хлеб", icon: "🍞", mint: "", kind: 6 },
-  { key: "WATER", label: "Вода", icon: "💧", mint: "", kind: 7 },
-  { key: "COAL", label: "Уголь", icon: "⬛", mint: "", kind: 8 },
-  { key: "MEAT", label: "Мясо", icon: "🍖", mint: "", kind: 9 },
-  { key: "STONE_BLUE", label: "Сапфир", icon: "🔵", mint: "", kind: 10 },
-  { key: "STONE_PURPLE", label: "Аметист", icon: "🟣", mint: "", kind: 11 },
-  { key: "STONE_RED", label: "Рубин", icon: "🔴", mint: "", kind: 12 },
-  { key: "SAND_WHITE", label: "Кварцевый песок", icon: "⚪", mint: "", kind: 13 },
-  { key: "SAND_PINK", label: "Розовый песок", icon: "💗", mint: "", kind: 14 },
-  { key: "SAND_YELLOW", label: "Янтарный песок", icon: "🟡", mint: "", kind: 15 },
-  { key: "GEM_BLUE", label: "Сапфировый гем", icon: "💎", mint: "", kind: 16 },
-  { key: "GEM_ORANGE", label: "Янтарный гем", icon: "🟠", mint: "", kind: 17 },
-  { key: "GEM_WHITE", label: "Кварцевый гем", icon: "⚪", mint: "", kind: 18 },
-  { key: "GEM_GREEN", label: "Изумрудный гем", icon: "🟢", mint: "", kind: 19 },
-  { key: "FLASK_BLUE", label: "Зелье энергии", icon: "🧪", mint: "", kind: 20 },
-  { key: "FLASK_YELLOW", label: "Зелье газа", icon: "🧪", mint: "", kind: 21 },
-  { key: "FLASK_GREEN", label: "Зелье роста", icon: "🧪", mint: "", kind: 22 },
-  { key: "FLASK_PINK", label: "Зелье любви", icon: "🧪", mint: "", kind: 23 },
-  { key: "FLASK_PURPLE", label: "Зелье удачи", icon: "🧪", mint: "", kind: 24 },
-  { key: "LOVE_HEART", label: "Сердце любви", icon: "💗", mint: "", kind: 25 },
-  { key: "POTATO", label: "POTATO", icon: "🥔", mint: "", kind: 26 },
+  { key: "DATA", label: "Данные", icon: "📊", mint: "", kind: 0 },
+  { key: "CIRCUIT", label: "Схема", icon: "🔌", mint: "", kind: 1 },
+  { key: "SILICON", label: "Кремний", icon: "🧱", mint: "", kind: 2 },
+  { key: "NEURON", label: "Нейрон", icon: "⚡", mint: "", kind: 3 },
+  { key: "SYNAPSE", label: "Синапс", icon: "🔗", mint: "", kind: 4 },
+  { key: "SIGNAL", label: "Сигнал", icon: "📡", mint: "", kind: 5 },
+  { key: "MODEL", label: "Модель", icon: "🤖", mint: "", kind: 6 },
+  { key: "POWER", label: "Энергопоток", icon: "🔋", mint: "", kind: 7 },
+  { key: "COMPUTE", label: "Вычислительный цикл", icon: "💻", mint: "", kind: 8 },
+  { key: "DATASET", label: "Датасет", icon: "🗂️", mint: "", kind: 9 },
+  { key: "BLUE_CORE", label: "Синее ядро", icon: "🔵", mint: "", kind: 10 },
+  { key: "PURPLE_CORE", label: "Фиолетовое ядро", icon: "🟣", mint: "", kind: 11 },
+  { key: "RED_CORE", label: "Красное ядро", icon: "🔴", mint: "", kind: 12 },
+  { key: "CLEAR_QUARTZ", label: "Чистый кварц", icon: "⚪", mint: "", kind: 13 },
+  { key: "ROSE_QUARTZ", label: "Розовый кварц", icon: "🩷", mint: "", kind: 14 },
+  { key: "AMBER_QUARTZ", label: "Янтарный кварц", icon: "🟡", mint: "", kind: 15 },
+  { key: "QUANTUM_BIT", label: "Квантовый бит", icon: "💎", mint: "", kind: 16 },
+  { key: "NEURAL_CHIP", label: "Нейрочип", icon: "🟠", mint: "", kind: 17 },
+  { key: "PHOTON_BIT", label: "Фотонный бит", icon: "✨", mint: "", kind: 18 },
+  { key: "BIO_CHIP", label: "Биочип", icon: "🟢", mint: "", kind: 19 },
+  { key: "CRYO_FLUID", label: "Крио-флюид", icon: "🧊", mint: "", kind: 20 },
+  { key: "VOLT_FLUID", label: "Вольт-флюид", icon: "🌩️", mint: "", kind: 21 },
+  { key: "BIO_FLUID", label: "Био-флюид", icon: "🧬", mint: "", kind: 22 },
+  { key: "NANO_FLUID", label: "Нано-флюид", icon: "⚛️", mint: "", kind: 23 },
+  { key: "QUANTUM_FLUID", label: "Квантовый флюид", icon: "🌀", mint: "", kind: 24 },
+  { key: "SOUL_CORE", label: "Ядро души", icon: "❤️", mint: "", kind: 25 },
+  { key: "MIND", label: "MIND", icon: "🧠", mint: "", kind: 26 },
 ];

@@ -29,10 +29,10 @@ pub fn handler(ctx: Context<WeatherCrank>) -> Result<()> {
     // Погода: 0=засуха, 1=солнце, 2=дождь, 3=фестиваль
     // Вероятности: 10% засуха, 50% солнце, 30% дождь, 10% фестиваль
     let weather_type = match hash_val % 100 {
-        0..=9 => WEATHER_DROUGHT,
-        10..=59 => WEATHER_SUNNY,
-        60..=89 => WEATHER_RAIN,
-        _ => WEATHER_FESTIVAL,
+        0..=9 => WEATHER_BLACKOUT,
+        10..=59 => WEATHER_NOMINAL,
+        60..=89 => WEATHER_SURGE,
+        _ => WEATHER_FRENZY,
     };
 
     weather.day_id = day_id;

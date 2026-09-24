@@ -1,4 +1,7 @@
-# Age of Farming — Solana Migration Project
+# NeuroForge (ex-Age of Farming) — Solana Project
+
+> Ребрендинг 2026-09-24: бренд **NeuroForge — Age of Intelligence** (тема ИИ и развитие).
+> Механики и адреса не менялись — маппинг имён в `REBRAND_MAP.md`.
 
 ## 📚 Quick Start (ЧИТАЙ ПЕРВЫМ)
 1. `AOF_migration_TOR_v2.md` — полное ТЗ (библия проекта, 500+ строк)

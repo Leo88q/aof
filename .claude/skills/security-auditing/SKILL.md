@@ -5,7 +5,7 @@ description: Systematic security audit skill for AOF (game_id aof) — Solana pr
 
 # Security Auditing Skill (AOF v3)
 
-Systematic audit procedure for **Age of Farming** (tenant `aof`, network `stage`
+Systematic audit procedure for **NeuroForge** (ex-Age of Farming; tenant `aof`, network `stage`
 / `prototype`, program_ids `AOF_CORE_PROGRAM_ID`, `CgInv111...`, `SessKeys111...`,
 `STrEaSuRy111...`). Pair with **Sentio CLI** (tracing) and **SolGuard** (130+
 static checks; chosen over SolShield). Run order: this skill → sentio-cli → solguard

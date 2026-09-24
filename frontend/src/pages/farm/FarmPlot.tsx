@@ -15,11 +15,18 @@ const GRID = 8;
 const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
 
 // Постройки по типу инструмента (ТЗ v4 §1: топор — лесопилка, кирка — шахта, лук — вышка)
+// [REBRAND] NeuroForge постройки; legacy-id (axe/pick/spear/bow) → те же постройки для старых инструментов.
 const BUILDING: Record<string, { emoji: string; name: string }> = {
-  axe: { emoji: "🪚", name: "Лесопилка" },
-  pick: { emoji: "⛏️", name: "Шахта" },
-  spear: { emoji: "🏕️", name: "Охотничий лагерь" },
-  bow: { emoji: "🏹", name: "Вышка лучника" },
+  plasma_cutter: { emoji: "⚡", name: "Плазменный цех" },
+  silicon_extractor: { emoji: "⛏️", name: "Кремниевая шахта" },
+  data_harvester: { emoji: "📡", name: "Пост сбора данных" },
+  quantum_transmitter: { emoji: "🛰️", name: "Квантовая вышка" },
+  neural_seeder: { emoji: "🌱", name: "Посевная станция" },
+  axe: { emoji: "⚡", name: "Плазменный цех" },
+  pick: { emoji: "⛏️", name: "Кремниевая шахта" },
+  spear: { emoji: "📡", name: "Пост сбора данных" },
+  bow: { emoji: "🛰️", name: "Квантовая вышка" },
+  reaper: { emoji: "🌱", name: "Посевная станция" },
 };
 
 // Слоты построек по центру участка (спиралью наружу)
@@ -61,7 +68,7 @@ export function FarmPlot() {
     if (!selected) return;
     setBusy(true);
     try {
-      flash(action === "start" ? "Вагонетка поехала в забой…" : "Открываем сундук…");
+      flash(action === "start" ? "Экстрактор запущен…" : "Открываем контейнер…");
       const resp = action === "start"
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
@@ -81,7 +88,7 @@ export function FarmPlot() {
   return (
     <div className="p-4 pt-6 pb-24">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-parchment">Моя ферма</h1>
+        <h1 className="text-2xl font-bold text-parchment">Мой нейро-лаб</h1>
         <span className="text-straw text-sm">Визуализация участка</span>
       </div>
 
@@ -179,7 +186,7 @@ export function FarmPlot() {
                     {MINING_ENABLED ? "📦 Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
                   </button>
                 ) : (
-                  <p className="text-straw text-xs mt-1">⛏️ Идёт добыча — вернись, когда вагонетка доедет</p>
+                  <p className="text-straw text-xs mt-1">⛏️ Идёт добыча — вернись, когда экстрактор закончит</p>
                 )
               ) : (
                 <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}

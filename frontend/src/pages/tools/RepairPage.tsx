@@ -177,11 +177,11 @@ export function RepairPage() {
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div>
                       <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.stone / D9)}</p>
-                      <p className="text-straw text-[10px]">🪨 Камень</p>
+                      <p className="text-straw text-[10px]">🪨 Кремний</p>
                     </div>
                     <div>
                       <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.wood / D9)}</p>
-                      <p className="text-straw text-[10px]">🪵 Дерево</p>
+                      <p className="text-straw text-[10px]">🪵 Схема</p>
                     </div>
                   </div>
                 ) : (

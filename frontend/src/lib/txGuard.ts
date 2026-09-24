@@ -413,7 +413,7 @@ function estimateTokenOutflows(
 }
 
 /**
- * Конфиг для Age of Farming — безопасные программы игры.
+ * Конфиг для NeuroForge — безопасные программы игры.
  * The optional argument is retained for callers that pass one program ID;
  * the deployed six-program allowlist is always included.
  */

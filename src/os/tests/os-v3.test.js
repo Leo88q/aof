@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { existsSync, readdirSync } = require("node:fs");
 const { join } = require("node:path");
 
-const { GAME, PROGRAM_IDS, SESSION_KEYS, checkGameId } = require("../config");
+const { GAME, PROGRAMS, PROGRAM_IDS, SESSION_KEYS, checkGameId } = require("../config");
 const { VERSION, TOTAL, COMPONENTS, PRODUCT_INDEX, DEDUP_DECISIONS } = require("../stack-v3");
 const { SDKS, SDK_IDS, GODOT_V3_SDKS } = require("../sdk-configs");
 const { INFRA_IDS } = require("../infra-configs");
@@ -49,8 +49,29 @@ test("spec dedup decisions: Preset, RitArena, SolGuard", () => {
   assert.deepEqual(dropped, ["create-solana-game", "Aureus", "SolShield"]);
 });
 
-test("program_ids: AOF_CORE_PROGRAM_ID + CgInv111... + SessKeys111... + STrEaSuRy111...", () => {
-  assert.deepEqual(PROGRAM_IDS, ["AOF_CORE_PROGRAM_ID", "CgInv111...", "SessKeys111...", "STrEaSuRy111..."]);
+test("program_ids: 6 real program crates (Anchor.toml) + 2 null placeholders [AOF-H2]", () => {
+  assert.deepEqual(PROGRAM_IDS, [
+    "AOF_CORE_PROGRAM_ID",
+    "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+    "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+    "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
+    "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
+    "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+    "CgInv111...",
+    "STrEaSuRy111...",
+  ]);
+  // placeholders must carry NO address: clients skip RPC probes for them
+  for (const ph of ["CgInv111...", "STrEaSuRy111..."]) {
+    const entry = PROGRAMS.find((p) => p.key === ph);
+    assert.ok(entry, `placeholder ${ph} present`);
+    assert.equal(entry.programId, null, `${ph} must have programId null`);
+    assert.equal(entry.status, "placeholder");
+  }
+  // real entries carry registry addresses and honest verification status
+  const core = PROGRAMS.find((p) => p.alias === "aof_core");
+  assert.equal(core.programId, "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+  assert.equal(core.status, "reference-unverified");
+  assert.equal(core.rpcVerifiedAt, null);
   assert.equal(GAME.gameId, "aof");
   assert.equal(GAME.tenantId, "aof");
   assert.equal(GAME.network, "stage");
@@ -58,6 +79,8 @@ test("program_ids: AOF_CORE_PROGRAM_ID + CgInv111... + SessKeys111... + STrEaSuR
 });
 
 test("session keys: createSession AOF_CORE_PROGRAM_ID, topUp 0.01 SOL, expiry 60 min", () => {
+  // [AOF-H2] session-keys program = real anchor id, not the legacy placeholder
+  assert.equal(SESSION_KEYS.program, "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5");
   assert.equal(SESSION_KEYS.createSession.on, "AOF_CORE_PROGRAM_ID");
   assert.equal(SESSION_KEYS.topUpSol, 0.01);
   assert.equal(SESSION_KEYS.expiryMinutes, 60);
@@ -183,7 +206,9 @@ test("GET /api/os/config — v3 33 components", async () => {
   assert.equal(body.componentsTotal, 33);
   assert.equal(body.components.length, 33);
   assert.equal(body.controlPanels.total, 19);
-  assert.deepEqual(body.programIds, ["AOF_CORE_PROGRAM_ID", "CgInv111...", "SessKeys111...", "STrEaSuRy111..."]);
+  assert.deepEqual(body.programIds, PROGRAM_IDS);
+  assert.ok(body.programIds.includes("AOF_CORE_PROGRAM_ID"));
+  assert.equal(body.programs.length, PROGRAMS.length);
 });
 
 test("GET /api/sdk/godot-solana?gameId=aof", async () => {

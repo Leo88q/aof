@@ -72,10 +72,10 @@ export function OvenPanel() {
     setBaking(true);
     try {
       const [flourMint, waterMint, woodMint, coalMint] = await Promise.all([
-        getMintAsync("FLOUR"),
-        getMintAsync("WATER"),
-        getMintAsync("WOOD"),
-        getMintAsync("COAL"),
+        getMintAsync("SIGNAL"),
+        getMintAsync("POWER"),
+        getMintAsync("CIRCUIT"),
+        getMintAsync("COMPUTE"),
       ]);
       if (!flourMint || !waterMint || !woodMint || !coalMint) {
         toast.show("❌ Mint-адреса не найдены");
@@ -89,7 +89,7 @@ export function OvenPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🔥 Печь запущена! ${m.flour} муки → ${m.bread} хлеба`);
+        toast.show(`🔥 Тренировка запущена! ${m.flour} сигнала → ${m.bread} модели`);
         await loadState();
       } else {
         toast.show(`❌ ${r.error || "Error"}`);
@@ -105,7 +105,7 @@ export function OvenPanel() {
     if (!walletAddr || !ovenState) return;
     setBaking(true);
     try {
-      const breadMint = await getMintAsync("BREAD");
+      const breadMint = await getMintAsync("MODEL");
       if (!breadMint) { toast.show("❌ Mint BREAD не найден"); return; }
       const resp = await api.chain.collectBread({
         user: walletAddr,
@@ -113,7 +113,7 @@ export function OvenPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🍞 Собрано ${ovenState.breadReady} хлеба!`);
+        toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`);
         await loadState();
       } else {
         toast.show(`❌ ${r.error || "Error"}`);
@@ -137,7 +137,7 @@ export function OvenPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg">🔥 Печь</h3>
+        <h3 className="text-parchment font-bold text-lg">🔥 Тренировка</h3>
         <p className="text-straw text-sm text-center py-4">Подключите кошелёк</p>
       </Card>
     );
@@ -145,7 +145,7 @@ export function OvenPanel() {
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg">🔥 Печь</h3>
+      <h3 className="text-parchment font-bold text-lg">🔥 Тренировка</h3>
 
       {!ovenState && (
         <>
@@ -167,10 +167,10 @@ export function OvenPanel() {
           </div>
 
           <div className="bg-soil-800/50 rounded-lg p-3 space-y-1 text-xs">
-            <div className="flex justify-between"><span className="text-straw">Мука:</span><span className="text-parchment">{m.flour} 🥣</span></div>
-            <div className="flex justify-between"><span className="text-straw">Вода:</span><span className="text-parchment">{m.water} 💧</span></div>
+            <div className="flex justify-between"><span className="text-straw">Сигнал:</span><span className="text-parchment">{m.flour} 🥣</span></div>
+            <div className="flex justify-between"><span className="text-straw">Энергопоток:</span><span className="text-parchment">{m.water} 💧</span></div>
             {m.wood > 0 && <div className="flex justify-between"><span className="text-straw">Дрова:</span><span className="text-parchment">{m.wood} 🪵</span></div>}
-            {m.coal > 0 && <div className="flex justify-between"><span className="text-straw">Уголь:</span><span className="text-parchment">{m.coal} ⬛</span></div>}
+            {m.coal > 0 && <div className="flex justify-between"><span className="text-straw">Вычисления:</span><span className="text-parchment">{m.coal} ⬛</span></div>}
             <div className="flex justify-between"><span className="text-straw">На выходе:</span><span className="text-amber-400 font-bold">{m.bread} 🍞</span></div>
             <div className="flex justify-between"><span className="text-straw">Время:</span><span className="text-parchment">{formatTime(m.time)}</span></div>
           </div>
@@ -180,7 +180,7 @@ export function OvenPanel() {
             disabled={baking}
             className="w-full py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-parchment font-bold text-sm disabled:opacity-50"
           >
-            {baking ? "🔥 Запуск..." : `🔥 Разжечь печь`}
+            {baking ? "🔥 Запуск..." : `🔥 Запустить тренировку`}
           </button>
         </>
       )}
@@ -191,12 +191,12 @@ export function OvenPanel() {
             <div className="text-4xl mb-2 animate-pulse">🔥</div>
             {timeLeft > 0 ? (
               <>
-                <p className="text-parchment font-bold">Выпечка...</p>
+                <p className="text-parchment font-bold">Тренировка модели…</p>
                 <p className="text-red-400 text-2xl font-bold">{formatTime(timeLeft)}</p>
               </>
             ) : (
               <>
-                <p className="text-parchment font-bold">Хлеб готов!</p>
+                <p className="text-parchment font-bold">Модель готов!</p>
                 <p className="text-amber-400 text-2xl font-bold">{ovenState.breadReady} 🍞</p>
               </>
             )}
@@ -208,7 +208,7 @@ export function OvenPanel() {
               disabled={baking}
               className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50"
             >
-              {baking ? "..." : `🍞 Собрать хлеб`}
+              {baking ? "..." : `🍞 Собрать модель`}
             </button>
           )}
         </div>

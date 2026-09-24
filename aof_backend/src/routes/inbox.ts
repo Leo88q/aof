@@ -5,7 +5,7 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program, connection } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { fetchOne } from "../lib/decode";
@@ -34,71 +34,71 @@ function isIssuanceCapError(e: any): boolean {
 
 // Маппинг типов наград → kind для mintResource (как в resources.ts)
 const kindMap: Record<string, any> = {
-  FOOD: { food: {} },
-  WOOD: { wood: {} },
-  STONE: { stone: {} },
-  POTATO: { potato: {} },
+  DATA: { data: {} },
+  CIRCUIT: { circuit: {} },
+  SILICON: { silicon: {} },
+  MIND: { mind: {} },
   // [БЛОК L] Хлебная цепочка
-  SEEDS: { seeds: {} },
-  WHEAT: { wheat: {} },
-  FLOUR: { flour: {} },
-  BREAD: { bread: {} },
-  WATER: { water: {} },
-  COAL: { coal: {} },
-  MEAT: { meat: {} },
+  NEURON: { neuron: {} },
+  SYNAPSE: { synapse: {} },
+  SIGNAL: { signal: {} },
+  MODEL: { model: {} },
+  POWER: { power: {} },
+  COMPUTE: { compute: {} },
+  DATASET: { dataset: {} },
   // Камни
-  STONE_BLUE: { stoneBlue: {} },
-  STONE_PURPLE: { stonePurple: {} },
-  STONE_RED: { stoneRed: {} },
+  BLUE_CORE: { blueCore: {} },
+  PURPLE_CORE: { purpleCore: {} },
+  RED_CORE: { redCore: {} },
   // Песок
-  SAND_WHITE: { sandWhite: {} },
-  SAND_PINK: { sandPink: {} },
-  SAND_YELLOW: { sandYellow: {} },
+  CLEAR_QUARTZ: { clearQuartz: {} },
+  ROSE_QUARTZ: { roseQuartz: {} },
+  AMBER_QUARTZ: { amberQuartz: {} },
   // Гемы
-  GEM_BLUE: { gemBlue: {} },
-  GEM_ORANGE: { gemOrange: {} },
-  GEM_WHITE: { gemWhite: {} },
-  GEM_GREEN: { gemGreen: {} },
+  QUANTUM_BIT: { quantumBit: {} },
+  NEURAL_CHIP: { neuralChip: {} },
+  PHOTON_BIT: { photonBit: {} },
+  BIO_CHIP: { bioChip: {} },
   // Баночки
-  FLASK_BLUE: { flaskBlue: {} },
-  FLASK_YELLOW: { flaskYellow: {} },
-  FLASK_GREEN: { flaskGreen: {} },
-  FLASK_PINK: { flaskPink: {} },
-  FLASK_PURPLE: { flaskPurple: {} },
-  LOVE_HEART: { loveHeart: {} },
+  CRYO_FLUID: { cryoFluid: {} },
+  VOLT_FLUID: { voltFluid: {} },
+  BIO_FLUID: { bioFluid: {} },
+  NANO_FLUID: { nanoFluid: {} },
+  QUANTUM_FLUID: { quantumFluid: {} },
+  SOUL_CORE: { soulCore: {} },
 };
 
 const CONFIG_REWARD_MINT: Record<string, string> = {
-  FOOD: "foodMint",
-  WOOD: "woodMint",
-  STONE: "stoneMint",
-  POTATO: "potatoMint",
+  DATA: "foodMint",
+  CIRCUIT: "woodMint",
+  SILICON: "stoneMint",
+  MIND: "potatoMint",
 };
 
 const MATERIAL_REWARD_MINT: Record<string, string> = {
-  SEEDS: "seeds",
-  WHEAT: "wheat",
-  FLOUR: "flour",
-  BREAD: "bread",
-  WATER: "water",
-  COAL: "coal",
-  MEAT: "meat",
-  STONE_BLUE: "stoneBlue",
-  STONE_PURPLE: "stonePurple",
-  STONE_RED: "stoneRed",
-  SAND_WHITE: "sandWhite",
-  SAND_PINK: "sandPink",
-  SAND_YELLOW: "sandYellow",
-  GEM_BLUE: "gemBlue",
-  GEM_ORANGE: "gemOrange",
-  GEM_WHITE: "gemWhite",
-  GEM_GREEN: "gemGreen",
-  FLASK_BLUE: "flaskBlue",
-  FLASK_YELLOW: "flaskYellow",
-  FLASK_GREEN: "flaskGreen",
-  FLASK_PINK: "flaskPink",
-  FLASK_PURPLE: "flaskPurple",
-  LOVE_HEART: "loveHeart",
+  NEURON: "seeds",
+  SYNAPSE: "wheat",
+  SIGNAL: "flour",
+  MODEL: "bread",
+  POWER: "water",
+  COMPUTE: "coal",
+  DATASET: "meat",
+  STONE_BLUE: "stone_blue",
+  STONE_PURPLE: "stone_purple",
+  STONE_RED: "stone_red",
+  SAND_WHITE: "sand_white",
+  SAND_PINK: "sand_pink",
+  SAND_YELLOW: "sand_yellow",
+  GEM_BLUE: "gem_blue",
+  GEM_ORANGE: "gem_orange",
+  GEM_WHITE: "gem_white",
+  GEM_GREEN: "gem_green",
+  FLASK_BLUE: "flask_blue",
+  FLASK_YELLOW: "flask_yellow",
+  FLASK_GREEN: "flask_green",
+  FLASK_PINK: "flask_pink",
+  FLASK_PURPLE: "flask_purple",
+  LOVE_HEART: "love_heart",
 };
 
 // Список писем пользователя
@@ -214,7 +214,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
           .accounts({
             config,
             materialMints,
-            authority: AUTHORITY.publicKey,
+            authority: AUTHORITY_PUBKEY,
             auth,
             mint: mintPk,
             tokenAccount,
@@ -228,10 +228,10 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireIdempotency, 
           .instruction();
 
         const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY.publicKey, tokenAccount, ownerPk, mintPk,
+          AUTHORITY_PUBKEY, tokenAccount, ownerPk, mintPk,
         );
         const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY.publicKey, treasuryToken, treasury, mintPk,
+          AUTHORITY_PUBKEY, treasuryToken, treasury, mintPk,
         );
         onchainSig = await authorityOnly([createUserAta, createTreasuryAta, ix], async (signature) => {
           await db.inboxItem.update({

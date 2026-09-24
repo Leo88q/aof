@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { SystemProgram } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { sessionProgram } from "../provider";
 import { sessionConfigPda, trustSnapshotPda } from "../lib/pda";
 import { authorityOnly, pk } from "../lib/tx";
@@ -42,7 +42,7 @@ r.post("/snapshot/update", requireAdmin, async (req, res) => {
       .trustSnapshotUpdate(score, tier, epoch)
       .accounts({
         config,
-        oracleAuthority: AUTHORITY.publicKey,
+        oracleAuthority: AUTHORITY_PUBKEY,
         user,
         trust,
         systemProgram: SystemProgram.programId,

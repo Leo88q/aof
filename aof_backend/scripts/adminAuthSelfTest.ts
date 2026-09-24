@@ -169,12 +169,12 @@ async function testIssuanceCapMapping() {
   const rust = body.split("\n").map((l) => l.trim().replace(/,$/, "")).filter((l) => l && !l.startsWith("//")).map((n) => n[0].toLowerCase() + n.slice(1));
   assert.deepEqual([...RESOURCE_KIND_ORDER], rust);
   assert.equal(resourceKindIndex({ gemBlue: {} }), 16);
-  assert.equal(resourceKindIndex("potato"), 26);
+  assert.equal(resourceKindIndex("mind"), 26);
   assert.equal(resourceKindIndex(0), 0);
   assert.throws(() => resourceKindIndex({ nope: {} }));
   assert.throws(() => resourceKindIndex(99));
-  assert.equal(issuanceCapPda({ potato: {} })[0].toBase58(), issuanceCapPda("potato")[0].toBase58());
-  assert.notEqual(issuanceCapPda("potato")[0].toBase58(), issuanceCapPda("food")[0].toBase58());
+  assert.equal(issuanceCapPda({ potato: {} })[0].toBase58(), issuanceCapPda("mind")[0].toBase58());
+  assert.notEqual(issuanceCapPda("mind")[0].toBase58(), issuanceCapPda("data")[0].toBase58());
   // IDL errors for the cap must exist with the codes the backend matches on.
   const idl = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "idl", "aof_core.json"), "utf8"));
   const byName = Object.fromEntries(idl.errors.map((e: any) => [e.name, e.code]));

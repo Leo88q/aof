@@ -42,17 +42,17 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
 
   if (loading) return (
     <div className="p-4">
-      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад на свою ферму</button>
-      <p className="text-straw text-sm">Loading фермы {address}…</p>
+      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад в свою лабораторию</button>
+      <p className="text-straw text-sm">Загружаю лабораторию {address}…</p>
     </div>
   );
 
   if (!farm) return (
     <div className="p-4">
-      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад на свою ферму</button>
+      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад в свою лабораторию</button>
       <Card className="text-center py-8">
         <div className="text-4xl mb-2">🚫</div>
-        <p className="text-parchment text-sm">Ферма не найдена</p>
+        <p className="text-parchment text-sm">Лаборатория не найдена</p>
       </Card>
     </div>
   );
@@ -61,7 +61,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
 
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
-      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-2">← Назад на свою ферму</button>
+      <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-2">← Назад в свою лабораторию</button>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -74,7 +74,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
         <div className="flex items-center gap-3">
           <div className="text-4xl">🌾</div>
           <div>
-            <h1 className="text-parchment font-bold text-lg">Ферма {shortAddr(address)}</h1>
+            <h1 className="text-parchment font-bold text-lg">Лаборатория {shortAddr(address)}</h1>
             <p className="text-straw text-xs">Просмотр (только чтение)</p>
           </div>
         </div>
@@ -90,15 +90,15 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
             <p className="text-parchment font-bold text-xl">{fmtNum(balances.FOOD || 0)}</p>
-            <p className="text-straw text-xs">🌾 Зерно</p>
+            <p className="text-straw text-xs">🌾 Данные</p>
           </div>
           <div>
             <p className="text-parchment font-bold text-xl">{fmtNum(balances.WOOD || 0)}</p>
-            <p className="text-straw text-xs">🪵 Дерево</p>
+            <p className="text-straw text-xs">🪵 Схема</p>
           </div>
           <div>
             <p className="text-parchment font-bold text-xl">{fmtNum(balances.STONE || 0)}</p>
-            <p className="text-straw text-xs">🪨 Камень</p>
+            <p className="text-straw text-xs">🪨 Кремний</p>
           </div>
         </div>
       </Card>

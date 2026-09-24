@@ -87,6 +87,7 @@ export const inboxCreateSchema = z.object({
 
 export const compendiumMarkSeenSchema = z.object({
   user: pubkeySchema,
-  toolType: z.enum(["axe", "pick", "spear", "bow", "reaper"]),
+  // [REBRAND] new NeuroForge ids + legacy pre-rebrand ids (server normalizes legacy)
+toolType: z.enum(["plasma_cutter", "silicon_extractor", "data_harvester", "quantum_transmitter", "neural_seeder", "axe", "pick", "spear", "bow", "reaper"]),
   rarity: z.enum(["common", "uncommon", "rare", "epic", "legendary"]),
 }).strict();

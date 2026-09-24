@@ -1,23 +1,48 @@
-# WATCHTOWER_INTEGRATION.md — AOF v3 (Watchtower OS v3, Ideal Free Stack)
+# WATCHTOWER_INTEGRATION.md — NeuroForge v3 (Watchtower OS v3, Ideal Free Stack)
+
+> Ребрендинг 2026-09-24: бренд = **NeuroForge — Age of Intelligence**; game_id/tenant `aof` и адреса программ не меняются (см. `REBRAND_MAP.md`).
 
 | Поле | Значение |
 |---|---|
 | **game_id** | `aof` |
 | **tenant_id** | `aof` (Postgres RLS `tenant_id = 'aof'`) |
-| **name** | Age of Farming — farming crafting trading marketplace |
+| **name** | NeuroForge — AI training crafting trading marketplace (ex-Age of Farming) |
 | **network** | `stage` (`stage=prototype`) |
-| **program_ids** | `AOF_CORE_PROGRAM_ID` + `CgInv111...` + `SessKeys111...` + `STrEaSuRy111...` |
-| **stack** | Watchtower OS v3 — 33 компонента ideal free stack (deduplicated, same as ARES-1) |
+| **program_ids** | 6 program crates (see table below, `Anchor.toml`) + 2 spec-заглушки (`programId: null`) |
+| **stack** | Watchtower OS v3 — целевой «ideal free» состав из 33 позиций; **ни один** из сторонних сервисов в этот репозиторий ещё не подключён (см. «Статус деплоя») |
 | **config API** | `GET /api/os/config` (`src/os/server.js`) |
 
 ## program_ids
 
-| Symbolic | Alias | Resolved id | Статус |
+Источники: `Anchor.toml` (`[programs.localnet]` == `[programs.devnet]`) и
+реестр `watchtower/addresses.json` (6 program crates этого репозитория).
+Статусы — честные: `reference-unverified`, `rpcVerifiedAt: null` — живой RPC-
+проверкой адреса НЕ проверялись (оператору — до прода); mainnet-версий
+программ нет.
+
+| Symbolic key | Alias (crate) | Resolved id | Статус |
 |---|---|---|---|
-| `AOF_CORE_PROGRAM_ID` | aof_core | `HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq` | deployed (devnet reference) |
-| `CgInv111...` | aof_cginv (craft-gamble inventory) | `CgInv1111111111111111111111111111111111111` | stage-prototype placeholder |
-| `SessKeys111...` | aof_session_keys | `SessKeys11111111111111111111111111111111111` (deployed: `6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5`) | stage-prototype placeholder |
-| `STrEaSuRy111...` | aof_treasury | `STrEaSuRy1111111111111111111111111111111` | stage-prototype placeholder |
+| `AOF_CORE_PROGRAM_ID` | aof_core | `HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `4BhD6spJ…` | aof_market | `4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `4fNKhVw2…` | aof_quests | `4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `4rMWC1h9…` | aof_rebirth | `4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `Gvbo9wDE…` | aof_liquidity | `Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `6ZnnyKkv…` | aof_session_keys | `6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `CgInv111...` | aof_cginv | **нет адреса** (`programId: null`) | спекулятивная заглушка: crate `aof_cginv` в репозитории отсутствует; RPC-использование запрещено |
+| `STrEaSuRy111...` | aof_treasury | **нет адреса** (`programId: null`) | спекулятивная заглушка: отдельного treasury-программы нет; RPC-использование запрещено |
+
+## Статус деплоя
+
+- Mainnet: **программы не задеплоены** — в `Anchor.toml` только localnet/devnet.
+- Devnet/localnet: адреса зафиксированы в `Anchor.toml` и
+  `watchtower/addresses.json`; факт на-chain-наличия аккаунтов **не
+  независимо подтверждён** (RPC недоступен в audit-среде) — оператор обязан
+  прогнать `cd src/os && npm run smoke` (без `--offline`) с доступным
+  devnet-RPC до любого прода-решения.
+- `GET /api/os/config` отдаёт ровно эту таблицу (`programId: null` для
+  заглушек) — хаб (games-watchtower) читает эти данные.
+
+
 
 ## Dedup (ideal free, same as ARES-1)
 
@@ -28,6 +53,8 @@
 | **SolGuard** | SolShield | 130+ checks, best free |
 
 ## 33 компонента (GET /api/os/config → componentsTotal: 33)
+
+> **Честная пометка:** это целевой «ideal free» состав (каталог выбранных сторонних сервисов). В текущем коде репозитория интеграции с этими сервисами отсутствуют — реализованы только он-чейн-программы, backend, self-checks и OS-конфиг.
 
 Identity: **Privy** · **Phantom FirstStep** · **Altude** · **Session Keys** (0.01 SOL)
 Assets: **cNFT $110/M** (Bubblegum v2 Merkle Tree, MCC, Tensor primary) · **Core Attributes** (on-chain key-value, GrowthStage, Position, DAS 5ms)
@@ -91,8 +118,10 @@ tps=high→Sonic HyperGrid; ux=gasless→Magic Actions, ux=private→Arcium+PST)
 
 ## Indexer
 
-**LaserStream** gRPC `AOF_CORE_PROGRAM_ID` + `CgInv111...` + `SessKeys111...` +
-`STrEaSuRy111...` · ARC Bolt DePIN Gamba Husks RitArena RACE Arcium Xandeum PST
+**LaserStream** gRPC: 6 реальных программ из `Anchor.toml` (таблица
+program_ids выше; заглушки `CgInv111...` / `STrEaSuRy111...` — **не**
+индексируются, адреса у них отсутствуют) · ARC Bolt DePIN Gamba Husks RitArena
+RACE Arcium Xandeum PST
 Core Attributes события · **Shyft** callbacks `TOKEN_MINT` `NFT_MINT` gPA 15ms ·
 **PG TimescaleDB Redis** idempotency gap backfill finalized reconciliation
 (ledger: `watchtower/`, `aof_backend/services/chain-indexer`).

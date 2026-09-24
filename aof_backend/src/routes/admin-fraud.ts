@@ -9,7 +9,7 @@ import { db } from "../lib/db";
 import { adminByMethod } from "../middleware/adminAuth";
 import { resolveAuditActor } from "../middleware/audit";
 import { scanFraudSignals, SIGNAL_CONFIG } from "../lib/fraudSignals";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 
 const r = Router();
 r.use(adminByMethod);
@@ -56,7 +56,7 @@ r.post("/scan", async (req, res) => {
     const windowHours = Number(req.body?.windowHours);
     const result = await scanFraudSignals({
       windowHours: Number.isFinite(windowHours) && windowHours > 0 ? Math.min(windowHours, 24 * 30) : undefined,
-      authorityPayers: [AUTHORITY.publicKey.toBase58()],
+      authorityPayers: [AUTHORITY_PUBKEY.toBase58()],
     });
     const actor = resolveAuditActor(req);
     await db.auditLog.create({ data: { user: actor.user, action: "fraud_scan", result: "success", metadata: JSON.stringify({ windowHours: result.windowHours, findings: result.findings.length, opened: result.opened, refreshed: result.refreshed }) } });

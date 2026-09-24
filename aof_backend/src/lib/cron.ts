@@ -1,6 +1,6 @@
 import { takeEconomySnapshot } from "./economyMonitor";
 import { scanFraudSignals } from "./fraudSignals";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 
 /**
  * Cron jobs для фоновых задач OpenClaw
@@ -31,7 +31,7 @@ export function startCronJobs() {
   if (!fraudInterval && fraudEveryMin > 0) {
     fraudInterval = setInterval(async () => {
       try {
-        await scanFraudSignals({ authorityPayers: [AUTHORITY.publicKey.toBase58()] });
+        await scanFraudSignals({ authorityPayers: [AUTHORITY_PUBKEY.toBase58()] });
       } catch (e) {
         console.error("❌ [Cron] Fraud signal scan failed:", e);
       }

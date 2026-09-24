@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import { AUTHORITY } from "../config";
+import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import {
   authPda,
@@ -57,12 +57,12 @@ r.post("/fuse", async (req, res) => {
     }
     const [rarityCounter] = rarityCounterPda(targetRarity);
     const resourceMints = {
-      wood: new PublicKey(cfg.woodMint),
-      stone: new PublicKey(cfg.stoneMint),
-      food: new PublicKey(cfg.foodMint),
-      seeds: new PublicKey(cfg.seedsMint),
-      water: new PublicKey(cfg.waterMint),
-      potato: new PublicKey(cfg.potatoMint),
+      circuit: new PublicKey(cfg.woodMint),
+      silicon: new PublicKey(cfg.stoneMint),
+      data: new PublicKey(cfg.foodMint),
+      neuron: new PublicKey(cfg.seedsMint),
+      power: new PublicKey(cfg.waterMint),
+      mind: new PublicKey(cfg.potatoMint),
     };
     const ata = (m: PublicKey) => getAssociatedTokenAddressSync(m, user);
 
@@ -84,18 +84,18 @@ r.post("/fuse", async (req, res) => {
         auth,
         rarityCounter,
         craftEconomy,
-        woodMint: resourceMints.wood,
-        userWood: ata(resourceMints.wood),
-        stoneMint: resourceMints.stone,
-        userStone: ata(resourceMints.stone),
-        foodMint: resourceMints.food,
-        userFood: ata(resourceMints.food),
-        seedsMint: resourceMints.seeds,
-        userSeeds: ata(resourceMints.seeds),
-        waterMint: resourceMints.water,
-        userWater: ata(resourceMints.water),
-        potatoMint: resourceMints.potato,
-        userPotato: ata(resourceMints.potato),
+        woodMint: resourceMints.circuit,
+        userWood: ata(resourceMints.circuit),
+        stoneMint: resourceMints.silicon,
+        userStone: ata(resourceMints.silicon),
+        foodMint: resourceMints.data,
+        userFood: ata(resourceMints.data),
+        seedsMint: resourceMints.neuron,
+        userSeeds: ata(resourceMints.neuron),
+        waterMint: resourceMints.power,
+        userWater: ata(resourceMints.power),
+        potatoMint: resourceMints.mind,
+        userPotato: ata(resourceMints.mind),
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -166,7 +166,7 @@ r.post("/random/reveal", requireCircuitOpen, requireWalletLimits("reroll_reveal"
       .rerollRandomReveal(secret)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         rerollConfig,
         rerollCommit,
         payer: user,
@@ -197,7 +197,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
       .initRerollConfig(oddsBps)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: AUTHORITY_PUBKEY,
         rerollConfig,
         systemProgram: SystemProgram.programId,
       })

@@ -6,10 +6,10 @@ import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 
 const WEATHER_RATES = {
-  drought: { label: "Засуха", icon: "☀️", rate: 0, color: "#ef4444" },
-  sunny: { label: "Солнечно", icon: "🌤️", rate: 5, color: "#f59e0b" },
-  rain: { label: "Дождь", icon: "🌧️", rate: 15, color: "#3b82f6" },
-  festival: { label: "Фестиваль", icon: "🎉", rate: 20, color: "#a855f7" },
+  drought: { label: "Блэкаут", icon: "☀️", rate: 0, color: "#ef4444" },
+  sunny: { label: "Номинал", icon: "🌤️", rate: 5, color: "#f59e0b" },
+  rain: { label: "Скачок", icon: "🌧️", rate: 15, color: "#3b82f6" },
+  festival: { label: "Френзи", icon: "🎉", rate: 20, color: "#a855f7" },
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;
@@ -37,7 +37,7 @@ export function WellPanel() {
     const [weatherState, wellState, mint] = await Promise.all([
       api.query.weatherState().catch(() => null),
       api.query.wellState(walletAddr).catch(() => null),
-      getMintAsync("WATER"),
+      getMintAsync("POWER"),
     ]);
     setWeather(weatherState);
     setWell(wellState);
@@ -62,7 +62,7 @@ export function WellPanel() {
     try {
       const response = await api.chain.weatherCrank({ cranker: walletAddr });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "✅ Погода обновлена on-chain" : `❌ ${result.error}`);
+      setMessage(result.success ? "✅ Нагрузка сети обновлена on-chain" : `❌ ${result.error}`);
       if (result.success) await loadState();
     } catch (e: any) {
       setMessage(`❌ ${e.message}`);
@@ -77,7 +77,7 @@ export function WellPanel() {
     try {
       const response = await api.chain.collectWellWater({ user: walletAddr, waterMint });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "✅ Колодец обработан on-chain; баланс обновится после подтверждения" : `❌ ${result.error}`);
+      setMessage(result.success ? "✅ Станция обработана on-chain; баланс обновится после подтверждения" : `❌ ${result.error}`);
       if (result.success) await loadState();
     } catch (e: any) {
       setMessage(`❌ ${e.message}`);
@@ -87,13 +87,13 @@ export function WellPanel() {
   }
 
   if (!walletAddr) {
-    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg">💧 Колодец</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
+    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg">🔋 Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
   }
 
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2">💧 Колодец</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2">🔋 Сетевая станция</h3>
         <span className="text-xs text-straw">Источник: on-chain</span>
       </div>
 
@@ -109,7 +109,7 @@ export function WellPanel() {
           <div className="flex items-center gap-3">
             <div className="text-5xl">{w.icon}</div>
             <div className="flex-1">
-              <p className="text-straw text-xs">Погода: <b style={{ color: w.color }}>{w.label}</b></p>
+              <p className="text-straw text-xs">Нагрузка сети: <b style={{ color: w.color }}>{w.label}</b></p>
               <p className="text-straw text-xs">Скорость: <b className="text-parchment">{w.rate}</b> 💧/час</p>
             </div>
           </div>
@@ -123,7 +123,7 @@ export function WellPanel() {
               Итоговое количество воды вычисляется on-chain по времени и погоде;
               локальная оценка не показывается.
             </p>
-            {!well && <p className="text-straw text-[10px] mt-2">PDA колодца ещё нет. Первый вызов создаёт его и начинает накопление.</p>}
+            {!well && <p className="text-straw text-[10px] mt-2">PDA сетевой станции ещё нет. Первый вызов создаёт её и начинает накопление.</p>}
           </div>
 
           <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">

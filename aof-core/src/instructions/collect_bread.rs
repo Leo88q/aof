@@ -22,7 +22,7 @@ pub fn handler(ctx: Context<CollectBread>) -> Result<()> {
     // [AUDIT F-03] see collect_flour: bread emission bypassed IssuanceCap.
     check_supply_cap(
         &ctx.accounts.material_mints,
-        ResourceKind::Bread,
+        ResourceKind::Model,
         ctx.accounts.bread_mint.supply,
         output,
     )?;
