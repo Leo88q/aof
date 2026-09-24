@@ -24,6 +24,14 @@ const CRANK_INTERVAL_MS = Number(process.env.CRANK_INTERVAL_MS) > 0
 const RARITIES = [1, 2, 3, 4];
 
 async function crankRarity(rarity: number): Promise<void> {
+  // [AUDIT AOF-H1] Fail-closed: crank подписывает authority; в read-only
+  // режиме поднимаем ошибку до сборки транзакции (guard сужает тип Keypair).
+  if (!AUTHORITY) {
+    throw new Error(
+      "Authority signing is disabled (AUTHORITY_MODE=read-only). " +
+      "Wire Squads/KMS or run with AUTHORITY_MODE=hot [AOF-H1].",
+    );
+  }
   try {
     const [pool] = hotMarketPoolPda(rarity);
 
