@@ -39,7 +39,8 @@ for arg in "$@"; do
     --no-pull)               NO_PULL=1 ;;
     --i-understand-nogo)     NOGO_OK=1 ;;
     --help|-h)
-      sed -n '2,23p' "$0" | sed 's/^# \?//'
+      # portable sed (macOS BSD sed не понимает \?)
+      sed -n '2,23p' "$0" | sed -e 's/^#//' -e 's/^ //'
       exit 0 ;;
     *)
       echo "❌ Неизвестный аргумент: $arg (см. --help)" >&2
@@ -69,15 +70,20 @@ WALLET="${AUTHORITY_KEY:-solana/keys/aof-authority-devnet.json}"
 # Все программы workspace (имена = из Anchor.toml → target/deploy/<name>.so)
 PROGRAMS=(aof_core aof_liquidity aof_rebirth aof_quests aof_market aof_session_keys)
 
-# ID программ из Anchor.toml (сверка keypair ↔ declare_id)
-declare -A EXPECTED_ID=(
-  [aof_core]="HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
-  [aof_liquidity]="Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv"
-  [aof_rebirth]="4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb"
-  [aof_quests]="4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
-  [aof_market]="4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
-  [aof_session_keys]="6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5"
-)
+# ID программ из Anchor.toml (сверка keypair ↔ declare_id).
+# NB: не declare -A: на macOS системный bash 3.2 не поддерживает
+# ассоциативные массивы (ошибка "unbound variable" на строке declare).
+expected_id() {
+  case "$1" in
+    aof_core)         echo "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq" ;;
+    aof_liquidity)    echo "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv" ;;
+    aof_rebirth)      echo "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb" ;;
+    aof_quests)       echo "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU" ;;
+    aof_market)       echo "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo" ;;
+    aof_session_keys) echo "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5" ;;
+    *) echo "unknown program: $1" >&2; return 1 ;;
+  esac
+}
 
 case "$CLUSTER" in
   devnet)     RPC_URL="https://api.devnet.solana.com" ;;
@@ -170,7 +176,7 @@ for p in "${PROGRAMS[@]}"; do
     continue
   fi
   actual="$(solana-keygen pubkey "$kp")"
-  expected="${EXPECTED_ID[$p]}"
+  expected="$(expected_id "$p")"
   if [ "$actual" != "$expected" ]; then
     warn "$p: keypair=$actual, ожидается $expected — ID DRIFT!"
     MISSING_KP=1
@@ -250,7 +256,7 @@ else
   BACKUP_DIR="backup/$(date +%Y%m%d-%H%M%S)-$CLUSTER"
   mkdir -p "$BACKUP_DIR"
   for p in "${PROGRAMS[@]}"; do
-    pid="${EXPECTED_ID[$p]}"
+    pid="$(expected_id "$p")"
     if solana program show "$pid" --url "$RPC_URL" >/dev/null 2>&1; then
       echo "  dump текущего $p ($pid) → $BACKUP_DIR/"
       solana program dump "$pid" "$BACKUP_DIR/${p}.so" --url "$RPC_URL" >/dev/null
@@ -263,7 +269,8 @@ else
     so="target/deploy/${p}.so"
     [ -f "$kp" ] || die "нет keypair $kp — деплой остановлен"
     actual="$(solana-keygen pubkey "$kp")"
-    [ "$actual" = "${EXPECTED_ID[$p]}" ] || die "$p: keypair ($actual) != Anchor.toml (${EXPECTED_ID[$p]})"
+    exp_id="$(expected_id "$p")"
+    [ "$actual" = "$exp_id" ] || die "$p: keypair ($actual) != Anchor.toml ($exp_id)"
     echo "  → деплой $p ($actual)"
     solana --url "$RPC_URL" --keypair "$WALLET" program deploy \
       --program-id "$kp" \
