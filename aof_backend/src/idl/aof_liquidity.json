@@ -4,7 +4,7 @@
     "name": "aof_liquidity",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Age of Farming Liquidity Pools for Hot Market"
+    "description": "NeuroForge — Age of Intelligence Liquidity Pools"
   },
   "instructions": [
     {
@@ -884,21 +884,21 @@
           {
             "name": "total_shares",
             "docs": [
-              "\u0412\u0441\u0435\u0433\u043e \u0432\u044b\u043f\u0443\u0449\u0435\u043d\u043e \u0434\u043e\u043b\u0435\u0439"
+              "Всего выпущено долей"
             ],
             "type": "u64"
           },
           {
             "name": "mascot_reserve",
             "docs": [
-              "\u0420\u0435\u0437\u0435\u0440\u0432 \u043c\u0430\u0441\u043a\u043e\u0442-\u0442\u043e\u043a\u0435\u043d\u0430 \u0432 \u043f\u0443\u043b\u0435"
+              "Резерв маскот-токена в пуле"
             ],
             "type": "u64"
           },
           {
             "name": "accumulated_fees",
             "docs": [
-              "\u041d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u043a\u043e\u043c\u0438\u0441\u0441\u0438\u0438 \u043e\u0442 \u0445\u043e\u0442-\u043c\u0430\u0440\u043a\u0435\u0442\u0430"
+              "Накопленные комиссии от хот-маркета"
             ],
             "type": "u64"
           }

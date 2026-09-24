@@ -9,7 +9,7 @@ import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 import { connection } from "../../lib/wallet";
 
-const EXPLORATION_COST = { food: 75, wood: 35, stone: 35, meat: 50 };
+const EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset = { food: 75, wood: 35, stone: 35, meat: 50 };
 
 export function ExplorationPage() {
   const { address } = useWalletStore();
@@ -99,10 +99,10 @@ export function ExplorationPage() {
         <div className="bg-soil-800/60 rounded-xl p-4 mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3">Стоимость похода:</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-straw">📊 Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST.food}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🔌 Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST.wood}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🧊 Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST.stone}</span></div>
-            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold">🍖 Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.meat}</span></div>
+            <div className="flex justify-between"><span className="text-straw">📊 Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.food}</span></div>
+            <div className="flex justify-between"><span className="text-straw">🔌 Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.wood}</span></div>
+            <div className="flex justify-between"><span className="text-straw">🧊 Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.stone}</span></div>
+            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold">🍖 Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.meat}</span></div>
           </div>
         </div>
 
