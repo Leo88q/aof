@@ -37,7 +37,7 @@ export function CollectionPage() {
 
       <section>
         <h2 className="text-parchment font-semibold mb-1">25 NFT · 5 × 5</h2>
-        <p className="text-straw text-xs mb-3">Базовая и усиленная пластины готовы. Квантовая, сингулярность и трансцендентная — следующие пачки, без обрезки.</p>
+        <p className="text-straw text-xs mb-3">Готовы common, uncommon, rare и epic. Legendary — следующая пачка, без обрезки.</p>
         <div className="space-y-4">
           {TOOL_NFTS.map((tool) => (
             <div key={tool.id}>
