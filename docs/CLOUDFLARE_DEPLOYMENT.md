@@ -1,4 +1,4 @@
-# Инструкция по развертыванию Age of Farming на Cloudflare Pages
+# Инструкция по развертыванию NeuroForge на Cloudflare Pages (бренд ex-Age of Farming)
 
 Игра (клиентская часть на React + Vite) развёртывается через сервис **Cloudflare Pages**.
 

@@ -9,72 +9,72 @@ const FULL_RECIPES = [
   // === ГЕМЫ (из камней и песка) ===
   {
     id: 0, category: "gems",
-    label: "Сапфировый гем", icon: "💎",
-    output: { key: "GEM_BLUE", amount: 1 },
+    label: "Квантовый бит", icon: "💎",
+    output: { key: "QUANTUM_BIT", amount: 1 },
     inputs: [
-      { key: "STONE_BLUE", label: "Сапфир", icon: "🔵", amount: 1 },
+      { key: "BLUE_CORE", label: "Голубое ядро", icon: "🔵", amount: 1 },
     ]
   },
   {
     id: 1, category: "gems",
-    label: "Янтарный гем", icon: "🟠",
-    output: { key: "GEM_ORANGE", amount: 1 },
+    label: "Нейрочип", icon: "🟠",
+    output: { key: "NEURAL_CHIP", amount: 1 },
     inputs: [
-      { key: "STONE_RED", label: "Рубин", icon: "🔴", amount: 1 },
+      { key: "RED_CORE", label: "Красное ядро", icon: "🔴", amount: 1 },
     ]
   },
   {
     id: 2, category: "gems",
-    label: "Кварцевый гем", icon: "⚪",
-    output: { key: "GEM_WHITE", amount: 1 },
+    label: "Фотон-бит", icon: "⚪",
+    output: { key: "PHOTON_BIT", amount: 1 },
     inputs: [
-      { key: "SAND_WHITE", label: "Кварцевый песок", icon: "⚪", amount: 1 },
+      { key: "CLEAR_QUARTZ", label: "Чистый кварц", icon: "⚪", amount: 1 },
     ]
   },
   // === ФЛАКОНЫ (зелья) ===
   {
     id: 3, category: "flask",
-    label: "Зелье энергии", icon: "🧪",
-    output: { key: "FLASK_BLUE", amount: 1 },
+    label: "Крио-флюид", icon: "🧪",
+    output: { key: "CRYO_FLUID", amount: 1 },
     inputs: [
-      { key: "GEM_BLUE", label: "Сапфировый гем", icon: "💎", amount: 2 },
-      { key: "FOOD", label: "Зерно", icon: "🌾", amount: 5 },
+      { key: "QUANTUM_BIT", label: "Квантовый бит", icon: "💎", amount: 2 },
+      { key: "DATA", label: "Данные", icon: "🌾", amount: 5 },
     ]
   },
   {
     id: 4, category: "flask",
-    label: "Зелье газа", icon: "🧪",
-    output: { key: "FLASK_YELLOW", amount: 1 },
+    label: "Вольт-флюид", icon: "🧪",
+    output: { key: "VOLT_FLUID", amount: 1 },
     inputs: [
-      { key: "GEM_ORANGE", label: "Янтарный гем", icon: "🟠", amount: 2 },
-      { key: "STONE", label: "Камень", icon: "🪨", amount: 3 },
+      { key: "NEURAL_CHIP", label: "Нейрочип", icon: "🟠", amount: 2 },
+      { key: "SILICON", label: "Кремний", icon: "🪨", amount: 3 },
     ]
   },
   {
     id: 5, category: "flask",
-    label: "Зелье роста", icon: "🧪",
-    output: { key: "FLASK_GREEN", amount: 1 },
+    label: "Био-флюид", icon: "🧪",
+    output: { key: "BIO_FLUID", amount: 1 },
     inputs: [
-      { key: "WOOD", label: "Древесина", icon: "🪵", amount: 5 },
-      { key: "SEEDS", label: "Семена", icon: "🌰", amount: 5 },
+      { key: "CIRCUIT", label: "Схема", icon: "🪵", amount: 5 },
+      { key: "NEURON", label: "Нейрон", icon: "🌰", amount: 5 },
     ]
   },
   {
     id: 6, category: "flask",
-    label: "Зелье любви", icon: "🧪",
-    output: { key: "FLASK_PINK", amount: 1 },
+    label: "Нано-флюид", icon: "🧪",
+    output: { key: "NANO_FLUID", amount: 1 },
     inputs: [
-      { key: "SAND_PINK", label: "Розовый песок", icon: "💗", amount: 3 },
-      { key: "FOOD", label: "Зерно", icon: "🌾", amount: 5 },
+      { key: "ROSE_QUARTZ", label: "Розовый кварц", icon: "💗", amount: 3 },
+      { key: "DATA", label: "Данные", icon: "🌾", amount: 5 },
     ]
   },
   {
     id: 7, category: "flask",
-    label: "Зелье удачи", icon: "🧪",
-    output: { key: "FLASK_PURPLE", amount: 1 },
+    label: "Квантовый флюид", icon: "🧪",
+    output: { key: "QUANTUM_FLUID", amount: 1 },
     inputs: [
-      { key: "STONE_PURPLE", label: "Аметист", icon: "🟣", amount: 1 },
-      { key: "GEM_GREEN", label: "Изумрудный гем", icon: "🟢", amount: 1 },
+      { key: "PURPLE_CORE", label: "Фиолетовое ядро", icon: "🟣", amount: 1 },
+      { key: "BIO_CHIP", label: "Био-чип", icon: "🟢", amount: 1 },
     ]
   },
 
@@ -146,7 +146,7 @@ export function Workshop() {
           className={"sub-tab-btn" + (section === "timed" ? " active" : "")}
           onClick={() => setSection("timed")}
         >
-          ⏱️ Печь/Мельница
+          ⏱️ Тренировка/Переработка
         </button>
       </div>
 
@@ -197,16 +197,16 @@ export function Workshop() {
         <div style={{textAlign: "center", padding: "24px 16px"}}>
           <div style={{fontSize: "48px", marginBottom: "12px"}}>🏡</div>
           <h3 style={{color: "#fbbf24", fontSize: "18px", marginBottom: "8px", fontWeight: "bold"}}>
-            Мельница и Печь теперь во вкладке "Ферма"
+            Модуль переработки и Тренировка теперь во вкладке "Лаборатория"
           </h3>
           <p style={{color: "#94a3b8", fontSize: "13px", marginBottom: "16px", lineHeight: "1.6", maxWidth: "400px", margin: "0 auto 16px"}}>
-            Перейди во вкладку <b style={{color: "#10b981"}}>🏡 Ферма</b> → подвкладки
-            <b style={{color: "#10b981"}}> 🏭 Мельница</b> и <b style={{color: "#10b981"}}>🔥 Печь</b>,
-            чтобы запустить помол или выпечку хлеба.
+            Перейди во вкладку <b style={{color: "#10b981"}}>🧠 Нейро-лаборатория</b> → подвкладки
+            <b style={{color: "#10b981"}}> 🏭 Переработка</b> и <b style={{color: "#10b981"}}>🔥 Тренировка</b>,
+            чтобы запустить переработку сигнала или тренировку модели.
           </p>
           <div style={{background: "rgba(16, 185, 129, 0.1)", padding: "12px 16px", borderRadius: "8px", border: "1px solid rgba(16, 185, 129, 0.3)", display: "inline-block"}}>
             <div style={{color: "#10b981", fontSize: "12px", fontWeight: "bold"}}>
-              💡 Там же ты найдёшь 💧 Колодец и 🌱 Посадку семян
+              💡 Там же ты найдёшь 🔋 Сетевая станция и 🌱 Посадку семян
             </div>
           </div>
         </div>

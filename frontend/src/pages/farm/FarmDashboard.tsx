@@ -84,8 +84,8 @@ export function FarmDashboard() {
     { key: "dashboard", label: "Обзор", icon: "🏠" },
     { key: "well", label: "Колодец", icon: "💧" },
     { key: "plant", label: "Посадка", icon: "🌱" },
-    { key: "mill", label: "Мельница", icon: "🏭" },
-    { key: "oven", label: "Печь", icon: "🔥" },
+    { key: "mill", label: "Переработка", icon: "🏭" },
+    { key: "oven", label: "Тренировка", icon: "🔥" },
   ];
 
   return (
@@ -120,8 +120,8 @@ export function FarmDashboard() {
           </button>
         </div>
         <div className="flex-1 text-center">
-          <h1 className="text-2xl font-bold text-parchment">🏡 Ферма</h1>
-          <p className="text-straw text-sm mt-1">С возвращением, фермер</p>
+          <h1 className="text-2xl font-bold text-parchment">🧠 Нейро-лаборатория</h1>
+          <p className="text-straw text-sm mt-1">С возвращением, оператор</p>
         </div>
         <WeatherWidget />
       </motion.div>
@@ -173,7 +173,7 @@ export function FarmDashboard() {
           )}
 
           <Card className="mb-4" onClick={() => push("farm", "farm", <FarmPlot />)}>
-            <h3 className="text-sm font-semibold text-parchment mb-3">Твоя ферма →</h3>
+            <h3 className="text-sm font-semibold text-parchment mb-3">Твоя лаборатория →</h3>
             <div className="aspect-video bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden">
               <div className="text-center">
                 <span className="text-3xl tracking-widest">🌾 🪚 ⛏️ 🏹</span>
@@ -192,7 +192,7 @@ export function FarmDashboard() {
             <Card onClick={() => push("farm", "compendium", <CompendiumHome />)}>
               <div className="text-center py-1">
                 <span className="text-2xl">📖</span>
-                <p className="text-parchment text-sm font-semibold mt-1">Компендиум</p>
+                <p className="text-parchment text-sm font-semibold mt-1">Каталог</p>
               </div>
             </Card>
           </div>

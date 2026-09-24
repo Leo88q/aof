@@ -15,18 +15,18 @@ const r = Router();
 
 const kindMap: Record<string, any> = {
   // Базовые ресурсы
-  food: { food: {} },
-  wood: { wood: {} },
-  stone: { stone: {} },
-  potato: { potato: {} },
+  data: { data: {} },
+  circuit: { circuit: {} },
+  silicon: { silicon: {} },
+  mind: { mind: {} },
   // [БЛОК L] Хлебная цепочка
-  seeds: { seeds: {} },
-  wheat: { wheat: {} },
-  flour: { flour: {} },
-  bread: { bread: {} },
-  water: { water: {} },
-  coal: { coal: {} },
-  meat: { meat: {} },
+  neuron: { neuron: {} },
+  synapse: { synapse: {} },
+  signal: { signal: {} },
+  model: { model: {} },
+  power: { power: {} },
+  compute: { compute: {} },
+  dataset: { dataset: {} },
   // Камни
   stoneBlue: { stoneBlue: {} },
   stonePurple: { stonePurple: {} },

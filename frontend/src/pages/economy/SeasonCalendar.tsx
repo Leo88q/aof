@@ -11,10 +11,10 @@ const SEASONS = [
 ];
 
 const WEATHER_TYPES = [
-  { type: "sunny", icon: "☀️", name: "Солнечно", effect: "Еда +10%" },
-  { type: "rain", icon: "🌧️", name: "Дождь", effect: "Дерево +10%" },
-  { type: "drought", icon: "🔥", name: "Засуха", effect: "Всё -15%, редкий лут +50%" },
-  { type: "harvest_festival", icon: "🎉", name: "Фестиваль", effect: "Множитель" },
+  { type: "sunny", icon: "☀️", name: "Номинал", effect: "Еда +10%" },
+  { type: "rain", icon: "🌧️", name: "Скачок", effect: "Схема +10%" },
+  { type: "drought", icon: "🔥", name: "Блэкаут", effect: "Всё -15%, редкий лут +50%" },
+  { type: "harvest_festival", icon: "🎉", name: "Френзи", effect: "Множитель" },
 ];
 
 interface CalendarDay {
@@ -152,7 +152,7 @@ export function SeasonCalendar() {
       {/* Календарь */}
       <div>
         <h3 className="text-lg font-semibold text-parchment mb-3">
-          Календарь сезонов
+          Календарь эпох
         </h3>
         <div className="grid grid-cols-7 gap-2">
           {calendar.map((day, i) => {
@@ -192,21 +192,21 @@ export function SeasonCalendar() {
       {/* Информация о сезонах */}
       <Card className="p-4 bg-soil-800 border border-straw/10">
         <h3 className="text-lg font-semibold text-parchment mb-3">
-          О сезонах
+          Об эпохах
         </h3>
         <div className="space-y-3 text-sm text-straw">
           <p>
-            Каждый сезон длится <span className="text-parchment font-semibold">42 дня</span>.
-            Всего 4 сезона: весна, лето, осень, зима.
+            Каждая эпоха длится <span className="text-parchment font-semibold">42 дня</span>.
+            Всего 4 эпохи в цикле (42 дня каждая).
           </p>
           <p>
             Погода меняется каждый день и влияет на добычу ресурсов:
           </p>
           <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>☀️ Солнечно: еда +10%</li>
-            <li>🌧️ Дождь: дерево +10%</li>
-            <li>🔥 Засуха: всё -15%, но редкий лут +50%</li>
-            <li>🎉 Фестиваль: множитель на все ресурсы</li>
+            <li>☀️ Номинал: еда +10%</li>
+            <li>🌧️ Скачок: дерево +10%</li>
+            <li>🔥 Блэкаут: всё -15%, но редкий лут +50%</li>
+            <li>🎉 Френзи: множитель на все ресурсы</li>
           </ul>
           <p className="text-xs text-straw/60 mt-3">
             Погода детерминирована — одинакова для всех игроков в один день.

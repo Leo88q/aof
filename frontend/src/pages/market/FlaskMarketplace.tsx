@@ -1,11 +1,11 @@
 import { Card } from "../../components/ui/Card";
 
 const FLASKS = [
-  { key: "FLASK_BLUE", label: "Зелье энергии", icon: "🧪", desc: "+20% добыча на 1ч" },
-  { key: "FLASK_YELLOW", label: "Зелье газа", icon: "🧪", desc: "+100 газа" },
-  { key: "FLASK_GREEN", label: "Зелье роста", icon: "🧪", desc: "×2 скорость на 1ч" },
-  { key: "FLASK_PINK", label: "Зелье любви", icon: "🧪", desc: "+3 ❤️ к соседу" },
-  { key: "FLASK_PURPLE", label: "Зелье удачи", icon: "🧪", desc: "+50% Forge на 1ч" },
+  { key: "CRYO_FLUID", label: "Крио-флюид", icon: "🧪", desc: "+20% добыча на 1ч" },
+  { key: "VOLT_FLUID", label: "Вольт-флюид", icon: "🧪", desc: "+100 газа" },
+  { key: "BIO_FLUID", label: "Био-флюид", icon: "🧪", desc: "×2 скорость на 1ч" },
+  { key: "NANO_FLUID", label: "Нано-флюид", icon: "🧪", desc: "+3 ❤️ к соседу" },
+  { key: "QUANTUM_FLUID", label: "Квантовый флюид", icon: "🧪", desc: "+50% Forge на 1ч" },
 ];
 
 export function FlaskMarketplace() {

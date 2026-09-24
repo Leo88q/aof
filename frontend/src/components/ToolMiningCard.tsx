@@ -15,7 +15,7 @@ interface ToolMiningCardProps {
 
 /**
  * Живая карточка инструмента (ТЗ v3 §2.4–2.5):
- * стейк = «уехать в сарай», майнинг = вагонетка, сбор = сундук.
+ * стейк = «уехать на склад», майнинг = экстрактор, сбор = контейнер.
  * Реальные вызовы /tools/stake|start-mining|collect-mining|unstake + подпись кошелька.
  */
 // Keep the feature fail-closed until the on-chain program has passed build and
@@ -49,16 +49,16 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
     try {
       let resp: any;
       if (kind === "stake") {
-        flashMsg("Инструмент уезжает в сарай…");
+        flashMsg("Инструмент уходит на склад…");
         resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(86400) });
       } else if (kind === "unstake") {
         flashMsg("Инструмент возвращается…");
         resp = await api.tools.unstake({ user: address, mint: tool.mint });
       } else if (kind === "start") {
-        flashMsg("Вагонетка поехала в забой…");
+        flashMsg("Экстрактор запущен…");
         resp = await api.tools.startMining({ user: address, mint: tool.mint, hours });
       } else {
-        flashMsg("Открываем сундук…");
+        flashMsg("Открываем контейнер…");
         resp = await api.tools.collectMining({ user: address, mint: tool.mint });
       }
       const r = await handleTxResponse(resp);
@@ -87,7 +87,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       ? { icon: "🪨", label: "Износ", color: "#b0653a" }
       : { icon: "💀", label: "Сломан", color: "#c2703d" };
 
-  // Прогресс вагонетки: оставшееся время от общего срока текущей добычи
+  // Прогресс экстрактора: оставшееся время от общего срока текущей добычи
   const totalSec = Math.max(1, toNum(tool.lastMinedHours) * 3600 || hours * 3600);
   const remainSec = Math.max(0, miningEnd - Date.now() / 1000);
   const progress = tool.isMining ? Math.max(0, Math.min(1, 1 - remainSec / totalSec)) : 0;
@@ -104,7 +104,11 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         <div className="w-20 h-28 rounded-lg overflow-hidden flex-shrink-0 relative"
              style={{ border: `1px solid ${meta.color}50` }}>
           <span role="img" aria-label={tool.toolType || "Инструмент"}
-            className="flex h-full items-center justify-center text-4xl">{icon}</span>
+            className="flex h-full items-center justify-center overflow-hidden">
+              {icon.startsWith("/")
+                ? <img src={icon} alt="tool" className="h-full w-full object-cover" />
+                : <span className="text-4xl">{icon}</span>}
+            </span>
         </div>
         <div className="flex-1 min-w-0 pt-1">
           <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{tool.toolType || "Инструмент"}</div>
@@ -132,7 +136,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         <div className="mt-3">
           <button onClick={() => run("stake")} disabled={busy}
             className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
-            🏚️ Отправить в сарай (стейк)
+            🏚️ На склад (стейк)
           </button>
           <p className="text-straw text-xs mt-1.5 text-center">Добыча работает только из сарая</p>
         </div>

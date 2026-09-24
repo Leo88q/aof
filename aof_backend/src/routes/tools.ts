@@ -112,12 +112,12 @@ r.post("/craft-quote", async (req, res) => {
     if (requiredArrays.some((values: any) => !Array.isArray(values) || values.length < 4)) {
       return res.status(503).json({ error: "craft economy arrays are incomplete on canonical chain" });
     }
-    const wood = displayResource(Number(econ.woodBase[idx]) + minted * Number(econ.woodMult[idx]));
-    const stone = displayResource(Number(econ.stoneBase[idx]) + minted * Number(econ.stoneMult[idx]));
-    const food = displayResource(Number(econ.foodBase?.[idx] || 0) + minted * Number(econ.foodMult?.[idx] || 0));
-    const seeds = displayResource(Number(econ.seedsBase?.[idx] || 0) + minted * Number(econ.seedsMult?.[idx] || 0));
-    const water = displayResource(Number(econ.waterBase?.[idx] || 0) + minted * Number(econ.waterMult?.[idx] || 0));
-    const potato = displayResource(Number(econ.potatoBase?.[idx] || 0) + minted * Number(econ.potatoMult?.[idx] || 0));
+    const circuit = displayResource(Number(econ.woodBase[idx]) + minted * Number(econ.woodMult[idx]));
+    const silicon = displayResource(Number(econ.stoneBase[idx]) + minted * Number(econ.stoneMult[idx]));
+    const data = displayResource(Number(econ.foodBase?.[idx] || 0) + minted * Number(econ.foodMult?.[idx] || 0));
+    const neuron = displayResource(Number(econ.seedsBase?.[idx] || 0) + minted * Number(econ.seedsMult?.[idx] || 0));
+    const power = displayResource(Number(econ.waterBase?.[idx] || 0) + minted * Number(econ.waterMult?.[idx] || 0));
+    const mind = displayResource(Number(econ.potatoBase?.[idx] || 0) + minted * Number(econ.potatoMult?.[idx] || 0));
     
     // SKR discount is deliberately fail-closed. There is no canonical SKR
     // mint in Config/MaterialMints and the on-chain craft instruction does
@@ -126,7 +126,7 @@ r.post("/craft-quote", async (req, res) => {
       source: "DISABLED_UNTIL_CANONICAL_MINT",
       discountBps: 0,
     };
-    res.json({ wood, stone, food, seeds, water, potato, minted, privilege });
+    res.json({ circuit, silicon, data, neuron, power, mind, minted, privilege }); // [REBRAND] ex wood/stone/food/seeds/water/potato
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
@@ -221,20 +221,20 @@ r.post("/repair-quote", async (req, res) => {
     if (!toolData) return res.status(400).json({ error: "tool not found" });
     
     // These values mirror Rarity::repair_*_cost_per_unit() in aof-core.
-    const stoneCosts: Record<string, number> = {
+    const siliconCosts: Record<string, number> = {
       common: 2_000_000_000, uncommon: 4_000_000_000, rare: 9_000_000_000,
       epic: 20_000_000_000, legendary: 45_000_000_000,
     };
-    const woodCosts: Record<string, number> = {
+    const circuitCosts: Record<string, number> = {
       common: 3_000_000_000, uncommon: 6_000_000_000, rare: 14_000_000_000,
       epic: 30_000_000_000, legendary: 70_000_000_000,
     };
     const rarQ = toolData.rarity;
     const rkQ = typeof rarQ === "object" && rarQ ? Object.keys(rarQ)[0] : String(rarQ || "common");
-    const stone = (stoneCosts[rkQ] || 0) * amount;
-    const wood = (woodCosts[rkQ] || 0) * amount;
+    const silicon = (siliconCosts[rkQ] || 0) * amount;
+    const circuit = (circuitCosts[rkQ] || 0) * amount;
 
-    res.json({ stone, wood, amount });
+    res.json({ silicon, circuit, amount }); // [REBRAND] ex stone/wood
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

@@ -158,12 +158,12 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <h4 style={{color: "#a78bfa", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Historian</h4>
             </div>
             <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
-              <b style={{color: "#fbbf24"}}>Эффект:</b> +5% шанс Epic из паков, +25 слотов рефералов
+              <b style={{color: "#fbbf24"}}>Эффект:</b> +5% шанс Singularity из паков, +25 слотов рефералов
             </p>
             <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
               <b>🎯 Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
-                <li>Сезонные квесты (редкая награда)</li>
+                <li>Квесты эпохи (редкая награда)</li>
                 <li>Покупка за <b>5000 POTATO</b> в магазине</li>
                 <li>Топ-10 рейтинга в конце сезона</li>
               </ul>
@@ -176,12 +176,12 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <h4 style={{color: "#ec4899", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Medallion</h4>
             </div>
             <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
-              <b style={{color: "#fbbf24"}}>Эффект:</b> +3% шанс Legendary из паков, +5 слотов рефералов
+              <b style={{color: "#fbbf24"}}>Эффект:</b> +3% шанс Transcendent из паков, +5 слотов рефералов
             </p>
             <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
               <b>🎯 Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
-                <li>Сезонные квесты (ультра-редкая награда)</li>
+                <li>Квесты эпохи (ультра-редкая награда)</li>
                 <li>Покупка за <b>10000 POTATO</b> в магазине</li>
                 <li>Топ-3 рейтинга в конце сезона</li>
                 <li>Специальные события (лимит: 100 шт/сезон)</li>

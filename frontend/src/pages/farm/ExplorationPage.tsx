@@ -44,10 +44,10 @@ export function ExplorationPage() {
 
     try {
       const [foodMint, woodMint, stoneMint, meatMint] = await Promise.all([
-        getMintAsync("FOOD"),
-        getMintAsync("WOOD"),
-        getMintAsync("STONE"),
-        getMintAsync("MEAT"),
+        getMintAsync("DATA"),
+        getMintAsync("CIRCUIT"),
+        getMintAsync("SILICON"),
+        getMintAsync("DATASET"),
       ]);
       if (!foodMint || !woodMint || !stoneMint || !meatMint) {
         throw new Error("Реальный mint экспедиции не найден в Config/MaterialMints");
@@ -99,10 +99,10 @@ export function ExplorationPage() {
         <div className="bg-soil-800/60 rounded-xl p-4 mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3">Стоимость похода:</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-straw">🌾 Зерно (FOOD)</span><span className="text-parchment font-bold">{EXPLORATION_COST.food}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🪵 Древесина (WOOD)</span><span className="text-parchment font-bold">{EXPLORATION_COST.wood}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🪨 Камень (STONE)</span><span className="text-parchment font-bold">{EXPLORATION_COST.stone}</span></div>
-            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold">🍖 Мясо (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.meat}</span></div>
+            <div className="flex justify-between"><span className="text-straw">📊 Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST.food}</span></div>
+            <div className="flex justify-between"><span className="text-straw">🔌 Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST.wood}</span></div>
+            <div className="flex justify-between"><span className="text-straw">🧊 Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST.stone}</span></div>
+            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold">🍖 Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.meat}</span></div>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ export function ExplorationPage() {
         <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
           <h3 className="text-purple-400 font-semibold text-sm mb-2">Требования:</h3>
           <ul className="space-y-1 text-xs text-straw">
-            <li>✓ Инструмент: <span className="text-parchment">Лук (Bow)</span></li>
+            <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик (Bow)</span></li>
             <li>✓ Ресурсы: FOOD, WOOD, STONE, MEAT</li>
             <li>✓ Кулдаун и дневной лимит: определяются tier в программе</li>
           </ul>

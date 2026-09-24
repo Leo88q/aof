@@ -23,23 +23,23 @@ function groups(): [string, typeof recipes][] {
 
 const trustTiers = [
   { name: 'Stranger', text: 'Чужак, чья запись ещё пуста. С этого порога начинается каждый путь.' },
-  { name: 'Neighbour', text: 'Сосед: первые обещания выполнены, первые сделки состоялись без посредников.' },
+  { name: 'Neighbour', text: 'Коллега: первые обещания выполнены, первые сделки состоялись без посредников.' },
   { name: 'Partner', text: 'Партнёр по регулярным сделкам: совместные циклы и разделённый риск.' },
   { name: 'Guildsman', text: 'Член круга: доля коллективной работы и коллективного ответа.' },
-  { name: 'Elder', text: 'Старейшина: запись длиннее сезона, слово тяжелее печати.' },
+  { name: 'Elder', text: 'Старейшина: запись длиннее эпохи, слово тяжелее печати.' },
 ];
 
 const rarities = [
-  { name: 'Common', text: 'Грубое железо, берёзовая рукоять, проволочная обмотка. Первый инструмент каждого мастера.' },
-  { name: 'Uncommon', text: 'Кованая сталь, промасленный дуб, кожаная обмотка. Держит кромку вдвое дольше.' },
-  { name: 'Rare', text: 'Булат с медным ошейником. Патина как знак времени, а не дефекта.' },
-  { name: 'Epic', text: 'Между редким и легендарным: уже больше ремесла, ещё не легенда.' },
-  { name: 'Legendary', text: 'Метеоритное железо с медной инкрустацией. Тёплый на ощупь даже зимой.' },
+  { name: 'Base', text: 'Грубое железо, берёзовая рукоять, проволочная обмотка. Первый инструмент каждого мастера.' },
+  { name: 'Enhanced', text: 'Кованая сталь, промасленный дуб, кожаная обмотка. Держит кромку вдвое дольше.' },
+  { name: 'Quantum', text: 'Булат с медным ошейником. Патина как знак времени, а не дефекта.' },
+  { name: 'Singularity', text: 'Между редким и легендарным: уже больше ремесла, ещё не легенда.' },
+  { name: 'Transcendent', text: 'Метеоритное железо с медной инкрустацией. Тёплый на ощупь даже зимой.' },
 ];
 
 function WeatherDemo() {
   const [state, setState] = useState('sun');
-  const names: Record<string, string> = { drought: 'Засуха', sun: 'Солнце', rain: 'Дождь', festival: 'Фестиваль' };
+  const names: Record<string, string> = { drought: 'Блэкаут', sun: 'Номинал', rain: 'Скачок', festival: 'Френзи' };
   return (
     <div>
       <fieldset className="site-options">
@@ -75,10 +75,10 @@ function WeatherDemo() {
 
 function SeasonWheelDemo() {
   const [season, setSeason] = useState(0);
-  const names = ['Весна', 'Лето', 'Осень', 'Зима'];
+  const names = ['Весна', 'Вторую фазу', 'Третью фазу', 'Завершение цикла'];
   return (
     <div className="site-season">
-      <button type="button" className="site-season-button" onClick={() => setSeason((s) => (s + 1) % 4)} aria-label={'Сезон: ' + names[season] + '. Сменить'}>
+      <button type="button" className="site-season-button" onClick={() => setSeason((s) => (s + 1) % 4)} aria-label={'Эпох: ' + names[season] + '. Сменить'}>
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <circle cx="50" cy="50" r="43" fill="var(--aof-oak)" stroke="var(--aof-copper)" strokeWidth="5" />
           {[0, 1, 2, 3].map((i) => (
@@ -95,10 +95,10 @@ function SeasonWheelDemo() {
 }
 
 function ChainDiagram() {
-  const names = ['Семена', 'Пшеница', 'Мука', 'Хлеб'];
+  const names = ['Нейроны', 'Синапс', 'Сигнал', 'Модель'];
   return (
     <figure className="site-diagram site-paper">
-      <svg viewBox="0 0 680 140" role="img" aria-label="Семена, пшеница, мука, хлеб">
+      <svg viewBox="0 0 680 140" role="img" aria-label="Нейроны, синапс, сигнал, модель">
         {names.map((name, i) => (
           <g key={name}>
             {i < 3 && <path d={'M' + (110 + i * 165) + ' 65h70'} stroke="var(--aof-copper)" strokeWidth="3" />}
@@ -119,7 +119,7 @@ const badgeDefs = [
   { id: 'commit', name: 'Проверяющий', text: 'Сверь локальный commit/reveal.' },
   { id: 'pack', name: 'Распаковщик', text: 'Открой демонстрационный пак.' },
   { id: 'drum', name: 'Ритм мастера', text: 'Попробуй демонстрационный барабан.' },
-  { id: 'chronicler', name: 'Летописец', text: 'Открой летопись сайта (changelog).' },
+  { id: 'chronicler', name: 'Вторую фазуписец', text: 'Открой вторую фазупись сайта (changelog).' },
 ];
 function readJournal(): { visits: string[]; badges: string[] } {
   try {
@@ -206,7 +206,7 @@ export function ExtraSections({ id }: { id: string }) {
                     <span className="site-badge">
                       {r.verification === 'on-chain-verified'
                         ? 'On-chain проверено'
-                        : 'Редакционный пример · on-chain не подтверждён'}
+                        : 'Рданныекционный пример · on-chain не подтверждён'}
                     </span>
                     <h4>{r.name}</h4>
                     <ul className="site-recipe-io">
@@ -225,7 +225,7 @@ export function ExtraSections({ id }: { id: string }) {
                         : <li className="site-recipe-out">Эффект без предмета</li>}
                     </ul>
                     <p className="site-recipe-meta">
-                      Энергия: {r.energy}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на POTATO' : ''}{r.potatoCost ? ` · POTATO ×${r.potatoCost}` : ''}
+                      Энергия: {r.energy}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на MIND' : ''}{r.potatoCost ? ` · MIND ×${r.potatoCost}` : ''}
                     </p>
                     <p>{r.description}</p>
                     {missingResources.length > 0 && (
@@ -245,7 +245,7 @@ export function ExtraSections({ id }: { id: string }) {
   if (id === 'potato') {
     return (
       <>
-        <Section title="Откуда пришёл POTATO">
+        <Section title="Откуда пришёл MIND">
           {potatoOrigin.paragraphs.map((p) => <p className="site-reading" key={p.slice(0, 24)}>{p}</p>)}
         </Section>
         <Section title="Пять способов потратить">
@@ -254,7 +254,7 @@ export function ExtraSections({ id }: { id: string }) {
               <article key={u.id} className="site-card site-paper">
                 <span className="site-badge">{u.category}</span>
                 <h3>{u.title}</h3>
-                <p className="site-guide-meta">Расход: {u.cost} POTATO</p>
+                <p className="site-guide-meta">Расход: {u.cost} MIND</p>
                 <p>{u.description}</p>
                 <blockquote className="site-narrative">{u.narrative}</blockquote>
               </article>
@@ -271,7 +271,7 @@ export function ExtraSections({ id }: { id: string }) {
             ))}
           </div>
         </Section>
-        <Section title="Голоса мастерской о POTATO">
+        <Section title="Голоса мастерской о MIND">
           <div className="site-stories">
             {potatoLore.map((f) => (
               <blockquote key={f.id} className="site-story">
@@ -483,7 +483,7 @@ export function ExtraSections({ id }: { id: string }) {
             </article>
           ))}
         </div>
-        <blockquote className="site-narrative">Статусы — редакционный план сайта и продукта. Они не являются подтверждённым релизом, аудитом или публичным обязательством.</blockquote>
+        <blockquote className="site-narrative">Статусы — рданныекционный план сайта и продукта. Они не являются подтверждённым релизом, аудитом или публичным обязательством.</blockquote>
       </Section>
     );
   }
@@ -543,14 +543,14 @@ export function ExtraSections({ id }: { id: string }) {
     return (
       <Section title="Колесо года">
         <SeasonWheelDemo />
-        <blockquote className="site-narrative">Колесо поворачивает только оформление: сезон в текущей конфигурации длится 42 дня и держит 42 ступени пропуска.</blockquote>
+        <blockquote className="site-narrative">Колесо поворачивает только оформление: эпох в текущей конфигурации длится 42 дня и держит 42 ступени пропуска.</blockquote>
       </Section>
     );
   }
 
   if (id === 'trust') {
     return (
-      <Section title="Пять медальонов доверия">
+      <Section title="Пять мданныельонов доверия">
         <div className="site-grid">
           {trustTiers.map((t, i) => (
             <article key={t.name} className="site-card site-paper" style={{ textAlign: 'center' }}>
@@ -598,7 +598,7 @@ export function ExtraSections({ id }: { id: string }) {
           <Button to="/site/resources">Осмотри ресурс</Button>
           <Button to="/site/packs" variant="ghost">Попробуй пак</Button>
           <Button to="/site/lottery" variant="ghost">Найди ритм</Button>
-          <Button to="/site/changelog" variant="ghost">Открой летопись</Button>
+          <Button to="/site/changelog" variant="ghost">Открой вторую фазупись</Button>
         </div>
       </Section>
     );

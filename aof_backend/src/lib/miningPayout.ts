@@ -18,11 +18,19 @@ const YIELD_BPS: Record<string, number> = {
 };
 
 // Маппинг toolType → ключ в MaterialMints PDA
+// [REBRAND] new tool ids + legacy pre-rebrand ids (devnet tools keep working)
 const TOOL_TO_RESOURCE: Record<string, string> = {
-  axe: "WOOD",
-  pick: "STONE",
-  bow: "MEAT",
-  reaper: "SEEDS",
+  plasma_cutter: "CIRCUIT",
+  silicon_extractor: "SILICON",
+  data_harvester: "DATASET",
+  quantum_transmitter: "DATASET",
+  neural_seeder: "NEURON",
+  // legacy aliases
+  axe: "CIRCUIT",
+  pick: "SILICON",
+  bow: "DATASET",
+  spear: "DATASET",
+  reaper: "NEURON",
 };
 
 /**
@@ -34,10 +42,10 @@ export async function getMintForToolType(toolType: string): Promise<PublicKey | 
   if (!key) return null;
 
   // Базовые ресурсы из Config
-  if (key === "FOOD" || key === "WOOD" || key === "STONE") {
+  if (key === "DATA" || key === "CIRCUIT" || key === "SILICON") {
     const [cfgAddr] = configPda();
     const cfg: any = await fetchOne("config", cfgAddr);
-    const field = key === "FOOD" ? "foodMint" : key === "WOOD" ? "woodMint" : "stoneMint";
+    const field = key === "DATA" ? "foodMint" : key === "CIRCUIT" ? "woodMint" : "stoneMint";
     const mint = cfg?.[field];
     return mint ? new PublicKey(mint) : null;
   }
@@ -46,13 +54,13 @@ export async function getMintForToolType(toolType: string): Promise<PublicKey | 
   const [mmAddr] = materialMintsPda();
   const mm: any = await fetchOne("materialMints", mmAddr);
   const fieldMap: Record<string, string> = {
-    SEEDS: "seeds",
-    WHEAT: "wheat",
-    FLOUR: "flour",
-    BREAD: "bread",
-    WATER: "water",
-    COAL: "coal",
-    MEAT: "meat",
+    NEURON: "seeds",
+    SYNAPSE: "wheat",
+    SIGNAL: "flour",
+    MODEL: "bread",
+    POWER: "water",
+    COMPUTE: "coal",
+    DATASET: "meat",
   };
   const field = fieldMap[key];
   if (!field) return null;

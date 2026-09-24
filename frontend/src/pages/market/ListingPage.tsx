@@ -118,7 +118,7 @@ export function ListingPage() {
         </button>
       </div>
       <p className="text-straw text-xs">
-        Прилавки фермерского рынка: фиксированная цена в SOL, покупка в один тап.
+        Прилавки рынка NeuroForge: фиксированная цена в SOL, покупка в один тап.
       </p>
 
       {txStatus && (

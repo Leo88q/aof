@@ -40,11 +40,11 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
 
     // Ставка воды/час в зависимости от погоды (u64)
     let rate_per_hour: u64 = match ctx.accounts.weather_state.weather {
-        WEATHER_DROUGHT => WELL_RATE_DROUGHT,
-        WEATHER_SUNNY => WELL_RATE_SUNNY,
-        WEATHER_RAIN => WELL_RATE_RAIN,
-        WEATHER_FESTIVAL => WELL_RATE_FESTIVAL,
-        _ => WELL_RATE_SUNNY,
+        WEATHER_BLACKOUT => WELL_RATE_BLACKOUT,
+        WEATHER_NOMINAL => WELL_RATE_NOMINAL,
+        WEATHER_SURGE => WELL_RATE_SURGE,
+        WEATHER_FRENZY => WELL_RATE_FRENZY,
+        _ => WELL_RATE_NOMINAL,
     };
 
     // Вода = elapsed (сек) * rate (в час) / 3600 — все u64
@@ -61,7 +61,7 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
     // sybil model produced 78.8 M WATER/year with no bound at all.
     check_supply_cap(
         &ctx.accounts.material_mints,
-        ResourceKind::Water,
+        ResourceKind::Power,
         ctx.accounts.water_mint.supply,
         water_amount,
     )?;

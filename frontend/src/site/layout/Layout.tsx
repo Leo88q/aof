@@ -18,8 +18,8 @@ export function SiteLayout() {
     const id = parts[1] || 'home';
     const res = parts[0] === 'site' && parts[1] === 'resources' ? __seoRes.get(parts[2]) : undefined;
     const page = __seoPages.find((p) => p.id === id);
-    const title = res ? res.name + ' · AOF Мастерская' : page ? page.title + ' · AOF Мастерская' : 'AOF Мастерская';
-    const desc = res ? res.lead : page ? page.lead : 'Информационный сайт игры-мастерской AOF на Solana.';
+    const title = res ? res.name + ' · NeuroForge' : page ? page.title + ' · NeuroForge' : 'NeuroForge';
+    const desc = res ? res.lead : page ? page.lead : 'Информационный сайт игры-мастерской NeuroForge на Solana.';
     document.title = title;
     const setMeta = (attr: string, key: string, content: string) => {
       let el = document.querySelector<HTMLMetaElement>('meta[' + attr + '="' + key + '"]');
@@ -44,7 +44,7 @@ export function SiteLayout() {
               <path d="M20 2l16 9v18L20 38 4 29V11z" fill="var(--aof-copper)" />
               <path d="M20 9v23M11 15l9 8 9-8" stroke="var(--aof-forest)" strokeWidth="3" fill="none" />
             </svg>
-            <span>AOF<span className="site-logo-sub">Мастерская</span></span>
+            <span>NeuroForge<span className="site-logo-sub">Age of Intelligence</span></span>
           </Link>
           <nav className="site-desktop-nav" aria-label="Основная">
             {navGroups.map(g => (
@@ -86,7 +86,7 @@ export function SiteLayout() {
       <footer className="site-footer">
         <div className="site-footer-intro">
           <h2>Оставь после себя полезную вещь.</h2>
-          <p>Информационная мастерская AOF.</p>
+          <p>Информационная мастерская NeuroForge.</p>
         </div>
         <div className="site-footer-grid">
           {navGroups.map(g => (
@@ -97,7 +97,7 @@ export function SiteLayout() {
           ))}
         </div>
         <div className="site-footer-bottom">
-          <span>AOF · {new Date().getFullYear()}</span>
+          <span>NeuroForge · {new Date().getFullYear()}</span>
           <Link to="/site/rules">Правила</Link>
         </div>
       </footer>

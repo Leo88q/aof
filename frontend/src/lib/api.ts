@@ -283,18 +283,18 @@ export const api = {
   },
 
   // === Коллекционеры ===
-  // === [БЛОК L] Хлебная экономика ===
+  // === [БЛОК L] Модельная экономика ===
   chain: {
-    // Ферма
+    // Лаборатория
     plantSeeds: (v: any) => post("/chain/farm/plant", v),
     harvestWheat: (v: any) => post("/chain/farm/harvest", v),
-    // Мельница
+    // Переработка
     startMilling: (v: any) => post("/chain/mill/start", v),
     collectFlour: (v: any) => post("/chain/mill/collect", v),
-    // Печь
+    // Тренировка
     startBaking: (v: any) => post("/chain/oven/start", v),
     collectBread: (v: any) => post("/chain/oven/collect", v),
-    // Колодец и погода
+    // Сетевая станция и нагрузка сети
     collectWellWater: (v: any) => post("/chain/well/collect", v),
     weatherCrank: (v: any) => post("/chain/weather/crank", v),
     // Мгновенный крафт (гемы/баночки)
@@ -337,7 +337,7 @@ export const api = {
     payOut: (v: any) => post("/referral/pay-out", v),
   },
 
-  // === Кузница риска + скины лука ===
+  // === Квантовая кузница + скины передатчика ===
   forge: {
     commit: (v: any) => post("/forge/commit", v),
     reveal: (v: any) => post("/forge/reveal", v),
@@ -399,7 +399,7 @@ export const api = {
     cancel: (v: any) => post("/craft-order/cancel", v),
   },
 
-  // === Сезон ===
+  // === Эпоха ===
   season: {
     init: (v: any) => post("/season/init", v),
     passPurchase: (v: any) => post("/season/pass/purchase", v),

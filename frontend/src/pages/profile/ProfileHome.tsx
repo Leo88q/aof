@@ -36,16 +36,16 @@ function computeVeteranStatus(playerData: any): { title: string; generation: num
   let emoji: string;
   
   if (generation >= 5 || totalDays >= 180) {
-    title = "Легенда фермы";
+    title = "Легенда сети";
     emoji = "👑";
   } else if (generation >= 3 || totalDays >= 90) {
-    title = "Ветеран фермы";
+    title = "Ветеран сети";
     emoji = "🎖️";
   } else if (generation >= 2 || totalDays >= 30) {
-    title = "Опытный фермер";
+    title = "Опытный оператор";
     emoji = "🌾";
   } else if (totalDays >= 7) {
-    title = "Фермер";
+    title = "Оператор";
     emoji = "👨‍🌾";
   } else {
     title = "Новичок";
@@ -313,16 +313,16 @@ export function ProfileHome() {
         </div>
       </Card>
 
-      {/* 1. Сезон-пасс / VIP */}
+      {/* 1. Пасс эпохи / VIP */}
       <Card className="mb-4" onClick={() => push("profile", "season", (
         <>
-          <NavHeader title="Сезон-пасс" tabKey="profile" />
+          <NavHeader title="Пасс эпохи" tabKey="profile" />
           <SeasonPassPage />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-wheat-500 font-semibold">🎫 Сезон-пасс / VIP</h3>
+            <h3 className="text-wheat-500 font-semibold">🎫 Пасс эпохи / VIP</h3>
             <p className="text-straw text-xs mt-1">Premium: Farm-Trader, награды без рекламы, бусты</p>
           </div>
           <span className="text-2xl">→</span>

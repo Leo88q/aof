@@ -92,7 +92,7 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
     // [AUDIT F-03] Season rewards are another mint path that never saw a cap.
     check_supply_cap(
         &ctx.accounts.material_mints,
-        ResourceKind::Wood,
+        ResourceKind::Circuit,
         ctx.accounts.wood_mint.supply,
         reward_amount,
     )?;

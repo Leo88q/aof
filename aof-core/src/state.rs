@@ -37,16 +37,40 @@ pub struct Config {
 /// "Spear" (capital S) or "sword" produced nothing while mining (the mapping was
 /// case-sensitive in exploration and simply missing for spear) and could not be
 /// repaired. Every entry point now normalises to this set.
-pub const TOOL_KINDS: [&str; 5] = ["axe", "pick", "bow", "spear", "reaper"];
+/// [REBRAND 2026-09-24] NeuroForge tool ids. Pre-rebrand ids (axe/pick/
+/// spear/bow/reaper) remain accepted through LEGACY_TOOL_ALIASES so tools
+/// minted on devnet under the old names keep working.
+pub const TOOL_KINDS: [&str; 5] = [
+    "plasma_cutter",
+    "silicon_extractor",
+    "data_harvester",
+    "quantum_transmitter",
+    "neural_seeder",
+];
+
+const LEGACY_TOOL_ALIASES: [(&str, &str); 5] = [
+    ("axe", "plasma_cutter"),
+    ("pick", "silicon_extractor"),
+    ("spear", "data_harvester"),
+    ("bow", "quantum_transmitter"),
+    ("reaper", "neural_seeder"),
+];
 
 pub fn is_valid_tool_type(tool_type: &str) -> bool {
-    TOOL_KINDS.iter().any(|k| tool_type.eq_ignore_ascii_case(k))
+    canonical_tool_type(tool_type).is_some()
 }
 
-/// Lower-case canonical spelling, so "Axe" and "AXE" produce the same stored
-/// value and every comparison downstream is unambiguous.
+/// Lower-case canonical spelling, so "Plasma_Cutter" and "PLASMA_CUTTER"
+/// produce the same stored value and every comparison downstream is
+/// unambiguous. Accepts legacy pre-rebrand ids as aliases.
 pub fn canonical_tool_type(tool_type: &str) -> Option<&'static str> {
-    TOOL_KINDS.iter().copied().find(|k| tool_type.eq_ignore_ascii_case(k))
+    if let Some(k) = TOOL_KINDS.iter().copied().find(|k| tool_type.eq_ignore_ascii_case(k)) {
+        return Some(k);
+    }
+    LEGACY_TOOL_ALIASES
+        .iter()
+        .find(|(old, _)| tool_type.eq_ignore_ascii_case(old))
+        .map(|(_, new)| *new)
 }
 
 impl Config {
@@ -219,21 +243,21 @@ impl Rarity {
 
     pub fn repair_stone_cost_per_unit(&self) -> u64 {
         match self {
-            Rarity::Common => REPAIR_STONE_COMMON,
-            Rarity::Uncommon => REPAIR_STONE_UNCOMMON,
-            Rarity::Rare => REPAIR_STONE_RARE,
-            Rarity::Epic => REPAIR_STONE_EPIC,
-            Rarity::Legendary => REPAIR_STONE_LEGENDARY,
+            Rarity::Common => REPAIR_SILICON_COMMON,
+            Rarity::Uncommon => REPAIR_SILICON_UNCOMMON,
+            Rarity::Rare => REPAIR_SILICON_RARE,
+            Rarity::Epic => REPAIR_SILICON_EPIC,
+            Rarity::Legendary => REPAIR_SILICON_LEGENDARY,
         }
     }
     
     pub fn repair_wood_cost_per_unit(&self) -> u64 {
         match self {
-            Rarity::Common => REPAIR_WOOD_COMMON,
-            Rarity::Uncommon => REPAIR_WOOD_UNCOMMON,
-            Rarity::Rare => REPAIR_WOOD_RARE,
-            Rarity::Epic => REPAIR_WOOD_EPIC,
-            Rarity::Legendary => REPAIR_WOOD_LEGENDARY,
+            Rarity::Common => REPAIR_CIRCUIT_COMMON,
+            Rarity::Uncommon => REPAIR_CIRCUIT_UNCOMMON,
+            Rarity::Rare => REPAIR_CIRCUIT_RARE,
+            Rarity::Epic => REPAIR_CIRCUIT_EPIC,
+            Rarity::Legendary => REPAIR_CIRCUIT_LEGENDARY,
         }
     }
 }
@@ -675,34 +699,34 @@ pub fn init_tool_data(
 pub fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
     match kind {
         // Старые ресурсы из Config
-        ResourceKind::Food => config.food_mint,
-        ResourceKind::Wood => config.wood_mint,
-        ResourceKind::Stone => config.stone_mint,
+        ResourceKind::Data => config.food_mint,
+        ResourceKind::Circuit => config.wood_mint,
+        ResourceKind::Silicon => config.stone_mint,
         // [БЛОК L] Новые ресурсы из MaterialMints
-        ResourceKind::Seeds => material_mints.seeds,
-        ResourceKind::Wheat => material_mints.wheat,
-        ResourceKind::Flour => material_mints.flour,
-        ResourceKind::Bread => material_mints.bread,
-        ResourceKind::Water => material_mints.water,
-        ResourceKind::Coal => material_mints.coal,
-        ResourceKind::Meat => material_mints.meat,
-        ResourceKind::StoneBlue => material_mints.stone_blue,
-        ResourceKind::StonePurple => material_mints.stone_purple,
-        ResourceKind::StoneRed => material_mints.stone_red,
-        ResourceKind::SandWhite => material_mints.sand_white,
-        ResourceKind::SandPink => material_mints.sand_pink,
-        ResourceKind::SandYellow => material_mints.sand_yellow,
-        ResourceKind::GemBlue => material_mints.gem_blue,
-        ResourceKind::GemOrange => material_mints.gem_orange,
-        ResourceKind::GemWhite => material_mints.gem_white,
-        ResourceKind::GemGreen => material_mints.gem_green,
-        ResourceKind::FlaskBlue => material_mints.flask_blue,
-        ResourceKind::FlaskYellow => material_mints.flask_yellow,
-        ResourceKind::FlaskGreen => material_mints.flask_green,
-        ResourceKind::FlaskPink => material_mints.flask_pink,
-        ResourceKind::FlaskPurple => material_mints.flask_purple,
-        ResourceKind::LoveHeart => material_mints.love_heart,
-        ResourceKind::Potato => config.potato_mint,
+        ResourceKind::Neuron => material_mints.seeds,
+        ResourceKind::Synapse => material_mints.wheat,
+        ResourceKind::Signal => material_mints.flour,
+        ResourceKind::Model => material_mints.bread,
+        ResourceKind::Power => material_mints.water,
+        ResourceKind::Compute => material_mints.coal,
+        ResourceKind::Dataset => material_mints.meat,
+        ResourceKind::BlueCore => material_mints.stone_blue,
+        ResourceKind::PurpleCore => material_mints.stone_purple,
+        ResourceKind::RedCore => material_mints.stone_red,
+        ResourceKind::ClearQuartz => material_mints.sand_white,
+        ResourceKind::RoseQuartz => material_mints.sand_pink,
+        ResourceKind::AmberQuartz => material_mints.sand_yellow,
+        ResourceKind::QuantumBit => material_mints.gem_blue,
+        ResourceKind::NeuralChip => material_mints.gem_orange,
+        ResourceKind::PhotonBit => material_mints.gem_white,
+        ResourceKind::BioChip => material_mints.gem_green,
+        ResourceKind::CryoFluid => material_mints.flask_blue,
+        ResourceKind::VoltFluid => material_mints.flask_yellow,
+        ResourceKind::BioFluid => material_mints.flask_green,
+        ResourceKind::NanoFluid => material_mints.flask_pink,
+        ResourceKind::QuantumFluid => material_mints.flask_purple,
+        ResourceKind::SoulCore => material_mints.love_heart,
+        ResourceKind::Mind => config.potato_mint,
     }
 }
 
@@ -1103,24 +1127,24 @@ mod state_tests {
     use crate::errors::AofError;
 
     fn mm(cap: u64) -> MaterialMints {
-        with_supply_cap(ResourceKind::Wood, cap)
+        with_supply_cap(ResourceKind::Circuit, cap)
     }
 
     #[test]
     fn supply_cap_is_inclusive_and_unlimited_is_open() {
         let capped = mm(1_000);
-        assert!(check_supply_cap(&capped, ResourceKind::Wood, 999, 1).is_ok(), "exactly at the cap must pass");
-        assert!(check_supply_cap(&capped, ResourceKind::Wood, 1_000, 1).is_err(), "one unit over the cap must fail");
+        assert!(check_supply_cap(&capped, ResourceKind::Circuit, 999, 1).is_ok(), "exactly at the cap must pass");
+        assert!(check_supply_cap(&capped, ResourceKind::Circuit, 1_000, 1).is_err(), "one unit over the cap must fail");
         assert!(matches!(
-            check_supply_cap(&capped, ResourceKind::Wood, 0, 1_001).unwrap_err(),
+            check_supply_cap(&capped, ResourceKind::Circuit, 0, 1_001).unwrap_err(),
             AofError::SupplyCapExceeded
         ));
         // Unlimited kinds never block, whatever the supply.
-        assert!(check_supply_cap(&capped, ResourceKind::Water, u64::MAX - 1, 1).is_ok());
+        assert!(check_supply_cap(&capped, ResourceKind::Power, u64::MAX - 1, 1).is_ok());
         // Overflowing supply+amount is an error, not a panic - on a CAPPED
         // kind. An unlimited kind returns before the addition (there is no
         // ceiling to compare against), so it stays Ok by design.
-        assert!(check_supply_cap(&capped, ResourceKind::Wood, u64::MAX, u64::MAX).is_err());
+        assert!(check_supply_cap(&capped, ResourceKind::Circuit, u64::MAX, u64::MAX).is_err());
     }
 
     fn guard(cap: u64, max_tx: u64) -> VaultGuard {
@@ -1168,7 +1192,11 @@ mod state_tests {
         }
         assert!(!is_valid_tool_type("sword"));
         assert!(!is_valid_tool_type(""));
-        assert_eq!(canonical_tool_type("Spear"), Some("spear"));
+        assert_eq!(canonical_tool_type("Data_Harvester"), Some("data_harvester"));
+        // [REBRAND] legacy pre-rebrand ids still canonicalise (devnet compat)
+        assert_eq!(canonical_tool_type("Spear"), Some("data_harvester"));
+        assert_eq!(canonical_tool_type("axe"), Some("plasma_cutter"));
+        assert_eq!(canonical_tool_type("reaper"), Some("neural_seeder"));
     }
 
     #[test]
@@ -1188,11 +1216,11 @@ mod state_tests {
             unlock_at: 42,
             operator: Pubkey::new_unique(),
         };
-        init_tool_data(&mut tool, mint, owner, "axe".to_string(), Rarity::Common);
+        init_tool_data(&mut tool, mint, owner, "plasma_cutter".to_string(), Rarity::Common);
         assert_eq!(tool.mint, mint);
         assert_eq!(tool.owner, owner);
         assert_eq!(tool.operator, owner, "operator must follow the owner");
-        assert_eq!(tool.tool_type, "axe");
+        assert_eq!(tool.tool_type, "plasma_cutter");
         assert_eq!(tool.rarity, Rarity::Common);
         assert_eq!(tool.durability, crate::constants::MAX_DURABILITY);
         assert!(!tool.is_mining && !tool.staked);
@@ -1229,12 +1257,12 @@ mod state_tests {
         };
         let mut mints = mm(SUPPLY_CAP_UNLIMITED);
         for kind in [
-            ResourceKind::Food,
-            ResourceKind::Wood,
-            ResourceKind::Stone,
-            ResourceKind::Seeds,
-            ResourceKind::Water,
-            ResourceKind::Potato,
+            ResourceKind::Data,
+            ResourceKind::Circuit,
+            ResourceKind::Silicon,
+            ResourceKind::Neuron,
+            ResourceKind::Power,
+            ResourceKind::Mind,
         ] {
             let idx = kind as usize;
             assert!(idx < RESOURCE_KIND_COUNT, "{kind:?} index {idx} is outside max_supply");
@@ -1246,9 +1274,9 @@ mod state_tests {
                 "{kind:?} cap lookup reads the wrong slot"
             );
         }
-        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Wood), cfg.wood_mint);
-        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Stone), cfg.stone_mint);
-        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Food), cfg.food_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Circuit), cfg.wood_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Silicon), cfg.stone_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Data), cfg.food_mint);
     }
 }
 
@@ -1308,10 +1336,10 @@ mod property_tests {
             let cap = rng.extreme();
             let supply = rng.extreme();
             let amount = rng.extreme();
-            let mints = with_supply_cap(ResourceKind::Wood, cap);
+            let mints = with_supply_cap(ResourceKind::Circuit, cap);
             let sum = supply.checked_add(amount);
             let expected = cap == SUPPLY_CAP_UNLIMITED || matches!(sum, Some(total) if total <= cap);
-            let got = check_supply_cap(&mints, ResourceKind::Wood, supply, amount);
+            let got = check_supply_cap(&mints, ResourceKind::Circuit, supply, amount);
             assert_eq!(got.is_ok(), expected, "cap={cap} supply={supply} amount={amount}");
             if !expected {
                 match sum {

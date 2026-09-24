@@ -33,7 +33,7 @@ export function VipGate({ isVip, feature, children }: VipGateProps) {
           <button
             onClick={() => push("profile", "season", (
               <>
-                <NavHeader title="🎫 Сезон-пасс" tabKey="profile" />
+                <NavHeader title="🎫 Пасс эпохи" tabKey="profile" />
                 <SeasonPassPage />
               </>
             ))}

@@ -26,7 +26,7 @@ export function ContentPage({ id }: { id: string }) {
   }, [id]);
   return (
     <>
-      <PageTitle eyebrow={hero ? 'AOF · Honest Craft Solarpunk' : page.group} title={page.title} lead={page.lead}>
+      <PageTitle eyebrow={hero ? 'NeuroForge · Honest Craft Solarpunk' : page.group} title={page.title} lead={page.lead}>
         <div className="site-god-rays" aria-hidden="true"><i/><i/><i/></div>
         <div className="site-dust-motes" aria-hidden="true">{Array.from({ length: 20 }).map((_, i) => <span key={i} />)}</div>
       </PageTitle>

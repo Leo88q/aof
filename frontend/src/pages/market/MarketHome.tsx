@@ -16,7 +16,7 @@ const SECTIONS = [
   { id: "auction", icon: "🔨", label: "Аукцион", sub: "Кто больше", el: <AuctionPage /> },
   { id: "offer", icon: "🤝", label: "Офферы", sub: "Торг о цене", el: <OfferPage /> },
   { id: "rental", icon: "🔑", label: "Аренда", sub: "Доля с добычи", el: <RentalPage /> },
-  { id: "orderbook", icon: "📊", label: "Ордербук", sub: "Еда/Дерево/Камень", el: <OrderbookPage /> },
+  { id: "orderbook", icon: "📊", label: "Ордербук", sub: "Еда/Схема/Кремний", el: <OrderbookPage /> },
   { id: "flasks", icon: "🧪", label: "Зелья", sub: "Торговля флаконами", el: <FlaskMarketplace /> },
 ];
 

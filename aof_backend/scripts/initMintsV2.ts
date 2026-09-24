@@ -24,15 +24,7 @@ if (!AUTHORITY) {
 const RPC_URL = process.env.HELIUS_RPC_URL || process.env.RPC_URL || clusterApiUrl("devnet");
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
-const RESOURCES = [
-  "seeds", "wheat", "flour", "bread", "wood", "stone", "potato", "coal",
-  "meat", "water", "food",
-  "sandWhite", "sandPink", "sandYellow",
-  "stoneBlue", "stonePurple", "stoneRed",
-  "gemBlue", "gemOrange", "gemWhite", "gemGreen",
-  "flaskBlue", "flaskYellow", "flaskGreen", "flaskPink", "flaskPurple",
-  "loveHeart",
-];
+const RESOURCES = ["neuron", "synapse", "signal", "model", "circuit", "silicon", "mind", "compute", "dataset", "power", "data", "clearQuartz", "roseQuartz", "amberQuartz", "blueCore", "purpleCore", "redCore", "quantumBit", "neuralChip", "photonBit", "bioChip", "cryoFluid", "voltFluid", "bioFluid", "nanoFluid", "quantumFluid", "soulCore"];
 
 const [MINT_AUTHORITY] = PublicKey.findProgramAddressSync(
   [Buffer.from("auth")],

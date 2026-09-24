@@ -126,7 +126,7 @@ export function PackOpener() {
   const [size, setSize] = useState<'small' | 'medium' | 'big'>('medium');
   const [phase, setPhase] = useState<'sealed' | 'revealed'>('sealed');
   const [prize, setPrize] = useState('');
-  const prizes = ['Мешочек семян', 'Связка дерева', 'Образец камня', 'Медная заготовка'];
+  const prizes = ['Мешочек нейронн', 'Связка схемы', 'Образец кремния', 'Медная заготовка'];
 
   const open = () => {
     setPrize(prizes[Math.floor(Math.random() * prizes.length)]);
@@ -158,7 +158,7 @@ export function PackOpener() {
 export function DrumInteract() {
   const [result, setResult] = useState('');
   const strike = () => {
-    const rhythms = ['Ритм поля', 'Ритм кузницы', 'Ритм мельницы'];
+    const rhythms = ['Ритм поля', 'Ритм кузницы', 'Ритм модуля переработки'];
     setResult(rhythms[Math.floor(Math.random() * rhythms.length)]);
     window.dispatchEvent(new CustomEvent('aof:badge', { detail: 'drum' }));
   };

@@ -1,10 +1,12 @@
-# WATCHTOWER_INTEGRATION.md — AOF v3 (Watchtower OS v3, Ideal Free Stack)
+# WATCHTOWER_INTEGRATION.md — NeuroForge v3 (Watchtower OS v3, Ideal Free Stack)
+
+> Ребрендинг 2026-09-24: бренд = **NeuroForge — Age of Intelligence**; game_id/tenant `aof` и адреса программ не меняются (см. `REBRAND_MAP.md`).
 
 | Поле | Значение |
 |---|---|
 | **game_id** | `aof` |
 | **tenant_id** | `aof` (Postgres RLS `tenant_id = 'aof'`) |
-| **name** | Age of Farming — farming crafting trading marketplace |
+| **name** | NeuroForge — AI training crafting trading marketplace (ex-Age of Farming) |
 | **network** | `stage` (`stage=prototype`) |
 | **program_ids** | 6 program crates (see table below, `Anchor.toml`) + 2 spec-заглушки (`programId: null`) |
 | **stack** | Watchtower OS v3 — целевой «ideal free» состав из 33 позиций; **ни один** из сторонних сервисов в этот репозиторий ещё не подключён (см. «Статус деплоя») |

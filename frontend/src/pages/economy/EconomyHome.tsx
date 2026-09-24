@@ -8,7 +8,7 @@ const SUB_TABS = [
   { key: "overview", label: "Обзор", icon: "📊" },
   { key: "pantry", label: "Кладовая", icon: "🏺" },
   { key: "workshop", label: "Мастерская", icon: "⚒️" },
-  { key: "calendar", label: "Сезоны", icon: "📅" },
+  { key: "calendar", label: "Эпохи", icon: "📅" },
 ];
 
 export function EconomyHome() {
