@@ -58,4 +58,6 @@ upgradeable = true
 # CI seeds target/idl from aof_backend/src/idl and runs with --skip-build.
 # This wrapper does the same locally so `anchor test` doesn't fail with
 # "Building IDL failed" / "cannot find type SourceFile".
-test = "node scripts/ensure-idl.mjs && npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"
+# Fallback chain: .mjs -> .js -> continue, so missing script doesn't break `anchor test`
+# Wallet is auto-created if missing (solana/keys/ is gitignored, CI creates throwaway one).
+test = "(node scripts/ensure-env.mjs 2>/dev/null || node scripts/ensure-env.js 2>/dev/null || node scripts/ensure-idl.mjs 2>/dev/null || node scripts/ensure-idl.js 2>/dev/null || echo '[warn] ensure-idl scripts not found, expecting target/idl to exist') && npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"

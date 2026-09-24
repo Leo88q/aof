@@ -75,14 +75,38 @@ anchor build --no-idl --skip-lint || anchor build --no-idl
 
 echo ""
 echo "== Сидим IDL из коммитов =="
-node scripts/ensure-idl.mjs
+node scripts/ensure-idl.mjs 2>/dev/null || node scripts/ensure-idl.js 2>/dev/null || echo "⚠️ ensure-idl не найден, но продолжаем"
+
+echo ""
+echo "== Проверяем кошелёк для Anchor =="
+WALLET="solana/keys/aof-authority-devnet.json"
+if [ ! -f "$WALLET" ]; then
+  echo "Кошелёк $WALLET не найден — создаю throwaway..."
+  mkdir -p "$(dirname "$WALLET")"
+  if command -v solana-keygen >/dev/null 2>&1; then
+    solana-keygen new --silent --no-bip39-passphrase --force -o "$WALLET"
+    echo "Создан: $WALLET"
+    solana airdrop 100 --url localhost 2>/dev/null || true
+  else
+    echo "❌ solana-keygen не найден. Поставь Agave и запусти:"
+    echo "   solana-keygen new --no-bip39-passphrase -o $WALLET"
+  fi
+else
+  echo "Кошелёк есть: $WALLET"
+fi
 
 echo ""
 echo "✅ Готово!"
 echo "   Бинарники: target/deploy/*.so"
 echo "   IDL: target/idl/*.json (скопированы из aof_backend/src/idl/)"
+echo "   Wallet: $WALLET"
 echo ""
 echo "Для прогона тестов:"
+echo "  # 1. Запусти валидатор в отдельном терминале, если ещё не запущен:"
+echo "  solana-test-validator --reset"
+echo "  # 2. В другом терминале:"
 echo "  anchor test --skip-build"
-echo "или"
+echo "  # или напрямую (нужен ANCHOR_PROVIDER_URL):"
+echo "  export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899"
+echo "  export ANCHOR_WALLET=$WALLET"
 echo "  npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts"
