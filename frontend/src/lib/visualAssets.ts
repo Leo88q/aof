@@ -134,30 +134,35 @@ const TOOL_RARITY_PLATE: Record<string, Partial<Record<ToolRarity, string>>> = {
     uncommon: "/assets/nfts/plasma-cutter-uncommon.jpg",
     rare: "/assets/nfts/plasma-cutter-rare.jpg",
     epic: "/assets/nfts/plasma-cutter-epic.jpg",
+    legendary: "/assets/nfts/plasma-cutter-legendary.jpg",
   },
   silicon_extractor: {
     uncommon: "/assets/nfts/silicon-extractor-uncommon.jpg",
     rare: "/assets/nfts/silicon-extractor-rare.jpg",
     epic: "/assets/nfts/silicon-extractor-epic.jpg",
+    legendary: "/assets/nfts/silicon-extractor-legendary.jpg",
   },
   data_harvester: {
     uncommon: "/assets/nfts/data-harvester-uncommon.jpg",
     rare: "/assets/nfts/data-harvester-rare.jpg",
     epic: "/assets/nfts/data-harvester-epic.jpg",
+    legendary: "/assets/nfts/data-harvester-legendary.jpg",
   },
   quantum_transmitter: {
     uncommon: "/assets/nfts/quantum-transmitter-uncommon.jpg",
     rare: "/assets/nfts/quantum-transmitter-rare.jpg",
     epic: "/assets/nfts/quantum-transmitter-epic.jpg",
+    legendary: "/assets/nfts/quantum-transmitter-legendary.jpg",
   },
   neural_seeder: {
     uncommon: "/assets/nfts/neural-seeder-uncommon.jpg",
     rare: "/assets/nfts/neural-seeder-rare.jpg",
     epic: "/assets/nfts/neural-seeder-epic.jpg",
+    legendary: "/assets/nfts/neural-seeder-legendary.jpg",
   },
 };
 
-/** 5×5 = 25. Legendary / Transcendent plates are still empty. */
+/** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */
 export function toolPlate(toolId?: string | null, rarity: string = "common"): string | undefined {
   if (!toolId) return undefined;
   const raw = toolId.toLowerCase();
