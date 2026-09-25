@@ -5,10 +5,10 @@ import { api } from "./api";
 // Ресурсные минты (заданы /admin/set-resource-mints) + kind из контракта (ResourceKind)
 export const RESOURCE_MINTS = [
   // [REBRAND] NeuroForge: keys = API-имена ресурсов (lowercase), kind = дискриминант ResourceKind
-  { key: "data", mint: "", kind: 0, label: "Данные", icon: "📊" },
-  { key: "circuit", mint: "", kind: 1, label: "Схема", icon: "🔌" },
-  { key: "silicon", mint: "", kind: 2, label: "Кремний", icon: "🧱" },
-  { key: "mind", mint: "", kind: 26, label: "MIND", icon: "🧠" },
+  { key: "data", mint: "", kind: 0, label: "Данные", icon: resourceIcon("DATA") || "" },
+  { key: "circuit", mint: "", kind: 1, label: "Схема", icon: resourceIcon("CIRCUIT") || "" },
+  { key: "silicon", mint: "", kind: 2, label: "Кремний", icon: resourceIcon("SILICON") || "" },
+  { key: "mind", mint: "", kind: 26, label: "MIND", icon: resourceIcon("MIND") || "" },
 ];
 
 const IMG = {

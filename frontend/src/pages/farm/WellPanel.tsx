@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/Card";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 
 const WEATHER_RATES = {
-  drought: { label: "Блэкаут", icon: "☀️", rate: 0, color: "#ef4444" },
-  sunny: { label: "Номинал", icon: "🌤️", rate: 5, color: "#f59e0b" },
-  rain: { label: "Скачок", icon: "🌧️", rate: 15, color: "#3b82f6" },
-  festival: { label: "Френзи", icon: "🎉", rate: 20, color: "#a855f7" },
+  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#ef4444" },
+  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#f59e0b" },
+  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#3b82f6" },
+  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#a855f7" },
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;
@@ -107,7 +109,7 @@ export function WellPanel() {
       ) : (
         <>
           <div className="flex items-center gap-3">
-            <div className="text-5xl">{w.icon}</div>
+            <ResourceGlyph icon={w.icon} alt={w.label} className="w-14 h-14 mx-auto" />
             <div className="flex-1">
               <p className="text-straw text-xs">Нагрузка сети: <b style={{ color: w.color }}>{w.label}</b></p>
               <p className="text-straw text-xs">Скорость: <b className="text-parchment">{w.rate}</b> 💧/час</p>

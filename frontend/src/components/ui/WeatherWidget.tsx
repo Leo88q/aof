@@ -5,10 +5,17 @@ import { api } from "../../lib/api";
 import { Card } from "./Card";
 import { UI_ICONS } from "../../lib/visualAssets";
 
+/**
+ * On-chain weather states -> scene artwork. The art is named after the
+ * economy effect (Nominal / Surge / Blackout / Frenzy), not after the
+ * weather word, so the mapping follows WellPanel's rate table:
+ * drought = Blackout (rate 0), sunny = Nominal, rain = Surge, festival = Frenzy.
+ */
 const WEATHER_ICONS: Record<string, string> = {
   sunny: UI_ICONS.weatherNominal,
   rain: UI_ICONS.weatherSurge,
   drought: UI_ICONS.weatherBlackout,
+  festival: UI_ICONS.weatherFrenzy,
   harvest_festival: UI_ICONS.weatherFrenzy,
 };
 
