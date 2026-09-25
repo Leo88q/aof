@@ -5,6 +5,7 @@ import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface BreakdownItem {
   score: number;
@@ -161,7 +162,7 @@ export function TrustPage() {
 
       {/* Breakdown по компонентам */}
       <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3">📊 Компоненты репутации</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.economyOverview} alt="" className="w-5 h-5" /> Компоненты репутации</h3>
         <div className="grid grid-cols-2 gap-3">
           {Object.entries(data.breakdown).map(([key, item], i) => {
             const meta = COMPONENT_META[key] || { icon: "❓", label: key };

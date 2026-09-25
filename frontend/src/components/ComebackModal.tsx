@@ -69,9 +69,9 @@ export function ComebackModal({ bonus, onClose }: ComebackModalProps) {
             <motion.div
               animate={{ rotate: [0, -10, 10, 0] }}
               transition={{ duration: 0.6, repeat: 2 }}
-              className="text-6xl mb-3"
+              className="mb-3"
             >
-              🎁
+              <ResourceGlyph icon={UI_ICONS.rewardCapsule} alt="" className="w-16 h-16 mx-auto" />
             </motion.div>
             <h2 className="text-parchment font-bold text-xl">С возвращением!</h2>
             <p className="text-straw text-sm mt-2">{bonus.message}</p>

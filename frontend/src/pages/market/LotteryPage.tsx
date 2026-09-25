@@ -189,9 +189,9 @@ export function LotteryPage() {
           transition={spinning ? { repeat: Infinity, duration: 0.5, ease: "linear" } : { duration: 0.4 }}
           className="text-6xl inline-block"
         >
-          🌾
+          <img src={UI_ICONS.drum} alt="" className="w-16 h-16 object-contain" />
         </motion.div>
-        <p className="text-parchment font-semibold mt-2">{spinning ? "Барабан крутится…" : "Барабан Урожая"}</p>
+        <p className="text-parchment font-semibold mt-2">{spinning ? "Барабан крутится…" : "Квантовый розыгрыш"}</p>
         <p className="text-straw text-xs mt-1">
           {round?.winnerTicket !== undefined && toNum(round.winnerTicket) >= 0 && round?.drawn
             ? `Выигрышный билет: №${fmtNum(round.winnerTicket)}`
@@ -204,7 +204,7 @@ export function LotteryPage() {
         <div className="text-parchment font-semibold text-sm mb-2">Раунд {roundId}</div>
         {!round && roundErr && (
           <div className="text-center py-3">
-            <div className="text-3xl mb-1">🌱</div>
+            <div className="mb-1"><img src={UI_ICONS.lottery} alt="" className="w-10 h-10 object-contain mx-auto" /></div>
             <p className="text-straw text-xs mb-3">Раунд ещё не создан</p>
             <button onClick={initRound} className="px-4 py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold">
               Создать раунд {roundId}
@@ -234,7 +234,7 @@ export function LotteryPage() {
             onChange={(e) => setTicketNum(e.target.value)}
             className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
           <button onClick={buyTicket} disabled={ticketsDisabled} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
-            🌱 Buy
+            <span className="inline-flex items-center gap-1"><img src={UI_ICONS.ticket} alt="" className="w-4 h-4 object-contain" /> Buy</span>
           </button>
         </div>
 
@@ -243,8 +243,8 @@ export function LotteryPage() {
             <p className="text-straw text-xs mb-1.5">Ваши билеты:</p>
             <div className="flex flex-wrap gap-1.5">
               {myTickets.map((t: any, i) => (
-                <span key={i} className="px-2.5 py-1 rounded-lg bg-wheat-500/15 border border-wheat-500/30 text-wheat-500 text-xs font-semibold">
-                  🎫 №{fmtNum(t.ticketNumber ?? t)}
+                <span key={i} className="px-2.5 py-1 rounded-lg bg-wheat-500/15 border border-wheat-500/30 text-wheat-500 text-xs font-semibold inline-flex items-center gap-1">
+                  <img src={UI_ICONS.ticket} alt="" className="w-3.5 h-3.5 object-contain" /> №{fmtNum(t.ticketNumber ?? t)}
                 </span>
               ))}
             </div>

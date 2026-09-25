@@ -207,8 +207,8 @@ export function Workshop() {
             Модуль переработки и Тренировка теперь во вкладке "Лаборатория"
           </h3>
           <p style={{color: "#94a3b8", fontSize: "13px", marginBottom: "16px", lineHeight: "1.6", maxWidth: "400px", margin: "0 auto 16px"}}>
-            Перейди во вкладку <b style={{color: "#10b981"}}>🧠 Нейро-лаборатория</b> → подвкладки
-            <b style={{color: "#10b981"}}> <ResourceGlyph icon={UI_ICONS.locFactory} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Переработка</b> и <b style={{color: "#10b981"}}>🔥 Тренировка</b>,
+            Перейди во вкладку <b style={{color: "#10b981"}}><ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Нейро-лаборатория</b> → подвкладки
+            <b style={{color: "#10b981"}}> <ResourceGlyph icon={UI_ICONS.locFactory} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Переработка</b> и <b style={{color: "#10b981"}}><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Тренировка</b>,
             чтобы запустить переработку сигнала или тренировку модели.
           </p>
           <div style={{background: "rgba(16, 185, 129, 0.1)", padding: "12px 16px", borderRadius: "8px", border: "1px solid rgba(16, 185, 129, 0.3)", display: "inline-block"}}>

@@ -11,6 +11,7 @@ import {
 } from "../../lib/marketUtils";
 import { loadMints } from "../../lib/mints";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 
 // Ресурсы — SPL 9 decimals: 1 единица = 1e9 базовых
 const fmtRes = (v: any) => (toNum(v) / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -139,14 +140,14 @@ export function OrderbookPage() {
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment">📊 Ордербук</h1>
+        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketOrderbook} alt="" className="w-7 h-7" /> Ордербук</h1>
         <button onClick={() => load(res.mint)} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
           {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
       <p className="text-straw text-xs">
         Биржа ресурсов: лимитные ордера на базовые ресурсы, камни, гемы и материалы.
-        Нейрон 🌱 — хотят купить, контейнер 📦 — продают компоненты.
+        Биды — хотят купить, оферы — продают компоненты.
       </p>
 
       {/* Dropdown для выбора ресурса */}
@@ -191,7 +192,7 @@ export function OrderbookPage() {
             <p className="text-straw text-xs"><ResourceGlyph icon={res.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {res.label}</p>
             {crossable ? (
               <button onClick={match} className="mt-1 text-xs px-3 py-1.5 rounded-lg bg-wheat-600 text-white font-semibold animate-pulse">
-                ⚡ Свести
+                <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.matchZap} alt="" className="w-4 h-4" /> Свести</span>
               </button>
             ) : (
               <p className="text-straw text-xs mt-1">нет сведения</p>
@@ -222,7 +223,7 @@ export function OrderbookPage() {
             const mine = address && o.maker === address;
             return (
               <div key={o.pubkey || i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-wheat-600/10 text-xs">
-                <span>🧺</span>
+                <ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" />
                 <span className="text-straw">{shortAddr(o.maker)}{mine ? " (вы)" : ""}</span>
                 <span className="flex-1" />
                 <span className="text-parchment">{fmtRes(o.amountRemaining)} ед.</span>
@@ -238,7 +239,7 @@ export function OrderbookPage() {
             const mine = address && o.maker === address;
             return (
               <div key={o.pubkey || i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-sprout-500/10 text-xs">
-                <span>🌱</span>
+                <ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-4 h-4" />
                 <span className="text-straw">{shortAddr(o.maker)}{mine ? " (вы)" : ""}</span>
                 <span className="flex-1" />
                 <span className="text-parchment">{fmtRes(o.amountRemaining)} ед.</span>
@@ -257,11 +258,11 @@ export function OrderbookPage() {
       <div className="grid grid-cols-2 gap-2">
         <button onClick={() => setFormOpen(formOpen === "buy" ? null : "buy")}
           className={`py-2.5 rounded-xl text-sm font-semibold border ${formOpen === "buy" ? "bg-sprout-500 text-white border-sprout-500" : "bg-soil-800 text-sprout-500 border-sprout-500/30"}`}>
-          🌱 Buy {res.label}
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-4 h-4" /> Buy {res.label}</span>
         </button>
         <button onClick={() => setFormOpen(formOpen === "sell" ? null : "sell")}
           className={`py-2.5 rounded-xl text-sm font-semibold border ${formOpen === "sell" ? "bg-wheat-600 text-white border-wheat-600" : "bg-soil-800 text-wheat-500 border-wheat-600/30"}`}>
-          🧺 Sell {res.label}
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" /> Sell {res.label}</span>
         </button>
       </div>
 

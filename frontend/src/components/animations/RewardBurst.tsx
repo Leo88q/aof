@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../visual/ResourceGlyph";
 
 interface RewardBurstProps {
   onClaim: () => void;
@@ -59,7 +61,11 @@ export function RewardBurst({ onClaim, rewardLabel }: RewardBurstProps) {
         transition={{ duration: stage === "shaking" ? 0.8 : 0.6 }}
         className="text-5xl relative z-10"
       >
-        {stage === "burst" ? "✨" : "🎁"}
+        {stage === "burst" ? (
+          <ResourceGlyph icon={UI_ICONS.rewardSpark} alt="" className="w-14 h-14" />
+        ) : (
+          <ResourceGlyph icon={UI_ICONS.rewardCapsule} alt="" className="w-14 h-14" />
+        )}
       </motion.button>
 
       {/* Частицы при взрыве */}
@@ -67,10 +73,11 @@ export function RewardBurst({ onClaim, rewardLabel }: RewardBurstProps) {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           {Array.from({ length: 12 }).map((_, i) => {
             const angle = (i / 12) * Math.PI * 2;
+            const particleIcons = [UI_ICONS.tokenCoin, UI_ICONS.rewardStar, resourceIcon("SYNAPSE") || "", resourceIcon("QUANTUM_BIT") || ""];
             return (
               <motion.span
                 key={i}
-                className="absolute text-lg"
+                className="absolute"
                 initial={{ x: 0, y: 0, opacity: 1 }}
                 animate={{
                   x: Math.cos(angle) * 80,
@@ -79,7 +86,7 @@ export function RewardBurst({ onClaim, rewardLabel }: RewardBurstProps) {
                 }}
                 transition={{ duration: 0.8 }}
               >
-                {["🪙", "⭐", "🌾", "💎"][i % 4]}
+                <ResourceGlyph icon={particleIcons[i % 4]} alt="" className="w-5 h-5" />
               </motion.span>
             );
           })}

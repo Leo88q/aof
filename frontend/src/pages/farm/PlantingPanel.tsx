@@ -170,13 +170,19 @@ export function PlantingPanel() {
                 : "bg-soil-700/50 border border-straw/20 hover:border-green-500"
             }`}
           >
-            <div className="text-2xl mb-1">
-              {tile.ready ? "🌾" : tile.planted ? "🌱" : "⬜"}
+            <div className="mb-1">
+              {tile.ready ? (
+                <ResourceGlyph icon={resourceIcon("SYNAPSE") || ""} alt="" className="w-7 h-7" />
+              ) : tile.planted ? (
+                <ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-7 h-7" />
+              ) : (
+                <div className="w-7 h-7 rounded border border-straw/10 bg-soil-800/40" />
+              )}
             </div>
             <div className="text-[10px] text-parchment font-bold">Тайл {tile.index + 1}</div>
             {tile.planted && (
               <>
-                <div className="text-[10px] text-straw">{tile.seedsAmount} 🌰</div>
+                <div className="text-[10px] text-straw inline-flex items-center gap-0.5">{tile.seedsAmount} <ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-3 h-3" /></div>
                 <div className="w-full bg-soil-700 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className={`h-full ${tile.ready ? "bg-amber-500" : "bg-green-500"}`}
@@ -205,7 +211,7 @@ export function PlantingPanel() {
         <div className="bg-soil-800/50 rounded-lg p-3 space-y-2">
           <p className="text-straw text-xs">Посев на <b className="text-parchment">Тайл {selectedPlot + 1}</b></p>
           <div className="flex items-center gap-2">
-            <span className="text-straw text-xs">🌰 Нейрон:</span>
+            <span className="text-straw text-xs inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-3.5 h-3.5" /> Нейрон:</span>
             <input
               type="range"
               min="1"

@@ -122,7 +122,7 @@ export function FarmDashboard() {
           </button>
         </div>
         <div className="flex-1 text-center">
-          <h1 className="text-2xl font-bold text-parchment">🧠 Нейро-лаборатория</h1>
+          <h1 className="text-2xl font-bold text-parchment flex items-center justify-center gap-2"><ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-7 h-7" /> Нейро-лаборатория</h1>
           <p className="text-straw text-sm mt-1">С возвращением, оператор</p>
         </div>
         <WeatherWidget />

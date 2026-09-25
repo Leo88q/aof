@@ -42,7 +42,7 @@ export function ExplorationPage() {
     if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
 
     setLoading(true);
-    flash("🗺️ Готовим on-chain commit экспедиции…");
+    flash("Готовим on-chain commit экспедиции…");
 
     try {
       const [foodMint, woodMint, stoneMint, meatMint] = await Promise.all([

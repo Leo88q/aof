@@ -7,7 +7,8 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { ArtPlate } from "../../components/visual/ArtPlate";
-import { toolPlate } from "../../lib/visualAssets";
+import { toolPlate, UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import {
   RARITY_LABEL, RARITY_COLOR, rarityKey,
   fmtSol, shortAddr, timeLeftStr, toNum, useNow, useTreasury, useFlash,
@@ -122,7 +123,7 @@ export function AuctionPage() {
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment">🔨 Аукцион</h1>
+        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.auction} alt="" className="w-7 h-7" /> Аукцион</h1>
         <button onClick={load} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
           {loading ? "…" : "⟳ Refresh"}
         </button>
@@ -140,7 +141,7 @@ export function AuctionPage() {
 
       {auctions.length === 0 && !loading && (
         <Card className="text-center py-8">
-          <div className="text-4xl mb-2">🔨</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.auction} alt="" className="w-12 h-12 mx-auto" /></div>
           <p className="text-parchment text-sm">Активных аукционов нет</p>
           <p className="text-straw text-xs mt-1">Создайте первый — молоток ждёт</p>
         </Card>

@@ -11,7 +11,7 @@ import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 // Must match aof-core/src/instructions/start_baking.rs and constants.rs.
 const OVEN_SIZES = {
   small:  { label: "Малая",  batchSize: 1, flour: 4,  water: 3, wood: 5,  coal: 2,  bread: 2,  time: 7200,  icon: UI_ICONS.trainer, sizeCls: "w-4 h-4" },
-  medium: { label: "Средняя", batchSize: 2, flour: 12, water: 8, wood: 12, coal: 5,  bread: 7,  time: 18000, icon: "🔥🔥" },
+  medium: { label: "Средняя", batchSize: 2, flour: 12, water: 8, wood: 12, coal: 5,  bread: 7,  time: 18000, icon: UI_ICONS.trainer, sizeCls: "w-5 h-5" },
   large:  { label: "Большая", batchSize: 3, flour: 28, water: 18, wood: 25, coal: 10, bread: 18, time: 36000, icon: UI_ICONS.trainer, sizeCls: "w-6 h-6" },
 };
 
@@ -169,11 +169,11 @@ export function OvenPanel() {
           </div>
 
           <div className="bg-soil-800/50 rounded-lg p-3 space-y-1 text-xs">
-            <div className="flex justify-between"><span className="text-straw">Сигнал:</span><span className="text-parchment">{m.flour} 🥣</span></div>
-            <div className="flex justify-between"><span className="text-straw">Энергопоток:</span><span className="text-parchment">{m.water} 💧</span></div>
-            {m.wood > 0 && <div className="flex justify-between"><span className="text-straw">Дрова:</span><span className="text-parchment">{m.wood} 🪵</span></div>}
-            {m.coal > 0 && <div className="flex justify-between"><span className="text-straw">Вычисления:</span><span className="text-parchment">{m.coal} ⬛</span></div>}
-            <div className="flex justify-between"><span className="text-straw">На выходе:</span><span className="text-amber-400 font-bold">{m.bread} 🍞</span></div>
+            <div className="flex justify-between items-center"><span className="text-straw">Сигнал:</span><span className="text-parchment inline-flex items-center gap-1">{m.flour} <ResourceGlyph icon={resourceIcon("SIGNAL") || ""} alt="" className="w-4 h-4" /></span></div>
+            <div className="flex justify-between items-center"><span className="text-straw">Энергопоток:</span><span className="text-parchment inline-flex items-center gap-1">{m.water} <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-4 h-4" /></span></div>
+            {m.wood > 0 && <div className="flex justify-between items-center"><span className="text-straw">Схемы:</span><span className="text-parchment inline-flex items-center gap-1">{m.wood} <ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" /></span></div>}
+            {m.coal > 0 && <div className="flex justify-between items-center"><span className="text-straw">Вычисления:</span><span className="text-parchment inline-flex items-center gap-1">{m.coal} <ResourceGlyph icon={resourceIcon("COMPUTE") || ""} alt="" className="w-4 h-4" /></span></div>}
+            <div className="flex justify-between items-center"><span className="text-straw">На выходе:</span><span className="text-amber-400 font-bold inline-flex items-center gap-1">{m.bread} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /></span></div>
             <div className="flex justify-between"><span className="text-straw">Время:</span><span className="text-parchment">{formatTime(m.time)}</span></div>
           </div>
 
@@ -199,7 +199,7 @@ export function OvenPanel() {
             ) : (
               <>
                 <p className="text-parchment font-bold">Модель готов!</p>
-                <p className="text-amber-400 text-2xl font-bold">{ovenState.breadReady} 🍞</p>
+                <p className="text-amber-400 text-2xl font-bold inline-flex items-center gap-2 justify-center">{ovenState.breadReady} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-6 h-6" /></p>
               </>
             )}
           </div>
@@ -210,7 +210,7 @@ export function OvenPanel() {
               disabled={baking}
               className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50"
             >
-              {baking ? "..." : `🍞 Собрать модель`}
+              {baking ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /> Собрать модель</span>}
             </button>
           )}
         </div>
