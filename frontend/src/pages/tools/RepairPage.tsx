@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
-import { toolPlate } from "../../lib/visualAssets";
+import { toolPlate, resourceIcon, UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, useFlash } from "../../lib/marketUtils";
 
@@ -19,7 +20,7 @@ export function RepairPage() {
   const [mints, setMints] = useState({ wood: "", stone: "" });
   const [amount, setAmount] = useState(1);
   const [quote, setQuote] = useState<{ stone: number; wood: number } | null>(null);
-  const [receipt, setReceipt] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<React.ReactNode | null>(null);
   const [txStatus, flash] = useFlash();
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function RepairPage() {
       if (r.success) {
         flash(`✅ Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
         setReceipt(
-          `Списано: ${fmtNum((q?.stone ?? 0) / D9)} 🪨  +  ${fmtNum((q?.wood ?? 0) / D9)} 🪵`
+          <>Списано: {fmtNum((q?.stone ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.wood ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
         );
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(loadTools, 2500);

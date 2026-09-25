@@ -22,7 +22,8 @@ import { ExplorationPage } from "./ExplorationPage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
-import { UI_ICONS } from "../../lib/visualAssets";
+import { resourceIcon, UI_ICONS, toolPlate } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
@@ -157,14 +158,14 @@ export function FarmDashboard() {
           <ResourceBar owner={walletAddr} refreshKey={refreshKey} />
 
           <div className="grid grid-cols-3 gap-2 mb-4 mt-4">
-            <StatChip icon="⛽" value="12.4" label="SOL газ" accent="gold" />
+            <StatChip icon={resourceIcon("POWER")} value="12.4" label="SOL газ" accent="gold" />
             <StatChip
-              icon="💧"
+              icon={resourceIcon("POWER")}
               value={energy && typeof energy.amount === "number" ? `${energy.amount}/${energy.cap ?? 100}` : "—"}
               label="Энергия"
               accent="water"
             />
-            <StatChip icon="🔥" value={streak && typeof streak.current !== "undefined" ? String(streak.current) : "—"} label="Стрик" accent="green" />
+            <StatChip icon={UI_ICONS.rewardDaily} value={streak && typeof streak.current !== "undefined" ? String(streak.current) : "—"} label="Стрик" accent="green" />
           </div>
 
           {energy && typeof energy.amount === "number" && typeof energy.cap === "number" && energy.cap > 0 && (
@@ -173,7 +174,7 @@ export function FarmDashboard() {
                 level={(energy.amount / energy.cap) * 100}
                 color="#5ab0d6"
                 label="Энергия"
-                icon="💧"
+                icon={resourceIcon("POWER")}
               />
             </Card>
           )}
