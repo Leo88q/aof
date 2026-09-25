@@ -5,6 +5,7 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { Card } from "../../components/ui/Card";
 import { NavHeader } from "../../components/NavHeader";
 import { useWalletStr } from "../../lib/useWalletStr";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 
 function normalizeLetter(item: any, i: number) {
@@ -108,7 +109,7 @@ export function InboxHome() {
             className={`w-full text-left rounded-2xl p-3 border ${l.read ? "bg-soil-850/50 border-straw/10" : "bg-soil-800 border-wheat-600/30"} active:scale-[0.99]`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${l.hasReward ? "bg-gold/20" : "bg-soil-700"}`}>
-                {l.hasReward ? "🎁" : "✉️"}
+                <img src={l.hasReward ? UI_ICONS.inboxReward : UI_ICONS.inbox} alt="" className="w-7 h-7 object-contain" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -133,7 +134,7 @@ export function InboxHome() {
               className="bg-soil-850 rounded-3xl p-6 max-w-md w-full border border-wheat-600/30 shadow-2xl"
               onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-3xl">{opened.hasReward ? "🎁" : "✉️"}</span>
+                <img src={opened.hasReward ? UI_ICONS.inboxReward : UI_ICONS.inbox} alt="" className="w-10 h-10 object-contain" />
                 <button onClick={() => setOpened(null)} className="w-8 h-8 rounded-full bg-soil-800 flex items-center justify-center text-straw">✕</button>
               </div>
 
@@ -144,7 +145,10 @@ export function InboxHome() {
               {opened.hasReward && (
                 <div className="mt-4 p-3 rounded-xl bg-gold/10 border border-gold/30">
                   <p className="text-straw text-xs">Награда</p>
-                  <p className="text-gold font-bold text-lg">🎁 {opened.reward}</p>
+                  <p className="text-gold font-bold text-lg flex items-center gap-2">
+                    <img src={UI_ICONS.inboxReward} alt="" className="w-5 h-5 object-contain" />
+                    {opened.reward}
+                  </p>
                 </div>
               )}
 

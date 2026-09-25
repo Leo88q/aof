@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
 import { Card } from "./Card";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const WEATHER_ICONS: Record<string, string> = {
-  sunny: "☀️",
-  rain: "🌧️",
-  drought: "🔥",
-  harvest_festival: "🎉",
+  sunny: UI_ICONS.weatherNominal,
+  rain: UI_ICONS.weatherSurge,
+  drought: UI_ICONS.weatherBlackout,
+  harvest_festival: UI_ICONS.weatherFrenzy,
 };
 
 const SEASON_ICONS: Record<string, string> = {
@@ -92,11 +93,11 @@ export function WeatherWidget() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <motion.span
-            className="text-4xl"
+            className="inline-flex"
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 3, repeat: Infinity }}
           >
-            {WEATHER_ICONS[current.type] || "☀️"}
+            <img src={WEATHER_ICONS[current.type] || UI_ICONS.weatherNominal} alt="" className="w-10 h-10 object-contain" />
           </motion.span>
           <div>
             <div className="text-parchment font-semibold capitalize">
@@ -140,7 +141,7 @@ export function WeatherWidget() {
                 transition={{ delay: i * 0.1 }}
                 className="text-center p-2 bg-soil-700/50 rounded-lg"
               >
-                <div className="text-2xl mb-1">{day?.type ? WEATHER_ICONS[day.type] || "☀️" : "☀️"}</div>
+                <img src={(day?.type && WEATHER_ICONS[day.type]) || UI_ICONS.weatherNominal} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
                 <div className="text-xs text-straw capitalize">
                   {day?.type ? day.type.replace("_", " ") : "—"}
                 </div>

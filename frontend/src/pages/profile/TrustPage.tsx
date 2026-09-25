@@ -4,6 +4,7 @@ import { Card } from "../../components/ui/Card";
 import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 interface BreakdownItem {
   score: number;
@@ -138,7 +139,10 @@ export function TrustPage() {
 
       {/* Привилегии */}
       <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3">🎁 Привилегии</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2">
+          <img src={UI_ICONS.privileges} alt="" className="w-5 h-5 object-contain" />
+          Привилегии
+        </h3>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-wheat-500 font-bold">{data.privileges.traderLimitSolPerDay}◎</p>

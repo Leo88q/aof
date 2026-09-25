@@ -106,7 +106,7 @@ export function FriendsList() {
 
       {/* Пустой список (пока нет рефералов) */}
       <Card className="p-8 text-center bg-soil-800 border border-straw/10">
-        <div className="text-5xl mb-3">👥</div>
+        <img src={UI_ICONS.friends} alt="" className="w-12 h-12 object-contain mx-auto mb-3" />
         <h3 className="text-parchment font-semibold mb-2">
           Пока нет друзей
         </h3>

@@ -129,7 +129,8 @@ export function Workshop() {
           className={"sub-tab-btn" + (section === "gems" ? " active" : "")}
           onClick={() => setSection("gems")}
         >
-          💎 Гемы
+          <img src={UI_ICONS.gems} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Гемы
         </button>
         <button
           className={"sub-tab-btn" + (section === "flask" ? " active" : "")}
@@ -142,13 +143,15 @@ export function Workshop() {
           className={"sub-tab-btn" + (section === "trans" ? " active" : "")}
           onClick={() => setSection("trans")}
         >
-          ⚗️ Превращения
+          <img src={UI_ICONS.transformations} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Превращения
         </button>
         <button
           className={"sub-tab-btn" + (section === "timed" ? " active" : "")}
           onClick={() => setSection("timed")}
         >
-          ⏱️ Тренировка/Переработка
+          <img src={UI_ICONS.workshopTimer} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Тренировка/Переработка
         </button>
       </div>
 

@@ -345,7 +345,10 @@ export function ProfileHome() {
 
       {/* 2. Привилегии (перенесено из отдельной вкладки) */}
       <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3">🎯 Привилегии</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2">
+          <img src={UI_ICONS.privileges} alt="" className="w-5 h-5 object-contain" />
+          Привилегии
+        </h3>
         <PrivilegesPanel compact={true} />
         <button
           onClick={() => push("profile", "privileges", (
@@ -371,7 +374,10 @@ export function ProfileHome() {
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-wheat-500 font-semibold">👥 Друзья и соседи</h3>
+            <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
+              <img src={UI_ICONS.friends} alt="" className="w-5 h-5 object-contain" />
+              Друзья и соседи
+            </h3>
             <p className="text-straw text-xs mt-1">Поиск по нику, список друзей, визиты на фермы</p>
           </div>
           <span className="text-2xl">→</span>
