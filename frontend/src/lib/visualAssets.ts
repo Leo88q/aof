@@ -256,6 +256,16 @@ export const UI_ICONS = {
   trustAntibot: "/assets/icons/ui/trust-antibot.jpg",
   noticeSuccess: "/assets/icons/ui/notice-success.jpg",
   noticeError: "/assets/icons/ui/notice-error.jpg",
+  rewardTrophy: "/assets/icons/ui/reward-trophy.jpg",
+  medalGold: "/assets/icons/ui/reward-medal-gold.jpg",
+  medalSilver: "/assets/icons/ui/reward-medal-silver.jpg",
+  medalBronze: "/assets/icons/ui/reward-medal-bronze.jpg",
+  rewardStar: "/assets/icons/ui/reward-star.jpg",
+  rewardCrown: "/assets/icons/ui/reward-crown.jpg",
+  medalService: "/assets/icons/ui/reward-medal-service.jpg",
+  chartsBar: "/assets/icons/ui/admin-charts-bar.jpg",
+  chartsUp: "/assets/icons/ui/admin-charts-up.jpg",
+  adminGear: "/assets/icons/ui/admin-gear.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */

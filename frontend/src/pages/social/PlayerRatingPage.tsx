@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { useWalletStr } from "../../lib/useWalletStr";
 
 interface PlayerRatingData {
@@ -73,7 +75,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
             stroke={10}
             color={data.average >= 4 ? "#34d399" : data.average >= 3 ? "#fbbf24" : "#f87171"}
             label={data.average.toFixed(1)}
-            sub="★"
+            sub={UI_ICONS.rewardStar}
           />
         </div>
         
@@ -95,7 +97,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
             animate={{ scale: 1 }}
             className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-sprout-500/20 border border-sprout-500/40"
           >
-            <span className="text-sprout-500">✓</span>
+            <ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" />
             <span className="text-sprout-500 text-sm font-bold">Verified Player</span>
           </motion.div>
         )}
@@ -109,7 +111,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
             const pct = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
             return (
               <div key={star} className="flex items-center gap-2">
-                <span className="text-wheat-500 text-sm w-6">★{star}</span>
+                <span className="text-wheat-500 text-sm w-6 inline-flex items-center gap-0.5"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-3.5 h-3.5" />{star}</span>
                 <div className="flex-1 h-2 bg-soil-800 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-wheat-500"

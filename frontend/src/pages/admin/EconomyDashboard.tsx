@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface EconomySnapshot {
   id: string;
@@ -104,7 +106,7 @@ export function EconomyDashboard() {
       <Card className="mb-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-parchment font-bold text-lg">🤖 OpenClaw Economy Monitor</h2>
+            <h2 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-6 h-6" /> OpenClaw Economy Monitor</h2>
             <p className="text-straw text-sm">Real-time мониторинг экономики POTATO</p>
           </div>
           <button
@@ -119,7 +121,7 @@ export function EconomyDashboard() {
       {latest && (
         <Card className="mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-1">
-            📊 Текущие метрики
+            <ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Текущие метрики
             <QualityBadge q={latest.dataQuality} />
           </h3>
           {latest.dataQuality && latest.dataQuality !== "complete" && (
@@ -188,7 +190,7 @@ export function EconomyDashboard() {
 
       <Card className="mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-parchment font-semibold text-sm">🚨 Алерты</h3>
+          <h3 className="text-parchment font-semibold text-sm flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-4 h-4" /> Алерты</h3>
           {unresolvedAlerts.length > 0 && (
             <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full">
               {unresolvedAlerts.length} активных
@@ -197,7 +199,7 @@ export function EconomyDashboard() {
         </div>
         
         {alerts.length === 0 ? (
-          <p className="text-straw text-center py-4">Нет алертов ✅</p>
+          <p className="text-straw text-center py-4 inline-flex w-full items-center justify-center gap-1.5">Нет алертов <ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" /></p>
         ) : (
           <div className="space-y-2">
             {alerts.slice(0, 10).map(alert => {
@@ -244,7 +246,7 @@ export function EconomyDashboard() {
 
       {snapshots.length > 0 && (
         <Card>
-          <h3 className="text-parchment font-semibold text-sm mb-3">📈 История snapshots</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> История snapshots</h3>
           <div className="space-y-1 max-h-64 overflow-y-auto">
             {snapshots.slice(0, 20).map((snap) => (
               <div key={snap.id} className="p-2 rounded bg-soil-800/40 text-xs flex items-center justify-between">

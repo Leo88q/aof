@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../lib/api";
+import { UI_ICONS } from "../lib/visualAssets";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { useWalletStr } from "../lib/useWalletStr";
 
 interface PlayerRatingProps {
@@ -43,7 +45,7 @@ export function PlayerRating({ toUser, context, referenceId, onSubmitted }: Play
   if (submitted) {
     return (
       <div className="p-4 bg-sprout-500/10 border border-sprout-500/30 rounded-lg text-center">
-        <p className="text-sprout-500 font-semibold">✓ Спасибо за оценку!</p>
+        <p className="text-sprout-500 font-semibold inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" /> Спасибо за оценку!</p>
       </div>
     );
   }
