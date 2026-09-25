@@ -84,7 +84,7 @@ export function FarmDashboard() {
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
     { key: "dashboard", label: "Обзор", icon: "🏠" },
     { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
-    { key: "plant", label: "Посадка", icon: "🌱" },
+    { key: "plant", label: "Посадка", icon: UI_ICONS.plant },
     { key: "mill", label: "Переработка", icon: UI_ICONS.mill },
     { key: "oven", label: "Тренировка", icon: UI_ICONS.trainer },
   ];
@@ -117,7 +117,7 @@ export function FarmDashboard() {
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
             title="Экспедиция"
           >
-            🗺️
+            <img src={UI_ICONS.expedition} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
         </div>
         <div className="flex-1 text-center">
@@ -191,13 +191,13 @@ export function FarmDashboard() {
           <div className="grid grid-cols-2 gap-2 mb-4">
             <Card onClick={() => push("farm", "inbox", <InboxHome />)}>
               <div className="text-center py-1">
-                <span className="text-2xl">📬</span>
+                <img src={UI_ICONS.inbox} alt="" className="w-8 h-8 object-contain mx-auto" />
                 <p className="text-parchment text-sm font-semibold mt-1">Инбокс</p>
               </div>
             </Card>
             <Card onClick={() => push("farm", "compendium", <CompendiumHome />)}>
               <div className="text-center py-1">
-                <span className="text-2xl">📖</span>
+                <img src={UI_ICONS.catalog} alt="" className="w-8 h-8 object-contain mx-auto" />
                 <p className="text-parchment text-sm font-semibold mt-1">Каталог</p>
               </div>
             </Card>

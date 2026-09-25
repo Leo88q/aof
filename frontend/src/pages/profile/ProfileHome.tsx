@@ -40,6 +40,7 @@ function computeVeteranStatus(playerData: any): { title: string; generation: num
   if (generation >= 5 || totalDays >= 180) {
     title = "Легенда сети";
     emoji = "👑";
+    icon = UI_ICONS.rankLegend;
   } else if (generation >= 3 || totalDays >= 90) {
     title = "Ветеран сети";
     emoji = "🎖️";
@@ -332,7 +333,10 @@ export function ProfileHome() {
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-wheat-500 font-semibold">🎫 Пасс эпохи / VIP</h3>
+            <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
+              <img src={UI_ICONS.seasonPass} alt="" className="w-5 h-5 object-contain" />
+              Пасс эпохи / VIP
+            </h3>
             <p className="text-straw text-xs mt-1">Premium: Farm-Trader, награды без рекламы, бусты</p>
           </div>
           <span className="text-2xl">→</span>

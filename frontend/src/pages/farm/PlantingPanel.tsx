@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 interface FarmTile {
   index: number;
@@ -128,7 +129,7 @@ export function PlantingPanel() {
   if (loading) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg">🌱 Посадка семян</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посадка семян</h3>
         <p className="text-straw text-sm text-center py-4">Loading участка...</p>
       </Card>
     );
@@ -137,7 +138,7 @@ export function PlantingPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg">🌱 Посадка семян</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посадка семян</h3>
         <p className="text-straw text-sm text-center py-4">Подключите кошелёк для посадки</p>
       </Card>
     );
@@ -145,7 +146,7 @@ export function PlantingPanel() {
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg">🌱 Посадка семян</h3>
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посадка семян</h3>
 
       {loadError ? (
         <p className="text-amber-400 text-sm text-center py-4">

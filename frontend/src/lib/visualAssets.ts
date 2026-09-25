@@ -184,6 +184,16 @@ export const UI_ICONS = {
   rankOperator: "/assets/icons/ui/rank-operator.jpg",
   rankExperienced: "/assets/icons/ui/rank-experienced.jpg",
   rankVeteran: "/assets/icons/ui/rank-veteran.jpg",
+  rankLegend: "/assets/icons/ui/rank-legend.jpg",
+  plant: "/assets/icons/ui/plant.jpg",
+  inbox: "/assets/icons/ui/inbox.jpg",
+  catalog: "/assets/icons/ui/catalog.jpg",
+  expedition: "/assets/icons/ui/expedition.jpg",
+  packs: "/assets/icons/ui/packs.jpg",
+  craft: "/assets/icons/ui/craft.jpg",
+  repair: "/assets/icons/ui/repair.jpg",
+  seasonPass: "/assets/icons/ui/season-pass.jpg",
+  achievements: "/assets/icons/ui/achievements.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */

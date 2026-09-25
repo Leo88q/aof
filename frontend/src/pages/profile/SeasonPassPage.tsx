@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
+import { UI_ICONS } from "../../lib/visualAssets";
 import { fmtNum, useTreasury, useFlash } from "../../lib/marketUtils";
 
 const SEASON_ID = 1;
@@ -62,7 +63,7 @@ export function SeasonPassPage() {
 
       <Card className="bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30">
         <div className="flex items-center gap-3">
-          <span className="text-4xl">🎫</span>
+          <img src={UI_ICONS.seasonPass} alt="" className="w-12 h-12 object-contain" />
           <div className="flex-1">
             <h2 className="text-parchment font-bold text-lg">Сезон {SEASON_ID} · Premium</h2>
             <p className="text-straw text-xs">Пасс действует до конца сезона</p>

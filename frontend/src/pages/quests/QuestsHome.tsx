@@ -7,11 +7,12 @@ import { RewardBurst } from "../../components/animations/RewardBurst";
 import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const tabs = [
   { id: "daily", icon: "📅", label: "Задания" },
   { id: "challenges", icon: "🏆", label: "Челленджи" },
-  { id: "achievements", icon: "🎖️", label: "Достижения" },
+  { id: "achievements", icon: UI_ICONS.achievements, label: "Достижения" },
 ];
 
 export function QuestsHome() {
@@ -88,7 +89,11 @@ export function QuestsHome() {
                 : "bg-soil-850 text-straw"
             }`}
           >
-            <span>{tab.icon}</span>
+            {tab.icon.startsWith("/") ? (
+              <img src={tab.icon} alt="" className="inline-block w-4 h-4 object-contain" />
+            ) : (
+              <span>{tab.icon}</span>
+            )}
             {tab.label}
           </button>
         ))}
