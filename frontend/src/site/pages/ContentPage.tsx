@@ -27,9 +27,9 @@ export function ContentPage({ id }: { id: string }) {
   }, [id]);
   return (
     <>
-      <PageTitle eyebrow={hero ? 'NeuroForge · Honest Craft Solarpunk' : page.group} title={page.title} lead={page.lead}>
-        <div className="site-god-rays" aria-hidden="true"><i/><i/><i/></div>
-        <div className="site-dust-motes" aria-hidden="true">{Array.from({ length: 20 }).map((_, i) => <span key={i} />)}</div>
+      <PageTitle eyebrow={hero ? 'NeuroForge — Age of Intelligence' : page.group} title={page.title} lead={page.lead}>
+        <div className="nf-grid-bg" aria-hidden="true" />
+        <div className="nf-particles" aria-hidden="true">{Array.from({ length: 16 }).map((_, i) => <span key={i} />)}</div>
       </PageTitle>
       {hero && (
         <div className="site-hero-actions">
@@ -188,7 +188,7 @@ export function ResourceDetail() {
 export function NotFound() {
   return (
     <>
-      <PageTitle eyebrow="404" title="Страницы нет в мастерской" lead="Проверь адрес." />
+      <PageTitle eyebrow="404" title="Страница не найдена" lead="Проверь адрес или вернись на главную." />
       <Section>
         <div className="site-actions">
           <Button to="/site/home">На главную</Button>
