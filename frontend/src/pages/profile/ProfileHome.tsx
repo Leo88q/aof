@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { TrustRing } from "../../components/ui/TrustRing";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useNav } from "../../nav/NavContext";
 import { NavHeader } from "../../components/NavHeader";
@@ -67,14 +68,14 @@ function computeBadges(playerData: any): string[] {
   const badges: string[] = [];
   
   // Бейджи за достижения
-  if ((playerData?.rebirthCount ?? 0) >= 1) badges.push("🔄"); // Ребёрт
-  if ((playerData?.totalHarvests ?? 0) >= 100) badges.push("🏆"); // 100 урожаев
-  if ((playerData?.daysPlayed ?? 0) >= 7) badges.push("🔥"); // Стрик 7 дней
-  if ((playerData?.questsCompleted ?? 0) >= 10) badges.push("⭐"); // 10 квестов
-  if ((playerData?.guildMembers ?? 0) >= 1) badges.push("🏰"); // В гильдии
-  if ((playerData?.referrals ?? 0) >= 5) badges.push("👥"); // 5 рефералов
-  if ((playerData?.craftCount ?? 0) >= 50) badges.push("⚒️"); // 50 крафтов
-  if ((playerData?.tradeCount ?? 0) >= 20) badges.push("📈"); // 20 сделок
+  if ((playerData?.rebirthCount ?? 0) >= 1) badges.push(UI_ICONS.rebirth); // Ребёрт
+  if ((playerData?.totalHarvests ?? 0) >= 100) badges.push(UI_ICONS.achievements); // 100 урожаев
+  if ((playerData?.daysPlayed ?? 0) >= 7) badges.push(UI_ICONS.rewardDaily); // Стрик 7 дней
+  if ((playerData?.questsCompleted ?? 0) >= 10) badges.push(UI_ICONS.questsDaily); // 10 квестов
+  if ((playerData?.guildMembers ?? 0) >= 1) badges.push(UI_ICONS.trustGuild); // В гильдии
+  if ((playerData?.referrals ?? 0) >= 5) badges.push(UI_ICONS.friends); // 5 рефералов
+  if ((playerData?.craftCount ?? 0) >= 50) badges.push(UI_ICONS.craft); // 50 крафтов
+  if ((playerData?.tradeCount ?? 0) >= 20) badges.push(UI_ICONS.economyOverview); // 20 сделок
   
   // Ограничиваем до 6 бейджей
   return badges.slice(0, 6);
@@ -148,7 +149,7 @@ export function ProfileHome() {
                   className="text-lg"
                   title={b}
                 >
-                  {b}
+                  <ResourceGlyph icon={b} alt="" className="w-5 h-5" />
                 </motion.span>
               ))
             ) : (
@@ -163,13 +164,13 @@ export function ProfileHome() {
       {/* Quests */}
       <Card className="mb-4" onClick={() => push("profile", "quests", (
         <>
-          <NavHeader title="🧙‍♂️ Квесты" tabKey="profile" />
+          <NavHeader title="Квесты Странника Джо" icon={UI_ICONS.menuQuests} tabKey="profile" />
           <QuestBoardPage />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-parchment font-semibold">🧙‍♂️ Квесты Странника Джо</h3>
+            <h3 className="text-parchment font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.menuQuests} alt="" className="w-5 h-5" /> Квесты Странника Джо</h3>
             <p className="text-straw/60 text-xs mt-1">Ежедневные задания с наградами</p>
           </div>
           <span className="text-2xl text-straw">→</span>
@@ -192,9 +193,9 @@ export function ProfileHome() {
             <div className="flex-1">
               <h3 className="text-parchment font-semibold text-sm mb-2">Индекс доверия</h3>
               <div className="space-y-2 text-xs text-straw">
-                <p>🎯 Тир: <span className="text-wheat-500">{trust.tier}</span></p>
-                <p>💰 Лимит сессии: <span className="text-parchment">недоступен</span></p>
-                <p>🤖 Автоторговля: <span className="text-straw">недоступна до проверки индекса</span></p>
+                <p className="flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Тир: <span className="text-wheat-500">{trust.tier}</span></p>
+                <p className="flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> Лимит сессии: <span className="text-parchment">недоступен</span></p>
+                <p className="flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Автоторговля: <span className="text-straw">недоступна до проверки индекса</span></p>
               </div>
             </div>
             <span className="text-2xl text-straw">→</span>
@@ -221,7 +222,7 @@ export function ProfileHome() {
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-wheat-500 font-semibold">💼 Портфель</h3>
+            <h3 className="text-wheat-500 font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-5 h-5" /> Портфель</h3>
             <p className="text-straw text-xs mt-1">Инструменты, ресурсы, листинги, ордера</p>
           </div>
           <span className="text-2xl">→</span>
@@ -231,13 +232,13 @@ export function ProfileHome() {
       {/* My Rating */}
       <Card className="mb-4" onClick={() => push("profile", "my-rating", (
         <>
-          <NavHeader title="⭐ Мой рейтинг" tabKey="profile" />
+          <NavHeader title="Мой рейтинг" icon={UI_ICONS.questsDaily} tabKey="profile" />
           <PlayerRatingPage />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-parchment font-semibold">⭐ Мой рейтинг</h3>
+            <h3 className="text-parchment font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.questsDaily} alt="" className="w-5 h-5" /> Мой рейтинг</h3>
             <p className="text-straw/60 text-xs mt-1">Как меня оценивают другие</p>
           </div>
           <span className="text-2xl text-straw">→</span>
@@ -247,13 +248,13 @@ export function ProfileHome() {
       {/* Social: Leaderboard */}
       <Card className="mb-4" onClick={() => push("profile", "leaderboard", (
         <>
-          <NavHeader title="🏆 Leaderboard" tabKey="profile" />
+          <NavHeader title="Leaderboard" icon={UI_ICONS.achievements} tabKey="profile" />
           <LeaderboardPage />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-parchment font-semibold">🏆 Leaderboard</h3>
+            <h3 className="text-parchment font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.achievements} alt="" className="w-5 h-5" /> Leaderboard</h3>
             <p className="text-straw/60 text-xs mt-1">Топ игроков по рейтингу</p>
           </div>
           <span className="text-2xl text-straw">→</span>
@@ -263,13 +264,13 @@ export function ProfileHome() {
       {/* Sandbox */}
       <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "sandbox", (
         <>
-          <NavHeader title="🧪 Sandbox" tabKey="profile" />
+          <NavHeader title="Sandbox" icon={UI_ICONS.flasks} tabKey="profile" />
           <SandboxPage />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-straw font-semibold">🧪 Economy Sandbox</h3>
+            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.flasks} alt="" className="w-5 h-5" /> Economy Sandbox</h3>
             <p className="text-straw/60 text-xs mt-1">Симуляция экономики перед апдейтами</p>
           </div>
           <span className="text-2xl text-straw">→</span>
@@ -279,13 +280,13 @@ export function ProfileHome() {
       {/* NPC Dashboard */}
       <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "npc", (
         <>
-          <NavHeader title="🤖 NPC Торговец" tabKey="profile" />
+          <NavHeader title="NPC Торговец" icon={UI_ICONS.trainer} tabKey="profile" />
           <NpcDashboard />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-straw font-semibold">🤖 NPC Торговец</h3>
+            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> NPC Торговец</h3>
             <p className="text-straw/60 text-xs mt-1">Автономный агент на маркете</p>
           </div>
           <span className="text-2xl text-straw">→</span>
@@ -295,13 +296,13 @@ export function ProfileHome() {
       {/* Admin: Audit Log (только для разработчиков) */}
       <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "audit", (
         <>
-          <NavHeader title="🛡️ Audit Log" tabKey="profile" />
+          <NavHeader title="Audit Log" icon={UI_ICONS.trustAntibot} tabKey="profile" />
           <AuditLogPage />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-straw font-semibold">🛡️ Sentinel Audit Log</h3>
+            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trustAntibot} alt="" className="w-5 h-5" /> Sentinel Audit Log</h3>
             <p className="text-straw/60 text-xs mt-1">Все действия игроков (admin only)</p>
           </div>
           <span className="text-2xl text-straw">→</span>
@@ -311,13 +312,13 @@ export function ProfileHome() {
       {/* Admin: Economy Dashboard */}
       <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "economy", (
         <>
-          <NavHeader title="🤖 Economy Monitor" tabKey="profile" />
+          <NavHeader title="Economy Monitor" icon={UI_ICONS.economyOverview} tabKey="profile" />
           <EconomyDashboard />
         </>
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-straw font-semibold">🤖 Economy Monitor</h3>
+            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.economyOverview} alt="" className="w-5 h-5" /> Economy Monitor</h3>
             <p className="text-straw/60 text-xs mt-1">Мониторинг POTATO экономики (admin)</p>
           </div>
           <span className="text-2xl text-straw">→</span>

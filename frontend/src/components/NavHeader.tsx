@@ -1,7 +1,8 @@
 import React from "react";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { useNav } from "../nav/NavContext";
 
-export function NavHeader({ title, tabKey }: { title: string; tabKey: string }) {
+export function NavHeader({ title, tabKey, icon }: { title: string; tabKey: string; icon?: string }) {
   const { stacks, pop } = useNav();
   const canPop = (stacks[tabKey]?.length ?? 0) > 1;
   return (
@@ -15,7 +16,7 @@ export function NavHeader({ title, tabKey }: { title: string; tabKey: string }) 
           <div />
         )}
       </div>
-      <div className="nav-title" style={{ flex: 1, textAlign: "center", fontSize: "16px", fontWeight: "bold", color: "#fbbf24" }}>{title}</div>
+      <div className="nav-title" style={{ flex: 1, textAlign: "center", fontSize: "16px", fontWeight: "bold", color: "#fbbf24", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>{icon ? <ResourceGlyph icon={icon} alt="" className="w-5 h-5" /> : null}<span>{title}</span></div>
       <div style={{ minWidth: 60 }} />
     </div>
   );
