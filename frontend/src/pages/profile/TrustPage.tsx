@@ -25,7 +25,7 @@ interface TrustData {
   computedAt: string;
 }
 
-const TIER_NAMES = ["", "Росток", "Саженец", "Колос", "Урожай", "Мастер"];
+const TIER_NAMES = ["", "Искра", "Узел", "Кластер", "Сеть", "Сингулярность"];
 const TIER_COLORS = ["", "#9ca3af", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"];
 
 const COMPONENT_META: Record<string, { icon: string; label: string }> = {

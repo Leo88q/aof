@@ -21,7 +21,7 @@ const RARITY_RU: Record<string, string> = {
 const RES_META: Record<string, { icon: string; label: string; color: string }> = {
   wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-amber-400" },
   stone: { icon: resourceIcon("stone") || "", label: "Кремний",   color: "text-stone-400" },
-  food: { icon: resourceIcon("food") || "", label: "Еда",      color: "text-yellow-500" },
+  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-yellow-500" },
   seeds: { icon: resourceIcon("seeds") || "", label: "Нейрон",   color: "text-sprout-500" },
   water: { icon: resourceIcon("water") || "", label: "Энергопоток",     color: "text-water-500" },
   potato: { icon: resourceIcon("potato") || "", label: "MIND",   color: "text-wheat-500" },

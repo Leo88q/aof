@@ -77,8 +77,8 @@ export function QuestBoardPage() {
         <div className="flex items-center gap-3 mb-2">
           <ResourceGlyph icon={UI_ICONS.npcOracle} alt="Агент-куратор" className="w-12 h-12" />
           <div>
-            <h2 className="text-parchment font-bold text-lg">Странник Джо</h2>
-            <p className="text-straw text-xs">Ежедневные задания от таинственного путника</p>
+            <h2 className="text-parchment font-bold text-lg">Агент-куратор</h2>
+            <p className="text-straw text-xs">Ежедневные задания от агента-куратора сети</p>
           </div>
         </div>
         <p className="text-straw text-sm italic">
@@ -145,7 +145,7 @@ export function QuestBoardPage() {
       {quests.length === 0 && (
         <Card>
           <p className="text-straw text-center py-8">
-            Странник Джо ещё не принёс задания. Приходите позже!
+            Агент-куратор ещё не принёс задания. Приходите позже!
           </p>
         </Card>
       )}

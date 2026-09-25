@@ -213,7 +213,7 @@ export function Workshop() {
           </p>
           <div style={{background: "rgba(16, 185, 129, 0.1)", padding: "12px 16px", borderRadius: "8px", border: "1px solid rgba(16, 185, 129, 0.3)", display: "inline-block"}}>
             <div style={{color: "#10b981", fontSize: "12px", fontWeight: "bold"}}>
-              💡 Там же ты найдёшь 🔋 Сетевая станция и 🌱 Посадку семян
+              <ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Там же ты найдёшь <ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Сетевая станция и <ResourceGlyph icon={UI_ICONS.plant} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Посев нейронов
             </div>
           </div>
         </div>

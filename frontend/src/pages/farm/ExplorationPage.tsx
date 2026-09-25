@@ -94,8 +94,8 @@ export function ExplorationPage() {
       <Card className="mb-4">
         <div className="text-center mb-4">
           <img src={toolPlate("quantum_transmitter") || ""} alt="" className="w-14 h-14 object-contain mx-auto rounded-xl" />
-          <h2 className="text-parchment font-bold text-lg mt-3">Экспедиция</h2>
-          <p className="text-straw text-sm mt-2">Отправьте лук в опасное путешествие за редкими ресурсами</p>
+          <h2 className="text-parchment font-bold text-lg mt-3">Глубокое обучение</h2>
+          <p className="text-straw text-sm mt-2">Запустите квантовый передатчик в глубокое обучение за редкими ресурсами</p>
         </div>
 
         <div className="bg-soil-800/60 rounded-xl p-4 mb-4">
@@ -116,8 +116,8 @@ export function ExplorationPage() {
         <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
           <h3 className="text-purple-400 font-semibold text-sm mb-2">Требования:</h3>
           <ul className="space-y-1 text-xs text-straw">
-            <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик (Bow)</span></li>
-            <li>✓ Ресурсы: FOOD, WOOD, STONE, MEAT</li>
+            <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик</span></li>
+            <li>✓ Ресурсы: Данные, Схема, Кремний, Датасет</li>
             <li>✓ Кулдаун и дневной лимит: определяются tier в программе</li>
           </ul>
         </div>
@@ -133,7 +133,7 @@ export function ExplorationPage() {
           disabled={explorationDisabled || loading || !address || !bowMint}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
         >
-          {explorationDisabled ? "Временно недоступно" : loading ? "Отправляем..." : !bowMint ? "Нужен Bow в инвентаре" : "🗺️ Отправить в поход"}
+          {explorationDisabled ? "Временно недоступно" : loading ? "Отправляем..." : !bowMint ? "Нужен передатчик в инвентаре" : "Отправить в экспедицию"}
         </button>
       </Card>
 

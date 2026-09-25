@@ -12,7 +12,7 @@ const SEASONS = [
 ];
 
 const WEATHER_TYPES = [
-  { type: "sunny", icon: UI_ICONS.weatherNominal, name: "Номинал", effect: "Еда +10%" },
+  { type: "sunny", icon: UI_ICONS.weatherNominal, name: "Номинал", effect: "Данные +10%" },
   { type: "rain", icon: UI_ICONS.weatherSurge, name: "Скачок", effect: "Схема +10%" },
   { type: "drought", icon: UI_ICONS.weatherBlackout, name: "Блэкаут", effect: "Всё -15%, редкий лут +50%" },
   { type: "harvest_festival", icon: UI_ICONS.weatherFrenzy, name: "Френзи", effect: "Множитель" },

@@ -164,7 +164,7 @@ export function ProfileHome() {
       {/* Quests */}
       <Card className="mb-4" onClick={() => push("profile", "quests", (
         <>
-          <NavHeader title="Квесты Странника Джо" icon={UI_ICONS.menuQuests} tabKey="profile" />
+          <NavHeader title="Квесты Агента-куратора" icon={UI_ICONS.menuQuests} tabKey="profile" />
           <QuestBoardPage />
         </>
       ))}>
@@ -211,7 +211,7 @@ export function ProfileHome() {
         )}
       </Card>
 
-      {/* === ПОРЯДОК: Сезон пасс → Привилегии → Перерождение === */}
+      {/* === ПОРЯДОК: Пасс эпохи → Привилегии → Переобучение === */}
 
       {/* Портфель */}
       <Card className="mb-4" onClick={() => push("profile", "portfolio", (
@@ -379,7 +379,7 @@ export function ProfileHome() {
               <img src={UI_ICONS.friends} alt="" className="w-5 h-5 object-contain" />
               Друзья и соседи
             </h3>
-            <p className="text-straw text-xs mt-1">Поиск по нику, список друзей, визиты на фермы</p>
+            <p className="text-straw text-xs mt-1">Поиск по нику, список друзей, визиты в лаборатории</p>
           </div>
           <span className="text-2xl">→</span>
         </div>
@@ -402,7 +402,7 @@ export function ProfileHome() {
       </Card>
 
       <p className="text-xs text-straw mt-3">
-        Rebirth отключён до реализации атомарного сброса сезонного прогресса и
+        Rebirth отключён до реализации атомарного сброса прогресса эпохи и
         всех заявленных списаний в контракте. Подпись и списание SOL недоступны.
       </p>
     </div>

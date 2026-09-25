@@ -133,7 +133,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
             className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
             🏚️ На склад (стейк)
           </button>
-          <p className="text-straw text-xs mt-1.5 text-center">Добыча работает только из сарая</p>
+          <p className="text-straw text-xs mt-1.5 text-center">Добыча работает только из серверной стойки</p>
         </div>
       )}
 

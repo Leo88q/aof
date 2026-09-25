@@ -167,7 +167,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (редкая награда)</li>
                 <li>Покупка за <b>5000 POTATO</b> в магазине</li>
-                <li>Топ-10 рейтинга в конце сезона</li>
+                <li>Топ-10 рейтинга в конце эпохи</li>
               </ul>
             </div>
           </div>
@@ -185,8 +185,8 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (ультра-редкая награда)</li>
                 <li>Покупка за <b>10000 POTATO</b> в магазине</li>
-                <li>Топ-3 рейтинга в конце сезона</li>
-                <li>Специальные события (лимит: 100 шт/сезон)</li>
+                <li>Топ-3 рейтинга в конце эпохи</li>
+                <li>Специальные события (лимит: 100 шт/эпоху)</li>
               </ul>
             </div>
           </div>

@@ -85,7 +85,7 @@ export function FarmDashboard() {
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
     { key: "dashboard", label: "Обзор", icon: UI_ICONS.labOverview },
     { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
-    { key: "plant", label: "Посадка", icon: UI_ICONS.plant },
+    { key: "plant", label: "Посев", icon: UI_ICONS.plant },
     { key: "mill", label: "Переработка", icon: UI_ICONS.mill },
     { key: "oven", label: "Тренировка", icon: UI_ICONS.trainer },
   ];

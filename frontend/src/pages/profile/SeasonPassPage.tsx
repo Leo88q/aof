@@ -13,7 +13,7 @@ const PASS_PRICE_SOL = 0.15;
 const PREMIUM_PERKS = [
   { icon: "🤖", label: "Farm-Trader", sub: "умная покупка/продажа 24/7" },
   { icon: "⚡", label: "Награды без рекламы", sub: "в заданиях и партнёрках" },
-  { icon: "📈", label: "XP-бустеры", sub: "ускорение сезонного трека" },
+  { icon: "📈", label: "XP-бустеры", sub: "ускорение трека эпохи" },
   { icon: "🔔", label: "Ценовые алерты без лимитов", sub: "free-тир: только 1 алерт" },
 ];
 
@@ -51,7 +51,7 @@ export function SeasonPassPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        VIP-статус — это премиум-трек сезонного пасса: автоматизация торговли, награды без рекламы и бусты.
+        VIP-статус — это премиум-трек пасса эпохи: автоматизация торговли, награды без рекламы и бусты.
       </p>
 
       {txStatus && (
@@ -65,8 +65,8 @@ export function SeasonPassPage() {
         <div className="flex items-center gap-3">
           <img src={UI_ICONS.seasonPass} alt="" className="w-12 h-12 object-contain" />
           <div className="flex-1">
-            <h2 className="text-parchment font-bold text-lg">Сезон {SEASON_ID} · Premium</h2>
-            <p className="text-straw text-xs">Пасс действует до конца сезона</p>
+            <h2 className="text-parchment font-bold text-lg">Эпоха {SEASON_ID} · Premium</h2>
+            <p className="text-straw text-xs">Пасс действует до конца эпохи</p>
           </div>
           {premium && <span className="text-xs px-3 py-1 rounded-full bg-gold text-soil-950 font-bold">VIP</span>}
         </div>
@@ -91,7 +91,7 @@ export function SeasonPassPage() {
 
       {pass && (
         <Card>
-          <div className="text-parchment font-semibold text-sm mb-2">Ваш прогресс сезона</div>
+          <div className="text-parchment font-semibold text-sm mb-2">Ваш прогресс эпохи</div>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(pass).filter(([k]) => !["bump"].includes(k)).map(([k, v]) => (
               <div key={k} className="px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
@@ -111,7 +111,7 @@ export function SeasonPassPage() {
           Buy Premium за {PASS_PRICE_SOL} ◎
         </button>
       ) : (
-        <p className="text-center text-straw text-xs">Premium активен до конца сезона 🌟</p>
+        <p className="text-center text-straw text-xs">Premium активен до конца эпохи</p>
       )}
     </div>
   );

@@ -88,7 +88,7 @@ export function RepairPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        Durability тратится майнингом. Ремонт атомарно списывает камень и дерево. Чем реже инструмент — тем дороже.
+        Durability тратится майнингом. Ремонт атомарно списывает кремний и схему. Чем реже инструмент — тем дороже.
       </p>
 
       {txStatus && (

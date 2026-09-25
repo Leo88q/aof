@@ -5,7 +5,8 @@ import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
-import { UI_ICONS } from "../../lib/visualAssets";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface FarmTile {
   index: number;
@@ -82,7 +83,7 @@ export function PlantingPanel() {
         setSelectedPlot(null);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Error посадки"}`);
+        toast.show(`❌ ${r.error || "Error посева"}`);
       }
     } catch (e: any) {
       toast.show(`❌ ${e.message || "Error"}`);
@@ -129,7 +130,7 @@ export function PlantingPanel() {
   if (loading) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посадка семян</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
         <p className="text-straw text-sm text-center py-4">Loading участка...</p>
       </Card>
     );
@@ -138,15 +139,15 @@ export function PlantingPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посадка семян</h3>
-        <p className="text-straw text-sm text-center py-4">Подключите кошелёк для посадки</p>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
+        <p className="text-straw text-sm text-center py-4">Подключите кошелёк для посева</p>
       </Card>
     );
   }
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посадка семян</h3>
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
 
       {loadError ? (
         <p className="text-amber-400 text-sm text-center py-4">
@@ -202,7 +203,7 @@ export function PlantingPanel() {
 
       {selectedPlot !== null && (
         <div className="bg-soil-800/50 rounded-lg p-3 space-y-2">
-          <p className="text-straw text-xs">Посадка на <b className="text-parchment">Тайл {selectedPlot + 1}</b></p>
+          <p className="text-straw text-xs">Посев на <b className="text-parchment">Тайл {selectedPlot + 1}</b></p>
           <div className="flex items-center gap-2">
             <span className="text-straw text-xs">🌰 Нейрон:</span>
             <input
@@ -215,13 +216,13 @@ export function PlantingPanel() {
             />
             <span className="text-parchment font-bold text-sm w-10">{seedsAmount}</span>
           </div>
-          <p className="text-[10px] text-straw">⚡ Стоимость: 1 Energy + {seedsAmount} 🌰</p>
+          <p className="text-[10px] text-straw inline-flex items-center gap-1 justify-center"><ResourceGlyph icon={resourceIcon("power") || ""} alt="" className="w-3.5 h-3.5" /> Стоимость: 1 энергия + {seedsAmount} <ResourceGlyph icon={resourceIcon("neuron") || ""} alt="" className="w-3.5 h-3.5" /></p>
           <button
             onClick={handlePlant}
             disabled={planting}
             className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50 hover:brightness-110 transition"
           >
-            {planting ? "🌱 Сажаем..." : `🌱 Посадить ${seedsAmount} семян`}
+            {planting ? "Сеем..." : `Посеять ${seedsAmount} нейронов`}
           </button>
         </div>
       )}

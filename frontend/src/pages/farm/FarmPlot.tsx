@@ -18,7 +18,7 @@ const GRID = 8;
 // validator tests. Enable explicitly only in a verified test environment.
 const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
 
-// Постройки по типу инструмента (ТЗ v4 §1: топор — лесопилка, кирка — шахта, лук — вышка)
+// Постройки по типу инструмента (ТЗ v4 §1: резчик — стойка схем, экстрактор — шахта кремния, передатчик — вышка данных)
 // [REBRAND] NeuroForge постройки; legacy-id (axe/pick/spear/bow) → те же постройки для старых инструментов.
 const BUILDING: Record<string, { emoji: string; name: string }> = {
   plasma_cutter: { emoji: "", name: "Плазменный цех" },
@@ -139,9 +139,9 @@ export function FarmPlot() {
           })}
         </div>
         <div className="flex gap-4 justify-center text-xs text-straw mt-3">
-          <span>🪚/⛏️ постройки (твои инструменты в сарае)</span>
-          <span>💨 майнит</span>
-          <span>🔒 расширение</span>
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("plasma_cutter") || ""} alt="" className="w-4 h-4" />/<ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> постройки (твои инструменты в стойке)</span>
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> майнит</span>
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> расширение</span>
         </div>
       </Card>
 
@@ -174,7 +174,7 @@ export function FarmPlot() {
       <Card className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-parchment text-sm font-semibold">Построек на участке: {staked.length}</p>
-          <p className="text-straw text-xs">В инвентаре (не в сарае): {freeCount}</p>
+          <p className="text-straw text-xs">В инвентаре (не в стойке): {freeCount}</p>
         </div>
         <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locServerRuins} alt="" className="w-8 h-8" /></span>
       </Card>

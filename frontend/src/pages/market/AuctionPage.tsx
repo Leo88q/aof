@@ -200,7 +200,7 @@ export function AuctionPage() {
                 {ended && (
                   <button onClick={() => settle(a)}
                     className="mt-3 w-full py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold">
-                    🔨 Завершить и передать победителю
+                    Завершить и передать победителю
                   </button>
                 )}
               </Card>
