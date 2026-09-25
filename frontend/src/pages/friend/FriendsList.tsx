@@ -5,6 +5,7 @@ import { Card } from "../../components/ui/Card";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useNav } from "../../nav/NavContext";
 import { FriendFarmPage } from "./FriendFarmPage";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 interface Neighbor {
   user: string;
