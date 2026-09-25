@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/Card";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
@@ -134,7 +135,7 @@ export function WellPanel() {
         </>
       )}
 
-      {message && <p className="text-straw text-xs text-center">{message}</p>}
+      {message && <p className="text-straw text-xs text-center"><NoticeMsg text={message} /></p>}
       <p className="text-straw text-[10px] text-center">Расчёт не является локальным балансом: итоговую эмиссию определяет aof-core.</p>
     </Card>
   );

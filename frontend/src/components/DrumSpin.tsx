@@ -6,6 +6,7 @@ import { useFlash } from "../lib/marketUtils";
 import { handleTxResponse } from "../lib/txFlow";
 import { connection } from "../lib/wallet";
 import { UI_ICONS } from "../lib/visualAssets";
+import { NoticeMsg } from "./visual/NoticeMsg";
 
 const PRIZES = [
   { icon: "🥔", label: "10 MASCOT", weight: 40 },
@@ -65,7 +66,7 @@ export function DrumSpin() {
         <div className="text-3xl font-bold text-gold">5</div>
       </div>
 
-      {status && <div className="text-center text-straw text-sm">{status}</div>}
+      {status && <div className="text-center text-straw text-sm"><NoticeMsg text={status} /></div>}
 
       <div className="relative flex flex-col items-center justify-center py-8 bg-gradient-to-b from-soil-800 to-soil-900 rounded-2xl border-2 border-wheat-600/30">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-4xl drop-shadow-lg">🔻</div>

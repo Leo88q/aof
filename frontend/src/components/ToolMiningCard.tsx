@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { RARITY_META, rarityKey } from "../lib/toolMeta";
 import { toolPlate } from "../lib/visualAssets";
 import { ArtPlate } from "./visual/ArtPlate";
+import { NoticeMsg } from "./visual/NoticeMsg";
 import { useCountdown } from "../lib/useCountdown";
 import { api } from "../lib/api";
 import { handleTxResponse } from "../lib/txFlow";
@@ -184,7 +185,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         </div>
       )}
 
-      {msg && <p className="text-xs text-parchment mt-2 text-center">{msg}</p>}
+      {msg && <p className="text-xs text-parchment mt-2 text-center"><NoticeMsg text={msg} /></p>}
     </motion.div>
   );
 }

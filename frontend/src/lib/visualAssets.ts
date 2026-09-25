@@ -254,6 +254,8 @@ export const UI_ICONS = {
   trustStaking: "/assets/icons/ui/trust-staking.jpg",
   trustGuild: "/assets/icons/ui/trust-guild.jpg",
   trustAntibot: "/assets/icons/ui/trust-antibot.jpg",
+  noticeSuccess: "/assets/icons/ui/notice-success.jpg",
+  noticeError: "/assets/icons/ui/notice-error.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */

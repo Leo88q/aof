@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { NoticeMsg } from "../visual/NoticeMsg";
 import { create } from "zustand";
 
 interface ToastState {
@@ -38,7 +39,7 @@ export function Toast() {
           exit={{ opacity: 0, y: -20 }}
           className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-sm font-medium shadow-glow z-[200] ${typeStyles[type]}`}
         >
-          {message}
+          <NoticeMsg text={message} />
         </motion.div>
       )}
     </AnimatePresence>

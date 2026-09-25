@@ -5,6 +5,7 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 // Рецепты мгновенного крафта (из мастер-документа §6)
 const FULL_RECIPES = [
@@ -156,7 +157,7 @@ export function Workshop() {
         </button>
       </div>
 
-      {msg && <div className="workshop-msg">{msg}</div>}
+      {msg && <div className="workshop-msg"><NoticeMsg text={msg} /></div>}
 
       {section !== "timed" && (
         <div className="recipe-grid">
