@@ -13,10 +13,10 @@ const WEATHER_ICONS: Record<string, string> = {
 };
 
 const SEASON_ICONS: Record<string, string> = {
-  spring: "🌸",
-  summer: "☀️",
-  autumn: "🍂",
-  winter: "❄️",
+  spring: UI_ICONS.seasonSpring,
+  summer: UI_ICONS.seasonSummer,
+  autumn: UI_ICONS.seasonAutumn,
+  winter: UI_ICONS.seasonWinter,
 };
 
 interface WeatherData {
@@ -107,7 +107,7 @@ export function WeatherWidget() {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl">{SEASON_ICONS[current.season || ""] || "🌸"}</div>
+          <img src={SEASON_ICONS[current.season || ""] || UI_ICONS.seasonSpring} alt="" className="w-8 h-8 object-contain ml-auto" />
           <div className="text-xs text-straw capitalize">{current.season || "—"}</div>
         </div>
       </div>

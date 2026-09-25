@@ -29,16 +29,16 @@ const TIER_NAMES = ["", "Росток", "Саженец", "Колос", "Уро�
 const TIER_COLORS = ["", "#9ca3af", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"];
 
 const COMPONENT_META: Record<string, { icon: string; label: string }> = {
-  age:        { icon: "📅", label: "Возраст аккаунта" },
-  referral:   { icon: "👥", label: "Рефералы" },
-  trader:     { icon: "🤖", label: "Farm-Trader" },
-  staking:    { icon: "🔒", label: "Стейкинг" },
-  rebirth:    { icon: "🔄", label: "Ребёрты" },
-  guild:      { icon: "🏰", label: "Гильдия" },
-  compendium: { icon: "📖", label: "Компендиум" },
-  quests:     { icon: "🎯", label: "Задания" },
-  craftRep:   { icon: "🛠️", label: "Репутация кузнеца" },
-  antiBot:    { icon: "🛡️", label: "Анти-бот" },
+  age:        { icon: UI_ICONS.trustAge, label: "Возраст аккаунта" },
+  referral:   { icon: UI_ICONS.friends, label: "Рефералы" },
+  trader:     { icon: UI_ICONS.trustTrader, label: "Farm-Trader" },
+  staking:    { icon: UI_ICONS.trustStaking, label: "Стейкинг" },
+  rebirth:    { icon: UI_ICONS.rebirth, label: "Ребёрты" },
+  guild:      { icon: UI_ICONS.trustGuild, label: "Гильдия" },
+  compendium: { icon: UI_ICONS.catalog, label: "Компендиум" },
+  quests:     { icon: UI_ICONS.questsDaily, label: "Задания" },
+  craftRep:   { icon: UI_ICONS.craft, label: "Репутация кузнеца" },
+  antiBot:    { icon: UI_ICONS.trustAntibot, label: "Анти-бот" },
 };
 
 export function TrustPage() {
@@ -187,7 +187,11 @@ export function TrustPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-sm">{meta.icon}</span>
+                      {meta.icon.startsWith("/") ? (
+                        <img src={meta.icon} alt="" className="w-4 h-4 object-contain" />
+                      ) : (
+                        <span className="text-sm">{meta.icon}</span>
+                      )}
                       <span className="text-parchment text-xs font-medium truncate">{meta.label}</span>
                     </div>
                     <p className="text-straw text-[10px] mt-0.5 truncate">{item.hint}</p>

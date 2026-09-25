@@ -214,6 +214,16 @@ export const UI_ICONS = {
   weatherBlackout: "/assets/icons/ui/weather-blackout.jpg",
   weatherFrenzy: "/assets/icons/ui/weather-frenzy.jpg",
   friends: "/assets/icons/ui/friends.jpg",
+  seasonSpring: "/assets/icons/ui/season-spring.jpg",
+  seasonSummer: "/assets/icons/ui/season-summer.jpg",
+  seasonAutumn: "/assets/icons/ui/season-autumn.jpg",
+  seasonWinter: "/assets/icons/ui/season-winter.jpg",
+  rebirth: "/assets/icons/ui/rebirth.jpg",
+  trustAge: "/assets/icons/ui/trust-age.jpg",
+  trustTrader: "/assets/icons/ui/trust-trader.jpg",
+  trustStaking: "/assets/icons/ui/trust-staking.jpg",
+  trustGuild: "/assets/icons/ui/trust-guild.jpg",
+  trustAntibot: "/assets/icons/ui/trust-antibot.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */

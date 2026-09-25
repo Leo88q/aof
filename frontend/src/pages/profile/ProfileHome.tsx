@@ -388,7 +388,10 @@ export function ProfileHome() {
       <Card className="mb-4 bg-gradient-to-r from-gold/10 to-soil-850 border border-gold/20">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-gold font-semibold">🔄 Перерождение</h3>
+            <h3 className="text-gold font-semibold flex items-center gap-2">
+              <img src={UI_ICONS.rebirth} alt="" className="w-5 h-5 object-contain" />
+              Перерождение
+            </h3>
             <p className="text-straw text-xs mt-1">Сброс прогресса за постоянный бонус +2%</p>
           </div>
           <span className="px-4 py-2 rounded-2xl bg-soil-800 text-straw text-sm">

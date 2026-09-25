@@ -5,10 +5,10 @@ import { UI_ICONS } from "../../lib/visualAssets";
 
 const DAYS_PER_SEASON = 42;
 const SEASONS = [
-  { name: "spring", icon: "🌸", color: "from-pink-500/20 to-green-500/20", label: "Весна" },
-  { name: "summer", icon: "☀️", color: "from-yellow-500/20 to-orange-500/20", label: "Лето" },
-  { name: "autumn", icon: "🍂", color: "from-orange-500/20 to-red-500/20", label: "Осень" },
-  { name: "winter", icon: "❄️", color: "from-blue-500/20 to-cyan-500/20", label: "Зима" },
+  { name: "spring", icon: UI_ICONS.seasonSpring, color: "from-pink-500/20 to-green-500/20", label: "Весна" },
+  { name: "summer", icon: UI_ICONS.seasonSummer, color: "from-yellow-500/20 to-orange-500/20", label: "Лето" },
+  { name: "autumn", icon: UI_ICONS.seasonAutumn, color: "from-orange-500/20 to-red-500/20", label: "Осень" },
+  { name: "winter", icon: UI_ICONS.seasonWinter, color: "from-blue-500/20 to-cyan-500/20", label: "Зима" },
 ];
 
 const WEATHER_TYPES = [
@@ -115,19 +115,20 @@ export function SeasonCalendar() {
       <Card className={`p-6 bg-gradient-to-br ${currentSeasonData?.color || ""} border border-straw/10`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-parchment capitalize">
-              {currentSeasonData?.icon} {currentSeasonData?.label}
+            <h2 className="text-2xl font-bold text-parchment capitalize flex items-center gap-2">
+              {currentSeasonData?.icon && <img src={currentSeasonData.icon} alt="" className="w-7 h-7 object-contain" />}
+              {currentSeasonData?.label}
             </h2>
             <p className="text-straw text-sm mt-1">
               42 дня • Смена погоды каждый день
             </p>
           </div>
           <motion.div
-            className="text-6xl"
+            className="w-16 h-16"
             animate={{ rotate: [0, 5, -5, 0] }}
             transition={{ duration: 4, repeat: Infinity }}
           >
-            {currentSeasonData?.icon}
+            {currentSeasonData?.icon && <img src={currentSeasonData.icon} alt="" className="w-16 h-16 object-contain" />}
           </motion.div>
         </div>
       </Card>
