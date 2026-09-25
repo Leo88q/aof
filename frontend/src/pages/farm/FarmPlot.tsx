@@ -7,7 +7,9 @@ import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { toolPlate } from "../../lib/visualAssets";
+import { UI_ICONS } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { WeatherOverlay } from "../../components/farm/WeatherOverlay";
 import { toNum, useFlash } from "../../lib/marketUtils";
 
@@ -162,7 +164,7 @@ export function FarmPlot() {
           <p className="text-parchment text-sm font-semibold">Построек на участке: {staked.length}</p>
           <p className="text-straw text-xs">В инвентаре (не в сарае): {freeCount}</p>
         </div>
-        <span className="text-2xl">🏚️</span>
+        <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locRuins} alt="" className="w-8 h-8" /></span>
       </Card>
 
       {/* Bottom sheet по тапу на постройку */}

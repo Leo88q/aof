@@ -266,6 +266,16 @@ export const UI_ICONS = {
   chartsBar: "/assets/icons/ui/admin-charts-bar.jpg",
   chartsUp: "/assets/icons/ui/admin-charts-up.jpg",
   adminGear: "/assets/icons/ui/admin-gear.jpg",
+  chartsDown: "/assets/icons/ui/admin-charts-down.jpg",
+  locMap: "/assets/icons/ui/loc-map.jpg",
+  locRuins: "/assets/icons/ui/loc-ruins.jpg",
+  locFactory: "/assets/icons/ui/loc-factory.jpg",
+  locCastle: "/assets/icons/ui/loc-castle.jpg",
+  locHouse: "/assets/icons/ui/loc-house.jpg",
+  locBeach: "/assets/icons/ui/loc-beach.jpg",
+  locCactus: "/assets/icons/ui/loc-cactus.jpg",
+  npcMage: "/assets/icons/ui/npc-mage.jpg",
+  buffIdea: "/assets/icons/ui/buff-idea.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */

@@ -1,5 +1,13 @@
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 
+/** Scene / NPC prefixes reuse the location and NPC plates. */
+const SCENE_EMOJI: Record<string, string> = {
+  "🗺️": "locMap", "🗺": "locMap", "🏚️": "locRuins", "🏚": "locRuins",
+  "🏭": "locFactory", "🏰": "locCastle", "🏡": "locHouse", "🏖️": "locBeach",
+  "🏖": "locBeach", "🌵": "locCactus", "🧙♂️": "npcMage", "🧙": "npcMage",
+  "💡": "buffIdea", "📜": "catalog",
+};
+
 /**
  * Toast/flash messages carry their meaning as a leading emoji from the old
  * UI ("✅ Готово", "❌ Ошибка"). The two notification plates are registered
@@ -30,6 +38,8 @@ export function noticeSplit(raw?: string | null): { icon?: string; text: string 
   if (ERROR.has(head) || ERROR.has(chars[0])) return { icon: UI_ICONS.noticeError, text: rest };
   const resKey = RESOURCE_EMOJI[head] || RESOURCE_EMOJI[chars[0]];
   if (resKey) return { icon: resourceIcon(resKey), text: rest };
+  const sceneKey = SCENE_EMOJI[head] || SCENE_EMOJI[chars[0]];
+  if (sceneKey) return { icon: (UI_ICONS as Record<string, string>)[sceneKey], text: rest };
   return { text };
 }
 

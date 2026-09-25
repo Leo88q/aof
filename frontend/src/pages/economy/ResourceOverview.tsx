@@ -39,7 +39,7 @@ const CATEGORIES = [
   },
   {
     title: "Песок",
-    icon: UI_ICONS.catalog,
+    icon: UI_ICONS.locBeach,
     items: [
       { key: "CLEAR_QUARTZ", label: "Чистый кварц", icon: resourceIcon("CLEAR_QUARTZ") || "", accent: "#e8e8e8" },
       { key: "ROSE_QUARTZ", label: "Розовый кварц", icon: resourceIcon("ROSE_QUARTZ") || "", accent: "#e87aa8" },

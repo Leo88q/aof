@@ -75,7 +75,7 @@ export function SandboxPage() {
               version === "v2" ? "bg-wheat-600 text-white" : "bg-soil-800 text-straw"
             }`}
           >
-            🎮 V2: Полная (все механики)
+            <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4 inline-block align-text-bottom" /> V2: Полная (все механики)
           </button>
         </div>
         <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> Параметры симуляции</h3>
@@ -132,7 +132,7 @@ export function SandboxPage() {
           disabled={running}
           className="w-full mt-4 py-3 bg-wheat-600 text-white font-bold rounded-lg hover:bg-wheat-700 transition disabled:opacity-50"
         >
-          {running ? "⏳ Симуляция..." : "🚀 Запустить симуляцию"}
+          {running ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.workshopTimer} alt="" className="w-4 h-4" /> Симуляция...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Запустить симуляцию</span>}
         </button>
       </Card>
 
@@ -212,7 +212,7 @@ export function SandboxPage() {
           {/* Рекомендации */}
           {result.recommendations.length > 0 && (
             <Card className="mb-4 bg-sprout-500/10 border-sprout-500/30">
-              <h3 className="text-sprout-500 font-semibold text-sm mb-3">💡 Рекомендации</h3>
+              <h3 className="text-sprout-500 font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4" /> Рекомендации</h3>
               <ul className="space-y-1">
                 {result.recommendations.map((r, i) => (
                   <li key={i} className="text-straw text-xs">• {r}</li>

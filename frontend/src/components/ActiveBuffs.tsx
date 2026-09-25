@@ -29,7 +29,7 @@ export function ActiveBuffs() {
       <div className="space-y-2">
         {perks.historian > 0 && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-wheat-500/10 border border-wheat-500/30">
-            <span className="text-xl">📜</span>
+            <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-6 h-6" />
             <div className="flex-1 text-parchment text-xs font-bold">Историк</div>
             <div className="text-straw text-xs">×{perks.historian}</div>
           </div>

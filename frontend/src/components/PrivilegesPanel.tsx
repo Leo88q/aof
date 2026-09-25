@@ -156,7 +156,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
           
           <div style={{background: "rgba(30, 41, 59, 0.8)", padding: "14px", borderRadius: "10px", border: "2px solid rgba(139, 92, 246, 0.5)"}}>
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
-              <span style={{fontSize: "24px"}}>📜</span>
+              <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-6 h-6" />
               <h4 style={{color: "#a78bfa", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Historian</h4>
             </div>
             <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
@@ -194,7 +194,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
         </div>
         
         <div style={{marginTop: "12px", padding: "10px", background: "rgba(0,0,0,0.3)", borderRadius: "8px", fontSize: "11px", color: "#94a3b8", textAlign: "center"}}>
-          💡 <b>Стейкай NFT</b> в разделе "Коллекционеры" для активации бонусов. Минимальный срок — 3 дня.
+          <ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4 inline-block align-text-bottom" /> <b>Стейкай NFT</b> в разделе "Коллекционеры" для активации бонусов. Минимальный срок — 3 дня.
         </div>
       </div>
 
