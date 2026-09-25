@@ -4,17 +4,18 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
-import { UI_ICONS } from "../../lib/visualAssets";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { fmtNum, useTreasury, useFlash } from "../../lib/marketUtils";
 
 const SEASON_ID = 1;
 const PASS_PRICE_SOL = 0.15;
 
 const PREMIUM_PERKS = [
-  { icon: "🤖", label: "Farm-Trader", sub: "умная покупка/продажа 24/7" },
-  { icon: "⚡", label: "Награды без рекламы", sub: "в заданиях и партнёрках" },
-  { icon: "📈", label: "XP-бустеры", sub: "ускорение трека эпохи" },
-  { icon: "🔔", label: "Ценовые алерты без лимитов", sub: "free-тир: только 1 алерт" },
+  { icon: UI_ICONS.npcOracle, label: "Авто-трейдер", sub: "умная покупка/продажа 24/7" },
+  { icon: resourceIcon("power") || "", label: "Награды без рекламы", sub: "в заданиях и партнёрках" },
+  { icon: UI_ICONS.chartsUp, label: "XP-бустеры", sub: "ускорение трека эпохи" },
+  { icon: UI_ICONS.buffIdea, label: "Ценовые алерты без лимитов", sub: "free-тир: только 1 алерт" },
 ];
 
 export function SeasonPassPage() {
@@ -79,7 +80,7 @@ export function SeasonPassPage() {
             <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.06 }}
               className="flex items-center gap-3 px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
-              <span className="text-xl">{p.icon}</span>
+              <ResourceGlyph icon={p.icon} alt="" className="w-6 h-6" />
               <div>
                 <p className="text-parchment text-sm font-medium">{p.label}</p>
                 <p className="text-straw text-xs">{p.sub}</p>

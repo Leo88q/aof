@@ -183,7 +183,7 @@ export function FarmDashboard() {
             <h3 className="text-sm font-semibold text-parchment mb-3">Твоя лаборатория →</h3>
             <div className="aspect-video bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden">
               <div className="text-center">
-                <span className="text-3xl tracking-widest">🌾 🪚 ⛏️ 🏹</span>
+                <span className="flex items-center justify-center gap-2"><ResourceGlyph icon={toolPlate("plasma_cutter") || ""} alt="" className="w-8 h-8" /><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-8 h-8" /><ResourceGlyph icon={toolPlate("data_harvester") || ""} alt="" className="w-8 h-8" /><ResourceGlyph icon={toolPlate("quantum_transmitter") || ""} alt="" className="w-8 h-8" /></span>
                 <p className="text-straw text-xs mt-2">Визуализация построек из канонических инструментов</p>
               </div>
             </div>
@@ -208,15 +208,15 @@ export function FarmDashboard() {
             <h3 className="text-sm font-semibold text-parchment mb-3">События</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-3 text-sm">
-                <span>🌱</span>
-                <span className="text-straw">Погода сегодня: {weather?.type || "недоступна"}</span>
+                <ResourceGlyph icon={resourceIcon("neuron") || ""} alt="" className="w-5 h-5" />
+                <span className="text-straw">Нагрузка сегодня: {(({ sunny: "Номинал", rain: "Скачок", drought: "Блэкаут", festival: "Френзи" } as Record<string, string>)[weather?.type || ""] || weather?.type || "недоступна")}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
-                <span>⛏️</span>
+                <ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-5 h-5" />
                 <span className="text-straw">История добычи недоступна без канонического индексатора</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
-                <span>📈</span>
+                <ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-5 h-5" />
                 <span className="text-straw">Рыночная динамика недоступна без проверенных ценовых данных</span>
               </div>
             </div>

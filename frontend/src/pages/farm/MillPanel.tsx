@@ -92,7 +92,7 @@ export function MillPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`⚙️ Переработка запущена! Помол: ${m.wheat} синапсов → ${m.flour} сигнала`);
+        toast.show(`✅ Переработка запущена: ${m.wheat} синапсов → ${m.flour} сигнала`);
         await loadState();
       } else {
         toast.show(`❌ ${r.error || "Error запуска"}`);
@@ -170,9 +170,9 @@ export function MillPanel() {
           </div>
 
           <div className="bg-soil-800/50 rounded-lg p-3 space-y-1 text-xs">
-            <div className="flex justify-between"><span className="text-straw">Синапс:</span><span className="text-parchment">{m.wheat} 🌾</span></div>
-            <div className="flex justify-between"><span className="text-straw">Кремний:</span><span className="text-parchment">{m.stone} 🪨</span></div>
-            <div className="flex justify-between"><span className="text-straw">На выходе:</span><span className="text-wheat-500 font-bold">{m.flour} 🥣</span></div>
+            <div className="flex justify-between"><span className="text-straw">Синапс:</span><span className="text-parchment inline-flex items-center gap-1">{m.wheat} <ResourceGlyph icon={resourceIcon("wheat") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
+            <div className="flex justify-between"><span className="text-straw">Кремний:</span><span className="text-parchment inline-flex items-center gap-1">{m.stone} <ResourceGlyph icon={resourceIcon("stone") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
+            <div className="flex justify-between"><span className="text-straw">На выходе:</span><span className="text-wheat-500 font-bold inline-flex items-center gap-1">{m.flour} <ResourceGlyph icon={resourceIcon("flour") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
             <div className="flex justify-between"><span className="text-straw">Время:</span><span className="text-parchment">{formatTime(m.time)}</span></div>
           </div>
 

@@ -163,7 +163,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <b style={{color: "#fbbf24"}}>Эффект:</b> +5% шанс Singularity из паков, +25 слотов рефералов
             </p>
             <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
-              <b>🎯 Как получить:</b>
+              <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (редкая награда)</li>
                 <li>Покупка за <b>5000 POTATO</b> в магазине</li>
@@ -181,7 +181,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <b style={{color: "#fbbf24"}}>Эффект:</b> +3% шанс Transcendent из паков, +5 слотов рефералов
             </p>
             <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
-              <b>🎯 Как получить:</b>
+              <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (ультра-редкая награда)</li>
                 <li>Покупка за <b>10000 POTATO</b> в магазине</li>

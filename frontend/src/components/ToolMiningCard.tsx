@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { RARITY_META, rarityKey } from "../lib/toolMeta";
-import { toolPlate } from "../lib/visualAssets";
+import { toolPlate, UI_ICONS, resourceIcon } from "../lib/visualAssets";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { ArtPlate } from "./visual/ArtPlate";
 import { NoticeMsg } from "./visual/NoticeMsg";
 import { useCountdown } from "../lib/useCountdown";
@@ -29,7 +30,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   const { address } = useWalletStore();
   const rk = rarityKey(tool.rarity);
   const meta = RARITY_META[rk] || RARITY_META.common;
-  const icon = toolPlate(tool.toolType, rk) || "🛠️";
+  const icon = toolPlate(tool.toolType, rk) || UI_ICONS.adminGear;
 
   const [hours, setHours] = useState(4);
   const [busy, setBusy] = useState(false);
@@ -83,12 +84,12 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
 
   const state =
     durabilityPct > 75
-      ? { icon: "🌱", label: "Рост", color: "#6bbf59" }
+      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#6bbf59" }
       : durabilityPct > 40
-      ? { icon: "⚙️", label: "Норма", color: "#c9a24a" }
+      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#c9a24a" }
       : durabilityPct > 15
-      ? { icon: "🪨", label: "Износ", color: "#b0653a" }
-      : { icon: "💀", label: "Сломан", color: "#c2703d" };
+      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#b0653a" }
+      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#c2703d" };
 
   // Прогресс экстрактора: оставшееся время от общего срока текущей добычи
   const totalSec = Math.max(1, toNum(tool.lastMinedHours) * 3600 || hours * 3600);
@@ -131,7 +132,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         <div className="mt-3">
           <button onClick={() => run("stake")} disabled={busy}
             className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
-            🏚️ На склад (стейк)
+            На склад (стейк)
           </button>
           <p className="text-straw text-xs mt-1.5 text-center">Добыча работает только из серверной стойки</p>
         </div>
@@ -151,7 +152,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
           </div>
           <button onClick={() => run("start")} disabled={!MINING_ENABLED || busy || durability < 1}
             className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-            {MINING_ENABLED ? "⛏️ Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
+            {MINING_ENABLED ? "Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
           </button>
           <button onClick={() => run("unstake")} disabled={busy || durability < 20}
             className="w-full py-2 rounded-xl bg-soil-700 border border-straw/20 text-straw text-xs disabled:opacity-40">
@@ -167,18 +168,18 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
               animate={MINING_ENABLED ? { scale: [1, 1.03, 1] } : undefined}
               transition={{ repeat: Infinity, duration: 1.4 }}
               className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-              {MINING_ENABLED ? "📦 Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
+              {MINING_ENABLED ? "Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
             </motion.button>
           ) : (
             <div>
               <div className="flex justify-between text-xs text-straw mb-1">
-                <span>⛏️ Вагонетка в забое…</span>
+                <span className="inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> Экстрактор в забое…</span>
                 <span>{label}</span>
               </div>
               <div className="relative h-3 rounded-full bg-soil-800 overflow-hidden">
                 <div className="absolute inset-y-0 left-0 rounded-full bg-wheat-600/40"
                   style={{ width: `${progress * 100}%` }} />
-                <span className="absolute text-xs" style={{ left: `calc(${progress * 100}% - 8px)`, top: -3 }}>🛒</span>
+                <span className="absolute text-xs" style={{ left: `calc(${progress * 100}% - 8px)`, top: -3 }}><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-4 h-4" /></span>
               </div>
             </div>
           )}

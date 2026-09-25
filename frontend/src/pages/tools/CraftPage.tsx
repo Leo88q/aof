@@ -188,7 +188,7 @@ export function CraftPage() {
       if (r.success) {
         const q = craftQuote;
         if (q) {
-          setCraftReceipt(`Списано: ${fmtNum(q.wood)} 🪵 + ${fmtNum(q.stone)} 🪨 + ${fmtNum(q.food)} 🌾 + ${fmtNum(q.seeds)} 🌱 + ${fmtNum(q.water)} 💧 + ${fmtNum(q.potato)} 🥔`);
+          setCraftReceipt(`Списано: схема ${fmtNum(q.wood)} + кремний ${fmtNum(q.stone)} + данные ${fmtNum(q.food)} + нейрон ${fmtNum(q.seeds)} + энергопоток ${fmtNum(q.water)} + MIND ${fmtNum(q.potato)}`);
         }
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setNewMint("");
@@ -284,7 +284,7 @@ export function CraftPage() {
               disabled={busyPrep}
               className="w-full py-3 rounded-2xl bg-wheat-600 text-soil-950 font-semibold active:scale-95 transition-transform disabled:opacity-50"
             >
-              {busyPrep ? "Готовим..." : "🔨 Подготовить новый минт"}
+              {busyPrep ? "Готовим..." : "Подготовить новый минт"}
             </button>
           )}
         </Card>
@@ -357,7 +357,7 @@ export function CraftPage() {
             disabled={!newMint || craftQuote && ["wood","stone","food","seeds","water","potato"].some(r => (balances[r]||0) < (craftQuote[r]||0))}
             className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-gold to-wheat-600 text-soil-950 font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ⚒️ Выковать {RARITY_RU[targetRk]}
+            Выковать {RARITY_RU[targetRk]}
           </button>
 
           {craftReceipt && (

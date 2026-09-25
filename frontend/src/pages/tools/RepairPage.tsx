@@ -101,20 +101,20 @@ export function RepairPage() {
       {receipt && (
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
           className="text-xs px-3 py-2 rounded-xl bg-gold/10 border border-gold/40 text-gold font-semibold">
-          🧾 {receipt}
+          {receipt}
         </motion.div>
       )}
 
       {!address && (
         <Card className="text-center py-8">
-          <div className="text-4xl mb-2">👛</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Подключите кошелёк, чтобы чинить инструменты</p>
         </Card>
       )}
 
       {address && tools.length === 0 && (
         <Card className="text-center py-8">
-          <div className="text-4xl mb-2">🧰</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Инструментов нет — нечего чинить</p>
         </Card>
       )}
@@ -140,7 +140,7 @@ export function RepairPage() {
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <ArtPlate src={toolPlate(tool.toolType, rarityKey(tool.rarity))} alt={tool.toolType || "Инструмент"} size={72} />
-                  {critical && <span className="absolute -top-1 -right-2 text-lg">💔</span>}
+                  {critical && <span className="absolute -top-1 -right-2 text-lg"><ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-5 h-5" /></span>}
                 </div>
                 <div className="flex-1">
                   <p className="text-parchment font-semibold" style={{ color: RARITY_META[rarityKey(tool.rarity)]?.color }}>
@@ -180,11 +180,11 @@ export function RepairPage() {
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div>
                       <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.stone / D9)}</p>
-                      <p className="text-straw text-[10px]">🪨 Кремний</p>
+                      <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("silicon") || ""} alt="" className="w-3.5 h-3.5" /> Кремний</p>
                     </div>
                     <div>
                       <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.wood / D9)}</p>
-                      <p className="text-straw text-[10px]">🪵 Схема</p>
+                      <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("wood") || ""} alt="" className="w-3.5 h-3.5" /> Схема</p>
                     </div>
                   </div>
                 ) : (
@@ -194,7 +194,7 @@ export function RepairPage() {
 
               <button onClick={doRepair} disabled={!mints.stone || maxRepair === 0}
                 className="w-full mt-4 py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
-                🩹 Починить на {amt} прочности
+                Починить на {amt} прочности
               </button>
             </Card>
           )}

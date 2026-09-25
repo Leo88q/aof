@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "./ui/Card";
 import { api } from "../lib/api";
 import { useWalletStr } from "../lib/useWalletStr";
-import { UI_ICONS } from "../lib/visualAssets";
+import {UI_ICONS, resourceIcon} from "../lib/visualAssets";
 
 interface DailyStatus {
   canClaim: boolean;
@@ -103,7 +104,7 @@ export function DailyRewardButton() {
                 }}
                 className="absolute text-2xl"
               >
-                {["🌟", "✨", "💰", "🥔", "🎉"][Math.floor(Math.random() * 5)]}
+                {[UI_ICONS.rewardStar, UI_ICONS.rewardStar, UI_ICONS.rewardTrophy, resourceIcon("potato") || "", UI_ICONS.noticeSuccess][Math.floor(Math.random() * 5)] && <img src={[UI_ICONS.rewardStar, UI_ICONS.rewardTrophy, resourceIcon("potato") || "", UI_ICONS.noticeSuccess][Math.floor(Math.random() * 4)]} alt="" className="w-6 h-6 object-contain" />}
               </motion.div>
             ))}
           </motion.div>
@@ -122,7 +123,7 @@ export function DailyRewardButton() {
           }}
           className="text-5xl"
         >
-          {claimed ? "🎉" : <img src={UI_ICONS.rewardDaily} alt="" className="w-12 h-12 object-contain" />}
+          {claimed ? <img src={UI_ICONS.noticeSuccess} alt="" className="w-12 h-12 object-contain" /> : <img src={UI_ICONS.rewardDaily} alt="" className="w-12 h-12 object-contain" />}
         </motion.div>
 
         <div className="flex-1">
@@ -130,7 +131,7 @@ export function DailyRewardButton() {
             <h3 className="text-parchment font-bold text-sm">Ежедневная награда</h3>
             {status && status.currentStreak > 0 && (
               <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs rounded-full font-bold">
-                🔥 {status.currentStreak} {status.currentStreak === 1 ? "день" : "дней"}
+                <ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4 inline-block align-text-bottom" /> {status.currentStreak} {status.currentStreak === 1 ? "день" : "дней"}
               </span>
             )}
           </div>

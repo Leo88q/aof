@@ -119,7 +119,7 @@ export function PortfolioHome() {
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
         <Card className="p-8 text-center">
-          <div className="text-4xl mb-2">🔒</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Подключите кошелёк, чтобы увидеть портфель</p>
         </Card>
       </div>
@@ -131,7 +131,7 @@ export function PortfolioHome() {
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
         <Card className="p-8 text-center">
-          <div className="text-4xl mb-2">📭</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Нет данных портфеля</p>
         </Card>
       </div>
@@ -139,10 +139,10 @@ export function PortfolioHome() {
   }
 
   const categories = [
-    { key: "tools", icon: "🛠️", label: "Инструменты" },
-    { key: "resources", icon: "📦", label: "Ресурсы" },
-    { key: "listings", icon: "🏷️", label: "Листинги" },
-    { key: "orders", icon: "📊", label: "Ордера" },
+    { key: "tools", icon: UI_ICONS.craft, label: "Инструменты" },
+    { key: "resources", icon: UI_ICONS.pantry, label: "Ресурсы" },
+    { key: "listings", icon: UI_ICONS.marketListing, label: "Листинги" },
+    { key: "orders", icon: UI_ICONS.chartsBar, label: "Ордера" },
   ];
 
   // Фильтруем ресурсы с балансом > 0
@@ -151,7 +151,7 @@ export function PortfolioHome() {
     .map(([key, bal]) => ({
       key,
       balance: bal,
-      ...(RESOURCE_META[key] || { icon: "📦", label: key }),
+      ...(RESOURCE_META[key] || { icon: UI_ICONS.pantry, label: key }),
     }));
 
   return (
@@ -240,7 +240,7 @@ export function PortfolioHome() {
       {/* Инструменты */}
       {(portfolio?.tools?.length ?? 0) > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">🛠️ Инструменты ({portfolio.tools.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.craft} alt="" className="w-4 h-4" /> Инструменты ({portfolio.tools.length})</h3>
           <div className="grid grid-cols-2 gap-2">
             {portfolio.tools.slice(0, 6).map((t: any) => {
               const rk = rarityKey(t.rarity);
@@ -274,7 +274,7 @@ export function PortfolioHome() {
       {/* Активные листинги */}
       {(portfolio?.listings?.length ?? 0) > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">🏷️ Активные листинги ({portfolio.listings.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.marketListing} alt="" className="w-4 h-4" /> Активные листинги ({portfolio.listings.length})</h3>
           <div className="space-y-2">
             {portfolio.listings.slice(0, 5).map((l: any) => (
               <div key={l.pubkey} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
@@ -297,7 +297,7 @@ export function PortfolioHome() {
       {/* Активные ордера */}
       {(portfolio?.orders?.length ?? 0) > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">📊 Активные ордера ({portfolio.orders.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Активные ордера ({portfolio.orders.length})</h3>
           <div className="space-y-2">
             {portfolio.orders.slice(0, 5).map((o: any) => {
               const amount = Number(o.amountRemaining || 0);
@@ -305,7 +305,7 @@ export function PortfolioHome() {
               return (
                 <div key={o.pubkey} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
                   <div className="flex-1">
-                    <p className="text-parchment text-xs font-medium">{o.isBuy ? "📈 Покупка" : "📉 Продажа"}</p>
+                    <p className="text-parchment text-xs font-medium">{o.isBuy ? "Покупка" : "Продажа"}</p>
                     <p className="text-straw text-[10px]">Mint: {o.mint?.slice(0, 8)}...</p>
                   </div>
                   <div className="text-right">
@@ -323,7 +323,7 @@ export function PortfolioHome() {
 
       {/* Статистика */}
       <Card>
-        <h3 className="text-parchment font-semibold text-sm mb-3">📊 Статистика</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Статистика</h3>
         <div className="grid grid-cols-2 gap-2">
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-2xl font-bold text-wheat-500">{portfolio.stats?.toolsCount ?? 0}</p>
@@ -345,9 +345,9 @@ export function PortfolioHome() {
       </Card>
 
       {/* VIP: Расширенная аналитика */}
-      <VipGate isVip={false} feature="📊 Расширенная аналитика портфеля">
+      <VipGate isVip={false} feature="Расширенная аналитика портфеля">
         <Card>
-          <h3 className="text-parchment font-semibold text-sm mb-3">📈 Аналитика (Premium)</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Аналитика (Premium)</h3>
           <div className="space-y-2 text-straw text-xs">
             <p>• Графики доходности по категориям</p>
             <p>• Прогнозы цен на ресурсы</p>

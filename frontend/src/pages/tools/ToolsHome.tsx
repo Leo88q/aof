@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { NavHeader } from "../../components/NavHeader";
 import { ListRow, Section } from "../../components/ListRow";
 import { useNav } from "../../nav/NavContext";
@@ -68,7 +69,7 @@ export function ToolsHome() {
         <div className="content-pad">
           {!address && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
-              <div style={{ fontSize: 40 }}>👛</div>
+              <ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-10 h-10 inline-block" />
               <div style={{ color: "var(--straw)", marginTop: 8 }}>
                 Подключите кошелёк, чтобы увидеть инвентарь
               </div>
@@ -76,9 +77,9 @@ export function ToolsHome() {
           )}
           {address && tools.length === 0 && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
-              <div style={{ fontSize: 40 }}>🧰</div>
+              <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
               <div style={{ color: "var(--straw)", marginTop: 8 }}>
-                {loading ? "Loading…" : "Инструментов пока нет — откройте первый пак ✨"}
+                {loading ? "Loading…" : "Инструментов пока нет — откройте первую капсулу дропа"}
               </div>
             </div>
           )}

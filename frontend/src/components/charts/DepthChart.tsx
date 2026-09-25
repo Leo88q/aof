@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../visual/ResourceGlyph";
 
 interface OrderLevel {
   price: number;
@@ -32,8 +34,8 @@ export function DepthChart({ bids, asks }: DepthChartProps) {
     <div className="space-y-3">
       {/* Заголовки */}
       <div className="flex justify-between text-xs text-straw">
-        <span className="flex items-center gap-1">🪣 корзина (продажа)</span>
-        <span className="flex items-center gap-1">🪴 лопата (покупка)</span>
+        <span className="flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsDown} alt="" className="w-4 h-4" /> корзина (продажа)</span>
+        <span className="flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> лопата (покупка)</span>
       </div>
 
       {/* Asks (корзины) — сверху, кумулятив растёт вниз */}

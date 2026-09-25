@@ -6,7 +6,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
-import { toolPlate } from "../../lib/visualAssets";
+import {toolPlate, resourceIcon} from "../../lib/visualAssets";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
@@ -129,11 +129,11 @@ export function FarmPlot() {
                   <span className="relative">
                     <ArtPlate src={toolPlate(tool.toolType, rarityKey(tool.rarity))} alt={tool.toolType || "Инструмент"} size={36} />
                     {tool.isMining && !done && (
-                      <span className="absolute -top-2 -right-2 text-xs animate-pulse">💨</span>
+                      <span className="absolute -top-2 -right-2 text-xs animate-pulse"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /></span>
                     )}
-                    {done && <span className="absolute -top-2 -right-2 text-xs">✅</span>}
+                    {done && <span className="absolute -top-2 -right-2 text-xs"><ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" /></span>}
                   </span>
-                ) : locked ? "🔒" : decor ? "🌾" : ""}
+                ) : locked ? <ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-5 h-5" /> : decor ? <ResourceGlyph icon={resourceIcon("synapse") || ""} alt="" className="w-5 h-5" /> : ""}
               </button>
             );
           })}
@@ -199,15 +199,15 @@ export function FarmPlot() {
                 toNum(selected.miningEnd) <= Date.now() / 1000 ? (
                   <button onClick={() => quick("collect")} disabled={!MINING_ENABLED || busy}
                     className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-                    {MINING_ENABLED ? "📦 Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
+                    {MINING_ENABLED ? "Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
                   </button>
                 ) : (
-                  <p className="text-straw text-xs mt-1">⛏️ Идёт добыча — вернись, когда экстрактор закончит</p>
+                  <p className="text-straw text-xs mt-1 inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> Идёт добыча — вернись, когда экстрактор закончит</p>
                 )
               ) : (
                 <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}
                   className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-                  {MINING_ENABLED ? "⛏️ Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
+                  {MINING_ENABLED ? "Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
                 </button>
               )}
               <p className="text-straw text-xs mt-2 text-center">Тонкая настройка — во вкладке «Инструменты»</p>
