@@ -286,9 +286,9 @@ export const UI_ICONS = {
   tokenCoin: "/assets/icons/ui/token-coin.jpg",
   buildingPlasma: "/assets/icons/ui/building-plasma.jpg",
   buildingSilicon: "/assets/icons/ui/building-silicon.jpg",
-  buildingData: "/assets/icons/ui/building-plasma.jpg",
-  buildingQuantum: "/assets/icons/ui/building-silicon.jpg",
-  buildingNeural: "/assets/icons/ui/building-plasma.jpg",
+  buildingData: "/assets/icons/ui/building-data.jpg",
+  buildingQuantum: "/assets/icons/ui/building-quantum.jpg",
+  buildingNeural: "/assets/icons/ui/building-neural.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */
