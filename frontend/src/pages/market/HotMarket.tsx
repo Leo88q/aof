@@ -1,4 +1,6 @@
 import { Card } from "../../components/ui/Card";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 /**
  * The previous screen displayed synthetic candles and a synthetic queue while
@@ -9,7 +11,7 @@ import { Card } from "../../components/ui/Card";
 export function HotMarket() {
   return (
     <div className="p-4 pt-6 pb-32">
-      <h1 className="text-2xl font-bold text-parchment mb-4">🔥 Хот-маркет</h1>
+      <h1 className="text-2xl font-bold text-parchment mb-4 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketHot} alt="" className="w-7 h-7" /> Хот-маркет</h1>
       <Card>
         <p className="text-parchment font-semibold">Временно недоступно</p>
         <p className="text-straw text-sm mt-2 leading-relaxed">

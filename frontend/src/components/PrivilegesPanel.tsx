@@ -150,19 +150,19 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
       )}
       {/* === РАЗДЕЛ: КОЛЛЕКЦИОННЫЕ NFT === */}
       <div style={{marginTop: "16px", padding: "16px", background: "rgba(251, 191, 36, 0.1)", borderRadius: "12px", border: "1px solid rgba(251, 191, 36, 0.3)"}}>
-        <h3 style={{color: "#fbbf24", marginBottom: "12px", fontSize: "16px", fontWeight: "bold"}}><ResourceGlyph icon={UI_ICONS.rewardTrophy} alt="" className="w-5 h-5" /> Коллекционные NFT</h3>
+        <h3 style={{color: "#00D4FF", marginBottom: "12px", fontSize: "16px", fontWeight: "bold"}}><ResourceGlyph icon={UI_ICONS.rewardTrophy} alt="" className="w-5 h-5" /> Коллекционные NFT</h3>
         
         <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px"}}>
           
           <div style={{background: "rgba(30, 41, 59, 0.8)", padding: "14px", borderRadius: "10px", border: "2px solid rgba(139, 92, 246, 0.5)"}}>
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
               <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-6 h-6" />
-              <h4 style={{color: "#a78bfa", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Historian</h4>
+              <h4 style={{color: "#9B59FF", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Historian</h4>
             </div>
-            <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
-              <b style={{color: "#fbbf24"}}>Эффект:</b> +5% шанс Singularity из паков, +25 слотов рефералов
+            <p style={{fontSize: "12px", color: "#E0E4F0", marginBottom: "10px", lineHeight: "1.5"}}>
+              <b style={{color: "#00D4FF"}}>Эффект:</b> +5% шанс Singularity из паков, +25 слотов рефералов
             </p>
-            <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
+            <div style={{fontSize: "11px", color: "#5A6080", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
               <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (редкая награда)</li>
@@ -175,12 +175,12 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
           <div style={{background: "rgba(30, 41, 59, 0.8)", padding: "14px", borderRadius: "10px", border: "2px solid rgba(236, 72, 153, 0.5)"}}>
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
               <ResourceGlyph icon={UI_ICONS.medalService} alt="" className="w-6 h-6" />
-              <h4 style={{color: "#ec4899", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Medallion</h4>
+              <h4 style={{color: "#FF3CAC", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Medallion</h4>
             </div>
-            <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
-              <b style={{color: "#fbbf24"}}>Эффект:</b> +3% шанс Transcendent из паков, +5 слотов рефералов
+            <p style={{fontSize: "12px", color: "#E0E4F0", marginBottom: "10px", lineHeight: "1.5"}}>
+              <b style={{color: "#00D4FF"}}>Эффект:</b> +3% шанс Transcendent из паков, +5 слотов рефералов
             </p>
-            <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
+            <div style={{fontSize: "11px", color: "#5A6080", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
               <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (ультра-редкая награда)</li>
@@ -193,7 +193,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
           
         </div>
         
-        <div style={{marginTop: "12px", padding: "10px", background: "rgba(0,0,0,0.3)", borderRadius: "8px", fontSize: "11px", color: "#94a3b8", textAlign: "center"}}>
+        <div style={{marginTop: "12px", padding: "10px", background: "rgba(0,0,0,0.3)", borderRadius: "8px", fontSize: "11px", color: "#5A6080", textAlign: "center"}}>
           <ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4 inline-block align-text-bottom" /> <b>Стейкай NFT</b> в разделе "Коллекционеры" для активации бонусов. Минимальный срок — 3 дня.
         </div>
       </div>

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface AuditLogEntry {
   id: string;
@@ -56,7 +58,7 @@ export function AuditLogPage() {
   return (
     <div className="p-4 pb-24">
       <Card className="mb-4">
-        <h2 className="text-parchment font-bold text-lg mb-2">🛡️ Sentinel Audit Log</h2>
+        <h2 className="text-parchment font-bold text-lg mb-2 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.sentinel} alt="" className="w-6 h-6" /> Sentinel Audit Log</h2>
         <p className="text-straw text-sm mb-4">
           Автоматическое логирование всех действий игроков для расследования споров
         </p>

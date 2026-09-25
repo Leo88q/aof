@@ -276,6 +276,19 @@ export const UI_ICONS = {
   locArid: "/assets/icons/ui/loc-arid.jpg",
   npcOracle: "/assets/icons/ui/npc-oracle.jpg",
   buffIdea: "/assets/icons/ui/buff-idea.jpg",
+  auction: "/assets/icons/ui/auction.jpg",
+  rental: "/assets/icons/ui/rental.jpg",
+  rewardCapsule: "/assets/icons/ui/reward-capsule.jpg",
+  rewardSpark: "/assets/icons/ui/reward-spark.jpg",
+  matchZap: "/assets/icons/ui/match-zap.jpg",
+  sentinel: "/assets/icons/ui/sentinel.jpg",
+  ticket: "/assets/icons/ui/ticket.jpg",
+  tokenCoin: "/assets/icons/ui/token-coin.jpg",
+  buildingPlasma: "/assets/icons/ui/building-plasma.jpg",
+  buildingSilicon: "/assets/icons/ui/building-silicon.jpg",
+  buildingData: "/assets/icons/ui/building-data.jpg",
+  buildingQuantum: "/assets/icons/ui/building-quantum.jpg",
+  buildingNeural: "/assets/icons/ui/building-neural.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */
@@ -292,3 +305,17 @@ export function toolPlate(toolId?: string | null, rarity: string = "common"): st
 export const RESOURCE_ART: Record<string, string> = Object.fromEntries(
   RESOURCES.map((r) => [r.id, r.plate]),
 );
+
+/* ─── Brand Assets ─── */
+export const BRAND = {
+  tokenIcon: "/assets/brand/token-512.png",
+  tokenIcon256: "/assets/brand/token-256.png",
+  tokenIcon128: "/assets/brand/token-128.png",
+  appIcon: "/assets/brand/app-icon.png",
+  dappStoreIcon: "/assets/brand/dapp-512.png",
+  ogImage: "/assets/brand/og-1200x630.png",
+  walletBanner: "/assets/brand/wallet-1200x400.png",
+  tokenMetadata: "/assets/brand/token-metadata.json",
+  logoSvg: "/favicon.svg",
+  favicon: "/favicon.ico",
+} as const;

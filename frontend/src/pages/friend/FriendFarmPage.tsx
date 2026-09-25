@@ -127,7 +127,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 h-2 rounded-full bg-soil-800 overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#6bbf59" }} />
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#00E5A0" }} />
                       </div>
                       <span className="text-straw text-xs">{durability}/{MAX_DURABILITY}</span>
                     </div>

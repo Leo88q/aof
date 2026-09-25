@@ -20,17 +20,17 @@ const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
 
 // Постройки по типу инструмента (ТЗ v4 §1: резчик — стойка схем, экстрактор — шахта кремния, передатчик — вышка данных)
 // [REBRAND] NeuroForge постройки; legacy-id (axe/pick/spear/bow) → те же постройки для старых инструментов.
-const BUILDING: Record<string, { emoji: string; name: string }> = {
-  plasma_cutter: { emoji: "", name: "Плазменный цех" },
-  silicon_extractor: { emoji: "", name: "Кремниевая шахта" },
-  data_harvester: { emoji: "", name: "Пост сбора данных" },
-  quantum_transmitter: { emoji: "", name: "Квантовая вышка" },
-  neural_seeder: { emoji: "", name: "Посевная станция" },
-  axe: { emoji: "", name: "Плазменный цех" },
-  pick: { emoji: "", name: "Кремниевая шахта" },
-  spear: { emoji: "", name: "Пост сбора данных" },
-  bow: { emoji: "", name: "Квантовая вышка" },
-  reaper: { emoji: "", name: "Посевная станция" },
+const BUILDING: Record<string, { icon: string; name: string }> = {
+  plasma_cutter: { icon: UI_ICONS.buildingPlasma, name: "Плазменный цех" },
+  silicon_extractor: { icon: UI_ICONS.buildingSilicon, name: "Кремниевая шахта" },
+  data_harvester: { icon: UI_ICONS.buildingData, name: "Пост сбора данных" },
+  quantum_transmitter: { icon: UI_ICONS.buildingQuantum, name: "Квантовая вышка" },
+  neural_seeder: { icon: UI_ICONS.buildingNeural, name: "Посевная станция" },
+  axe: { icon: UI_ICONS.buildingPlasma, name: "Плазменный цех" },
+  pick: { icon: UI_ICONS.buildingSilicon, name: "Кремниевая шахта" },
+  spear: { icon: UI_ICONS.buildingData, name: "Пост сбора данных" },
+  bow: { icon: UI_ICONS.buildingQuantum, name: "Квантовая вышка" },
+  reaper: { icon: UI_ICONS.buildingNeural, name: "Посевная станция" },
 };
 
 // Слоты построек по центру участка (спиралью наружу)

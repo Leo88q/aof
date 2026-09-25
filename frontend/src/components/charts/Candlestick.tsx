@@ -27,7 +27,7 @@ export function Candlestick({ candles, height = 240 }: CandlestickProps) {
       height,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#9c8b7a",
+        textColor: "#8890B0",
         fontSize: 11,
       },
       grid: {
@@ -36,24 +36,24 @@ export function Candlestick({ candles, height = 240 }: CandlestickProps) {
       },
       timeScale: {
         timeVisible: true,
-        borderColor: "#3d3226",
+        borderColor: "#1A1A30",
       },
       rightPriceScale: {
-        borderColor: "#3d3226",
+        borderColor: "#1A1A30",
       },
       crosshair: {
-        vertLine: { color: "#e8a33d", labelBackgroundColor: "#d97941" },
-        horzLine: { color: "#e8a33d", labelBackgroundColor: "#d97941" },
+        vertLine: { color: "#FFD700", labelBackgroundColor: "#00A8CC" },
+        horzLine: { color: "#FFD700", labelBackgroundColor: "#00A8CC" },
       },
     });
 
     const series = chart.addCandlestickSeries({
-      upColor: "#6bbf59",        // рост = тёплый травяной
-      downColor: "#c1703d",      // падение = янтарно-охристый
-      borderUpColor: "#6bbf59",
-      borderDownColor: "#c1703d",
-      wickUpColor: "#4e9d42",
-      wickDownColor: "#8b5a2b",
+      upColor: "#00E5A0",        // рост = тёплый травяной
+      downColor: "#FF3366",      // падение = янтарно-охристый
+      borderUpColor: "#00E5A0",
+      borderDownColor: "#FF3366",
+      wickUpColor: "#00C488",
+      wickDownColor: "#FF3366",
     });
 
     const data = candles.map((c) => ({

@@ -1,60 +1,52 @@
 :root {
-  --aof-concrete: #8B8680;
-  --aof-oak: #6B4E3D;
-  --aof-oak-light: #7D5F4A;
-  --aof-oak-dark: #5A4030;
-  --aof-copper: #A8763E;
-  --aof-copper-bright: #C8963E;
-  --aof-copper-dark: #8A6630;
-  --aof-terracotta: #C97D60;
-  --aof-sage: #8A9A7B;
-  --aof-golden: #E8B98A;
-  --aof-forest: #2D4A3E;
-  --aof-parchment: #F4EDE4;
-  --aof-ember: #A85A3E;
+  /* ═══ NeuroForge Design Tokens ═══ */
+  /* Replaces old "Honest Craft Solarpunk" palette */
 
-  --aof-font-display: 'Playfair Display', Georgia, serif;
+  /* Surfaces — dark graphite */
+  --aof-concrete: #0A0A1A;
+  --aof-oak: #1A1A30;
+  --aof-oak-light: #24243E;
+  --aof-oak-dark: #0E0E1E;
+
+  /* Accents — neon cyan */
+  --aof-copper: #00A8CC;
+  --aof-copper-bright: #00D4FF;
+  --aof-copper-dark: #007A99;
+
+  /* Secondary accents */
+  --aof-terracotta: #FF3CAC;
+  --aof-sage: #00E5A0;
+  --aof-golden: #FFD700;
+
+  /* Text */
+  --aof-forest: #E0E4F0;
+  --aof-parchment: #E0E4F0;
+  --aof-ember: #FF3366;
+
+  /* Typography */
+  --aof-font-display: 'Rajdhani', 'Inter', system-ui, sans-serif;
   --aof-font-body: 'Inter', system-ui, sans-serif;
   --aof-font-mono: 'JetBrains Mono', monospace;
 
-  --aof-shadow-sm: 0 2px 4px rgba(45, 42, 38, 0.18);
-  --aof-shadow-md: 0 4px 8px rgba(45, 42, 38, 0.25);
-  --aof-shadow-lg: 0 8px 16px rgba(45, 42, 38, 0.32);
-  --aof-shadow-xl: 0 16px 48px rgba(45, 42, 38, 0.45);
-  --aof-shadow-inset: inset 0 2px 4px rgba(45, 42, 38, 0.35);
+  /* Shadows — neon glow */
+  --aof-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 212, 255, 0.1);
+  --aof-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 212, 255, 0.1);
+  --aof-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 4px rgba(0, 212, 255, 0.15);
+  --aof-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 212, 255, 0.2);
+  --aof-shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 
-  --aof-radius-sm: 4px;
-  --aof-radius-md: 8px;
-  --aof-radius-lg: 12px;
+  /* Radius */
+  --aof-radius-sm: 6px;
+  --aof-radius-md: 10px;
+  --aof-radius-lg: 14px;
 
+  /* Spacing */
   --aof-unit: 8px;
 
+  /* Durations */
   --aof-dur-press: 80ms;
   --aof-dur-release: 120ms;
   --aof-dur-panel: 300ms;
   --aof-dur-tooltip: 100ms;
   --aof-dur-tab: 200ms;
-  --aof-dur-toast-in: 250ms;
-  --aof-dur-page: 400ms;
-}
-
-/* Biolab palette stays in the canonical token layer, not raw component CSS. */
-:root {
-  --aof-biolab-color-1: #0D0524;
-  --aof-biolab-color-2: #070215;
-  --aof-biolab-color-3: #160B3A;
-  --aof-biolab-color-4: #FF2FA1;
-  --aof-biolab-color-5: #A855F7;
-  --aof-biolab-color-6: #22D3EE;
-  --aof-biolab-color-7: #FFD700;
-  --aof-biolab-color-8: #E9E5FF;
-  --aof-biolab-color-9: #A9A1CE;
-  --aof-biolab-color-10: #1A0845;
-  --aof-biolab-color-11: rgba(29,16,73,.9);
-  --aof-biolab-color-12: rgba(22,11,58,.95);
-  --aof-biolab-color-13: rgba(168,85,247,.2);
-  --aof-biolab-color-14: rgba(22,11,58,.98);
-  --aof-biolab-color-15: rgba(13,5,36,.99);
-  --aof-biolab-color-16: rgba(168,85,247,.3);
-  --aof-biolab-color-17: rgba(13,5,36,.6);
 }

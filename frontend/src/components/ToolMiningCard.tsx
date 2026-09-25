@@ -84,12 +84,12 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
 
   const state =
     durabilityPct > 75
-      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#6bbf59" }
+      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#00E5A0" }
       : durabilityPct > 40
-      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#c9a24a" }
+      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#00D4FF" }
       : durabilityPct > 15
-      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#b0653a" }
-      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#c2703d" };
+      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#FF3366" }
+      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#FF3366" };
 
   // Прогресс экстрактора: оставшееся время от общего срока текущей добычи
   const totalSec = Math.max(1, toNum(tool.lastMinedHours) * 3600 || hours * 3600);

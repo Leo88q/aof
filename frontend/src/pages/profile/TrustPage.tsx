@@ -5,6 +5,7 @@ import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface BreakdownItem {
   score: number;
@@ -26,7 +27,7 @@ interface TrustData {
 }
 
 const TIER_NAMES = ["", "Искра", "Узел", "Кластер", "Сеть", "Сингулярность"];
-const TIER_COLORS = ["", "#9ca3af", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"];
+const TIER_COLORS = ["", "#9ca3af", "#60a5fa", "#00E5A0", "#00D4FF", "#f472b6"];
 
 const COMPONENT_META: Record<string, { icon: string; label: string }> = {
   age:        { icon: UI_ICONS.trustAge, label: "Возраст аккаунта" },
@@ -161,12 +162,12 @@ export function TrustPage() {
 
       {/* Breakdown по компонентам */}
       <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3">📊 Компоненты репутации</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.economyOverview} alt="" className="w-5 h-5" /> Компоненты репутации</h3>
         <div className="grid grid-cols-2 gap-3">
           {Object.entries(data.breakdown).map(([key, item], i) => {
             const meta = COMPONENT_META[key] || { icon: "❓", label: key };
             const pct = item.max > 0 ? (item.score / item.max) * 100 : 0;
-            const color = pct >= 70 ? "#34d399" : pct >= 40 ? "#fbbf24" : "#f87171";
+            const color = pct >= 70 ? "#00E5A0" : pct >= 40 ? "#00D4FF" : "#FF3366";
             
             return (
               <motion.div

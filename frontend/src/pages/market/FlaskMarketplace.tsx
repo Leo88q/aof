@@ -6,7 +6,7 @@ const FLASKS = [
   { key: "CRYO_FLUID", label: "Крио-флюид", icon: resourceIcon("CRYO_FLUID") || "", desc: "+20% добыча на 1ч" },
   { key: "VOLT_FLUID", label: "Вольт-флюид", icon: resourceIcon("VOLT_FLUID") || "", desc: "+100 газа" },
   { key: "BIO_FLUID", label: "Био-флюид", icon: resourceIcon("BIO_FLUID") || "", desc: "×2 скорость на 1ч" },
-  { key: "NANO_FLUID", label: "Нано-флюид", icon: resourceIcon("NANO_FLUID") || "", desc: "+3 ❤️ к соседу" },
+  { key: "NANO_FLUID", label: "Нано-флюид", icon: resourceIcon("NANO_FLUID") || "", desc: "+3 к соседнему узлу" },
   { key: "QUANTUM_FLUID", label: "Квантовый флюид", icon: resourceIcon("QUANTUM_FLUID") || "", desc: "+50% Forge на 1ч" },
 ];
 

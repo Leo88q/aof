@@ -7,7 +7,7 @@ interface LiquidBarProps {
   icon?: string;
 }
 
-export function LiquidBar({ level, color = "#6bbf59", label, icon }: LiquidBarProps) {
+export function LiquidBar({ level, color = "#00E5A0", label, icon }: LiquidBarProps) {
   const isHigh = level >= 90;
   return (
     <div className="flex items-center gap-3">

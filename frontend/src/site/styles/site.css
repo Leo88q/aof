@@ -500,3 +500,334 @@
 .site-weather--drought{background:linear-gradient(180deg,rgba(201,125,96,.35),rgba(139,134,128,.25))}
 .site-weather--festival{background:radial-gradient(circle at 20% 30%,rgba(168,118,62,.35),transparent 40%),radial-gradient(circle at 70% 20%,rgba(232,185,138,.35),transparent 35%),radial-gradient(circle at 45% 60%,rgba(201,125,96,.3),transparent 45%)}
 .site-tool--4{border-width:6px;border-color:var(--aof-golden);box-shadow:0 0 24px rgba(232,185,138,.35)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEUROFORGE OVERRIDE — Cyberpunk / AI theme for landing site
+   Overrides "Honest Craft Solarpunk" with dark glass + neon cyan
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Background: dark void with subtle grid */
+.aof-ui.aof-site {
+  background-color: #06060F !important;
+  background-image:
+    linear-gradient(rgba(0,212,255,.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,.015) 1px, transparent 1px) !important;
+  background-size: 40px 40px !important;
+  color: #E0E4F0 !important;
+}
+
+/* Hero / Page title: dark panel with neon bottom border */
+.site-title {
+  background-color: #0A0A1A !important;
+  background-image: none !important;
+  border-bottom: 2px solid rgba(0,212,255,.3) !important;
+  color: #E0E4F0 !important;
+}
+.site-title::before {
+  background: radial-gradient(ellipse at 70% 30%, rgba(0,212,255,.08), transparent 60%) !important;
+}
+.site-title::after {
+  background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(6,6,15,.6) 100%) !important;
+}
+.site-title h1 {
+  text-shadow: 0 0 30px rgba(0,212,255,.2) !important;
+}
+
+/* Eyebrow badge: cyan */
+.aof-site .site-eyebrow {
+  background: rgba(0,212,255,.15) !important;
+  color: #00D4FF !important;
+  border: 1px solid rgba(0,212,255,.25) !important;
+}
+
+/* Paper cards: dark glass panels */
+.site-paper {
+  background-color: rgba(16,16,31,.9) !important;
+  background-image: none !important;
+  color: #E0E4F0 !important;
+  border: 1px solid rgba(0,212,255,.1) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.03) !important;
+}
+
+/* Oak panels: dark graphite */
+.site-oak {
+  background-color: #0E0E1E !important;
+  background-image: none !important;
+  color: #E0E4F0 !important;
+  border: 1px solid rgba(0,212,255,.08) !important;
+}
+
+/* Cards hover: neon glow */
+.site-card {
+  border-color: rgba(0,212,255,.1) !important;
+  box-shadow: var(--aof-shadow-md) !important;
+}
+.site-card:hover {
+  border-color: rgba(0,212,255,.3) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 16px rgba(0,212,255,.1) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Section header accent line: neon cyan */
+.site-section > h2::before {
+  background: linear-gradient(90deg, #00D4FF, #9B59FF) !important;
+}
+
+/* Buttons: neon cyan gradient */
+.aof-site .site-btn--primary,
+.aof-site .site-btn:not(.site-btn--ghost) {
+  background: linear-gradient(135deg, #007A99, #00D4FF) !important;
+  color: #06060F !important;
+  border: none !important;
+  box-shadow: 0 0 12px rgba(0,212,255,.2) !important;
+}
+.aof-site .site-btn--primary:hover {
+  box-shadow: 0 0 24px rgba(0,212,255,.35) !important;
+}
+
+/* Ghost buttons */
+.aof-site .site-btn--ghost {
+  background: transparent !important;
+  color: #00D4FF !important;
+  border: 1px solid rgba(0,212,255,.25) !important;
+}
+.aof-site .site-btn--ghost:hover {
+  background: rgba(0,212,255,.06) !important;
+  box-shadow: 0 0 12px rgba(0,212,255,.15) !important;
+}
+
+/* Stats: cyan gradient numbers */
+.site-stat strong {
+  background: linear-gradient(180deg, #60EFFF, #00D4FF) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+}
+
+/* Navigation header */
+.site-header {
+  background: rgba(6,6,15,.85) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(0,212,255,.08) !important;
+}
+.site-header a, .site-header button {
+  color: #8890B0 !important;
+}
+.site-header a:hover, .site-header a[aria-current] {
+  color: #00D4FF !important;
+}
+
+/* Footer */
+.site-footer {
+  background: #0A0A14 !important;
+  color: #5A6080 !important;
+  border-top: 1px solid rgba(0,212,255,.08) !important;
+}
+
+/* Steps: neon numbered steps */
+.site-steps li {
+  background: rgba(16,16,31,.8) !important;
+  border: 1px solid rgba(0,212,255,.08) !important;
+  border-radius: 10px !important;
+  color: #E0E4F0 !important;
+}
+.site-step-number {
+  color: #00D4FF !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Resource cards in catalog */
+.site-resource-card {
+  background: rgba(16,16,31,.8) !important;
+  border: 1px solid rgba(0,212,255,.1) !important;
+  color: #E0E4F0 !important;
+}
+.site-resource-card:hover {
+  border-color: rgba(0,212,255,.3) !important;
+  box-shadow: 0 0 16px rgba(0,212,255,.1) !important;
+}
+
+/* Links */
+.aof-site a { color: #00D4FF !important; }
+
+/* Focus states: cyan */
+.aof-site :where(a,button,input,select,summary,[tabindex]):focus-visible {
+  outline: 2px solid #00D4FF !important;
+  box-shadow: 0 0 0 4px rgba(0,212,255,.15) !important;
+}
+
+/* Grid background element */
+.nf-grid-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at 50% 50%, black 20%, transparent 70%);
+}
+
+/* Floating particles */
+.nf-particles {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.nf-particles span {
+  position: absolute;
+  width: 3px; height: 3px;
+  background: rgba(0,212,255,.4);
+  border-radius: 50%;
+  animation: nfFloat 8s ease-in-out infinite;
+}
+.nf-particles span:nth-child(2n) { background: rgba(155,89,255,.3); }
+.nf-particles span:nth-child(3n) { width: 2px; height: 2px; }
+.nf-particles span:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
+.nf-particles span:nth-child(2) { left: 25%; top: 60%; animation-delay: 1.2s; }
+.nf-particles span:nth-child(3) { left: 40%; top: 30%; animation-delay: 2.4s; }
+.nf-particles span:nth-child(4) { left: 55%; top: 70%; animation-delay: 0.8s; }
+.nf-particles span:nth-child(5) { left: 70%; top: 15%; animation-delay: 3.6s; }
+.nf-particles span:nth-child(6) { left: 85%; top: 50%; animation-delay: 1.8s; }
+.nf-particles span:nth-child(7) { left: 15%; top: 80%; animation-delay: 4.2s; }
+.nf-particles span:nth-child(8) { left: 50%; top: 10%; animation-delay: 2.8s; }
+.nf-particles span:nth-child(9) { left: 75%; top: 45%; animation-delay: 0.4s; }
+.nf-particles span:nth-child(10) { left: 90%; top: 75%; animation-delay: 3.2s; }
+.nf-particles span:nth-child(11) { left: 5%; top: 40%; animation-delay: 1.6s; }
+.nf-particles span:nth-child(12) { left: 35%; top: 85%; animation-delay: 4.8s; }
+.nf-particles span:nth-child(13) { left: 60%; top: 55%; animation-delay: 0.6s; }
+.nf-particles span:nth-child(14) { left: 80%; top: 25%; animation-delay: 2.2s; }
+.nf-particles span:nth-child(15) { left: 45%; top: 90%; animation-delay: 3.8s; }
+.nf-particles span:nth-child(16) { left: 20%; top: 5%; animation-delay: 5.2s; }
+
+@keyframes nfFloat {
+  0%, 100% { transform: translateY(0) scale(1); opacity: .4; }
+  50% { transform: translateY(-20px) scale(1.5); opacity: .8; }
+}
+
+/* Remove old decorative elements */
+.site-god-rays, .site-dust-motes { display: none !important; }
+
+/* Scrollbar for site */
+.aof-site ::-webkit-scrollbar-thumb {
+  background: rgba(0,212,255,.2) !important;
+}
+
+/* Selection */
+.aof-site ::selection {
+  background: rgba(0,212,255,.25) !important;
+  color: #E0E4F0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEUROFORGE — Product Section (game poster + description block)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.nf-product {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+@media (max-width: 768px) {
+  .nf-product { grid-template-columns: 1fr; }
+}
+
+.nf-product__visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nf-product__poster {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1), 0 16px 48px rgba(0, 0, 0, 0.5);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  display: block;
+}
+.nf-product__poster:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 0 50px rgba(0, 212, 255, 0.2), 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.nf-product__banner {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(155, 89, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: block;
+}
+@media (max-width: 768px) {
+  .nf-product__banner { display: none; }
+}
+
+.nf-product__info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nf-product__tag {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 4px 14px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #00D4FF;
+  font-family: 'Rajdhani', 'Inter', system-ui, sans-serif;
+}
+
+.nf-product__info h3 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #E0E4F0;
+  margin: 0;
+  font-family: 'Rajdhani', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.nf-product__info > p {
+  color: #8890B0;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.nf-product__features {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-product__features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #E0E4F0;
+  font-size: 14px;
+}
+
+.nf-product__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00D4FF;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.nf-product__cta {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}

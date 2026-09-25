@@ -100,9 +100,9 @@ export function FarmDashboard() {
       >
         <div className="flex items-center gap-2">
           <button
-            onClick={() => push("farm", "drum", (<><NavHeader title="Барабан урожая" tabKey="farm" /><DrumSpin /></>))}
+            onClick={() => push("farm", "drum", (<><NavHeader title="Квантовый барабан" tabKey="farm" /><DrumSpin /></>))}
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
-            title="Барабан урожая"
+            title="Квантовый барабан"
           >
             <img src={UI_ICONS.drum} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
@@ -122,7 +122,7 @@ export function FarmDashboard() {
           </button>
         </div>
         <div className="flex-1 text-center">
-          <h1 className="text-2xl font-bold text-parchment">🧠 Нейро-лаборатория</h1>
+          <h1 className="text-2xl font-bold text-parchment flex items-center justify-center gap-2"><ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-7 h-7" /> Нейро-лаборатория</h1>
           <p className="text-straw text-sm mt-1">С возвращением, оператор</p>
         </div>
         <WeatherWidget />
@@ -172,7 +172,7 @@ export function FarmDashboard() {
             <Card className="mb-4">
               <LiquidBar
                 level={(energy.amount / energy.cap) * 100}
-                color="#5ab0d6"
+                color="#00D4FF"
                 label="Энергия"
                 icon={resourceIcon("POWER")}
               />

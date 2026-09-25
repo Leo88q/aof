@@ -27,9 +27,9 @@ export function ContentPage({ id }: { id: string }) {
   }, [id]);
   return (
     <>
-      <PageTitle eyebrow={hero ? 'NeuroForge · Honest Craft Solarpunk' : page.group} title={page.title} lead={page.lead}>
-        <div className="site-god-rays" aria-hidden="true"><i/><i/><i/></div>
-        <div className="site-dust-motes" aria-hidden="true">{Array.from({ length: 20 }).map((_, i) => <span key={i} />)}</div>
+      <PageTitle eyebrow={hero ? 'NeuroForge — Age of Intelligence' : page.group} title={page.title} lead={page.lead}>
+        <div className="nf-grid-bg" aria-hidden="true" />
+        <div className="nf-particles" aria-hidden="true">{Array.from({ length: 16 }).map((_, i) => <span key={i} />)}</div>
       </PageTitle>
       {hero && (
         <div className="site-hero-actions">
@@ -45,6 +45,30 @@ export function ContentPage({ id }: { id: string }) {
 
       {hero && (
         <>
+          <Section title="Наш продукт">
+            <div className="nf-product">
+              <div className="nf-product__visual">
+                <img src="/assets/brand/game-poster.png" alt="NeuroForge — Age of Intelligence" className="nf-product__poster" />
+                <img src="/assets/brand/game-banner.png" alt="NeuroForge key art" className="nf-product__banner" />
+              </div>
+              <div className="nf-product__info">
+                <span className="nf-product__tag">Blockchain Game · Solana</span>
+                <h3>NeuroForge — Age of Intelligence</h3>
+                <p>Игра о развитии искусственного интеллекта на блокчейне Solana. Выращивай нейроны, тренируй модели, куй NFT-инструменты и торгуй на квантовом рынке.</p>
+                <ul className="nf-product__features">
+                  <li><span className="nf-product__dot" />27 ресурсов и 8 цепочек крафта</li>
+                  <li><span className="nf-product__dot" />5 типов инструментов × 5 редкостей</li>
+                  <li><span className="nf-product__dot" />6 торговых площадок и квантовый розыгрыш</li>
+                  <li><span className="nf-product__dot" />Полностью on-chain: каждая транзакция проверяема</li>
+                </ul>
+                <div className="nf-product__cta">
+                  <Button to="/site/start">Начать играть</Button>
+                  <Button to="/site/resources" variant="ghost">Каталог ресурсов</Button>
+                </div>
+              </div>
+            </div>
+          </Section>
+
           <Section title="Четыре числа, с которых стоит начать">
             <div className="site-grid site-grid--four">
               <Counter value={20} label="максимум энергии" />
@@ -188,7 +212,7 @@ export function ResourceDetail() {
 export function NotFound() {
   return (
     <>
-      <PageTitle eyebrow="404" title="Страницы нет в мастерской" lead="Проверь адрес." />
+      <PageTitle eyebrow="404" title="Страница не найдена" lead="Проверь адрес или вернись на главную." />
       <Section>
         <div className="site-actions">
           <Button to="/site/home">На главную</Button>
