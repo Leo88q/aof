@@ -12,33 +12,35 @@ import { fmtNum } from "../../lib/marketUtils";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useStore } from "../../store/useStore";
 import { motion } from "framer-motion";
+import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 const RESOURCE_META: Record<string, { icon: string; label: string }> = {
-  FOOD: { icon: "🌾", label: "Данные" },
-  WOOD: { icon: "🪵", label: "Схема" },
-  STONE: { icon: "🪨", label: "Кремний" },
-  SEEDS: { icon: "🌰", label: "Нейрон" },
-  WHEAT: { icon: "🌾", label: "Синапс" },
-  FLOUR: { icon: "🥣", label: "Сигнал" },
-  BREAD: { icon: "🍞", label: "Модель" },
-  WATER: { icon: "💧", label: "Энергопоток" },
-  COAL: { icon: "⬛", label: "Вычисления" },
-  MEAT: { icon: "🍖", label: "Датасет" },
-  STONE_BLUE: { icon: "🔵", label: "Голубое ядро" },
-  STONE_PURPLE: { icon: "🟣", label: "Фиолетовое ядро" },
-  STONE_RED: { icon: "🔴", label: "Красное ядро" },
-  SAND_WHITE: { icon: "⚪", label: "Чистый кварц" },
-  SAND_PINK: { icon: "💗", label: "Розовый кварц" },
-  SAND_YELLOW: { icon: "🟡", label: "Янтарный кварц" },
-  GEM_BLUE: { icon: "💎", label: "Квантовый бит" },
-  GEM_ORANGE: { icon: "🟠", label: "Нейрочип" },
-  GEM_WHITE: { icon: "⚪", label: "Фотон-бит" },
-  GEM_GREEN: { icon: "🟢", label: "Био-чип" },
-  FLASK_BLUE: { icon: "🧪", label: "Крио-флюид" },
-  FLASK_YELLOW: { icon: "🧪", label: "Вольт-флюид" },
-  FLASK_GREEN: { icon: "🧪", label: "Био-флюид" },
-  FLASK_PINK: { icon: "🧪", label: "Нано-флюид" },
-  FLASK_PURPLE: { icon: "🧪", label: "Квантовый флюид" },
+  FOOD: { icon: resourceIcon("FOOD") || "", label: "Данные" },
+  WOOD: { icon: resourceIcon("WOOD") || "", label: "Схема" },
+  STONE: { icon: resourceIcon("STONE") || "", label: "Кремний" },
+  SEEDS: { icon: resourceIcon("SEEDS") || "", label: "Нейрон" },
+  WHEAT: { icon: resourceIcon("WHEAT") || "", label: "Синапс" },
+  FLOUR: { icon: resourceIcon("FLOUR") || "", label: "Сигнал" },
+  BREAD: { icon: resourceIcon("BREAD") || "", label: "Модель" },
+  WATER: { icon: resourceIcon("WATER") || "", label: "Энергопоток" },
+  COAL: { icon: resourceIcon("COAL") || "", label: "Вычисления" },
+  MEAT: { icon: resourceIcon("MEAT") || "", label: "Датасет" },
+  STONE_BLUE: { icon: resourceIcon("STONE_BLUE") || "", label: "Голубое ядро" },
+  STONE_PURPLE: { icon: resourceIcon("STONE_PURPLE") || "", label: "Фиолетовое ядро" },
+  STONE_RED: { icon: resourceIcon("STONE_RED") || "", label: "Красное ядро" },
+  SAND_WHITE: { icon: resourceIcon("SAND_WHITE") || "", label: "Чистый кварц" },
+  SAND_PINK: { icon: resourceIcon("SAND_PINK") || "", label: "Розовый кварц" },
+  SAND_YELLOW: { icon: resourceIcon("SAND_YELLOW") || "", label: "Янтарный кварц" },
+  GEM_BLUE: { icon: resourceIcon("GEM_BLUE") || "", label: "Квантовый бит" },
+  GEM_ORANGE: { icon: resourceIcon("GEM_ORANGE") || "", label: "Нейрочип" },
+  GEM_WHITE: { icon: resourceIcon("GEM_WHITE") || "", label: "Фотон-бит" },
+  GEM_GREEN: { icon: resourceIcon("GEM_GREEN") || "", label: "Био-чип" },
+  FLASK_BLUE: { icon: resourceIcon("FLASK_BLUE") || "", label: "Крио-флюид" },
+  FLASK_YELLOW: { icon: resourceIcon("FLASK_YELLOW") || "", label: "Вольт-флюид" },
+  FLASK_GREEN: { icon: resourceIcon("FLASK_GREEN") || "", label: "Био-флюид" },
+  FLASK_PINK: { icon: resourceIcon("FLASK_PINK") || "", label: "Нано-флюид" },
+  FLASK_PURPLE: { icon: resourceIcon("FLASK_PURPLE") || "", label: "Квантовый флюид" },
 };
 
 export function PortfolioHome() {
@@ -194,7 +196,7 @@ export function PortfolioHome() {
             return (
               <div key={cat.key}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-straw">{cat.icon} {cat.label}</span>
+                  <span className="text-straw flex items-center gap-1"><ResourceGlyph icon={cat.icon} alt="" className="w-4 h-4" /> {cat.label}</span>
                   <span className="text-parchment"><AnimatedCounter value={value} duration={600} /></span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
@@ -217,12 +219,12 @@ export function PortfolioHome() {
       {/* Ресурсы */}
       {activeResources.length > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">📦 Ресурсы ({activeResources.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="inline-block w-4 h-4 align-text-bottom" /> Ресурсы ({activeResources.length})</h3>
           <div className="space-y-2">
             {activeResources.slice(0, 10).map((r) => (
               <div key={r.key} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{r.icon}</span>
+                  <ResourceGlyph icon={r.icon} alt={r.label} className="w-6 h-6" />
                   <span className="text-parchment text-xs">{r.label}</span>
                 </div>
                 <span className="text-wheat-500 text-xs font-bold">{fmtNum(r.balance)}</span>

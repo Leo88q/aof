@@ -3,79 +3,80 @@ import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
-import { UI_ICONS } from "../../lib/visualAssets";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 // Рецепты мгновенного крафта (из мастер-документа §6)
 const FULL_RECIPES = [
   // === ГЕМЫ (из камней и песка) ===
   {
     id: 0, category: "gems",
-    label: "Квантовый бит", icon: "💎",
+    label: "Квантовый бит", icon: resourceIcon("Квантовый бит") || "",
     output: { key: "QUANTUM_BIT", amount: 1 },
     inputs: [
-      { key: "BLUE_CORE", label: "Голубое ядро", icon: "🔵", amount: 1 },
+      { key: "BLUE_CORE", label: "Голубое ядро", icon: resourceIcon("BLUE_CORE") || "", amount: 1 },
     ]
   },
   {
     id: 1, category: "gems",
-    label: "Нейрочип", icon: "🟠",
+    label: "Нейрочип", icon: resourceIcon("Нейрочип") || "",
     output: { key: "NEURAL_CHIP", amount: 1 },
     inputs: [
-      { key: "RED_CORE", label: "Красное ядро", icon: "🔴", amount: 1 },
+      { key: "RED_CORE", label: "Красное ядро", icon: resourceIcon("RED_CORE") || "", amount: 1 },
     ]
   },
   {
     id: 2, category: "gems",
-    label: "Фотон-бит", icon: "⚪",
+    label: "Фотон-бит", icon: resourceIcon("Фотон-бит") || "",
     output: { key: "PHOTON_BIT", amount: 1 },
     inputs: [
-      { key: "CLEAR_QUARTZ", label: "Чистый кварц", icon: "⚪", amount: 1 },
+      { key: "CLEAR_QUARTZ", label: "Чистый кварц", icon: resourceIcon("CLEAR_QUARTZ") || "", amount: 1 },
     ]
   },
   // === ФЛАКОНЫ (зелья) ===
   {
     id: 3, category: "flask",
-    label: "Крио-флюид", icon: "🧪",
+    label: "Крио-флюид", icon: resourceIcon("Крио-флюид") || "",
     output: { key: "CRYO_FLUID", amount: 1 },
     inputs: [
-      { key: "QUANTUM_BIT", label: "Квантовый бит", icon: "💎", amount: 2 },
-      { key: "DATA", label: "Данные", icon: "🌾", amount: 5 },
+      { key: "QUANTUM_BIT", label: "Квантовый бит", icon: resourceIcon("QUANTUM_BIT") || "", amount: 2 },
+      { key: "DATA", label: "Данные", icon: resourceIcon("DATA") || "", amount: 5 },
     ]
   },
   {
     id: 4, category: "flask",
-    label: "Вольт-флюид", icon: "🧪",
+    label: "Вольт-флюид", icon: resourceIcon("Вольт-флюид") || "",
     output: { key: "VOLT_FLUID", amount: 1 },
     inputs: [
-      { key: "NEURAL_CHIP", label: "Нейрочип", icon: "🟠", amount: 2 },
-      { key: "SILICON", label: "Кремний", icon: "🪨", amount: 3 },
+      { key: "NEURAL_CHIP", label: "Нейрочип", icon: resourceIcon("NEURAL_CHIP") || "", amount: 2 },
+      { key: "SILICON", label: "Кремний", icon: resourceIcon("SILICON") || "", amount: 3 },
     ]
   },
   {
     id: 5, category: "flask",
-    label: "Био-флюид", icon: "🧪",
+    label: "Био-флюид", icon: resourceIcon("Био-флюид") || "",
     output: { key: "BIO_FLUID", amount: 1 },
     inputs: [
-      { key: "CIRCUIT", label: "Схема", icon: "🪵", amount: 5 },
-      { key: "NEURON", label: "Нейрон", icon: "🌰", amount: 5 },
+      { key: "CIRCUIT", label: "Схема", icon: resourceIcon("CIRCUIT") || "", amount: 5 },
+      { key: "NEURON", label: "Нейрон", icon: resourceIcon("NEURON") || "", amount: 5 },
     ]
   },
   {
     id: 6, category: "flask",
-    label: "Нано-флюид", icon: "🧪",
+    label: "Нано-флюид", icon: resourceIcon("Нано-флюид") || "",
     output: { key: "NANO_FLUID", amount: 1 },
     inputs: [
-      { key: "ROSE_QUARTZ", label: "Розовый кварц", icon: "💗", amount: 3 },
-      { key: "DATA", label: "Данные", icon: "🌾", amount: 5 },
+      { key: "ROSE_QUARTZ", label: "Розовый кварц", icon: resourceIcon("ROSE_QUARTZ") || "", amount: 3 },
+      { key: "DATA", label: "Данные", icon: resourceIcon("DATA") || "", amount: 5 },
     ]
   },
   {
     id: 7, category: "flask",
-    label: "Квантовый флюид", icon: "🧪",
+    label: "Квантовый флюид", icon: resourceIcon("Квантовый флюид") || "",
     output: { key: "QUANTUM_FLUID", amount: 1 },
     inputs: [
-      { key: "PURPLE_CORE", label: "Фиолетовое ядро", icon: "🟣", amount: 1 },
-      { key: "BIO_CHIP", label: "Био-чип", icon: "🟢", amount: 1 },
+      { key: "PURPLE_CORE", label: "Фиолетовое ядро", icon: resourceIcon("PURPLE_CORE") || "", amount: 1 },
+      { key: "BIO_CHIP", label: "Био-чип", icon: resourceIcon("BIO_CHIP") || "", amount: 1 },
     ]
   },
 
@@ -162,18 +163,18 @@ export function Workshop() {
           {FULL_RECIPES.filter(r => r.category === section).map((r) => (
             <div key={r.id} className="recipe-card" style={{background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: "10px", border: "1px solid rgba(251, 191, 36, 0.2)"}}>
               <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
-                <span style={{fontSize: "28px"}}>{r.icon}</span>
+                <ResourceGlyph icon={r.icon} alt={r.label} className="w-7 h-7" />
                 <div>
                   <div style={{color: "#fbbf24", fontSize: "13px", fontWeight: "bold"}}>{r.label}</div>
-                  {(r as any).effect && <div style={{color: "#94a3b8", fontSize: "10px"}}>✨ {(r as any).effect}</div>}
+                  {(r as any).effect && <div style={{color: "#94a3b8", fontSize: "10px"}}>{(r as any).effect}</div>}
                 </div>
               </div>
 
               <div style={{background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px", marginBottom: "8px"}}>
-                <div style={{color: "#94a3b8", fontSize: "10px", marginBottom: "4px"}}>📋 Ингредиенты:</div>
+                <div style={{color: "#94a3b8", fontSize: "10px", marginBottom: "4px"}}>Ингредиенты:</div>
                 {(r as any).inputs?.map((inp: any, i: number) => (
                   <div key={i} style={{display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#cbd5e1"}}>
-                    <span>{inp.icon}</span>
+                    <ResourceGlyph icon={inp.icon} alt={inp.label} className="w-4 h-4" />
                     <span>{inp.label}</span>
                     <span style={{color: "#fbbf24", fontWeight: "bold", marginLeft: "auto"}}>×{inp.amount}</span>
                   </div>
@@ -182,10 +183,10 @@ export function Workshop() {
 
               <div style={{background: "rgba(16, 185, 129, 0.2)", padding: "6px", borderRadius: "6px", textAlign: "center", border: "1px solid rgba(16, 185, 129, 0.3)"}}>
                 <span style={{color: "#10b981", fontSize: "11px", fontWeight: "bold"}}>
-                  → {(r as any).output.icon || r.icon} ×{(r as any).output.amount}
+                  → <ResourceGlyph icon={resourceIcon((r as any).output.key) || (r as any).output.icon || r.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> ×{(r as any).output.amount}
                 </span>
               </div>
-              {(r as any).effect && <div className="recipe-effect" style={{color: "#f59e0b", fontSize: "11px", marginTop: "4px"}}>✨ {(r as any).effect}</div>}
+              {(r as any).effect && <div className="recipe-effect" style={{color: "#f59e0b", fontSize: "11px", marginTop: "4px"}}>{(r as any).effect}</div>}
               <button
                 className="recipe-btn"
                 onClick={() => craft(r.id)}

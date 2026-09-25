@@ -85,6 +85,14 @@ const LEGACY_RESOURCE_ID: Record<string, string> = {
   flask_blue: "cryoFluid", flask_yellow: "voltFluid", flask_green: "bioFluid",
   flask_pink: "nanoFluid", flask_purple: "quantumFluid",
   love_heart: "soulCore", loveHeart: "soulCore",
+  // Russian display names, so recipe outputs resolve by label too.
+  "Крио-флюид": "cryoFluid", "Вольт-флюид": "voltFluid", "Био-флюид": "bioFluid",
+  "Нано-флюид": "nanoFluid", "Квантовый флюид": "quantumFluid",
+  "Квантовый бит": "quantumBit", "Нейрочип": "neuralChip", "Фотон-бит": "photonBit",
+  "Фотонный бит": "photonBit", "Био-чип": "bioChip", "Ядро-душа": "soulCore",
+  "Ядро души": "soulCore", "Чистый кварц": "clearQuartz", "Розовый кварц": "roseQuartz",
+  "Янтарный кварц": "amberQuartz", "Синее ядро": "blueCore", "Голубое ядро": "blueCore",
+  "Фиолетовое ядро": "purpleCore", "Красное ядро": "redCore",
   DATA: "data", CIRCUIT: "circuit", SILICON: "silicon", MIND: "mind",
   NEURON: "neuron", SYNAPSE: "synapse", SIGNAL: "signal", MODEL: "model",
   POWER: "power", COMPUTE: "compute", DATASET: "dataset",
@@ -97,13 +105,25 @@ const BY_UPPER = new Map(
   RESOURCES.map((r) => [r.id.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase(), r]),
 );
 
+/**
+ * Legacy alias -> resource. Aliases are stored lowercase, but balance and
+ * portfolio keys arrive as FOOD / GEM_GREEN / FLASK_PINK, so the alias table
+ * is indexed in upper case as well.
+ */
+const LEGACY_BY_UPPER = new Map<string, ResourceVisual>();
+for (const [alias, canon] of Object.entries(LEGACY_RESOURCE_ID)) {
+  const visual = BY_ID.get(canon);
+  if (visual) LEGACY_BY_UPPER.set(alias.toUpperCase(), visual);
+}
+
 export function resourceVisual(id?: string | null): ResourceVisual | undefined {
   if (!id) return undefined;
   return (
     BY_ID.get(id) ||
     BY_UPPER.get(id) ||
     BY_ID.get(LEGACY_RESOURCE_ID[id] || "") ||
-    BY_UPPER.get(LEGACY_RESOURCE_ID[id] || "")
+    BY_UPPER.get(LEGACY_RESOURCE_ID[id] || "") ||
+    LEGACY_BY_UPPER.get(id.toUpperCase())
   );
 }
 
