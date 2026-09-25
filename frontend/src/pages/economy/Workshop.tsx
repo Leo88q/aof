@@ -202,7 +202,7 @@ export function Workshop() {
 
       {section === "timed" && (
         <div style={{textAlign: "center", padding: "24px 16px"}}>
-          <div style={{fontSize: "48px", marginBottom: "12px"}}>🏡</div>
+          <div style={{marginBottom: "12px"}}><ResourceGlyph icon={UI_ICONS.locEdge} alt="" className="w-12 h-12 inline-block" /></div>
           <h3 style={{color: "#fbbf24", fontSize: "18px", marginBottom: "8px", fontWeight: "bold"}}>
             Модуль переработки и Тренировка теперь во вкладке "Лаборатория"
           </h3>

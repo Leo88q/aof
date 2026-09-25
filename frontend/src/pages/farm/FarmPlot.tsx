@@ -149,7 +149,19 @@ export function FarmPlot() {
       {weather && typeof weather.type === "string" && (
         <Card className="mb-4 flex items-center gap-3">
           <span className="text-2xl">
-            {weather.type === "rain" ? "🌧️" : weather.type === "sunny" ? "☀️" : "🌵"}
+            <ResourceGlyph
+              icon={
+                weather.type === "rain"
+                  ? UI_ICONS.weatherSurge
+                  : weather.type === "sunny"
+                    ? UI_ICONS.weatherNominal
+                    : weather.type === "festival"
+                      ? UI_ICONS.weatherFrenzy
+                      : UI_ICONS.weatherBlackout
+              }
+              alt=""
+              className="w-8 h-8"
+            />
           </span>
           <div>
             <p className="text-sm text-parchment capitalize">{weather.type.replace("_", " ")}</p>
@@ -164,7 +176,7 @@ export function FarmPlot() {
           <p className="text-parchment text-sm font-semibold">Построек на участке: {staked.length}</p>
           <p className="text-straw text-xs">В инвентаре (не в сарае): {freeCount}</p>
         </div>
-        <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locRuins} alt="" className="w-8 h-8" /></span>
+        <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locServerRuins} alt="" className="w-8 h-8" /></span>
       </Card>
 
       {/* Bottom sheet по тапу на постройку */}

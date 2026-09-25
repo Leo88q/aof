@@ -13,7 +13,7 @@ const tierMeta: Record<number, { icon: string; label: string; color: string }> =
   2: { icon: "🔗", label: "Сеть", color: "#4e9d42" },
   3: { icon: resourceIcon("SIGNAL") || "", label: "Сигнал", color: "#e8a33d" },
   4: { icon: resourceIcon("MODEL") || "", label: "Модель", color: "#d97941" },
-  5: { icon: UI_ICONS.rewardCrown, label: "Сингулярность", color: "#b8863b" },
+  5: { icon: UI_ICONS.rewardCore, label: "Сингулярность", color: "#b8863b" },
 };
 
 export function TrustRing({ score, tier, size = 120 }: TrustRingProps) {

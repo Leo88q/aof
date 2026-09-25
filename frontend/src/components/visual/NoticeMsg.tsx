@@ -2,9 +2,9 @@ import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 
 /** Scene / NPC prefixes reuse the location and NPC plates. */
 const SCENE_EMOJI: Record<string, string> = {
-  "🗺️": "locMap", "🗺": "locMap", "🏚️": "locRuins", "🏚": "locRuins",
-  "🏭": "locFactory", "🏰": "locCastle", "🏡": "locHouse", "🏖️": "locBeach",
-  "🏖": "locBeach", "🌵": "locCactus", "🧙♂️": "npcMage", "🧙": "npcMage",
+  "🗺️": "locMap", "🗺": "locMap", "🏚️": "locServerRuins", "🏚": "locServerRuins",
+  "🏭": "locFactory", "🏰": "locVault", "🏡": "locEdge", "🏖️": "locCoolLake",
+  "🏖": "locCoolLake", "🌵": "locArid", "🧙♂️": "npcOracle", "🧙": "npcOracle",
   "💡": "buffIdea", "📜": "catalog",
 };
 

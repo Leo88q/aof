@@ -75,7 +75,7 @@ export function QuestBoardPage() {
     <div className="p-4 pb-24">
       <Card className="mb-4 bg-gradient-to-br from-gold/10 to-soil-900 border border-gold/30">
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-4xl">🧙‍♂️</span>
+          <ResourceGlyph icon={UI_ICONS.npcOracle} alt="Агент-куратор" className="w-12 h-12" />
           <div>
             <h2 className="text-parchment font-bold text-lg">Странник Джо</h2>
             <p className="text-straw text-xs">Ежедневные задания от таинственного путника</p>
