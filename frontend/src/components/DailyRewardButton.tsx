@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "./ui/Card";
 import { api } from "../lib/api";
 import { useWalletStr } from "../lib/useWalletStr";
+import { UI_ICONS } from "../lib/visualAssets";
 
 interface DailyStatus {
   canClaim: boolean;
@@ -121,7 +122,7 @@ export function DailyRewardButton() {
           }}
           className="text-5xl"
         >
-          {claimed ? "🎉" : "🎁"}
+          {claimed ? "🎉" : <img src={UI_ICONS.rewardDaily} alt="" className="w-12 h-12 object-contain" />}
         </motion.div>
 
         <div className="flex-1">

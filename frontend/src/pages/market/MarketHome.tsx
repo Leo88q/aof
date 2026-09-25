@@ -10,14 +10,15 @@ import { OfferPage } from "./OfferPage";
 import { RentalPage } from "./RentalPage";
 import { OrderbookPage } from "./OrderbookPage";
 import { FlaskMarketplace } from "./FlaskMarketplace";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const SECTIONS = [
-  { id: "listing", icon: "🏷️", label: "Листинг", sub: "Фикс. цена", el: <ListingPage /> },
-  { id: "auction", icon: "🔨", label: "Аукцион", sub: "Кто больше", el: <AuctionPage /> },
-  { id: "offer", icon: "🤝", label: "Офферы", sub: "Торг о цене", el: <OfferPage /> },
-  { id: "rental", icon: "🔑", label: "Аренда", sub: "Доля с добычи", el: <RentalPage /> },
-  { id: "orderbook", icon: "📊", label: "Ордербук", sub: "Еда/Схема/Кремний", el: <OrderbookPage /> },
-  { id: "flasks", icon: "🧪", label: "Зелья", sub: "Торговля флаконами", el: <FlaskMarketplace /> },
+  { id: "listing", icon: UI_ICONS.marketListing, label: "Листинг", sub: "Фикс. цена", el: <ListingPage /> },
+  { id: "auction", icon: UI_ICONS.marketAuction, label: "Аукцион", sub: "Кто больше", el: <AuctionPage /> },
+  { id: "offer", icon: UI_ICONS.marketOffer, label: "Офферы", sub: "Торг о цене", el: <OfferPage /> },
+  { id: "rental", icon: UI_ICONS.marketRental, label: "Аренда", sub: "Доля с добычи", el: <RentalPage /> },
+  { id: "orderbook", icon: UI_ICONS.marketOrderbook, label: "Ордербук", sub: "Данные/Схема/Кремний", el: <OrderbookPage /> },
+  { id: "flasks", icon: "🧪", label: "Флюиды", sub: "Торговля флаконами", el: <FlaskMarketplace /> },
 ];
 
 export function MarketHome() {
@@ -42,7 +43,11 @@ export function MarketHome() {
           <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}>
             <Card onClick={() => go(s.id, s.el, s.label)} className="flex flex-col items-center py-6">
-              <span className="text-3xl mb-2">{s.icon}</span>
+              {s.icon.startsWith("/") ? (
+                <img src={s.icon} alt="" className="w-10 h-10 object-contain mb-2" />
+              ) : (
+                <span className="text-3xl mb-2">{s.icon}</span>
+              )}
               <span className="text-sm font-medium text-parchment">{s.label}</span>
               <span className="text-xs text-straw mt-0.5">{s.sub}</span>
             </Card>
@@ -55,7 +60,10 @@ export function MarketHome() {
           className="bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-wheat-500 font-semibold">🔥 Хот-маркет открыт</h3>
+              <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
+                <img src={UI_ICONS.marketHot} alt="" className="w-5 h-5 object-contain" />
+                Хот-маркет открыт
+              </h3>
               <p className="text-straw text-xs mt-1">Цены живут прямо сейчас — успей купить</p>
             </div>
             <span className="text-2xl">→</span>

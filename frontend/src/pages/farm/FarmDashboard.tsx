@@ -22,6 +22,7 @@ import { ExplorationPage } from "./ExplorationPage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
@@ -82,10 +83,10 @@ export function FarmDashboard() {
 
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
     { key: "dashboard", label: "Обзор", icon: "🏠" },
-    { key: "well", label: "Сетевая станция", icon: "💧" },
+    { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
     { key: "plant", label: "Посадка", icon: "🌱" },
-    { key: "mill", label: "Переработка", icon: "🏭" },
-    { key: "oven", label: "Тренировка", icon: "🔥" },
+    { key: "mill", label: "Переработка", icon: UI_ICONS.mill },
+    { key: "oven", label: "Тренировка", icon: UI_ICONS.trainer },
   ];
 
   return (
@@ -138,7 +139,12 @@ export function FarmDashboard() {
                 : "text-straw hover:bg-soil-700"
             }`}
           >
-            {t.icon} {t.label}
+            {t.icon.startsWith("/") ? (
+              <img src={t.icon} alt="" className="inline-block w-4 h-4 object-contain align-text-bottom mr-1" />
+            ) : (
+              <span>{t.icon} </span>
+            )}
+            {t.label}
           </button>
         ))}
       </div>

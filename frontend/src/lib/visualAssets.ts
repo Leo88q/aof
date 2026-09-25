@@ -162,6 +162,20 @@ const TOOL_RARITY_PLATE: Record<string, Partial<Record<ToolRarity, string>>> = {
   },
 };
 
+/** Interface icons. Missing slots stay emoji until the next batches. */
+export const UI_ICONS = {
+  mill: "/assets/icons/ui/mill.jpg",
+  trainer: "/assets/icons/ui/trainer.jpg",
+  gridStation: "/assets/icons/ui/grid-station.jpg",
+  marketListing: "/assets/icons/ui/market-listing.jpg",
+  marketAuction: "/assets/icons/ui/market-auction.jpg",
+  marketOffer: "/assets/icons/ui/market-offer.jpg",
+  marketRental: "/assets/icons/ui/market-rental.jpg",
+  marketOrderbook: "/assets/icons/ui/market-orderbook.jpg",
+  marketHot: "/assets/icons/ui/market-hot.jpg",
+  rewardDaily: "/assets/icons/ui/reward-daily.jpg",
+} as const;
+
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */
 export function toolPlate(toolId?: string | null, rarity: string = "common"): string | undefined {
   if (!toolId) return undefined;
