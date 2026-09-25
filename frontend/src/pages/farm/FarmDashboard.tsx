@@ -100,9 +100,9 @@ export function FarmDashboard() {
       >
         <div className="flex items-center gap-2">
           <button
-            onClick={() => push("farm", "drum", (<><NavHeader title="Барабан урожая" tabKey="farm" /><DrumSpin /></>))}
+            onClick={() => push("farm", "drum", (<><NavHeader title="Квантовый барабан" tabKey="farm" /><DrumSpin /></>))}
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
-            title="Барабан урожая"
+            title="Квантовый барабан"
           >
             <img src={UI_ICONS.drum} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
@@ -172,7 +172,7 @@ export function FarmDashboard() {
             <Card className="mb-4">
               <LiquidBar
                 level={(energy.amount / energy.cap) * 100}
-                color="#5ab0d6"
+                color="#00D4FF"
                 label="Энергия"
                 icon={resourceIcon("POWER")}
               />

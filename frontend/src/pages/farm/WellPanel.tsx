@@ -9,10 +9,10 @@ import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 
 const WEATHER_RATES = {
-  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#ef4444" },
-  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#f59e0b" },
-  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#3b82f6" },
-  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#a855f7" },
+  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#FF3366" },
+  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#FFD700" },
+  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#4F7BFF" },
+  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#9B59FF" },
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;

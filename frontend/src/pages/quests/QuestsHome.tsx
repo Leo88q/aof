@@ -129,7 +129,7 @@ export function QuestsHome() {
 
                     <LiquidBar
                       level={quest.pct}
-                      color={quest.claimable ? "#e8a33d" : "#6bbf59"}
+                      color={quest.claimable ? "#FFD700" : "#00E5A0"}
                     />
 
                     <div className="flex justify-between items-center mt-3">
@@ -164,7 +164,7 @@ export function QuestsHome() {
             Недельный челлендж
           </h3>
           <p className="text-straw text-sm mb-3">Внесение отключено до появления проверяемого списания медалей и расчёта наград.</p>
-          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели · только просмотр" icon={UI_ICONS.challenges} />
+          <LiquidBar level={64} color="#FFD700" label="Прогресс недели · только просмотр" icon={UI_ICONS.challenges} />
           <button
             type="button"
             disabled

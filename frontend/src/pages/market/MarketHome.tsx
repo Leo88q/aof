@@ -36,7 +36,7 @@ export function MarketHome() {
   return (
     <div className="p-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold mb-1 text-parchment">Рынок</h1>
-      <p className="text-straw text-xs mb-4">Семь торговых площадок — от прилавка до барабана урожая</p>
+      <p className="text-straw text-xs mb-4">Семь торговых площадок — от листингов до квантового розыгрыша</p>
 
       <div className="grid grid-cols-2 gap-3">
         {SECTIONS.map((s, i) => (

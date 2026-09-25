@@ -164,7 +164,7 @@ export function LotteryPage() {
       </div>
       {ticketsDisabled && <FeatureDisabledNotice id="lottery" />}
       <p className="text-straw text-xs">
-        Барабан Урожая: билеты — пакетики семян, розыгрыш честный (комит-ревил хеша), приз — пул раунда.
+        Квантовый розыгрыш: билеты — квантовые токены, розыгрыш честный (commit/reveal хеш), приз — пул раунда.
       </p>
 
       {txStatus && (
@@ -260,7 +260,7 @@ export function LotteryPage() {
         </p>
         <button onClick={draw} disabled={spinning}
           className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-50">
-          {spinning ? "Барабан крутится…" : "🎰 Крутить барабан"}
+          {spinning ? "Розыгрыш идёт…" : <span className="inline-flex items-center gap-1.5"><img src={UI_ICONS.lottery} alt="" className="w-4 h-4 object-contain" /> Запустить розыгрыш</span>}
         </button>
       </Card>
 
