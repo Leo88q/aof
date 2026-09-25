@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { useNav } from "../../nav/NavContext";
 import { Card } from "./Card";
 import { NavHeader } from "../NavHeader";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../visual/ResourceGlyph";
 import { SeasonPassPage } from "../../pages/profile/SeasonPassPage";
 
 interface VipGateProps {
@@ -24,7 +26,7 @@ export function VipGate({ isVip, feature, children }: VipGateProps) {
   return (
     <Card className="bg-gradient-to-r from-gold/5 to-soil-850 border border-gold/20">
       <div className="flex items-start gap-3">
-        <span className="text-3xl">🔒</span>
+        <ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-8 h-8" />
         <div className="flex-1">
           <h3 className="text-gold font-semibold text-sm">{feature}</h3>
           <p className="text-straw text-xs mt-1">
@@ -33,13 +35,13 @@ export function VipGate({ isVip, feature, children }: VipGateProps) {
           <button
             onClick={() => push("profile", "season", (
               <>
-                <NavHeader title="🎫 Пасс эпохи" tabKey="profile" />
+                <NavHeader title="Пасс эпохи" icon={UI_ICONS.seasonPass} tabKey="profile" />
                 <SeasonPassPage />
               </>
             ))}
             className="mt-3 px-4 py-2 rounded-xl bg-gold text-soil-950 font-semibold text-sm active:scale-95 transition-transform"
           >
-            🎫 Buy Premium
+            <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.seasonPass} alt="" className="w-4 h-4" /> Buy Premium</span>
           </button>
         </div>
       </div>
