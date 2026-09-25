@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
+import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { useWalletStr } from "../../lib/useWalletStr";
 
 interface Quest {
@@ -105,16 +107,16 @@ export function QuestBoardPage() {
                 </div>
                 
                 {quest.completed && (
-                  <span className="text-3xl">✅</span>
+                  <ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-8 h-8" />
                 )}
               </div>
 
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex gap-3 text-xs">
-                  <span className="text-wheat-500">🥔 {quest.reward.potato}</span>
-                  <span className="text-blue-400">⭐ {quest.reward.xp} XP</span>
+                  <span className="text-wheat-500 inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("MIND")} alt="" className="w-4 h-4" /> {quest.reward.potato}</span>
+                  <span className="text-blue-400 inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-4 h-4" /> {quest.reward.xp} XP</span>
                   {quest.reward.item && (
-                    <span className="text-gold">🎁 {quest.reward.item}</span>
+                    <span className="text-gold inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-4 h-4" /> {quest.reward.item}</span>
                   )}
                 </div>
 

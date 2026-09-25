@@ -5,15 +5,16 @@ import { useWalletStore } from "../store/walletStore";
 import { useFlash } from "../lib/marketUtils";
 import { handleTxResponse } from "../lib/txFlow";
 import { connection } from "../lib/wallet";
-import { UI_ICONS } from "../lib/visualAssets";
+import { UI_ICONS, resourceIcon } from "../lib/visualAssets";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { NoticeMsg } from "./visual/NoticeMsg";
 
 const PRIZES = [
-  { icon: "🥔", label: "10 MASCOT", weight: 40 },
-  { icon: "🥔", label: "25 MASCOT", weight: 30 },
-  { icon: "🥔", label: "50 MASCOT", weight: 20 },
-  { icon: "🥔", label: "150 MASCOT", weight: 9 },
-  { icon: "💎", label: "500 MASCOT", weight: 1 },
+  { icon: resourceIcon("MIND") || "", label: "10 MASCOT", weight: 40 },
+  { icon: resourceIcon("MIND") || "", label: "25 MASCOT", weight: 30 },
+  { icon: resourceIcon("MIND") || "", label: "50 MASCOT", weight: 20 },
+  { icon: resourceIcon("MIND") || "", label: "150 MASCOT", weight: 9 },
+  { icon: resourceIcon("QUANTUM_BIT") || "", label: "500 MASCOT", weight: 1 },
 ];
 
 export function DrumSpin() {
@@ -44,7 +45,7 @@ export function DrumSpin() {
       const reveal = await handleTxResponse(revealResponse);
       if (!reveal.success) throw new Error(reveal.error || "Reveal барабана не выполнен");
 
-      setResult({ icon: "✨", label: "Приз распределён on-chain" });
+      setResult({ icon: UI_ICONS.rewardStar, label: "Приз распределён on-chain" });
       flash("🎉 Результат подтверждён в блокчейне. Обновите баланс MASCOT.");
     } catch (e: any) {
       flash(`❌ Error: ${e.message}`);
@@ -78,14 +79,14 @@ export function DrumSpin() {
         >
           <div className="absolute inset-0 flex items-center justify-center">
             {spinning ? (
-              <div className="text-6xl animate-pulse">🎡</div>
+              <ResourceGlyph icon={UI_ICONS.drum} alt="" className="w-16 h-16 animate-pulse" />
             ) : result ? (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-center">
                 <div className="text-6xl mb-2">{result.icon}</div>
                 <div className="text-parchment font-bold text-sm">{result.label}</div>
               </motion.div>
             ) : (
-              <div className="text-6xl">🎁</div>
+              <ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-16 h-16" />
             )}
           </div>
         </motion.div>
@@ -95,7 +96,7 @@ export function DrumSpin() {
           disabled={spinning || !address}
           className="mt-8 px-8 py-3 rounded-2xl bg-gradient-to-r from-gold to-wheat-600 text-soil-950 font-bold text-lg shadow-lg shadow-gold/20 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {spinning ? "Крутим..." : "🎡 Крутить барабан"}
+          {spinning ? "Крутим..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.drum} alt="" className="w-5 h-5" /> Крутить барабан</span>}
         </button>
       </div>
 

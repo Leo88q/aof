@@ -4,6 +4,8 @@ import { api } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { toolPlate } from "../../lib/visualAssets";
+import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, shortAddr } from "../../lib/marketUtils";
 import { useWalletStore } from "../../store/walletStore";
@@ -53,7 +55,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
     <div className="p-4">
       <button onClick={() => pop("profile")} className="text-wheat-500 text-sm mb-4">← Назад в свою лабораторию</button>
       <Card className="text-center py-8">
-        <div className="text-4xl mb-2">🚫</div>
+        <ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-12 h-12 mx-auto" />
         <p className="text-parchment text-sm">Лаборатория не найдена</p>
       </Card>
     </div>
@@ -74,7 +76,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="text-4xl">🌾</div>
+          <ResourceGlyph icon={resourceIcon("DATA")} alt="" className="w-12 h-12" />
           <div>
             <h1 className="text-parchment font-bold text-lg">Лаборатория {shortAddr(address)}</h1>
             <p className="text-straw text-xs">Просмотр (только чтение)</p>
@@ -88,26 +90,26 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
 
       {/* Кладовка (упрощённо) */}
       <Card>
-        <h2 className="text-parchment font-semibold text-sm mb-3">💰 Кладовка</h2>
+        <h2 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Кладовка</h2>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
             <p className="text-parchment font-bold text-xl">{fmtNum(balances.FOOD || 0)}</p>
-            <p className="text-straw text-xs">🌾 Данные</p>
+            <p className="text-straw text-xs flex items-center gap-1"><ResourceGlyph icon={resourceIcon("DATA")} alt="" className="w-3.5 h-3.5" /> Данные</p>
           </div>
           <div>
             <p className="text-parchment font-bold text-xl">{fmtNum(balances.WOOD || 0)}</p>
-            <p className="text-straw text-xs">🪵 Схема</p>
+            <p className="text-straw text-xs flex items-center gap-1"><ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="w-3.5 h-3.5" /> Схема</p>
           </div>
           <div>
             <p className="text-parchment font-bold text-xl">{fmtNum(balances.STONE || 0)}</p>
-            <p className="text-straw text-xs">🪨 Кремний</p>
+            <p className="text-straw text-xs flex items-center gap-1"><ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="w-3.5 h-3.5" /> Кремний</p>
           </div>
         </div>
       </Card>
 
       {/* Инструменты (только список) */}
       <Card>
-        <h2 className="text-parchment font-semibold text-sm mb-3">🛠️ Инструменты ({tools.length})</h2>
+        <h2 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.repair} alt="" className="w-4 h-4" /> Инструменты ({tools.length})</h2>
         {tools.length === 0 ? (
           <p className="text-straw text-xs text-center py-4">Инструментов нет</p>
         ) : (
@@ -139,7 +141,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
 
       {/* Помочь другу */}
       <Card>
-        <h2 className="text-parchment font-semibold text-sm mb-2">🤝 Помочь другу</h2>
+        <h2 className="text-parchment font-semibold text-sm mb-2 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.friends} alt="" className="w-4 h-4" /> Помочь другу</h2>
         <p className="text-amber-400 text-xs">
           Социальные бонусы временно недоступны: канонические on-chain эффекты
           полива и ремонта ещё не развернуты.

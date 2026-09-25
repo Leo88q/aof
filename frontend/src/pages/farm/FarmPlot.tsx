@@ -19,16 +19,16 @@ const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
 // Постройки по типу инструмента (ТЗ v4 §1: топор — лесопилка, кирка — шахта, лук — вышка)
 // [REBRAND] NeuroForge постройки; legacy-id (axe/pick/spear/bow) → те же постройки для старых инструментов.
 const BUILDING: Record<string, { emoji: string; name: string }> = {
-  plasma_cutter: { emoji: "⚡", name: "Плазменный цех" },
-  silicon_extractor: { emoji: "⛏️", name: "Кремниевая шахта" },
-  data_harvester: { emoji: "📡", name: "Пост сбора данных" },
-  quantum_transmitter: { emoji: "🛰️", name: "Квантовая вышка" },
-  neural_seeder: { emoji: "🌱", name: "Посевная станция" },
-  axe: { emoji: "⚡", name: "Плазменный цех" },
-  pick: { emoji: "⛏️", name: "Кремниевая шахта" },
-  spear: { emoji: "📡", name: "Пост сбора данных" },
-  bow: { emoji: "🛰️", name: "Квантовая вышка" },
-  reaper: { emoji: "🌱", name: "Посевная станция" },
+  plasma_cutter: { emoji: "", name: "Плазменный цех" },
+  silicon_extractor: { emoji: "", name: "Кремниевая шахта" },
+  data_harvester: { emoji: "", name: "Пост сбора данных" },
+  quantum_transmitter: { emoji: "", name: "Квантовая вышка" },
+  neural_seeder: { emoji: "", name: "Посевная станция" },
+  axe: { emoji: "", name: "Плазменный цех" },
+  pick: { emoji: "", name: "Кремниевая шахта" },
+  spear: { emoji: "", name: "Пост сбора данных" },
+  bow: { emoji: "", name: "Квантовая вышка" },
+  reaper: { emoji: "", name: "Посевная станция" },
 };
 
 // Слоты построек по центру участка (спиралью наружу)
