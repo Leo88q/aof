@@ -5,6 +5,7 @@ import { useWalletStore } from "../store/walletStore";
 import { useFlash } from "../lib/marketUtils";
 import { handleTxResponse } from "../lib/txFlow";
 import { connection } from "../lib/wallet";
+import { UI_ICONS } from "../lib/visualAssets";
 
 const PRIZES = [
   { icon: "🥔", label: "10 MASCOT", weight: 40 },
@@ -55,7 +56,10 @@ export function DrumSpin() {
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-soil-800 p-4 rounded-xl border border-straw/10">
         <div>
-          <h3 className="text-parchment font-semibold">Барабан удачи</h3>
+          <h3 className="text-parchment font-semibold flex items-center gap-2">
+            <img src={UI_ICONS.drum} alt="" className="w-5 h-5 object-contain" />
+            Барабан удачи
+          </h3>
           <p className="text-straw text-xs">Один спин стоит 5 MASCOT. Баланс проверяет программа.</p>
         </div>
         <div className="text-3xl font-bold text-gold">5</div>

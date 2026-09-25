@@ -82,7 +82,7 @@ export function FarmDashboard() {
   }
 
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
-    { key: "dashboard", label: "Обзор", icon: "🏠" },
+    { key: "dashboard", label: "Обзор", icon: UI_ICONS.labOverview },
     { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
     { key: "plant", label: "Посадка", icon: UI_ICONS.plant },
     { key: "mill", label: "Переработка", icon: UI_ICONS.mill },
@@ -103,14 +103,14 @@ export function FarmDashboard() {
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
             title="Барабан урожая"
           >
-            🥁
+            <img src={UI_ICONS.drum} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
           <button
             onClick={() => push("farm", "lottery", (<><NavHeader title="Лотерея" tabKey="farm" /><LotteryPage /></>))}
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
             title="Лотерея"
           >
-            🎰
+            <img src={UI_ICONS.lottery} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
           <button
             onClick={() => push("farm", "exploration", (<><NavHeader title="Экспедиция" tabKey="farm" /><ExplorationPage /></>))}

@@ -18,7 +18,7 @@ const SECTIONS = [
   { id: "offer", icon: UI_ICONS.marketOffer, label: "Офферы", sub: "Торг о цене", el: <OfferPage /> },
   { id: "rental", icon: UI_ICONS.marketRental, label: "Аренда", sub: "Доля с добычи", el: <RentalPage /> },
   { id: "orderbook", icon: UI_ICONS.marketOrderbook, label: "Ордербук", sub: "Данные/Схема/Кремний", el: <OrderbookPage /> },
-  { id: "flasks", icon: "🧪", label: "Флюиды", sub: "Торговля флаконами", el: <FlaskMarketplace /> },
+  { id: "flasks", icon: UI_ICONS.flasks, label: "Флюиды", sub: "Торговля флаконами", el: <FlaskMarketplace /> },
 ];
 
 export function MarketHome() {

@@ -194,6 +194,16 @@ export const UI_ICONS = {
   repair: "/assets/icons/ui/repair.jpg",
   seasonPass: "/assets/icons/ui/season-pass.jpg",
   achievements: "/assets/icons/ui/achievements.jpg",
+  pantry: "/assets/icons/ui/pantry.jpg",
+  epochs: "/assets/icons/ui/epochs.jpg",
+  economyOverview: "/assets/icons/ui/economy-overview.jpg",
+  economyWorkshop: "/assets/icons/ui/economy-workshop.jpg",
+  drum: "/assets/icons/ui/drum.jpg",
+  lottery: "/assets/icons/ui/lottery.jpg",
+  questsDaily: "/assets/icons/ui/quests-daily.jpg",
+  challenges: "/assets/icons/ui/challenges.jpg",
+  flasks: "/assets/icons/ui/flasks.jpg",
+  labOverview: "/assets/icons/ui/lab-overview.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */

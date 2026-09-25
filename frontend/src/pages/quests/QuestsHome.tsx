@@ -10,8 +10,8 @@ import { useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
 
 const tabs = [
-  { id: "daily", icon: "📅", label: "Задания" },
-  { id: "challenges", icon: "🏆", label: "Челленджи" },
+  { id: "daily", icon: UI_ICONS.questsDaily, label: "Задания" },
+  { id: "challenges", icon: UI_ICONS.challenges, label: "Челленджи" },
   { id: "achievements", icon: UI_ICONS.achievements, label: "Достижения" },
 ];
 
@@ -159,9 +159,12 @@ export function QuestsHome() {
       {/* Челленджи */}
       {activeTab === "challenges" && (
         <Card>
-          <h3 className="text-parchment font-semibold mb-3">🏆 Недельный челлендж</h3>
+          <h3 className="text-parchment font-semibold mb-3 flex items-center gap-2">
+            <img src={UI_ICONS.challenges} alt="" className="w-5 h-5 object-contain" />
+            Недельный челлендж
+          </h3>
           <p className="text-straw text-sm mb-3">Внесение отключено до появления проверяемого списания медалей и расчёта наград.</p>
-          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели · только просмотр" icon="🏆" />
+          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели · только просмотр" icon={UI_ICONS.challenges} />
           <button
             type="button"
             disabled
