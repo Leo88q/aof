@@ -5,10 +5,10 @@ import { UI_ICONS } from "../../lib/visualAssets";
 
 const DAYS_PER_SEASON = 42;
 const SEASONS = [
-  { name: "spring", icon: UI_ICONS.seasonSpring, color: "from-pink-500/20 to-green-500/20", label: "Весна" },
-  { name: "summer", icon: UI_ICONS.seasonSummer, color: "from-yellow-500/20 to-orange-500/20", label: "Лето" },
-  { name: "autumn", icon: UI_ICONS.seasonAutumn, color: "from-orange-500/20 to-red-500/20", label: "Осень" },
-  { name: "winter", icon: UI_ICONS.seasonWinter, color: "from-blue-500/20 to-cyan-500/20", label: "Зима" },
+  { name: "spring", icon: UI_ICONS.epochInit, color: "from-emerald-500/20 to-cyan-500/20", label: "Эпоха I · Инициализация" },
+  { name: "summer", icon: UI_ICONS.epochTrain, color: "from-amber-500/20 to-orange-500/20", label: "Эпоха II · Обучение" },
+  { name: "autumn", icon: UI_ICONS.epochTune, color: "from-yellow-500/20 to-amber-500/20", label: "Эпоха III · Дообучение" },
+  { name: "winter", icon: UI_ICONS.epochInfer, color: "from-blue-500/20 to-cyan-500/20", label: "Эпоха IV · Инференс" },
 ];
 
 const WEATHER_TYPES = [
@@ -205,8 +205,8 @@ export function SeasonCalendar() {
             Погода меняется каждый день и влияет на добычу ресурсов:
           </p>
           <ul className="space-y-1">
-            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherNominal} alt="" className="w-4 h-4 object-contain" /> Номинал: еда +10%</li>
-            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherSurge} alt="" className="w-4 h-4 object-contain" /> Скачок: дерево +10%</li>
+            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherNominal} alt="" className="w-4 h-4 object-contain" /> Номинал: данные +10%</li>
+            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherSurge} alt="" className="w-4 h-4 object-contain" /> Скачок: схема +10%</li>
             <li className="flex items-center gap-2"><img src={UI_ICONS.weatherBlackout} alt="" className="w-4 h-4 object-contain" /> Блэкаут: всё -15%, но редкий лут +50%</li>
             <li className="flex items-center gap-2"><img src={UI_ICONS.weatherFrenzy} alt="" className="w-4 h-4 object-contain" /> Френзи: множитель на все ресурсы</li>
           </ul>

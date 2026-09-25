@@ -20,10 +20,25 @@ const WEATHER_ICONS: Record<string, string> = {
 };
 
 const SEASON_ICONS: Record<string, string> = {
-  spring: UI_ICONS.seasonSpring,
-  summer: UI_ICONS.seasonSummer,
-  autumn: UI_ICONS.seasonAutumn,
-  winter: UI_ICONS.seasonWinter,
+  spring: UI_ICONS.epochInit,
+  summer: UI_ICONS.epochTrain,
+  autumn: UI_ICONS.epochTune,
+  winter: UI_ICONS.epochInfer,
+};
+
+const WEATHER_LABELS: Record<string, string> = {
+  sunny: "Номинал",
+  rain: "Скачок",
+  drought: "Блэкаут",
+  festival: "Френзи",
+  harvest_festival: "Френзи",
+};
+
+const SEASON_LABELS: Record<string, string> = {
+  spring: "Инициализация",
+  summer: "Обучение",
+  autumn: "Дообучение",
+  winter: "Инференс",
 };
 
 interface WeatherData {
@@ -108,14 +123,14 @@ export function WeatherWidget() {
           </motion.span>
           <div>
             <div className="text-parchment font-semibold capitalize">
-              {current.type?.replace?.("_", " ") || current.type || "—"}
+              {WEATHER_LABELS[current.type || ""] || current.type || "—"}
             </div>
             <div className="text-straw text-xs">{current.effect || ""}</div>
           </div>
         </div>
         <div className="text-right">
-          <img src={SEASON_ICONS[current.season || ""] || UI_ICONS.seasonSpring} alt="" className="w-8 h-8 object-contain ml-auto" />
-          <div className="text-xs text-straw capitalize">{current.season || "—"}</div>
+          <img src={SEASON_ICONS[current.season || ""] || UI_ICONS.epochInit} alt="" className="w-8 h-8 object-contain ml-auto" />
+          <div className="text-xs text-straw">Эпоха: {SEASON_LABELS[current.season || ""] || "—"}</div>
         </div>
       </div>
 
@@ -150,7 +165,7 @@ export function WeatherWidget() {
               >
                 <img src={(day?.type && WEATHER_ICONS[day.type]) || UI_ICONS.weatherNominal} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
                 <div className="text-xs text-straw capitalize">
-                  {day?.type ? day.type.replace("_", " ") : "—"}
+                  {day?.type ? (WEATHER_LABELS[day.type] || day.type.replace("_", " ")) : "—"}
                 </div>
                 <div className="text-xs text-straw/60 mt-1">
                   День {((day?.dayOfSeason ?? 0) + 1)}
