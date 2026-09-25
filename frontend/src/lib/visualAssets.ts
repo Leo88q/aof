@@ -92,9 +92,19 @@ const LEGACY_RESOURCE_ID: Record<string, string> = {
 
 const BY_ID = new Map(RESOURCES.map((r) => [r.id, r]));
 
+/** Canonical id -> UPPER_SNAKE form used by on-chain balance keys ("clearQuartz" -> "CLEAR_QUARTZ"). */
+const BY_UPPER = new Map(
+  RESOURCES.map((r) => [r.id.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase(), r]),
+);
+
 export function resourceVisual(id?: string | null): ResourceVisual | undefined {
   if (!id) return undefined;
-  return BY_ID.get(id) || BY_ID.get(LEGACY_RESOURCE_ID[id] || "");
+  return (
+    BY_ID.get(id) ||
+    BY_UPPER.get(id) ||
+    BY_ID.get(LEGACY_RESOURCE_ID[id] || "") ||
+    BY_UPPER.get(LEGACY_RESOURCE_ID[id] || "")
+  );
 }
 
 /** Chip art: dedicated icon when it exists, otherwise the full plate. */
