@@ -715,3 +715,119 @@
   background: rgba(0,212,255,.25) !important;
   color: #E0E4F0 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEUROFORGE — Product Section (game poster + description block)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.nf-product {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+@media (max-width: 768px) {
+  .nf-product { grid-template-columns: 1fr; }
+}
+
+.nf-product__visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nf-product__poster {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1), 0 16px 48px rgba(0, 0, 0, 0.5);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  display: block;
+}
+.nf-product__poster:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 0 50px rgba(0, 212, 255, 0.2), 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.nf-product__banner {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(155, 89, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: block;
+}
+@media (max-width: 768px) {
+  .nf-product__banner { display: none; }
+}
+
+.nf-product__info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nf-product__tag {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 4px 14px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #00D4FF;
+  font-family: 'Rajdhani', 'Inter', system-ui, sans-serif;
+}
+
+.nf-product__info h3 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #E0E4F0;
+  margin: 0;
+  font-family: 'Rajdhani', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.nf-product__info > p {
+  color: #8890B0;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.nf-product__features {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-product__features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #E0E4F0;
+  font-size: 14px;
+}
+
+.nf-product__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00D4FF;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.nf-product__cta {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
