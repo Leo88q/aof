@@ -3,6 +3,7 @@ import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 // Рецепты мгновенного крафта (из мастер-документа §6)
 const FULL_RECIPES = [
@@ -128,25 +129,29 @@ export function Workshop() {
           className={"sub-tab-btn" + (section === "gems" ? " active" : "")}
           onClick={() => setSection("gems")}
         >
-          💎 Гемы
+          <img src={UI_ICONS.gems} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Гемы
         </button>
         <button
           className={"sub-tab-btn" + (section === "flask" ? " active" : "")}
           onClick={() => setSection("flask")}
         >
-          🧪 Флаконы
+          <img src={UI_ICONS.flasks} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Флаконы
         </button>
         <button
           className={"sub-tab-btn" + (section === "trans" ? " active" : "")}
           onClick={() => setSection("trans")}
         >
-          ⚗️ Превращения
+          <img src={UI_ICONS.transformations} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Превращения
         </button>
         <button
           className={"sub-tab-btn" + (section === "timed" ? " active" : "")}
           onClick={() => setSection("timed")}
         >
-          ⏱️ Тренировка/Переработка
+          <img src={UI_ICONS.workshopTimer} alt="" width={16} height={16} style={{ objectFit: "contain", display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+          Тренировка/Переработка
         </button>
       </div>
 

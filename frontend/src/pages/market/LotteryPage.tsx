@@ -6,6 +6,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { FeatureDisabledNotice, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const FIELD_LABELS: Record<string, string> = {
   roundId: "Раунд",
@@ -153,7 +154,10 @@ export function LotteryPage() {
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment">🎰 Лотерея</h1>
+        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2">
+          <img src={UI_ICONS.lottery} alt="" className="w-7 h-7 object-contain" />
+          Лотерея
+        </h1>
         <button onClick={() => load(roundId)} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
           {loading ? "…" : "⟳ Refresh"}
         </button>

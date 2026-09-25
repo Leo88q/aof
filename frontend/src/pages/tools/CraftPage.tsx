@@ -4,7 +4,9 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
-import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, shortAddr, useFlash } from "../../lib/marketUtils";
 import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
 
@@ -238,7 +240,7 @@ export function CraftPage() {
                   } ${isMax ? "opacity-50 cursor-not-allowed" : "active:scale-95"}`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">{TOOL_ICON[t.toolType] || "🛠️"}</span>
+                    <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={40} />
                     <div className="flex-1">
                       <p className="text-parchment text-xs font-medium capitalize">{t.toolType}</p>
                       <p className="text-[10px]" style={{ color: RARITY_META[rk]?.color }}>

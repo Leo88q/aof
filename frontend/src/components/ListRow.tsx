@@ -7,7 +7,11 @@ export function ListRow({
 }) {
   return (
     <button className="list-row" onClick={onClick}>
-      <span className="icon" style={{ background: iconBg }}>{icon}</span>
+      <span className="icon" style={{ background: iconBg }}>
+        {icon.startsWith("/") ? (
+          <img src={icon} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
+        ) : icon}
+      </span>
       <span className="label">{label}</span>
       {value && <span className="value">{value}</span>}
       <span className="chevron">›</span>

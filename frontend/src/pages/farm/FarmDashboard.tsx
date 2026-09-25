@@ -22,6 +22,7 @@ import { ExplorationPage } from "./ExplorationPage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
@@ -81,11 +82,11 @@ export function FarmDashboard() {
   }
 
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
-    { key: "dashboard", label: "Обзор", icon: "🏠" },
-    { key: "well", label: "Сетевая станция", icon: "💧" },
-    { key: "plant", label: "Посадка", icon: "🌱" },
-    { key: "mill", label: "Переработка", icon: "🏭" },
-    { key: "oven", label: "Тренировка", icon: "🔥" },
+    { key: "dashboard", label: "Обзор", icon: UI_ICONS.labOverview },
+    { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
+    { key: "plant", label: "Посадка", icon: UI_ICONS.plant },
+    { key: "mill", label: "Переработка", icon: UI_ICONS.mill },
+    { key: "oven", label: "Тренировка", icon: UI_ICONS.trainer },
   ];
 
   return (
@@ -102,21 +103,21 @@ export function FarmDashboard() {
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
             title="Барабан урожая"
           >
-            🥁
+            <img src={UI_ICONS.drum} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
           <button
             onClick={() => push("farm", "lottery", (<><NavHeader title="Лотерея" tabKey="farm" /><LotteryPage /></>))}
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
             title="Лотерея"
           >
-            🎰
+            <img src={UI_ICONS.lottery} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
           <button
             onClick={() => push("farm", "exploration", (<><NavHeader title="Экспедиция" tabKey="farm" /><ExplorationPage /></>))}
             className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
             title="Экспедиция"
           >
-            🗺️
+            <img src={UI_ICONS.expedition} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
         </div>
         <div className="flex-1 text-center">
@@ -138,7 +139,12 @@ export function FarmDashboard() {
                 : "text-straw hover:bg-soil-700"
             }`}
           >
-            {t.icon} {t.label}
+            {t.icon.startsWith("/") ? (
+              <img src={t.icon} alt="" className="inline-block w-4 h-4 object-contain align-text-bottom mr-1" />
+            ) : (
+              <span>{t.icon} </span>
+            )}
+            {t.label}
           </button>
         ))}
       </div>
@@ -185,13 +191,13 @@ export function FarmDashboard() {
           <div className="grid grid-cols-2 gap-2 mb-4">
             <Card onClick={() => push("farm", "inbox", <InboxHome />)}>
               <div className="text-center py-1">
-                <span className="text-2xl">📬</span>
+                <img src={UI_ICONS.inbox} alt="" className="w-8 h-8 object-contain mx-auto" />
                 <p className="text-parchment text-sm font-semibold mt-1">Инбокс</p>
               </div>
             </Card>
             <Card onClick={() => push("farm", "compendium", <CompendiumHome />)}>
               <div className="text-center py-1">
-                <span className="text-2xl">📖</span>
+                <img src={UI_ICONS.catalog} alt="" className="w-8 h-8 object-contain mx-auto" />
                 <p className="text-parchment text-sm font-semibold mt-1">Каталог</p>
               </div>
             </Card>

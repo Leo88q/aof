@@ -15,6 +15,7 @@ import { TrustRing } from "../../components/ui/TrustRing";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useNav } from "../../nav/NavContext";
 import { NavHeader } from "../../components/NavHeader";
+import { UI_ICONS } from "../../lib/visualAssets";
 import { FriendsList } from "../friend/FriendsList";
 import { SeasonPassPage } from "./SeasonPassPage";
 import { TrustPage } from "./TrustPage";
@@ -23,7 +24,7 @@ import { QuestBoardPage } from "../quests/QuestBoardPage";
 import { DailyRewardButton } from "../../components/DailyRewardButton";
 
 // Утилита: вычисление статуса "Ветеран/Поколение" на основе данных игрока
-function computeVeteranStatus(playerData: any): { title: string; generation: number; emoji: string } {
+function computeVeteranStatus(playerData: any): { title: string; generation: number; emoji: string; icon?: string } {
   // Поколение = количество ребёртов + 1
   const rebirths = playerData?.rebirthCount ?? playerData?.rebirths ?? 0;
   const generation = rebirths + 1;
@@ -34,25 +35,31 @@ function computeVeteranStatus(playerData: any): { title: string; generation: num
   
   let title: string;
   let emoji: string;
-  
+  let icon: string | undefined;
+
   if (generation >= 5 || totalDays >= 180) {
     title = "Легенда сети";
     emoji = "👑";
+    icon = UI_ICONS.rankLegend;
   } else if (generation >= 3 || totalDays >= 90) {
     title = "Ветеран сети";
     emoji = "🎖️";
+    icon = UI_ICONS.rankVeteran;
   } else if (generation >= 2 || totalDays >= 30) {
     title = "Опытный оператор";
     emoji = "🌾";
+    icon = UI_ICONS.rankExperienced;
   } else if (totalDays >= 7) {
     title = "Оператор";
     emoji = "👨‍🌾";
+    icon = UI_ICONS.rankOperator;
   } else {
     title = "Новичок";
     emoji = "🌱";
+    icon = UI_ICONS.rankNovice;
   }
-  
-  return { title, generation, emoji };
+
+  return { title, generation, emoji, icon };
 }
 
 // Утилита: вычисление значков (badges) на основе достижений
@@ -113,7 +120,11 @@ export function ProfileHome() {
       {/* Шапка: аватар + имя + титул + бейджи (на основе реальных данных) */}
       <Card className="mb-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-wheat-600 to-soil-700 flex items-center justify-center text-3xl">
-          {veteranStatus?.emoji ?? "❔"}
+          {veteranStatus?.icon ? (
+            <img src={veteranStatus.icon} alt="" className="w-12 h-12 object-contain" />
+          ) : (
+            veteranStatus?.emoji ?? "❔"
+          )}
         </div>
         <div className="flex-1">
           <h2 className="text-parchment font-semibold">
@@ -322,7 +333,10 @@ export function ProfileHome() {
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-wheat-500 font-semibold">🎫 Пасс эпохи / VIP</h3>
+            <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
+              <img src={UI_ICONS.seasonPass} alt="" className="w-5 h-5 object-contain" />
+              Пасс эпохи / VIP
+            </h3>
             <p className="text-straw text-xs mt-1">Premium: Farm-Trader, награды без рекламы, бусты</p>
           </div>
           <span className="text-2xl">→</span>
@@ -331,7 +345,10 @@ export function ProfileHome() {
 
       {/* 2. Привилегии (перенесено из отдельной вкладки) */}
       <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3">🎯 Привилегии</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2">
+          <img src={UI_ICONS.privileges} alt="" className="w-5 h-5 object-contain" />
+          Привилегии
+        </h3>
         <PrivilegesPanel compact={true} />
         <button
           onClick={() => push("profile", "privileges", (
@@ -357,7 +374,10 @@ export function ProfileHome() {
       ))}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-wheat-500 font-semibold">👥 Друзья и соседи</h3>
+            <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
+              <img src={UI_ICONS.friends} alt="" className="w-5 h-5 object-contain" />
+              Друзья и соседи
+            </h3>
             <p className="text-straw text-xs mt-1">Поиск по нику, список друзей, визиты на фермы</p>
           </div>
           <span className="text-2xl">→</span>
@@ -368,7 +388,10 @@ export function ProfileHome() {
       <Card className="mb-4 bg-gradient-to-r from-gold/10 to-soil-850 border border-gold/20">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-gold font-semibold">🔄 Перерождение</h3>
+            <h3 className="text-gold font-semibold flex items-center gap-2">
+              <img src={UI_ICONS.rebirth} alt="" className="w-5 h-5 object-contain" />
+              Перерождение
+            </h3>
             <p className="text-straw text-xs mt-1">Сброс прогресса за постоянный бонус +2%</p>
           </div>
           <span className="px-4 py-2 rounded-2xl bg-soil-800 text-straw text-sm">

@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
-import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, shortAddr } from "../../lib/marketUtils";
 import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
@@ -116,7 +118,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
               const pct = (durability / MAX_DURABILITY) * 100;
               return (
                 <div key={t.mint} className="flex items-center gap-3 p-2 rounded-xl bg-soil-800/60 border border-straw/10">
-                  <span className="text-2xl">{TOOL_ICON[t.toolType] || "🛠️"}</span>
+                  <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={36} />
                   <div className="flex-1">
                     <p className="text-parchment text-sm">
                       {t.toolType} <span style={{ color: RARITY_META[rk]?.color }}>({RARITY_META[rk]?.label})</span>

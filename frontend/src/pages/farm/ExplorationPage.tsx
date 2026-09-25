@@ -8,6 +8,7 @@ import { useFlash } from "../../lib/marketUtils";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 import { connection } from "../../lib/wallet";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset = { food: 75, wood: 35, stone: 35, meat: 50 };
 
@@ -86,7 +87,7 @@ export function ExplorationPage() {
 
   return (
     <div className="p-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold mb-4">🗺️ Исследование</h1>
+      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2"><img src={UI_ICONS.expedition} alt="" className="w-7 h-7 object-contain" /> Исследование</h1>
       {explorationDisabled && <div className="mb-4"><FeatureDisabledNotice id="exploration" /></div>}
 
       <Card className="mb-4">
