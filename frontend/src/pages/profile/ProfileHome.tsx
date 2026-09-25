@@ -15,6 +15,7 @@ import { TrustRing } from "../../components/ui/TrustRing";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useNav } from "../../nav/NavContext";
 import { NavHeader } from "../../components/NavHeader";
+import { UI_ICONS } from "../../lib/visualAssets";
 import { FriendsList } from "../friend/FriendsList";
 import { SeasonPassPage } from "./SeasonPassPage";
 import { TrustPage } from "./TrustPage";
@@ -23,7 +24,7 @@ import { QuestBoardPage } from "../quests/QuestBoardPage";
 import { DailyRewardButton } from "../../components/DailyRewardButton";
 
 // Утилита: вычисление статуса "Ветеран/Поколение" на основе данных игрока
-function computeVeteranStatus(playerData: any): { title: string; generation: number; emoji: string } {
+function computeVeteranStatus(playerData: any): { title: string; generation: number; emoji: string; icon?: string } {
   // Поколение = количество ребёртов + 1
   const rebirths = playerData?.rebirthCount ?? playerData?.rebirths ?? 0;
   const generation = rebirths + 1;
@@ -34,25 +35,30 @@ function computeVeteranStatus(playerData: any): { title: string; generation: num
   
   let title: string;
   let emoji: string;
-  
+  let icon: string | undefined;
+
   if (generation >= 5 || totalDays >= 180) {
     title = "Легенда сети";
     emoji = "👑";
   } else if (generation >= 3 || totalDays >= 90) {
     title = "Ветеран сети";
     emoji = "🎖️";
+    icon = UI_ICONS.rankVeteran;
   } else if (generation >= 2 || totalDays >= 30) {
     title = "Опытный оператор";
     emoji = "🌾";
+    icon = UI_ICONS.rankExperienced;
   } else if (totalDays >= 7) {
     title = "Оператор";
     emoji = "👨‍🌾";
+    icon = UI_ICONS.rankOperator;
   } else {
     title = "Новичок";
     emoji = "🌱";
+    icon = UI_ICONS.rankNovice;
   }
-  
-  return { title, generation, emoji };
+
+  return { title, generation, emoji, icon };
 }
 
 // Утилита: вычисление значков (badges) на основе достижений
@@ -113,7 +119,11 @@ export function ProfileHome() {
       {/* Шапка: аватар + имя + титул + бейджи (на основе реальных данных) */}
       <Card className="mb-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-wheat-600 to-soil-700 flex items-center justify-center text-3xl">
-          {veteranStatus?.emoji ?? "❔"}
+          {veteranStatus?.icon ? (
+            <img src={veteranStatus.icon} alt="" className="w-12 h-12 object-contain" />
+          ) : (
+            veteranStatus?.emoji ?? "❔"
+          )}
         </div>
         <div className="flex-1">
           <h2 className="text-parchment font-semibold">

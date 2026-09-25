@@ -174,6 +174,16 @@ export const UI_ICONS = {
   marketOrderbook: "/assets/icons/ui/market-orderbook.jpg",
   marketHot: "/assets/icons/ui/market-hot.jpg",
   rewardDaily: "/assets/icons/ui/reward-daily.jpg",
+  menuLab: "/assets/icons/ui/menu-lab.jpg",
+  menuWorkshop: "/assets/icons/ui/menu-workshop.jpg",
+  menuEconomy: "/assets/icons/ui/menu-economy.jpg",
+  menuMarket: "/assets/icons/ui/menu-market.jpg",
+  menuQuests: "/assets/icons/ui/menu-quests.jpg",
+  menuProfile: "/assets/icons/ui/menu-profile.jpg",
+  rankNovice: "/assets/icons/ui/rank-novice.jpg",
+  rankOperator: "/assets/icons/ui/rank-operator.jpg",
+  rankExperienced: "/assets/icons/ui/rank-experienced.jpg",
+  rankVeteran: "/assets/icons/ui/rank-veteran.jpg",
 } as const;
 
 /** 5×5 = 25. Every rarity plate exists. Common uses the Base file. */
