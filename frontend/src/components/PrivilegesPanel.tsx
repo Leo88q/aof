@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../lib/api";
+import { UI_ICONS } from "../lib/visualAssets";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { useWalletStore } from "../store/walletStore";
 import { Card } from "./ui/Card";
 
@@ -63,7 +65,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
           className="p-4 rounded-2xl bg-gradient-to-r from-purple-600/20 to-gold/20 border border-gold/30"
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-parchment font-bold">🎯 Ваши привилегии</h3>
+            <h3 className="text-parchment font-bold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-5 h-5" /> Ваши привилегии</h3>
             <span className="text-xs bg-gold/30 text-gold px-2 py-1 rounded-full font-bold">
               {data.summary.activeCount} / {data.summary.total}
             </span>
@@ -77,7 +79,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
       {/* Активные привилегии */}
       {activePrivs.length > 0 && (
         <div className="space-y-2">
-          {!compact && <h4 className="text-parchment text-sm font-semibold">✨ Активные</h4>}
+          {!compact && <h4 className="text-parchment text-sm font-semibold flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-4 h-4" /> Активные</h4>}
           {activePrivs.map((p: Privilege) => (
             <motion.div
               key={p.id}
@@ -95,7 +97,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
                     </span>
                   </div>
                   <p className="text-straw text-xs mb-1">{p.description}</p>
-                  <p className="text-gold text-xs font-bold">🎁 {p.effect}</p>
+                  <p className="text-gold text-xs font-bold flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-4 h-4" /> {p.effect}</p>
                 </div>
               </div>
             </motion.div>
@@ -106,7 +108,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
       {/* Доступные для разблокировки */}
       {!compact && inactivePrivs.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-parchment text-sm font-semibold">🔒 Доступные для разблокировки</h4>
+          <h4 className="text-parchment text-sm font-semibold flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> Доступные для разблокировки</h4>
           {inactivePrivs.map((p: Privilege) => (
             <motion.div
               key={p.id}
@@ -120,7 +122,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
                   <p className="text-parchment text-sm font-semibold">{p.title}</p>
                   <p className="text-straw text-xs mb-1">{p.description}</p>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gold">🎁 {p.effect}</span>
+                    <span className="text-gold inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-4 h-4" /> {p.effect}</span>
                     <span className="text-straw">Требуется: {p.required}</span>
                   </div>
                 </div>
@@ -148,43 +150,43 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
       )}
       {/* === РАЗДЕЛ: КОЛЛЕКЦИОННЫЕ NFT === */}
       <div style={{marginTop: "16px", padding: "16px", background: "rgba(251, 191, 36, 0.1)", borderRadius: "12px", border: "1px solid rgba(251, 191, 36, 0.3)"}}>
-        <h3 style={{color: "#fbbf24", marginBottom: "12px", fontSize: "16px", fontWeight: "bold"}}>🏆 Коллекционные NFT</h3>
+        <h3 style={{color: "#fbbf24", marginBottom: "12px", fontSize: "16px", fontWeight: "bold"}}><ResourceGlyph icon={UI_ICONS.rewardTrophy} alt="" className="w-5 h-5" /> Коллекционные NFT</h3>
         
         <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px"}}>
           
           <div style={{background: "rgba(30, 41, 59, 0.8)", padding: "14px", borderRadius: "10px", border: "2px solid rgba(139, 92, 246, 0.5)"}}>
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
-              <span style={{fontSize: "24px"}}>📜</span>
+              <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-6 h-6" />
               <h4 style={{color: "#a78bfa", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Historian</h4>
             </div>
             <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
               <b style={{color: "#fbbf24"}}>Эффект:</b> +5% шанс Singularity из паков, +25 слотов рефералов
             </p>
             <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
-              <b>🎯 Как получить:</b>
+              <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (редкая награда)</li>
                 <li>Покупка за <b>5000 POTATO</b> в магазине</li>
-                <li>Топ-10 рейтинга в конце сезона</li>
+                <li>Топ-10 рейтинга в конце эпохи</li>
               </ul>
             </div>
           </div>
           
           <div style={{background: "rgba(30, 41, 59, 0.8)", padding: "14px", borderRadius: "10px", border: "2px solid rgba(236, 72, 153, 0.5)"}}>
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
-              <span style={{fontSize: "24px"}}>🏅</span>
+              <ResourceGlyph icon={UI_ICONS.medalService} alt="" className="w-6 h-6" />
               <h4 style={{color: "#ec4899", fontSize: "15px", margin: 0, fontWeight: "bold"}}>Medallion</h4>
             </div>
             <p style={{fontSize: "12px", color: "#cbd5e1", marginBottom: "10px", lineHeight: "1.5"}}>
               <b style={{color: "#fbbf24"}}>Эффект:</b> +3% шанс Transcendent из паков, +5 слотов рефералов
             </p>
             <div style={{fontSize: "11px", color: "#94a3b8", background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px"}}>
-              <b>🎯 Как получить:</b>
+              <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (ультра-редкая награда)</li>
                 <li>Покупка за <b>10000 POTATO</b> в магазине</li>
-                <li>Топ-3 рейтинга в конце сезона</li>
-                <li>Специальные события (лимит: 100 шт/сезон)</li>
+                <li>Топ-3 рейтинга в конце эпохи</li>
+                <li>Специальные события (лимит: 100 шт/эпоху)</li>
               </ul>
             </div>
           </div>
@@ -192,7 +194,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
         </div>
         
         <div style={{marginTop: "12px", padding: "10px", background: "rgba(0,0,0,0.3)", borderRadius: "8px", fontSize: "11px", color: "#94a3b8", textAlign: "center"}}>
-          💡 <b>Стейкай NFT</b> в разделе "Коллекционеры" для активации бонусов. Минимальный срок — 3 дня.
+          <ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4 inline-block align-text-bottom" /> <b>Стейкай NFT</b> в разделе "Коллекционеры" для активации бонусов. Минимальный срок — 3 дня.
         </div>
       </div>
 

@@ -4,16 +4,18 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { fmtNum, useTreasury, useFlash } from "../../lib/marketUtils";
 
 const SEASON_ID = 1;
 const PASS_PRICE_SOL = 0.15;
 
 const PREMIUM_PERKS = [
-  { icon: "🤖", label: "Farm-Trader", sub: "умная покупка/продажа 24/7" },
-  { icon: "⚡", label: "Награды без рекламы", sub: "в заданиях и партнёрках" },
-  { icon: "📈", label: "XP-бустеры", sub: "ускорение сезонного трека" },
-  { icon: "🔔", label: "Ценовые алерты без лимитов", sub: "free-тир: только 1 алерт" },
+  { icon: UI_ICONS.npcOracle, label: "Авто-трейдер", sub: "умная покупка/продажа 24/7" },
+  { icon: resourceIcon("power") || "", label: "Награды без рекламы", sub: "в заданиях и партнёрках" },
+  { icon: UI_ICONS.chartsUp, label: "XP-бустеры", sub: "ускорение трека эпохи" },
+  { icon: UI_ICONS.buffIdea, label: "Ценовые алерты без лимитов", sub: "free-тир: только 1 алерт" },
 ];
 
 export function SeasonPassPage() {
@@ -50,7 +52,7 @@ export function SeasonPassPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        VIP-статус — это премиум-трек сезонного пасса: автоматизация торговли, награды без рекламы и бусты.
+        VIP-статус — это премиум-трек пасса эпохи: автоматизация торговли, награды без рекламы и бусты.
       </p>
 
       {txStatus && (
@@ -62,10 +64,10 @@ export function SeasonPassPage() {
 
       <Card className="bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30">
         <div className="flex items-center gap-3">
-          <span className="text-4xl">🎫</span>
+          <img src={UI_ICONS.seasonPass} alt="" className="w-12 h-12 object-contain" />
           <div className="flex-1">
-            <h2 className="text-parchment font-bold text-lg">Сезон {SEASON_ID} · Premium</h2>
-            <p className="text-straw text-xs">Пасс действует до конца сезона</p>
+            <h2 className="text-parchment font-bold text-lg">Эпоха {SEASON_ID} · Premium</h2>
+            <p className="text-straw text-xs">Пасс действует до конца эпохи</p>
           </div>
           {premium && <span className="text-xs px-3 py-1 rounded-full bg-gold text-soil-950 font-bold">VIP</span>}
         </div>
@@ -78,7 +80,7 @@ export function SeasonPassPage() {
             <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.06 }}
               className="flex items-center gap-3 px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
-              <span className="text-xl">{p.icon}</span>
+              <ResourceGlyph icon={p.icon} alt="" className="w-6 h-6" />
               <div>
                 <p className="text-parchment text-sm font-medium">{p.label}</p>
                 <p className="text-straw text-xs">{p.sub}</p>
@@ -90,7 +92,7 @@ export function SeasonPassPage() {
 
       {pass && (
         <Card>
-          <div className="text-parchment font-semibold text-sm mb-2">Ваш прогресс сезона</div>
+          <div className="text-parchment font-semibold text-sm mb-2">Ваш прогресс эпохи</div>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(pass).filter(([k]) => !["bump"].includes(k)).map(([k, v]) => (
               <div key={k} className="px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
@@ -110,7 +112,7 @@ export function SeasonPassPage() {
           Buy Premium за {PASS_PRICE_SOL} ◎
         </button>
       ) : (
-        <p className="text-center text-straw text-xs">Premium активен до конца сезона 🌟</p>
+        <p className="text-center text-straw text-xs">Premium активен до конца эпохи</p>
       )}
     </div>
   );

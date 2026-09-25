@@ -4,6 +4,7 @@ import { Card } from "../../components/ui/Card";
 import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 interface BreakdownItem {
   score: number;
@@ -24,20 +25,20 @@ interface TrustData {
   computedAt: string;
 }
 
-const TIER_NAMES = ["", "Росток", "Саженец", "Колос", "Урожай", "Мастер"];
+const TIER_NAMES = ["", "Искра", "Узел", "Кластер", "Сеть", "Сингулярность"];
 const TIER_COLORS = ["", "#9ca3af", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"];
 
 const COMPONENT_META: Record<string, { icon: string; label: string }> = {
-  age:        { icon: "📅", label: "Возраст аккаунта" },
-  referral:   { icon: "👥", label: "Рефералы" },
-  trader:     { icon: "🤖", label: "Farm-Trader" },
-  staking:    { icon: "🔒", label: "Стейкинг" },
-  rebirth:    { icon: "🔄", label: "Ребёрты" },
-  guild:      { icon: "🏰", label: "Гильдия" },
-  compendium: { icon: "📖", label: "Компендиум" },
-  quests:     { icon: "🎯", label: "Задания" },
-  craftRep:   { icon: "🛠️", label: "Репутация кузнеца" },
-  antiBot:    { icon: "🛡️", label: "Анти-бот" },
+  age:        { icon: UI_ICONS.trustAge, label: "Возраст аккаунта" },
+  referral:   { icon: UI_ICONS.friends, label: "Рефералы" },
+  trader:     { icon: UI_ICONS.trustTrader, label: "Farm-Trader" },
+  staking:    { icon: UI_ICONS.trustStaking, label: "Стейкинг" },
+  rebirth:    { icon: UI_ICONS.rebirth, label: "Ребёрты" },
+  guild:      { icon: UI_ICONS.trustGuild, label: "Гильдия" },
+  compendium: { icon: UI_ICONS.catalog, label: "Компендиум" },
+  quests:     { icon: UI_ICONS.questsDaily, label: "Задания" },
+  craftRep:   { icon: UI_ICONS.craft, label: "Репутация кузнеца" },
+  antiBot:    { icon: UI_ICONS.trustAntibot, label: "Анти-бот" },
 };
 
 export function TrustPage() {
@@ -138,7 +139,10 @@ export function TrustPage() {
 
       {/* Привилегии */}
       <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3">🎁 Привилегии</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2">
+          <img src={UI_ICONS.privileges} alt="" className="w-5 h-5 object-contain" />
+          Привилегии
+        </h3>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-wheat-500 font-bold">{data.privileges.traderLimitSolPerDay}◎</p>
@@ -183,7 +187,11 @@ export function TrustPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-sm">{meta.icon}</span>
+                      {meta.icon.startsWith("/") ? (
+                        <img src={meta.icon} alt="" className="w-4 h-4 object-contain" />
+                      ) : (
+                        <span className="text-sm">{meta.icon}</span>
+                      )}
                       <span className="text-parchment text-xs font-medium truncate">{meta.label}</span>
                     </div>
                     <p className="text-straw text-[10px] mt-0.5 truncate">{item.hint}</p>

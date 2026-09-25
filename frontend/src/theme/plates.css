@@ -1,0 +1,93 @@
+/* Plates are contained, never cropped. Overflow only rounds the corner. */
+.nf-plate {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #070b14;
+  border: 1px solid rgba(94, 231, 255, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(7, 11, 20, 0.4);
+}
+
+.nf-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  background: #070b14;
+}
+
+.nf-plate__fallback {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.nf-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nf-gallery__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nf-gallery__card .nf-plate {
+  width: 100%;
+  height: auto;
+}
+
+.nf-gallery__name {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--parchment, #e7f6ff);
+}
+
+.nf-gallery__en {
+  font-size: 10px;
+  color: var(--straw, #9bb4cc);
+}
+
+/* === Per-tab scene backdrop (SceneBackdrop.tsx) === */
+.nf-scene {
+  position: absolute;
+  inset: 0;
+  /* Negative so the absolutely positioned .page layer paints on top. */
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: #070b14;
+}
+
+.nf-scene img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  opacity: 0.3;
+  animation: nf-scene-in 320ms ease-out;
+}
+
+/* Keep the UI readable on top of the artwork. */
+.nf-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 11, 20, 0.55) 0%, rgba(7, 11, 20, 0.82) 100%);
+}
+
+@keyframes nf-scene-in {
+  from { opacity: 0; }
+  to { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-scene img { animation: none; }
+}

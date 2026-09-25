@@ -5,12 +5,14 @@ import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 // Must match aof-core/src/instructions/start_baking.rs and constants.rs.
 const OVEN_SIZES = {
-  small:  { label: "Малая",  batchSize: 1, flour: 4,  water: 3, wood: 5,  coal: 2,  bread: 2,  time: 7200,  icon: "🔥" },
+  small:  { label: "Малая",  batchSize: 1, flour: 4,  water: 3, wood: 5,  coal: 2,  bread: 2,  time: 7200,  icon: UI_ICONS.trainer, sizeCls: "w-4 h-4" },
   medium: { label: "Средняя", batchSize: 2, flour: 12, water: 8, wood: 12, coal: 5,  bread: 7,  time: 18000, icon: "🔥🔥" },
-  large:  { label: "Большая", batchSize: 3, flour: 28, water: 18, wood: 25, coal: 10, bread: 18, time: 36000, icon: "🔥🔥🔥" },
+  large:  { label: "Большая", batchSize: 3, flour: 28, water: 18, wood: 25, coal: 10, bread: 18, time: 36000, icon: UI_ICONS.trainer, sizeCls: "w-6 h-6" },
 };
 
 const FUEL_KIND = { wood: 0, coal: 1 };
@@ -137,7 +139,7 @@ export function OvenPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg">🔥 Тренировка</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> Тренировка</h3>
         <p className="text-straw text-sm text-center py-4">Подключите кошелёк</p>
       </Card>
     );
@@ -145,7 +147,7 @@ export function OvenPanel() {
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg">🔥 Тренировка</h3>
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> Тренировка</h3>
 
       {!ovenState && (
         <>
@@ -160,7 +162,7 @@ export function OvenPanel() {
                     : "bg-soil-700/50 border border-straw/20 hover:border-red-500"
                 }`}
               >
-                <div className="text-xl">{OVEN_SIZES[key].icon}</div>
+                <ResourceGlyph icon={OVEN_SIZES[key].icon} alt="" className={(OVEN_SIZES[key] as any).sizeCls ?? "w-5 h-5"} />
                 <div className="text-[10px] text-parchment font-bold">{OVEN_SIZES[key].label}</div>
               </button>
             ))}
@@ -180,7 +182,7 @@ export function OvenPanel() {
             disabled={baking}
             className="w-full py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-parchment font-bold text-sm disabled:opacity-50"
           >
-            {baking ? "🔥 Запуск..." : `🔥 Запустить тренировку`}
+            {baking ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Запуск...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Запустить тренировку</span>}
           </button>
         </>
       )}
@@ -188,7 +190,7 @@ export function OvenPanel() {
       {ovenState && (
         <div className="bg-soil-800/50 rounded-lg p-4 space-y-3">
           <div className="text-center">
-            <div className="text-4xl mb-2 animate-pulse">🔥</div>
+            <ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-10 h-10 mx-auto animate-pulse" />
             {timeLeft > 0 ? (
               <>
                 <p className="text-parchment font-bold">Тренировка модели…</p>

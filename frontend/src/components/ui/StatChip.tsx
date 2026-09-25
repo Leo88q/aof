@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
+import { ResourceGlyph } from "../visual/ResourceGlyph";
 
 interface StatChipProps {
-  icon: string;
+  icon?: string;
   value: string | number;
   label?: string;
   accent?: "green" | "gold" | "water" | "neutral";
@@ -21,7 +22,7 @@ export function StatChip({ icon, value, label, accent = "neutral" }: StatChipPro
       animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-2 px-3 py-2 bg-soil-850 rounded-2xl shadow-card"
     >
-      <span className="text-lg">{icon}</span>
+      <ResourceGlyph icon={icon} alt="" className="w-5 h-5" />
       <div className="flex flex-col">
         <span className={`text-sm font-semibold ${accentColors[accent]}`}>{value}</span>
         {label && <span className="text-[10px] text-straw">{label}</span>}

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface SimulationResult {
   days: number;
@@ -51,7 +53,7 @@ export function SandboxPage() {
   return (
     <div className="p-4 pb-24">
       <Card className="mb-4">
-        <h2 className="text-parchment font-bold text-lg mb-2">🧪 Economy Sandbox</h2>
+        <h2 className="text-parchment font-bold text-lg mb-2 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.flasks} alt="" className="w-6 h-6" /> Economy Sandbox</h2>
         <p className="text-straw text-sm">
           Симуляция экономики перед апдейтами. Проверь инфляцию и дисбалансы до деплоя.
         </p>
@@ -65,7 +67,7 @@ export function SandboxPage() {
               version === "v1" ? "bg-wheat-600 text-white" : "bg-soil-800 text-straw"
             }`}
           >
-            📊 V1: Базовая
+            <ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4 inline-block align-text-bottom" /> V1: Базовая
           </button>
           <button
             onClick={() => setVersion("v2")}
@@ -73,10 +75,10 @@ export function SandboxPage() {
               version === "v2" ? "bg-wheat-600 text-white" : "bg-soil-800 text-straw"
             }`}
           >
-            🎮 V2: Полная (все механики)
+            <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4 inline-block align-text-bottom" /> V2: Полная (все механики)
           </button>
         </div>
-        <h3 className="text-parchment font-semibold text-sm mb-3">⚙️ Параметры симуляции</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> Параметры симуляции</h3>
         
         <div className="space-y-3">
           <div>
@@ -130,7 +132,7 @@ export function SandboxPage() {
           disabled={running}
           className="w-full mt-4 py-3 bg-wheat-600 text-white font-bold rounded-lg hover:bg-wheat-700 transition disabled:opacity-50"
         >
-          {running ? "⏳ Симуляция..." : "🚀 Запустить симуляцию"}
+          {running ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.workshopTimer} alt="" className="w-4 h-4" /> Симуляция...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Запустить симуляцию</span>}
         </button>
       </Card>
 
@@ -138,7 +140,7 @@ export function SandboxPage() {
         <>
           {/* Главные метрики */}
           <Card className="mb-4">
-            <h3 className="text-parchment font-semibold text-sm mb-3">📊 Результаты</h3>
+            <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Результаты</h3>
             
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="p-3 rounded-lg bg-soil-800/60">
@@ -179,7 +181,7 @@ export function SandboxPage() {
 
           {/* Изменение цен */}
           <Card className="mb-4">
-            <h3 className="text-parchment font-semibold text-sm mb-3">💹 Изменение цен</h3>
+            <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Изменение цен</h3>
             <div className="space-y-2">
               {Object.entries(result.priceChanges)
                 .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
@@ -198,7 +200,7 @@ export function SandboxPage() {
           {/* Предупреждения */}
           {result.warnings.length > 0 && (
             <Card className="mb-4 bg-red-500/10 border-red-500/30">
-              <h3 className="text-red-400 font-semibold text-sm mb-3">⚠️ Предупреждения</h3>
+              <h3 className="text-red-400 font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-4 h-4" /> Предупреждения</h3>
               <ul className="space-y-1">
                 {result.warnings.map((w, i) => (
                   <li key={i} className="text-straw text-xs">• {w}</li>
@@ -210,7 +212,7 @@ export function SandboxPage() {
           {/* Рекомендации */}
           {result.recommendations.length > 0 && (
             <Card className="mb-4 bg-sprout-500/10 border-sprout-500/30">
-              <h3 className="text-sprout-500 font-semibold text-sm mb-3">💡 Рекомендации</h3>
+              <h3 className="text-sprout-500 font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4" /> Рекомендации</h3>
               <ul className="space-y-1">
                 {result.recommendations.map((r, i) => (
                   <li key={i} className="text-straw text-xs">• {r}</li>
@@ -221,7 +223,7 @@ export function SandboxPage() {
 
           {/* Timeline */}
           <Card>
-            <h3 className="text-parchment font-semibold text-sm mb-3">📈 Timeline</h3>
+            <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Timeline</h3>
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {result.timeline.map((t) => (
                 <div key={t.day} className="flex items-center justify-between p-2 rounded bg-soil-800/40 text-xs">

@@ -5,38 +5,42 @@ import { api } from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
 import { ProgressRing } from "../../components/ProgressRing";
-import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum } from "../../lib/marketUtils";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { useStore } from "../../store/useStore";
 import { motion } from "framer-motion";
+import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 const RESOURCE_META: Record<string, { icon: string; label: string }> = {
-  FOOD: { icon: "🌾", label: "Данные" },
-  WOOD: { icon: "🪵", label: "Схема" },
-  STONE: { icon: "🪨", label: "Кремний" },
-  SEEDS: { icon: "🌰", label: "Нейрон" },
-  WHEAT: { icon: "🌾", label: "Синапс" },
-  FLOUR: { icon: "🥣", label: "Сигнал" },
-  BREAD: { icon: "🍞", label: "Модель" },
-  WATER: { icon: "💧", label: "Энергопоток" },
-  COAL: { icon: "⬛", label: "Вычисления" },
-  MEAT: { icon: "🍖", label: "Датасет" },
-  STONE_BLUE: { icon: "🔵", label: "Голубое ядро" },
-  STONE_PURPLE: { icon: "🟣", label: "Фиолетовое ядро" },
-  STONE_RED: { icon: "🔴", label: "Красное ядро" },
-  SAND_WHITE: { icon: "⚪", label: "Чистый кварц" },
-  SAND_PINK: { icon: "💗", label: "Розовый кварц" },
-  SAND_YELLOW: { icon: "🟡", label: "Янтарный кварц" },
-  GEM_BLUE: { icon: "💎", label: "Квантовый бит" },
-  GEM_ORANGE: { icon: "🟠", label: "Нейрочип" },
-  GEM_WHITE: { icon: "⚪", label: "Фотон-бит" },
-  GEM_GREEN: { icon: "🟢", label: "Био-чип" },
-  FLASK_BLUE: { icon: "🧪", label: "Крио-флюид" },
-  FLASK_YELLOW: { icon: "🧪", label: "Вольт-флюид" },
-  FLASK_GREEN: { icon: "🧪", label: "Био-флюид" },
-  FLASK_PINK: { icon: "🧪", label: "Нано-флюид" },
-  FLASK_PURPLE: { icon: "🧪", label: "Квантовый флюид" },
+  FOOD: { icon: resourceIcon("FOOD") || "", label: "Данные" },
+  WOOD: { icon: resourceIcon("WOOD") || "", label: "Схема" },
+  STONE: { icon: resourceIcon("STONE") || "", label: "Кремний" },
+  SEEDS: { icon: resourceIcon("SEEDS") || "", label: "Нейрон" },
+  WHEAT: { icon: resourceIcon("WHEAT") || "", label: "Синапс" },
+  FLOUR: { icon: resourceIcon("FLOUR") || "", label: "Сигнал" },
+  BREAD: { icon: resourceIcon("BREAD") || "", label: "Модель" },
+  WATER: { icon: resourceIcon("WATER") || "", label: "Энергопоток" },
+  COAL: { icon: resourceIcon("COAL") || "", label: "Вычисления" },
+  MEAT: { icon: resourceIcon("MEAT") || "", label: "Датасет" },
+  STONE_BLUE: { icon: resourceIcon("STONE_BLUE") || "", label: "Голубое ядро" },
+  STONE_PURPLE: { icon: resourceIcon("STONE_PURPLE") || "", label: "Фиолетовое ядро" },
+  STONE_RED: { icon: resourceIcon("STONE_RED") || "", label: "Красное ядро" },
+  SAND_WHITE: { icon: resourceIcon("SAND_WHITE") || "", label: "Чистый кварц" },
+  SAND_PINK: { icon: resourceIcon("SAND_PINK") || "", label: "Розовый кварц" },
+  SAND_YELLOW: { icon: resourceIcon("SAND_YELLOW") || "", label: "Янтарный кварц" },
+  GEM_BLUE: { icon: resourceIcon("GEM_BLUE") || "", label: "Квантовый бит" },
+  GEM_ORANGE: { icon: resourceIcon("GEM_ORANGE") || "", label: "Нейрочип" },
+  GEM_WHITE: { icon: resourceIcon("GEM_WHITE") || "", label: "Фотон-бит" },
+  GEM_GREEN: { icon: resourceIcon("GEM_GREEN") || "", label: "Био-чип" },
+  FLASK_BLUE: { icon: resourceIcon("FLASK_BLUE") || "", label: "Крио-флюид" },
+  FLASK_YELLOW: { icon: resourceIcon("FLASK_YELLOW") || "", label: "Вольт-флюид" },
+  FLASK_GREEN: { icon: resourceIcon("FLASK_GREEN") || "", label: "Био-флюид" },
+  FLASK_PINK: { icon: resourceIcon("FLASK_PINK") || "", label: "Нано-флюид" },
+  FLASK_PURPLE: { icon: resourceIcon("FLASK_PURPLE") || "", label: "Квантовый флюид" },
 };
 
 export function PortfolioHome() {
@@ -115,7 +119,7 @@ export function PortfolioHome() {
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
         <Card className="p-8 text-center">
-          <div className="text-4xl mb-2">🔒</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Подключите кошелёк, чтобы увидеть портфель</p>
         </Card>
       </div>
@@ -127,7 +131,7 @@ export function PortfolioHome() {
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
         <Card className="p-8 text-center">
-          <div className="text-4xl mb-2">📭</div>
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Нет данных портфеля</p>
         </Card>
       </div>
@@ -135,10 +139,10 @@ export function PortfolioHome() {
   }
 
   const categories = [
-    { key: "tools", icon: "🛠️", label: "Инструменты" },
-    { key: "resources", icon: "📦", label: "Ресурсы" },
-    { key: "listings", icon: "🏷️", label: "Листинги" },
-    { key: "orders", icon: "📊", label: "Ордера" },
+    { key: "tools", icon: UI_ICONS.craft, label: "Инструменты" },
+    { key: "resources", icon: UI_ICONS.pantry, label: "Ресурсы" },
+    { key: "listings", icon: UI_ICONS.marketListing, label: "Листинги" },
+    { key: "orders", icon: UI_ICONS.chartsBar, label: "Ордера" },
   ];
 
   // Фильтруем ресурсы с балансом > 0
@@ -147,7 +151,7 @@ export function PortfolioHome() {
     .map(([key, bal]) => ({
       key,
       balance: bal,
-      ...(RESOURCE_META[key] || { icon: "📦", label: key }),
+      ...(RESOURCE_META[key] || { icon: UI_ICONS.pantry, label: key }),
     }));
 
   return (
@@ -192,7 +196,7 @@ export function PortfolioHome() {
             return (
               <div key={cat.key}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-straw">{cat.icon} {cat.label}</span>
+                  <span className="text-straw flex items-center gap-1"><ResourceGlyph icon={cat.icon} alt="" className="w-4 h-4" /> {cat.label}</span>
                   <span className="text-parchment"><AnimatedCounter value={value} duration={600} /></span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
@@ -215,12 +219,12 @@ export function PortfolioHome() {
       {/* Ресурсы */}
       {activeResources.length > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">📦 Ресурсы ({activeResources.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="inline-block w-4 h-4 align-text-bottom" /> Ресурсы ({activeResources.length})</h3>
           <div className="space-y-2">
             {activeResources.slice(0, 10).map((r) => (
               <div key={r.key} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{r.icon}</span>
+                  <ResourceGlyph icon={r.icon} alt={r.label} className="w-6 h-6" />
                   <span className="text-parchment text-xs">{r.label}</span>
                 </div>
                 <span className="text-wheat-500 text-xs font-bold">{fmtNum(r.balance)}</span>
@@ -236,7 +240,7 @@ export function PortfolioHome() {
       {/* Инструменты */}
       {(portfolio?.tools?.length ?? 0) > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">🛠️ Инструменты ({portfolio.tools.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.craft} alt="" className="w-4 h-4" /> Инструменты ({portfolio.tools.length})</h3>
           <div className="grid grid-cols-2 gap-2">
             {portfolio.tools.slice(0, 6).map((t: any) => {
               const rk = rarityKey(t.rarity);
@@ -245,7 +249,7 @@ export function PortfolioHome() {
               return (
                 <div key={t.pubkey} className="p-2 rounded-lg bg-soil-800/60">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">{TOOL_ICON[t.toolType] || "🛠️"}</span>
+                    <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={36} />
                     <div className="flex-1">
                       <p className="text-parchment text-[10px] font-medium capitalize">{t.toolType}</p>
                       <p className="text-[9px]" style={{ color: RARITY_META[rk]?.color }}>
@@ -270,7 +274,7 @@ export function PortfolioHome() {
       {/* Активные листинги */}
       {(portfolio?.listings?.length ?? 0) > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">🏷️ Активные листинги ({portfolio.listings.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.marketListing} alt="" className="w-4 h-4" /> Активные листинги ({portfolio.listings.length})</h3>
           <div className="space-y-2">
             {portfolio.listings.slice(0, 5).map((l: any) => (
               <div key={l.pubkey} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
@@ -293,7 +297,7 @@ export function PortfolioHome() {
       {/* Активные ордера */}
       {(portfolio?.orders?.length ?? 0) > 0 && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">📊 Активные ордера ({portfolio.orders.length})</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Активные ордера ({portfolio.orders.length})</h3>
           <div className="space-y-2">
             {portfolio.orders.slice(0, 5).map((o: any) => {
               const amount = Number(o.amountRemaining || 0);
@@ -301,7 +305,7 @@ export function PortfolioHome() {
               return (
                 <div key={o.pubkey} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
                   <div className="flex-1">
-                    <p className="text-parchment text-xs font-medium">{o.isBuy ? "📈 Покупка" : "📉 Продажа"}</p>
+                    <p className="text-parchment text-xs font-medium">{o.isBuy ? "Покупка" : "Продажа"}</p>
                     <p className="text-straw text-[10px]">Mint: {o.mint?.slice(0, 8)}...</p>
                   </div>
                   <div className="text-right">
@@ -319,7 +323,7 @@ export function PortfolioHome() {
 
       {/* Статистика */}
       <Card>
-        <h3 className="text-parchment font-semibold text-sm mb-3">📊 Статистика</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Статистика</h3>
         <div className="grid grid-cols-2 gap-2">
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-2xl font-bold text-wheat-500">{portfolio.stats?.toolsCount ?? 0}</p>
@@ -341,9 +345,9 @@ export function PortfolioHome() {
       </Card>
 
       {/* VIP: Расширенная аналитика */}
-      <VipGate isVip={false} feature="📊 Расширенная аналитика портфеля">
+      <VipGate isVip={false} feature="Расширенная аналитика портфеля">
         <Card>
-          <h3 className="text-parchment font-semibold text-sm mb-3">📈 Аналитика (Premium)</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Аналитика (Premium)</h3>
           <div className="space-y-2 text-straw text-xs">
             <p>• Графики доходности по категориям</p>
             <p>• Прогнозы цен на ресурсы</p>

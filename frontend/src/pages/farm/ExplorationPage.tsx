@@ -8,8 +8,10 @@ import { useFlash } from "../../lib/marketUtils";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 import { connection } from "../../lib/wallet";
+import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
-const EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset = { food: 75, wood: 35, stone: 35, meat: 50 };
+const EXPLORATION_COST = { data: 75, circuit: 35, silicon: 35, dataset: 50 };
 
 export function ExplorationPage() {
   const { address } = useWalletStore();
@@ -86,23 +88,23 @@ export function ExplorationPage() {
 
   return (
     <div className="p-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold mb-4">🗺️ Исследование</h1>
+      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2"><img src={UI_ICONS.expedition} alt="" className="w-7 h-7 object-contain" /> Исследование</h1>
       {explorationDisabled && <div className="mb-4"><FeatureDisabledNotice id="exploration" /></div>}
 
       <Card className="mb-4">
         <div className="text-center mb-4">
-          <span className="text-5xl">🏹</span>
-          <h2 className="text-parchment font-bold text-lg mt-3">Экспедиция</h2>
-          <p className="text-straw text-sm mt-2">Отправьте лук в опасное путешествие за редкими ресурсами</p>
+          <img src={toolPlate("quantum_transmitter") || ""} alt="" className="w-14 h-14 object-contain mx-auto rounded-xl" />
+          <h2 className="text-parchment font-bold text-lg mt-3">Глубокое обучение</h2>
+          <p className="text-straw text-sm mt-2">Запустите квантовый передатчик в глубокое обучение за редкими ресурсами</p>
         </div>
 
         <div className="bg-soil-800/60 rounded-xl p-4 mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3">Стоимость похода:</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-straw">📊 Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.food}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🔌 Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.wood}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🧊 Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.stone}</span></div>
-            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold">🍖 Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST // NeuroForge: Data/Circuit/Silicon/Dataset.meat}</span></div>
+            <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATA")} alt="" className="w-4 h-4" /> Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST.data}</span></div>
+            <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="w-4 h-4" /> Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST.circuit}</span></div>
+            <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="w-4 h-4" /> Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST.silicon}</span></div>
+            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATASET")} alt="" className="w-4 h-4" /> Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.dataset}</span></div>
           </div>
         </div>
 
@@ -114,8 +116,8 @@ export function ExplorationPage() {
         <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
           <h3 className="text-purple-400 font-semibold text-sm mb-2">Требования:</h3>
           <ul className="space-y-1 text-xs text-straw">
-            <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик (Bow)</span></li>
-            <li>✓ Ресурсы: FOOD, WOOD, STONE, MEAT</li>
+            <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик</span></li>
+            <li>✓ Ресурсы: Данные, Схема, Кремний, Датасет</li>
             <li>✓ Кулдаун и дневной лимит: определяются tier в программе</li>
           </ul>
         </div>
@@ -131,7 +133,7 @@ export function ExplorationPage() {
           disabled={explorationDisabled || loading || !address || !bowMint}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
         >
-          {explorationDisabled ? "Временно недоступно" : loading ? "Отправляем..." : !bowMint ? "Нужен Bow в инвентаре" : "🗺️ Отправить в поход"}
+          {explorationDisabled ? "Временно недоступно" : loading ? "Отправляем..." : !bowMint ? "Нужен передатчик в инвентаре" : "Отправить в экспедицию"}
         </button>
       </Card>
 

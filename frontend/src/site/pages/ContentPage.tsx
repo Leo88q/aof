@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ExtraSections, CrossLinks } from './ExtraSections';
 import { Link, useParams } from 'react-router-dom';
 import { pages, resources, resourcesBySlug, categoryNames, mechanicsById } from '../content/game';
+import { resourcePlate } from '../../lib/visualAssets';
 import {
   PageTitle, Section, Button, Counter, ParchmentCard, StatusBadge,
   CommitReveal, PackOpener, DrumInteract,
@@ -123,6 +124,11 @@ export function ResourcesCatalog() {
         <div className="site-grid">
           {list.map(r => (
             <Link className="site-card site-paper" key={r.id} to={'/site/resources/' + r.slug}>
+              {resourcePlate(r.id) && (
+                <span className="nf-plate" style={{ width: '100%', marginBottom: 12 }}>
+                  <img src={resourcePlate(r.id)} alt="" />
+                </span>
+              )}
               <StatusBadge status={r.status} />
               <h2>{r.name}</h2>
               <p>{r.lead}</p>
@@ -145,6 +151,13 @@ export function ResourceDetail() {
   return (
     <>
       <PageTitle eyebrow={categoryNames[resource.category]} title={resource.name} lead={resource.lead} />
+      {resourcePlate(resource.id) && (
+        <Section>
+          <span className="nf-plate" style={{ width: 'min(100%, 360px)' }}>
+            <img src={resourcePlate(resource.id)} alt={resource.name} />
+          </span>
+        </Section>
+      )}
       <Section>
         <StatusBadge status={resource.status} />
         {resource.description.map(p => <p key={p}>{p}</p>)}

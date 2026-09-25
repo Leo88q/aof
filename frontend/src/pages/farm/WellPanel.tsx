@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/Card";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 
 const WEATHER_RATES = {
-  drought: { label: "Блэкаут", icon: "☀️", rate: 0, color: "#ef4444" },
-  sunny: { label: "Номинал", icon: "🌤️", rate: 5, color: "#f59e0b" },
-  rain: { label: "Скачок", icon: "🌧️", rate: 15, color: "#3b82f6" },
-  festival: { label: "Френзи", icon: "🎉", rate: 20, color: "#a855f7" },
+  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#ef4444" },
+  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#f59e0b" },
+  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#3b82f6" },
+  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#a855f7" },
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;
@@ -99,7 +102,7 @@ export function WellPanel() {
 
       {!weather || !w ? (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
-          <p className="text-straw text-xs">WeatherState не найден. Без него программа не может рассчитать воду.</p>
+          <p className="text-straw text-xs">WeatherState не найден. Без него программа не может рассчитать энергопоток.</p>
           <button onClick={crankWeather} disabled={cranking} className="w-full py-2 rounded-lg bg-amber-600 text-parchment text-sm font-bold disabled:opacity-50">
             {cranking ? "Обновляем…" : "Обновить погоду on-chain"}
           </button>
@@ -107,7 +110,7 @@ export function WellPanel() {
       ) : (
         <>
           <div className="flex items-center gap-3">
-            <div className="text-5xl">{w.icon}</div>
+            <ResourceGlyph icon={w.icon} alt={w.label} className="w-14 h-14 mx-auto" />
             <div className="flex-1">
               <p className="text-straw text-xs">Нагрузка сети: <b style={{ color: w.color }}>{w.label}</b></p>
               <p className="text-straw text-xs">Скорость: <b className="text-parchment">{w.rate}</b> 💧/час</p>
@@ -120,19 +123,19 @@ export function WellPanel() {
               <span className="text-parchment font-bold text-sm">Определяется программой</span>
             </div>
             <p className="text-straw text-[10px] mt-2">
-              Итоговое количество воды вычисляется on-chain по времени и погоде;
+              Итоговый энергопоток вычисляется on-chain по времени и нагрузке сети;
               локальная оценка не показывается.
             </p>
             {!well && <p className="text-straw text-[10px] mt-2">PDA сетевой станции ещё нет. Первый вызов создаёт её и начинает накопление.</p>}
           </div>
 
           <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
-            {collecting ? "⏳ Обрабатываем…" : !well ? "💧 Создать колодец" : "💧 Собрать воду on-chain"}
+            {collecting ? "Обрабатываем…" : !well ? "Создать сетевую станцию" : "Собрать энергопоток on-chain"}
           </button>
         </>
       )}
 
-      {message && <p className="text-straw text-xs text-center">{message}</p>}
+      {message && <p className="text-straw text-xs text-center"><NoticeMsg text={message} /></p>}
       <p className="text-straw text-[10px] text-center">Расчёт не является локальным балансом: итоговую эмиссию определяет aof-core.</p>
     </Card>
   );

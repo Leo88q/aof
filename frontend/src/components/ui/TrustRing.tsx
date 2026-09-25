@@ -7,12 +7,13 @@ interface TrustRingProps {
 }
 
 // Метафора роста модели: нейрон → сеть → сигнал → сингулярность
+import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 const tierMeta: Record<number, { icon: string; label: string; color: string }> = {
-  1: { icon: "🌱", label: "Нейрон", color: "#6bbf59" },
+  1: { icon: resourceIcon("NEURON") || "", label: "Нейрон", color: "#6bbf59" },
   2: { icon: "🔗", label: "Сеть", color: "#4e9d42" },
-  3: { icon: "📡", label: "Сигнал", color: "#e8a33d" },
-  4: { icon: "🤖", label: "Модель", color: "#d97941" },
-  5: { icon: "👑", label: "Сингулярность", color: "#b8863b" },
+  3: { icon: resourceIcon("SIGNAL") || "", label: "Сигнал", color: "#e8a33d" },
+  4: { icon: resourceIcon("MODEL") || "", label: "Модель", color: "#d97941" },
+  5: { icon: UI_ICONS.rewardCore, label: "Сингулярность", color: "#b8863b" },
 };
 
 export function TrustRing({ score, tier, size = 120 }: TrustRingProps) {
@@ -57,7 +58,7 @@ export function TrustRing({ score, tier, size = 120 }: TrustRingProps) {
           transition={{ delay: 0.5, type: "spring" }}
           className="text-3xl"
         >
-          {meta.icon}
+          <img src={meta.icon} alt="" className="w-4 h-4 object-contain" />
         </motion.span>
         <span className="text-xs text-straw mt-1">{score}</span>
       </div>

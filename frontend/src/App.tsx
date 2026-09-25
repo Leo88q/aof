@@ -5,6 +5,7 @@ import { TabPager } from "./nav/TabPager";
 import { TabBar } from "./nav/TabBar";
 import { AppWalletProvider } from "./wallet/WalletProvider";
 import { useVipStatus } from "./lib/useVipStatus";
+import { SceneBackdrop } from "./components/visual/SceneBackdrop";
 
 // Импортируем наши существующие страницы
 import { FarmDashboard } from "./pages/farm/FarmDashboard";
@@ -41,6 +42,7 @@ export default function App() {
       <VipLoader />
       <NavProvider tabs={["farm", "tools", "economy", "market", "quests", "profile"]} roots={ROOTS}>
         <div className="app-shell">
+          <SceneBackdrop />
         <Toast />
           <TabPager />
           <TabBar />

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 export function WeatherOverlay({ type }: { type: string }) {
   if (type === "rain") {
@@ -31,7 +32,7 @@ export function WeatherOverlay({ type }: { type: string }) {
           animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.1, 1] }}
           transition={{ duration: 3, repeat: Infinity }}
         >
-          ☀️
+          <img src={UI_ICONS.weatherNominal} alt="" className="w-8 h-8 object-contain" />
         </motion.div>
       </div>
     );

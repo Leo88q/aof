@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface NpcStats {
   name: string;
@@ -82,7 +84,7 @@ export function NpcDashboard() {
       <Card className="mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-4xl">🤖</span>
+            <ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-12 h-12 mx-auto" />
             <div>
               <h2 className="text-parchment font-bold text-lg">{stats?.name || "NPC Торговец"}</h2>
               <p className="text-straw text-sm">Автономный торговый агент</p>
@@ -99,7 +101,7 @@ export function NpcDashboard() {
 
       {stats && (
         <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3">📊 Статистика сегодня</h3>
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Статистика сегодня</h3>
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-lg bg-soil-800/60 text-center">
               <p className="text-wheat-500 text-2xl font-bold">{stats.totalTradesToday}</p>
@@ -116,7 +118,7 @@ export function NpcDashboard() {
           </div>
           
           <div className="mt-4 p-3 rounded-lg bg-soil-800/40">
-            <h4 className="text-parchment text-xs font-semibold mb-2">🎯 Стратегия</h4>
+            <h4 className="text-parchment text-xs font-semibold mb-2 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Стратегия</h4>
             <div className="flex gap-4 text-xs">
               <div>
                 <span className="text-straw">Премия покупки:</span>{" "}
@@ -143,7 +145,7 @@ export function NpcDashboard() {
       )}
 
       <Card>
-        <h3 className="text-parchment font-semibold text-sm mb-3">📜 Последние сделки</h3>
+        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Последние сделки</h3>
         {recentTrades.length === 0 ? (
           <p className="text-straw text-center py-8">Пока нет сделок</p>
         ) : (
@@ -166,7 +168,7 @@ export function NpcDashboard() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{isBuy ? "📈" : "📉"}</span>
+                      <ResourceGlyph icon={isBuy ? UI_ICONS.chartsUp : UI_ICONS.chartsDown} alt="" className="w-6 h-6" />
                       <div>
                         <p className="text-parchment font-bold text-sm">
                           {isBuy ? "BUY" : "SELL"} {resource}

@@ -3,12 +3,13 @@ import { Pantry } from "./Pantry";
 import { Workshop } from "./Workshop";
 import { SeasonCalendar } from "./SeasonCalendar";
 import { ResourceOverview } from "./ResourceOverview";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const SUB_TABS = [
-  { key: "overview", label: "Обзор", icon: "📊" },
-  { key: "pantry", label: "Кладовая", icon: "🏺" },
-  { key: "workshop", label: "Мастерская", icon: "⚒️" },
-  { key: "calendar", label: "Эпохи", icon: "📅" },
+  { key: "overview", label: "Обзор", icon: UI_ICONS.economyOverview },
+  { key: "pantry", label: "Кладовая", icon: UI_ICONS.pantry },
+  { key: "workshop", label: "Мастерская", icon: UI_ICONS.economyWorkshop },
+  { key: "calendar", label: "Эпохи", icon: UI_ICONS.epochs },
 ];
 
 export function EconomyHome() {
@@ -22,7 +23,11 @@ export function EconomyHome() {
             className={"sub-tab-btn" + (sub === t.key ? " active" : "")}
             onClick={() => setSub(t.key)}
           >
-            <span className="sub-tab-icon">{t.icon}</span>
+            <span className="sub-tab-icon">
+              {t.icon.startsWith("/") ? (
+                <img src={t.icon} alt="" width={16} height={16} style={{ objectFit: "contain", display: "block" }} />
+              ) : t.icon}
+            </span>
             <span>{t.label}</span>
           </button>
         ))}

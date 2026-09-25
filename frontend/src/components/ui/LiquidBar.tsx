@@ -11,7 +11,11 @@ export function LiquidBar({ level, color = "#6bbf59", label, icon }: LiquidBarPr
   const isHigh = level >= 90;
   return (
     <div className="flex items-center gap-3">
-      {icon && <span className="text-xl">{icon}</span>}
+      {icon && (icon.startsWith("/") ? (
+        <img src={icon} alt="" className="w-6 h-6 object-contain" />
+      ) : (
+        <span className="text-xl">{icon}</span>
+      ))}
       <div className="flex-1">
         {label && (
           <div className="flex justify-between text-xs text-straw mb-1">

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 interface LeaderboardEntry {
   rank: number;
@@ -40,7 +42,7 @@ export function LeaderboardPage() {
   return (
     <div className="p-4 pb-24">
       <Card className="mb-4">
-        <h2 className="text-parchment font-bold text-lg mb-2">🏆 Топ игроков по рейтингу</h2>
+        <h2 className="text-parchment font-bold text-lg mb-2 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.rewardTrophy} alt="" className="w-6 h-6" /> Топ игроков по рейтингу</h2>
         <p className="text-straw text-sm">
           Игроки с лучшими оценками от сообщества (минимум 5 оценок)
         </p>
@@ -55,7 +57,7 @@ export function LeaderboardPage() {
       ) : (
         <div className="space-y-2">
           {leaderboard.map((entry, i) => {
-            const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : "";
+            const medal = entry.rank === 1 ? UI_ICONS.medalGold : entry.rank === 2 ? UI_ICONS.medalSilver : entry.rank === 3 ? UI_ICONS.medalBronze : "";
             
             return (
               <motion.div
@@ -68,7 +70,7 @@ export function LeaderboardPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-8 text-center">
                       {medal ? (
-                        <span className="text-2xl">{medal}</span>
+                        <span className="text-2xl"><ResourceGlyph icon={medal} alt="" className="w-6 h-6" /></span>
                       ) : (
                         <span className="text-parchment font-bold">#{entry.rank}</span>
                       )}
@@ -85,7 +87,7 @@ export function LeaderboardPage() {
                     
                     <div className="text-right">
                       <div className="flex items-center gap-1">
-                        <span className="text-wheat-500 text-xl">★</span>
+                        <ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-5 h-5" />
                         <span className="text-parchment font-bold text-lg">
                           {entry.average.toFixed(2)}
                         </span>

@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
 import "./theme/globals.css";
 import "./theme/manor.css";
+import "./theme/plates.css";
 import "./ui/fonts";
 import "./ui/tokens.css";
 import "./ui/base.css";

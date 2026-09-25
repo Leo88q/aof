@@ -10,6 +10,7 @@ import {
   ALL_TRADE_RESOURCES, fmtSol, shortAddr, toNum, useTreasury, useFlash,
 } from "../../lib/marketUtils";
 import { loadMints } from "../../lib/mints";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 // Ресурсы — SPL 9 decimals: 1 единица = 1e9 базовых
 const fmtRes = (v: any) => (toNum(v) / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -161,14 +162,14 @@ export function OrderbookPage() {
         >
           {resources.map((r) => (
             <option key={r.key} value={r.key}>
-              {r.icon} {r.label}
+              <ResourceGlyph icon={r.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {r.label}
             </option>
           ))}
         </select>
         <div className="mt-2 text-xs text-straw">
           {resources.length === 0
             ? "Ресурсные mint-ы не инициализированы — торговля отключена."
-            : <>Выбрано: <span className="text-parchment font-bold">{res.icon} {res.label}</span></>}
+            : <>Выбрано: <span className="text-parchment font-bold"><ResourceGlyph icon={res.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {res.label}</span></>}
         </div>
       </div>
 
@@ -187,7 +188,7 @@ export function OrderbookPage() {
             <p className="text-sprout-500 font-bold">{bestBid ? `${fmtSol(bestBid.priceLamportsPerUnit)} ◎` : "—"}</p>
           </div>
           <div className="text-center">
-            <p className="text-straw text-xs">{res.icon} {res.label}</p>
+            <p className="text-straw text-xs"><ResourceGlyph icon={res.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {res.label}</p>
             {crossable ? (
               <button onClick={match} className="mt-1 text-xs px-3 py-1.5 rounded-lg bg-wheat-600 text-white font-semibold animate-pulse">
                 ⚡ Свести

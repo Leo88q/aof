@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { UI_ICONS } from "../lib/visualAssets";
+import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { api } from "../lib/api";
 import { useFlash } from "../lib/marketUtils";
 import { useWalletStr } from "../lib/useWalletStr";
@@ -43,8 +45,8 @@ export function ComebackModal({ bonus, onClose }: ComebackModalProps) {
 
   const rewardText = [
     `${bonus.reward.core} WOOD`,
-    bonus.reward.drumSpin ? "+ 🎡 Спин барабана" : null,
-    bonus.reward.forgeFree ? "+ 🔨 Бесплатная ковка" : null,
+    bonus.reward.drumSpin ? <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.drum} alt="" className="w-4 h-4" /> Спин барабана</span> : null,
+    bonus.reward.forgeFree ? <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.craft} alt="" className="w-4 h-4" /> Бесплатная ковка</span> : null,
   ].filter(Boolean).join(" ");
 
   return (
@@ -96,7 +98,7 @@ export function ComebackModal({ bonus, onClose }: ComebackModalProps) {
               disabled={claiming}
               className="flex-1 py-3 rounded-2xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
             >
-              {claiming ? "Отправляем..." : "🎁 Забрать"}
+              {claiming ? "Отправляем..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-4 h-4" /> Забрать</span>}
             </button>
           </div>
 

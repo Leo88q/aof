@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../visual/ResourceGlyph";
 import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
 
@@ -36,10 +38,13 @@ export function WalletButton() {
       {connecting
         ? "Подключение..."
         : connected
-        ? isVip
-          ? `👑 ${walletName} • ${shortAddr}`
-          : `🟢 ${walletName} • ${shortAddr}`
-        : "👛 Подключить кошелёк"}
+        ? <span className="inline-flex items-center gap-1.5">
+            <ResourceGlyph icon={isVip ? UI_ICONS.rewardCore : UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" />
+            {walletName} • {shortAddr}
+          </span>
+        : <span className="inline-flex items-center gap-1.5">
+            <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
+          </span>}
     </motion.button>
   );
 }

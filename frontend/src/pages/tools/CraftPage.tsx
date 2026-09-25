@@ -4,7 +4,11 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
-import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, shortAddr, useFlash } from "../../lib/marketUtils";
 import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
 
@@ -15,12 +19,12 @@ const RARITY_RU: Record<string, string> = {
 
 // [НОВОЕ] Метаданные всех 6 ресурсов
 const RES_META: Record<string, { icon: string; label: string; color: string }> = {
-  wood:   { icon: "🪵", label: "Схема",   color: "text-amber-400" },
-  stone:  { icon: "🪨", label: "Кремний",   color: "text-stone-400" },
-  food:   { icon: "🌾", label: "Еда",      color: "text-yellow-500" },
-  seeds:  { icon: "🌱", label: "Нейрон",   color: "text-sprout-500" },
-  water:  { icon: "💧", label: "Энергопоток",     color: "text-water-500" },
-  potato: { icon: "🥔", label: "MIND",   color: "text-wheat-500" },
+  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-amber-400" },
+  stone: { icon: resourceIcon("stone") || "", label: "Кремний",   color: "text-stone-400" },
+  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-yellow-500" },
+  seeds: { icon: resourceIcon("seeds") || "", label: "Нейрон",   color: "text-sprout-500" },
+  water: { icon: resourceIcon("water") || "", label: "Энергопоток",     color: "text-water-500" },
+  potato: { icon: resourceIcon("potato") || "", label: "MIND",   color: "text-wheat-500" },
 };
 
 export function CraftPage() {
@@ -184,7 +188,7 @@ export function CraftPage() {
       if (r.success) {
         const q = craftQuote;
         if (q) {
-          setCraftReceipt(`Списано: ${fmtNum(q.wood)} 🪵 + ${fmtNum(q.stone)} 🪨 + ${fmtNum(q.food)} 🌾 + ${fmtNum(q.seeds)} 🌱 + ${fmtNum(q.water)} 💧 + ${fmtNum(q.potato)} 🥔`);
+          setCraftReceipt(`Списано: схема ${fmtNum(q.wood)} + кремний ${fmtNum(q.stone)} + данные ${fmtNum(q.food)} + нейрон ${fmtNum(q.seeds)} + энергопоток ${fmtNum(q.water)} + MIND ${fmtNum(q.potato)}`);
         }
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setNewMint("");
@@ -238,7 +242,7 @@ export function CraftPage() {
                   } ${isMax ? "opacity-50 cursor-not-allowed" : "active:scale-95"}`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">{TOOL_ICON[t.toolType] || "🛠️"}</span>
+                    <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={40} />
                     <div className="flex-1">
                       <p className="text-parchment text-xs font-medium capitalize">{t.toolType}</p>
                       <p className="text-[10px]" style={{ color: RARITY_META[rk]?.color }}>
@@ -280,7 +284,7 @@ export function CraftPage() {
               disabled={busyPrep}
               className="w-full py-3 rounded-2xl bg-wheat-600 text-soil-950 font-semibold active:scale-95 transition-transform disabled:opacity-50"
             >
-              {busyPrep ? "Готовим..." : "🔨 Подготовить новый минт"}
+              {busyPrep ? "Готовим..." : "Подготовить новый минт"}
             </button>
           )}
         </Card>
@@ -353,7 +357,7 @@ export function CraftPage() {
             disabled={!newMint || craftQuote && ["wood","stone","food","seeds","water","potato"].some(r => (balances[r]||0) < (craftQuote[r]||0))}
             className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-gold to-wheat-600 text-soil-950 font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ⚒️ Выковать {RARITY_RU[targetRk]}
+            Выковать {RARITY_RU[targetRk]}
           </button>
 
           {craftReceipt && (

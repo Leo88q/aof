@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
+import { toolPlate } from "../../lib/visualAssets";
 import { Card } from "../../components/ui/Card";
 import { useWalletStr } from "../../lib/useWalletStr";
 
 const toolTypes = [
   // [REBRAND] ids = канонические NeuroForge (бэкенд нормализует legacy при mark-seen)
-  { id: "plasma_cutter", icon: "⚡", label: "Плазменный резак" },
-  { id: "silicon_extractor", icon: "🔲", label: "Кремниевый экстрактор" },
-  { id: "data_harvester", icon: "📡", label: "Сборщик данных" },
-  { id: "quantum_transmitter", icon: "🛰️", label: "Квантовый передатчик" },
-  { id: "neural_seeder", icon: "🧠", label: "Нейральный посев" },
+  { id: "plasma_cutter", icon: toolPlate("plasma_cutter") || "", label: "Плазменный резак" },
+  { id: "silicon_extractor", icon: toolPlate("silicon_extractor") || "", label: "Кремниевый экстрактор" },
+  { id: "data_harvester", icon: toolPlate("data_harvester") || "", label: "Сборщик данных" },
+  { id: "quantum_transmitter", icon: toolPlate("quantum_transmitter") || "", label: "Квантовый передатчик" },
+  { id: "neural_seeder", icon: toolPlate("neural_seeder") || "", label: "Нейральный посев" },
 ];
 
 const rarities = [

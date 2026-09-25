@@ -5,7 +5,11 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
-import { TOOL_ICON, RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import {toolPlate, resourceIcon} from "../../lib/visualAssets";
+import { UI_ICONS } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { WeatherOverlay } from "../../components/farm/WeatherOverlay";
 import { toNum, useFlash } from "../../lib/marketUtils";
 
@@ -14,19 +18,19 @@ const GRID = 8;
 // validator tests. Enable explicitly only in a verified test environment.
 const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
 
-// Постройки по типу инструмента (ТЗ v4 §1: топор — лесопилка, кирка — шахта, лук — вышка)
+// Постройки по типу инструмента (ТЗ v4 §1: резчик — стойка схем, экстрактор — шахта кремния, передатчик — вышка данных)
 // [REBRAND] NeuroForge постройки; legacy-id (axe/pick/spear/bow) → те же постройки для старых инструментов.
 const BUILDING: Record<string, { emoji: string; name: string }> = {
-  plasma_cutter: { emoji: "⚡", name: "Плазменный цех" },
-  silicon_extractor: { emoji: "⛏️", name: "Кремниевая шахта" },
-  data_harvester: { emoji: "📡", name: "Пост сбора данных" },
-  quantum_transmitter: { emoji: "🛰️", name: "Квантовая вышка" },
-  neural_seeder: { emoji: "🌱", name: "Посевная станция" },
-  axe: { emoji: "⚡", name: "Плазменный цех" },
-  pick: { emoji: "⛏️", name: "Кремниевая шахта" },
-  spear: { emoji: "📡", name: "Пост сбора данных" },
-  bow: { emoji: "🛰️", name: "Квантовая вышка" },
-  reaper: { emoji: "🌱", name: "Посевная станция" },
+  plasma_cutter: { emoji: "", name: "Плазменный цех" },
+  silicon_extractor: { emoji: "", name: "Кремниевая шахта" },
+  data_harvester: { emoji: "", name: "Пост сбора данных" },
+  quantum_transmitter: { emoji: "", name: "Квантовая вышка" },
+  neural_seeder: { emoji: "", name: "Посевная станция" },
+  axe: { emoji: "", name: "Плазменный цех" },
+  pick: { emoji: "", name: "Кремниевая шахта" },
+  spear: { emoji: "", name: "Пост сбора данных" },
+  bow: { emoji: "", name: "Квантовая вышка" },
+  reaper: { emoji: "", name: "Посевная станция" },
 };
 
 // Слоты построек по центру участка (спиралью наружу)
@@ -123,21 +127,21 @@ export function FarmPlot() {
                 } ${tool ? "cursor-pointer" : "cursor-default"}`}>
                 {tool ? (
                   <span className="relative">
-                    {BUILDING[tool.toolType]?.emoji || TOOL_ICON[tool.toolType] || "🛠️"}
+                    <ArtPlate src={toolPlate(tool.toolType, rarityKey(tool.rarity))} alt={tool.toolType || "Инструмент"} size={36} />
                     {tool.isMining && !done && (
-                      <span className="absolute -top-2 -right-2 text-xs animate-pulse">💨</span>
+                      <span className="absolute -top-2 -right-2 text-xs animate-pulse"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /></span>
                     )}
-                    {done && <span className="absolute -top-2 -right-2 text-xs">✅</span>}
+                    {done && <span className="absolute -top-2 -right-2 text-xs"><ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" /></span>}
                   </span>
-                ) : locked ? "🔒" : decor ? "🌾" : ""}
+                ) : locked ? <ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-5 h-5" /> : decor ? <ResourceGlyph icon={resourceIcon("synapse") || ""} alt="" className="w-5 h-5" /> : ""}
               </button>
             );
           })}
         </div>
         <div className="flex gap-4 justify-center text-xs text-straw mt-3">
-          <span>🪚/⛏️ постройки (твои инструменты в сарае)</span>
-          <span>💨 майнит</span>
-          <span>🔒 расширение</span>
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("plasma_cutter") || ""} alt="" className="w-4 h-4" />/<ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> постройки (твои инструменты в стойке)</span>
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> майнит</span>
+          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> расширение</span>
         </div>
       </Card>
 
@@ -145,7 +149,19 @@ export function FarmPlot() {
       {weather && typeof weather.type === "string" && (
         <Card className="mb-4 flex items-center gap-3">
           <span className="text-2xl">
-            {weather.type === "rain" ? "🌧️" : weather.type === "sunny" ? "☀️" : "🌵"}
+            <ResourceGlyph
+              icon={
+                weather.type === "rain"
+                  ? UI_ICONS.weatherSurge
+                  : weather.type === "sunny"
+                    ? UI_ICONS.weatherNominal
+                    : weather.type === "festival"
+                      ? UI_ICONS.weatherFrenzy
+                      : UI_ICONS.weatherBlackout
+              }
+              alt=""
+              className="w-8 h-8"
+            />
           </span>
           <div>
             <p className="text-sm text-parchment capitalize">{weather.type.replace("_", " ")}</p>
@@ -158,9 +174,9 @@ export function FarmPlot() {
       <Card className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-parchment text-sm font-semibold">Построек на участке: {staked.length}</p>
-          <p className="text-straw text-xs">В инвентаре (не в сарае): {freeCount}</p>
+          <p className="text-straw text-xs">В инвентаре (не в стойке): {freeCount}</p>
         </div>
-        <span className="text-2xl">🏚️</span>
+        <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locServerRuins} alt="" className="w-8 h-8" /></span>
       </Card>
 
       {/* Bottom sheet по тапу на постройку */}
@@ -171,7 +187,7 @@ export function FarmPlot() {
             <Card className="bg-soil-900/95 backdrop-blur-xl border border-soil-700">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-parchment font-semibold flex items-center gap-2">
-                  <span className="text-2xl">{BUILDING[selected.toolType]?.emoji || TOOL_ICON[selected.toolType] || "🛠️"}</span>
+                  <ArtPlate src={toolPlate(selected.toolType, rarityKey(selected.rarity))} alt={selected.toolType || "Инструмент"} size={36} />
                   {BUILDING[selected.toolType]?.name || "Постройка"}
                 </h3>
                 <button onClick={() => setSelected(null)} className="text-straw px-2">✕</button>
@@ -183,15 +199,15 @@ export function FarmPlot() {
                 toNum(selected.miningEnd) <= Date.now() / 1000 ? (
                   <button onClick={() => quick("collect")} disabled={!MINING_ENABLED || busy}
                     className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-                    {MINING_ENABLED ? "📦 Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
+                    {MINING_ENABLED ? "Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
                   </button>
                 ) : (
-                  <p className="text-straw text-xs mt-1">⛏️ Идёт добыча — вернись, когда экстрактор закончит</p>
+                  <p className="text-straw text-xs mt-1 inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> Идёт добыча — вернись, когда экстрактор закончит</p>
                 )
               ) : (
                 <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}
                   className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-                  {MINING_ENABLED ? "⛏️ Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
+                  {MINING_ENABLED ? "Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
                 </button>
               )}
               <p className="text-straw text-xs mt-2 text-center">Тонкая настройка — во вкладке «Инструменты»</p>

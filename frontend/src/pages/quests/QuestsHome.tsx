@@ -7,11 +7,12 @@ import { RewardBurst } from "../../components/animations/RewardBurst";
 import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
+import { UI_ICONS } from "../../lib/visualAssets";
 
 const tabs = [
-  { id: "daily", icon: "📅", label: "Задания" },
-  { id: "challenges", icon: "🏆", label: "Челленджи" },
-  { id: "achievements", icon: "🎖️", label: "Достижения" },
+  { id: "daily", icon: UI_ICONS.questsDaily, label: "Задания" },
+  { id: "challenges", icon: UI_ICONS.challenges, label: "Челленджи" },
+  { id: "achievements", icon: UI_ICONS.achievements, label: "Достижения" },
 ];
 
 export function QuestsHome() {
@@ -88,7 +89,11 @@ export function QuestsHome() {
                 : "bg-soil-850 text-straw"
             }`}
           >
-            <span>{tab.icon}</span>
+            {tab.icon.startsWith("/") ? (
+              <img src={tab.icon} alt="" className="inline-block w-4 h-4 object-contain" />
+            ) : (
+              <span>{tab.icon}</span>
+            )}
             {tab.label}
           </button>
         ))}
@@ -154,9 +159,12 @@ export function QuestsHome() {
       {/* Челленджи */}
       {activeTab === "challenges" && (
         <Card>
-          <h3 className="text-parchment font-semibold mb-3">🏆 Недельный челлендж</h3>
+          <h3 className="text-parchment font-semibold mb-3 flex items-center gap-2">
+            <img src={UI_ICONS.challenges} alt="" className="w-5 h-5 object-contain" />
+            Недельный челлендж
+          </h3>
           <p className="text-straw text-sm mb-3">Внесение отключено до появления проверяемого списания медалей и расчёта наград.</p>
-          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели · только просмотр" icon="🏆" />
+          <LiquidBar level={64} color="#e8a33d" label="Прогресс недели · только просмотр" icon={UI_ICONS.challenges} />
           <button
             type="button"
             disabled

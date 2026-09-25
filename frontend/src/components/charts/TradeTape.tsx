@@ -23,7 +23,7 @@ export function TradeTape({ trades }: { trades: Trade[] }) {
               {new Date(trade.ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
             </span>
             <span className={trade.side === "buy" ? "text-sprout-500" : "text-wheat-700"}>
-              {trade.side === "buy" ? "🪴 покупка" : trade.side === "sell" ? "🪣 продажа" : "⚙️ кранк"}
+              {trade.side === "buy" ? "покупка" : trade.side === "sell" ? "продажа" : "кранк"}
             </span>
             <span className="text-parchment font-medium">{trade.pricePotato.toFixed(4)}</span>
           </motion.div>
