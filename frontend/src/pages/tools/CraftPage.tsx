@@ -5,6 +5,8 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+import { resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, shortAddr, useFlash } from "../../lib/marketUtils";
@@ -17,12 +19,12 @@ const RARITY_RU: Record<string, string> = {
 
 // [НОВОЕ] Метаданные всех 6 ресурсов
 const RES_META: Record<string, { icon: string; label: string; color: string }> = {
-  wood:   { icon: "🪵", label: "Схема",   color: "text-amber-400" },
-  stone:  { icon: "🪨", label: "Кремний",   color: "text-stone-400" },
-  food:   { icon: "🌾", label: "Еда",      color: "text-yellow-500" },
-  seeds:  { icon: "🌱", label: "Нейрон",   color: "text-sprout-500" },
-  water:  { icon: "💧", label: "Энергопоток",     color: "text-water-500" },
-  potato: { icon: "🥔", label: "MIND",   color: "text-wheat-500" },
+  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-amber-400" },
+  stone: { icon: resourceIcon("stone") || "", label: "Кремний",   color: "text-stone-400" },
+  food: { icon: resourceIcon("food") || "", label: "Еда",      color: "text-yellow-500" },
+  seeds: { icon: resourceIcon("seeds") || "", label: "Нейрон",   color: "text-sprout-500" },
+  water: { icon: resourceIcon("water") || "", label: "Энергопоток",     color: "text-water-500" },
+  potato: { icon: resourceIcon("potato") || "", label: "MIND",   color: "text-wheat-500" },
 };
 
 export function CraftPage() {

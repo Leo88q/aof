@@ -5,12 +5,14 @@ import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
 import { getMintAsync } from "../../lib/mints";
+import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 // Must match aof-core/src/instructions/start_milling.rs and constants.rs.
 const MILL_SIZES = {
-  small:  { label: "Малая",  batchSize: 1, wheat: 6,  stone: 1, flour: 3,  time: 3600, icon: "⚙️" },
-  medium: { label: "Средняя", batchSize: 2, wheat: 18, stone: 2, flour: 10, time: 10800, icon: "⚙️⚙️" },
-  large:  { label: "Большая", batchSize: 3, wheat: 40, stone: 4, flour: 24, time: 21600, icon: "⚙️⚙️⚙️" },
+  small:  { label: "Малая",  batchSize: 1, wheat: 6,  stone: 1, flour: 3,  time: 3600, icon: UI_ICONS.mill, sizeCls: "w-4 h-4" },
+  medium: { label: "Средняя", batchSize: 2, wheat: 18, stone: 2, flour: 10, time: 10800, icon: UI_ICONS.mill, sizeCls: "w-5 h-5" },
+  large:  { label: "Большая", batchSize: 3, wheat: 40, stone: 4, flour: 24, time: 21600, icon: UI_ICONS.mill, sizeCls: "w-6 h-6" },
 };
 
 interface MillState {
@@ -138,7 +140,7 @@ export function MillPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg">⚙️ Переработка</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-5 h-5" /> Переработка</h3>
         <p className="text-straw text-sm text-center py-4">Подключите кошелёк</p>
       </Card>
     );
@@ -146,7 +148,7 @@ export function MillPanel() {
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg">⚙️ Переработка</h3>
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-5 h-5" /> Переработка</h3>
 
       {!millState && (
         <>
@@ -161,7 +163,7 @@ export function MillPanel() {
                     : "bg-soil-700/50 border border-straw/20 hover:border-amber-500"
                 }`}
               >
-                <div className="text-xl">{MILL_SIZES[key].icon}</div>
+                <ResourceGlyph icon={MILL_SIZES[key].icon} alt="" className={(MILL_SIZES[key] as any).sizeCls ?? "w-5 h-5"} />
                 <div className="text-[10px] text-parchment font-bold">{MILL_SIZES[key].label}</div>
               </button>
             ))}
@@ -179,7 +181,7 @@ export function MillPanel() {
             disabled={milling}
             className="w-full py-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 text-parchment font-bold text-sm disabled:opacity-50"
           >
-            {milling ? "⚙️ Запуск..." : `⚙️ Запустить помол`}
+            {milling ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-4 h-4" /> Запуск...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-4 h-4" /> Запустить помол</span>}
           </button>
         </>
       )}
@@ -187,7 +189,7 @@ export function MillPanel() {
       {millState && (
         <div className="bg-soil-800/50 rounded-lg p-4 space-y-3">
           <div className="text-center">
-            <div className="text-4xl mb-2 animate-spin" style={{ animationDuration: "3s" }}>⚙️</div>
+            <ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-10 h-10 mx-auto animate-spin" />
             {timeLeft > 0 ? (
               <>
                 <p className="text-parchment font-bold">Помол в процессе...</p>
@@ -196,7 +198,7 @@ export function MillPanel() {
             ) : (
               <>
                 <p className="text-parchment font-bold">Сигнал готова!</p>
-                <p className="text-wheat-500 text-2xl font-bold">{millState.flourReady} 🥣</p>
+                <p className="text-wheat-500 text-2xl font-bold">{millState.flourReady} <ResourceGlyph icon={resourceIcon("FLOUR")} alt="" className="inline-block w-5 h-5 align-text-bottom" /></p>
               </>
             )}
           </div>
@@ -207,7 +209,7 @@ export function MillPanel() {
               disabled={milling}
               className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50"
             >
-              {milling ? "..." : `🥣 Собрать муку`}
+              {milling ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("FLOUR")} alt="" className="w-4 h-4" /> Собрать муку</span>}
             </button>
           )}
         </div>

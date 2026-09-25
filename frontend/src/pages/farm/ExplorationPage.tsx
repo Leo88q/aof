@@ -8,7 +8,8 @@ import { useFlash } from "../../lib/marketUtils";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
 import { connection } from "../../lib/wallet";
-import { UI_ICONS } from "../../lib/visualAssets";
+import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 const EXPLORATION_COST = { data: 75, circuit: 35, silicon: 35, dataset: 50 };
 
@@ -92,7 +93,7 @@ export function ExplorationPage() {
 
       <Card className="mb-4">
         <div className="text-center mb-4">
-          <span className="text-5xl">🏹</span>
+          <img src={toolPlate("quantum_transmitter") || ""} alt="" className="w-14 h-14 object-contain mx-auto rounded-xl" />
           <h2 className="text-parchment font-bold text-lg mt-3">Экспедиция</h2>
           <p className="text-straw text-sm mt-2">Отправьте лук в опасное путешествие за редкими ресурсами</p>
         </div>
@@ -100,10 +101,10 @@ export function ExplorationPage() {
         <div className="bg-soil-800/60 rounded-xl p-4 mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3">Стоимость похода:</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-straw">📊 Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST.data}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🔌 Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST.circuit}</span></div>
-            <div className="flex justify-between"><span className="text-straw">🧊 Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST.silicon}</span></div>
-            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold">🍖 Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.dataset}</span></div>
+            <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATA")} alt="" className="w-4 h-4" /> Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST.data}</span></div>
+            <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="w-4 h-4" /> Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST.circuit}</span></div>
+            <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="w-4 h-4" /> Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST.silicon}</span></div>
+            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATASET")} alt="" className="w-4 h-4" /> Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.dataset}</span></div>
           </div>
         </div>
 
