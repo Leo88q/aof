@@ -4,54 +4,79 @@ export default {
   theme: {
     extend: {
       colors: {
-      aof: {
-        concrete: "var(--aof-concrete)",
-        oak: { DEFAULT: "var(--aof-oak)", light: "var(--aof-oak-light)", dark: "var(--aof-oak-dark)" },
-        copper: { DEFAULT: "var(--aof-copper)", bright: "var(--aof-copper-bright)", dark: "var(--aof-copper-dark)" },
-        terracotta: "var(--aof-terracotta)", sage: "var(--aof-sage)", golden: "var(--aof-golden)",
-        forest: "var(--aof-forest)", parchment: "var(--aof-parchment)", ember: "var(--aof-ember)",
-      },
-        // Дизайн-система MANOR (см. src/theme/manor.css). Старые имена оставлены,
-        // чтобы не менять TSX: soil = дерево, wheat = золото/янтарь, sprout = изумруд, water = стекло.
+        /* ─── NeuroForge: AI / Cyberpunk palette ─── */
+        aof: {
+          concrete: "var(--nf-concrete)",
+          oak: { DEFAULT: "var(--nf-panel)", light: "var(--nf-panel-light)", dark: "var(--nf-panel-dark)" },
+          copper: { DEFAULT: "var(--nf-cyan)", bright: "var(--nf-cyan-bright)", dark: "var(--nf-cyan-dark)" },
+          terracotta: "var(--nf-magenta)", sage: "var(--nf-green)", golden: "var(--nf-amber)",
+          forest: "var(--nf-green-dark)", parchment: "var(--nf-text)", ember: "var(--nf-danger)",
+        },
+        /* Core surfaces — dark graphite with blue undertones */
         soil: {
-          950: "#1A1A2E", // ночное небо — фон приложения
-          900: "#2C1810", // тёмный дуб
-          850: "#3E2723", // орех — поверхности карточек
-          800: "#43291a",
-          700: "#5a3a26",
-          600: "#6b501a", // тёмная бронза (линии)
+          950: "#06060F",   // deep void — app background
+          900: "#0A0A1A",   // deep space
+          850: "#10101F",   // panel surface
+          800: "#161628",
+          700: "#1E1E36",
+          600: "#2A2A48",   // border / separator
         },
+        /* Accent: neon cyan → gold (warm highlight kept for rewards) */
         wheat: {
-          500: "#FFBF00", // янтарь (свечение, легенда)
-          600: "#D4AF37", // золото (акцент, кнопки)
-          700: "#8B6919", // бронза
-          800: "#6B1F1F", // бордо
+          500: "#00D4FF",   // primary neon cyan
+          600: "#00A8CC",   // cyan press
+          700: "#007A99",   // cyan dark
+          800: "#6B1F1F",   // bordeaux (legacy compat)
         },
-        sprout: { 500: "#50C878", 600: "#3aa66e", 700: "#2D4A3E" },
-        water: { 500: "#5aa0e6", 600: "#3d7fc4" },
-        parchment: "#F5E6D3",
-        straw: "#c9b08a",
-        gold: "#D4AF37",
-        ember: "#E0115F",
+        /* Success: neon green */
+        sprout: { 500: "#00E5A0", 600: "#00C488", 700: "#1A4A3E" },
+        /* Info: electric blue */
+        water: { 500: "#4F7BFF", 600: "#3D60CC" },
+        /* Text: cool white / silver */
+        parchment: "#E0E4F0",
+        straw: "#8890B0",
+        gold: "#FFD700",
+        ember: "#FF3366",
+        /* Semantic palette */
         manor: {
-          bordeaux: "#6B1F1F", forest: "#2D4A3E", walnut: "#3E2723", bronze: "#8B6919",
-          gold: "#D4AF37", amber: "#FFBF00", emerald: "#50C878", ruby: "#E0115F",
-          parchment: "#F5E6D3", oak: "#2C1810", night: "#1A1A2E",
+          bordeaux: "#6B1F1F", forest: "#1A4A3E", walnut: "#10101F", bronze: "#007A99",
+          gold: "#FFD700", amber: "#00D4FF", emerald: "#00E5A0", ruby: "#FF3366",
+          parchment: "#E0E4F0", oak: "#0A0A1A", night: "#06060F",
+        },
+        /* NeuroForge-specific */
+        nf: {
+          cyan: "#00D4FF",
+          purple: "#9B59FF",
+          magenta: "#FF3CAC",
+          green: "#00E5A0",
+          amber: "#FFD700",
+          danger: "#FF3366",
+          panel: "#10101F",
+          "panel-light": "#1A1A30",
+          "panel-dark": "#0A0A14",
+          glow: "rgba(0, 212, 255, 0.15)",
+          "glow-purple": "rgba(155, 89, 255, 0.15)",
         },
       },
       fontFamily: {
-        sans: ["Cormorant Garamond", "EB Garamond", "Georgia", "serif"],
-        display: ["Cinzel", "Trajan Pro", "Georgia", "serif"],
-        title: ["Cinzel Decorative", "Cinzel", "Georgia", "serif"],
+        sans: ["Inter", "SF Pro Display", "system-ui", "sans-serif"],
+        display: ["Rajdhani", "Inter", "system-ui", "sans-serif"],
+        title: ["Orbitron", "Rajdhani", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "IBM Plex Mono", "ui-monospace", "monospace"],
       },
       boxShadow: {
-        card: "0 18px 34px -14px rgba(96,64,160,0.55), 0 6px 14px -8px rgba(0,0,0,0.7)",
-        glow: "0 0 22px rgba(255,191,0,0.35)",
+        card: "0 8px 32px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 212, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
+        glow: "0 0 20px rgba(0, 212, 255, 0.25), 0 0 40px rgba(0, 212, 255, 0.1)",
+        "glow-purple": "0 0 20px rgba(155, 89, 255, 0.25), 0 0 40px rgba(155, 89, 255, 0.1)",
+        "glow-green": "0 0 20px rgba(0, 229, 160, 0.25), 0 0 40px rgba(0, 229, 160, 0.1)",
+        neon: "0 0 6px rgba(0, 212, 255, 0.4), 0 0 18px rgba(0, 212, 255, 0.2)",
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "fill-up": "fillUp 1.2s ease-out forwards",
         shimmer: "shimmer 2s linear infinite",
+        "neon-pulse": "neonPulse 2s ease-in-out infinite",
+        "grid-drift": "gridDrift 20s linear infinite",
       },
       keyframes: {
         fillUp: {
@@ -61,6 +86,14 @@ export default {
         shimmer: {
           "0%": { backgroundPosition: "-1000px 0" },
           "100%": { backgroundPosition: "1000px 0" },
+        },
+        neonPulse: {
+          "0%, 100%": { boxShadow: "0 0 6px rgba(0,212,255,0.3), 0 0 18px rgba(0,212,255,0.15)" },
+          "50%": { boxShadow: "0 0 12px rgba(0,212,255,0.5), 0 0 30px rgba(0,212,255,0.25)" },
+        },
+        gridDrift: {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "40px 40px" },
         },
       },
     },

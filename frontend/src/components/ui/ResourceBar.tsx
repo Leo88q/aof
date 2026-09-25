@@ -35,9 +35,9 @@ export function ResourceBar({ owner, refreshKey }: ResourceBarProps) {
   }, [owner, refreshKey]);
 
   const items = [
-    { key: "DATA", label: "Данные", accent: "#c9a24a" },
-    { key: "CIRCUIT", label: "Схема", accent: "#6bbf59" },
-    { key: "SILICON", label: "Кремний", accent: "#9a8f82" },
+    { key: "DATA", label: "Данные", accent: "#00D4FF" },
+    { key: "CIRCUIT", label: "Схема", accent: "#00E5A0" },
+    { key: "SILICON", label: "Кремний", accent: "#9B59FF" },
   ];
 
   return (

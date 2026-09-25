@@ -86,7 +86,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
     durabilityPct > 75
       ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#6bbf59" }
       : durabilityPct > 40
-      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#c9a24a" }
+      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#00D4FF" }
       : durabilityPct > 15
       ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#b0653a" }
       : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#c2703d" };
