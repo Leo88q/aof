@@ -305,3 +305,17 @@ export function toolPlate(toolId?: string | null, rarity: string = "common"): st
 export const RESOURCE_ART: Record<string, string> = Object.fromEntries(
   RESOURCES.map((r) => [r.id, r.plate]),
 );
+
+/* ─── Brand Assets ─── */
+export const BRAND = {
+  tokenIcon: "/assets/brand/token-512.png",
+  tokenIcon256: "/assets/brand/token-256.png",
+  tokenIcon128: "/assets/brand/token-128.png",
+  appIcon: "/assets/brand/app-icon.png",
+  dappStoreIcon: "/assets/brand/dapp-512.png",
+  ogImage: "/assets/brand/og-1200x630.png",
+  walletBanner: "/assets/brand/wallet-1200x400.png",
+  tokenMetadata: "/assets/brand/token-metadata.json",
+  logoSvg: "/favicon.svg",
+  favicon: "/favicon.ico",
+} as const;

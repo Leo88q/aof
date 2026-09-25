@@ -1,0 +1,32 @@
+{
+  "name": "NeuroForge Token",
+  "symbol": "NFORGE",
+  "description": "NeuroForge — Age of Intelligence. Utility token for the AI development game on Solana. Train models, trade the future.",
+  "image": "https://neuroforge.gg/assets/brand/token-512.png",
+  "external_url": "https://neuroforge.gg",
+  "properties": {
+    "category": "gaming",
+    "creators": [
+      {
+        "name": "NeuroForge Team"
+      }
+    ],
+    "files": [
+      {
+        "uri": "https://neuroforge.gg/assets/brand/token-512.png",
+        "type": "image/png"
+      },
+      {
+        "uri": "https://neuroforge.gg/assets/brand/token-256.png",
+        "type": "image/png"
+      }
+    ]
+  },
+  "attributes": [
+    { "trait_type": "Project", "value": "NeuroForge" },
+    { "trait_type": "Genre", "value": "AI Development Game" },
+    { "trait_type": "Chain", "value": "Solana" },
+    { "trait_type": "Type", "value": "Utility Token" }
+  ],
+  "tags": ["gaming", "AI", "Solana", "DeFi", "NeuroForge"]
+}

@@ -19,7 +19,7 @@ export function SiteLayout() {
     const res = parts[0] === 'site' && parts[1] === 'resources' ? __seoRes.get(parts[2]) : undefined;
     const page = __seoPages.find((p) => p.id === id);
     const title = res ? res.name + ' · NeuroForge' : page ? page.title + ' · NeuroForge' : 'NeuroForge';
-    const desc = res ? res.lead : page ? page.lead : 'Информационный сайт игры-мастерской NeuroForge на Solana.';
+    const desc = res ? res.lead : page ? page.lead : 'NeuroForge — AI development game on Solana. Grow neurons, train models, trade the future.';
     document.title = title;
     const setMeta = (attr: string, key: string, content: string) => {
       let el = document.querySelector<HTMLMetaElement>('meta[' + attr + '="' + key + '"]');
@@ -40,9 +40,22 @@ export function SiteLayout() {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="site-logo" to="/site/home">
-            <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true">
-              <path d="M20 2l16 9v18L20 38 4 29V11z" fill="var(--aof-copper)" />
-              <path d="M20 9v23M11 15l9 8 9-8" stroke="var(--aof-forest)" strokeWidth="3" fill="none" />
+            <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+              <defs>
+                <linearGradient id="nf-logo-g" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#00D4FF"/>
+                  <stop offset="100%" stopColor="#9B59FF"/>
+                </linearGradient>
+              </defs>
+              <circle cx="8" cy="8" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
+              <circle cx="8" cy="24" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
+              <circle cx="24" cy="8" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
+              <circle cx="24" cy="24" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
+              <circle cx="16" cy="16" r="3.5" fill="url(#nf-logo-g)"/>
+              <line x1="8" y1="8" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
+              <line x1="8" y1="24" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
+              <line x1="24" y1="8" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
+              <line x1="24" y1="24" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
             </svg>
             <span>NeuroForge<span className="site-logo-sub">Age of Intelligence</span></span>
           </Link>
@@ -85,8 +98,8 @@ export function SiteLayout() {
       </main>
       <footer className="site-footer">
         <div className="site-footer-intro">
-          <h2>Оставь после себя полезную вещь.</h2>
-          <p>Информационная мастерская NeuroForge.</p>
+          <h2>Создавай модели. Торгуй интеллектом.</h2>
+          <p>NeuroForge — AI development game on Solana.</p>
         </div>
         <div className="site-footer-grid">
           {navGroups.map(g => (
