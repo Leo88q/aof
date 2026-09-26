@@ -155,7 +155,17 @@ test('#1 #22 every init / init_if_needed is a PDA with payer, space and the Syst
         const where = `${program}::${name}.${f.name}`;
         assert.match(f.attrs, /\bpayer\s*=/, `${where}: init without payer`);
         const ata = /associated_token::authority\s*=/.test(f.attrs);
-        if (!ata) {
+        // [F-06] Settlement NFTs are PDA mints created by the program itself:
+        // Anchor sizes them; they still need seeds, and the program's auth PDA
+        // as the only mint authority, 0 decimals and no freeze authority.
+        const mint = /\bmint::authority\s*=/.test(f.attrs);
+        if (mint) {
+          assert.match(f.attrs, /\bseeds\s*=/, `${where}: mint init on a keypair account (no seeds)`);
+          assert.match(f.attrs, /\bbump\b/, `${where}: mint init without bump`);
+          assert.match(f.attrs, /\bmint::decimals\s*=\s*0\b/, `${where}: NFT mint must have 0 decimals`);
+          assert.match(f.attrs, /\bmint::authority\s*=\s*auth\b/, `${where}: NFT mint authority must be the auth PDA`);
+          assert.doesNotMatch(f.attrs, /freeze_authority/, `${where}: NFT mint must not be freezable`);
+        } else if (!ata) {
           assert.match(f.attrs, /\bspace\s*=/, `${where}: init without space`);
           assert.match(f.attrs, /\bseeds\s*=/, `${where}: init on a keypair account (no seeds)`);
           assert.match(f.attrs, /\bbump\b/, `${where}: init without bump`);
@@ -195,6 +205,11 @@ test('#2 #16 every unchecked account is documented and bound to something', () =
     ['aof_session_keys::SessionCreate.session_signer', 'delegate chosen by the signing owner'],
     ['aof_session_keys::SessionCreate.target_program', 'program id stored in the session'],
   ]);
+  // [F-06] The oracle of a Switchboard commit is picked by the client from the
+  // queue; Switchboard itself checks queue membership and records it on the
+  // randomness account, where every reveal context then binds it.
+  const SWITCHBOARD_COMMIT_ORACLE = new Set(['PackOpenCommit', 'RerollRandomCommit', 'StartExplorationCommit',
+    'ForgeAttemptCommit', 'CommitLotteryDraw', 'DrumCommitCtx']);
   let unchecked = 0;
   for (const [program, { structs }] of Object.entries(sources)) {
     for (const [name, fields] of structs) {
@@ -205,7 +220,9 @@ test('#2 #16 every unchecked account is documented and bound to something', () =
         assert.match(f.docs, /\/\/\/\s*CHECK:/, `${where}: missing /// CHECK: justification`);
         const own = /\b(seeds|address|constraint)\s*=/.test(f.attrs);
         const byOthers = fields.some((x) => x !== f && new RegExp(`\\b${f.name}\\.key\\(\\)`).test(x.attrs));
-        assert.ok(own || byOthers || VALUE_ACCOUNTS.has(where), `${where}: unchecked account bound by nothing`);
+        const oracle = f.name === 'oracle' && SWITCHBOARD_COMMIT_ORACLE.has(name)
+          && fields.some((x) => x.name === 'switchboard_program' && /SwitchboardOnDemand/.test(x.type));
+        assert.ok(own || byOthers || oracle || VALUE_ACCOUNTS.has(where), `${where}: unchecked account bound by nothing`);
       }
     }
   }
@@ -266,9 +283,10 @@ test('F-A #4 System Program transfers only ever debit a signing wallet', () => {
 
 test('F-F #11 every enabled resource-minting path checks the supply cap before minting', () => {
   // 1-of-1 tool NFTs: supply 0 -> 1 is enforced by the account constraints.
-  const TOOL_NFT = ['craft.rs', 'reroll.rs', 'mint_tool.rs', 'migrate_tool.rs'];
-  // Randomness paths that stay behind FeatureDisabled / RandomnessDisabled.
-  const DISABLED = ['exploration.rs', 'forge.rs', 'pack_open_reveal.rs', 'reroll_random.rs'];
+  const TOOL_NFT = ['craft.rs', 'reroll.rs', 'mint_tool.rs', 'migrate_tool.rs',
+    // [F-06] VRF settlements mint exactly one unit of a fresh PDA mint.
+    'settlement.rs', 'pack_open_reveal.rs', 'reroll_random.rs'];
+  const DISABLED = [];
   const dir = path.join(root, 'aof-core/src/instructions');
   const minting = fs.readdirSync(dir).filter((f) => /\bmint_to\(/.test(stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))));
   assert.ok(minting.includes('harvest_wheat.rs'), 'harvest_wheat no longer mints?');
@@ -314,7 +332,10 @@ test('F-I #11 every freshly minted tool NFT must be unfreezable', () => {
     if (/supply == 0 @ AofError::InvalidMint/.test(attrs)) blocks.push(attrs);
     i = j + 1;
   }
-  assert.equal(blocks.length, 7, 'MintTool, MigrateTool, Craft, Reroll, PackOpenCommit/Reveal, RerollRandomReveal');
+  // [F-06] The pack / random-reroll NFTs are no longer caller-supplied mints:
+  // they are PDA mints created by the settling instruction (checked by the
+  // #1 #22 init test: 0 decimals, auth PDA authority, no freeze authority).
+  assert.equal(blocks.length, 4, 'MintTool, MigrateTool, Craft, Reroll');
   for (const attrs of blocks) {
     const mint = /(\w+)\.supply == 0/.exec(attrs)[1];
     assert.ok(attrs.includes(`${mint}.freeze_authority.is_none()`), `${mint}: freeze authority not rejected`);
@@ -333,28 +354,41 @@ test('F-B burning a tool NFT also closes its ToolData (no ghost tools)', () => {
   }
 });
 
-test('#8 #10 #17 randomness-driven entry points stay disabled', () => {
-  // Every commit AND every reveal/draw is gated on its own: re-enabling one
-  // half of a commit-reveal pair is exactly the window the audit closed.
-  const gated = [
-    ['aof-core/src/instructions/exploration.rs', ['start_commit_handler', 'reveal_handler']],
-    ['aof-core/src/instructions/forge.rs', ['commit_handler', 'reveal_handler']],
-    ['aof-core/src/instructions/lottery.rs', ['buy_ticket_handler', 'commit_draw_handler', 'draw_handler']],
-    ['aof-core/src/instructions/pack_open_commit.rs', ['handler']],
-    ['aof-core/src/instructions/pack_open_reveal.rs', ['handler']],
-    ['aof-core/src/instructions/reroll_random.rs', ['commit_handler', 'reveal_handler']],
-    ['programs/aof-quests/src/instructions/drum/drum_commit.rs', ['handler']],
-    ['programs/aof-rebirth/src/instructions/do_rebirth.rs', ['handler']],
+test('#8 #10 #17 F-06 randomness settles only through the program-owned Switchboard pool', () => {
+  // Every commit CPIs Switchboard's commit on a locked pool slot, every reveal
+  // CPIs its reveal and reads the value back, every refund waits for the
+  // window to close. No handler touches SlotHashes or a secret any more.
+  const cases = [
+    ['aof-core/src/instructions/pack_open_commit.rs', 'handler', 'commit'],
+    ['aof-core/src/instructions/pack_open_reveal.rs', 'handler', 'reveal'],
+    ['aof-core/src/instructions/pack_open_expire.rs', 'handler', 'release_for_refund'],
+    ['aof-core/src/instructions/reroll_random.rs', 'commit_handler', 'commit'],
+    ['aof-core/src/instructions/reroll_random.rs', 'reveal_handler', 'reveal'],
+    ['aof-core/src/instructions/reroll_random.rs', 'expire_handler', 'release_for_refund'],
+    ['aof-core/src/instructions/exploration.rs', 'start_commit_handler', 'commit'],
+    ['aof-core/src/instructions/exploration.rs', 'reveal_handler', 'reveal'],
+    ['aof-core/src/instructions/exploration.rs', 'expire_handler', 'release_for_refund'],
+    ['aof-core/src/instructions/forge.rs', 'commit_handler', 'commit'],
+    ['aof-core/src/instructions/forge.rs', 'reveal_handler', 'reveal'],
+    ['aof-core/src/instructions/forge.rs', 'expire_handler', 'release_for_refund'],
+    ['aof-core/src/instructions/lottery.rs', 'commit_draw_handler', 'commit'],
+    ['aof-core/src/instructions/lottery.rs', 'draw_handler', 'reveal'],
+    ['aof-core/src/instructions/lottery.rs', 'expire_draw_handler', 'release_for_refund'],
+    ['programs/aof-quests/src/instructions/drum/drum_commit.rs', 'handler', 'commit'],
+    ['programs/aof-quests/src/instructions/drum/drum_reveal.rs', 'handler', 'reveal'],
+    ['programs/aof-quests/src/instructions/drum/drum_expire.rs', 'handler', 'release_for_refund'],
   ];
-  for (const [file, fns] of gated) {
-    for (const fn of fns) {
-      assert.match(
-        fnBody(read(file), fn),
-        /require!\(\s*false\s*,\s*\w+::(FeatureDisabled|RandomnessDisabled)\s*\)/,
-        `${file}::${fn}: SlotHashes-based randomness is predictable; re-enabling needs a VRF/commit-reveal review`,
-      );
-    }
+  for (const [file, fn, step] of cases) {
+    const body = fnBody(read(file), fn);
+    assert.match(body, new RegExp(`vrf::${step}\\(`), `${file}::${fn} must use vrf::${step}`);
+    assert.doesNotMatch(body, /slot_hashes|hash_secret|derive_entropy|secret/, `${file}::${fn}: legacy commit-reveal`);
+    assert.doesNotMatch(body, /require!\(\s*false/, `${file}::${fn} is still hard-disabled`);
   }
+  // Legacy helpers are gone, so nothing can be wired back to them.
+  assert.doesNotMatch(stripComments(core('randomness.rs')), /fn (hash_secret|get_slot_hash|derive_entropy)/);
+  // Rebirth is not a randomness mechanic and stays disabled on its own.
+  assert.match(fnBody(read('programs/aof-rebirth/src/instructions/do_rebirth.rs'), 'handler'),
+    /require!\(\s*false\s*,\s*\w+::FeatureDisabled\s*\)/);
 });
 
 test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account decoding, no deprecated sysvars', () => {
@@ -366,18 +400,26 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
     [/RecentBlockhashes|recent_blockhashes|sysvar::fees|Fees::get/, 'deprecated sysvar'],
     [/InterfaceAccount|token_interface|Token2022|spl_token_2022/, 'Token-2022 needs a separate extension review (#12)'],
   ];
-  // vrf.rs is the one deliberate exception for instruction introspection: it
-  // binds a game commit to Switchboard's commit in the same transaction.
-  const vrf = stripComments(core('vrf.rs'));
+  // [F-06] vrf.rs (one copy per program that CPIs Switchboard) is the single
+  // audited exception for raw invoke_signed: Switchboard ships no Anchor CPI
+  // crate for this toolchain. Every raw CPI there targets the trusted program.
+  const VRF = { aof_core: 'aof-core/src/vrf.rs', aof_quests: 'programs/aof-quests/src/vrf.rs' };
   for (const [program, { code }] of Object.entries(sources)) {
+    const vrf = VRF[program] ? stripComments(withoutInlineTests(read(VRF[program]))) : null;
     for (const [re, why] of banned) {
-      const scope = program === 'aof_core' && /instruction-sysvar/.test(why) ? code.replace(vrf, '') : code;
+      const scope = vrf && /raw invoke/.test(why) ? code.replace(vrf, '') : code;
       assert.doesNotMatch(scope, re, `${program}: ${why}`);
     }
   }
-  assert.match(vrf, /load_current_index_checked/, 'address-checked sysvar loader');
-  assert.match(vrf, /load_instruction_at_checked/, 'address-checked sysvar loader');
-  assert.doesNotMatch(vrf, /load_instruction_at\(|get_instruction_relative/, 'unchecked loaders are not used');
+  for (const file of Object.values(VRF)) {
+    const vrf = stripComments(read(file));
+    const invokes = [...vrf.matchAll(/invoke_signed\(/g)].length;
+    assert.equal(invokes, 3, `${file}: exactly the init / commit / reveal CPIs`);
+    const guards = [...vrf.matchAll(/require_keys_eq!\(a\.switchboard_program\.key\(\), SWITCHBOARD_PROGRAM_ID/g)].length;
+    assert.equal(guards, 3, `${file}: every raw CPI checks the Switchboard program id first`);
+    assert.equal([...vrf.matchAll(/program_id: SWITCHBOARD_PROGRAM_ID/g)].length, 3, `${file}: builders target Switchboard only`);
+    assert.doesNotMatch(vrf, /sysvar::instructions|load_instruction_at/, `${file}: no introspection needed any more`);
+  }
 });
 
 test('#18 no unbounded per-call input: collection arguments are allowlisted and bounded', () => {
@@ -386,7 +428,6 @@ test('#18 no unbounded per-call input: collection arguments are allowlisted and 
     ['aof_core::craft.tool_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::reroll.new_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::migrate_tool.tool_type', 'tool_type.len() <= 32'],
-    ['aof_quests::drum_reveal.secret', 'reveal of a disabled commit'],
   ]);
   let args = 0;
   for (const [program, { dir }] of Object.entries(sources)) {
@@ -529,12 +570,23 @@ test('season passes are sold once and only inside their season; migrate_tool sta
 
 test('F-C routine operations need the operator; rule changes need the admin', () => {
   const OPERATOR = ['MintResource', 'MintResourceOnce', 'MintTool', 'Craft', 'PayOut', 'PayOutWithReferral',
-    'AdjustPlayerCapacity', 'GrantSeasonXp', 'ClaimSeasonReward', 'SweepGasFees', 'PackOpenCommit', 'PackOpenReveal',
-    'RerollRandomReveal', 'ExploreReveal', 'ForgeAttemptReveal', 'DrawLottery', 'CommitLotteryDraw'];
+    'AdjustPlayerCapacity', 'GrantSeasonXp', 'ClaimSeasonReward', 'SweepGasFees',
+    // [F-06] paid VRF commits are co-signed by the operator (backend gate).
+    'PackOpenCommit', 'RerollRandomCommit', 'StartExplorationCommit', 'ForgeAttemptCommit'];
   for (const ctx of OPERATOR) {
     const attrs = configAttrs(ctx);
     assert.match(attrs, /authority\.key\(\)\s*==\s*config\.operator/, `${ctx} must be operator-signed`);
     assert.doesNotMatch(attrs, /has_one\s*=\s*authority/, `${ctx} must not accept the admin key`);
+  }
+  for (const ctx of ['VrfPoolAdd', 'VrfPoolSetRetired', 'VrfSlotRecover']) {
+    assert.match(configAttrs(ctx), /operator\.key\(\)\s*==\s*config\.operator/, `${ctx} must be operator-signed`);
+  }
+  // [F-06] Settlement must be impossible to block: no reveal / refund / draw
+  // context may require the operator (or any particular signer).
+  for (const ctx of ['PackOpenReveal', 'RerollRandomReveal', 'ExploreReveal', 'ForgeAttemptReveal', 'DrawLottery',
+    'CommitLotteryDraw', 'PackOpenExpire', 'RerollRandomExpire', 'ExploreExpire', 'ForgeAttemptExpire',
+    'ExpireLotteryDraw', 'RefundLotteryTicket']) {
+    assert.doesNotMatch(configAttrs(ctx), /config\.operator|has_one\s*=\s*authority/, `${ctx} must be permissionless`);
   }
   const ADMIN = ['SetFees', 'SetPaused', 'SetResourceMints', 'SetPendingAuthority', 'CancelPendingAuthority',
     'SetMiningEnabled', 'InitVaultGuard', 'SetVaultGuard', 'SetSupplyCap', 'InitIssuanceCap', 'SetIssuanceCap',
@@ -550,7 +602,10 @@ test('F-C the cash-out freeze covers every path where value leaves the game - an
   // Players' own exits and gameplay keep working during a freeze.
   const UNAFFECTED = ['WithdrawGas', 'Unstake', 'CollectorUnstake', 'MarketplaceCancel', 'OfferCancelCtx', 'RentalEndCtx',
     'CancelBuyOrder', 'CancelSellOrder', 'CraftOrderCancelCtx', 'HarvestWheat', 'CollectMining', 'CollectFlour',
-    'CollectBread', 'CollectWellWater', 'Craft', 'Stake', 'StartMining'];
+    'CollectBread', 'CollectWellWater', 'Craft', 'Stake', 'StartMining',
+    // [F-06] settling or refunding an already-paid commit is not a cash-out.
+    'PackOpenReveal', 'PackOpenExpire', 'RerollRandomReveal', 'RerollRandomExpire', 'ExploreReveal', 'ExploreExpire',
+    'ForgeAttemptReveal', 'ForgeAttemptExpire', 'DrawLottery', 'ExpireLotteryDraw', 'RefundLotteryTicket'];
   for (const ctx of UNAFFECTED) assert.doesNotMatch(configAttrs(ctx), /cashout_frozen/, `${ctx} must not be frozen`);
   const stop = fnBody(core('instructions/roles.rs'), 'emergency_stop_handler');
   assert.doesNotMatch(stop, /=\s*false/, 'an emergency stop can only switch flags on');
@@ -608,14 +663,40 @@ test('#33 third-party payout destinations must be canonical ATAs', () => {
   assert.match(fnBody(core('state.rs'), 'is_canonical_ata'), /get_associated_token_address\(owner, mint\)/);
 });
 
-test('#36 #37 Switchboard VRF: trusted owner, fresh commit in the same transaction, exact reveal', () => {
-  const vrf = stripComments(core('vrf.rs'));
-  assert.match(fnBody(core('vrf.rs'), 'load_randomness'), /require_keys_eq!\(\*account\.owner, SWITCHBOARD_PROGRAM_ID/);
-  assert.match(fnBody(core('vrf.rs'), 'check_fresh_commit'), /seed_slot == clock_slot - 1[\s\S]*reveal_slot < randomness\.seed_slot/);
-  assert.match(fnBody(core('vrf.rs'), 'check_reveal'), /reveal_slot == clock_slot/);
-  assert.match(fnBody(core('vrf.rs'), 'require_commit_in_same_tx'), /0\.\.current[\s\S]*RANDOMNESS_COMMIT_IX_DISCRIMINATOR/);
+test('#36 #37 F-06 Switchboard VRF: trusted program/queue, program-owned accounts, read-back reveal', () => {
+  const vrf = core('vrf.rs');
+  assert.match(fnBody(vrf, 'load_randomness'), /require_keys_eq!\(\*account\.owner, SWITCHBOARD_PROGRAM_ID/);
+  const commit = fnBody(vrf, 'commit');
+  for (const piece of ['!slot.retired', 'slot.lock, Pubkey::default()', 'before.authority, a.vrf_authority.key()',
+    'before.queue, SWITCHBOARD_QUEUE', 'cpi_commit(', 'after.seed_slot == clock_slot - 1', 'slot.lock = holder']) {
+    assert.ok(commit.includes(piece), `vrf::commit lost: ${piece}`);
+  }
+  assert.ok(commit.indexOf('cpi_commit(') < commit.indexOf('after.seed_slot'), 'the seed is read back after the CPI');
+  const reveal = fnBody(vrf, 'reveal');
+  for (const piece of ['reveal_window_open(commit_slot, clock_slot)', 'slot.lock, *holder', 'cpi_reveal(',
+    'r.seed_slot == committed_seed_slot', 'r.reveal_slot == clock_slot', 'r.value == params.value', 'slot.lock = Pubkey::default()']) {
+    assert.ok(reveal.includes(piece), `vrf::reveal lost: ${piece}`);
+  }
+  assert.match(fnBody(vrf, 'release_for_refund'), /refund_window_open\(commit_slot, clock_slot\)/);
+  assert.match(fnBody(vrf, 'refund_window_open'), /!reveal_window_open/, 'reveal and refund windows never overlap');
   assert.match(vrf, /SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv|6, 115, 189, 70/, 'mainnet program id');
+  assert.match(vrf, /A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w/, 'mainnet queue');
   assert.match(read('aof-core/Cargo.toml'), /^devnet = \[\]/m, 'devnet trust is an explicit build feature');
+  assert.match(read('programs/aof-quests/Cargo.toml'), /^devnet = \[\]/m, 'devnet trust is an explicit build feature');
+  // Pool accounts: randomness address and Switchboard authority are PDAs of the program.
+  const add = configAttrs('VrfPoolAdd');
+  assert.ok(add.length > 0);
+  const poolAdd = sources.aof_core.structs.get('VrfPoolAdd');
+  assert.match(poolAdd.find((f) => f.name === 'randomness').attrs, /seeds\s*=\s*\[VRF_RANDOMNESS_SEED/);
+  assert.match(poolAdd.find((f) => f.name === 'vrf_authority').attrs, /seeds\s*=\s*\[VRF_AUTHORITY_SEED\]/);
+  // Every VRF context binds the queue, the program and the slot to the commit.
+  for (const [ctx, fields] of sources.aof_core.structs) {
+    if (!fields.some((f) => f.name === 'switchboard_program')) continue;
+    assert.match(fields.find((f) => f.name === 'switchboard_program').type, /Program<'info,\s*SwitchboardOnDemand>/, ctx);
+    assert.match(fields.find((f) => f.name === 'queue').attrs, /address\s*=\s*crate::vrf::SWITCHBOARD_QUEUE/, ctx);
+    const slot = fields.find((f) => f.name === 'vrf_slot');
+    assert.ok(slot && /seeds\s*=\s*\[VRF_SLOT_SEED/.test(slot.attrs), `${ctx}.vrf_slot is not the canonical PDA`);
+  }
 });
 
 test('#65 session keys (SPL delegates) are never stored in plaintext', () => {

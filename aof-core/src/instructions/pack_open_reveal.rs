@@ -1,98 +1,91 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, MintTo};
 use crate::constants::*;
 use crate::PackOpenReveal;
-use crate::errors::*;
 use crate::events::*;
-use crate::state::Rarity;
-use crate::randomness::*;
+use crate::instructions::settlement;
+use crate::vrf::{self, VrfRevealParams};
 
-/// [AUDIT F-06] Disabled. `randomness.rs` documents itself as "NOT a VRF …
-/// secret holders can withhold unfavorable reveals … new economic commitments
-/// using this module must remain disabled". The commit side is already
-/// `require!(false)`, so keeping only the reveal callable created a window
-/// where an authority-held secret could pick the rarity of a paid pack.
-/// Re-enable together with `pack_open_commit` once a real VRF is wired in.
-pub fn handler(ctx: Context<PackOpenReveal>, secret: [u8; 32]) -> Result<()> {
-    require!(false, AofError::RandomnessDisabled);
-    #[allow(unreachable_code)]
-    {
-    require!(!ctx.accounts.pack_commit.revealed, AofError::CommitMismatch);
-    require!(
-        hash_secret(&secret) == ctx.accounts.pack_commit.commit_hash,
-        AofError::CommitMismatch
+/// [F-06] Permissionless settlement of a pack opening.
+///
+/// Anyone holding the oracle's signed value may call this — the backend crank,
+/// the player, a third party. The program CPIs Switchboard's reveal (signed by
+/// its own PDA, the only authority of the pool account), reads the verified
+/// value back and settles in the same instruction: a new tool NFT at the PDA
+/// [PACK_MINT_SEED, pack_commit], the price to the treasury, the fronted rent
+/// back to the settler, the rest to the player. There is no second chance and
+/// nothing to withhold.
+pub fn handler(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<()> {
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.pack_commit.key();
+    let (randomness, seed_slot, commit_slot) = (
+        ctx.accounts.pack_commit.randomness,
+        ctx.accounts.pack_commit.seed_slot,
+        ctx.accounts.pack_commit.commit_slot,
     );
-
-    let slot_hash = get_slot_hash(&ctx.accounts.slot_hashes, ctx.accounts.pack_commit.commit_slot)?;
-    let entropy = derive_entropy(&secret, &slot_hash, b"pack");
-    let roll = entropy_u64(&entropy);
-
-    let rarity_idx = weighted_pick(roll, &ctx.accounts.pack_config.odds_bps);
-    let rarity = Rarity::from_u8(rarity_idx as u8).ok_or(AofError::MathOverflow)?;
-
-    // второй независимый ролл (следующие 8 байт энтропии) — выбор типа инструмента
-    let mut roll2_bytes = [0u8; 8];
-    roll2_bytes.copy_from_slice(&entropy[8..16]);
-    let roll2 = u64::from_le_bytes(roll2_bytes);
-    let tool_type_idx = (roll2 % PACK_TOOL_TYPES.len() as u64) as usize;
-    let tool_type = PACK_TOOL_TYPES[tool_type_idx].to_string();
-
-    let auth_bump = ctx.bumps.auth;
-    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-    token::mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            MintTo {
-                mint: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.user_token.to_account_info(),
-                authority: ctx.accounts.auth.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        1,
+    let accounts = vrf::RevealAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        stats: ctx.accounts.stats.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+        payer: ctx.accounts.cranker.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
+        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
+        program_state: ctx.accounts.program_state.to_account_info(),
+    };
+    let value = vrf::reveal(
+        &mut ctx.accounts.vrf_slot,
+        &commit_key,
+        &randomness,
+        seed_slot,
+        commit_slot,
+        &accounts,
+        &params,
+        ctx.bumps.vrf_authority,
+        clock.slot,
     )?;
 
-    let td = &mut ctx.accounts.tool_data;
-    td.mint = ctx.accounts.mint.key();
-    td.owner = ctx.accounts.pack_commit.user;
-    td.tool_type = tool_type.clone();
-    td.rarity = rarity;
-    td.durability = MAX_DURABILITY;
-    td.is_mining = false;
-    td.mining_end = 0;
-    td.staked = false;
-    td.unlock_at = 0;
-    td.last_mined_hours = 0;
-    td.operator = ctx.accounts.pack_commit.user;
+    let (rarity, tool_type) = settlement::roll_tool(&value, b"pack", &commit_key, &ctx.accounts.pack_commit.odds_bps)?;
+    settlement::mint_tool_nft(
+        &ctx.accounts.token_program.to_account_info(),
+        &ctx.accounts.mint.to_account_info(),
+        &ctx.accounts.user_token.to_account_info(),
+        &ctx.accounts.auth.to_account_info(),
+        ctx.bumps.auth,
+    )?;
+    let user = ctx.accounts.pack_commit.user;
+    settlement::write_tool(&mut ctx.accounts.tool_data, ctx.accounts.mint.key(), user, tool_type.clone(), rarity, MAX_DURABILITY);
 
-    ctx.accounts.pack_commit.revealed = true;
-
-    // Outcome is final: release the escrowed price to the treasury. The PDA
-    // is program-owned, so lamports move by direct debit/credit; `close = user`
-    // then returns only the rent to the player.
+    // Outcome is final: the price goes to the treasury, the fronted rent back
+    // to whoever settled. `close = user` returns the commit rent and any
+    // unused deposit to the player.
+    let commit_info = ctx.accounts.pack_commit.to_account_info();
     let paid = ctx.accounts.pack_commit.paid_lamports;
-    if paid > 0 {
-        let commit_info = ctx.accounts.pack_commit.to_account_info();
-        **commit_info.try_borrow_mut_lamports()? = commit_info
-            .lamports()
-            .checked_sub(paid)
-            .ok_or(AofError::MathOverflow)?;
-        **ctx.accounts.treasury.try_borrow_mut_lamports()? = ctx
-            .accounts
-            .treasury
-            .lamports()
-            .checked_add(paid)
-            .ok_or(AofError::MathOverflow)?;
-        ctx.accounts.pack_commit.paid_lamports = 0;
-    }
+    settlement::release_escrow(&commit_info, &ctx.accounts.treasury.to_account_info(), paid)?;
+    let deposit = ctx.accounts.pack_commit.deposit_lamports;
+    settlement::reimburse_settler(&commit_info, &ctx.accounts.cranker.to_account_info(), deposit)?;
+    ctx.accounts.pack_commit.paid_lamports = 0;
+    ctx.accounts.pack_commit.deposit_lamports = 0;
 
+    emit!(VrfSettled {
+        mechanic: VRF_MECHANIC_PACK,
+        commit: commit_key,
+        randomness,
+        seed_slot,
+        value,
+        cranker: ctx.accounts.cranker.key(),
+    });
     emit!(PackOpened {
-        user: ctx.accounts.pack_commit.user,
+        user,
         mint: ctx.accounts.mint.key(),
         pack_type: ctx.accounts.pack_commit.pack_type,
         rarity,
         tool_type,
+        pack_commit: commit_key,
     });
     Ok(())
-    }
 }

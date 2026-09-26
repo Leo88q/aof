@@ -43,6 +43,9 @@ pub mod pack_config;
 pub mod pack_open_commit;
 pub mod pack_open_reveal;
 pub mod pack_open_expire;
+// [F-06] Switchboard On-Demand pool and shared settlement helpers.
+pub mod vrf_pool;
+pub mod settlement;
 pub mod reroll_random;
 pub mod exploration;
 pub mod referral;

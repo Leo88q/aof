@@ -76,9 +76,10 @@ pub const MAX_DURABILITY: u8 = 20;
 /// zero a player's villagers and permanently brick their mining.
 pub const MAX_CAPACITY_DELTA: u32 = 6;
 
-/// [AUDIT F-23] A lottery round that is never revealed strands its pool.
-/// After this timeout anyone may sweep the lamports back to the treasury and
-/// close the round instead of leaving them locked forever.
+/// [AUDIT F-23] A lottery round that is never drawn must not strand its pool.
+/// After this timeout (and with no draw in flight) every ticket can be
+/// refunded to its buyer in full (`refund_lottery_ticket`); the pool no longer
+/// goes to the treasury, which would have rewarded never drawing.
 pub const LOTTERY_ROUND_TIMEOUT_SECONDS: i64 = 14 * 86400;
 
 /// Collectors lock seconds (3 days)
@@ -252,9 +253,10 @@ pub const FORGE_PROTECTOR_PRICE_LAMPORTS: u64 = 20_000_000; // ~$2
 // ----- Лотерея -----
 /// Ticket price in lamports. 800_000 lamports = 0.0008 SOL (the old comment's
 /// "~$0.8" arithmetic was wrong: at the 1 SOL = $100 reference rate used
-/// throughout this file, 0.0008 SOL is $0.0008, i.e. well under a cent. Ticket
-/// sales stay disabled (`buy_lottery_ticket` reverts) until the prize funding
-/// model is decided; see F-06/F-23 in AUDIT_FULL_2026-09-21.md.
+/// throughout this file, 0.0008 SOL is $0.08). Funding model: the pool is
+/// player-funded only. The full price is escrowed on the round until the draw;
+/// the draw sends LOTTERY_DEV_BPS to the treasury and the rest is the prize
+/// (return-to-player 70%). An undrawn round refunds every ticket in full.
 pub const LOTTERY_TICKET_PRICE_LAMPORTS: u64 = 800_000;
 pub const LOTTERY_POOL_BPS: u16 = 7_000;   // 70% в пул
 pub const LOTTERY_DEV_BPS: u16 = 3_000;    // 30% разработчику
@@ -425,11 +427,34 @@ pub const OVEN_STATE_SPACE: usize = 8 + OvenState::INIT_SPACE;
 pub const VAULT_GUARD_SPACE: usize = 8 + VaultGuard::INIT_SPACE;
 pub const COLLECTOR_ALLOW_SPACE: usize = 8 + CollectorAllowEntry::INIT_SPACE;
 
-/// Commit-reveal expiry. SlotHashes keeps ~512 recent slots, so a reveal
-/// older than that fails with CommitExpired. Expiry is allowed only after the
-/// slot hash is guaranteed gone, so `expire` and `reveal` can never both
-/// succeed for the same commit (reveal needs the hash, expire needs it gone).
-pub const COMMIT_EXPIRY_SLOTS: u64 = 600;
+pub const VRF_SLOT_SPACE: usize = 8 + VrfSlot::INIT_SPACE;
+
+// ===== [F-06 / #36 #37] Switchboard On-Demand randomness (see vrf.rs) =====
+/// PDA that is the Switchboard `authority` of every pool randomness account.
+/// Switchboard lets only the authority commit or reveal, so only this program
+/// (signing with this seed) can ever re-seed or reveal a pool account.
+pub const VRF_AUTHORITY_SEED: &[u8] = b"vrf_authority";
+/// Pool bookkeeping: seeds = [VRF_SLOT_SEED, randomness.key()].
+pub const VRF_SLOT_SEED: &[u8] = b"vrf_slot";
+/// Address of pool randomness account #index: seeds = [VRF_RANDOMNESS_SEED, index_le].
+pub const VRF_RANDOMNESS_SEED: &[u8] = b"vrf_randomness";
+/// Tool NFTs produced by a VRF settlement are PDAs of their commit, created in
+/// the settling instruction: nobody can pre-create, pre-mint or squat them
+/// between commit and reveal. seeds = [PACK_MINT_SEED, pack_commit.key()].
+pub const PACK_MINT_SEED: &[u8] = b"pack_mint";
+/// seeds = [REROLL_MINT_SEED, reroll_commit.key()] (reveal OR refund, never both).
+pub const REROLL_MINT_SEED: &[u8] = b"reroll_mint";
+/// Reveal window and refund threshold of every VRF commit, in slots
+/// (~2 h at 400 ms). Switchboard stops honouring a reveal about one hour after
+/// the commit, so this is strictly longer than the oracle's own window. A
+/// reveal is accepted only BEFORE `commit_slot + VRF_REFUND_AFTER_SLOTS` and a
+/// refund only FROM that slot on: the two paths are never open at the same
+/// time, so no one can pick "reveal if good, refund if bad".
+pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;
+/// Ticket sales window of a lottery round. After it anyone (not only the
+/// operator) may close sales by committing the draw, so a round cannot be
+/// kept open indefinitely.
+pub const LOTTERY_SALES_SECONDS: i64 = 7 * 86_400;
 
 // =====================================================================
 // [AUDIT F-08 / F-33] Economy invariants as executable tests.

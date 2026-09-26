@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hashv;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
-use crate::state::{DrumCommit, QuestConfig};
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
+use crate::state::{DrumCommit, QuestConfig, VrfSlot};
 use crate::errors::QuestError;
 use crate::events::DrumRevealed;
+use crate::vrf::{self, VrfRevealParams, SLOT_HASHES_ID, VRF_AUTHORITY_SEED, VRF_SLOT_SEED};
 
 /// Таблица шансов барабана: (вес в bps, сумма маскотов).
 /// Сумма весов строго = 10000. Редкие крупные призы с малым весом.
@@ -22,116 +23,139 @@ pub const DRUM_PRIZES: [(u16, u64); 5] = [
     (100, 50),    //  1% -> 50 (джекпот)
 ];
 
+/// Largest prize in DRUM_PRIZES (the treasury must cover it at commit).
+pub const DRUM_MAX_PRIZE: u64 = 50;
+
+/// Prize of a spin: a pure function of the oracle value and the commit key.
+pub fn drum_prize(value: &[u8; 32], commit: &Pubkey) -> u64 {
+    let roll = vrf::bps(vrf::lane(&vrf::derive_roll(value, b"drum", commit.as_ref()), 0));
+    let mut acc: u64 = 0;
+    for (weight, amount) in DRUM_PRIZES.iter() {
+        acc += *weight as u64;
+        if roll < acc {
+            return *amount;
+        }
+    }
+    DRUM_PRIZES[DRUM_PRIZES.len() - 1].1
+}
+
+/// [F-06] Permissionless settlement: whoever brings the oracle's signed value
+/// makes this program reveal (CPI signed by its PDA) and pay the prize.
 #[derive(Accounts)]
 pub struct DrumReveal<'info> {
     #[account(
         mut,
-        seeds = [b"drum_commit", user.key().as_ref()],
+        seeds = [b"drum_commit", drum_commit.user.as_ref()],
         bump = drum_commit.bump,
-        close = user,
-        constraint = drum_commit.user == user.key() @ QuestError::Unauthorized
+        close = user
     )]
     pub drum_commit: Account<'info, DrumCommit>,
 
-    #[account(
-        seeds = [b"quest_config"],
-        bump = quest_config.bump,
-        has_one = authority @ QuestError::Unauthorized,
-        constraint = !quest_config.paused @ QuestError::Paused
-    )]
-    pub quest_config: Account<'info, QuestConfig>,
+    #[account(seeds = [b"quest_config"], bump = quest_config.bump)]
+    pub quest_config: Box<Account<'info, QuestConfig>>,
 
-    /// CHECK: authority проверяет секрет офчейн, здесь только верификация хеша
-    pub authority: Signer<'info>,
+    /// Anyone may settle; pays Switchboard's reveal and an ATA re-creation.
+    #[account(mut)]
+    pub cranker: Signer<'info>,
 
     /// CHECK: recipient is the stored commit owner, not an authorization signer.
     #[account(mut, address = drum_commit.user @ QuestError::Unauthorized)]
     pub user: UncheckedAccount<'info>,
 
-    /// CHECK: validated against the canonical SlotHashes sysvar address.
-    #[account(address = anchor_lang::solana_program::sysvar::slot_hashes::ID)]
-    pub slot_hashes: UncheckedAccount<'info>,
-
     #[account(
         mut,
         address = quest_config.treasury_mascot @ QuestError::Unauthorized
     )]
-    pub treasury_mascot: Account<'info, TokenAccount>,
+    pub treasury_mascot: Box<Account<'info, TokenAccount>>,
+
+    #[account(address = quest_config.mascot_mint @ QuestError::Unauthorized)]
+    pub mascot_mint: Box<Account<'info, Mint>>,
 
     #[account(
-        mut,
-        associated_token::mint = quest_config.mascot_mint,
+        init_if_needed,
+        payer = cranker,
+        associated_token::mint = mascot_mint,
         associated_token::authority = user
     )]
-    pub user_mascot: Account<'info, TokenAccount>,
+    pub user_mascot: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut, seeds = [VRF_SLOT_SEED, drum_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: the randomness account locked by this spin; verified by vrf::reveal.
+    #[account(mut, address = drum_commit.randomness @ QuestError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
+    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ QuestError::InvalidRandomnessAccount)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ QuestError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
+    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ QuestError::InvalidRandomnessAccount)]
+    pub stats: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ QuestError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ QuestError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, crate::vrf::SwitchboardOnDemand>,
 
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
 }
 
-fn get_slot_hash(info: &AccountInfo, target_slot: u64) -> Result<[u8; 32]> {
-    let data = info.try_borrow_data()?;
-    require!(data.len() >= 8, QuestError::CommitExpired);
-    let entries_bytes: [u8; 8] = data[0..8].try_into().map_err(|_| QuestError::InvalidData)?;
-    let entries = u64::from_le_bytes(entries_bytes) as usize;
-    let mut offset = 8usize;
-    for _ in 0..entries {
-        if offset + 40 > data.len() {
-            break;
-        }
-        let slot_bytes: [u8; 8] = data[offset..offset + 8].try_into().map_err(|_| QuestError::InvalidData)?;
-        let slot = u64::from_le_bytes(slot_bytes);
-        if slot == target_slot {
-            let mut hash = [0u8; 32];
-            hash.copy_from_slice(&data[offset + 8..offset + 40]);
-            return Ok(hash);
-        }
-        offset += 40;
-    }
-    Err(QuestError::CommitExpired.into())
-}
-
-pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
-    let commit = &ctx.accounts.drum_commit;
-
-    // Проверка что коммит не протух (10 минут) и его slot hash ещё доступен.
-    let now = Clock::get()?.unix_timestamp;
-    require!(now.saturating_sub(commit.created_at) < 600, QuestError::CommitExpired);
-
-    // Верификация коммит-секрета: sha256(secret) == hash.
-    let committed_hash = anchor_lang::solana_program::hash::hash(&secret);
-    require!(
-        committed_hash.to_bytes() == commit.hash,
-        QuestError::InvalidHash
+pub fn handler(ctx: Context<DrumReveal>, params: VrfRevealParams) -> Result<()> {
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.drum_commit.key();
+    let (randomness, seed_slot, commit_slot) = (
+        ctx.accounts.drum_commit.randomness,
+        ctx.accounts.drum_commit.seed_slot,
+        ctx.accounts.drum_commit.commit_slot,
     );
-    let slot_hash = get_slot_hash(
-        &ctx.accounts.slot_hashes.to_account_info(),
-        commit.commit_slot,
+    let accounts = vrf::RevealAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        stats: ctx.accounts.stats.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+        payer: ctx.accounts.cranker.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
+        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
+        program_state: ctx.accounts.program_state.to_account_info(),
+    };
+    let value = vrf::reveal(
+        &mut ctx.accounts.vrf_slot,
+        &commit_key,
+        &randomness,
+        seed_slot,
+        commit_slot,
+        &accounts,
+        &params,
+        ctx.bumps.vrf_authority,
+        clock.slot,
     )?;
+    let prize_amount = drum_prize(&value, &commit_key);
 
-    // Таблица шансов использует secret + blockhash from the commit slot. A
-    // server can no longer grind a winning secret before publishing the commit.
-    let entropy = hashv(&[&secret, &slot_hash]);
-    let hash_bytes = entropy.to_bytes();
-    let roll_bytes: [u8; 8] = hash_bytes[0..8].try_into().map_err(|_| QuestError::InvalidHash)?;
-    let roll = u64::from_le_bytes(roll_bytes) % 10_000;
-    let mut acc: u64 = 0;
-    let mut prize_amount: u64 = 0;
-    for (weight, amount) in DRUM_PRIZES.iter() {
-        acc += *weight as u64;
-        if roll < acc {
-            prize_amount = *amount;
-            break;
-        }
-    }
-
-    // [ФИКС] Выдача приза из казны пользователю.
-    // Казна принадлежит quest_config-PDA и подписывает перевод через signer_seeds
-    // (в отличие от quest_claim_reward, где authority=user — там латентный баг).
+    // Казна принадлежит quest_config-PDA и подписывает перевод через signer_seeds.
     let config_bump = ctx.accounts.quest_config.bump;
     let bump_bytes = [config_bump];
     let config_seeds: &[&[u8]] = &[b"quest_config", &bump_bytes];
     let signer_seeds: &[&[&[u8]]] = &[config_seeds];
-
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -147,82 +171,13 @@ pub fn handler(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
 
     emit!(DrumRevealed {
         user: ctx.accounts.user.key(),
+        prize: prize_amount,
+        randomness,
+        seed_slot,
+        value,
+        cranker: ctx.accounts.cranker.key(),
     });
-
     Ok(())
-}
-
-#[cfg(test)]
-mod slot_hash_tests {
-    use super::*;
-    use anchor_lang::solana_program::account_info::AccountInfo;
-
-    // [AUDIT G-07] This is the second copy of `get_slot_hash` (the first is
-    // `aof-core/src/randomness.rs`). The crates are independent, so the code
-    // cannot be shared without introducing a new workspace crate; instead both
-    // copies are pinned with the SAME golden fixture. Keep the two test modules
-    // in sync - the fixtures are the contract.
-
-    // Built at runtime (not `static Pubkey = ...`) so the test does not depend
-    // on whether `Pubkey::new_from_array` is a `const fn` in this toolchain.
-    static KEY: std::sync::OnceLock<Pubkey> = std::sync::OnceLock::new();
-    static OWNER: std::sync::OnceLock<Pubkey> = std::sync::OnceLock::new();
-    fn key() -> &'static Pubkey { KEY.get_or_init(|| Pubkey::new_from_array([1u8; 32])) }
-    fn owner() -> &'static Pubkey { OWNER.get_or_init(|| Pubkey::new_from_array([2u8; 32])) }
-
-    /// Sysvar layout: `u64` entry count, then `(u64 slot, [u8; 32] hash)` pairs
-    /// ordered from the newest slot to the oldest.
-    fn fixture() -> (Vec<u8>, [u8; 32], [u8; 32]) {
-        let hash_newest = [0x11u8; 32];
-        let hash_oldest = [0x22u8; 32];
-        let mut data = Vec::new();
-        data.extend_from_slice(&2u64.to_le_bytes());
-        data.extend_from_slice(&1_000u64.to_le_bytes());
-        data.extend_from_slice(&hash_newest);
-        data.extend_from_slice(&999u64.to_le_bytes());
-        data.extend_from_slice(&hash_oldest);
-        (data, hash_newest, hash_oldest)
-    }
-
-    fn sysvar<'a>(lamports: &'a mut u64, data: &'a mut [u8]) -> AccountInfo<'a> {
-        AccountInfo::new(key(), false, false, lamports, data, owner(), false, 0)
-    }
-
-    #[test]
-    fn reads_the_hash_of_a_slot_inside_the_window() {
-        let (mut data, hash_newest, hash_oldest) = fixture();
-        let mut lamports = 0u64;
-        let info = sysvar(&mut lamports, &mut data);
-        assert_eq!(get_slot_hash(&info, 1_000).unwrap(), hash_newest);
-        assert_eq!(get_slot_hash(&info, 999).unwrap(), hash_oldest);
-    }
-
-    #[test]
-    fn rejects_a_slot_outside_the_window() {
-        let (mut data, _, _) = fixture();
-        let mut lamports = 0u64;
-        let info = sysvar(&mut lamports, &mut data);
-        assert!(get_slot_hash(&info, 998).is_err());
-        assert!(get_slot_hash(&info, 1_001).is_err());
-        assert!(get_slot_hash(&info, 0).is_err());
-    }
-
-    #[test]
-    fn malformed_sysvar_data_errors_instead_of_panicking() {
-        let mut short = Vec::new();
-        let mut lamports = 0u64;
-        let info = sysvar(&mut lamports, &mut short);
-        assert!(get_slot_hash(&info, 1_000).is_err());
-
-        let mut truncated = Vec::new();
-        truncated.extend_from_slice(&3u64.to_le_bytes());
-        truncated.extend_from_slice(&1_000u64.to_le_bytes());
-        truncated.extend_from_slice(&[0x11u8; 32]);
-        let mut lamports = 0u64;
-        let info = sysvar(&mut lamports, &mut truncated);
-        assert!(get_slot_hash(&info, 1_000).is_ok());
-        assert!(get_slot_hash(&info, 999).is_err());
-    }
 }
 
 #[cfg(test)]
@@ -246,5 +201,37 @@ mod drum_odds_tests {
             ev <= SPIN_COST * 10_000,
             "drum EV {ev} exceeds the spin price {SPIN_COST}: the treasury would bleed on every spin"
         );
+        assert_eq!(SPIN_COST as u64, crate::instructions::drum::drum_commit::DRUM_SPIN_COST_MASCOT);
+    }
+
+    #[test]
+    fn max_prize_constant_matches_the_table() {
+        let max = DRUM_PRIZES.iter().map(|(_, amount)| *amount).max().unwrap();
+        assert_eq!(max, DRUM_MAX_PRIZE, "the commit-time treasury check must cover the jackpot");
+    }
+
+    /// The VRF-driven prize follows the table: sample many oracle values.
+    #[test]
+    fn vrf_prize_distribution_follows_the_weights() {
+        let commit = Pubkey::new_unique();
+        let mut x: u64 = 0x5eed_d7a0;
+        let mut counts = [0u32; 5];
+        for _ in 0..20_000 {
+            let mut value = [0u8; 32];
+            for chunk in value.chunks_mut(8) {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                chunk.copy_from_slice(&x.to_le_bytes());
+            }
+            let prize = drum_prize(&value, &commit);
+            let idx = DRUM_PRIZES.iter().position(|(_, a)| *a == prize).expect("prize from the table");
+            counts[idx] += 1;
+        }
+        for (i, (w, _)) in DRUM_PRIZES.iter().enumerate() {
+            let expected = 20_000.0 * (*w as f64) / 10_000.0;
+            let sd = (20_000.0 * (*w as f64 / 10_000.0) * (1.0 - *w as f64 / 10_000.0)).sqrt();
+            assert!(((counts[i] as f64) - expected).abs() <= 5.0 * sd + 1.0, "bucket {i}: {counts:?}");
+        }
     }
 }

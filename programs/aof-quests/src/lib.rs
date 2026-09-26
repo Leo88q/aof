@@ -4,10 +4,12 @@ pub mod errors;
 pub mod events;
 pub mod instructions;
 pub mod state;
+pub mod vrf;
 
 pub use errors::*;
 pub use instructions::*;
 pub use state::*;
+pub use vrf::VrfRevealParams;
 
 declare_id!("4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU");
 
@@ -64,11 +66,28 @@ pub mod aof_quests {
         instructions::challenges::challenge_contribute::handler(ctx, week_number, medals)
     }
 
-    pub fn drum_commit(ctx: Context<DrumCommitCtx>, hash: [u8; 32]) -> Result<()> {
-        instructions::drum::drum_commit::handler(ctx, hash)
+    /// [F-06] Paid spin committed to the program-owned Switchboard pool.
+    pub fn drum_commit(ctx: Context<DrumCommitCtx>) -> Result<()> {
+        instructions::drum::drum_commit::handler(ctx)
     }
 
-    pub fn drum_reveal(ctx: Context<DrumReveal>, secret: Vec<u8>) -> Result<()> {
-        instructions::drum::drum_reveal::handler(ctx, secret)
+    /// [F-06] Permissionless settlement with the oracle's signed value.
+    pub fn drum_reveal(ctx: Context<DrumReveal>, params: VrfRevealParams) -> Result<()> {
+        instructions::drum::drum_reveal::handler(ctx, params)
+    }
+
+    /// [F-06] Refund a spin the oracle never revealed.
+    pub fn drum_expire(ctx: Context<DrumExpire>) -> Result<()> {
+        instructions::drum::drum_expire::handler(ctx)
+    }
+
+    /// [F-06] Authority: add pool randomness account #index.
+    pub fn vrf_pool_add(ctx: Context<QuestVrfPoolAdd>, index: u32, recent_slot: u64) -> Result<()> {
+        instructions::drum::vrf_pool::add_handler(ctx, index, recent_slot)
+    }
+
+    /// [F-06] Authority: retire / re-enable a free pool slot.
+    pub fn vrf_pool_set_retired(ctx: Context<QuestVrfPoolSetRetired>, retired: bool) -> Result<()> {
+        instructions::drum::vrf_pool::set_retired_handler(ctx, retired)
     }
 }

@@ -1,45 +1,26 @@
 use anchor_lang::prelude::*;
 use crate::PackOpenExpire;
-use crate::constants::*;
-use crate::errors::*;
-use crate::events::*;
+use crate::events::{VrfCommitRefunded, VRF_MECHANIC_PACK};
+use crate::vrf;
 
-/// Возврат escrow по просроченному pack-коммиту.
+/// [F-06] Refund of a pack opening the oracle never revealed.
 ///
-/// Условие: `current_slot - commit_slot >= COMMIT_EXPIRY_SLOTS` (600 > ~512
-/// слотов окна SlotHashes). После этого `pack_open_reveal` уже физически не
-/// может пройти (`get_slot_hash` вернёт CommitExpired), значит двойной выплаты
-/// (инструмент + возврат) быть не может. Escrow `paid_lamports` переводится
-/// `user`, затем `close = user` возвращает ему ренту PDA.
+/// Permissionless and only from `commit_slot + VRF_REFUND_AFTER_SLOTS` — the
+/// slot at which `pack_open_reveal` stops accepting a reveal — so refund and
+/// settlement are never available at the same time. Frees the pool slot;
+/// `close = user` returns the price, the unused deposit and the rent.
 pub fn handler(ctx: Context<PackOpenExpire>) -> Result<()> {
-    let now = Clock::get()?.slot;
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.pack_commit.key();
     let commit_slot = ctx.accounts.pack_commit.commit_slot;
-    require!(
-        now.saturating_sub(commit_slot) >= COMMIT_EXPIRY_SLOTS,
-        AofError::CommitNotExpired
-    );
+    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
 
-    let paid = ctx.accounts.pack_commit.paid_lamports;
-    if paid > 0 {
-        let commit_info = ctx.accounts.pack_commit.to_account_info();
-        **commit_info.try_borrow_mut_lamports()? = commit_info
-            .lamports()
-            .checked_sub(paid)
-            .ok_or(AofError::MathOverflow)?;
-        **ctx.accounts.user.try_borrow_mut_lamports()? = ctx
-            .accounts
-            .user
-            .lamports()
-            .checked_add(paid)
-            .ok_or(AofError::MathOverflow)?;
-        ctx.accounts.pack_commit.paid_lamports = 0;
-    }
-
-    emit!(PackCommitExpired {
-        user: ctx.accounts.pack_commit.user,
-        mint: ctx.accounts.pack_commit.mint,
-        pack_type: ctx.accounts.pack_commit.pack_type,
-        refunded_lamports: paid,
+    let pc = &ctx.accounts.pack_commit;
+    emit!(VrfCommitRefunded {
+        mechanic: VRF_MECHANIC_PACK,
+        commit: commit_key,
+        user: pc.user,
+        refunded_lamports: pc.paid_lamports.saturating_add(pc.deposit_lamports),
     });
     Ok(())
 }

@@ -1,44 +1,40 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use crate::constants::*;
-use crate::{InitLotteryRound, BuyLotteryTicket, DrawLottery, CommitLotteryDraw, ClaimLotteryPrize, RefundLotteryRound};
+use crate::{
+    InitLotteryRound, BuyLotteryTicket, DrawLottery, CommitLotteryDraw, ClaimLotteryPrize, RefundLotteryRound,
+    ExpireLotteryDraw, RefundLotteryTicket,
+};
 use crate::errors::*;
 use crate::events::*;
-use crate::randomness::*;
+use crate::vrf::{self, VrfRevealParams};
 
 pub fn init_round_handler(ctx: Context<InitLotteryRound>, round_id: u64) -> Result<()> {
     let r = &mut ctx.accounts.lottery_round;
     r.round_id = round_id;
     r.pool_lamports = 0;
     r.tickets_sold = 0;
-    r.draw_slot = 0;
+    r.seed_slot = 0;
     r.drawn = false;
     r.winning_ticket = 0;
     r.claimed = false;
     r.bump = ctx.bumps.lottery_round;
-    // [ФИКС] инициализация commit-reveal полей
     r.draw_committed = false;
     r.draw_commit_slot = 0;
-    r.draw_commit_hash = [0u8; 32];
-    // [AUDIT F-23] start of the refund clock: without a creation timestamp a
-    // never-drawn round could strand its pool with no way to prove how long it
-    // had been stuck.
+    r.randomness = Pubkey::default();
+    // [AUDIT F-23] start of the sales window and of the refund clock.
     r.created_at = Clock::get()?.unix_timestamp;
     Ok(())
 }
 
+/// [F-06] Ticket purchase. The FULL price is escrowed on the round (nothing
+/// reaches the treasury before the draw), so an undrawn round can refund
+/// every ticket in full. Sales close as soon as a draw is committed.
 pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
-    // Ticket sales stay disabled: the draw is a plain authority commit-reveal
-    // (see [AUDIT F-06]) and there is no VRF yet. The body below is the shape
-    // the instruction must have when it is switched on — including the
-    // on-chain per-wallet ticket cap that `LOTTERY_MAX_TICKETS_PER_DAY` used to
-    // describe without ever enforcing.
-    require!(false, AofError::FeatureDisabled);
     require!(!ctx.accounts.lottery_round.drawn, AofError::LotteryRoundClosed);
+    require!(!ctx.accounts.lottery_round.draw_committed, AofError::LotterySalesClosed);
 
     let price = LOTTERY_TICKET_PRICE_LAMPORTS;
-    let (dev_cut, pool_cut) = crate::economics::split_bps(price, LOTTERY_POOL_BPS)?;
-
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -47,17 +43,7 @@ pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
                 to: ctx.accounts.lottery_round.to_account_info(),
             },
         ),
-        pool_cut,
-    )?;
-    system_program::transfer(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            system_program::Transfer {
-                from: ctx.accounts.buyer.to_account_info(),
-                to: ctx.accounts.treasury.to_account_info(),
-            },
-        ),
-        dev_cut,
+        price,
     )?;
 
     let round = &mut ctx.accounts.lottery_round;
@@ -66,11 +52,10 @@ pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
         .tickets_sold
         .checked_add(1)
         .ok_or(AofError::MathOverflow)?;
-    round.pool_lamports = round.pool_lamports.checked_add(pool_cut).ok_or(AofError::MathOverflow)?;
+    round.pool_lamports = round.pool_lamports.checked_add(price).ok_or(AofError::MathOverflow)?;
 
-    // [AUDIT] per-wallet daily cap, enforced on-chain instead of trusting the
-    // backend: the counter PDA is derived from (round, buyer), so `init` on a
-    // capped counter fails before any lamports move.
+    // [AUDIT] per-wallet cap, enforced on-chain instead of trusting the
+    // backend: the counter PDA is derived from (round, buyer).
     let counter = &mut ctx.accounts.ticket_counter;
     if counter.buyer == Pubkey::default() {
         counter.buyer = ctx.accounts.buyer.key();
@@ -99,55 +84,184 @@ pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
     Ok(())
 }
 
-/// [AUDIT F-06] Disabled. `commit_lottery_draw` + `draw_lottery` is a plain
-/// authority commit-reveal: the authority generates the secret itself, and
-/// after the commit lands the slot hash is public, so an offline grind can
-/// pick a secret that produces a chosen `winning_ticket`. There is no forced
-/// settlement and (before F-23) no refund path, so an "unlucky" round simply
-/// stayed unrevealed with the pool locked. Keeping the instruction callable
-/// would be a payable randomness game whose outcome the house can choose.
-pub fn commit_draw_handler(_ctx: Context<CommitLotteryDraw>, _commit_hash: [u8; 32]) -> Result<()> {
-    require!(false, AofError::RandomnessDisabled);
-    #[allow(unreachable_code)]
-    {
-        let round = &mut _ctx.accounts.lottery_round;
-        require!(!round.drawn, AofError::LotteryRoundClosed);
-        require!(!round.draw_committed, AofError::LotteryDrawAlreadyCommitted);
-        require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
-        round.draw_committed = true;
-        round.draw_commit_slot = Clock::get()?.slot;
-        round.draw_commit_hash = _commit_hash;
-        Ok(())
-    }
+/// [F-06] Close sales and commit the draw to a pool randomness account.
+/// The operator may do it at any time; after LOTTERY_SALES_SECONDS anyone may,
+/// so a round cannot be held open (or kept from drawing) by the house. The
+/// winner is fixed by the oracle, not by who commits or when.
+pub fn commit_draw_handler(ctx: Context<CommitLotteryDraw>) -> Result<()> {
+    let clock = Clock::get()?;
+    let round = &ctx.accounts.lottery_round;
+    require!(!round.drawn, AofError::LotteryRoundClosed);
+    require!(!round.draw_committed, AofError::LotteryDrawAlreadyCommitted);
+    require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
+    let sales_over = clock.unix_timestamp >= round.created_at.saturating_add(LOTTERY_SALES_SECONDS);
+    require!(
+        sales_over || ctx.accounts.cranker.key() == ctx.accounts.config.operator,
+        AofError::LotterySalesOpen
+    );
+
+    let commit_key = ctx.accounts.lottery_round.key();
+    let accounts = vrf::CommitAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+    };
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+
+    let round = &mut ctx.accounts.lottery_round;
+    round.draw_committed = true;
+    round.draw_commit_slot = clock.slot;
+    round.seed_slot = seed_slot;
+    round.randomness = ctx.accounts.randomness.key();
+
+    emit!(VrfCommitted {
+        mechanic: VRF_MECHANIC_LOTTERY,
+        commit: commit_key,
+        user: ctx.accounts.cranker.key(),
+        randomness: round.randomness,
+        seed_slot,
+        commit_slot: clock.slot,
+        escrow_lamports: round.pool_lamports,
+    });
+    Ok(())
 }
 
-/// [AUDIT F-06] Disabled — see `commit_draw_handler`.
-pub fn draw_handler(_ctx: Context<DrawLottery>, _secret: [u8; 32]) -> Result<()> {
-    require!(false, AofError::RandomnessDisabled);
-    #[allow(unreachable_code)]
-    {
-        let round = &mut _ctx.accounts.lottery_round;
-        require!(!round.drawn, AofError::LotteryRoundClosed);
-        require!(round.draw_committed, AofError::LotteryDrawNotCommitted);
-        require!(hash_secret(&_secret) == round.draw_commit_hash, AofError::InvalidHash);
-        require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
+/// [F-06] Permissionless draw: Switchboard reveal via CPI, winning ticket from
+/// the verified value, the house share (LOTTERY_DEV_BPS) to the treasury.
+pub fn draw_handler(ctx: Context<DrawLottery>, params: VrfRevealParams) -> Result<()> {
+    let clock = Clock::get()?;
+    let round_key = ctx.accounts.lottery_round.key();
+    let round = &ctx.accounts.lottery_round;
+    require!(!round.drawn, AofError::LotteryRoundClosed);
+    require!(round.draw_committed, AofError::LotteryDrawNotCommitted);
+    require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
+    let (randomness, seed_slot, commit_slot) = (round.randomness, round.seed_slot, round.draw_commit_slot);
 
-        let commit_slot = round.draw_commit_slot;
-        let slot_hash = get_slot_hash(&_ctx.accounts.slot_hashes, commit_slot)?;
-        let entropy = derive_entropy(&_secret, &slot_hash, b"lottery");
-        let winning_ticket = entropy_u64(&entropy) % round.tickets_sold;
+    let accounts = vrf::RevealAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        stats: ctx.accounts.stats.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+        payer: ctx.accounts.cranker.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
+        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
+        program_state: ctx.accounts.program_state.to_account_info(),
+    };
+    let value = vrf::reveal(
+        &mut ctx.accounts.vrf_slot,
+        &round_key,
+        &randomness,
+        seed_slot,
+        commit_slot,
+        &accounts,
+        &params,
+        ctx.bumps.vrf_authority,
+        clock.slot,
+    )?;
 
-        round.drawn = true;
-        round.draw_slot = commit_slot;
-        round.winning_ticket = winning_ticket;
+    let tickets = ctx.accounts.lottery_round.tickets_sold;
+    let roll = vrf::derive_roll(&value, b"lottery", round_key.as_ref());
+    let winning_ticket = vrf::below(vrf::lane(&roll, 0), tickets);
 
-        emit!(LotteryDrawn {
-            round_id: round.round_id,
-            winning_ticket,
-            pool_lamports: round.pool_lamports,
-        });
-        Ok(())
+    // House share leaves the escrow now that the round is settled; the rest
+    // is the prize.
+    let pool = ctx.accounts.lottery_round.pool_lamports;
+    let (prize, house) = crate::economics::split_bps(pool, LOTTERY_DEV_BPS)?;
+    if house > 0 {
+        let reserve = Rent::get()?.minimum_balance(LOTTERY_ROUND_SPACE);
+        crate::economics::transfer_owned_lamports(
+            &ctx.accounts.lottery_round.to_account_info(),
+            &ctx.accounts.treasury.to_account_info(),
+            house,
+            reserve,
+        )?;
     }
+
+    let round = &mut ctx.accounts.lottery_round;
+    round.drawn = true;
+    round.winning_ticket = winning_ticket;
+    round.pool_lamports = prize;
+
+    emit!(VrfSettled {
+        mechanic: VRF_MECHANIC_LOTTERY,
+        commit: round_key,
+        randomness,
+        seed_slot,
+        value,
+        cranker: ctx.accounts.cranker.key(),
+    });
+    emit!(LotteryDrawn {
+        round_id: round.round_id,
+        winning_ticket,
+        pool_lamports: prize,
+    });
+    Ok(())
+}
+
+/// [F-06] The oracle never revealed the draw inside the window: free the pool
+/// slot and reopen the round for a new draw commit. Nobody could see the old
+/// value settle anything, so re-drawing gives no one a choice.
+pub fn expire_draw_handler(ctx: Context<ExpireLotteryDraw>) -> Result<()> {
+    let clock = Clock::get()?;
+    let round_key = ctx.accounts.lottery_round.key();
+    let round = &ctx.accounts.lottery_round;
+    require!(!round.drawn, AofError::LotteryAlreadyDrawn);
+    require!(round.draw_committed, AofError::LotteryDrawNotCommitted);
+    let commit_slot = round.draw_commit_slot;
+    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &round_key, commit_slot, clock.slot)?;
+
+    let round = &mut ctx.accounts.lottery_round;
+    round.draw_committed = false;
+    round.draw_commit_slot = 0;
+    round.seed_slot = 0;
+    round.randomness = Pubkey::default();
+    emit!(VrfCommitRefunded {
+        mechanic: VRF_MECHANIC_LOTTERY,
+        commit: round_key,
+        user: Pubkey::default(),
+        refunded_lamports: 0,
+    });
+    Ok(())
+}
+
+/// [AUDIT F-23 / F-06] A round that was never drawn refunds each ticket in
+/// full to its buyer after LOTTERY_ROUND_TIMEOUT_SECONDS (permissionless; the
+/// money can only go to the ticket's buyer). A draw in flight must settle or
+/// expire first. Closing the ticket makes a second refund impossible.
+pub fn refund_ticket_handler(ctx: Context<RefundLotteryTicket>) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    let round = &ctx.accounts.lottery_round;
+    require!(!round.drawn, AofError::LotteryAlreadyDrawn);
+    require!(!round.draw_committed, AofError::LotteryDrawAlreadyCommitted);
+    require!(
+        now >= round.created_at.saturating_add(LOTTERY_ROUND_TIMEOUT_SECONDS),
+        AofError::LotteryRoundNotExpired
+    );
+    let price = LOTTERY_TICKET_PRICE_LAMPORTS;
+    let reserve = Rent::get()?.minimum_balance(LOTTERY_ROUND_SPACE);
+    crate::economics::transfer_owned_lamports(
+        &ctx.accounts.lottery_round.to_account_info(),
+        &ctx.accounts.buyer.to_account_info(),
+        price,
+        reserve,
+    )?;
+    let round = &mut ctx.accounts.lottery_round;
+    round.pool_lamports = round.pool_lamports.checked_sub(price).ok_or(AofError::MathOverflow)?;
+    emit!(LotteryTicketRefunded {
+        round_id: round.round_id,
+        ticket_number: ctx.accounts.lottery_ticket.ticket_number,
+        buyer: ctx.accounts.buyer.key(),
+        lamports: price,
+    });
+    Ok(())
 }
 
 pub fn claim_prize_handler(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
@@ -169,29 +283,28 @@ pub fn claim_prize_handler(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
     Ok(())
 }
 
-/// [AUDIT F-23] A round the authority never reveals used to lock its pool in
-/// the PDA forever (there is no forced settlement and no expiry). Once the
-/// timeout has elapsed anyone may sweep the pool — and the account's rent —
-/// back to the configured treasury and close the round.
+/// Close a settled, empty round: its prize was claimed, or (undrawn) every
+/// ticket was refunded after the timeout. Only the rent is left and it goes
+/// to the treasury that paid for the round. Player money never does.
 pub fn refund_round_handler(ctx: Context<RefundLotteryRound>, _round_id: u64) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let round = &ctx.accounts.round;
-    require!(!round.drawn, AofError::LotteryAlreadyDrawn);
-    require!(
-        now >= round
-            .created_at
-            .saturating_add(LOTTERY_ROUND_TIMEOUT_SECONDS),
-        AofError::LotteryRoundNotExpired
-    );
+    require!(round.pool_lamports == 0, AofError::LotteryRoundNotEmpty);
+    require!(!round.draw_committed || round.drawn, AofError::LotteryDrawAlreadyCommitted);
+    let settled = if round.drawn {
+        round.claimed
+    } else {
+        now >= round.created_at.saturating_add(LOTTERY_ROUND_TIMEOUT_SECONDS)
+    };
+    require!(settled, AofError::LotteryRoundNotExpired);
 
     emit!(LotteryRoundRefunded {
         round_id: round.round_id,
-        lamports: round.pool_lamports,
+        lamports: ctx.accounts.round.to_account_info().lamports(),
         tickets_sold: round.tickets_sold,
         at: now,
     });
-    // `close = treasury` in the Accounts struct moves every remaining lamport
-    // (pool + rent) to the configured treasury after this handler returns.
+    // `close = treasury` moves the remaining rent after this handler returns.
     Ok(())
 }
 
@@ -208,6 +321,8 @@ fn settle_prize<'info>(
     require!(amount > 0, AofError::VaultInsufficient);
     crate::economics::transfer_owned_lamports(source, winner, amount, min_rent)?;
     round.claimed = true;
+    // The escrow is empty now; `refund_lottery_round` may close the round.
+    round.pool_lamports = 0;
     Ok(amount)
 }
 
@@ -217,9 +332,9 @@ mod settlement_tests {
     use crate::state::LotteryRound;
 
     fn round() -> LotteryRound {
-        LotteryRound { round_id: 1, pool_lamports: 100, tickets_sold: 2, draw_slot: 10,
+        LotteryRound { round_id: 1, pool_lamports: 100, tickets_sold: 2, seed_slot: 10,
             drawn: true, winning_ticket: 1, claimed: false, bump: 0, created_at: 0,
-            draw_committed: true, draw_commit_slot: 9, draw_commit_hash: [0; 32] }
+            draw_committed: true, draw_commit_slot: 9, randomness: Pubkey::default() }
     }
 
     #[test]

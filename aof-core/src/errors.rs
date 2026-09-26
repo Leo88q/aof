@@ -274,4 +274,21 @@ pub enum AofError {
     RandomnessNotRevealed,
     #[msg("Switchboard randomness commit must precede this instruction in the same transaction")]
     RandomnessCommitMissing,
+    // [F-06] program-owned Switchboard pool (appended: existing codes must not move).
+    #[msg("VRF pool slot is busy with another commit")]
+    VrfSlotBusy,
+    #[msg("VRF pool slot is retired")]
+    VrfSlotRetired,
+    #[msg("VRF pool slot is not held by this commit")]
+    VrfSlotNotHeld,
+    #[msg("Reveal window has closed; the commit can only be refunded")]
+    RevealWindowClosed,
+    #[msg("Price exceeds the caller's maximum")]
+    PriceAboveMaximum,
+    #[msg("Lottery ticket sales are closed")]
+    LotterySalesClosed,
+    #[msg("Lottery sales window is still open")]
+    LotterySalesOpen,
+    #[msg("Lottery round still holds funds")]
+    LotteryRoundNotEmpty,
 }

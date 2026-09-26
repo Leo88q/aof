@@ -1,12 +1,17 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
-use crate::state::{DrumCommit, QuestConfig};
+use crate::state::{DrumCommit, QuestConfig, VrfSlot};
 use crate::errors::QuestError;
 use crate::events::DrumCommitted;
+use crate::instructions::drum::drum_reveal::DRUM_MAX_PRIZE;
+use crate::vrf::{self, SLOT_HASHES_ID, VRF_AUTHORITY_SEED, VRF_SLOT_SEED};
 
 /// Стоимость одного спина барабана в маскотах (медалях).
 pub const DRUM_SPIN_COST_MASCOT: u64 = 5;
 
+/// [F-06] Paid spin: the cost moves to the treasury and a pool randomness
+/// account is committed (CPI signed by this program's PDA) in the same
+/// instruction. The prize is decided by the oracle only.
 #[derive(Accounts)]
 pub struct DrumCommitCtx<'info> {
     #[account(
@@ -41,18 +46,37 @@ pub struct DrumCommitCtx<'info> {
     )]
     pub user_mascot: Account<'info, TokenAccount>,
 
+    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
+    #[account(mut, address = vrf_slot.randomness @ QuestError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ QuestError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, crate::vrf::SwitchboardOnDemand>,
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<DrumCommitCtx>, hash: [u8; 32]) -> Result<()> {
-    // The spin burns the user's mascot before reveal, while the contract has
-    // no expiry/refund path. The API is disabled; fail closed for direct
-    // program callers as well.
-    require!(false, QuestError::FeatureDisabled);
+pub fn handler(ctx: Context<DrumCommitCtx>) -> Result<()> {
+    // The treasury must be able to pay the largest prize of this spin.
+    require!(
+        ctx.accounts.treasury_mascot.amount >= DRUM_MAX_PRIZE,
+        QuestError::TreasuryTooLow
+    );
 
-    // [ФИКС] Списание стоимости спина с пользователя в казну ДО розыгрыша.
-    // Юзер подписывает перевод своих маскотов -> защита от бесплатного спина.
+    // Списание стоимости спина с пользователя в казну ДО розыгрыша.
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -65,17 +89,31 @@ pub fn handler(ctx: Context<DrumCommitCtx>, hash: [u8; 32]) -> Result<()> {
         DRUM_SPIN_COST_MASCOT,
     )?;
 
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.drum_commit.key();
+    let accounts = vrf::CommitAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+    };
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+
     let commit = &mut ctx.accounts.drum_commit;
     commit.user = ctx.accounts.user.key();
     commit.bump = ctx.bumps.drum_commit;
-    let clock = Clock::get()?;
-    commit.hash = hash;
-    commit.created_at = clock.unix_timestamp;
+    commit.randomness = ctx.accounts.randomness.key();
+    commit.seed_slot = seed_slot;
     commit.commit_slot = clock.slot;
+    commit.created_at = clock.unix_timestamp;
+    commit.cost = DRUM_SPIN_COST_MASCOT;
 
     emit!(DrumCommitted {
         user: ctx.accounts.user.key(),
+        randomness: commit.randomness,
+        seed_slot,
     });
-
     Ok(())
 }

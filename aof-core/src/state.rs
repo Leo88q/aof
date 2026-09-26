@@ -390,19 +390,31 @@ pub struct PackConfig {
     pub bump: u8,
 }
 
+/// A paid pack opening waiting for its Switchboard reveal.
+/// seeds = [PACK_COMMIT_SEED, user, nonce_le]. The tool NFT is minted at the
+/// PDA [PACK_MINT_SEED, this account] by the settling reveal.
 #[account]
 #[derive(InitSpace)]
 pub struct PackCommit {
     pub user: Pubkey,
-    pub mint: Pubkey,
+    /// Client-chosen, lets one wallet hold several pending openings.
+    pub nonce: u64,
     pub pack_type: u8,
-    pub commit_hash: [u8; 32],
-    pub commit_slot: u64,
-    pub revealed: bool,
-    /// Pack price held in escrow on this PDA until reveal (then forwarded to
-    /// the treasury) or expiry (then refunded to `user`). Never paid out
-    /// before the outcome is known, so a lost secret cannot cost the player.
+    /// Odds snapshot taken at commit: a later `set_pack_config` cannot change
+    /// the table an already-paid opening is settled with.
+    pub odds_bps: [u16; 5],
+    /// Pack price, escrowed on this PDA until the outcome is known: reveal ->
+    /// treasury, refund -> user. Never paid out earlier.
     pub paid_lamports: u64,
+    /// Rent the settler fronts for the NFT mint, its ATA and ToolData,
+    /// prepaid by the user so that ANY cranker (backend, player, third party)
+    /// is made whole by the reveal. Returned to the user on refund.
+    pub deposit_lamports: u64,
+    /// Pool randomness account locked by this commit and its seed slot.
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Reroll (честный, RNG) -----
@@ -414,14 +426,28 @@ pub struct RerollConfig {
     pub bump: u8,
 }
 
+/// seeds = [REROLL_COMMIT_SEED, user, nonce_le]. The burned tool is recorded
+/// so that a refund (oracle never revealed) can restore an equivalent tool.
 #[account]
 #[derive(InitSpace)]
 pub struct RerollCommit {
     pub user: Pubkey,
+    pub nonce: u64,
     pub burn_mint: Pubkey,
-    pub new_mint: Pubkey,
-    pub commit_hash: [u8; 32],
+    #[max_len(32)]
+    pub burned_tool_type: String,
+    pub burned_rarity: Rarity,
+    pub burned_durability: u8,
+    /// Odds snapshot taken at commit (see PackCommit::odds_bps).
+    pub odds_bps: [u16; 5],
+    /// Reroll fee moved out of the gas tank into this escrow (lamports).
+    pub fee_lamports: u64,
+    /// Prepaid rent for the settlement NFT (mint + ATA + ToolData).
+    pub deposit_lamports: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
     pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Exploration -----
@@ -436,13 +462,24 @@ pub struct ExplorationState {
     pub day_start: i64,
 }
 
+/// seeds = [EXPLORATION_COMMIT_SEED, tool_mint].
 #[account]
 #[derive(InitSpace)]
 pub struct ExplorationCommit {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
-    pub commit_hash: [u8; 32],
+    /// Tier snapshot taken at commit: upgrading while the trip is pending
+    /// must not change its odds.
+    pub tier: u8,
+    /// Resources burned at commit, re-minted on refund.
+    pub food_burned: u64,
+    pub wood_burned: u64,
+    pub stone_burned: u64,
+    pub meat_burned: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
     pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Рефералы -----
@@ -479,15 +516,19 @@ pub struct ForgeCommit {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
     pub slot_type: u8,
-    pub commit_hash: [u8; 32],
-    pub commit_slot: u64,
+    /// Enchant level at commit; the reveal settles exactly this upgrade step.
+    pub level_before: u8,
     pub use_protector: bool,
     /// SOL fee (+protector) escrowed on this PDA until reveal (-> treasury)
-    /// or expiry (-> user).
+    /// or refund (-> user).
     pub paid_lamports: u64,
-    /// Resources burned at commit; re-minted to the user on expiry.
+    /// Resources burned at commit; re-minted to the user on refund.
     pub wood_burned: u64,
     pub stone_burned: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Лотерея -----
@@ -496,20 +537,26 @@ pub struct ForgeCommit {
 #[derive(InitSpace)]
 pub struct LotteryRound {
     pub round_id: u64,
+    /// Escrowed ticket money: every ticket price until the draw, then the
+    /// prize (the draw moves LOTTERY_DEV_BPS to the treasury).
     pub pool_lamports: u64,
     pub tickets_sold: u64,
-    pub draw_slot: u64,
+    /// Switchboard seed slot of the draw commit. Byte-compatible with the old
+    /// `draw_slot` field (same type and position), so existing rounds decode.
+    pub seed_slot: u64,
     pub drawn: bool,
     pub winning_ticket: u64,
     pub claimed: bool,
     pub bump: u8,
-    /// [AUDIT F-23] Round creation time; starts the refund timeout that stops
-    /// an unrevealed round from stranding its pool forever.
+    /// [AUDIT F-23] Round creation time; starts the sales window and the
+    /// refund timeout.
     pub created_at: i64,
-    // [ФИКС] commit-reveal поля для розыгрыша (закрывают вектор гриферства)
+    /// A draw is in flight: ticket sales are closed.
     pub draw_committed: bool,
     pub draw_commit_slot: u64,
-    pub draw_commit_hash: [u8; 32],
+    /// Pool randomness account of the draw. Byte-compatible with the old
+    /// 32-byte `draw_commit_hash`.
+    pub randomness: Pubkey,
 }
 
 #[account]
@@ -530,6 +577,26 @@ pub struct LotteryTicketCounter {
     pub buyer: Pubkey,
     pub round_id: u64,
     pub count: u8,
+    pub bump: u8,
+}
+
+/// [F-06] One Switchboard randomness account of the program-owned pool.
+/// seeds = [VRF_SLOT_SEED, randomness]. `lock` names the commit PDA that is
+/// waiting for this account's reveal; a slot serves one commit at a time.
+#[account]
+#[derive(InitSpace)]
+pub struct VrfSlot {
+    /// Switchboard randomness account (PDA [VRF_RANDOMNESS_SEED, index_le] of
+    /// this program, authority = PDA [VRF_AUTHORITY_SEED]).
+    pub randomness: Pubkey,
+    pub index: u32,
+    /// Commit PDA holding the slot; Pubkey::default() when free.
+    pub lock: Pubkey,
+    pub locked_at_slot: u64,
+    /// Operator switch for a misbehaving account; only a free slot retires.
+    pub retired: bool,
+    pub commits: u64,
+    pub reveals: u64,
     pub bump: u8,
 }
 

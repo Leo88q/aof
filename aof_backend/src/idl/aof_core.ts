@@ -523,16 +523,27 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config"
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "buyer",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "treasury",
-          "writable": true
         },
         {
           "name": "lotteryRound",
@@ -1405,52 +1416,83 @@ export type AofCore = {
           }
         },
         {
-          "name": "authority",
+          "name": "cranker",
           "signer": true
         },
         {
           "name": "lotteryRound",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  115,
                   108,
                   111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
+                  116
                 ]
               },
               {
                 "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "LotteryRound"
+                "path": "randomness"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "commitHash",
-          "type": {
-            "array": [
-              "u8",
-              32
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
             ]
           }
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "switchboardProgram"
         }
-      ]
+      ],
+      "args": []
     },
     {
       "name": "craft",
@@ -1979,53 +2021,95 @@ export type AofCore = {
           }
         },
         {
-          "name": "authority",
+          "name": "cranker",
+          "writable": true,
           "signer": true
         },
         {
           "name": "lotteryRound",
-          "writable": true,
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
+                  118,
                   114,
-                  121,
+                  102,
                   95,
-                  114,
-                  111,
+                  97,
                   117,
-                  110,
-                  100
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "lottery_round.round_id",
-                "account": "LotteryRound"
               }
             ]
           }
         },
         {
-          "name": "slotHashes",
+          "name": "oracle"
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "stats",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "rewardEscrow",
+          "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "programState"
+        },
+        {
+          "name": "switchboardProgram"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "secret",
+          "name": "params",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "defined": {
+              "name": "vrfRevealParams"
+            }
           }
         }
       ]
@@ -2062,82 +2146,42 @@ export type AofCore = {
           }
         },
         {
-          "name": "authority",
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
           "signer": true
         },
         {
-          "name": "explorationState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  101,
-                  120,
-                  112,
-                  108,
-                  111,
-                  114,
-                  97,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "exploration_commit.user",
-                "account": "ExplorationCommit"
-              }
-            ]
-          }
-        },
-        {
           "name": "explorationCommit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  101,
-                  120,
-                  112,
-                  108,
-                  111,
-                  114,
-                  97,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  99,
-                  111,
-                  109,
-                  109,
-                  105,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "exploration_commit.tool_mint",
-                "account": "ExplorationCommit"
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "payer",
+          "name": "user",
           "writable": true
         },
         {
@@ -2173,22 +2217,86 @@ export type AofCore = {
           }
         },
         {
-          "name": "slotHashes",
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle"
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "stats",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "rewardEscrow",
+          "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "programState"
+        },
+        {
+          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "secret",
+          "name": "params",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "defined": {
+              "name": "vrfRevealParams"
+            }
           }
         }
       ]
@@ -2223,6 +2331,10 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "authority",
+          "signer": true
         },
         {
           "name": "user",
@@ -2277,6 +2389,74 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "vrfSlot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  115,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "randomness"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "switchboardProgram"
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -2289,15 +2469,6 @@ export type AofCore = {
         {
           "name": "slotType",
           "type": "u8"
-        },
-        {
-          "name": "commitHash",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         },
         {
           "name": "useProtector",
@@ -2337,7 +2508,8 @@ export type AofCore = {
           }
         },
         {
-          "name": "authority",
+          "name": "cranker",
+          "writable": true,
           "signer": true
         },
         {
@@ -2349,7 +2521,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "payer",
+          "name": "user",
           "writable": true
         },
         {
@@ -2357,27 +2529,88 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "slotHashes",
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle"
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "stats",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "rewardEscrow",
+          "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "programState"
+        },
+        {
+          "name": "switchboardProgram"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "secret",
+          "name": "params",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "defined": {
+              "name": "vrfRevealParams"
+            }
           }
         }
       ]
     },
     {
       "name": "forgeAttemptExpire",
-      "docs": [
-        "Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent)."
-      ],
       "discriminator": [
         206,
         118,
@@ -2408,11 +2641,46 @@ export type AofCore = {
           }
         },
         {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "forgeCommit",
           "writable": true
         },
         {
           "name": "user",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
           "writable": true
         },
         {
@@ -2450,6 +2718,14 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -4262,38 +4538,76 @@ export type AofCore = {
           "name": "packConfig"
         },
         {
-          "name": "auth"
-        },
-        {
-          "name": "mint"
-        },
-        {
           "name": "packCommit",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  97,
-                  99,
-                  107,
+                  118,
+                  114,
+                  102,
                   95,
-                  99,
+                  115,
+                  108,
                   111,
-                  109,
-                  109,
-                  105,
                   116
                 ]
               },
               {
                 "kind": "account",
-                "path": "mint"
+                "path": "randomness"
               }
             ]
           }
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "switchboardProgram"
         },
         {
           "name": "systemProgram",
@@ -4310,13 +4624,12 @@ export type AofCore = {
           }
         },
         {
-          "name": "commitHash",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "maxPriceLamports",
+          "type": "u64"
         }
       ]
     },
@@ -4352,12 +4665,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "authority",
+          "name": "cranker",
           "writable": true,
           "signer": true
         },
         {
           "name": "packCommit",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "mint",
           "writable": true,
           "pda": {
             "seeds": [
@@ -4369,35 +4694,18 @@ export type AofCore = {
                   99,
                   107,
                   95,
-                  99,
-                  111,
-                  109,
                   109,
                   105,
+                  110,
                   116
                 ]
               },
               {
                 "kind": "account",
-                "path": "mint"
+                "path": "pack_commit"
               }
             ]
           }
-        },
-        {
-          "name": "user",
-          "writable": true
-        },
-        {
-          "name": "treasury",
-          "writable": true
-        },
-        {
-          "name": "packConfig"
-        },
-        {
-          "name": "mint",
-          "writable": true
         },
         {
           "name": "userToken",
@@ -4441,12 +4749,73 @@ export type AofCore = {
           }
         },
         {
-          "name": "slotHashes",
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle"
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "stats",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "rewardEscrow",
+          "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "programState"
+        },
+        {
+          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -4455,21 +4824,17 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "secret",
+          "name": "params",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "defined": {
+              "name": "vrfRevealParams"
+            }
           }
         }
       ]
     },
     {
       "name": "packOpenExpire",
-      "docs": [
-        "Refund an expired pack commit (escrow + rent back to the player)."
-      ],
       "discriminator": [
         8,
         126,
@@ -4501,38 +4866,15 @@ export type AofCore = {
         },
         {
           "name": "packCommit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  97,
-                  99,
-                  107,
-                  95,
-                  99,
-                  111,
-                  109,
-                  109,
-                  105,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "user",
           "writable": true
         },
         {
-          "name": "mint"
+          "name": "vrfSlot",
+          "writable": true
         }
       ],
       "args": []
@@ -6008,6 +6350,10 @@ export type AofCore = {
           }
         },
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
           "name": "user",
           "writable": true,
           "signer": true
@@ -6032,6 +6378,31 @@ export type AofCore = {
               {
                 "kind": "account",
                 "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rerollConfig",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  114,
+                  111,
+                  108,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -6066,37 +6437,76 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "newMint"
+          "name": "rerollCommit",
+          "writable": true
         },
         {
-          "name": "rerollCommit",
+          "name": "vrfSlot",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  118,
                   114,
-                  101,
-                  114,
-                  111,
-                  108,
-                  108,
+                  102,
                   95,
-                  99,
+                  115,
+                  108,
                   111,
-                  109,
-                  109,
-                  105,
                   116
                 ]
               },
               {
                 "kind": "account",
-                "path": "new_mint"
+                "path": "randomness"
               }
             ]
           }
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -6109,13 +6519,8 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "commitHash",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
+          "name": "nonce",
+          "type": "u64"
         }
       ]
     },
@@ -6151,37 +6556,24 @@ export type AofCore = {
           }
         },
         {
-          "name": "authority",
+          "name": "cranker",
           "writable": true,
           "signer": true
         },
         {
-          "name": "rerollConfig",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  114,
-                  111,
-                  108,
-                  108,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          "name": "rerollCommit",
+          "writable": true
         },
         {
-          "name": "rerollCommit",
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "newMint",
           "writable": true,
           "pda": {
             "seeds": [
@@ -6195,28 +6587,18 @@ export type AofCore = {
                   108,
                   108,
                   95,
-                  99,
-                  111,
-                  109,
                   109,
                   105,
+                  110,
                   116
                 ]
               },
               {
                 "kind": "account",
-                "path": "new_mint"
+                "path": "reroll_commit"
               }
             ]
           }
-        },
-        {
-          "name": "payer",
-          "writable": true
-        },
-        {
-          "name": "newMint",
-          "writable": true
         },
         {
           "name": "newToken",
@@ -6260,12 +6642,73 @@ export type AofCore = {
           }
         },
         {
-          "name": "slotHashes",
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle"
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "stats",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "rewardEscrow",
+          "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "programState"
+        },
+        {
+          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -6274,12 +6717,11 @@ export type AofCore = {
       ],
       "args": [
         {
-          "name": "secret",
+          "name": "params",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "defined": {
+              "name": "vrfRevealParams"
+            }
           }
         }
       ]
@@ -6994,6 +7436,10 @@ export type AofCore = {
           }
         },
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
           "name": "materialMints",
           "pda": {
             "seeds": [
@@ -7076,7 +7522,7 @@ export type AofCore = {
               },
               {
                 "kind": "account",
-                "path": "toolMint"
+                "path": "tool_mint"
               }
             ]
           }
@@ -7149,6 +7595,74 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "vrfSlot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  115,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "randomness"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "switchboardProgram"
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -7157,17 +7671,7 @@ export type AofCore = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "commitHash",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
+      "args": []
     },
     {
       "name": "startMilling",
@@ -8966,6 +9470,598 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "vrfPoolAdd",
+      "discriminator": [
+        234,
+        143,
+        61,
+        230,
+        212,
+        57,
+        8,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vrfAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  115,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "randomness"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewardEscrow",
+          "writable": true
+        },
+        {
+          "name": "queue",
+          "writable": true
+        },
+        {
+          "name": "programState"
+        },
+        {
+          "name": "lutSigner"
+        },
+        {
+          "name": "lut",
+          "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "switchboardProgram"
+        },
+        {
+          "name": "addressLookupTableProgram",
+          "address": "AddressLookupTab1e1111111111111111111111111"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "recentSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "vrfPoolSetRetired",
+      "discriminator": [
+        145,
+        60,
+        229,
+        148,
+        74,
+        247,
+        213,
+        200
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "retired",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "vrfSlotRecover",
+      "discriminator": [
+        4,
+        108,
+        67,
+        220,
+        83,
+        132,
+        241,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "holder"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "rerollRandomExpire",
+      "discriminator": [
+        165,
+        118,
+        63,
+        210,
+        134,
+        116,
+        167,
+        250
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "rerollCommit",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "newMint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  114,
+                  111,
+                  108,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "reroll_commit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "newToken",
+          "writable": true
+        },
+        {
+          "name": "newToolData",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "new_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "exploreExpire",
+      "discriminator": [
+        95,
+        254,
+        71,
+        97,
+        162,
+        245,
+        109,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "explorationCommit",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "foodMint",
+          "writable": true
+        },
+        {
+          "name": "userFood",
+          "writable": true
+        },
+        {
+          "name": "woodMint",
+          "writable": true
+        },
+        {
+          "name": "userWood",
+          "writable": true
+        },
+        {
+          "name": "stoneMint",
+          "writable": true
+        },
+        {
+          "name": "userStone",
+          "writable": true
+        },
+        {
+          "name": "meatMint",
+          "writable": true
+        },
+        {
+          "name": "userMeat",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expireLotteryDraw",
+      "discriminator": [
+        194,
+        243,
+        73,
+        116,
+        68,
+        189,
+        235,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lotteryRound",
+          "writable": true
+        },
+        {
+          "name": "vrfSlot",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refundLotteryTicket",
+      "discriminator": [
+        111,
+        4,
+        125,
+        238,
+        244,
+        22,
+        54,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lotteryRound",
+          "writable": true
+        },
+        {
+          "name": "lotteryTicket",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -9488,6 +10584,19 @@ export type AofCore = {
         224,
         114
       ]
+    },
+    {
+      "name": "vrfSlot",
+      "discriminator": [
+        95,
+        178,
+        139,
+        58,
+        220,
+        18,
+        96,
+        242
+      ]
     }
   ],
   "events": [
@@ -9947,19 +11056,6 @@ export type AofCore = {
       ]
     },
     {
-      "name": "packCommitExpired",
-      "discriminator": [
-        10,
-        107,
-        17,
-        86,
-        143,
-        248,
-        135,
-        69
-      ]
-    },
-    {
       "name": "forgeCommitExpired",
       "discriminator": [
         24,
@@ -10334,6 +11430,97 @@ export type AofCore = {
         99,
         31,
         225
+      ]
+    },
+    {
+      "name": "vrfCommitted",
+      "discriminator": [
+        193,
+        238,
+        10,
+        172,
+        197,
+        239,
+        98,
+        35
+      ]
+    },
+    {
+      "name": "vrfSettled",
+      "discriminator": [
+        209,
+        144,
+        196,
+        13,
+        80,
+        216,
+        88,
+        84
+      ]
+    },
+    {
+      "name": "vrfCommitRefunded",
+      "discriminator": [
+        88,
+        239,
+        166,
+        50,
+        151,
+        72,
+        245,
+        212
+      ]
+    },
+    {
+      "name": "vrfSlotAdded",
+      "discriminator": [
+        78,
+        57,
+        54,
+        86,
+        1,
+        127,
+        94,
+        9
+      ]
+    },
+    {
+      "name": "vrfSlotRetiredChanged",
+      "discriminator": [
+        119,
+        52,
+        96,
+        81,
+        118,
+        131,
+        75,
+        251
+      ]
+    },
+    {
+      "name": "vrfSlotRecovered",
+      "discriminator": [
+        224,
+        1,
+        86,
+        35,
+        146,
+        196,
+        228,
+        197
+      ]
+    },
+    {
+      "name": "lotteryTicketRefunded",
+      "discriminator": [
+        253,
+        245,
+        48,
+        137,
+        27,
+        117,
+        163,
+        195
       ]
     }
   ],
@@ -10972,6 +12159,46 @@ export type AofCore = {
       "code": 6126,
       "name": "randomnessCommitMissing",
       "msg": "Switchboard randomness commit must precede this instruction in the same transaction"
+    },
+    {
+      "code": 6127,
+      "name": "vrfSlotBusy",
+      "msg": "VRF pool slot is busy with another commit"
+    },
+    {
+      "code": 6128,
+      "name": "vrfSlotRetired",
+      "msg": "VRF pool slot is retired"
+    },
+    {
+      "code": 6129,
+      "name": "vrfSlotNotHeld",
+      "msg": "VRF pool slot is not held by this commit"
+    },
+    {
+      "code": 6130,
+      "name": "revealWindowClosed",
+      "msg": "Reveal window has closed; the commit can only be refunded"
+    },
+    {
+      "code": 6131,
+      "name": "priceAboveMaximum",
+      "msg": "Price exceeds the caller's maximum"
+    },
+    {
+      "code": 6132,
+      "name": "lotterySalesClosed",
+      "msg": "Lottery ticket sales are closed"
+    },
+    {
+      "code": 6133,
+      "name": "lotterySalesOpen",
+      "msg": "Lottery sales window is still open"
+    },
+    {
+      "code": 6134,
+      "name": "lotteryRoundNotEmpty",
+      "msg": "Lottery round still holds funds"
     }
   ],
   "types": [
@@ -11511,17 +12738,40 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "commitHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "foodBurned",
+            "type": "u64"
+          },
+          {
+            "name": "woodBurned",
+            "type": "u64"
+          },
+          {
+            "name": "stoneBurned",
+            "type": "u64"
+          },
+          {
+            "name": "meatBurned",
+            "type": "u64"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seedSlot",
+            "type": "u64"
           },
           {
             "name": "commitSlot",
             "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -11667,17 +12917,8 @@ export type AofCore = {
             "type": "u8"
           },
           {
-            "name": "commitHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "commitSlot",
-            "type": "u64"
+            "name": "levelBefore",
+            "type": "u8"
           },
           {
             "name": "useProtector",
@@ -11694,6 +12935,22 @@ export type AofCore = {
           {
             "name": "stoneBurned",
             "type": "u64"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seedSlot",
+            "type": "u64"
+          },
+          {
+            "name": "commitSlot",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -11864,7 +13121,7 @@ export type AofCore = {
             "type": "u64"
           },
           {
-            "name": "drawSlot",
+            "name": "seedSlot",
             "type": "u64"
           },
           {
@@ -11896,13 +13153,8 @@ export type AofCore = {
             "type": "u64"
           },
           {
-            "name": "drawCommitHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
+            "name": "randomness",
+            "type": "pubkey"
           }
         ]
       }
@@ -12287,33 +13539,45 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
-            "name": "mint",
-            "type": "pubkey"
+            "name": "nonce",
+            "type": "u64"
           },
           {
             "name": "packType",
             "type": "u8"
           },
           {
-            "name": "commitHash",
+            "name": "oddsBps",
             "type": {
               "array": [
-                "u8",
-                32
+                "u16",
+                5
               ]
             }
+          },
+          {
+            "name": "paidLamports",
+            "type": "u64"
+          },
+          {
+            "name": "depositLamports",
+            "type": "u64"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seedSlot",
+            "type": "u64"
           },
           {
             "name": "commitSlot",
             "type": "u64"
           },
           {
-            "name": "revealed",
-            "type": "bool"
-          },
-          {
-            "name": "paidLamports",
-            "type": "u64"
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -12375,6 +13639,10 @@ export type AofCore = {
           {
             "name": "toolType",
             "type": "string"
+          },
+          {
+            "name": "packCommit",
+            "type": "pubkey"
           }
         ]
       }
@@ -12698,25 +13966,61 @@ export type AofCore = {
             "type": "pubkey"
           },
           {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
             "name": "burnMint",
             "type": "pubkey"
           },
           {
-            "name": "newMint",
-            "type": "pubkey"
+            "name": "burnedToolType",
+            "type": "string"
           },
           {
-            "name": "commitHash",
+            "name": "burnedRarity",
+            "type": {
+              "defined": {
+                "name": "rarity"
+              }
+            }
+          },
+          {
+            "name": "burnedDurability",
+            "type": "u8"
+          },
+          {
+            "name": "oddsBps",
             "type": {
               "array": [
-                "u8",
-                32
+                "u16",
+                5
               ]
             }
           },
           {
+            "name": "feeLamports",
+            "type": "u64"
+          },
+          {
+            "name": "depositLamports",
+            "type": "u64"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seedSlot",
+            "type": "u64"
+          },
+          {
             "name": "commitSlot",
             "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -13257,30 +14561,6 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "packCommitExpired",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "packType",
-            "type": "u8"
-          },
-          {
-            "name": "refundedLamports",
-            "type": "u64"
           }
         ]
       }
@@ -14158,6 +15438,249 @@ export type AofCore = {
           {
             "name": "owner",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfSlot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "lockedAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "retired",
+            "type": "bool"
+          },
+          {
+            "name": "commits",
+            "type": "u64"
+          },
+          {
+            "name": "reveals",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mechanic",
+            "type": "u8"
+          },
+          {
+            "name": "commit",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seedSlot",
+            "type": "u64"
+          },
+          {
+            "name": "commitSlot",
+            "type": "u64"
+          },
+          {
+            "name": "escrowLamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mechanic",
+            "type": "u8"
+          },
+          {
+            "name": "commit",
+            "type": "pubkey"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seedSlot",
+            "type": "u64"
+          },
+          {
+            "name": "value",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "cranker",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfCommitRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mechanic",
+            "type": "u8"
+          },
+          {
+            "name": "commit",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "refundedLamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfSlotAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "vrfSlot",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfSlotRetiredChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vrfSlot",
+            "type": "pubkey"
+          },
+          {
+            "name": "retired",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfSlotRecovered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vrfSlot",
+            "type": "pubkey"
+          },
+          {
+            "name": "staleLock",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lotteryTicketRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "roundId",
+            "type": "u64"
+          },
+          {
+            "name": "ticketNumber",
+            "type": "u64"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vrfRevealParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "signature",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "recoveryId",
+            "type": "u8"
+          },
+          {
+            "name": "value",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }

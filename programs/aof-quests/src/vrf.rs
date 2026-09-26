@@ -1,5 +1,9 @@
-//! [F-06 / SECURITY_CHECKLIST #36 #37] Production randomness: Switchboard
-//! On-Demand, owned by this program.
+//! [F-06] Switchboard On-Demand for the Drum of Luck — a copy of
+//! aof-core/src/vrf.rs (the crates are independent; a shared crate would
+//! change the `--locked` dependency graph). tests/readiness/vrf.test.cjs keeps
+//! the two copies identical apart from the error type and the seed constants.
+//!
+//! Original documentation (aof-core):
 //!
 //! Why program-owned: Switchboard lets ONLY the `authority` of a randomness
 //! account commit or reveal it. If the player owned the account, the player
@@ -28,8 +32,16 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program::invoke_signed;
-use crate::errors::AofError;
+use crate::errors::QuestError as AofError;
 use crate::state::VrfSlot;
+
+pub const VRF_AUTHORITY_SEED: &[u8] = b"vrf_authority";
+pub const VRF_SLOT_SEED: &[u8] = b"vrf_slot";
+pub const VRF_RANDOMNESS_SEED: &[u8] = b"vrf_randomness";
+/// Same reveal window / refund threshold as aof-core (~2 h at 400 ms slots).
+pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;
+/// SlotHashes sysvar.
+pub const SLOT_HASHES_ID: Pubkey = anchor_lang::solana_program::sysvar::slot_hashes::ID;
 
 /// SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv
 pub const SWITCHBOARD_ON_DEMAND_MAINNET: Pubkey = Pubkey::new_from_array([
@@ -257,7 +269,7 @@ pub fn commit_instruction(randomness: Pubkey, queue: Pubkey, oracle: Pubkey, aut
             AccountMeta::new(randomness, false),
             AccountMeta::new_readonly(queue, false),
             AccountMeta::new(oracle, false),
-            AccountMeta::new_readonly(crate::randomness::SLOT_HASHES_ID, false),
+            AccountMeta::new_readonly(SLOT_HASHES_ID, false),
             AccountMeta::new_readonly(authority, true),
         ],
         data: RANDOMNESS_COMMIT_IX_DISCRIMINATOR.to_vec(),
@@ -290,7 +302,7 @@ pub fn reveal_instruction(
             AccountMeta::new(stats, false),
             AccountMeta::new_readonly(authority, true),
             AccountMeta::new(payer, true),
-            AccountMeta::new_readonly(crate::randomness::SLOT_HASHES_ID, false),
+            AccountMeta::new_readonly(SLOT_HASHES_ID, false),
             AccountMeta::new_readonly(anchor_lang::solana_program::system_program::ID, false),
             AccountMeta::new(reward_escrow, false),
             AccountMeta::new_readonly(anchor_spl::token::ID, false),
@@ -382,8 +394,8 @@ pub fn cpi_init(a: &InitAccounts, index: u32, randomness_bump: u8, authority_bum
             a.switchboard_program.clone(),
         ],
         &[
-            &[crate::constants::VRF_AUTHORITY_SEED, &[authority_bump]],
-            &[crate::constants::VRF_RANDOMNESS_SEED, &index_le, &[randomness_bump]],
+            &[VRF_AUTHORITY_SEED, &[authority_bump]],
+            &[VRF_RANDOMNESS_SEED, &index_le, &[randomness_bump]],
         ],
     )?;
     Ok(())
@@ -402,7 +414,7 @@ fn cpi_commit(a: &CommitAccounts, authority_bump: u8) -> Result<()> {
             a.vrf_authority.clone(),
             a.switchboard_program.clone(),
         ],
-        &[&[crate::constants::VRF_AUTHORITY_SEED, &[authority_bump]]],
+        &[&[VRF_AUTHORITY_SEED, &[authority_bump]]],
     )?;
     Ok(())
 }
@@ -437,7 +449,7 @@ fn cpi_reveal(a: &RevealAccounts, params: &VrfRevealParams, authority_bump: u8) 
             a.program_state.clone(),
             a.switchboard_program.clone(),
         ],
-        &[&[crate::constants::VRF_AUTHORITY_SEED, &[authority_bump]]],
+        &[&[VRF_AUTHORITY_SEED, &[authority_bump]]],
     )?;
     Ok(())
 }
@@ -507,7 +519,7 @@ pub fn release_for_refund(slot: &mut VrfSlot, holder: &Pubkey, commit_slot: u64,
 }
 
 pub fn reveal_window_open(commit_slot: u64, clock_slot: u64) -> bool {
-    clock_slot < commit_slot.saturating_add(crate::constants::VRF_REFUND_AFTER_SLOTS)
+    clock_slot < commit_slot.saturating_add(VRF_REFUND_AFTER_SLOTS)
 }
 
 pub fn refund_window_open(commit_slot: u64, clock_slot: u64) -> bool {
@@ -537,13 +549,4 @@ pub fn below(x: u64, n: u64) -> u64 {
 /// A uniform basis-point roll 0..10_000.
 pub fn bps(x: u64) -> u64 {
     below(x, 10_000)
-}
-
-/// Rent the settler of a tool-producing commit fronts for the new NFT: mint,
-/// its associated token account and the ToolData PDA. The player prepays it
-/// at commit so that whoever cranks the reveal is made whole.
-pub fn tool_settlement_rent(rent: &Rent) -> u64 {
-    rent.minimum_balance(anchor_spl::token::Mint::LEN)
-        .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
-        .saturating_add(rent.minimum_balance(crate::constants::TOOL_DATA_SPACE))
 }
