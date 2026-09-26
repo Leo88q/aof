@@ -4,6 +4,7 @@ use crate::constants::*;
 use crate::state::*;
 use crate::errors::*;
 use crate::HarvestWheat;
+use crate::ResourceKind;
 
 /// [БЛОК L] Сбор пшеницы с готового тайла.
 /// Требует:
@@ -68,6 +69,17 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
         .ok_or(AofError::MathOverflow)?
         .checked_div(10_000)
         .ok_or(AofError::MathOverflow)?;
+
+    // [SECURITY_CHECKLIST_REVIEW F-F] [AUDIT F-03] claimed that every minting
+    // path checks the global supply ceiling, but harvest (the only enabled
+    // source of Synapse/"wheat") minted without it. Checked before the CPI so a
+    // rejected harvest changes nothing, exactly like collect_flour/bread.
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        ResourceKind::Synapse,
+        ctx.accounts.wheat_mint.supply,
+        wheat_amount,
+    )?;
 
     // Тратим durability
     tool.durability = tool.durability.checked_sub(1).ok_or(AofError::InsufficientDurability)?;

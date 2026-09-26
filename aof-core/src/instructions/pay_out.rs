@@ -28,19 +28,19 @@ pub fn handler(ctx: Context<PayOut>, amount: u64) -> Result<()> {
         AofError::VaultInsufficient
     );
 
-    // (1) resource mint only
-    require!(
-        ctx.accounts
-            .config
-            .is_resource_mint(&ctx.accounts.material_mints, &ctx.accounts.mint.key()),
-        AofError::NotAResourceMint
-    );
-
-    // (2) charge the per-mint withdrawal budget BEFORE any CPI
+    // (1) resource mint only, (2) guard bound to this mint, (3) charge the
+    // per-mint withdrawal budget — all BEFORE any CPI. The same function guards
+    // `pay_out_with_referral` (see state::charge_vault_withdrawal).
     let slot = Clock::get()?.slot;
-    let guard = &mut ctx.accounts.vault_guard;
-    require!(guard.mint == ctx.accounts.mint.key(), AofError::InvalidMint);
-    guard.charge(amount, slot)?;
+    let mint_key = ctx.accounts.mint.key();
+    charge_vault_withdrawal(
+        &ctx.accounts.config,
+        &ctx.accounts.material_mints,
+        &mut ctx.accounts.vault_guard,
+        &mint_key,
+        amount,
+        slot,
+    )?;
 
     let vault_seeds = &[VAULT_SEED, &[ctx.bumps.vault]];
     token::transfer(
@@ -68,11 +68,11 @@ pub fn handler(ctx: Context<PayOut>, amount: u64) -> Result<()> {
     });
 
     emit!(VaultWithdrawal {
-        mint: ctx.accounts.mint.key(),
+        mint: mint_key,
         recipient: ctx.accounts.user_token.owner,
         amount,
-        withdrawn_in_epoch: guard.withdrawn_in_epoch,
-        cap_per_epoch: guard.cap_per_epoch,
+        withdrawn_in_epoch: ctx.accounts.vault_guard.withdrawn_in_epoch,
+        cap_per_epoch: ctx.accounts.vault_guard.cap_per_epoch,
         slot,
     });
     Ok(())

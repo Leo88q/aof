@@ -8,6 +8,8 @@ pub mod events;
 pub mod instructions;
 pub mod state;
 pub mod randomness;
+#[cfg(test)]
+mod security_checklist_tests;
 
 pub use state::*;
 pub use constants::*;
@@ -604,6 +606,7 @@ pub struct MintTool<'info> {
         mut,
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -674,6 +677,7 @@ pub struct MigrateTool<'info> {
         mut,
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -712,6 +716,10 @@ pub struct Craft<'info> {
     pub gastank: Box<Account<'info, GasTank>>,
     #[account(
         mut,
+        // [SECURITY_CHECKLIST_REVIEW F-B] the NFT is burned by this instruction;
+        // its ToolData must go with it (as in burn_tool/burn_nft), otherwise a
+        // "ghost" tool keeps harvesting, can be repaired and rented out.
+        close = user,
         seeds = [TOOL_SEED, prev_mint.key().as_ref()],
         bump,
         constraint = prev_tool.mint == prev_mint.key() @ AofError::InvalidMint,
@@ -730,7 +738,8 @@ pub struct Craft<'info> {
         mut,
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
-        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint,
+        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
@@ -807,6 +816,10 @@ pub struct Reroll<'info> {
     pub gastank: Box<Account<'info, GasTank>>,
     #[account(
         mut,
+        // [SECURITY_CHECKLIST_REVIEW F-B] the NFT is burned by this instruction;
+        // its ToolData must go with it (as in burn_tool/burn_nft), otherwise a
+        // "ghost" tool keeps harvesting, can be repaired and rented out.
+        close = user,
         seeds = [TOOL_SEED, mint_a.key().as_ref()],
         bump,
         constraint = tool_a.owner == user.key() @ AofError::NotToolOwner,
@@ -822,6 +835,10 @@ pub struct Reroll<'info> {
     pub token_a: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
+        // [SECURITY_CHECKLIST_REVIEW F-B] the NFT is burned by this instruction;
+        // its ToolData must go with it (as in burn_tool/burn_nft), otherwise a
+        // "ghost" tool keeps harvesting, can be repaired and rented out.
+        close = user,
         seeds = [TOOL_SEED, mint_b.key().as_ref()],
         bump,
         constraint = tool_b.owner == user.key() @ AofError::NotToolOwner,
@@ -842,7 +859,8 @@ pub struct Reroll<'info> {
         mut,
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
-        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint,
+        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
@@ -1300,6 +1318,7 @@ pub struct PackOpenCommit<'info> {
     #[account(
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -1337,6 +1356,7 @@ pub struct PackOpenReveal<'info> {
         mut,
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -1458,7 +1478,8 @@ pub struct RerollRandomReveal<'info> {
         mut,
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
-        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint,
+        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
     )]
     pub new_mint: Account<'info, Mint>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == payer.key(), constraint = new_token.amount == 0)]

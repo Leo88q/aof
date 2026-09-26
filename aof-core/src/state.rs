@@ -821,6 +821,36 @@ impl VaultGuard {
     }
 }
 
+/// [AUDIT F-01][SECURITY_CHECKLIST_REVIEW F-E] The three brakes every authority
+/// withdrawal from the staking vault has to pass, BEFORE any token CPI:
+///  1. only a registered **resource** mint may leave the vault (staked tool
+///     NFTs are never in the resource registry, so they cannot be pulled out);
+///  2. the per-mint `VaultGuard` must belong to exactly that mint;
+///  3. the amount is charged against the guard's per-tx / per-epoch budget.
+///
+/// Shared by `pay_out` and `pay_out_with_referral`. The referral variant was
+/// documented as having "the same three brakes as PayOut" and even loaded
+/// `material_mints` + `vault_guard`, but its handler never used them, so a
+/// leaked authority key could drain any vault mint without a ceiling. Keeping
+/// the checks in one function makes that kind of drift impossible to repeat.
+pub fn charge_vault_withdrawal(
+    config: &Config,
+    material_mints: &MaterialMints,
+    guard: &mut VaultGuard,
+    mint: &Pubkey,
+    amount: u64,
+    slot: u64,
+) -> core::result::Result<(), crate::errors::AofError> {
+    use crate::errors::AofError;
+    if !config.is_resource_mint(material_mints, mint) {
+        return Err(AofError::NotAResourceMint);
+    }
+    if guard.mint != *mint {
+        return Err(AofError::InvalidMint);
+    }
+    guard.charge(amount, slot)
+}
+
 /// EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)
 #[account]
 #[derive(InitSpace)]
