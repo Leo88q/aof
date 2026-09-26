@@ -187,5 +187,16 @@ assert.match(section(core, "pub struct RefundLotteryTicket", "#[derive(Accounts)
 assert.ok(fs.existsSync(path.join(repo, "aof_backend/services/vrf-settler/index.ts")));
 assert.ok(!fs.existsSync(path.join(repo, "aof_backend/services/commit-expirer/index.ts")));
 assert.match(read("docker-compose.prod.yml"), /vrf-settler:\n    build/, "the settler runs by default in production");
+assert.match(read("docker-compose.prod.yml"), /vrf-settler\.heartbeat/, "the settler has a liveness healthcheck");
+{
+  const settler = read("aof_backend/services/vrf-settler/index.ts");
+  assert.match(settler, /CONCURRENCY/, "settlements run in parallel (a serial loop trips the circuit breaker under load)");
+  assert.match(settler, /watchdog_exit/, "a stuck cycle restarts the worker");
+  assert.match(settler, /low_balance/, "the operator balance is monitored");
+  // Every reveal / refund transaction carries the compute budget (CU + priority fee).
+  const settlement = read("aof_backend/src/lib/vrfSettlement.ts");
+  assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), await refundInstruction\(c, cranker\)\]/);
+  assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), ix\]/);
+}
 
 console.log("security invariant self-test: rental/auction constraints, fail-closed guards, IDL flag parity, disabled/live mechanic layer parity, VRF escrow contracts passed");

@@ -97,9 +97,10 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult"],
   TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
   TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
-  LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted"],
+  LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted",
+    "DrumCommitted"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched",
-    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRefunded"],
+    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded"],
   ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
@@ -276,9 +277,20 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("LiabilitySettled", { playerId: pid(d.buyer), amount: str(d.lamports), currency: LAMPORTS,
         attributes: { liability: "lottery_ticket", outcome: "refund", roundId: str(d.roundId), ticketNumber: str(d.ticketNumber) } });
       break;
+    // The drum (aof-quests) has its own events; its commit PDA is per user, so
+    // the player is the liability key. A DrumCommitted without DrumRevealed /
+    // DrumRefunded ages like any other stuck VRF commit.
+    case "DrumCommitted":
+      emit("LiabilityCreated", { playerId: pid(d.user), currency: "RESOURCE",
+        attributes: { liability: "drum_spin", commit: str(d.user), seedSlot: str(d.seedSlot) } });
+      break;
+    case "DrumRevealed":
+      emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.prize), currency: "RESOURCE",
+        attributes: { liability: "drum_spin", outcome: "settled", commit: str(d.user), seedSlot: str(d.seedSlot) } });
+      break;
     case "DrumRefunded":
       emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE",
-        attributes: { liability: "drum_spin", outcome: "refund" } });
+        attributes: { liability: "drum_spin", outcome: "refund", commit: str(d.user) } });
       break;
     case "VrfSlotAdded":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "add", index: str(d.index), vrfSlot: str(d.vrfSlot) } });
@@ -461,7 +473,7 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     // Explicitly ignored: no Watchtower semantics, kept out on purpose.
     case "AuctionCreated": case "AuctionCancelled": case "RentalListed": case "RentalDelisted":
-    case "LotteryDrawn": case "HotMarketSkipped": case "DrumCommitted": case "DrumRevealed":
+    case "LotteryDrawn": case "HotMarketSkipped":
     case "ChallengeCreated": case "QuestCreated":
       break;
     default:

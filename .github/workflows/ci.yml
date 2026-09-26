@@ -533,6 +533,13 @@ jobs:
             log "::error::SBPF stack frame overflow in the build output - the loader would reject this program at deploy time"
             rc=1
           fi
+          # The companion diagnostic: a call whose arguments spill over the
+          # caller's frame. The build stays green but execution is undefined
+          # (seen together with the overflow above on ExploreExpire, F-06).
+          if grep -nE "overwrites values in the frame" /tmp/anchor-build.log; then
+            log "::error::SBPF call overwrites the caller's stack frame - undefined behaviour at runtime"
+            rc=1
+          fi
           log "anchor build --no-idl exit code: $rc"
           exit "$rc"
 

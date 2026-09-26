@@ -6,6 +6,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { humanizeVrfError } from "../../lib/vrfErrors";
 
 const FIELD_LABELS: Record<string, string> = {
   roundId: "Раунд",
@@ -78,7 +79,7 @@ export function LotteryPage() {
       flash(r.success ? `✅ Раунд ${roundId} создан: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) setTimeout(() => load(roundId), 2000);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
@@ -94,7 +95,7 @@ export function LotteryPage() {
       flash(r.success ? `✅ Билет №${resp.ticketNumber} ваш: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) setTimeout(() => { load(roundId); }, 2000);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
@@ -118,7 +119,7 @@ export function LotteryPage() {
       load(roundId);
     } catch (e: any) {
       setSpinning(false);
-      flash(`❌ ${e.message}`);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
@@ -133,7 +134,7 @@ export function LotteryPage() {
       flash(r.success ? `✅ Приз забран: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) setTimeout(() => load(roundId), 2000);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 

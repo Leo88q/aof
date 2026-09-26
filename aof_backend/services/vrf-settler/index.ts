@@ -17,9 +17,14 @@
  * VrfCommitted without VrfSettled.
  *
  * Run: npm run vrf-settler   (ts-node services/vrf-settler/index.ts)
- * Interval: VRF_SETTLER_INTERVAL_MS (default 3 s); reveal attempts per commit
- * are throttled by VRF_SETTLER_RETRY_MS (default 4 s).
+ * Interval: VRF_SETTLER_INTERVAL_MS (default 3 s); up to VRF_SETTLER_CONCURRENCY
+ * (8) commits are settled in parallel; attempts per commit are throttled by
+ * VRF_SETTLER_RETRY_MS (4 s) and back off exponentially on repeated failures
+ * (up to VRF_SETTLER_MAX_BACKOFF_MS, 60 s). Operational signals (JSON logs):
+ * settled / refunded / attempt_failed / low_balance / cycle_failed /
+ * watchdog_exit, plus a heartbeat file for the container healthcheck.
  */
+import { writeFileSync } from "node:fs";
 import { connection } from "../../src/provider";
 import { AUTHORITY_PUBKEY } from "../../src/config";
 import { authorityOnly } from "../../src/lib/tx";
@@ -31,66 +36,117 @@ import {
   PendingCommit,
 } from "../../src/lib/vrfSettlement";
 
-const INTERVAL_MS = Number(process.env.VRF_SETTLER_INTERVAL_MS) > 0 ? Number(process.env.VRF_SETTLER_INTERVAL_MS) : 3_000;
-const RETRY_MS = Number(process.env.VRF_SETTLER_RETRY_MS) > 0 ? Number(process.env.VRF_SETTLER_RETRY_MS) : 4_000;
-// Switchboard needs the seed slot to be final before its oracle signs.
-const MIN_AGE_SLOTS = Number(process.env.VRF_SETTLER_MIN_AGE_SLOTS) > 0 ? Number(process.env.VRF_SETTLER_MIN_AGE_SLOTS) : 2;
+function positive(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
 
-const lastAttempt = new Map<string, number>();
+const INTERVAL_MS = positive("VRF_SETTLER_INTERVAL_MS", 3_000);
+const RETRY_MS = positive("VRF_SETTLER_RETRY_MS", 4_000);
+// Repeated failures of one commit (oracle outage) back off exponentially up to this.
+const MAX_BACKOFF_MS = positive("VRF_SETTLER_MAX_BACKOFF_MS", 60_000);
+// Switchboard needs the seed slot to be final before its oracle signs.
+const MIN_AGE_SLOTS = positive("VRF_SETTLER_MIN_AGE_SLOTS", 2);
+// Commits settled in parallel: a reveal waits on the oracle gateway for
+// seconds, so a serial loop would hold pool slots long enough to trip the
+// circuit breaker under load.
+const CONCURRENCY = Math.floor(positive("VRF_SETTLER_CONCURRENCY", 8));
+// The operator pays reveal fees and fronts NFT rent (reimbursed by the reveal).
+const MIN_BALANCE_LAMPORTS = positive("VRF_SETTLER_MIN_BALANCE_LAMPORTS", 500_000_000);
+const BALANCE_CHECK_MS = 60_000;
+// A cycle stuck on an RPC call longer than this exits the process so the
+// container restarts (docker-compose `restart: unless-stopped`).
+const WATCHDOG_MS = positive("VRF_SETTLER_WATCHDOG_MS", 120_000);
+// Touched after every cycle; docker-compose healthcheck reads its mtime.
+const HEARTBEAT_FILE = process.env.VRF_SETTLER_HEARTBEAT_FILE || "/tmp/vrf-settler.heartbeat";
+
+const nextAttempt = new Map<string, number>();
 const failures = new Map<string, number>();
 let running = false;
+let cycleStartedAt = 0;
+let lastBalanceCheck = 0;
 
 function label(c: PendingCommit): string {
   return `${c.mechanic}:${c.address.toBase58()}`;
 }
 
+function log(level: "log" | "warn" | "error", event: string, fields: Record<string, unknown> = {}): void {
+  console[level](JSON.stringify({ worker: "vrf-settler", event, ...fields }));
+}
+
 async function settle(c: PendingCommit, currentSlot: number): Promise<void> {
   const key = label(c);
   const now = Date.now();
-  if ((lastAttempt.get(key) || 0) + RETRY_MS > now) return;
-  lastAttempt.set(key, now);
+  if ((nextAttempt.get(key) || 0) > now) return;
   const phase = commitPhase(c.commitSlot, currentSlot);
   if (phase === "revealable" && currentSlot - c.seedSlot < MIN_AGE_SLOTS) return;
+  nextAttempt.set(key, now + RETRY_MS);
   try {
     const ixs = phase === "revealable"
       ? await buildRevealInstructions(c, AUTHORITY_PUBKEY)
       : await buildRefundInstructions(c, AUTHORITY_PUBKEY);
     const sig = await authorityOnly(ixs);
     failures.delete(key);
-    lastAttempt.delete(key);
-    console.log(JSON.stringify({ worker: "vrf-settler", event: phase === "revealable" ? "settled" : "refunded", commit: key,
-      ageSlots: currentSlot - c.commitSlot, sig }));
+    nextAttempt.delete(key);
+    log("log", phase === "revealable" ? "settled" : "refunded", { commit: key, ageSlots: currentSlot - c.commitSlot, sig });
   } catch (e: any) {
     const count = (failures.get(key) || 0) + 1;
     failures.set(key, count);
+    nextAttempt.set(key, Date.now() + Math.min(RETRY_MS * 2 ** Math.min(count - 1, 16), MAX_BACKOFF_MS));
     // Races with another settler (the player, a second replica) end in
     // AccountNotInitialized / VrfSlotNotHeld: the commit is already settled.
-    console.warn(JSON.stringify({ worker: "vrf-settler", event: "attempt_failed", commit: key, phase, attempt: count,
-      ageSlots: currentSlot - c.commitSlot, error: String(e?.message || e).slice(0, 300) }));
+    log("warn", "attempt_failed", { commit: key, phase, attempt: count, ageSlots: currentSlot - c.commitSlot,
+      error: String(e?.message || e).slice(0, 300) });
+  }
+}
+
+async function checkBalance(): Promise<void> {
+  if (Date.now() - lastBalanceCheck < BALANCE_CHECK_MS) return;
+  lastBalanceCheck = Date.now();
+  const lamports = await connection.getBalance(AUTHORITY_PUBKEY, "confirmed");
+  if (lamports < MIN_BALANCE_LAMPORTS) {
+    log("warn", "low_balance", { operator: AUTHORITY_PUBKEY.toBase58(), lamports, minLamports: MIN_BALANCE_LAMPORTS });
   }
 }
 
 async function cycle(): Promise<void> {
   if (running) return;
   running = true;
+  cycleStartedAt = Date.now();
   try {
     const [pending, currentSlot] = await Promise.all([listPendingCommits(), connection.getSlot("confirmed")]);
-    for (const commit of pending) await settle(commit, currentSlot);
+    const queue = [...pending];
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+      for (let c = queue.shift(); c; c = queue.shift()) await settle(c, currentSlot);
+    }));
     const live = new Set(pending.map(label));
     for (const key of [...failures.keys()]) if (!live.has(key)) failures.delete(key);
+    for (const key of [...nextAttempt.keys()]) if (!live.has(key)) nextAttempt.delete(key);
     if (pending.length) {
       const oldest = pending.reduce((m, c) => Math.max(m, currentSlot - c.commitSlot), 0);
-      console.log(JSON.stringify({ worker: "vrf-settler", event: "cycle", pending: pending.length, oldestAgeSlots: oldest }));
+      log("log", "cycle", { pending: pending.length, oldestAgeSlots: oldest });
+    }
+    await checkBalance();
+    try {
+      writeFileSync(HEARTBEAT_FILE, String(Date.now()));
+    } catch {
+      // Heartbeat is advisory (healthcheck only).
     }
   } catch (e: any) {
-    console.error(JSON.stringify({ worker: "vrf-settler", event: "cycle_failed", error: String(e?.message || e) }));
+    log("error", "cycle_failed", { error: String(e?.message || e) });
   } finally {
     running = false;
   }
 }
 
 async function main(): Promise<void> {
-  console.log(JSON.stringify({ worker: "vrf-settler", event: "start", intervalMs: INTERVAL_MS }));
+  log("log", "start", { intervalMs: INTERVAL_MS, concurrency: CONCURRENCY, operator: AUTHORITY_PUBKEY.toBase58() });
+  setInterval(() => {
+    if (running && Date.now() - cycleStartedAt > WATCHDOG_MS) {
+      log("error", "watchdog_exit", { stuckMs: Date.now() - cycleStartedAt });
+      process.exit(1);
+    }
+  }, 10_000).unref();
   await cycle();
   setInterval(cycle, INTERVAL_MS);
 }

@@ -188,6 +188,10 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
 
 /** The permissionless refund of a commit whose reveal window has closed. */
 export async function buildRefundInstructions(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction[]> {
+  return [...vrfComputeBudget(), await refundInstruction(c, cranker)];
+}
+
+async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction> {
   const prog = programFor(c.mechanic);
   const vrfSlot = vrfSlotPda(prog.programId, c.randomness);
   const config = configPda()[0];
@@ -199,50 +203,74 @@ export async function buildRefundInstructions(c: PendingCommit, cranker: PublicK
   };
   switch (c.mechanic) {
     case "pack":
-      return [await (program.methods as any).packOpenExpire().accounts({
+      return await (program.methods as any).packOpenExpire().accounts({
         config, packCommit: c.address, user: a.user, vrfSlot,
-      }).instruction()];
+      }).instruction();
     case "reroll": {
       const [newMint] = rerollMintPda(c.address);
-      return [await (program.methods as any).rerollRandomExpire().accounts({
+      return await (program.methods as any).rerollRandomExpire().accounts({
         config, cranker, rerollCommit: c.address, user: a.user, vrfSlot,
         newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0], ...withAta,
-      }).instruction()];
+      }).instruction();
     }
     case "exploration": {
       const cfg = await coreConfig();
       const mm = await materialMints();
       // Refunds go to the player's existing canonical ATAs (see ExploreExpire).
-      return [await (program.methods as any).exploreExpire().accounts({
+      return await (program.methods as any).exploreExpire().accounts({
         config, materialMints: materialMintsPda()[0], explorationCommit: c.address, user: a.user, vrfSlot,
         auth: authPda()[0],
         foodMint: cfg.foodMint, userFood: ata(cfg.foodMint, a.user),
         woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, a.user),
         stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, a.user),
         meatMint: mm.meat, userMeat: ata(mm.meat, a.user), tokenProgram: TOKEN_PROGRAM_ID,
-      }).instruction()];
+      }).instruction();
     }
     case "forge": {
       const cfg = await coreConfig();
-      return [await (program.methods as any).forgeAttemptExpire().accounts({
+      return await (program.methods as any).forgeAttemptExpire().accounts({
         config, materialMints: materialMintsPda()[0], forgeCommit: c.address, user: a.user, vrfSlot,
         auth: authPda()[0], woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, a.user),
         stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, a.user), tokenProgram: TOKEN_PROGRAM_ID,
-      }).instruction()];
+      }).instruction();
     }
     case "lottery":
-      return [await (program.methods as any).expireLotteryDraw().accounts({
+      return await (program.methods as any).expireLotteryDraw().accounts({
         config, lotteryRound: c.address, vrfSlot,
-      }).instruction()];
+      }).instruction();
     case "drum": {
       const [questConfig] = questConfigPda();
       const qc: any = await (questsProgram.account as any).questConfig.fetch(questConfig);
-      return [await (questsProgram.methods as any).drumExpire().accounts({
+      return await (questsProgram.methods as any).drumExpire().accounts({
         drumCommit: c.address, questConfig, cranker, user: a.user, treasuryMascot: qc.treasuryMascot,
         mascotMint: qc.mascotMint, userMascot: ata(qc.mascotMint, a.user), vrfSlot, ...withAta,
-      }).instruction()];
+      }).instruction();
     }
   }
+}
+
+export type DrumOutcome =
+  | { state: "settled"; prize: number; signature: string; value: string }
+  | { state: "refunded"; amount: number; signature: string }
+  | { state: "none" };
+
+/**
+ * Drum outcome in one transaction's logs. The drum pays mascots instead of
+ * minting an NFT, so once its (per-user, reused) commit PDA is closed the
+ * result only lives in events: DrumRevealed carries the prize and the oracle
+ * value (anyone can recompute drum_prize), DrumRefunded the refunded price.
+ * "committed" marks a newer spin that is not settled yet.
+ */
+export function drumOutcomeFromLogs(logs: string[], signature: string, parser: { parseLogs(logs: string[]): Iterable<{ name: string; data: any }> }): DrumOutcome | "committed" | null {
+  for (const ev of parser.parseLogs(logs)) {
+    const name = ev.name.charAt(0).toUpperCase() + ev.name.slice(1);
+    if (name === "DrumRevealed") {
+      return { state: "settled", prize: Number(ev.data.prize), signature, value: Buffer.from(ev.data.value).toString("hex") };
+    }
+    if (name === "DrumRefunded") return { state: "refunded", amount: Number(ev.data.amount), signature };
+    if (name === "DrumCommitted") return "committed";
+  }
+  return null;
 }
 
 /** Where the settlement NFT of a tool-producing commit lives (for status APIs). */

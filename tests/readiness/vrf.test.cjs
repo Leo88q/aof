@@ -151,3 +151,18 @@ test('F-06 the aof-quests copy of vrf.rs is the aof-core module, not a fork', ()
   assert.match(quests, /pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;/);
   assert.match(read('aof-core/src/constants.rs'), /pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;/);
 });
+
+test('F-06 the backend reveal path never forwards its RPC URL to the oracle gateway', () => {
+  // The SDK's Randomness.revealIx POSTs connection.rpcEndpoint (usually with a
+  // paid API key) to a third-party gateway and sleeps a fixed 3 s first.
+  const backend = read('aof_backend/src/lib/vrf.ts');
+  const settler = read('aof_backend/services/vrf-settler/index.ts');
+  for (const [name, src] of [['lib/vrf.ts', backend], ['vrf-settler', settler]]) {
+    assert.doesNotMatch(src, /\.revealIx\s*\(/, `${name} must not use the SDK revealIx`);
+    assert.doesNotMatch(src, /commitAndReveal\s*\(/, `${name} must not use the SDK commitAndReveal`);
+  }
+  const body = backend.slice(backend.indexOf('export function revealRequestBody'), backend.indexOf('export function parseRevealResponse'));
+  assert.match(body, /if \(rpc\) body\.rpc = rpc;/, 'rpc is opt-in');
+  assert.doesNotMatch(backend, /revealRequestBody\([^)]*(\bRPC_URL\b|rpcEndpoint)/, 'never pass the backend RPC URL');
+  assert.match(backend, /SWITCHBOARD_GATEWAY_RPC_URL/);
+});

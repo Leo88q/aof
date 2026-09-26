@@ -82,6 +82,9 @@ fn emulate_switchboard(ix: &Instruction, infos: &[AccountInfo]) {
             data[104..112].copy_from_slice(&(SLOT_NOW - 1).to_le_bytes());
             // The oracle chosen at commit is recorded on the account.
             data[112..144].copy_from_slice(ix.accounts[2].pubkey.as_ref());
+            // Measured on devnet: a (re)commit, also over an unrevealed commit,
+            // resets reveal_slot and value.
+            data[144..184].fill(0);
         }
     } else if disc == RANDOMNESS_REVEAL_IX_DISCRIMINATOR {
         data[144..152].copy_from_slice(&SLOT_NOW.to_le_bytes());
@@ -91,6 +94,10 @@ fn emulate_switchboard(ix: &Instruction, infos: &[AccountInfo]) {
             value[0] ^= 0xff;
         }
         data[152..184].copy_from_slice(&value);
+        // Measured on devnet: the real program zeroes the oracle field when it
+        // records a reveal, so no check may read the oracle after this CPI
+        // (the reveal contexts bind it before, via `assigned_oracle_is`).
+        data[112..144].fill(0);
     } else if disc == RANDOMNESS_INIT_IX_DISCRIMINATOR {
         data[..8].copy_from_slice(&RANDOMNESS_ACCOUNT_DISCRIMINATOR);
         data[8..40].copy_from_slice(ix.accounts[2].pubkey.as_ref());
@@ -2235,6 +2242,34 @@ fn vrf_pool_slot_lifecycle_is_one_shot_and_time_separated() {
     rejected(vrfmod::release_for_refund(&mut held, &Pubkey::new_unique(), committed - 1, SLOT_NOW), "VrfSlotNotHeld");
     vrfmod::release_for_refund(&mut held, &holder, committed - 1, SLOT_NOW).unwrap();
     assert_eq!(held.lock, Pubkey::default());
+}
+
+/// Cross-language vector: docs/ECONOMY_RNG_EV.md publishes the outcome formula
+/// and scripts/vrf/devnet-smoke.mjs (plus tests/readiness/vrf-smoke.test.cjs)
+/// recompute it in JavaScript. These exact numbers are asserted on both sides.
+#[test]
+fn vrf_roll_matches_the_published_javascript_vector() {
+    let value = [7u8; 32];
+    let commit = Pubkey::new_from_array([9u8; 32]);
+    let roll = derive_roll(&value, b"pack", commit.as_ref());
+    let hex: String = roll.iter().map(|b| format!("{b:02x}")).collect();
+    assert_eq!(hex, "88acec04a70c78304cf18b01bcb04ce09b677358bb63b1556d6a7fa0ec317ab9");
+    assert_eq!(vrfmod::lane(&roll, 0), 3_492_555_422_507_510_920);
+    assert_eq!(vrfmod::bps(vrfmod::lane(&roll, 0)), 1_893);
+    assert_eq!(vrfmod::below(vrfmod::lane(&roll, 1), 3), 2);
+    let (rarity, tool_type) =
+        crate::instructions::settlement::roll_tool(&value, b"pack", &commit, &PACK_SMALL_ODDS_BPS).unwrap();
+    assert_eq!(rarity, Rarity::Common);
+    assert_eq!(tool_type, PACK_TOOL_TYPES[2]);
+    for (tag, expected) in [
+        (b"reroll".as_ref(), 4_301u64),
+        (b"explore".as_ref(), 377),
+        (b"forge".as_ref(), 2_658),
+        (b"lottery".as_ref(), 3_599),
+        (b"drum".as_ref(), 1_369),
+    ] {
+        assert_eq!(vrfmod::bps(vrfmod::lane(&derive_roll(&value, tag, commit.as_ref()), 0)), expected);
+    }
 }
 
 /// Outcomes are pure, domain-separated functions of the oracle value and the

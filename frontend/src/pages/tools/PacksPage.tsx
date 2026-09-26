@@ -8,6 +8,7 @@ import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
 import { fmtSol, useFlash } from "../../lib/marketUtils";
 import type { PackOpenIntent } from "../../lib/transactionIntent";
+import { humanizeVrfError } from "../../lib/vrfErrors";
 
 /**
  * [F-06] Capsule openings settled by Switchboard On-Demand.
@@ -100,7 +101,7 @@ export function PacksPage() {
       flash("✅ Оплачено. Оракул Switchboard раскрывает результат…", 8000);
       watch(resp.packCommit);
     } catch (e: any) {
-      flash(`❌ ${e.message}`, 8000);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(null);
     }
@@ -116,7 +117,7 @@ export function PacksPage() {
       flash(resp.phase === "refundable" ? "✅ Возврат отправлен" : "✅ Результат раскрыт вашей транзакцией", 6000);
       watch(packCommit);
     } catch (e: any) {
-      flash(`❌ ${e.message}`, 8000);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(null);
     }

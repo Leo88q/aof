@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { EventParser } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { questsProgram, connection } from "../provider";
@@ -6,7 +7,7 @@ import { drumCommitPda, questConfigPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
-import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
+import { commitStatus, drumOutcomeFromLogs, DrumOutcome, selfSettleTransaction } from "../lib/vrfSettlement";
 
 /**
  * [F-06] Drum of Luck on the aof-quests randomness pool. The spin costs 5
@@ -44,10 +45,29 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("drum_commit"), async 
   }
 });
 
+/** Outcome of the player's latest spin (newest transaction of the commit PDA first). */
+async function latestDrumOutcome(drumCommit: PublicKey): Promise<DrumOutcome> {
+  const parser = new EventParser(questsProgram.programId, questsProgram.coder);
+  const signatures = await connection.getSignaturesForAddress(drumCommit, { limit: 10 }, "confirmed");
+  for (const s of signatures) {
+    if (s.err) continue;
+    const tx = await connection.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    const logs = tx?.meta?.logMessages;
+    if (!logs) continue;
+    const outcome = drumOutcomeFromLogs(logs, s.signature, parser);
+    if (outcome === "committed") break; // newest spin has no settlement yet
+    if (outcome) return outcome;
+  }
+  return { state: "none" };
+}
+
 r.get("/status/:user", async (req, res) => {
   try {
     const [drumCommit] = drumCommitPda(new PublicKey(req.params.user));
-    res.json(await commitStatus("drum", drumCommit));
+    const status = await commitStatus("drum", drumCommit);
+    // The drum pays mascots instead of minting an NFT: once the commit is
+    // closed the result is only in the events of its transactions.
+    res.json(status.state === "pending" ? status : await latestDrumOutcome(drumCommit));
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

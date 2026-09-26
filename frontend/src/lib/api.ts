@@ -1,4 +1,5 @@
 import { createWalletProof } from "./wallet";
+import { humanizeVrfError } from "./vrfErrors";
 
 // Production uses the same-origin reverse-proxy path. A fully qualified URL
 // remains available for a separately hosted backend via VITE_API_URL.
@@ -128,7 +129,7 @@ async function parseApiResponse(res: Response): Promise<any> {
       (typeof data === "string" ? data : "") ||
       (errorText && !errorText.includes("<!DOCTYPE") && !errorText.includes("<html") ? errorText.slice(0, 200) : "") ||
       `HTTP ${res.status}`;
-    throw new Error(message);
+    throw new Error(humanizeVrfError(String(message)));
   }
 
   if (data === null) {

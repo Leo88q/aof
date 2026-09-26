@@ -101,4 +101,98 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   assert.match(vrf.randomNonce(), /^[0-9]+$/);
 }
 
-console.log("vrf self-test: pool circuit breaker, phase split, cluster pins, account parsing, PDAs passed");
+// ---- compute budget: CU limit plus a priority fee the wallet guard accepts
+{
+  const COMPUTE = "ComputeBudget111111111111111111111111111111";
+  const parse = (env: Record<string, string>) => vrf.vrfComputeBudget(env as NodeJS.ProcessEnv).map((ix) => {
+    assert.equal(ix.programId.toBase58(), COMPUTE);
+    assert.equal(ix.keys.length, 0);
+    return ix.data[0] === 2
+      ? { op: 2, value: ix.data.readUInt32LE(1), len: ix.data.length }
+      : { op: ix.data[0], value: Number(ix.data.readBigUInt64LE(1)), len: ix.data.length };
+  });
+  assert.deepEqual(parse({}), [{ op: 2, value: 400_000, len: 5 }, { op: 3, value: 5_000, len: 9 }]);
+  assert.deepEqual(parse({ VRF_COMPUTE_UNITS: "600000", VRF_PRIORITY_MICROLAMPORTS: "0" }), [{ op: 2, value: 600_000, len: 5 }]);
+  // txGuard.ts refuses a price above 100_000 microlamports and a limit above 1.4M CU
+  assert.deepEqual(parse({ VRF_COMPUTE_UNITS: "9000000", VRF_PRIORITY_MICROLAMPORTS: "5000000" }),
+    [{ op: 2, value: 1_400_000, len: 5 }, { op: 3, value: vrf.VRF_MAX_PRIORITY_MICROLAMPORTS, len: 9 }]);
+  assert.equal(vrf.VRF_MAX_PRIORITY_MICROLAMPORTS, 100_000);
+  assert.deepEqual(parse({ VRF_PRIORITY_MICROLAMPORTS: "junk" }), [{ op: 2, value: 400_000, len: 5 }]);
+}
+
+// ---- drum outcome from the program events (the drum mints no NFT to look up)
+{
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { drumOutcomeFromLogs } = require("../src/lib/vrfSettlement") as typeof import("../src/lib/vrfSettlement");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { questsProgram } = require("../src/provider");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { EventParser } = require("@coral-xyz/anchor");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const idl = require("../src/idl/aof_quests.json");
+  const parser = new EventParser(questsProgram.programId, questsProgram.coder);
+  const pid = questsProgram.programId.toBase58();
+  const u64 = (n: number) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
+  const disc = (name: string) => Buffer.from(idl.events.find((e: any) => e.name === name).discriminator);
+  const logs = (data: Buffer) => [
+    `Program ${pid} invoke [1]`, "Program log: Instruction: X", `Program data: ${data.toString("base64")}`,
+    `Program ${pid} consumed 1000 of 400000 compute units`, `Program ${pid} success`,
+  ];
+  const revealed = Buffer.concat([disc("DrumRevealed"), k(1).toBuffer(), u64(20), k(2).toBuffer(), u64(99), Buffer.alloc(32, 7), k(3).toBuffer()]);
+  assert.deepEqual(drumOutcomeFromLogs(logs(revealed), "sig1", parser), { state: "settled", prize: 20, signature: "sig1", value: "07".repeat(32) });
+  const refunded = Buffer.concat([disc("DrumRefunded"), k(1).toBuffer(), u64(5)]);
+  assert.deepEqual(drumOutcomeFromLogs(logs(refunded), "sig2", parser), { state: "refunded", amount: 5, signature: "sig2" });
+  const committed = Buffer.concat([disc("DrumCommitted"), k(1).toBuffer(), k(2).toBuffer(), u64(99)]);
+  assert.equal(drumOutcomeFromLogs(logs(committed), "sig3", parser), "committed");
+  assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program ${pid} success`], "sig4", parser), null);
+}
+
+// ---- oracle selection: only eligible oracles, live-healthy first, load spread
+{
+  const cand = (seed: number, over: Partial<import("../src/lib/vrf").OracleCandidate> = {}) => ({
+    oracle: k(seed), gatewayUrl: "https://gw.example", isOnQueue: true, isVerified: true,
+    heartbeatFresh: true, quoteFresh: true, liveHealthy: true, ...over,
+  });
+  assert.equal(vrf.oracleEligible(cand(1)), true);
+  for (const bad of [
+    { heartbeatFresh: false }, { quoteFresh: false }, { isVerified: false }, { isOnQueue: false },
+    { gatewayUrl: "" }, { restricted: true }, { gatewayEnabled: false }, { pullOracleEnabled: false },
+  ]) assert.equal(vrf.oracleEligible(cand(1, bad)), false, JSON.stringify(bad));
+  const set = [cand(1, { heartbeatFresh: false }), cand(2, { liveHealthy: false }), cand(3), cand(4)];
+  const picked = new Set([0, 0.49, 0.5, 0.99].map((r) => vrf.pickOracle(set, () => r).toBase58()));
+  assert.deepEqual([...picked].sort(), [k(3).toBase58(), k(4).toBase58()].sort(), "spread over live-healthy eligible oracles");
+  assert.ok(vrf.pickOracle([cand(1, { heartbeatFresh: false }), cand(2, { liveHealthy: false })], () => 0).equals(k(2)),
+    "falls back to eligible oracles without live health");
+  assert.throws(() => vrf.pickOracle([cand(1, { quoteFresh: false })]), /VRF_ORACLE_UNAVAILABLE/);
+  assert.throws(() => vrf.pickOracle([]), /VRF_ORACLE_UNAVAILABLE/);
+}
+
+// ---- gateway protocol: no RPC URL leak, strict response shape
+{
+  const uri = Buffer.alloc(64);
+  uri.write("https://oracle.example.com:8443/");
+  assert.equal(vrf.gatewayUrlFromBytes(uri), "https://oracle.example.com:8443");
+  assert.throws(() => vrf.gatewayUrlFromBytes(Buffer.from("ftp://x")), /gateway/);
+  assert.throws(() => vrf.gatewayUrlFromBytes(Buffer.alloc(64)), /gateway/);
+
+  const slothash = Buffer.alloc(32, 7);
+  const body = vrf.revealRequestBody(k(5), slothash, 123_456_789n);
+  assert.deepEqual(Object.keys(body).sort(), ["randomness_key", "slot", "slothash"], "the RPC URL is not forwarded by default");
+  assert.equal(body.randomness_key, k(5).toBuffer().toString("hex"));
+  assert.equal(body.slot, 123_456_789);
+  assert.deepEqual(body.slothash, Array(32).fill(7));
+  assert.equal(vrf.revealRequestBody(k(5), slothash, 1n, "https://public.example").rpc, "https://public.example");
+
+  const good = { signature: Buffer.alloc(64, 1).toString("base64"), recovery_id: 1, value: Array(32).fill(255) };
+  const params = vrf.parseRevealResponse(good);
+  assert.equal(params.signature.length, 64);
+  assert.equal(params.recoveryId, 1);
+  assert.equal(params.value.length, 32);
+  assert.throws(() => vrf.parseRevealResponse({ ...good, signature: Buffer.alloc(63).toString("base64") }), /signature/);
+  assert.throws(() => vrf.parseRevealResponse({ ...good, recovery_id: 4 }), /recovery/);
+  assert.throws(() => vrf.parseRevealResponse({ ...good, value: Array(31).fill(0) }), /value/);
+  assert.throws(() => vrf.parseRevealResponse({ ...good, value: [...Array(31).fill(0), 256] }), /value/);
+  assert.throws(() => vrf.parseRevealResponse(null), /signature/);
+}
+
+console.log("vrf self-test: pool circuit breaker, phase split, cluster pins, account parsing, PDAs, compute budget, drum outcome, oracle selection, gateway protocol passed");

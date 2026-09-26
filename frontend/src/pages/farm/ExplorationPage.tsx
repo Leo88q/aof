@@ -7,6 +7,7 @@ import { useFlash } from "../../lib/marketUtils";
 import { handleTxResponse } from "../../lib/txFlow";
 import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { humanizeVrfError } from "../../lib/vrfErrors";
 
 const EXPLORATION_COST = { data: 75, circuit: 35, silicon: 35, dataset: 50 };
 
@@ -61,7 +62,7 @@ export function ExplorationPage() {
         ? "✅ Экспедиция завершена on-chain. Обновите балансы."
         : "⏳ Оракул ещё не раскрыл результат — можно раскрыть самостоятельно.", 8000);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export function ExplorationPage() {
       const r = await handleTxResponse(resp);
       flash(r.success ? "✅ Результат раскрыт вашей транзакцией" : `❌ ${r.error}`);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
     } finally {
       setLoading(false);
     }
