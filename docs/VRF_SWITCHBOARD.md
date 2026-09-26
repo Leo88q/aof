@@ -180,6 +180,13 @@
 
 ## 7. Смоук-тест на devnet
 
+Где что проверяется:
+
+- **Host-тесты** (`aof-core/src/security_checklist_tests.rs`, `cargo test` в CI): полный цикл commit → reveal → refund на реальных обработчиках с эмуляцией Switchboard, вектор броска.
+- **Локальный валидатор** (`tests/aof_core.ts`, `tests/aof_extended.ts`): Switchboard там нет, то есть это состояние «пул пуст». Коммиты паков, кузницы, reroll и розыгрыша лотереи падают на загрузке `vrf_slot` раньше любых списаний. Билеты лотереи остаются в escrow раунда, приз и ранний возврат недоступны.
+- **Devnet** (скрипт ниже): настоящий оракул и gateway.
+
+
 `scripts/vrf/devnet-smoke.mjs` проверяет полный цикл на devnet-сборке:
 
 1. здоровье пула;
