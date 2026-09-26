@@ -166,3 +166,56 @@ test('F-06 the backend reveal path never forwards its RPC URL to the oracle gate
   assert.doesNotMatch(backend, /revealRequestBody\([^)]*(\bRPC_URL\b|rpcEndpoint)/, 'never pass the backend RPC URL');
   assert.match(backend, /SWITCHBOARD_GATEWAY_RPC_URL/);
 });
+
+test('F-06 settlement instructions stay permissionless (the settler signs with a fee-only wallet)', () => {
+  // vrf-settler holds no operator key (lib/settlerSigner.ts): every reveal,
+  // expire and draw it sends must accept an arbitrary funded cranker.
+  const settled = {
+    aof_core: {
+      source: ['aof-core/src/lib.rs'],
+      ix: {
+        pack_open_reveal: 'PackOpenReveal', pack_open_expire: 'PackOpenExpire',
+        reroll_random_reveal: 'RerollRandomReveal', reroll_random_expire: 'RerollRandomExpire',
+        explore_reveal: 'ExploreReveal', explore_expire: 'ExploreExpire',
+        forge_attempt_reveal: 'ForgeAttemptReveal', forge_attempt_expire: 'ForgeAttemptExpire',
+        draw_lottery: 'DrawLottery', expire_lottery_draw: 'ExpireLotteryDraw',
+      },
+    },
+    aof_quests: {
+      source: ['programs/aof-quests/src/instructions/drum/drum_reveal.rs', 'programs/aof-quests/src/instructions/drum/drum_expire.rs'],
+      ix: { drum_reveal: 'DrumReveal', drum_expire: 'DrumExpire' },
+    },
+  };
+  for (const [program, { source, ix }] of Object.entries(settled)) {
+    const programIdl = JSON.parse(read(`aof_backend/src/idl/${program}.json`));
+    const rust = source.map(read).join('\n');
+    for (const [name, context] of Object.entries(ix)) {
+      const entry = programIdl.instructions.find((i) => i.name === name);
+      assert.ok(entry, `${program}.${name} is in the IDL`);
+      const signers = entry.accounts.filter((a) => a.signer).map((a) => a.name);
+      assert.ok(signers.every((s) => s === 'cranker'), `${program}.${name}: only an arbitrary cranker may sign, got ${signers}`);
+      const body = new RegExp(`pub struct ${context}<'info> \\{([\\s\\S]*?)\\n\\}`).exec(rust);
+      assert.ok(body, `${context} context found`);
+      const field = /((?:#\[account\([^\]]*\)\]\s*)*)pub cranker: Signer<'info>/.exec(body[1]);
+      if (signers.length) {
+        assert.ok(field, `${context}.cranker`);
+        assert.equal(field[1].trim(), '#[account(mut)]', `${context}.cranker must stay unconstrained (mut only)`);
+      }
+    }
+  }
+  // The only cranker/operator comparison is the lottery draw COMMIT (not a
+  // settlement): the operator may close sales early, anyone after 7 days.
+  const handlers = fs.readdirSync(path.join(root, 'aof-core/src/instructions')).map((f) => `aof-core/src/instructions/${f}`)
+    .concat(['programs/aof-quests/src/instructions/drum/drum_reveal.rs', 'programs/aof-quests/src/instructions/drum/drum_expire.rs']);
+  for (const file of handlers) {
+    const src = read(file);
+    const hits = [...src.matchAll(/cranker\.key\(\)\s*[!=]=/g)];
+    if (file.endsWith('/lottery.rs')) {
+      assert.equal(hits.length, 1, 'lottery.rs: one cranker comparison (commit_draw_handler)');
+      const commitDraw = /pub fn commit_draw_handler[\s\S]*?\n\}/.exec(src)[0];
+      assert.match(commitDraw, /cranker\.key\(\)\s*==\s*ctx\.accounts\.config\.operator/);
+    } else {
+      assert.equal(hits.length, 0, `${file}: settlement handlers must not gate on the cranker`);
+    }
+  }
+});
