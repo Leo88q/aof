@@ -102,3 +102,23 @@ docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d
 | Эксплойт с выводом средств | `emergency_stop(freeze_cashout = true)` — геймплей продолжается | guardian |
 | Критическая ошибка в логике | `emergency_stop(pause_game = true)` → hotfix через upgrade | guardian → Upgrade multisig |
 | Снятие заморозки | `set_cashout_frozen(false)` / `set_paused(false)` | Admin multisig |
+| `vrf-settler` не работает | поднять реплику; новые коммиты уже остановлены circuit breaker'ом (`503 VRF_SETTLEMENT_DEGRADED`) | эксплуатация |
+| Сбой оракула Switchboard дольше часа | ждать: через ~2 ч средства вернутся автоматически; барабан — `set_paused` квестов | эксплуатация / guardian |
+| Нет годных оракулов / Crossbar недоступен (`503 VRF_ORACLE_UNAVAILABLE`) | ждать: новые коммиты не принимаются, деньги не списываются, уже сделанные коммиты раскрываются напрямую через gateway | эксплуатация |
+
+## 9. Случайность (Switchboard On-Demand)
+
+Паки, случайный reroll, экспедиции, кузница, лотерея и барабан удачи работают на Switchboard On-Demand. Дизайн, модель угроз и полный порядок запуска — в `docs/VRF_SWITCHBOARD.md`, экономика — в `docs/ECONOMY_RNG_EV.md`.
+
+До открытия механик:
+
+1. **Сборка под кластер.** Devnet: `anchor build -- --features devnet`. Mainnet — без флага. В бэкенде `SWITCHBOARD_CLUSTER` должен совпадать со сборкой.
+2. **Пул аккаунтов случайности** (≈0,009 SOL за слот, платит operator):
+   - `POST /vrf/pool/add`: дважды `{"program":"core","count":16}` (не больше 16 за запрос) и один раз `{"program":"quests","count":4}`;
+   - проверить `GET /vrf/health`.
+3. **Сервис раскрытия.** `vrf-settler` запускается по умолчанию в `docker-compose.prod.yml` и обязателен. На кошельке operator держать ≥ 1 SOL.
+4. **Барабан.** Пополнить казну маскотов квестов, не меньше 50 × число одновременных спинов.
+5. **Смоук-тест на devnet** — `node scripts/vrf/devnet-smoke.mjs`.
+6. **Алерты:**
+   - `/vrf/health` вернул `healthy=false`;
+   - коммит без раскрытия дольше 5 мин.

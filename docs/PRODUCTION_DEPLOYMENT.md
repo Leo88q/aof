@@ -65,10 +65,17 @@ Compose теперь отражает только поддерживаемый 
 
 ```bash
 docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d backend
-# Только когда нужен recovery legacy commitments:
-docker compose -f docker-compose.prod.yml --profile recovery up -d commit-expirer
+docker compose -f docker-compose.prod.yml up -d backend vrf-settler
 ```
+
+`vrf-settler` обязателен: он раскрывает коммиты Switchboard (паки, reroll, экспедиции, кузница, лотерея, барабан), а после окна раскрытия возвращает средства. Без него новые коммиты блокируются circuit breaker'ом. Порядок запуска и наполнения пула описан в `docs/VRF_SWITCHBOARD.md`. Старый `commit-expirer` удалён.
+
+С ключами в Docker secrets (этап 1, `docs/SECURITY_RUNBOOK.md`) добавьте override: `docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d backend vrf-settler`. Override передаёт ключ operator и воркеру: он подписывает раскрытия и возвраты. Статус `unhealthy` у `vrf-settler` означает, что цикл не завершался больше минуты. Watchdog сам перезапускает зависший процесс.
+
+`tests/readiness/compose.test.cjs` проверяет compose-файлы:
+- нет дублирующихся ключей (раньше блок `watchtower-exporter` был слит с `chain-indexer`, и `docker compose` не читал файл);
+- override-файлы ссылаются только на существующие сервисы;
+- `vrf-settler` подключён правильно.
 
 Worker скомпилирован в `dist-workers`; runtime не зависит от ts-node/devDependencies. Hot-market/price-cranker автоматически не включаются. SQL schema мигрируется перед API. `/health` — liveness, не доказательство работоспособности БД, treasury solvency или цепи.
 
