@@ -1,31 +1,24 @@
 #!/usr/bin/env node
 /**
  * Ensure local dev environment is ready for `anchor test`
- * - seeds target/idl from aof_backend/src/idl
+ * - seeds target/idl from aof_backend/src/idl (ids = target/deploy keypairs)
  * - creates solana/keys/aof-authority-devnet.json if missing (throwaway wallet)
  * - checks ANCHOR_PROVIDER_URL / validator
  */
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { seedIdl } = require('./seed-idl.cjs');
 
 const root = process.cwd();
 
 function log(msg) { console.log(`[ensure-env] ${msg}`); }
 
-// 1. IDL
-const srcDir = path.join(root, 'aof_backend', 'src', 'idl');
-const dstDir = path.join(root, 'target', 'idl');
-if (fs.existsSync(srcDir)) {
-  fs.mkdirSync(dstDir, { recursive: true });
-  const files = fs.readdirSync(srcDir).filter(f => f.endsWith('.json'));
-  for (const file of files) {
-    fs.copyFileSync(path.join(srcDir, file), path.join(dstDir, file));
-    log(`seeded IDL ${file}`);
-  }
-} else {
-  log(`WARN: ${srcDir} not found, skipping IDL seeding`);
-}
+// 1. IDL (address patched to the target/deploy keypair, see seed-idl.cjs)
+seedIdl({ root, log });
 
 // 2. Wallet
 const walletPath = path.join(root, 'solana', 'keys', 'aof-authority-devnet.json');
