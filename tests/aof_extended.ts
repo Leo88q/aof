@@ -332,39 +332,54 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   });
 
   // ========== LOTTERY / QUANTUM DRAW ==========
-  it("lottery: init round, buy ticket, draw, claim (fail-closed)", async () => {
-    const roundId = new BN(Date.now() % 10000);
-    const roundPda = pda([B("lottery_round"), roundId.toArrayLike(Buffer, "le", 8)]);
-    try {
-      await program.methods.initLotteryRound(roundId, new BN(1000), new BN(100)).accounts({
-        config: configPda,
-        authority,
-        lotteryRound: roundPda,
-        systemProgram: SystemProgram.programId,
-      }).rpc();
-      console.log("initLotteryRound: ok");
-    } catch (e: any) {
-      console.log(`initLotteryRound: ${e?.error?.errorCode?.code || e?.message?.slice(0,120)}`);
-    }
+  // [F-06] Every ticket is escrowed in full on the round; the draw commits
+  // through a Switchboard pool slot (none on this validator = production
+  // "pool empty"); before a draw nothing can be claimed and refunds wait for
+  // the 14-day timeout. The drawn/claimed path runs in the host tests with an
+  // emulated Switchboard (aof-core/src/security_checklist_tests.rs).
+  it("lottery: tickets escrowed on the round, draw needs a VRF slot, no claim or early refund", async () => {
+    const le = (n: BN) => n.toArrayLike(Buffer, "le", 8);
+    const roundId = new BN(Date.now());
+    const lotteryRound = pda([B("lottery_round"), le(roundId)]);
+    await program.methods.initLotteryRound(roundId).accounts({
+      config: configPda, authority, lotteryRound, systemProgram: SystemProgram.programId,
+    }).rpc();
 
     const buyer = Keypair.generate();
     await airdrop(buyer);
-    try {
-      await program.methods.buyLotteryTicket(roundId).accounts({
-        config: configPda,
-        buyer: buyer.publicKey,
-        lotteryRound: roundPda,
-        lotteryTicket: pda([B("lottery_ticket"), roundId.toArrayLike(Buffer, "le", 8), new BN(0).toArrayLike(Buffer, "le", 8)]),
-        lotteryTicketCount: pda([B("lottery_ticket"), B("count"), roundId.toArrayLike(Buffer, "le", 8), buyer.publicKey.toBuffer()]),
+    const ticket = (n: number) => pda([B("lottery_ticket"), le(roundId), le(new BN(n))]);
+    const ticketCounter = pda([B("lottery_ticket"), B("count"), le(roundId), buyer.publicKey.toBuffer()]);
+    const roundBefore = await provider.connection.getBalance(lotteryRound);
+    for (const n of [0, 1]) {
+      await program.methods.buyLotteryTicket().accounts({
+        config: configPda, buyer: buyer.publicKey, lotteryRound, lotteryTicket: ticket(n), ticketCounter,
         systemProgram: SystemProgram.programId,
       }).signers([buyer]).rpc();
-      console.log("buyLotteryTicket: ok (or fail-closed)");
-    } catch (e: any) {
-      const code = e?.error?.errorCode?.code;
-      console.log(`buyLotteryTicket expected fail-closed: ${code || e?.message?.slice(0,120)}`);
-      // Should be FeatureDisabled until daily cap exists
-      if (code) expect(["FeatureDisabled","LotteryTicketsDisabled"]).to.include(code) || console.log("different code, but ok for extended");
     }
+    const TICKET = 800_000; // LOTTERY_TICKET_PRICE_LAMPORTS, escrowed in full
+    const round = await program.account.lotteryRound.fetch(lotteryRound);
+    expect(round.ticketsSold.toString()).to.equal("2");
+    expect(round.poolLamports.toString()).to.equal(String(2 * TICKET));
+    expect(await provider.connection.getBalance(lotteryRound)).to.equal(roundBefore + 2 * TICKET);
+    expect((await program.account.lotteryTicket.fetch(ticket(1))).buyer.toString()).to.equal(buyer.publicKey.toString());
+
+    // Switchboard On-Demand (mainnet build), pool slot #0 that does not exist.
+    const randomness = pda([B("vrf_randomness"), Buffer.alloc(4)]);
+    await expectError(program.methods.commitLotteryDraw().accountsStrict({
+      config: configPda, cranker: authority, lotteryRound,
+      vrfSlot: pda([B("vrf_slot"), randomness.toBuffer()]), randomness, vrfAuthority: pda([B("vrf_authority")]),
+      queue: new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"), oracle: Keypair.generate().publicKey,
+      recentSlothashes: SLOT_HASHES, switchboardProgram: new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"),
+    }).rpc(), "AccountNotInitialized");
+    expect((await program.account.lotteryRound.fetch(lotteryRound)).drawCommitted).to.equal(false);
+
+    await expectError(program.methods.claimLotteryPrize().accounts({
+      config: configPda, lotteryRound, lotteryTicket: ticket(0), winner: buyer.publicKey,
+    }).signers([buyer]).rpc(), "LotteryNotDrawn");
+    await expectError(program.methods.refundLotteryTicket().accounts({
+      config: configPda, lotteryRound, lotteryTicket: ticket(0), buyer: buyer.publicKey,
+    }).rpc(), "LotteryRoundNotExpired");
+    expect(await provider.connection.getBalance(lotteryRound)).to.equal(roundBefore + 2 * TICKET);
   });
 
   // ========== CRAFT ORDERS ==========
