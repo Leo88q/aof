@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Source-level tripwires for SECURITY_CHECKLIST_REVIEW_2026-09-26.md.
+ * Source-level tripwires for SECURITY_CHECKLIST_REVIEW_2026-09-25.md.
  *
  * Each assertion pins one defence that a refactor could silently delete, across
  * all six Anchor programs. They are NOT behavioural evidence: the real handlers

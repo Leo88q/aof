@@ -1,5 +1,5 @@
 //! Host-side security regression suite for the 30-item Anchor checklist
-//! reviewed in `SECURITY_CHECKLIST_REVIEW_2026-09-26.md` (items are cited as
+//! reviewed in `SECURITY_CHECKLIST_REVIEW_2026-09-25.md` (items are cited as
 //! `#N`, findings of that review as `F-X`).
 //!
 //! Everything exercised here is the REAL program code: Anchor's generated
