@@ -10947,6 +10947,31 @@ export type AofCore = {
       "code": 6121,
       "name": "invalidRole",
       "msg": "Role key must be set"
+    },
+    {
+      "code": 6122,
+      "name": "nonCanonicalTokenAccount",
+      "msg": "Destination must be the owner's canonical associated token account"
+    },
+    {
+      "code": 6123,
+      "name": "invalidRandomnessAccount",
+      "msg": "Not a Switchboard randomness account of the trusted program"
+    },
+    {
+      "code": 6124,
+      "name": "randomnessNotFresh",
+      "msg": "Randomness is not freshly committed (or already revealed)"
+    },
+    {
+      "code": 6125,
+      "name": "randomnessNotRevealed",
+      "msg": "Randomness has not been revealed in this slot"
+    },
+    {
+      "code": 6126,
+      "name": "randomnessCommitMissing",
+      "msg": "Switchboard randomness commit must precede this instruction in the same transaction"
     }
   ],
   "types": [

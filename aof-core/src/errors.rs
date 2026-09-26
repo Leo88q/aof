@@ -264,4 +264,14 @@ pub enum AofError {
     CashoutFrozen,
     #[msg("Role key must be set")]
     InvalidRole,
+    #[msg("Destination must be the owner's canonical associated token account")]
+    NonCanonicalTokenAccount,
+    #[msg("Not a Switchboard randomness account of the trusted program")]
+    InvalidRandomnessAccount,
+    #[msg("Randomness is not freshly committed (or already revealed)")]
+    RandomnessNotFresh,
+    #[msg("Randomness has not been revealed in this slot")]
+    RandomnessNotRevealed,
+    #[msg("Switchboard randomness commit must precede this instruction in the same transaction")]
+    RandomnessCommitMissing,
 }

@@ -30,6 +30,7 @@ use anchor_lang::solana_program::program_option::COption;
 use anchor_lang::solana_program::program_pack::Pack;
 use anchor_lang::solana_program::program_stubs::{set_syscall_stubs, SyscallStubs};
 use anchor_spl::token::spl_token;
+use anchor_lang::AccountsExit;
 
 // ======================================================================
 // Host runtime: sysvars + CPI recorder
@@ -230,6 +231,25 @@ fn token_account(key: Pubkey, mint: Pubkey, owner: Pubkey, amount: u64) -> Accou
     )
     .unwrap();
     info(key, false, rent_exempt(spl_token::state::Account::LEN), data, anchor_spl::token::ID, false)
+}
+
+fn ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    anchor_spl::associated_token::get_associated_token_address(owner, mint)
+}
+
+/// Deterministic xorshift for the randomized invariant tests (no new crates).
+struct XorShift(u64);
+
+impl XorShift {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+    fn below(&mut self, n: u64) -> u64 {
+        if n == 0 { 0 } else { self.next() % n }
+    }
 }
 
 fn pda(seeds: &[&[u8]]) -> (Pubkey, u8) {
@@ -1087,7 +1107,7 @@ fn order_matching_conserves_lamports_and_fees_stay_below_the_trade() {
             seller_wallet.clone(),
             treasury.clone(),
             token_account(Pubkey::new_unique(), mint, sell_key, 4),
-            token_account(Pubkey::new_unique(), mint, buyer, 0),
+            token_account(ata(&buyer, &mint), mint, buyer, 0),
             token_program_info(),
         ],
         &[],
@@ -1140,7 +1160,7 @@ fn an_order_cannot_be_matched_against_itself() {
                 wallet(maker, false),
                 wallet(w.treasury, false),
                 token_account(Pubkey::new_unique(), mint, order_key, 10),
-                token_account(Pubkey::new_unique(), mint, maker, 0),
+                token_account(ata(&maker, &mint), mint, maker, 0),
                 token_program_info(),
             ],
             &[],
@@ -1846,4 +1866,305 @@ fn early_revocation_refunds_the_unused_time() {
     assert_eq!(accounts.tool.operator, owner);
     assert_eq!(agreement_info.lamports(), 0, "agreement closed");
     assert_eq!(renter_info.lamports(), WALLET_LAMPORTS + rent_exempt(RENTAL_AGREEMENT_SPACE), "its rent went to the renter");
+}
+
+// ======================================================================
+// I. Second checklist (items 31-70): ATA, VRF, duplication, invariants
+// ======================================================================
+
+/// #33: the canonical ATA is exactly the ATA program's PDA of (owner, token
+/// program, mint); anything else is refused where a third party picks the
+/// destination.
+#[test]
+fn canonical_ata_matches_the_associated_token_program_derivation() {
+    let (owner, mint) = (Pubkey::new_unique(), Pubkey::new_unique());
+    let expected = Pubkey::find_program_address(
+        &[owner.as_ref(), anchor_spl::token::ID.as_ref(), mint.as_ref()],
+        &anchor_spl::associated_token::ID,
+    )
+    .0;
+    assert!(is_canonical_ata(&expected, &owner, &mint));
+    assert!(!is_canonical_ata(&Pubkey::new_unique(), &owner, &mint));
+    assert!(!is_canonical_ata(&expected, &Pubkey::new_unique(), &mint), "another owner's ATA");
+}
+
+/// #33: a permissionless matcher can no longer park the buyer's resources in a
+/// non-canonical token account.
+#[test]
+fn order_matching_requires_the_buyers_canonical_ata() {
+    runtime();
+    let w = World::new();
+    let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
+    let mint = w.config.food_mint;
+    let buy_key = pda(&[RESOURCE_ORDER_SEED, buyer.as_ref(), mint.as_ref()]).0;
+    let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
+    let infos = |buyer_token: Pubkey| {
+        vec![
+            w.config_info(),
+            w.mm_info(),
+            spl_mint(mint, 1_000, Some(w.auth_key), None),
+            program_account(buy_key, &resource_order(buyer, true, 1_000, 10, mint), RESOURCE_ORDER_SPACE),
+            program_account(sell_key, &resource_order(seller, false, 900, 4, mint), RESOURCE_ORDER_SPACE),
+            wallet(seller, false),
+            wallet(w.treasury, false),
+            token_account(Pubkey::new_unique(), mint, sell_key, 4),
+            token_account(buyer_token, mint, buyer, 0),
+            token_program_info(),
+        ]
+    };
+    let err = rejected(validate::<MatchResourceOrders>(infos(Pubkey::new_unique()), &[]), "NonCanonicalTokenAccount");
+    assert!(blames(&err, "buyer_token"), "{err}");
+    validate::<MatchResourceOrders>(infos(ata(&buyer, &mint)), &[]).unwrap();
+}
+
+// ---------------------------------------------------------------- VRF (#36/#37)
+
+use crate::vrf::{
+    check_fresh_commit, check_reveal, derive_roll, load_randomness, parse_randomness, require_commit_in_same_tx,
+    Randomness, RANDOMNESS_ACCOUNT_DISCRIMINATOR, RANDOMNESS_ACCOUNT_LEN, RANDOMNESS_COMMIT_IX_DISCRIMINATOR,
+    SWITCHBOARD_PROGRAM_ID,
+};
+use anchor_lang::solana_program::sysvar::instructions::{
+    construct_instructions_data, store_current_index, BorrowedAccountMeta, BorrowedInstruction,
+};
+
+fn randomness_bytes(seed_slot: u64, reveal_slot: u64, value: [u8; 32]) -> Vec<u8> {
+    let mut data = vec![0u8; RANDOMNESS_ACCOUNT_LEN];
+    data[..8].copy_from_slice(&RANDOMNESS_ACCOUNT_DISCRIMINATOR);
+    data[104..112].copy_from_slice(&seed_slot.to_le_bytes());
+    data[144..152].copy_from_slice(&reveal_slot.to_le_bytes());
+    data[152..184].copy_from_slice(&value);
+    data
+}
+
+fn vrf_ok(r: Result<()>) -> bool {
+    r.is_ok()
+}
+
+/// Layout, owner and discriminator checks of the Switchboard account.
+#[test]
+fn switchboard_randomness_accounts_are_verified_before_use() {
+    let value = [7u8; 32];
+    let parsed = parse_randomness(&randomness_bytes(100, 101, value)).ok();
+    assert_eq!(parsed, Some(Randomness { seed_slot: 100, reveal_slot: 101, value }));
+    let mut wrong_disc = randomness_bytes(100, 101, value);
+    wrong_disc[0] ^= 1;
+    assert!(parse_randomness(&wrong_disc).is_err());
+    assert!(parse_randomness(&randomness_bytes(100, 101, value)[..200]).is_err(), "short data");
+
+    let key = Pubkey::new_unique();
+    let genuine = info(key, false, 1, randomness_bytes(5, 0, value), SWITCHBOARD_PROGRAM_ID, false);
+    assert_eq!(load_randomness(&genuine).ok().map(|r| r.seed_slot), Some(5));
+    let forged = info(key, false, 1, randomness_bytes(5, 0, value), Pubkey::new_unique(), false);
+    assert!(load_randomness(&forged).is_err(), "same bytes, wrong owner");
+}
+
+/// Commit must be fresh and unrevealed; reveal must be the same account and
+/// seed, revealed in this very slot.
+#[test]
+fn vrf_commit_and_reveal_rules() {
+    let v = [9u8; 32];
+    let fresh = Randomness { seed_slot: 99, reveal_slot: 0, value: [0; 32] };
+    assert_eq!(check_fresh_commit(&fresh, 100).ok(), Some(99));
+    assert!(check_fresh_commit(&fresh, 101).is_err(), "seeded two slots ago");
+    assert!(check_fresh_commit(&Randomness { seed_slot: 99, reveal_slot: 99, value: v }, 100).is_err(), "already revealed");
+
+    let account = Pubkey::new_unique();
+    let revealed = Randomness { seed_slot: 99, reveal_slot: 120, value: v };
+    assert_eq!(check_reveal(&revealed, &account, &account, 99, 120).ok(), Some(v));
+    assert!(check_reveal(&revealed, &account, &account, 99, 121).is_err(), "stale reveal");
+    assert!(check_reveal(&revealed, &account, &Pubkey::new_unique(), 99, 120).is_err(), "other account");
+    assert!(check_reveal(&revealed, &account, &account, 98, 120).is_err(), "other seed");
+
+    assert_ne!(derive_roll(&v, b"pack", b"a"), derive_roll(&v, b"pack", b"b"));
+    assert_ne!(derive_roll(&v, b"pack", b"a"), derive_roll(&v, b"forge", b"a"));
+    assert_eq!(derive_roll(&v, b"pack", b"a"), derive_roll(&v, b"pack", b"a"));
+}
+
+/// The game commit must sit in the same transaction as, and after, the
+/// Switchboard `randomness_commit` for the same randomness account.
+#[test]
+fn vrf_commit_must_share_the_transaction_with_the_switchboard_commit() {
+    let randomness = Pubkey::new_unique();
+    let other = Pubkey::new_unique();
+    let game = crate::ID;
+    let fake = Pubkey::new_unique();
+    let sysvar_info = |instructions: Vec<(Pubkey, Pubkey, Vec<u8>)>, current: u16, key: Pubkey| {
+        let borrowed: Vec<BorrowedInstruction> = instructions
+            .iter()
+            .map(|(program, first_account, data)| BorrowedInstruction {
+                program_id: program,
+                accounts: vec![BorrowedAccountMeta { pubkey: first_account, is_signer: false, is_writable: true }],
+                data: data.as_slice(),
+            })
+            .collect();
+        let mut data = construct_instructions_data(&borrowed);
+        store_current_index(&mut data, current);
+        info(key, false, 1, data, anchor_lang::solana_program::sysvar::ID, false)
+    };
+    let sysvar = anchor_lang::solana_program::sysvar::instructions::ID;
+    let commit = RANDOMNESS_COMMIT_IX_DISCRIMINATOR.to_vec();
+
+    let ok = sysvar_info(vec![(SWITCHBOARD_PROGRAM_ID, randomness, commit.clone()), (game, randomness, vec![1])], 1, sysvar);
+    assert!(vrf_ok(require_commit_in_same_tx(&ok, &randomness)));
+
+    let alone = sysvar_info(vec![(game, randomness, vec![1])], 0, sysvar);
+    rejected(require_commit_in_same_tx(&alone, &randomness), "RandomnessCommitMissing");
+    let other_account = sysvar_info(vec![(SWITCHBOARD_PROGRAM_ID, other, commit.clone()), (game, randomness, vec![1])], 1, sysvar);
+    rejected(require_commit_in_same_tx(&other_account, &randomness), "RandomnessCommitMissing");
+    let impostor = sysvar_info(vec![(fake, randomness, commit.clone()), (game, randomness, vec![1])], 1, sysvar);
+    rejected(require_commit_in_same_tx(&impostor, &randomness), "RandomnessCommitMissing");
+    let after = sysvar_info(vec![(game, randomness, vec![1]), (SWITCHBOARD_PROGRAM_ID, randomness, commit.clone())], 0, sysvar);
+    rejected(require_commit_in_same_tx(&after, &randomness), "RandomnessCommitMissing");
+    let forged_sysvar = sysvar_info(vec![(SWITCHBOARD_PROGRAM_ID, randomness, commit), (game, randomness, vec![1])], 1, Pubkey::new_unique());
+    assert!(require_commit_in_same_tx(&forged_sysvar, &randomness).is_err(), "not the instructions sysvar");
+}
+
+// ---------------------------------------------------------------- duplication (#56)
+
+/// #56: a ready tile pays once; the replayed harvest finds it empty and mints
+/// nothing (Solana serializes writes to the tile, the handler resets it before
+/// returning).
+#[test]
+fn a_harvest_cannot_be_collected_twice() {
+    runtime();
+    let w = World::new();
+    let user = Pubkey::new_unique();
+    let tool_mint = Pubkey::new_unique();
+    let (energy_key, energy_bump) = pda(&[ENERGY_ACCOUNT_SEED, user.as_ref()]);
+    let (tile_key, tile_bump) = pda(&[FARM_TILE_SEED, user.as_ref(), &[TILE]]);
+    let energy = EnergyAccount { owner: user, current: ENERGY_CAP, last_regen_at: NOW_TS, cap: ENERGY_CAP, bump: energy_bump };
+    let tile = FarmTile { owner: user, state: 2, planted_at: NOW_TS - 7_200, ready_at: NOW_TS - 1, seeds_amount: 100, bump: tile_bump };
+    let infos = vec![
+        w.config_info(),
+        wallet(user, true),
+        w.mm_info(),
+        program_account(energy_key, &energy, ENERGY_ACCOUNT_SPACE),
+        program_account(tile_key, &tile, FARM_TILE_SPACE),
+        program_account(pda(&[TOOL_SEED, tool_mint.as_ref()]).0, &tool(tool_mint, user, user, "neural_seeder"), TOOL_DATA_SPACE),
+        w.auth_info(),
+        spl_mint(w.mm.wheat, 0, Some(w.auth_key), None),
+        token_account(Pubkey::new_unique(), w.mm.wheat, user, 0),
+        token_program_info(),
+        system_program_info(),
+    ];
+    let harvest = |infos: Vec<AccountInfo<'static>>| -> Result<()> {
+        let (mut accounts, bumps) = parse::<HarvestWheat>(infos, &[TILE])?;
+        crate::instructions::harvest_wheat::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), TILE)?;
+        // Persist the new state exactly as the runtime would after the instruction.
+        accounts.exit(&crate::ID)
+    };
+    assert!(harvest(infos.clone()).is_ok());
+    assert_eq!(cpi_calls(), 1);
+    rejected(harvest(infos), "FarmTileEmpty");
+    assert_eq!(cpi_calls(), 1, "the replay minted nothing");
+}
+
+// ---------------------------------------------------------------- invariants (#49/#52/#53)
+
+/// #52/#53: random withdraw/sweep sequences never create or destroy a lamport,
+/// never let the tank drop below rent + owed balance + dust, and a failed step
+/// changes nothing.
+#[test]
+fn gas_tank_invariants_hold_under_random_operations() {
+    runtime();
+    let w = World::new();
+    let mut rng = XorShift(0x5eed_0a0f_2026);
+    let rent = rent_exempt(GASTANK_SPACE);
+    for _round in 0..30 {
+        let user = Pubkey::new_unique();
+        let tank_key = pda(&[GASTANK_SEED, user.as_ref()]).0;
+        let balance = rng.below(400_000);
+        let dust = rng.below(MICROS_TO_LAMPORTS);
+        let fees = rng.below(3_000_000);
+        let tank = program_account(tank_key, &gas_tank(user, balance, dust, 0), GASTANK_SPACE);
+        set_lamports(&tank, rent + balance * MICROS_TO_LAMPORTS + dust + fees);
+        let user_info = wallet(user, true);
+        let treasury = wallet(w.treasury, false);
+        let total = tank.lamports() + user_info.lamports() + treasury.lamports();
+        let mut owed = balance;
+        for _step in 0..6 {
+            let before = (tank.lamports(), user_info.lamports(), treasury.lamports());
+            let result: Result<()> = if rng.below(2) == 0 {
+                let amount = rng.below(owed + 5_000);
+                (|| {
+                    let (mut accounts, bumps) = parse::<WithdrawGas>(
+                        vec![w.config_info(), user_info.clone(), tank.clone(), system_program_info()],
+                        &amount.to_le_bytes(),
+                    )?;
+                    crate::instructions::withdraw_gas::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), amount)?;
+                    owed = accounts.gastank.balance_micros;
+                    accounts.exit(&crate::ID)
+                })()
+            } else {
+                (|| {
+                    let (mut accounts, bumps) = parse::<SweepGasFees>(
+                        vec![w.config_info(), wallet(w.operator, true), tank.clone(), treasury.clone(), system_program_info()],
+                        &[],
+                    )?;
+                    crate::instructions::sweep_gas_fees::handler(Context::new(&crate::ID, &mut accounts, &[], bumps))
+                })()
+            };
+            let after = (tank.lamports(), user_info.lamports(), treasury.lamports());
+            if result.is_err() {
+                assert_eq!(before, after, "a failed step moved lamports");
+            }
+            assert_eq!(after.0 + after.1 + after.2, total, "lamports conserved");
+            assert!(tank.lamports() >= rent + owed * MICROS_TO_LAMPORTS + dust, "tank under-collateralized");
+        }
+    }
+}
+
+/// #52/#53: random crossing orders — every match conserves lamports, fees stay
+/// within the trade and the remaining buy escrow still covers the rest of the
+/// order at the buyer's own price plus the taker buffer.
+#[test]
+fn order_matching_invariants_hold_for_random_orders() {
+    runtime();
+    let w = World::new();
+    let mut rng = XorShift(0xa0f_0b0e_2026);
+    let rent = rent_exempt(RESOURCE_ORDER_SPACE);
+    let taker = |x: u64| x * ORDERBOOK_TAKER_FEE_BPS as u64 / 10_000;
+    for _ in 0..60 {
+        let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
+        let mint = w.config.food_mint;
+        let buy_price = 1 + rng.below(50_000);
+        let sell_price = 1 + rng.below(buy_price);
+        let buy_amount = 1 + rng.below(1_000);
+        let sell_amount = 1 + rng.below(1_000);
+        let buy_key = pda(&[RESOURCE_ORDER_SEED, buyer.as_ref(), mint.as_ref()]).0;
+        let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
+        let buy = program_account(buy_key, &resource_order(buyer, true, buy_price, buy_amount, mint), RESOURCE_ORDER_SPACE);
+        set_lamports(&buy, rent + buy_price * buy_amount + taker(buy_price * buy_amount));
+        let seller_wallet = wallet(seller, false);
+        let treasury = wallet(w.treasury, false);
+        let total = buy.lamports() + seller_wallet.lamports() + treasury.lamports();
+        let (mut accounts, bumps) = parse::<MatchResourceOrders>(
+            vec![
+                w.config_info(),
+                w.mm_info(),
+                spl_mint(mint, 1_000_000, Some(w.auth_key), None),
+                buy.clone(),
+                program_account(sell_key, &resource_order(seller, false, sell_price, sell_amount, mint), RESOURCE_ORDER_SPACE),
+                seller_wallet.clone(),
+                treasury.clone(),
+                token_account(Pubkey::new_unique(), mint, sell_key, sell_amount),
+                token_account(ata(&buyer, &mint), mint, buyer, 0),
+                token_program_info(),
+            ],
+            &[],
+        )
+        .unwrap();
+        let result = crate::instructions::orderbook::match_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+        assert!(result.is_ok(), "{result:?}");
+        let traded = buy_amount.min(sell_amount);
+        let remaining = buy_amount - traded;
+        assert_eq!(accounts.buy_order.amount_remaining, remaining);
+        assert_eq!(buy.lamports() + seller_wallet.lamports() + treasury.lamports(), total, "lamports conserved");
+        assert!(treasury.lamports() - WALLET_LAMPORTS <= sell_price * traded, "fees stay within the trade");
+        assert!(
+            buy.lamports() >= rent + buy_price * remaining + taker(buy_price * remaining),
+            "remaining escrow covers the rest of the order"
+        );
+    }
 }

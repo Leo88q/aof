@@ -366,9 +366,18 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
     [/RecentBlockhashes|recent_blockhashes|sysvar::fees|Fees::get/, 'deprecated sysvar'],
     [/InterfaceAccount|token_interface|Token2022|spl_token_2022/, 'Token-2022 needs a separate extension review (#12)'],
   ];
+  // vrf.rs is the one deliberate exception for instruction introspection: it
+  // binds a game commit to Switchboard's commit in the same transaction.
+  const vrf = stripComments(core('vrf.rs'));
   for (const [program, { code }] of Object.entries(sources)) {
-    for (const [re, why] of banned) assert.doesNotMatch(code, re, `${program}: ${why}`);
+    for (const [re, why] of banned) {
+      const scope = program === 'aof_core' && /instruction-sysvar/.test(why) ? code.replace(vrf, '') : code;
+      assert.doesNotMatch(scope, re, `${program}: ${why}`);
+    }
   }
+  assert.match(vrf, /load_current_index_checked/, 'address-checked sysvar loader');
+  assert.match(vrf, /load_instruction_at_checked/, 'address-checked sysvar loader');
+  assert.doesNotMatch(vrf, /load_instruction_at\(|get_instruction_relative/, 'unchecked loaders are not used');
 });
 
 test('#18 no unbounded per-call input: collection arguments are allowlisted and bounded', () => {
@@ -584,4 +593,62 @@ test('F-G auctions: bid floor, real increments, bounded duration, cancel without
   const cancel = (sources.aof_core.structs.get('AuctionCancelCtx') || []).find((f) => f.name === 'auction');
   assert.ok(cancel && /auction\.current_bid == 0/.test(cancel.attrs), 'cancel only without bids');
   assert.ok(/auction\.seller == seller\.key\(\)/.test(cancel.attrs), 'only the seller cancels');
+});
+
+// ---------------------------------------------------------------- Second checklist (items 31-70)
+
+test('#33 third-party payout destinations must be canonical ATAs', () => {
+  const fields = [['AuctionSettleCtx', 'winner_token'], ['MatchResourceOrders', 'buyer_token'],
+    ['CraftOrderFulfillCtx', 'creator_wood'], ['CraftOrderFulfillCtx', 'creator_stone']];
+  for (const [ctx, field] of fields) {
+    const f = (sources.aof_core.structs.get(ctx) || []).find((x) => x.name === field);
+    assert.ok(f, `${ctx}.${field} not found`);
+    assert.match(f.attrs, new RegExp(`is_canonical_ata\\(&${field}\\.key\\(\\), &${field}\\.owner`), `${ctx}.${field}`);
+  }
+  assert.match(fnBody(core('state.rs'), 'is_canonical_ata'), /get_associated_token_address\(owner, mint\)/);
+});
+
+test('#36 #37 Switchboard VRF: trusted owner, fresh commit in the same transaction, exact reveal', () => {
+  const vrf = stripComments(core('vrf.rs'));
+  assert.match(fnBody(core('vrf.rs'), 'load_randomness'), /require_keys_eq!\(\*account\.owner, SWITCHBOARD_PROGRAM_ID/);
+  assert.match(fnBody(core('vrf.rs'), 'check_fresh_commit'), /seed_slot == clock_slot - 1[\s\S]*reveal_slot < randomness\.seed_slot/);
+  assert.match(fnBody(core('vrf.rs'), 'check_reveal'), /reveal_slot == clock_slot/);
+  assert.match(fnBody(core('vrf.rs'), 'require_commit_in_same_tx'), /0\.\.current[\s\S]*RANDOMNESS_COMMIT_IX_DISCRIMINATOR/);
+  assert.match(vrf, /SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv|6, 115, 189, 70/, 'mainnet program id');
+  assert.match(read('aof-core/Cargo.toml'), /^devnet = \[\]/m, 'devnet trust is an explicit build feature');
+});
+
+test('#65 session keys (SPL delegates) are never stored in plaintext', () => {
+  const ks = stripComments(read('aof_backend/src/lib/sessionKeys.ts'));
+  assert.match(ks, /createCipheriv\("aes-256-gcm"/, 'authenticated encryption');
+  assert.match(ks, /createDecipheriv\("aes-256-gcm"/, 'authenticated decryption');
+  assert.match(ks, /setAuthTag\(/, 'GCM tag verified');
+  assert.doesNotMatch(ks, /secretKey:\s*Array\.from/, 'no plaintext secret persistence');
+  assert.match(ks, /SESSION_KEYSTORE_KEY is not configured/, 'fail closed without a key');
+  assert.match(ks, /pk\.toBase58\(\) !== user/, 'canonical pubkey file names (no traversal)');
+  assert.match(read('.github/workflows/ci.yml'), /npm run test:session-keystore/);
+});
+
+test('#66 no known-compromised @solana/web3.js release in any lockfile', () => {
+  const compromised = new Set(['1.95.6', '1.95.7']);
+  let checked = 0;
+  for (const lock of ['package-lock.json', 'aof_backend/package-lock.json', 'frontend/package-lock.json']) {
+    const packages = JSON.parse(read(lock)).packages || {};
+    for (const [where, meta] of Object.entries(packages)) {
+      if (!where.endsWith('node_modules/@solana/web3.js')) continue;
+      checked += 1;
+      assert.ok(!compromised.has(meta.version), `${lock}: ${where}@${meta.version} is the Dec-2024 key-stealing release`);
+    }
+  }
+  assert.ok(checked >= 3, 'web3.js not found in the lockfiles');
+});
+
+test('#50 the frontend ships HSTS and an enforced baseline CSP', () => {
+  const headers = read('frontend/public/_headers');
+  assert.match(headers, /Strict-Transport-Security: max-age=\d+/);
+  const csp = (headers.match(/^\s*Content-Security-Policy: (.+)$/m) || [])[1] || '';
+  for (const directive of ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'"]) {
+    assert.ok(csp.includes(directive), directive);
+  }
+  assert.match(headers, /Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'/);
 });

@@ -1,7 +1,7 @@
 import { BN } from "bn.js";
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SystemProgram } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
 import { auctionPda, configPda, toolPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
@@ -80,13 +80,20 @@ r.post("/settle", requireCircuitOpen, requireWalletLimits("auction__settle"), re
   try {
     const caller = pk(req.body.caller);
     const mint = pk(req.body.mint);
-    const seller = pk(req.body.seller);
-    const treasury = pk(req.body.treasury);
-    const winnerToken = pk(req.body.winnerToken);
     const [config] = configPda();
     const [auction] = auctionPda(mint);
     const [tool] = toolPda(mint);
     const auctionVault = getAssociatedTokenAddressSync(mint, auction, true);
+    // [SECURITY_CHECKLIST #33] Parties and the winner's destination come from
+    // chain state, not from the request: the program requires the winner's
+    // canonical ATA (created idempotently here, paid by the caller).
+    const state: any = await (program.account as any)["auction"].fetch(auction);
+    const cfg: any = await (program.account as any)["config"].fetch(config);
+    const seller = new PublicKey(state.seller);
+    const treasury = new PublicKey(cfg.treasury);
+    const winner = new BN(state.currentBid.toString()).gtn(0) ? new PublicKey(state.currentBidder) : seller;
+    const winnerToken = getAssociatedTokenAddressSync(mint, winner);
+    const winnerAta = createAssociatedTokenAccountIdempotentInstruction(caller, winnerToken, winner, mint);
 
     const ix = await (program.methods as any)
       .auctionSettle()
@@ -103,7 +110,7 @@ r.post("/settle", requireCircuitOpen, requireWalletLimits("auction__settle"), re
       })
       .instruction();
 
-    const tx = await coSign([ix], caller);
+    const tx = await coSign([winnerAta, ix], caller);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });

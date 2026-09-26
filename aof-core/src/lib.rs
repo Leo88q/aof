@@ -8,6 +8,7 @@ pub mod events;
 pub mod instructions;
 pub mod state;
 pub mod randomness;
+pub mod vrf;
 #[cfg(test)]
 mod security_checklist_tests;
 
@@ -2117,7 +2118,7 @@ pub struct AuctionSettleCtx<'info> {
     pub auction_vault: Account<'info, TokenAccount>,
     /// победитель (или продавец, если ставок не было) — получатель NFT
     #[account(mut, constraint = winner_token.mint == mint.key(),
-    constraint = winner_token.owner == (if auction.current_bid > 0 { auction.current_bidder } else { auction.seller }) @ AofError::Unauthorized)]
+    constraint = winner_token.owner == (if auction.current_bid > 0 { auction.current_bidder } else { auction.seller }) @ AofError::Unauthorized, constraint = is_canonical_ata(&winner_token.key(), &winner_token.owner, &mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub winner_token: Account<'info, TokenAccount>,
     #[account(
         mut,
@@ -2882,7 +2883,7 @@ pub struct MatchResourceOrders<'info> {
     #[account(mut, constraint = sell_vault.owner == sell_order.key(), constraint = sell_vault.mint == mint.key())]
     pub sell_vault: Account<'info, TokenAccount>,
     /// покупатель — владелец buy_order, получает ресурс
-    #[account(mut, constraint = buyer_token.mint == mint.key(), constraint = buyer_token.owner == buy_order.maker)]
+    #[account(mut, constraint = buyer_token.mint == mint.key(), constraint = buyer_token.owner == buy_order.maker, constraint = is_canonical_ata(&buyer_token.key(), &buyer_token.owner, &mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub buyer_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -2925,13 +2926,13 @@ pub struct CraftOrderFulfillCtx<'info> {
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = fulfiller_wood.mint == wood_mint.key(), constraint = fulfiller_wood.owner == fulfiller.key())]
     pub fulfiller_wood: Account<'info, TokenAccount>,
-    #[account(mut, constraint = creator_wood.mint == wood_mint.key(), constraint = creator_wood.owner == craft_order.creator)]
+    #[account(mut, constraint = creator_wood.mint == wood_mint.key(), constraint = creator_wood.owner == craft_order.creator, constraint = is_canonical_ata(&creator_wood.key(), &creator_wood.owner, &wood_mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub creator_wood: Account<'info, TokenAccount>,
     #[account(address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = fulfiller_stone.mint == stone_mint.key(), constraint = fulfiller_stone.owner == fulfiller.key())]
     pub fulfiller_stone: Account<'info, TokenAccount>,
-    #[account(mut, constraint = creator_stone.mint == stone_mint.key(), constraint = creator_stone.owner == craft_order.creator)]
+    #[account(mut, constraint = creator_stone.mint == stone_mint.key(), constraint = creator_stone.owner == craft_order.creator, constraint = is_canonical_ata(&creator_stone.key(), &creator_stone.owner, &stone_mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub creator_stone: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }

@@ -10941,6 +10941,31 @@
       "code": 6121,
       "name": "InvalidRole",
       "msg": "Role key must be set"
+    },
+    {
+      "code": 6122,
+      "name": "NonCanonicalTokenAccount",
+      "msg": "Destination must be the owner's canonical associated token account"
+    },
+    {
+      "code": 6123,
+      "name": "InvalidRandomnessAccount",
+      "msg": "Not a Switchboard randomness account of the trusted program"
+    },
+    {
+      "code": 6124,
+      "name": "RandomnessNotFresh",
+      "msg": "Randomness is not freshly committed (or already revealed)"
+    },
+    {
+      "code": 6125,
+      "name": "RandomnessNotRevealed",
+      "msg": "Randomness has not been revealed in this slot"
+    },
+    {
+      "code": 6126,
+      "name": "RandomnessCommitMissing",
+      "msg": "Switchboard randomness commit must precede this instruction in the same transaction"
     }
   ],
   "types": [

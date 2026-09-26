@@ -867,6 +867,15 @@ pub fn charge_vault_withdrawal(
     guard.charge(amount, slot)
 }
 
+/// [SECURITY_CHECKLIST #33] `token` is the canonical associated token account
+/// of (owner, mint). Enforced where a third party — a permissionless settler,
+/// matcher or fulfiller — picks the destination of someone else's tokens, so a
+/// winner's NFT or a buyer's resources cannot be parked in a non-canonical
+/// account that wallets never show.
+pub fn is_canonical_ata(token: &Pubkey, owner: &Pubkey, mint: &Pubkey) -> bool {
+    *token == anchor_spl::associated_token::get_associated_token_address(owner, mint)
+}
+
 /// [SECURITY_CHECKLIST_REVIEW F-D] Weather is a pure function of the UTC day, so
 /// the weather of any past day can be recomputed exactly. `weather_crank` only
 /// caches today's value in `WeatherState` for UIs.
