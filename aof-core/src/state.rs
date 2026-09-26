@@ -30,6 +30,22 @@ pub struct Config {
     // was frozen forever at the value captured during the first initialize().
     pub pending_authority: Pubkey,  // 32
     pub authority_updated_at: i64,  // 8
+    // ===== [SECURITY_CHECKLIST_REVIEW F-C] Config v2: role separation =====
+    // Appended fields only: a v1 account is a strict prefix of this layout and
+    // `migrate_config_v2` grows it in place. `authority` is the admin (meant to
+    // be a Squads multisig with a time lock): configuration, limits, rotation.
+    /// Hot backend key for routine, budget-bounded operations only (craft
+    /// co-sign, rewards within IssuanceCap, vault payouts within VaultGuard,
+    /// tool mints, season XP). It cannot change any rule or limit.
+    pub operator: Pubkey,           // 32
+    /// Emergency key: may only switch the pause / cash-out freeze ON.
+    pub guardian: Pubkey,           // 32
+    /// Cash-out freeze: gameplay continues, but value cannot leave the game
+    /// economy (trades paying SOL out, vault payouts). Guardian or admin set it,
+    /// only the admin clears it.
+    pub cashout_frozen: bool,       // 1
+    /// Room for future fields without another migration.
+    pub reserved: [u8; 32],         // 32
 }
 
 /// [AUDIT F-17] Canonical tool kinds. `ToolData.tool_type` is a free-form
@@ -1331,6 +1347,10 @@ mod state_tests {
             mining_enabled: true,
             pending_authority: Pubkey::default(),
             authority_updated_at: 0,
+            operator: Pubkey::default(),
+            guardian: Pubkey::default(),
+            cashout_frozen: false,
+            reserved: [0u8; 32],
         };
         let mut mints = mm(SUPPLY_CAP_UNLIMITED);
         for kind in [

@@ -827,6 +827,38 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     signerIndexes: [1],
     authorityOnly: false,
   },
+  {
+    name: "migrate_config_v2",
+    discriminator: [21, 39, 88, 172, 254, 205, 30, 141],
+    accounts: ["config", "authority", "system_program"],
+    actorIndexes: [],
+    signerIndexes: [1],
+    authorityOnly: true,
+  },
+  {
+    name: "set_roles",
+    discriminator: [119, 86, 129, 161, 55, 23, 250, 12],
+    accounts: ["config", "authority"],
+    actorIndexes: [],
+    signerIndexes: [1],
+    authorityOnly: true,
+  },
+  {
+    name: "emergency_stop",
+    discriminator: [179, 143, 200, 137, 108, 245, 248, 35],
+    accounts: ["config", "caller"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: true,
+  },
+  {
+    name: "set_cashout_frozen",
+    discriminator: [188, 201, 38, 248, 184, 63, 152, 137],
+    accounts: ["config", "authority"],
+    actorIndexes: [],
+    signerIndexes: [1],
+    authorityOnly: true,
+  },
 
 ];
 

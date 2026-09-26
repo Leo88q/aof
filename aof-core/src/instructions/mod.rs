@@ -58,6 +58,7 @@ pub mod season;
 
 pub mod mint_resource_once;
 pub mod issuance_cap;
+pub mod roles;
 
 // [AUDIT F-02/F-03/F-27] lib.rs calls these handlers as `instructions::<fn>`
 // (the new admin/governance instructions live in `authority` / `admin_config`),

@@ -222,6 +222,49 @@ pub struct SetMiningEnabled<'info> {
     pub authority: Signer<'info>,
 }
 
+/// [SECURITY_CHECKLIST_REVIEW F-C] One-time in-place growth of the v1 Config to
+/// the v2 layout (role fields appended). Must be the first transaction after
+/// deploying this version: until then no instruction can load `Config`.
+#[derive(Accounts)]
+pub struct MigrateConfigV2<'info> {
+    /// CHECK: a v1 Config cannot be deserialized as the v2 type; the handler
+    /// checks owner, discriminator, the exact v1 size and the stored authority.
+    #[account(mut, seeds = [CONFIG_SEED], bump)]
+    pub config: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Admin assigns the operator/guardian keys.
+#[derive(Accounts)]
+pub struct SetRoles<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Guardian (or admin) switches the pause
+/// and/or the cash-out freeze ON; switching off is admin-only.
+#[derive(Accounts)]
+pub struct EmergencyStop<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED], bump = config.bump,
+        constraint = caller.key() == config.guardian || caller.key() == config.authority @ AofError::Unauthorized
+    )]
+    pub config: Box<Account<'info, Config>>,
+    pub caller: Signer<'info>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Admin sets or clears the cash-out freeze.
+#[derive(Accounts)]
+pub struct SetCashoutFrozen<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
+}
+
 // =====================================================================
 // [AUDIT F-01] Vault withdrawal guards
 // =====================================================================
@@ -431,7 +474,7 @@ pub struct WithdrawGas<'info> {
 
 #[derive(Accounts)]
 pub struct SweepGasFees<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(mut, seeds = [GASTANK_SEED, gastank.owner.as_ref()], bump)]
@@ -476,7 +519,7 @@ pub struct SetIssuanceCap<'info> {
 pub struct MintResource<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Box<Account<'info, Config>>,
@@ -520,7 +563,7 @@ pub struct MintResource<'info> {
 pub struct MintResourceOnce<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Box<Account<'info, Config>>,
@@ -595,7 +638,7 @@ pub struct BurnResource<'info> {
 pub struct MintTool<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Account<'info, Config>,
@@ -702,7 +745,7 @@ pub struct MigrateTool<'info> {
 pub struct Craft<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Box<Account<'info, Config>>,
@@ -1133,8 +1176,9 @@ pub struct BurnNft<'info> {
 pub struct PayOut<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
-        constraint = !config.paused @ AofError::Paused
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
+        constraint = !config.paused @ AofError::Paused,
+        constraint = !config.cashout_frozen @ AofError::CashoutFrozen
     )]
     pub config: Box<Account<'info, Config>>,
     pub authority: Signer<'info>,
@@ -1261,7 +1305,7 @@ pub struct CollectorUnstake<'info> {
 /// slots/boost остаются в конфиге бэкенда (см. AUDIT_V3.md).
 #[derive(Accounts)]
 pub struct AdjustPlayerCapacity<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(
@@ -1309,7 +1353,7 @@ pub struct SetPackConfig<'info> {
 #[derive(Accounts)]
 #[instruction(pack_type: PackType, commit_hash: [u8;32])]
 pub struct PackOpenCommit<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(mut)]
@@ -1338,7 +1382,7 @@ pub struct PackOpenCommit<'info> {
 
 #[derive(Accounts)]
 pub struct PackOpenReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -1469,7 +1513,7 @@ pub struct RerollRandomCommit<'info> {
 
 #[derive(Accounts)]
 pub struct RerollRandomReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -1568,7 +1612,7 @@ pub struct StartExplorationCommit<'info> {
 
 #[derive(Accounts)]
 pub struct ExploreReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(
@@ -1686,8 +1730,9 @@ pub struct ReferralUpgradeCtx<'info> {
 pub struct PayOutWithReferral<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
-        constraint = !config.paused @ AofError::Paused
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
+        constraint = !config.paused @ AofError::Paused,
+        constraint = !config.cashout_frozen @ AofError::CashoutFrozen
     )]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
@@ -1762,7 +1807,7 @@ pub struct ForgeAttemptCommit<'info> {
 
 #[derive(Accounts)]
 pub struct ForgeAttemptReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(mut, seeds = [ENCHANT_SLOT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]], bump)]
@@ -1858,7 +1903,7 @@ pub struct BuyLotteryTicket<'info> {
 
 #[derive(Accounts)]
 pub struct DrawLottery<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
@@ -1870,7 +1915,7 @@ pub struct DrawLottery<'info> {
 
 #[derive(Accounts)]
 pub struct CommitLotteryDraw<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
@@ -1880,7 +1925,7 @@ pub struct CommitLotteryDraw<'info> {
 #[derive(Accounts)]
 pub struct ClaimLotteryPrize<'info> {
     /// [AUDIT F-19] the emergency pause must also stop prize payouts.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
     pub lottery_round: Account<'info, LotteryRound>,
@@ -1932,7 +1977,7 @@ pub struct MarketplaceList<'info> {
 
 #[derive(Accounts)]
 pub struct MarketplaceBuy<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub buyer: Signer<'info>,
@@ -2054,7 +2099,7 @@ pub struct AuctionBidCtx<'info> {
 
 #[derive(Accounts)]
 pub struct AuctionSettleCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
@@ -2108,7 +2153,7 @@ pub struct OfferCreateCtx<'info> {
 
 #[derive(Accounts)]
 pub struct OfferAcceptCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
@@ -2200,7 +2245,7 @@ pub struct RentalListCtx<'info> {
 #[derive(Accounts)]
 #[instruction(duration_seconds: i64)]
 pub struct RentalStartCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub renter: Signer<'info>,
@@ -2730,7 +2775,7 @@ pub struct CancelSellOrder<'info> {
 
 #[derive(Accounts)]
 pub struct MatchResourceOrders<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
@@ -2775,7 +2820,7 @@ pub struct CraftOrderCreateCtx<'info> {
 #[derive(Accounts)]
 pub struct CraftOrderFulfillCtx<'info> {
     /// [AUDIT F-19] the pause must also stop premium payouts.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub fulfiller: Signer<'info>,
@@ -2861,7 +2906,7 @@ pub struct PurchaseSeasonPass<'info> {
 
 #[derive(Accounts)]
 pub struct GrantSeasonXp<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -2880,7 +2925,7 @@ pub struct GrantSeasonXp<'info> {
 #[derive(Accounts)]
 #[instruction(level: u8, premium_track: bool)]
 pub struct ClaimSeasonReward<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
@@ -2953,6 +2998,22 @@ pub mod aof_core {
     // =================================================================
     pub fn set_mining_enabled(ctx: Context<SetMiningEnabled>, enabled: bool) -> Result<()> {
         instructions::set_mining_enabled(ctx, enabled)
+    }
+
+    pub fn migrate_config_v2(ctx: Context<MigrateConfigV2>) -> Result<()> {
+        instructions::roles::migrate_config_v2_handler(ctx)
+    }
+
+    pub fn set_roles(ctx: Context<SetRoles>, operator: Pubkey, guardian: Pubkey) -> Result<()> {
+        instructions::roles::set_roles_handler(ctx, operator, guardian)
+    }
+
+    pub fn emergency_stop(ctx: Context<EmergencyStop>, pause_game: bool, freeze_cashout: bool) -> Result<()> {
+        instructions::roles::emergency_stop_handler(ctx, pause_game, freeze_cashout)
+    }
+
+    pub fn set_cashout_frozen(ctx: Context<SetCashoutFrozen>, frozen: bool) -> Result<()> {
+        instructions::roles::set_cashout_frozen_handler(ctx, frozen)
     }
 
     // =================================================================

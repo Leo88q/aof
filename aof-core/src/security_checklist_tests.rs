@@ -273,6 +273,8 @@ fn resource_order(maker: Pubkey, is_buy: bool, price: u64, amount: u64, mint: Pu
 /// The two singletons nearly every instruction loads, with distinct mints.
 struct World {
     authority: Pubkey,
+    operator: Pubkey,
+    guardian: Pubkey,
     treasury: Pubkey,
     config_key: Pubkey,
     config: Config,
@@ -286,6 +288,8 @@ impl World {
         let (config_key, config_bump) = pda(&[CONFIG_SEED]);
         let (mm_key, mm_bump) = pda(&[MATERIAL_MINTS_SEED]);
         let authority = Pubkey::new_unique();
+        let operator = Pubkey::new_unique();
+        let guardian = Pubkey::new_unique();
         let treasury = Pubkey::new_unique();
         let k = Pubkey::new_unique;
         let config = Config {
@@ -304,6 +308,10 @@ impl World {
             mining_enabled: false,
             pending_authority: Pubkey::default(),
             authority_updated_at: 0,
+            operator,
+            guardian,
+            cashout_frozen: false,
+            reserved: [0u8; 32],
         };
         let mm = MaterialMints {
             seeds: k(),
@@ -334,6 +342,8 @@ impl World {
         };
         World {
             authority,
+            operator,
+            guardian,
             treasury,
             config_key,
             config,
@@ -623,7 +633,7 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
         validate::<MintTool>(
             vec![
                 w.config_info(),
-                wallet(w.authority, true),
+                wallet(w.operator, true),
                 w.auth_info(),
                 spl_mint(mint, 0, Some(w.auth_key), freeze_authority),
                 token_account(Pubkey::new_unique(), mint, recipient, 0),
@@ -653,7 +663,7 @@ fn sweep_cannot_redirect_the_treasury() {
 
     let err = rejected(
         validate::<SweepGasFees>(
-            vec![w.config_info(), wallet(w.authority, true), tank(), wallet(Pubkey::new_unique(), false), system_program_info()],
+            vec![w.config_info(), wallet(w.operator, true), tank(), wallet(Pubkey::new_unique(), false), system_program_info()],
             &[],
         ),
         "Unauthorized",
@@ -700,6 +710,10 @@ struct PayoutCase {
     guard_for_other_mint: bool,
     max_per_tx: u64,
     withdrawn_in_epoch: u64,
+    /// The admin instead of the operator signs (roles are separated).
+    admin_signs: bool,
+    /// The cash-out freeze is on.
+    cashout_frozen: bool,
 }
 
 impl Default for PayoutCase {
@@ -710,6 +724,8 @@ impl Default for PayoutCase {
             guard_for_other_mint: false,
             max_per_tx: 50_000,
             withdrawn_in_epoch: 0,
+            admin_signs: false,
+            cashout_frozen: false,
         }
     }
 }
@@ -717,7 +733,8 @@ impl Default for PayoutCase {
 /// Run the REAL `pay_out_with_referral` handler; returns (result, CPIs, guard).
 fn referral_payout(case: PayoutCase) -> (Result<()>, usize, VaultGuard) {
     runtime();
-    let w = World::new();
+    let mut w = World::new();
+    w.config.cashout_frozen = case.cashout_frozen;
     let (referred, referrer) = (Pubkey::new_unique(), Pubkey::new_unique());
     let mint = if case.non_resource_mint { Pubkey::new_unique() } else { w.config.food_mint };
     let vault = pda(&[VAULT_SEED]).0;
@@ -735,7 +752,7 @@ fn referral_payout(case: PayoutCase) -> (Result<()>, usize, VaultGuard) {
     let link = ReferralLink { referred, referrer, tier: 2, bound_at: 0 };
     let infos = vec![
         w.config_info(),
-        wallet(w.authority, true),
+        wallet(if case.admin_signs { w.authority } else { w.operator }, true),
         info(vault, false, 0, Vec::new(), anchor_lang::solana_program::system_program::ID, false),
         spl_mint(mint, 10_000_000, Some(w.auth_key), None),
         token_account(Pubkey::new_unique(), mint, vault, VAULT_BALANCE),
@@ -747,7 +764,10 @@ fn referral_payout(case: PayoutCase) -> (Result<()>, usize, VaultGuard) {
         program_account(guard_key, &guard, VAULT_GUARD_SPACE),
         token_program_info(),
     ];
-    let (mut accounts, bumps) = parse::<PayOutWithReferral>(infos, &case.amount.to_le_bytes()).unwrap();
+    let (mut accounts, bumps) = match parse::<PayOutWithReferral>(infos, &case.amount.to_le_bytes()) {
+        Ok(parsed) => parsed,
+        Err(e) => return (Err(e), cpi_calls(), guard),
+    };
     let result = crate::instructions::referral::pay_out_with_referral_handler(
         Context::new(&crate::ID, &mut accounts, &[], bumps),
         case.amount,
@@ -860,8 +880,13 @@ struct HarvestOutcome {
 /// Run the REAL `harvest_wheat` handler: a Common neural_seeder on a ready
 /// tile with 100 seeds yields 100 x 1.5 = 150 Synapse.
 fn run_harvest(wheat_supply: u64, synapse_cap: u64) -> HarvestOutcome {
+    run_harvest_with(wheat_supply, synapse_cap, false)
+}
+
+fn run_harvest_with(wheat_supply: u64, synapse_cap: u64, cashout_frozen: bool) -> HarvestOutcome {
     runtime();
     let mut w = World::new();
+    w.config.cashout_frozen = cashout_frozen;
     w.mm.max_supply[ResourceKind::Synapse as usize] = synapse_cap;
     let user = Pubkey::new_unique();
     let tool_mint = Pubkey::new_unique();
@@ -946,7 +971,7 @@ fn sweep_moves_exactly_the_fees_and_never_user_funds() {
     let treasury = wallet(w.treasury, false);
     let sweep = |tank: &AccountInfo<'static>, treasury: &AccountInfo<'static>| {
         let (mut accounts, bumps) = parse::<SweepGasFees>(
-            vec![w.config_info(), wallet(w.authority, true), tank.clone(), treasury.clone(), system_program_info()],
+            vec![w.config_info(), wallet(w.operator, true), tank.clone(), treasury.clone(), system_program_info()],
             &[],
         )
         .unwrap();
@@ -1356,4 +1381,201 @@ fn collect_well_water_ignores_a_stale_cached_weather() {
         assert!(expected < 10 * WELL_RATE_FRENZY, "the stale frenzy rate was not applied");
     }
     assert_eq!(accounts.well_state.last_collected_at, NOW_TS);
+}
+
+// ======================================================================
+// G. Roles, emergency switches, cash-out freeze, Config v2 migration  (F-C)
+// ======================================================================
+
+/// The operator runs routine operations only; the admin changes rules only.
+#[test]
+fn operator_and_admin_roles_are_separated() {
+    runtime();
+    let w = World::new();
+    // The hot operator key cannot change a rule...
+    let err = rejected(
+        validate::<SetFees>(vec![w.config_info(), wallet(w.operator, true)], &[]),
+        "Unauthorized",
+    );
+    assert!(blames(&err, "config"), "{err}");
+    // ...and the admin no longer co-signs routine vault payouts.
+    let (result, cpis, _) = referral_payout(PayoutCase { admin_signs: true, ..PayoutCase::default() });
+    let err = rejected(result, "Unauthorized");
+    assert!(blames(&err, "config"), "{err}");
+    assert_eq!(cpis, 0);
+    let (result, _, _) = referral_payout(PayoutCase::default());
+    assert!(result.is_ok(), "{result:?}");
+}
+
+fn emergency(w: &World, caller: Pubkey, pause_game: bool, freeze_cashout: bool) -> (Result<()>, bool, bool) {
+    let (mut accounts, bumps) = match parse::<EmergencyStop>(vec![w.config_info(), wallet(caller, true)], &[]) {
+        Ok(parsed) => parsed,
+        Err(e) => return (Err(e), false, false),
+    };
+    let result = crate::instructions::roles::emergency_stop_handler(
+        Context::new(&crate::ID, &mut accounts, &[], bumps),
+        pause_game,
+        freeze_cashout,
+    );
+    (result, accounts.config.paused, accounts.config.cashout_frozen)
+}
+
+/// The guardian can only switch stops ON; clearing them is admin-only.
+#[test]
+fn guardian_can_only_switch_emergency_stops_on() {
+    runtime();
+    let w = World::new();
+    let (ok, paused, frozen) = emergency(&w, w.guardian, false, true);
+    assert!(ok.is_ok(), "{ok:?}");
+    assert_eq!((paused, frozen), (false, true), "freeze cash-out, keep the game running");
+    let (ok, paused, frozen) = emergency(&w, w.authority, true, false);
+    assert!(ok.is_ok(), "{ok:?}");
+    assert_eq!((paused, frozen), (true, false));
+    rejected(emergency(&w, w.guardian, false, false).0, "InvalidAmount");
+    let err = rejected(emergency(&w, w.operator, true, true).0, "Unauthorized");
+    assert!(blames(&err, "config"), "{err}");
+
+    // Clearing the freeze and assigning roles are admin-only.
+    let mut frozen_world = World::new();
+    frozen_world.config.cashout_frozen = true;
+    let clear = |signer: Pubkey| -> Result<bool> {
+        let (mut accounts, bumps) =
+            parse::<SetCashoutFrozen>(vec![frozen_world.config_info(), wallet(signer, true)], &[])?;
+        crate::instructions::roles::set_cashout_frozen_handler(
+            Context::new(&crate::ID, &mut accounts, &[], bumps),
+            false,
+        )?;
+        Ok(accounts.config.cashout_frozen)
+    };
+    let err = match clear(frozen_world.guardian) {
+        Ok(_) => panic!("the guardian must not clear the freeze"),
+        Err(e) => e.to_string(),
+    };
+    assert!(err.contains("error_name: \"Unauthorized\""), "{err}");
+    assert_eq!(clear(frozen_world.authority).ok(), Some(false));
+
+    let set_roles = |signer: Pubkey, operator: Pubkey, guardian: Pubkey| -> Result<(Pubkey, Pubkey)> {
+        let (mut accounts, bumps) = parse::<SetRoles>(vec![w.config_info(), wallet(signer, true)], &[])?;
+        crate::instructions::roles::set_roles_handler(
+            Context::new(&crate::ID, &mut accounts, &[], bumps),
+            operator,
+            guardian,
+        )?;
+        Ok((accounts.config.operator, accounts.config.guardian))
+    };
+    let (new_op, new_guard) = (Pubkey::new_unique(), Pubkey::new_unique());
+    assert!(set_roles(w.operator, new_op, new_guard).is_err(), "the operator cannot promote itself");
+    assert!(set_roles(w.authority, Pubkey::default(), new_guard).is_err(), "roles must be set");
+    assert_eq!(set_roles(w.authority, new_op, new_guard).ok(), Some((new_op, new_guard)));
+}
+
+/// "Fraudsters with an inflated balance must not withdraw it, but the game must
+/// not suffer": the freeze blocks value leaving the game, not gameplay and not
+/// the players' own exits.
+#[test]
+fn cashout_freeze_blocks_withdrawals_of_value_but_not_gameplay() {
+    // Vault payouts and trades paying SOL out are frozen...
+    let (result, cpis, _) = referral_payout(PayoutCase { cashout_frozen: true, ..PayoutCase::default() });
+    rejected(result, "CashoutFrozen");
+    assert_eq!(cpis, 0);
+    runtime();
+    let mut w = World::new();
+    w.config.cashout_frozen = true;
+    let err = rejected(validate::<OfferAcceptCtx>(offer_accept_accounts(&w, None), &[]), "CashoutFrozen");
+    assert!(blames(&err, "config"), "{err}");
+
+    // ...gameplay keeps running (harvest mints in-game resources)...
+    let harvest = run_harvest_with(1_000, SUPPLY_CAP_UNLIMITED, true);
+    assert!(harvest.result.is_ok(), "{:?}", harvest.result);
+
+    // ...and a player can still take back their own gas deposit.
+    runtime();
+    let user = Pubkey::new_unique();
+    let tank_key = pda(&[GASTANK_SEED, user.as_ref()]).0;
+    let tank = program_account(tank_key, &gas_tank(user, 10_000, 0, 0), GASTANK_SPACE);
+    set_lamports(&tank, rent_exempt(GASTANK_SPACE) + 10_000 * MICROS_TO_LAMPORTS);
+    let (mut accounts, bumps) = parse::<WithdrawGas>(
+        vec![w.config_info(), wallet(user, true), tank, system_program_info()],
+        &1_000u64.to_le_bytes(),
+    )
+    .unwrap();
+    crate::instructions::withdraw_gas::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), 1_000)
+        .unwrap();
+}
+
+/// Key preceded by the original data length, as in the runtime's serialized
+/// input (`AccountInfo::original_data_len` reads the 4 bytes before the key).
+#[repr(C)]
+struct KeyWithLen {
+    _pad: u32,
+    original_len: u32,
+    key: Pubkey,
+}
+
+/// An AccountInfo laid out like the runtime's input so that
+/// `AccountInfo::realloc` is sound on the host: the current length sits in the
+/// 8 bytes before the data and the buffer has room to grow.
+fn runtime_like_info(key: Pubkey, signer: bool, lamports: u64, data: &[u8], owner: Pubkey, capacity: usize) -> AccountInfo<'static> {
+    assert!(capacity >= data.len());
+    let key_box: &'static KeyWithLen =
+        Box::leak(Box::new(KeyWithLen { _pad: 0, original_len: data.len() as u32, key }));
+    let words: &'static mut [u64] = Box::leak(vec![0u64; 1 + (capacity + 7) / 8].into_boxed_slice());
+    words[0] = data.len() as u64;
+    // SAFETY: the byte view starts right after the 8-byte length header and
+    // stays inside the leaked, 8-byte-aligned allocation.
+    let bytes: &'static mut [u8] = unsafe { std::slice::from_raw_parts_mut(words.as_mut_ptr().add(1) as *mut u8, capacity) };
+    bytes[..data.len()].copy_from_slice(data);
+    let (head, _room_to_grow) = bytes.split_at_mut(data.len());
+    AccountInfo::new(&key_box.key, signer, true, Box::leak(Box::new(lamports)), head, Box::leak(Box::new(owner)), false, 0)
+}
+
+/// Config v2: the v1 account (a strict prefix) grows in place, every field is
+/// preserved, both roles start as the current authority, and it runs once.
+#[test]
+fn migrate_config_v2_grows_a_v1_config_in_place() {
+    runtime();
+    let mut w = World::new();
+    w.config.craft_fee = 123;
+    w.config.unstake_fee = 45;
+    w.config.mining_enabled = true;
+    let v1_bytes = serialized(&w.config, CONFIG_SPACE)[..CONFIG_V1_SPACE].to_vec();
+    let v1 = |signer: Pubkey| {
+        let config = runtime_like_info(w.config_key, false, rent_exempt(CONFIG_V1_SPACE), &v1_bytes, crate::ID, CONFIG_SPACE + 64);
+        (config.clone(), vec![config, wallet(signer, true), system_program_info()])
+    };
+
+    let (config, infos) = v1(w.authority);
+    let (mut accounts, bumps) = parse::<MigrateConfigV2>(infos, &[]).unwrap();
+    let result = crate::instructions::roles::migrate_config_v2_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    assert!(result.is_ok(), "{result:?}");
+    assert_eq!(config.data_len(), CONFIG_SPACE);
+    assert_eq!(cpi_calls(), 1, "rent top-up for the larger account");
+    // AccountInfo is invariant in its lifetime, so Account::try_from needs a
+    // `&'static AccountInfo<'static>` here: leak the (shared) handle.
+    let config_ref: &'static AccountInfo<'static> = Box::leak(Box::new(config.clone()));
+    let migrated: Account<Config> = Account::try_from(config_ref).unwrap();
+    assert_eq!((migrated.operator, migrated.guardian, migrated.cashout_frozen), (w.authority, w.authority, false));
+    assert_eq!((migrated.authority, migrated.treasury, migrated.craft_fee, migrated.unstake_fee), (w.authority, w.treasury, 123, 45));
+    assert_eq!((migrated.food_mint, migrated.bump, migrated.mining_enabled), (w.config.food_mint, w.config.bump, true));
+
+    // It cannot run twice...
+    let (mut again, bumps) = parse::<MigrateConfigV2>(vec![config.clone(), wallet(w.authority, true), system_program_info()], &[]).unwrap();
+    rejected(
+        crate::instructions::roles::migrate_config_v2_handler(Context::new(&crate::ID, &mut again, &[], bumps)),
+        "AlreadyInitialized",
+    );
+    // ...and only the stored authority may run it.
+    let (_, infos) = v1(w.operator);
+    let (mut stranger, bumps) = parse::<MigrateConfigV2>(infos, &[]).unwrap();
+    rejected(
+        crate::instructions::roles::migrate_config_v2_handler(Context::new(&crate::ID, &mut stranger, &[], bumps)),
+        "Unauthorized",
+    );
+}
+
+/// The v1 size is the historical on-chain layout.
+#[test]
+fn config_v1_space_is_the_historical_layout() {
+    assert_eq!(CONFIG_V1_SPACE, 323);
+    assert_eq!(CONFIG_SPACE, CONFIG_V1_SPACE + CONFIG_V2_EXTENSION);
 }

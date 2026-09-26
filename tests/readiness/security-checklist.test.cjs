@@ -516,3 +516,46 @@ test('season passes are sold once and only inside their season; migrate_tool sta
   assert.ok(pass.indexOf('SeasonPassAlreadyPremium') < pass.indexOf('system_program::transfer'), 'guards before payment');
   assert.match(fnBody(core('instructions/migrate_tool.rs'), 'handler'), /require!\(\s*false\s*,\s*AofError::FeatureDisabled\s*\)/);
 });
+
+test('F-C routine operations need the operator; rule changes need the admin', () => {
+  const OPERATOR = ['MintResource', 'MintResourceOnce', 'MintTool', 'Craft', 'PayOut', 'PayOutWithReferral',
+    'AdjustPlayerCapacity', 'GrantSeasonXp', 'ClaimSeasonReward', 'SweepGasFees', 'PackOpenCommit', 'PackOpenReveal',
+    'RerollRandomReveal', 'ExploreReveal', 'ForgeAttemptReveal', 'DrawLottery', 'CommitLotteryDraw'];
+  for (const ctx of OPERATOR) {
+    const attrs = configAttrs(ctx);
+    assert.match(attrs, /authority\.key\(\)\s*==\s*config\.operator/, `${ctx} must be operator-signed`);
+    assert.doesNotMatch(attrs, /has_one\s*=\s*authority/, `${ctx} must not accept the admin key`);
+  }
+  const ADMIN = ['SetFees', 'SetPaused', 'SetResourceMints', 'SetPendingAuthority', 'CancelPendingAuthority',
+    'SetMiningEnabled', 'InitVaultGuard', 'SetVaultGuard', 'SetSupplyCap', 'InitIssuanceCap', 'SetIssuanceCap',
+    'SetCraftEconomy', 'RegisterCollectorMint', 'RevokeCollectorMint', 'SetPackConfig', 'SetRerollConfig',
+    'InitSeason', 'SetRoles', 'SetCashoutFrozen'];
+  for (const ctx of ADMIN) assert.match(configAttrs(ctx), /has_one\s*=\s*authority/, `${ctx} must be admin-only`);
+});
+
+test('F-C the cash-out freeze covers every path where value leaves the game - and only those', () => {
+  const CASHOUT = ['PayOut', 'PayOutWithReferral', 'MarketplaceBuy', 'AuctionSettleCtx', 'OfferAcceptCtx',
+    'MatchResourceOrders', 'RentalStartCtx', 'CraftOrderFulfillCtx', 'ClaimLotteryPrize'];
+  for (const ctx of CASHOUT) assert.match(configAttrs(ctx), /!config\.cashout_frozen/, `${ctx} pays value out`);
+  // Players' own exits and gameplay keep working during a freeze.
+  const UNAFFECTED = ['WithdrawGas', 'Unstake', 'CollectorUnstake', 'MarketplaceCancel', 'OfferCancelCtx', 'RentalEndCtx',
+    'CancelBuyOrder', 'CancelSellOrder', 'CraftOrderCancelCtx', 'HarvestWheat', 'CollectMining', 'CollectFlour',
+    'CollectBread', 'CollectWellWater', 'Craft', 'Stake', 'StartMining'];
+  for (const ctx of UNAFFECTED) assert.doesNotMatch(configAttrs(ctx), /cashout_frozen/, `${ctx} must not be frozen`);
+  const stop = fnBody(core('instructions/roles.rs'), 'emergency_stop_handler');
+  assert.doesNotMatch(stop, /=\s*false/, 'an emergency stop can only switch flags on');
+  assert.match(configAttrs('EmergencyStop'), /caller\.key\(\)\s*==\s*config\.guardian/);
+});
+
+test('F-C Config v2 migration runs once, for the stored authority, and only appends fields', () => {
+  const mig = fnBody(core('instructions/roles.rs'), 'migrate_config_v2_handler');
+  for (const piece of ['info.data_len() == CONFIG_V1_SPACE', 'DISCRIMINATOR', 'require_keys_eq!(v1.authority, ctx.accounts.authority.key()',
+    'realloc(CONFIG_SPACE, true)', 'operator: v1.authority', 'guardian: v1.authority', 'cashout_frozen: false']) {
+    assert.ok(mig.includes(piece), piece);
+  }
+  const fields = (sources.aof_core.code.match(/pub struct Config \{([\s\S]*?)\n\}/) || [])[1] || '';
+  const order = [...fields.matchAll(/pub (\w+):/g)].map((m) => m[1]);
+  assert.deepEqual(order.slice(-5), ['authority_updated_at', 'operator', 'guardian', 'cashout_frozen', 'reserved'],
+    'v2 fields must be appended after the v1 layout');
+  assert.match(fnBody(core('instructions/initialize.rs'), 'handler'), /cfg\.operator = cfg\.authority/);
+});

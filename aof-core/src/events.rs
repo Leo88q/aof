@@ -481,3 +481,35 @@ pub struct MaterialMintsInitialized {
     pub authority: Pubkey,
     pub slot: u64,
 }
+
+// ===== [SECURITY_CHECKLIST_REVIEW F-C] roles and emergency switches =====
+#[event]
+pub struct ConfigMigrated {
+    pub authority: Pubkey,
+    pub operator: Pubkey,
+    pub guardian: Pubkey,
+    pub slot: u64,
+}
+
+#[event]
+pub struct RolesChanged {
+    pub authority: Pubkey,
+    pub operator: Pubkey,
+    pub guardian: Pubkey,
+    pub slot: u64,
+}
+
+#[event]
+pub struct EmergencyStopActivated {
+    pub caller: Pubkey,
+    pub paused: bool,
+    pub cashout_frozen: bool,
+    pub slot: u64,
+}
+
+#[event]
+pub struct CashoutFreezeChanged {
+    pub authority: Pubkey,
+    pub frozen: bool,
+    pub slot: u64,
+}

@@ -260,4 +260,8 @@ pub enum AofError {
     SeasonNotStarted,
     #[msg("Premium season pass already purchased")]
     SeasonPassAlreadyPremium,
+    #[msg("Cash-out is frozen: value cannot leave the game right now")]
+    CashoutFrozen,
+    #[msg("Role key must be set")]
+    InvalidRole,
 }

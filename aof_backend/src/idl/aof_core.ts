@@ -46,10 +46,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "player",
@@ -1409,10 +1406,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "lotteryRound",
@@ -1986,10 +1980,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "lotteryRound",
@@ -2072,10 +2063,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "explorationState",
@@ -2350,10 +2338,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "enchantSlot",
@@ -2503,10 +2488,7 @@ export type AofCore = {
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "user"
@@ -4269,10 +4251,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "user",
@@ -4375,10 +4354,7 @@ export type AofCore = {
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "packCommit",
@@ -6128,10 +6104,7 @@ export type AofCore = {
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "rerollConfig",
@@ -7430,10 +7403,7 @@ export type AofCore = {
         },
         {
           "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
+          "signer": true
         },
         {
           "name": "gastank",
@@ -8468,6 +8438,196 @@ export type AofCore = {
         {
           "name": "roundId",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "migrateConfigV2",
+      "discriminator": [
+        21,
+        39,
+        88,
+        172,
+        254,
+        205,
+        30,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setRoles",
+      "discriminator": [
+        119,
+        86,
+        129,
+        161,
+        55,
+        23,
+        250,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "operator",
+          "type": "pubkey"
+        },
+        {
+          "name": "guardian",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "emergencyStop",
+      "discriminator": [
+        179,
+        143,
+        200,
+        137,
+        108,
+        245,
+        248,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "pauseGame",
+          "type": "bool"
+        },
+        {
+          "name": "freezeCashout",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setCashoutFrozen",
+      "discriminator": [
+        188,
+        201,
+        38,
+        248,
+        184,
+        63,
+        152,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "frozen",
+          "type": "bool"
         }
       ]
     }
@@ -9748,6 +9908,58 @@ export type AofCore = {
         47,
         187
       ]
+    },
+    {
+      "name": "configMigrated",
+      "discriminator": [
+        115,
+        69,
+        99,
+        100,
+        192,
+        77,
+        40,
+        50
+      ]
+    },
+    {
+      "name": "rolesChanged",
+      "discriminator": [
+        214,
+        27,
+        145,
+        82,
+        146,
+        4,
+        15,
+        93
+      ]
+    },
+    {
+      "name": "emergencyStopActivated",
+      "discriminator": [
+        231,
+        193,
+        97,
+        191,
+        6,
+        8,
+        142,
+        163
+      ]
+    },
+    {
+      "name": "cashoutFreezeChanged",
+      "discriminator": [
+        131,
+        156,
+        117,
+        196,
+        109,
+        171,
+        18,
+        86
+      ]
     }
   ],
   "errors": [
@@ -10350,6 +10562,16 @@ export type AofCore = {
       "code": 6119,
       "name": "seasonPassAlreadyPremium",
       "msg": "Premium season pass already purchased"
+    },
+    {
+      "code": 6120,
+      "name": "cashoutFrozen",
+      "msg": "Cash-out is frozen: value cannot leave the game right now"
+    },
+    {
+      "code": 6121,
+      "name": "invalidRole",
+      "msg": "Role key must be set"
     }
   ],
   "types": [
@@ -10583,6 +10805,27 @@ export type AofCore = {
           {
             "name": "authorityUpdatedAt",
             "type": "i64"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "guardian",
+            "type": "pubkey"
+          },
+          {
+            "name": "cashoutFrozen",
+            "type": "bool"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -13363,6 +13606,98 @@ export type AofCore = {
           {
             "name": "authority",
             "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "configMigrated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "guardian",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rolesChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "guardian",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "emergencyStopActivated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "cashoutFrozen",
+            "type": "bool"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cashoutFreezeChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "frozen",
+            "type": "bool"
           },
           {
             "name": "slot",

@@ -100,14 +100,16 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched"],
   ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
-    "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged"],
+    "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
+    "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
+    "MaterialMintsInitialized", "ConfigMigrated", "CashoutFreezeChanged", "EmergencyStopActivated"],
   // [AUDIT F-02] The two-step authority rotation is now emitted by every
   // program that has a Config, so both are native sources - the "unsupported,
   // no multisig yet" reason in the catalog is obsolete.
   AdminProposalCreated: ["AuthorityRotationProposed"],
-  AuthorityChanged: ["AuthorityChanged"],
-  PausedToggled: ["PausedToggled"],
-  EmergencyPause: ["PausedToggled"],
+  AuthorityChanged: ["AuthorityChanged", "RolesChanged"],
+  PausedToggled: ["PausedToggled", "EmergencyStopActivated"],
+  EmergencyPause: ["PausedToggled", "EmergencyStopActivated"],
   TransactionFinalized: ["*"],
   TransactionFailed: ["*"],
 };
@@ -383,6 +385,42 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "PlayerCapacityChanged":
       emit("ConfigUpdated", { playerId: pid(d.player), attributes: { setting: "player_capacity", previousVillagers: str(d.previous_villagers), nextVillagers: str(d.next_villagers), delta: str(d.delta), hasTent: bool(d.has_tent) } });
+      break;
+    // ---- [SECURITY_CHECKLIST_REVIEW F-C] roles, emergency switches and the
+    // previously silent admin mutations: all privileged, all mapped.
+    case "AuthorityRotationCancelled":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "authority_rotation_cancelled", cancelled: pid(d.cancelled) } });
+      break;
+    case "RolesChanged":
+      emit("AuthorityChanged", { playerId: null, attributes: { setting: "roles", operator: pid(d.operator), guardian: pid(d.guardian) } });
+      break;
+    case "ConfigMigrated":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "config_v2", operator: pid(d.operator), guardian: pid(d.guardian) } });
+      break;
+    case "EmergencyStopActivated":
+      if (bool(d.paused)) {
+        emit("PausedToggled", { playerId: null, attributes: { paused: true, authority: "guardian_or_admin" } });
+        emit("EmergencyPause", { playerId: null, attributes: { authority: "guardian_or_admin" } });
+      }
+      if (bool(d.cashout_frozen)) emit("ConfigUpdated", { playerId: null, attributes: { setting: "cashout_frozen", frozen: true } });
+      break;
+    case "CashoutFreezeChanged":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "cashout_frozen", frozen: bool(d.frozen) } });
+      break;
+    case "PackConfigChanged":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "pack_config", packType: str(d.pack_type), priceLamports: str(d.price_lamports) } });
+      break;
+    case "RerollConfigChanged":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "reroll_config" } });
+      break;
+    case "SeasonInitialized":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "season", seasonId: str(d.season_id), startTime: str(d.start_time) } });
+      break;
+    case "SeasonXpGranted":
+      emit("ConfigUpdated", { playerId: pid(d.owner), attributes: { setting: "season_xp", seasonId: str(d.season_id), amount: str(d.amount), totalXp: str(d.total_xp) } });
+      break;
+    case "MaterialMintsInitialized":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "material_mints" } });
       break;
     case "LotteryRoundRefunded":
       emit("RewardGranted", { playerId: null, amount: str(d.lamports), currency: LAMPORTS, attributes: { source: "lottery_refund", roundId: str(d.round_id), ticketsSold: str(d.tickets_sold) } });

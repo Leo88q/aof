@@ -372,6 +372,10 @@ pub const GASTANK_SPACE: usize = 8 + GasTank::INIT_SPACE;
 
 // ===== Размеры аккаунтов (auto-generated from InitSpace) =====
 pub const CONFIG_SPACE: usize = 8 + Config::INIT_SPACE;
+/// [SECURITY_CHECKLIST_REVIEW F-C] Bytes appended by Config v2 (operator,
+/// guardian, cashout_frozen, reserved) and the size of a v1 account.
+pub const CONFIG_V2_EXTENSION: usize = 32 + 32 + 1 + 32;
+pub const CONFIG_V1_SPACE: usize = CONFIG_SPACE - CONFIG_V2_EXTENSION;
 pub const PLAYER_SPACE: usize = 8 + Player::INIT_SPACE;
 pub const TOOL_DATA_SPACE: usize = 8 + ToolData::INIT_SPACE;
 pub const GAS_TANK_SPACE: usize = 8 + GasTank::INIT_SPACE;

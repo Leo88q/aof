@@ -26,6 +26,8 @@ AUTHORITY_ONLY = {
     "init_issuance_cap", "set_issuance_cap", "set_pending_authority", "accept_authority",
     "cancel_pending_authority", "set_mining_enabled", "init_vault_guard", "set_vault_guard",
     "set_supply_cap", "register_collector_mint", "revoke_collector_mint",
+    # [SECURITY_CHECKLIST_REVIEW F-C] admin / guardian role instructions.
+    "migrate_config_v2", "set_roles", "set_cashout_frozen", "emergency_stop",
 }
 
 # Account names that denote the acting wallet.
