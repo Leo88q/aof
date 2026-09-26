@@ -1874,15 +1874,16 @@ pub struct ExploreReveal<'info> {
 }
 
 /// [F-06] Refund of a trip the oracle never revealed: the burned trip cost is
-/// re-minted to the player's canonical ATAs.
+/// re-minted to the player's canonical ATAs. No outcome is at stake any more
+/// (the reveal window is closed), so a closed ATA only delays the player's own
+/// refund until they re-create it; no `init_if_needed` here keeps the account
+/// validation inside the SBF stack frame.
 #[derive(Accounts)]
 pub struct ExploreExpire<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
-    #[account(mut)]
-    pub cranker: Signer<'info>,
     #[account(
         mut,
         close = user,
@@ -1900,23 +1901,21 @@ pub struct ExploreExpire<'info> {
     pub auth: UncheckedAccount<'info>,
     #[account(mut, address = config.food_mint)]
     pub food_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = food_mint, associated_token::authority = user)]
+    #[account(mut, associated_token::mint = food_mint, associated_token::authority = user)]
     pub user_food: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = wood_mint, associated_token::authority = user)]
+    #[account(mut, associated_token::mint = wood_mint, associated_token::authority = user)]
     pub user_wood: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = stone_mint, associated_token::authority = user)]
+    #[account(mut, associated_token::mint = stone_mint, associated_token::authority = user)]
     pub user_stone: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = material_mints.meat)]
     pub meat_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = meat_mint, associated_token::authority = user)]
+    #[account(mut, associated_token::mint = meat_mint, associated_token::authority = user)]
     pub user_meat: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -2161,8 +2160,6 @@ pub struct ForgeAttemptExpire<'info> {
     pub config: Box<Account<'info, Config>>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
-    #[account(mut)]
-    pub cranker: Signer<'info>,
     #[account(
         mut,
         close = user,
@@ -2180,15 +2177,13 @@ pub struct ForgeAttemptExpire<'info> {
     pub auth: UncheckedAccount<'info>,
     #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = wood_mint, associated_token::authority = user)]
+    #[account(mut, associated_token::mint = wood_mint, associated_token::authority = user)]
     pub user_wood: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = stone_mint, associated_token::authority = user)]
+    #[account(mut, associated_token::mint = stone_mint, associated_token::authority = user)]
     pub user_stone: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
 }
 
 // ----- Лотерея -----

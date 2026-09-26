@@ -2661,11 +2661,6 @@
           }
         },
         {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
           "name": "forge_commit",
           "writable": true
         },
@@ -2712,14 +2707,6 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -9890,11 +9877,6 @@
           }
         },
         {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
           "name": "exploration_commit",
           "writable": true
         },
@@ -9957,14 +9939,6 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []

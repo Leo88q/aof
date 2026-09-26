@@ -45,7 +45,7 @@ services:
   #   trust   trust-worker    yes         via backend /trust/snapshot/update
   #   push    push-worker     yes         no
   #   indexer chain-indexer   yes (ledger) no — source of truth for economy metrics
-  #   recovery commit-expirer no (secretStore only)  yes
+  #   (none)  vrf-settler     no          yes (permissionless reveal/refund fees)
   #
   # farm-trader is intentionally NOT listed: it is a market-making bot, and
   # whether it belongs in production is a product decision, not an ops default.
@@ -169,12 +169,16 @@ services:
       timeout: 5s
       retries: 3
 
-  # Opt-in recovery worker; not a second automatic writer on the SQLite DB.
-  commit-expirer:
-    profiles: [recovery]
+  # [F-06] REQUIRED in production: settles every Switchboard-backed commit
+  # (packs, reroll, exploration, forge, lottery, drum) within seconds and
+  # refunds the ones the oracle never revealed. It writes nothing to the DB.
+  # While it is down, commits pile up and the API stops accepting new ones
+  # (VRF_SETTLEMENT_DEGRADED); run a second replica for redundancy — reveals
+  # are idempotent on-chain.
+  vrf-settler:
     build: ./aof_backend
     restart: unless-stopped
-    command: ["node", "dist-workers/services/commit-expirer/index.js"]
+    command: ["node", "dist-workers/services/vrf-settler/index.js"]
     depends_on:
       backend:
         condition: service_healthy

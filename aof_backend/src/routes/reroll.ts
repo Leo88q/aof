@@ -1,23 +1,25 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import BN from "bn.js";
 import {AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
+import { program, connection } from "../provider";
 import {
   authPda,
   configPda,
   craftEconomyPda,
   gastankPda,
-  materialMintsPda,
   rarityCounterPda,
   rerollCommitPda,
   rerollConfigPda,
+  rerollMintPda,
   toolPda,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
-import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
-import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
+import { randomNonce, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 
 const r = Router();
 
@@ -107,83 +109,61 @@ r.post("/fuse", async (req, res) => {
   }
 });
 
+/**
+ * [F-06] Random reroll: burn one tool, receive a random one. Operator
+ * co-signed commit (fee escrowed from the gas tank, odds snapshotted,
+ * Switchboard commit on a pool slot); the vrf-settler reveals it, or the
+ * player can with POST /random/reveal. The new NFT is the PDA mint
+ * [reroll_mint, rerollCommit].
+ */
 r.post("/random/commit", requireCircuitOpen, requireWalletLimits("reroll_commit"), async (req, res) => {
-  // The commit burns the user's tool immediately. There is currently no
-  // typed expiry refund path, so fail closed instead of accepting an
-  // unrecoverable paid/burned state.
-  return res.status(503).json({
-    error: "REROLL_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
-  });
   try {
     const user = pk(req.body.user);
     const burnMint = pk(req.body.burnMint);
-    const newMint = pk(req.body.newMint);
-    const { hash } = await newCommit(`reroll:${newMint.toBase58()}`);
-
-    const [config] = configPda();
-    const [gastank] = gastankPda(user);
-    const [burnTool] = toolPda(burnMint);
-    const [rerollCommit] = rerollCommitPda(newMint);
-    const burnToken = getAssociatedTokenAddressSync(burnMint, user);
+    const burnToken = req.body.burnToken ? pk(req.body.burnToken) : getAssociatedTokenAddressSync(burnMint, user);
+    const nonce = randomNonce();
+    const [rerollCommit] = rerollCommitPda(user, nonce);
+    const slot = await reservePoolSlot(program, connection);
+    const vrf = await vrfCommitAccounts(program, connection, slot);
 
     const ix = await (program.methods as any)
-      .rerollRandomCommit(hash)
+      .rerollRandomCommit(new BN(nonce))
       .accounts({
-        config,
+        config: configPda()[0],
+        authority: AUTHORITY_PUBKEY,
         user,
-        gastank,
-        burnTool,
+        gastank: gastankPda(user)[0],
+        rerollConfig: rerollConfigPda()[0],
+        burnTool: toolPda(burnMint)[0],
         burnMint,
         burnToken,
-        newMint,
         rerollCommit,
+        ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     const tx = await coSign([ix], user);
-    res.json({ tx });
+    res.json({ tx, rerollCommit: rerollCommit.toBase58(), mint: rerollMintPda(rerollCommit)[0].toBase58(), nonce });
+  } catch (e: any) {
+    res.status(e.status || 400).json({ error: e.message });
+  }
+});
+
+r.get("/random/status/:rerollCommit", async (req, res) => {
+  try {
+    res.json(await commitStatus("reroll", new PublicKey(req.params.rerollCommit)));
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-r.post("/random/reveal", requireCircuitOpen, requireWalletLimits("reroll_reveal"), requireIdempotency, async (req, res) => {
+/** Transaction for the player to settle (or after the window refund) a reroll. */
+r.post("/random/reveal", requireCircuitOpen, requireWalletLimits("reroll_reveal"), async (req, res) => {
   try {
-    const newMint = pk(req.body.newMint);
-    const user = pk(req.body.user);
-    const key = `reroll:${newMint.toBase58()}`;
-    const secret = await peekSecret(key);
-
-    const [config] = configPda();
-    const [rerollConfig] = rerollConfigPda();
-    const [rerollCommit] = rerollCommitPda(newMint);
-    const [newToolData] = toolPda(newMint);
-    const [auth] = authPda();
-    const newToken = getAssociatedTokenAddressSync(newMint, user);
-
-    const ix = await (program.methods as any)
-      .rerollRandomReveal(secret)
-      .accounts({
-        config,
-        authority: AUTHORITY_PUBKEY,
-        rerollConfig,
-        rerollCommit,
-        payer: user,
-        newMint,
-        newToken,
-        newToolData,
-        auth,
-        slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    await markUsed(key);
-    res.json({ sig });
+    res.json(await selfSettleTransaction("reroll", pk(req.body.rerollCommit), pk(req.body.user)));
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e.status || 400).json({ error: e.message });
   }
 });
 

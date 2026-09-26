@@ -4,7 +4,6 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
-import { FeatureDisabledNotice, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
 
@@ -43,7 +42,6 @@ export function LotteryPage() {
   const [round, setRound] = useState<any>(null);
   const [roundErr, setRoundErr] = useState<string | null>(null);
   const [myTickets, setMyTickets] = useState<any[]>([]);
-  const [ticketNum, setTicketNum] = useState("");
   const [claimNum, setClaimNum] = useState("");
   const [spinning, setSpinning] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -72,12 +70,6 @@ export function LotteryPage() {
       .catch(() => setMyTickets([]));
   }, [roundId, address]);
 
-  // Подсказка номера следующего билета по числу проданных
-  useEffect(() => {
-    const sold = round?.ticketsSold;
-    if (sold !== undefined && sold !== null) setTicketNum(String(toNum(sold)));
-  }, [round]);
-
   async function initRound() {
     try {
       flash("Создаём раунд…");
@@ -90,19 +82,16 @@ export function LotteryPage() {
     }
   }
 
-  const ticketsDisabled = isMechanicDisabled("lottery");
-
+  // [F-06] Tickets escrow the full price on the round; the draw is a
+  // Switchboard commit (operator, or anyone after the sales window) and a
+  // permissionless reveal by the settler service.
   async function buyTicket() {
-    if (ticketsDisabled) return flash("Покупка билетов временно отключена (fail-closed): транзакция не отправлена", 6000);
     if (!address) return flash("❌ Connect your wallet first");
-    if (!treasury) return flash("❌ Treasury config unavailable");
-    const n = ticketNum.trim();
-    if (!n || isNaN(Number(n))) return flash("❌ Укажите номер билета");
     try {
-      flash("Сажаем семечко-билет…");
-      const resp = await api.lottery.ticketBuy({ buyer: address, roundId, ticketNumber: n, treasury });
+      flash("Покупаем билет…");
+      const resp: any = await api.lottery.ticketBuy({ buyer: address, roundId });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Билет №${n} ваш: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `✅ Билет №${resp.ticketNumber} ваш: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) setTimeout(() => { load(roundId); }, 2000);
     } catch (e: any) {
       flash(`❌ ${e.message}`);
@@ -112,20 +101,21 @@ export function LotteryPage() {
   async function draw() {
     try {
       setSpinning(true);
-      flash("Фаза 1: комит хеша (честный розыгрыш)…", 8000);
+      flash("Продажи закрыты: розыгрыш зафиксирован в Switchboard…", 8000);
       const c = await api.lottery.drawCommit({ roundId });
       const rc = await handleTxResponse(c);
       if (!rc.success) {
         setSpinning(false);
-        return flash(`❌ Комит: ${rc.error}`);
+        return flash(`❌ Commit: ${rc.error}`);
       }
-      flash("Фаза 2: барабан крутится, раскрываем секрет…", 8000);
-      await new Promise((r) => setTimeout(r, 3000));
-      const rv = await api.lottery.drawReveal({ roundId });
-      const rr = await handleTxResponse(rv);
+      flash("Барабан крутится: оракул раскрывает выигрышный билет…", 30000);
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const round: any = await api.lottery.round(roundId).catch(() => null);
+        if (round?.drawn) break;
+      }
       setSpinning(false);
-      flash(rr.success ? `✅ Розыгрыш прошёл: ${rr.signature?.slice(0, 10)}…` : `❌ Ревил: ${rr.error}`);
-      if (rr.success) setTimeout(() => load(roundId), 2000);
+      load(roundId);
     } catch (e: any) {
       setSpinning(false);
       flash(`❌ ${e.message}`);
@@ -162,9 +152,9 @@ export function LotteryPage() {
           {loading ? "…" : "⟳ Refresh"}
         </button>
       </div>
-      {ticketsDisabled && <FeatureDisabledNotice id="lottery" />}
       <p className="text-straw text-xs">
-        Квантовый розыгрыш: билеты — квантовые токены, розыгрыш честный (commit/reveal хеш), приз — пул раунда.
+        Квантовый розыгрыш: цена билета целиком хранится on-chain в раунде; победителя выбирает оракул Switchboard
+        On-Demand (раскрыть может любой), приз — 70% пула; если раунд не разыгран, каждый билет возвращается полностью.
       </p>
 
       {txStatus && (
@@ -230,10 +220,8 @@ export function LotteryPage() {
           <p className="text-straw text-xs mb-2">Price: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
         )}
         <div className="flex items-center gap-2">
-          <input type="number" min="0" step="1" placeholder="Номер билета" value={ticketNum}
-            onChange={(e) => setTicketNum(e.target.value)}
-            className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
-          <button onClick={buyTicket} disabled={ticketsDisabled} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
+          <p className="flex-1 text-straw text-xs">Номер билета назначается on-chain по порядку покупки.</p>
+          <button onClick={buyTicket} disabled={!address} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
             <span className="inline-flex items-center gap-1"><img src={UI_ICONS.ticket} alt="" className="w-4 h-4 object-contain" /> Buy</span>
           </button>
         </div>

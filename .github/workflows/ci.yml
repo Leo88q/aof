@@ -910,6 +910,10 @@ jobs:
           [ "$status" -eq 0 ] || exit "$status"
           # [SECURITY_CHECKLIST #48] fraud-review hold on value-issuing routes.
           npm run test:fraud-hold 2>&1 | tee -a /tmp/backend-build.log
+          status="${PIPESTATUS[0]}"
+          [ "$status" -eq 0 ] || exit "$status"
+          # [F-06] Switchboard pool circuit breaker, settlement phases, PDAs.
+          npm run test:vrf 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Integration test - Prisma idempotency CAS (temporary SQLite)

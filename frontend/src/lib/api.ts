@@ -311,7 +311,9 @@ export const api = {
 
   // === Паки ===
   packs: {
+    configs: () => get("/packs/configs"),
     commit: (v: any) => post("/packs/commit", v),
+    status: (packCommit: string) => get(`/packs/status/${packCommit}`),
     reveal: (v: any) => post("/packs/reveal", v),
     configInit: (v: any) => post("/packs/config/init", v),
     configSet: (v: any) => post("/packs/config/set", v),
@@ -322,12 +324,14 @@ export const api = {
     fuse: (v: any) => post("/reroll/fuse", v),
     randomCommit: (v: any) => post("/reroll/random/commit", v),
     randomReveal: (v: any) => post("/reroll/random/reveal", v),
+    randomStatus: (rerollCommit: string) => get(`/reroll/random/status/${rerollCommit}`),
     configInit: (v: any) => post("/reroll/config/init", v),
   },
 
   // === Exploration ===
   exploration: {
     startCommit: (v: any) => post("/exploration/start/commit", v),
+    status: (commit: string) => get(`/exploration/status/${commit}`),
     reveal: (v: any) => post("/exploration/reveal", v),
     upgradeTier: (v: any) => post("/exploration/upgrade-tier", v),
   },
@@ -342,6 +346,7 @@ export const api = {
   // === Квантовая кузница + скины передатчика ===
   forge: {
     commit: (v: any) => post("/forge/commit", v),
+    status: (forgeCommit: string) => get(`/forge/status/${forgeCommit}`),
     reveal: (v: any) => post("/forge/reveal", v),
     bowCommit: (v: any) => post("/forge/bow/commit", v),
     bowReveal: (v: any) => post("/forge/bow/reveal", v),
@@ -351,9 +356,24 @@ export const api = {
   lottery: {
     roundInit: (v: any) => post("/lottery/round/init", v),
     ticketBuy: (v: any) => post("/lottery/ticket/buy", v),
+    ticketRefund: (v: any) => post("/lottery/ticket/refund", v),
+    round: (roundId: string) => get(`/lottery/round/${roundId}`),
     drawCommit: (v: any) => post("/lottery/draw/commit", v),
     drawReveal: (v: any) => post("/lottery/draw/reveal", v),
     claim: (v: any) => post("/lottery/claim", v),
+  },
+
+  // === [F-06] Барабан удачи (Switchboard) ===
+  drum: {
+    commit: (v: any) => post("/drum/commit", v),
+    status: (user: string) => get(`/drum/status/${user}`),
+    reveal: (v: any) => post("/drum/reveal", v),
+  },
+
+  // === [F-06] Switchboard pool / pending commits ===
+  vrf: {
+    health: () => get("/vrf/health"),
+    pending: (user: string) => get(`/vrf/pending?user=${encodeURIComponent(user)}`),
   },
 
   // === Маркетплейс ===
@@ -512,11 +532,6 @@ export const api = {
     list: (user: string) => get(`/comeback/${user}`),
     claim: (v: any) => post("/comeback/claim", v),
   },
-  drum: {
-    commit: (v: any) => post("/drum/commit", v),
-    reveal: (v: any) => post("/drum/reveal", v),
-  },
-
   neighbors: {
     list: (user: string) => get(`/neighbors/list/${user}`),
     visit: (v: any) => post("/neighbors/visit", v),

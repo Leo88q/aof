@@ -2667,11 +2667,6 @@ export type AofCore = {
           }
         },
         {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
           "name": "forgeCommit",
           "writable": true
         },
@@ -2718,14 +2713,6 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associatedTokenProgram",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -9896,11 +9883,6 @@ export type AofCore = {
           }
         },
         {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
           "name": "explorationCommit",
           "writable": true
         },
@@ -9963,14 +9945,6 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associatedTokenProgram",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []

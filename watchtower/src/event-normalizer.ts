@@ -97,12 +97,14 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult"],
   TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
   TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
-  LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound"],
-  LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched"],
+  LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted"],
+  LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched",
+    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRefunded"],
   ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
-    "MaterialMintsInitialized", "ConfigMigrated", "CashoutFreezeChanged", "EmergencyStopActivated"],
+    "MaterialMintsInitialized", "ConfigMigrated", "CashoutFreezeChanged", "EmergencyStopActivated",
+    "VrfSlotAdded", "VrfSlotRetiredChanged", "VrfSlotRecovered"],
   // [AUDIT F-02] The two-step authority rotation is now emitted by every
   // program that has a Config, so both are native sources - the "unsupported,
   // no multisig yet" reason in the catalog is obsolete.
@@ -254,6 +256,38 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "ForgeCommitExpired":
       emit("LiabilitySettled", { asset: str(d.toolMint), amount: str(d.refundedLamports), currency: LAMPORTS, attributes: { liability: "forge_commit", outcome: "refund", woodRefunded: str(d.woodRefunded), stoneRefunded: str(d.stoneRefunded) } });
+      break;
+    // ---- [F-06] Switchboard On-Demand settlement ------------------------------
+    // A VrfCommitted without a VrfSettled / VrfCommitRefunded is a stuck
+    // commit: Watchtower's liability ageing is the alert.
+    case "VrfCommitted":
+      emit("LiabilityCreated", { playerId: pid(d.user), amount: str(d.escrowLamports), currency: LAMPORTS,
+        attributes: { liability: "vrf_commit", mechanic: str(d.mechanic), commit: str(d.commit), seedSlot: str(d.seedSlot) } });
+      break;
+    case "VrfSettled":
+      emit("LiabilitySettled", { playerId: null,
+        attributes: { liability: "vrf_commit", outcome: "settled", mechanic: str(d.mechanic), commit: str(d.commit), seedSlot: str(d.seedSlot) } });
+      break;
+    case "VrfCommitRefunded":
+      emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.refundedLamports), currency: LAMPORTS,
+        attributes: { liability: "vrf_commit", outcome: "refund", mechanic: str(d.mechanic), commit: str(d.commit) } });
+      break;
+    case "LotteryTicketRefunded":
+      emit("LiabilitySettled", { playerId: pid(d.buyer), amount: str(d.lamports), currency: LAMPORTS,
+        attributes: { liability: "lottery_ticket", outcome: "refund", roundId: str(d.roundId), ticketNumber: str(d.ticketNumber) } });
+      break;
+    case "DrumRefunded":
+      emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE",
+        attributes: { liability: "drum_spin", outcome: "refund" } });
+      break;
+    case "VrfSlotAdded":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "add", index: str(d.index), vrfSlot: str(d.vrfSlot) } });
+      break;
+    case "VrfSlotRetiredChanged":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "retire", vrfSlot: str(d.vrfSlot), retired: bool(d.retired) } });
+      break;
+    case "VrfSlotRecovered":
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "recover", vrfSlot: str(d.vrfSlot) } });
       break;
     // ---- staking --------------------------------------------------------------
     case "Staked":
@@ -423,7 +457,7 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "material_mints" } });
       break;
     case "LotteryRoundRefunded":
-      emit("RewardGranted", { playerId: null, amount: str(d.lamports), currency: LAMPORTS, attributes: { source: "lottery_refund", roundId: str(d.round_id), ticketsSold: str(d.tickets_sold) } });
+      emit("RewardGranted", { playerId: null, amount: str(d.lamports), currency: LAMPORTS, attributes: { source: "lottery_refund", roundId: str(d.roundId), ticketsSold: str(d.ticketsSold) } });
       break;
     // Explicitly ignored: no Watchtower semantics, kept out on purpose.
     case "AuctionCreated": case "AuctionCancelled": case "RentalListed": case "RentalDelisted":

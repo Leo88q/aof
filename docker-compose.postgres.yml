@@ -57,7 +57,7 @@ services:
   chain-indexer:
     build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
     environment: { <<: *pg-env }
-  commit-expirer:
+  vrf-settler:
     build: { context: ./aof_backend, args: { PRISMA_SCHEMA: prisma/postgres/schema.prisma } }
     environment: { <<: *pg-env }
 

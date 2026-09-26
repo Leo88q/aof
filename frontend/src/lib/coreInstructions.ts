@@ -270,9 +270,9 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "forge_attempt_expire",
     discriminator: [206, 118, 31, 164, 99, 185, 27, 61],
-    accounts: ["config", "material_mints", "cranker", "forge_commit", "user", "vrf_slot", "auth", "wood_mint", "user_wood", "stone_mint", "user_stone", "token_program", "associated_token_program", "system_program"],
-    actorIndexes: [2, 4],
-    signerIndexes: [2],
+    accounts: ["config", "material_mints", "forge_commit", "user", "vrf_slot", "auth", "wood_mint", "user_wood", "stone_mint", "user_stone", "token_program"],
+    actorIndexes: [3],
+    signerIndexes: [],
     authorityOnly: false,
   },
   {
@@ -918,9 +918,9 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "explore_expire",
     discriminator: [95, 254, 71, 97, 162, 245, 109, 180],
-    accounts: ["config", "material_mints", "cranker", "exploration_commit", "user", "vrf_slot", "auth", "food_mint", "user_food", "wood_mint", "user_wood", "stone_mint", "user_stone", "meat_mint", "user_meat", "token_program", "associated_token_program", "system_program"],
-    actorIndexes: [2, 4],
-    signerIndexes: [2],
+    accounts: ["config", "material_mints", "exploration_commit", "user", "vrf_slot", "auth", "food_mint", "user_food", "wood_mint", "user_wood", "stone_mint", "user_stone", "meat_mint", "user_meat", "token_program"],
+    actorIndexes: [3],
+    signerIndexes: [],
     authorityOnly: false,
   },
   {

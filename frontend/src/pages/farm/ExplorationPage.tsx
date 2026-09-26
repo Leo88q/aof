@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
-import { FeatureDisabledNotice, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { useWalletStore } from "../../store/walletStore";
 import { api } from "../../lib/api";
 import { useFlash } from "../../lib/marketUtils";
-import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
-import { connection } from "../../lib/wallet";
 import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
@@ -34,51 +31,49 @@ export function ExplorationPage() {
 
   const bowMint = bow?.mint || null;
 
-  const explorationDisabled = isMechanicDisabled("exploration");
+  // [F-06] Settled by Switchboard On-Demand: commit here (one signature),
+  // the settler reveals within seconds; the player can settle it personally.
+  const [commitAddr, setCommitAddr] = useState<string | null>(null);
+
+  async function waitForSettlement(commit: string): Promise<"settled" | "pending"> {
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 2_000));
+      const s: any = await api.exploration.status(commit).catch(() => null);
+      if (s && s.state !== "pending") return "settled";
+    }
+    return "pending";
+  }
 
   async function startExploration() {
-    if (explorationDisabled) return;
     if (!address) return flash("❌ Connect wallet");
     if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
 
     setLoading(true);
-    flash("Готовим on-chain commit экспедиции…");
-
+    flash("Готовим on-chain commit экспедиции (Switchboard)…");
     try {
-      const [foodMint, woodMint, stoneMint, meatMint] = await Promise.all([
-        getMintAsync("DATA"),
-        getMintAsync("CIRCUIT"),
-        getMintAsync("SILICON"),
-        getMintAsync("DATASET"),
-      ]);
-      if (!foodMint || !woodMint || !stoneMint || !meatMint) {
-        throw new Error("Реальный mint экспедиции не найден в Config/MaterialMints");
-      }
-
-      const commitResponse = await api.exploration.startCommit({
-        user: address,
-        toolMint: bowMint,
-        toolData: bow!.pubkey,
-        foodMint,
-        woodMint,
-        stoneMint,
-        meatMint,
-      });
+      const commitResponse: any = await api.exploration.startCommit({ user: address, toolMint: bowMint });
       const commit = await handleTxResponse(commitResponse);
       if (!commit.success) throw new Error(commit.error || "Commit не выполнен");
-      if (commit.signature) await connection.confirmTransaction(commit.signature, "confirmed");
+      setCommitAddr(commitResponse.explorationCommit);
+      flash("Экспедиция в пути: ждём раскрытия оракула…", 45_000);
+      const state = await waitForSettlement(commitResponse.explorationCommit);
+      flash(state === "settled"
+        ? "✅ Экспедиция завершена on-chain. Обновите балансы."
+        : "⏳ Оракул ещё не раскрыл результат — можно раскрыть самостоятельно.", 8000);
+    } catch (e: any) {
+      flash(`❌ ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      // Reveal uses the committed hash and recent slot hash; no client-side
-      // reward/randomness is invented here.
-      const revealResponse = await api.exploration.reveal({
-        user: address,
-        toolMint: bowMint,
-        woodMint,
-        stoneMint,
-      });
-      const reveal = await handleTxResponse(revealResponse);
-      if (!reveal.success) throw new Error(reveal.error || "Reveal не выполнен");
-      flash("✅ Экспедиция подтверждена on-chain. Обновите балансы.");
+  async function selfSettle() {
+    if (!address || !commitAddr) return;
+    setLoading(true);
+    try {
+      const resp: any = await api.exploration.reveal({ user: address, explorationCommit: commitAddr });
+      const r = await handleTxResponse(resp);
+      flash(r.success ? "✅ Результат раскрыт вашей транзакцией" : `❌ ${r.error}`);
     } catch (e: any) {
       flash(`❌ ${e.message}`);
     } finally {
@@ -89,7 +84,6 @@ export function ExplorationPage() {
   return (
     <div className="p-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold mb-4 flex items-center gap-2"><img src={UI_ICONS.expedition} alt="" className="w-7 h-7 object-contain" /> Исследование</h1>
-      {explorationDisabled && <div className="mb-4"><FeatureDisabledNotice id="exploration" /></div>}
 
       <Card className="mb-4">
         <div className="text-center mb-4">
@@ -110,7 +104,7 @@ export function ExplorationPage() {
 
         <div className="bg-gold/10 border border-gold/30 rounded-xl p-4 mb-4">
           <h3 className="text-gold font-semibold text-sm mb-2">Награда при успехе:</h3>
-          <p className="text-straw text-xs">Amount WOOD и STONE определяется on-chain энтропией текущего tier.</p>
+          <p className="text-straw text-xs">Успех и количество WOOD/STONE определяет оракул Switchboard по tier, зафиксированному при старте.</p>
         </div>
 
         <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
@@ -130,11 +124,19 @@ export function ExplorationPage() {
 
         <button
           onClick={startExploration}
-          disabled={explorationDisabled || loading || !address || !bowMint}
+          disabled={loading || !address || !bowMint}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
         >
-          {explorationDisabled ? "Временно недоступно" : loading ? "Отправляем..." : !bowMint ? "Нужен передатчик в инвентаре" : "Отправить в экспедицию"}
+          {loading ? "Отправляем..." : !bowMint ? "Нужен передатчик в инвентаре" : "Отправить в экспедицию"}
         </button>
+        {commitAddr && !loading && (
+          <button
+            onClick={selfSettle}
+            className="w-full mt-2 py-2 rounded-2xl bg-soil-800 border border-straw/20 text-parchment text-xs"
+          >
+            Раскрыть (или вернуть) последнюю экспедицию самостоятельно
+          </button>
+        )}
       </Card>
 
       <Card>
