@@ -13,12 +13,13 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..', '..');
 const { seedIdl, base58, keypairAddress } = require(path.join(root, 'scripts', 'seed-idl.cjs'));
 
-// SPL Token program id: a published key/bytes pair.
-const TOKEN_HEX = '06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9';
-const TOKEN_B58 = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+// SPL Token program id: a published key/bytes pair (allowlisted in
+// .gitleaks.toml: public key bytes, not a secret).
+const PROGRAM_HEX = '06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9';
+const PROGRAM_B58 = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
 test('base58 matches published program ids', () => {
-  assert.equal(base58(Buffer.from(TOKEN_HEX, 'hex')), TOKEN_B58);
+  assert.equal(base58(Buffer.from(PROGRAM_HEX, 'hex')), PROGRAM_B58);
   assert.equal(base58(Buffer.alloc(32)), '11111111111111111111111111111111');
 });
 
@@ -37,15 +38,15 @@ test('seedIdl patches the address to the deployed keypair and keeps it without a
   try {
     ws.write('aof_backend/src/idl/aof_core.json', { address: 'HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq', metadata: { name: 'aof_core', address: 'HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq' }, instructions: [] });
     ws.write('aof_backend/src/idl/aof_quests.json', { address: 'QuestsCommittedId1111111111111111111111111', instructions: [] });
-    const keypair = [...Buffer.alloc(32, 7), ...Buffer.from(TOKEN_HEX, 'hex')];
+    const keypair = [...Buffer.alloc(32, 7), ...Buffer.from(PROGRAM_HEX, 'hex')];
     ws.write('target/deploy/aof_core-keypair.json', keypair);
-    assert.equal(keypairAddress(path.join(ws.dir, 'target/deploy/aof_core-keypair.json')), TOKEN_B58);
+    assert.equal(keypairAddress(path.join(ws.dir, 'target/deploy/aof_core-keypair.json')), PROGRAM_B58);
 
     const logs = [];
     assert.equal(seedIdl({ root: ws.dir, log: (m) => logs.push(m) }), 2);
     const core = ws.read('target/idl/aof_core.json');
-    assert.equal(core.address, TOKEN_B58, 'top-level address follows the keypair');
-    assert.equal(core.metadata.address, TOKEN_B58, 'legacy metadata.address follows too');
+    assert.equal(core.address, PROGRAM_B58, 'top-level address follows the keypair');
+    assert.equal(core.metadata.address, PROGRAM_B58, 'legacy metadata.address follows too');
     assert.deepEqual(core.instructions, []);
     assert.equal(ws.read('target/idl/aof_quests.json').address, 'QuestsCommittedId1111111111111111111111111',
       'no keypair (no build): the committed id is kept');
@@ -53,7 +54,7 @@ test('seedIdl patches the address to the deployed keypair and keeps it without a
 
     // Idempotent: a second run (the test script re-seeds) keeps the patch.
     seedIdl({ root: ws.dir, log: () => {} });
-    assert.equal(ws.read('target/idl/aof_core.json').address, TOKEN_B58);
+    assert.equal(ws.read('target/idl/aof_core.json').address, PROGRAM_B58);
   } finally {
     fs.rmSync(ws.dir, { recursive: true, force: true });
   }

@@ -24,4 +24,8 @@ regexes = [
   # in the header above). \b on both sides so an 88-char base58 64-byte
   # secret key can never match a 43-44 window inside itself.
   '''\b[1-9A-HJ-NP-Za-km-z]{43,44}\b''',
+  # The same kind of public key as raw hex: the 32 bytes of the SPL Token
+  # program id (TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA), a base58 test
+  # vector in tests/readiness/seed-idl.test.cjs (history of commit cd50932).
+  '''06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9''',
 ]
