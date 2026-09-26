@@ -5497,6 +5497,18 @@ export type AofCore = {
           }
         },
         {
+          "name": "ownerToken",
+          "writable": true
+        },
+        {
+          "name": "rentalVault",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -5555,6 +5567,40 @@ export type AofCore = {
         {
           "name": "renterRefund",
           "writable": true
+        },
+        {
+          "name": "rentalListing",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -5690,6 +5736,9 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "rentalVault"
         },
         {
           "name": "systemProgram",
@@ -8630,6 +8679,293 @@ export type AofCore = {
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "rentalStartBounded",
+      "discriminator": [
+        254,
+        53,
+        210,
+        91,
+        122,
+        245,
+        9,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "renter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rentalListing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "rentalAgreement",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  97,
+                  103,
+                  114,
+                  101,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rentalVault"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "durationSeconds",
+          "type": "i64"
+        },
+        {
+          "name": "maxTotalFee",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "rentalDelist",
+      "discriminator": [
+        179,
+        203,
+        85,
+        127,
+        147,
+        27,
+        104,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rentalListing",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          },
+          "writable": true
+        },
+        {
+          "name": "lister",
+          "writable": true
+        },
+        {
+          "name": "rentalVault",
+          "writable": true
+        },
+        {
+          "name": "ownerToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "auctionCancel",
+      "discriminator": [
+        252,
+        86,
+        251,
+        18,
+        251,
+        20,
+        71,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "auction",
+          "writable": true
+        },
+        {
+          "name": "auctionVault",
+          "writable": true
+        },
+        {
+          "name": "sellerToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -9959,6 +10295,45 @@ export type AofCore = {
         171,
         18,
         86
+      ]
+    },
+    {
+      "name": "auctionCancelled",
+      "discriminator": [
+        22,
+        32,
+        51,
+        83,
+        215,
+        194,
+        171,
+        209
+      ]
+    },
+    {
+      "name": "rentalListed",
+      "discriminator": [
+        97,
+        210,
+        170,
+        203,
+        199,
+        117,
+        68,
+        74
+      ]
+    },
+    {
+      "name": "rentalDelisted",
+      "discriminator": [
+        64,
+        170,
+        128,
+        71,
+        152,
+        99,
+        31,
+        225
       ]
     }
   ],
@@ -13702,6 +14077,62 @@ export type AofCore = {
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "auctionCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rentalListed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricePerHourLamports",
+            "type": "u64"
+          },
+          {
+            "name": "ownerSplitBps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rentalDelisted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
           }
         ]
       }

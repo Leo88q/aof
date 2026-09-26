@@ -110,4 +110,27 @@ r.post("/settle", requireCircuitOpen, requireWalletLimits("auction__settle"), re
   }
 });
 
+// [SECURITY_CHECKLIST_REVIEW F-G] The seller withdraws an auction nobody bid on.
+r.post("/cancel", requireCircuitOpen, requireWalletLimits("auction__cancel"), requireIdempotency, async (req, res) => {
+  try {
+    const seller = pk(req.body.seller);
+    const mint = pk(req.body.mint);
+    const [config] = configPda();
+    const [auction] = auctionPda(mint);
+    const auctionVault = getAssociatedTokenAddressSync(mint, auction, true);
+    const sellerToken = getAssociatedTokenAddressSync(mint, seller);
+    const sellerAta = createAssociatedTokenAccountIdempotentInstruction(seller, sellerToken, seller, mint);
+
+    const ix = await (program.methods as any)
+      .auctionCancel()
+      .accounts({ config, seller, mint, auction, auctionVault, sellerToken, tokenProgram: TOKEN_PROGRAM_ID })
+      .instruction();
+
+    const tx = await coSign([sellerAta, ix], seller);
+    res.json({ tx });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 export default r;

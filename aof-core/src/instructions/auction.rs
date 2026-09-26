@@ -2,13 +2,30 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, Transfer, CloseAccount};
 use crate::constants::*;
-use crate::{AuctionCreateCtx, AuctionBidCtx, AuctionSettleCtx};
+use crate::{AuctionCreateCtx, AuctionBidCtx, AuctionSettleCtx, AuctionCancelCtx};
 use crate::errors::*;
 use crate::events::*;
 
+/// [SECURITY_CHECKLIST_REVIEW F-G] Smallest acceptable bid: the first one at
+/// least `max(min_bid, AUCTION_MIN_BID_LAMPORTS)` (auctions created before the
+/// floor included), every later one at least +5% and +0.001 SOL. Every refund
+/// is therefore >= 0.001 SOL, above the rent-exempt minimum of an empty wallet.
+pub fn next_min_bid(current_bid: u64, min_bid: u64) -> Result<u64> {
+    if current_bid == 0 {
+        return Ok(min_bid.max(AUCTION_MIN_BID_LAMPORTS));
+    }
+    let step = (current_bid as u128 * AUCTION_MIN_INCREMENT_BPS as u128 / 10_000) as u64;
+    current_bid
+        .checked_add(step.max(AUCTION_MIN_BID_LAMPORTS))
+        .ok_or_else(|| AofError::MathOverflow.into())
+}
+
 pub fn create_handler(ctx: Context<AuctionCreateCtx>, min_bid: u64, duration_seconds: i64) -> Result<()> {
-    require!(min_bid > 0, AofError::ZeroAmount);
-    require!(duration_seconds > 0, AofError::InvalidRentalDuration);
+    require!(min_bid >= AUCTION_MIN_BID_LAMPORTS, AofError::BidTooLow);
+    require!(
+        duration_seconds > 0 && duration_seconds <= AUCTION_MAX_DURATION_SECONDS,
+        AofError::InvalidRentalDuration
+    );
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -45,12 +62,8 @@ pub fn bid_handler(ctx: Context<AuctionBidCtx>, amount: u64) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     require!(ctx.accounts.auction.active, AofError::NotActive);
     require!(now < ctx.accounts.auction.end_time, AofError::AuctionEnded);
-    let min_required = if ctx.accounts.auction.current_bid > 0 {
-        ctx.accounts.auction.current_bid
-    } else {
-        ctx.accounts.auction.min_bid.saturating_sub(1)
-    };
-    require!(amount > min_required, AofError::BidTooLow);
+    let min_required = next_min_bid(ctx.accounts.auction.current_bid, ctx.accounts.auction.min_bid)?;
+    require!(amount >= min_required, AofError::BidTooLow);
 
     // эскроу новой ставки в auction PDA
     system_program::transfer(
@@ -171,5 +184,41 @@ pub fn settle_handler(ctx: Context<AuctionSettleCtx>) -> Result<()> {
     ))?;
 
     ctx.accounts.auction.active = false;
+    Ok(())
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-G] The seller withdraws an auction nobody bid
+/// on (it used to stay locked until its end time). Returns the NFT, recovers the
+/// escrow rent; the auction PDA is closed by `close = seller`.
+pub fn cancel_handler(ctx: Context<AuctionCancelCtx>) -> Result<()> {
+    let bump = ctx.bumps.auction;
+    let mint_key = ctx.accounts.mint.key();
+    let seeds: &[&[u8]] = &[AUCTION_SEED, mint_key.as_ref(), &[bump]];
+    token::transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.auction_vault.to_account_info(),
+                to: ctx.accounts.seller_token.to_account_info(),
+                authority: ctx.accounts.auction.to_account_info(),
+            },
+            &[seeds],
+        ),
+        1,
+    )?;
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        token::CloseAccount {
+            account: ctx.accounts.auction_vault.to_account_info(),
+            destination: ctx.accounts.seller.to_account_info(),
+            authority: ctx.accounts.auction.to_account_info(),
+        },
+        &[seeds],
+    ))?;
+    ctx.accounts.auction.active = false;
+    emit!(AuctionCancelled {
+        seller: ctx.accounts.seller.key(),
+        mint: mint_key,
+    });
     Ok(())
 }

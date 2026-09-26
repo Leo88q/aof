@@ -426,7 +426,8 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("RewardGranted", { playerId: null, amount: str(d.lamports), currency: LAMPORTS, attributes: { source: "lottery_refund", roundId: str(d.round_id), ticketsSold: str(d.tickets_sold) } });
       break;
     // Explicitly ignored: no Watchtower semantics, kept out on purpose.
-    case "AuctionCreated": case "LotteryDrawn": case "HotMarketSkipped": case "DrumCommitted": case "DrumRevealed":
+    case "AuctionCreated": case "AuctionCancelled": case "RentalListed": case "RentalDelisted":
+    case "LotteryDrawn": case "HotMarketSkipped": case "DrumCommitted": case "DrumRevealed":
     case "ChallengeCreated": case "QuestCreated":
       break;
     default:

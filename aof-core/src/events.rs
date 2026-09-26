@@ -513,3 +513,24 @@ pub struct CashoutFreezeChanged {
     pub frozen: bool,
     pub slot: u64,
 }
+
+// ===== [SECURITY_CHECKLIST_REVIEW F-G / F-H] trading =====
+#[event]
+pub struct AuctionCancelled {
+    pub seller: Pubkey,
+    pub mint: Pubkey,
+}
+
+#[event]
+pub struct RentalListed {
+    pub mint: Pubkey,
+    pub owner: Pubkey,
+    pub price_per_hour_lamports: u64,
+    pub owner_split_bps: u16,
+}
+
+#[event]
+pub struct RentalDelisted {
+    pub mint: Pubkey,
+    pub owner: Pubkey,
+}

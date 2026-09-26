@@ -534,7 +534,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "rental_list",
     discriminator: [117, 211, 91, 46, 123, 180, 139, 146],
-    accounts: ["config", "owner", "mint", "tool", "rental_listing", "system_program"],
+    accounts: ["config", "owner", "mint", "tool", "rental_listing", "owner_token", "rental_vault", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -542,7 +542,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "rental_revoke",
     discriminator: [102, 156, 111, 193, 139, 106, 44, 46],
-    accounts: ["config", "owner", "mint", "tool", "rental_agreement", "renter_refund"],
+    accounts: ["config", "owner", "mint", "tool", "rental_agreement", "renter_refund", "rental_listing", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -550,7 +550,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "rental_start",
     discriminator: [72, 125, 23, 178, 217, 225, 224, 37],
-    accounts: ["config", "renter", "mint", "tool", "rental_listing", "owner", "treasury", "rental_agreement", "system_program"],
+    accounts: ["config", "renter", "mint", "tool", "rental_listing", "owner", "treasury", "rental_agreement", "rental_vault", "system_program"],
     actorIndexes: [1, 5],
     signerIndexes: [1],
     authorityOnly: false,
@@ -858,6 +858,30 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     actorIndexes: [],
     signerIndexes: [1],
     authorityOnly: true,
+  },
+  {
+    name: "rental_start_bounded",
+    discriminator: [254, 53, 210, 91, 122, 245, 9, 4],
+    accounts: ["config", "renter", "mint", "tool", "rental_listing", "owner", "treasury", "rental_agreement", "rental_vault", "system_program"],
+    actorIndexes: [1, 5],
+    signerIndexes: [1],
+    authorityOnly: false,
+  },
+  {
+    name: "rental_delist",
+    discriminator: [179, 203, 85, 127, 147, 27, 104, 72],
+    accounts: ["config", "caller", "mint", "tool", "rental_listing", "lister", "rental_vault", "owner_token", "token_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+  },
+  {
+    name: "auction_cancel",
+    discriminator: [252, 86, 251, 18, 251, 20, 71, 115],
+    accounts: ["config", "seller", "mint", "auction", "auction_vault", "seller_token", "token_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
   },
 
 ];

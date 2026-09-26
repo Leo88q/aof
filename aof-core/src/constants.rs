@@ -270,6 +270,17 @@ pub const AUCTION_ANTI_SNIPE_EXTENSION_SECONDS: i64 = 5 * 60;
 pub const RENTAL_MIN_DURATION_SECONDS: i64 = 24 * 3600;
 pub const RENTAL_MAX_DURATION_SECONDS: i64 = 30 * 86400;
 pub const RENTAL_REVOKE_GRACE_SECONDS: i64 = 12 * 3600;
+// ===== [SECURITY_CHECKLIST_REVIEW F-G / F-H] trading limits =====
+/// First-bid floor and minimum outbid step. Both exceed the rent-exempt minimum
+/// of an empty wallet (890 880 lamports), so refunding an outbid wallet that was
+/// drained to zero can no longer fail and freeze the auction.
+pub const AUCTION_MIN_BID_LAMPORTS: u64 = 1_000_000; // 0.001 SOL
+/// Every outbid must add at least 5% (1-lamport outbids kept re-arming the
+/// anti-snipe extension forever).
+pub const AUCTION_MIN_INCREMENT_BPS: u16 = 500;
+pub const AUCTION_MAX_DURATION_SECONDS: i64 = 14 * 86_400;
+/// The platform keeps at least RENTAL_FEE_BPS of every rental fee.
+pub const RENTAL_MAX_OWNER_SPLIT_BPS: u16 = 10_000 - RENTAL_FEE_BPS;
 
 // ----- Ордербук ресурсов -----
 pub const ORDERBOOK_MAKER_FEE_BPS: u16 = 10;  // 0.1%

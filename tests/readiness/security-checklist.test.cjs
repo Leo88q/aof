@@ -479,7 +479,8 @@ const configAttrs = (ctx) => {
 
 test('F-C exit paths are never paused; every trade entry is', () => {
   const exits = ['WithdrawGas', 'Unstake', 'CollectorUnstake', 'MarketplaceCancel', 'OfferCancelCtx',
-    'RentalEndCtx', 'RentalRevokeCtx', 'CancelBuyOrder', 'CancelSellOrder', 'CraftOrderCancelCtx'];
+    'RentalEndCtx', 'RentalRevokeCtx', 'RentalDelistCtx', 'AuctionCancelCtx', 'CancelBuyOrder', 'CancelSellOrder',
+    'CraftOrderCancelCtx'];
   for (const ctx of exits) assert.doesNotMatch(configAttrs(ctx), /config\.paused/, `${ctx} must stay usable during a pause`);
   const entries = ['OfferAcceptCtx', 'OfferCreateCtx', 'MarketplaceList', 'MarketplaceBuy', 'AuctionCreateCtx',
     'AuctionBidCtx', 'RentalListCtx', 'RentalStartCtx', 'PlaceBuyOrder', 'PlaceSellOrder', 'DepositGas'];
@@ -558,4 +559,29 @@ test('F-C Config v2 migration runs once, for the stored authority, and only appe
   assert.deepEqual(order.slice(-5), ['authority_updated_at', 'operator', 'guardian', 'cashout_frozen', 'reserved'],
     'v2 fields must be appended after the v1 layout');
   assert.match(fnBody(core('instructions/initialize.rs'), 'handler'), /cfg\.operator = cfg\.authority/);
+});
+
+test('F-H rentals escrow the NFT, need custody and a signed fee ceiling, keep the platform share', () => {
+  const rental = core('instructions/rental.rs');
+  const list = fnBody(rental, 'list_handler');
+  assert.match(list, /from: ctx\.accounts\.owner_token[\s\S]*to: ctx\.accounts\.rental_vault/, 'listing escrows the NFT');
+  assert.match(list, /owner_split_bps <= RENTAL_MAX_OWNER_SPLIT_BPS/);
+  const vault = (sources.aof_core.structs.get('RentalStartCtx') || []).find((f) => f.name === 'rental_vault');
+  assert.ok(vault && /rental_vault\.amount == 1/.test(vault.attrs), 'only an escrowed NFT can be rented');
+  const start = fnBody(rental, 'start_handler');
+  assert.ok(start.indexOf('PriceLimitExceeded') < start.indexOf('system_program::transfer'), 'fee ceiling before payment');
+  assert.match(fnBody(rental, 'rental_fee_split'), /min\(RENTAL_MAX_OWNER_SPLIT_BPS\)/, 'legacy 100% splits are clamped');
+  assert.match(fnBody(rental, 'revoke_handler'), /rental_refund\(/, 'early revocation refunds the unused time');
+  assert.match(fnBody(core('lib.rs'), 'rental_start'), /err!\(AofError::FeatureDisabled\)/, 'unbounded rental_start stays fail-closed');
+});
+
+test('F-G auctions: bid floor, real increments, bounded duration, cancel without bids', () => {
+  const auction = core('instructions/auction.rs');
+  const create = fnBody(auction, 'create_handler');
+  assert.match(create, /min_bid >= AUCTION_MIN_BID_LAMPORTS/);
+  assert.match(create, /duration_seconds <= AUCTION_MAX_DURATION_SECONDS/);
+  assert.match(fnBody(auction, 'bid_handler'), /next_min_bid\(/);
+  const cancel = (sources.aof_core.structs.get('AuctionCancelCtx') || []).find((f) => f.name === 'auction');
+  assert.ok(cancel && /auction\.current_bid == 0/.test(cancel.attrs), 'cancel only without bids');
+  assert.ok(/auction\.seller == seller\.key\(\)/.test(cancel.attrs), 'only the seller cancels');
 });

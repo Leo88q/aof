@@ -54,6 +54,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/auction/create", subject: "auction_create", field: "seller" },
   { path: "/auction/bid", subject: "auction_bid", field: "bidder" },
   { path: "/auction/settle", subject: "auction_settle", field: "caller" },
+  { path: "/auction/cancel", subject: "auction_cancel", field: "seller" },
   { path: "/hot-market/skip", subject: "hot_market_skip", field: "player" },
   { path: "/offer/create", subject: "offer_create", field: "buyer" },
   { path: "/offer/accept", subject: "offer_accept", field: "seller" },
@@ -62,6 +63,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/rental/start", subject: "rental_start", field: "renter" },
   { path: "/rental/end", subject: "rental_end", field: "caller" },
   { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
+  { path: "/rental/delist", subject: "rental_delist", field: "caller" },
   { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
   { path: "/orderbook/sell/place", subject: "orderbook_sell_place", field: "maker" },
   { path: "/orderbook/buy/cancel", subject: "orderbook_buy_cancel", field: "maker" },
@@ -366,6 +368,7 @@ export const api = {
     create: (v: any) => post("/auction/create", v),
     bid: (v: any) => post("/auction/bid", v),
     settle: (v: any) => post("/auction/settle", v),
+    cancel: (v: any) => post("/auction/cancel", v),
   },
 
   // === Офферы ===
@@ -381,6 +384,7 @@ export const api = {
     start: (v: any) => post("/rental/start", v),
     end: (v: any) => post("/rental/end", v),
     revoke: (v: any) => post("/rental/revoke", v),
+    delist: (v: any) => post("/rental/delist", v),
   },
 
   // === Ордербук ресурсов ===

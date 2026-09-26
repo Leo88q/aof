@@ -93,6 +93,15 @@ fn cpi_calls() -> usize {
     CPI_CALLS.with(|calls| calls.get())
 }
 
+/// Lamports of the last recorded System Program `Transfer` CPI (tag 2u32 LE).
+fn last_system_transfer_lamports() -> u64 {
+    LAST_CPI_DATA.with(|data| {
+        let data = data.borrow();
+        assert_eq!(data.get(..4), Some(&[2u8, 0, 0, 0][..]), "the last CPI was not a System transfer");
+        u64::from_le_bytes(data[4..12].try_into().unwrap())
+    })
+}
+
 /// Amount of the last recorded SPL Token `MintTo` CPI (tag 7, u64 LE amount).
 fn last_minted_amount() -> u64 {
     LAST_CPI_DATA.with(|data| {
@@ -1578,4 +1587,263 @@ fn migrate_config_v2_grows_a_v1_config_in_place() {
 fn config_v1_space_is_the_historical_layout() {
     assert_eq!(CONFIG_V1_SPACE, 323);
     assert_eq!(CONFIG_SPACE, CONFIG_V1_SPACE + CONFIG_V2_EXTENSION);
+}
+
+// ======================================================================
+// H. Auction limits and rental escrow  (F-G, F-H)
+// ======================================================================
+
+use crate::instructions::auction::next_min_bid;
+use crate::instructions::rental::{rental_fee_split, rental_refund};
+
+fn min_bid(current: u64, floor: u64) -> Option<u64> {
+    next_min_bid(current, floor).ok()
+}
+
+/// F-G: every refund is >= 0.001 SOL (above an empty wallet's rent-exempt
+/// minimum) and an outbid adds at least 5%.
+#[test]
+fn auction_bids_have_a_floor_and_a_real_increment() {
+    assert!(AUCTION_MIN_BID_LAMPORTS > Rent::default().minimum_balance(0));
+    assert_eq!(min_bid(0, 1), Some(AUCTION_MIN_BID_LAMPORTS), "legacy tiny minimums are floored");
+    assert_eq!(min_bid(0, 5_000_000), Some(5_000_000));
+    assert_eq!(min_bid(1_000_000, 1), Some(2_000_000), "step is at least 0.001 SOL");
+    assert_eq!(min_bid(100_000_000, 1), Some(105_000_000), "step is at least 5%");
+    assert_eq!(min_bid(u64::MAX - 1, 1), None, "no overflow");
+}
+
+fn auction_cancel_accounts(w: &World, current_bid: u64, signer_is_seller: bool) -> Vec<AccountInfo<'static>> {
+    let (seller, mint) = (Pubkey::new_unique(), Pubkey::new_unique());
+    let auction_key = pda(&[AUCTION_SEED, mint.as_ref()]).0;
+    let auction = Auction {
+        seller,
+        mint,
+        min_bid: AUCTION_MIN_BID_LAMPORTS,
+        current_bid,
+        current_bidder: if current_bid > 0 { Pubkey::new_unique() } else { seller },
+        end_time: NOW_TS + 3_600,
+        active: true,
+    };
+    let signer = if signer_is_seller { seller } else { Pubkey::new_unique() };
+    vec![
+        w.config_info(),
+        wallet(signer, true),
+        spl_mint(mint, 1, None, None),
+        program_account(auction_key, &auction, AUCTION_SPACE),
+        token_account(Pubkey::new_unique(), mint, auction_key, 1),
+        token_account(Pubkey::new_unique(), mint, signer, 0),
+        token_program_info(),
+    ]
+}
+
+/// F-G: a seller can withdraw an auction nobody bid on (also during a pause:
+/// it only returns their own NFT), never one that has a bid.
+#[test]
+fn auction_cancel_works_only_without_bids() {
+    runtime();
+    let mut w = World::new();
+    let err = rejected(validate::<AuctionCancelCtx>(auction_cancel_accounts(&w, 2_000_000, true), &[]), "StillActive");
+    assert!(blames(&err, "auction"), "{err}");
+    rejected(validate::<AuctionCancelCtx>(auction_cancel_accounts(&w, 0, false), &[]), "Unauthorized");
+
+    w.config.paused = true;
+    let (mut accounts, bumps) = parse::<AuctionCancelCtx>(auction_cancel_accounts(&w, 0, true), &[]).unwrap();
+    let result = crate::instructions::auction::cancel_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    assert!(result.is_ok(), "{result:?}");
+    assert_eq!(cpi_calls(), 2, "NFT back to the seller, escrow closed");
+    assert!(!accounts.auction.active);
+}
+
+/// F-H: the platform keeps >= 5% of every rental (legacy 100% splits
+/// included) and an early revocation refunds the unused part pro rata.
+#[test]
+fn rental_fee_split_keeps_the_platform_share_and_refunds_pro_rata() {
+    let split = |price: u64, secs: i64, bps: u16| rental_fee_split(price, secs, bps).ok();
+    assert_eq!(split(3_600, 3_600, 10_000), Some((3_420, 180)), "100% owner split clamped to 95%");
+    assert_eq!(split(3_600, 3_600, 8_000), Some((2_880, 720)));
+    assert_eq!(split(3_600, 0, 8_000), None);
+    assert_eq!(rental_refund(3_420, 0, 100, 25), 2_565);
+    assert_eq!(rental_refund(3_420, 0, 100, 100), 0);
+    assert_eq!(rental_refund(3_420, 100, 200, 50), 3_420, "not started yet: everything back");
+}
+
+const RENT_PRICE_PER_HOUR: u64 = 3_600;
+
+fn rental_listing_value(owner: Pubkey, mint: Pubkey, owner_split_bps: u16) -> RentalListing {
+    RentalListing {
+        owner,
+        mint,
+        owner_split_bps,
+        min_duration: RENTAL_MIN_DURATION_SECONDS,
+        max_duration: RENTAL_MAX_DURATION_SECONDS,
+        active: true,
+        price_per_hour_lamports: RENT_PRICE_PER_HOUR,
+    }
+}
+
+/// F-H: listing moves the NFT into the listing's escrow.
+#[test]
+fn rental_listing_escrows_the_nft() {
+    runtime();
+    let w = World::new();
+    let (owner, mint) = (Pubkey::new_unique(), Pubkey::new_unique());
+    let listing_key = pda(&[RENTAL_LISTING_SEED, mint.as_ref()]).0;
+    let list = |owner_split_bps: u16| {
+        let infos = vec![
+            w.config_info(),
+            wallet(owner, true),
+            spl_mint(mint, 1, None, None),
+            program_account(pda(&[TOOL_SEED, mint.as_ref()]).0, &tool(mint, owner, owner, "neural_seeder"), TOOL_DATA_SPACE),
+            // Pre-created so the host `init` path can load it (the stubbed CPI creates nothing).
+            program_account(listing_key, &rental_listing_value(Pubkey::default(), Pubkey::default(), 0), RENTAL_LISTING_SPACE),
+            token_account(Pubkey::new_unique(), mint, owner, 1),
+            token_account(Pubkey::new_unique(), mint, listing_key, 0),
+            token_program_info(),
+            system_program_info(),
+        ];
+        let mut ix = owner_split_bps.to_le_bytes().to_vec();
+        ix.extend_from_slice(&RENTAL_MIN_DURATION_SECONDS.to_le_bytes());
+        ix.extend_from_slice(&RENTAL_MAX_DURATION_SECONDS.to_le_bytes());
+        let (mut accounts, bumps) = parse::<RentalListCtx>(infos, &ix).unwrap();
+        let before = cpi_calls();
+        let result = crate::instructions::rental::list_handler(
+            Context::new(&crate::ID, &mut accounts, &[], bumps),
+            owner_split_bps,
+            RENTAL_MIN_DURATION_SECONDS,
+            RENTAL_MAX_DURATION_SECONDS,
+            RENT_PRICE_PER_HOUR,
+        );
+        (result, cpi_calls() - before, accounts.rental_listing.owner)
+    };
+    let (ok, cpis, listed_owner) = list(RENTAL_MAX_OWNER_SPLIT_BPS);
+    assert!(ok.is_ok(), "{ok:?}");
+    assert_eq!((cpis, listed_owner), (1, owner), "one SPL transfer into escrow");
+    let (too_greedy, cpis, _) = list(RENTAL_MAX_OWNER_SPLIT_BPS + 1);
+    rejected(too_greedy, "InvalidAmount");
+    assert_eq!(cpis, 0);
+}
+
+fn rental_start_infos(w: &World, vault_amount: u64) -> (Vec<AccountInfo<'static>>, Pubkey, Pubkey) {
+    let (owner, renter, mint) = (Pubkey::new_unique(), Pubkey::new_unique(), Pubkey::new_unique());
+    let listing_key = pda(&[RENTAL_LISTING_SEED, mint.as_ref()]).0;
+    let infos = vec![
+        w.config_info(),
+        wallet(renter, true),
+        spl_mint(mint, 1, None, None),
+        program_account(pda(&[TOOL_SEED, mint.as_ref()]).0, &tool(mint, owner, owner, "neural_seeder"), TOOL_DATA_SPACE),
+        // A legacy 100% owner split: the platform share must still be charged.
+        program_account(listing_key, &rental_listing_value(owner, mint, 10_000), RENTAL_LISTING_SPACE),
+        wallet(owner, false),
+        wallet(w.treasury, false),
+        program_account(
+            pda(&[RENTAL_AGREEMENT_SEED, mint.as_ref()]).0,
+            &RentalAgreement { mint, owner, renter, start: 0, end: 0, revoke_requested_at: 0 },
+            RENTAL_AGREEMENT_SPACE,
+        ),
+        token_account(Pubkey::new_unique(), mint, listing_key, vault_amount),
+        system_program_info(),
+    ];
+    (infos, owner, renter)
+}
+
+/// F-H: only an escrowed NFT can be rented, the renter's fee ceiling holds and
+/// the platform share is charged even on a legacy 100% listing.
+#[test]
+fn only_escrowed_tools_can_be_rented_within_the_signed_fee() {
+    runtime();
+    let w = World::new();
+    let day = 86_400i64;
+    let (infos, _, _) = rental_start_infos(&w, 0);
+    let err = rejected(validate::<RentalStartCtx>(infos, &day.to_le_bytes()), "NotActive");
+    assert!(blames(&err, "rental_vault"), "{err}");
+
+    let total = RENT_PRICE_PER_HOUR * 24; // 1 day at 3 600 lamports/h
+    let start = |max_total_fee: u64| {
+        let (infos, _, renter) = rental_start_infos(&w, 1);
+        let (mut accounts, bumps) = parse::<RentalStartCtx>(infos, &day.to_le_bytes()).unwrap();
+        let before = cpi_calls();
+        let result = crate::instructions::rental::start_handler(
+            Context::new(&crate::ID, &mut accounts, &[], bumps),
+            day,
+            max_total_fee,
+        );
+        (result, cpi_calls() - before, accounts.tool.operator == renter)
+    };
+    let (too_expensive, cpis, _) = start(total - 1);
+    rejected(too_expensive, "PriceLimitExceeded");
+    assert_eq!(cpis, 0);
+    let (ok, cpis, rented) = start(total);
+    assert!(ok.is_ok(), "{ok:?}");
+    assert_eq!((cpis, rented), (2, true), "owner share + platform share, operator = renter");
+    assert_eq!(last_system_transfer_lamports(), total * RENTAL_FEE_BPS as u64 / 10_000, "platform keeps 5%");
+}
+
+/// F-H: a listing can be withdrawn when it is not rented out; the escrowed NFT
+/// returns to the tool's owner.
+#[test]
+fn a_rental_listing_can_be_withdrawn_when_not_rented() {
+    runtime();
+    let w = World::new();
+    let delist = |rented: bool, caller_is_owner: bool| -> Result<()> {
+        let (owner, mint) = (Pubkey::new_unique(), Pubkey::new_unique());
+        let listing_key = pda(&[RENTAL_LISTING_SEED, mint.as_ref()]).0;
+        let operator = if rented { Pubkey::new_unique() } else { owner };
+        let caller = if caller_is_owner { owner } else { Pubkey::new_unique() };
+        let infos = vec![
+            w.config_info(),
+            wallet(caller, true),
+            spl_mint(mint, 1, None, None),
+            program_account(pda(&[TOOL_SEED, mint.as_ref()]).0, &tool(mint, owner, operator, "neural_seeder"), TOOL_DATA_SPACE),
+            program_account(listing_key, &rental_listing_value(owner, mint, 9_000), RENTAL_LISTING_SPACE),
+            wallet(owner, false),
+            token_account(Pubkey::new_unique(), mint, listing_key, 1),
+            token_account(Pubkey::new_unique(), mint, owner, 0),
+            token_program_info(),
+        ];
+        let (mut accounts, bumps) = parse::<RentalDelistCtx>(infos, &[])?;
+        crate::instructions::rental::delist_handler(Context::new(&crate::ID, &mut accounts, &[], bumps))
+    };
+    let err = rejected(delist(true, true), "StillActive");
+    assert!(blames(&err, "tool"), "{err}");
+    rejected(delist(false, false), "Unauthorized");
+    let before = cpi_calls();
+    assert!(delist(false, true).is_ok());
+    assert_eq!(cpi_calls() - before, 2, "NFT back to the owner, escrow closed");
+}
+
+/// F-H: revoking after the grace period refunds the owner's share of the
+/// unused time and closes the agreement to the renter.
+#[test]
+fn early_revocation_refunds_the_unused_time() {
+    runtime();
+    let w = World::new();
+    let (owner, renter, mint) = (Pubkey::new_unique(), Pubkey::new_unique(), Pubkey::new_unique());
+    let (start, end) = (NOW_TS - 86_400, NOW_TS + 86_400);
+    let agreement = RentalAgreement { mint, owner, renter, start, end, revoke_requested_at: NOW_TS - RENTAL_REVOKE_GRACE_SECONDS - 1 };
+    let agreement_key = pda(&[RENTAL_AGREEMENT_SEED, mint.as_ref()]).0;
+    // The handler closes the agreement itself (AccountInfo::realloc): use a
+    // runtime-like buffer.
+    let agreement_info = runtime_like_info(
+        agreement_key, false, rent_exempt(RENTAL_AGREEMENT_SPACE),
+        &serialized(&agreement, RENTAL_AGREEMENT_SPACE), crate::ID, RENTAL_AGREEMENT_SPACE,
+    );
+    let renter_info = wallet(renter, false);
+    let infos = vec![
+        w.config_info(),
+        wallet(owner, true),
+        spl_mint(mint, 1, None, None),
+        program_account(pda(&[TOOL_SEED, mint.as_ref()]).0, &tool(mint, owner, renter, "neural_seeder"), TOOL_DATA_SPACE),
+        agreement_info.clone(),
+        renter_info.clone(),
+        program_account(pda(&[RENTAL_LISTING_SEED, mint.as_ref()]).0, &rental_listing_value(owner, mint, 9_000), RENTAL_LISTING_SPACE),
+        system_program_info(),
+    ];
+    let (mut accounts, bumps) = parse::<RentalRevokeCtx>(infos, &[]).unwrap();
+    let result = crate::instructions::rental::revoke_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    assert!(result.is_ok(), "{result:?}");
+    let (owner_share, _) = rental_fee_split(RENT_PRICE_PER_HOUR, end - start, 9_000).ok().unwrap();
+    assert_eq!(last_system_transfer_lamports(), owner_share / 2, "half the rental was unused");
+    assert_eq!(accounts.tool.operator, owner);
+    assert_eq!(agreement_info.lamports(), 0, "agreement closed");
+    assert_eq!(renter_info.lamports(), WALLET_LAMPORTS + rent_exempt(RENTAL_AGREEMENT_SPACE), "its rent went to the renter");
 }

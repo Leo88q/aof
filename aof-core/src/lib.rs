@@ -2132,6 +2132,32 @@ pub struct AuctionSettleCtx<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// [SECURITY_CHECKLIST_REVIEW F-G] The seller withdraws an auction without bids.
+/// Exit path (returns the seller's own NFT): never paused.
+#[derive(Accounts)]
+pub struct AuctionCancelCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub seller: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        close = seller,
+        seeds = [AUCTION_SEED, mint.key().as_ref()],
+        bump,
+        constraint = auction.seller == seller.key() @ AofError::Unauthorized,
+        constraint = auction.active @ AofError::NotActive,
+        constraint = auction.current_bid == 0 @ AofError::StillActive
+    )]
+    pub auction: Account<'info, Auction>,
+    #[account(mut, constraint = auction_vault.owner == auction.key(), constraint = auction_vault.mint == mint.key())]
+    pub auction_vault: Account<'info, TokenAccount>,
+    #[account(mut, constraint = seller_token.mint == mint.key(), constraint = seller_token.owner == seller.key())]
+    pub seller_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
 // ----- Оффер -----
 
 #[derive(Accounts)]
@@ -2239,6 +2265,13 @@ pub struct RentalListCtx<'info> {
     pub tool: Account<'info, ToolData>,
     #[account(init, payer = owner, space = RENTAL_LISTING_SPACE, seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
     pub rental_listing: Account<'info, RentalListing>,
+    // [SECURITY_CHECKLIST_REVIEW F-H] the NFT moves into escrow for as long as
+    // the listing exists.
+    #[account(mut, constraint = owner_token.mint == mint.key(), constraint = owner_token.owner == owner.key(), constraint = owner_token.amount == 1)]
+    pub owner_token: Account<'info, TokenAccount>,
+    #[account(mut, constraint = rental_vault.owner == rental_listing.key(), constraint = rental_vault.mint == mint.key())]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -2276,6 +2309,14 @@ pub struct RentalStartCtx<'info> {
     pub treasury: UncheckedAccount<'info>,
     #[account(init, payer = renter, space = RENTAL_AGREEMENT_SPACE, seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
     pub rental_agreement: Account<'info, RentalAgreement>,
+    // [SECURITY_CHECKLIST_REVIEW F-H] custody proof: only an escrowed NFT can be
+    // rented (not one listed elsewhere, in an auction or burned).
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive,
+        constraint = rental_vault.amount == 1 @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
 }
 
@@ -2330,6 +2371,49 @@ pub struct RentalRevokeCtx<'info> {
     /// CHECK: rent refund recipient is fixed to the agreement renter.
     #[account(mut, address = rental_agreement.renter)]
     pub renter_refund: UncheckedAccount<'info>,
+    // [SECURITY_CHECKLIST_REVIEW F-H] terms of the paid rental, for the pro-rata
+    // refund of an early revocation (a listing cannot change while rented).
+    #[account(
+        seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()],
+        bump,
+        constraint = rental_listing.mint == mint.key() @ AofError::InvalidMint
+    )]
+    pub rental_listing: Account<'info, RentalListing>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-H] Withdraw a rental listing that is not rented
+/// out: the escrowed NFT returns to the tool's current owner, the listing and
+/// escrow rent to whoever paid for them. Exit path: never paused.
+#[derive(Accounts)]
+pub struct RentalDelistCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    pub caller: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == tool.owner @ AofError::StillActive
+    )]
+    pub tool: Account<'info, ToolData>,
+    #[account(
+        mut,
+        close = lister,
+        seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()],
+        bump,
+        constraint = caller.key() == rental_listing.owner || caller.key() == tool.owner @ AofError::Unauthorized
+    )]
+    pub rental_listing: Account<'info, RentalListing>,
+    /// CHECK: the listing/escrow rent goes back to whoever paid for the listing.
+    #[account(mut, address = rental_listing.owner @ AofError::Unauthorized)]
+    pub lister: UncheckedAccount<'info>,
+    #[account(mut, constraint = rental_vault.owner == rental_listing.key(), constraint = rental_vault.mint == mint.key())]
+    pub rental_vault: Account<'info, TokenAccount>,
+    #[account(mut, constraint = owner_token.mint == mint.key(), constraint = owner_token.owner == tool.owner @ AofError::NotToolOwner)]
+    pub owner_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 // [БЛОК L] Инициализация MaterialMints PDA
@@ -3364,6 +3448,9 @@ pub mod aof_core {
     pub fn auction_bid(ctx: Context<AuctionBidCtx>, amount: u64) -> Result<()> {
         instructions::auction::bid_handler(ctx, amount)
     }
+    pub fn auction_cancel(ctx: Context<AuctionCancelCtx>) -> Result<()> {
+        instructions::auction::cancel_handler(ctx)
+    }
     pub fn auction_settle(ctx: Context<AuctionSettleCtx>) -> Result<()> {
         instructions::auction::settle_handler(ctx)
     }
@@ -3383,8 +3470,17 @@ pub mod aof_core {
     pub fn rental_list(ctx: Context<RentalListCtx>, owner_split_bps: u16, min_duration: i64, max_duration: i64, price_per_hour_lamports: u64) -> Result<()> {
         instructions::rental::list_handler(ctx, owner_split_bps, min_duration, max_duration, price_per_hour_lamports)
     }
+    // [SECURITY_CHECKLIST_REVIEW F-H] Rental terms can change now (delist and
+    // relist), so a renter must sign a fee ceiling: the old discriminator stays
+    // fail-closed, exactly like marketplace_buy.
     pub fn rental_start(ctx: Context<RentalStartCtx>, duration_seconds: i64) -> Result<()> {
-        instructions::rental::start_handler(ctx, duration_seconds)
+        err!(AofError::FeatureDisabled)
+    }
+    pub fn rental_start_bounded(ctx: Context<RentalStartCtx>, duration_seconds: i64, max_total_fee: u64) -> Result<()> {
+        instructions::rental::start_handler(ctx, duration_seconds, max_total_fee)
+    }
+    pub fn rental_delist(ctx: Context<RentalDelistCtx>) -> Result<()> {
+        instructions::rental::delist_handler(ctx)
     }
     pub fn rental_end(ctx: Context<RentalEndCtx>) -> Result<()> {
         instructions::rental::end_handler(ctx)

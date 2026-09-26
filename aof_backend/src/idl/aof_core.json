@@ -5491,6 +5491,18 @@
           }
         },
         {
+          "name": "owner_token",
+          "writable": true
+        },
+        {
+          "name": "rental_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -5549,6 +5561,40 @@
         {
           "name": "renter_refund",
           "writable": true
+        },
+        {
+          "name": "rental_listing",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -5684,6 +5730,9 @@
               }
             ]
           }
+        },
+        {
+          "name": "rental_vault"
         },
         {
           "name": "system_program",
@@ -8624,6 +8673,293 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "rental_start_bounded",
+      "discriminator": [
+        254,
+        53,
+        210,
+        91,
+        122,
+        245,
+        9,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "renter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rental_listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "rental_agreement",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  97,
+                  103,
+                  114,
+                  101,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rental_vault"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        },
+        {
+          "name": "max_total_fee",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "rental_delist",
+      "discriminator": [
+        179,
+        203,
+        85,
+        127,
+        147,
+        27,
+        104,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rental_listing",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  110,
+                  116,
+                  97,
+                  108,
+                  95,
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          },
+          "writable": true
+        },
+        {
+          "name": "lister",
+          "writable": true
+        },
+        {
+          "name": "rental_vault",
+          "writable": true
+        },
+        {
+          "name": "owner_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "auction_cancel",
+      "discriminator": [
+        252,
+        86,
+        251,
+        18,
+        251,
+        20,
+        71,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "auction",
+          "writable": true
+        },
+        {
+          "name": "auction_vault",
+          "writable": true
+        },
+        {
+          "name": "seller_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -9953,6 +10289,45 @@
         171,
         18,
         86
+      ]
+    },
+    {
+      "name": "AuctionCancelled",
+      "discriminator": [
+        22,
+        32,
+        51,
+        83,
+        215,
+        194,
+        171,
+        209
+      ]
+    },
+    {
+      "name": "RentalListed",
+      "discriminator": [
+        97,
+        210,
+        170,
+        203,
+        199,
+        117,
+        68,
+        74
+      ]
+    },
+    {
+      "name": "RentalDelisted",
+      "discriminator": [
+        64,
+        170,
+        128,
+        71,
+        152,
+        99,
+        31,
+        225
       ]
     }
   ],
@@ -13696,6 +14071,62 @@
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuctionCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RentalListed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "price_per_hour_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "owner_split_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RentalDelisted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
           }
         ]
       }
