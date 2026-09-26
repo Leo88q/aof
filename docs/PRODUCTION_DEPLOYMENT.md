@@ -70,7 +70,7 @@ docker compose -f docker-compose.prod.yml up -d backend vrf-settler
 
 `vrf-settler` обязателен: он раскрывает коммиты Switchboard (паки, reroll, экспедиции, кузница, лотерея, барабан), а после окна раскрытия возвращает средства. Без него новые коммиты блокируются circuit breaker'ом. Порядок запуска и наполнения пула описан в `docs/VRF_SWITCHBOARD.md`. Старый `commit-expirer` удалён.
 
-С ключами в Docker secrets (этап 1, `docs/SECURITY_RUNBOOK.md`) добавьте override: `docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d backend vrf-settler`. Override передаёт ключ operator и воркеру: он подписывает раскрытия и возвраты. Статус `unhealthy` у `vrf-settler` означает, что цикл не завершался больше минуты. Watchdog сам перезапускает зависший процесс.
+С ключами в Docker secrets (этап 1, `docs/SECURITY_RUNBOOK.md`) добавьте override: `docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d backend vrf-settler`. Воркер получает не ключ operator, а свой кошелёк только для комиссий (`secrets/vrf_settler_secret_key`, создать через `solana-keygen new`, пополнить на ~1 SOL). Он работает в `AUTHORITY_MODE=read-only`, поэтому в `.env` нужен `AUTHORITY_PUBKEY`. Раскрытия и возвраты permissionless: ключ operator воркеру не нужен. Статус `unhealthy` у `vrf-settler` означает, что цикл не завершался больше минуты. Watchdog сам перезапускает зависший процесс.
 
 `tests/readiness/compose.test.cjs` проверяет compose-файлы:
 - нет дублирующихся ключей (раньше блок `watchtower-exporter` был слит с `chain-indexer`, и `docker compose` не читал файл);

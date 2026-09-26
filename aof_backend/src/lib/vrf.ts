@@ -218,20 +218,53 @@ export async function listPoolSlots(program: any): Promise<PoolSlot[]> {
 const reservations = new Map<string, number>();
 const RESERVATION_MS = 45_000;
 
+export type PoolShard = { index: number; count: number };
+
+/**
+ * VRF_POOL_SHARD="i/n" for n backend replicas: replica i prefers the pool
+ * slots with index % n == i. Reservations are per process, so without it two
+ * replicas can hand the same free slot to two players and one signed commit
+ * fails with VrfSlotBusy. A replica whose share is busy falls back to any
+ * free slot (rare with a pool sized for the peak).
+ */
+export function poolShard(env: NodeJS.ProcessEnv = process.env): PoolShard | null {
+  const raw = (env.VRF_POOL_SHARD || "").trim();
+  if (!raw) return null;
+  const m = /^(\d+)\/(\d+)$/.exec(raw);
+  if (!m) throw new Error(`VRF_POOL_SHARD must look like "i/n" (e.g. 0/2), got "${raw}"`);
+  const shard = { index: Number(m[1]), count: Number(m[2]) };
+  if (shard.count < 1 || shard.index >= shard.count) throw new Error(`VRF_POOL_SHARD "${raw}": need 0 <= i < n`);
+  return shard;
+}
+
+/** Pure: a random free, unreserved slot, preferring this replica's shard. */
+export function pickPoolSlot(
+  slots: PoolSlot[],
+  reserved: ReadonlySet<string>,
+  shard: PoolShard | null,
+  random: () => number = Math.random,
+): PoolSlot | null {
+  const free = slots.filter((s) => !s.retired && s.lock.equals(PublicKey.default) && !reserved.has(s.vrfSlot.toBase58()));
+  if (!free.length) return null;
+  const mine = shard ? free.filter((s) => s.index % shard.count === shard.index) : free;
+  const candidates = mine.length ? mine : free;
+  return candidates[Math.floor(random() * candidates.length)];
+}
+
 /**
  * Pick a free, unreserved pool slot at random (a lost race only fails that one
  * transaction with VrfSlotBusy). Throws a 503-style error when the pool is
  * unhealthy: new paid commits must not pile up behind a stuck settlement.
  */
 export async function reservePoolSlot(program: any, connection: Connection): Promise<PoolSlot> {
+  const shard = poolShard(); // a bad value fails the request loudly, before any RPC
   const [slots, currentSlot] = await Promise.all([listPoolSlots(program), connection.getSlot("confirmed")]);
   const health = evaluatePool(slots, currentSlot);
   if (!health.healthy && health.reason !== "VRF_POOL_EXHAUSTED") throw vrfUnavailable(health.reason!);
   const now = Date.now();
   for (const [key, until] of reservations) if (until < now) reservations.delete(key);
-  const free = slots.filter((s) => !s.retired && s.lock.equals(PublicKey.default) && !reservations.has(s.vrfSlot.toBase58()));
-  if (!free.length) throw vrfUnavailable("VRF_POOL_EXHAUSTED");
-  const pick = free[Math.floor(Math.random() * free.length)];
+  const pick = pickPoolSlot(slots, new Set(reservations.keys()), shard);
+  if (!pick) throw vrfUnavailable("VRF_POOL_EXHAUSTED");
   reservations.set(pick.vrfSlot.toBase58(), now + RESERVATION_MS);
   return pick;
 }

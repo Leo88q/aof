@@ -33,7 +33,7 @@
 
 - **Operator co-sign на всех платных коммитах `aof-core`.** Если сервис лежит целиком, новых коммитов нет.
 - **Circuit breaker.** Коммиты перестают подписываться, если любой слот пула занят дольше `VRF_MAX_PENDING_SLOTS` (по умолчанию 450 ≈ 3 мин). Ответ — `503 VRF_SETTLEMENT_DEGRADED`.
-- **Резерв и мониторинг.** Вторая реплика `vrf-settler` и алерт Watchtower на `VrfCommitted` без `VrfSettled`.
+- **Резерв и мониторинг.** Резервный `vrf-settler` на другом хосте с `VRF_SETTLER_STANDBY_SLOTS=120`, своим кошельком и своим RPC. Пока основной раскрывает коммиты за секунды, резервный простаивает. Он берёт коммиты старше ~50 с, то есть подхватывает работу, когда основной лежит. Плюс алерт Watchtower на `VrfCommitted` без `VrfSettled`.
 - **Барабан (без operator).** При инциденте guardian ставит `paused` для квестов.
 
 Независимая проверка поведения Switchboard на devnet (замеры [pina-rs/lootbox](https://github.com/pina-rs/lootbox/blob/main/docs/randomness-lanes.md), 2026-09-26) совпадает с допущениями этой схемы:
@@ -97,7 +97,7 @@
 |---|---|
 | `src/lib/vrf.ts` | Пул и circuit breaker; выбор оракула и запрос reveal у gateway оракула (см. «Оракулы и gateway») |
 | `src/lib/vrfSettlement.ts` | Построение commit/reveal/refund для всех шести механик. Используют и маршруты, и воркер |
-| `services/vrf-settler` | Раскрывает все ожидающие коммиты за секунды, после окна возвращает средства. Идемпотентен, можно запускать несколько реплик. Параллельно до `VRF_SETTLER_CONCURRENCY` (8) коммитов. При сбоях оракула — экспоненциальная пауза до 60 с. Предупреждение `low_balance`, если на кошельке operator меньше 0,5 SOL. Watchdog перезапускает зависший процесс, healthcheck контейнера читает heartbeat-файл |
+| `services/vrf-settler` | Раскрывает все ожидающие коммиты за секунды, после окна возвращает средства. Идемпотентен, можно запускать несколько реплик. Параллельно до `VRF_SETTLER_CONCURRENCY` (8) коммитов. При сбоях оракула — экспоненциальная пауза до 60 с. Подписывает отдельным кошельком только для комиссий (`VRF_SETTLER_SECRET_KEY_FILE`, `lib/settlerSigner.ts`), без ключа operator: раскрытие и возврат permissionless. Production без такого кошелька не стартует. Предупреждение `low_balance`, если на этом кошельке меньше 0,5 SOL. Режим резерва: `VRF_SETTLER_STANDBY_SLOTS`. Watchdog перезапускает зависший процесс, healthcheck контейнера читает heartbeat-файл |
 | Маршруты | `POST /packs/commit`, `/reroll/random/commit`, `/exploration/start/commit`, `/forge/commit`, `/drum/commit` возвращают транзакцию, подписанную operator, для подписи игроком. `…/reveal` возвращает транзакцию, где раскрывает сам игрок. `GET …/status/:commit`. Лотерея: `/lottery/draw/commit` (admin), `/lottery/ticket/buy`, `/lottery/ticket/refund` |
 | `/vrf` | `GET /vrf/health`, `GET /vrf/pending?user=`, `POST /vrf/pool/add`, `POST /vrf/pool/retire` (admin) |
 
@@ -152,8 +152,8 @@
    curl $API/vrf/health     # core.free == 32, quests.free == 4, healthy: true
    ```
 
-   Стоимость слота ≈ 0,009 SOL (`docs/ECONOMY_RNG_EV.md`). Слот занят от коммита до раскрытия. Это опрос settler (до 3 с) + 2 слота + ответ gateway (0,1–0,5 с) + подтверждение транзакции, обычно 2–5 с. Нужно слотов = пиковая частота открытий × 5 с, значит 32 слота core хватает на 6–16 открытий в секунду. Пул можно расширять на ходу, без остановки игры.
-4. **`vrf-settler`.** Запускается по умолчанию в `docker-compose.prod.yml`. На кошельке operator нужно ≥ 1 SOL на комиссии раскрытий и временную ренту: она возмещается из депозита игрока.
+   Стоимость слота ≈ 0,009 SOL (`docs/ECONOMY_RNG_EV.md`). Слот занят от коммита до раскрытия. Это опрос settler (до 3 с) + 2 слота + ответ gateway (0,1–0,5 с) + подтверждение транзакции, обычно 2–5 с. Нужно слотов = пиковая частота открытий × 5 с, значит 32 слота core хватает на 6–16 открытий в секунду. Пул можно расширять на ходу, без остановки игры. Если бэкенд запущен в нескольких репликах, каждой задать `VRF_POOL_SHARD=i/n` (`0/2`, `1/2`, …). Тогда реплики берут непересекающиеся слоты и не отдают один слот двум игрокам сразу (иначе подписанный коммит одного из них падает с `VrfSlotBusy`).
+4. **`vrf-settler`.** Запускается по умолчанию в `docker-compose.prod.yml`. Подписывает отдельным кошельком: `solana-keygen new -o secrets/vrf_settler_secret_key`, override `docker-compose.secrets.yml`. Ключ operator воркеру не нужен и не передаётся, он работает в `AUTHORITY_MODE=read-only` (в `.env` нужен `AUTHORITY_PUBKEY`). На кошельке settler держать ≥ 1 SOL на комиссии раскрытий и временную ренту: она возмещается из депозита игрока. Для отказоустойчивости поднять резервный экземпляр на другом хосте: свой кошелёк, свой RPC, `VRF_SETTLER_STANDBY_SLOTS=120`.
 5. **Конфиги механик** (admin multisig, если не заданы):
    - `init_pack_config` ×3, `init_reroll_config`;
    - `init_lottery_round`;
@@ -170,8 +170,8 @@
 
 | Ситуация | Признак | Действие |
 |---|---|---|
-| `vrf-settler` упал | `VRF_SETTLEMENT_DEGRADED`, растёт `oldestLockAgeSlots` | Поднять реплику. Коммиты уже заблокированы circuit breaker'ом |
-| Кончается SOL у operator | `low_balance` в логах, затем `attempt_failed` с нехваткой средств | Пополнить кошелёк operator. Рента NFT возмещается при раскрытии, расходуются только комиссии |
+| `vrf-settler` упал | `VRF_SETTLEMENT_DEGRADED`, растёт `oldestLockAgeSlots` | Резервный экземпляр (`VRF_SETTLER_STANDBY_SLOTS`) подхватывает коммиты старше ~50 с. Если резерва нет — поднять реплику. Новые коммиты уже заблокированы circuit breaker'ом |
+| Кончается SOL у settler | `low_balance` в логах (поле `signer`), затем `attempt_failed` с нехваткой средств | Пополнить кошелёк settler (`secrets/vrf_settler_secret_key`). Рента NFT возмещается при раскрытии, расходуются только комиссии |
 | Оракул Switchboard не отвечает | `attempt_failed` с ошибкой gateway | Раскрыть коммит может только оракул, закреплённый при коммите. Ждать: через ~2 ч settler сам вернёт средства. Новые коммиты обходят такой оракул, как только у него устаревает heartbeat или пропадает живое здоровье (кэш до 30 с). Для барабана при затяжном сбое — guardian `paused` |
 | Нет ни одного годного оракула / Crossbar недоступен | `[vrf] oracle refresh failed`, затем `503 VRF_ORACLE_UNAVAILABLE` | Новые коммиты не принимаются, деньги не списываются. Раскрытие уже сделанных коммитов от Crossbar не зависит: запрос идёт прямо в gateway закреплённого оракула. Ждать восстановления |
 | Слот «залип» из-за бага (держатель закрыт) | `lock` указывает на несуществующий аккаунт | `vrf_slot_recover` (operator). Живой коммит так освободить нельзя |

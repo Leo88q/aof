@@ -192,7 +192,9 @@ assert.match(read("docker-compose.prod.yml"), /vrf-settler\.heartbeat/, "the set
   const settler = read("aof_backend/services/vrf-settler/index.ts");
   assert.match(settler, /CONCURRENCY/, "settlements run in parallel (a serial loop trips the circuit breaker under load)");
   assert.match(settler, /watchdog_exit/, "a stuck cycle restarts the worker");
-  assert.match(settler, /low_balance/, "the operator balance is monitored");
+  assert.match(settler, /low_balance/, "the settler wallet balance is monitored");
+  assert.match(settler, /resolveSettlerSigner\(/, "the settler signs with its own fee-only wallet");
+  assert.doesNotMatch(settler, /authorityOnly|AUTHORITY_PUBKEY/, "the settler never signs with the operator key");
   // Every reveal / refund transaction carries the compute budget (CU + priority fee).
   const settlement = read("aof_backend/src/lib/vrfSettlement.ts");
   assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), await refundInstruction\(c, cranker\)\]/);

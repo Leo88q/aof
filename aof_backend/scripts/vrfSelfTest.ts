@@ -195,4 +195,73 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   assert.throws(() => vrf.parseRevealResponse(null), /signature/);
 }
 
-console.log("vrf self-test: pool circuit breaker, phase split, cluster pins, account parsing, PDAs, compute budget, drum outcome, oracle selection, gateway protocol passed");
+// ---- pool slot choice: free and unreserved only, this replica's shard first
+{
+  const slot = (i: number, lock = PublicKey.default, retired = false) => ({
+    vrfSlot: k(100 + i), randomness: k(200 + i), index: i, lock, lockedAtSlot: 0, retired,
+  });
+  const slots = [slot(0), slot(1), slot(2, k(9)), slot(3), slot(4, PublicKey.default, true), slot(5)];
+  const none = new Set<string>();
+  assert.equal(vrf.poolShard({} as NodeJS.ProcessEnv), null);
+  assert.deepEqual(vrf.poolShard({ VRF_POOL_SHARD: "1/2" } as NodeJS.ProcessEnv), { index: 1, count: 2 });
+  assert.throws(() => vrf.poolShard({ VRF_POOL_SHARD: "2/2" } as NodeJS.ProcessEnv), /0 <= i < n/);
+  assert.throws(() => vrf.poolShard({ VRF_POOL_SHARD: "one" } as NodeJS.ProcessEnv), /i\/n/);
+  const shard = { index: 1, count: 2 };
+  for (const r of [0, 0.5, 0.999]) {
+    const pick = vrf.pickPoolSlot(slots, none, shard, () => r)!;
+    assert.equal(pick.index % 2, 1, "replica 1/2 takes odd slots while it has free ones");
+    assert.notEqual(pick.index, 4, "retired slots are never handed out");
+  }
+  const oddReserved = new Set([k(101).toBase58(), k(103).toBase58(), k(105).toBase58()]);
+  assert.equal(vrf.pickPoolSlot(slots, oddReserved, shard, () => 0)!.index, 0, "falls back to other shards when its own is busy");
+  for (const r of [0, 0.3, 0.6, 0.99]) {
+    const pick = vrf.pickPoolSlot(slots, none, null, () => r)!;
+    assert.ok([0, 1, 3, 5].includes(pick.index), "never a locked (2) or retired (4) slot");
+  }
+  const all = new Set(slots.map((s) => s.vrfSlot.toBase58()));
+  assert.equal(vrf.pickPoolSlot(slots, all, shard), null, "nothing free: the route answers VRF_POOL_EXHAUSTED");
+}
+
+// ---- settler signer: fee-only wallet, never the operator key in production
+{
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const settler = require("../src/lib/settlerSigner") as typeof import("../src/lib/settlerSigner");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { Keypair } = require("@solana/web3.js") as typeof import("@solana/web3.js");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const bs58 = require("bs58").default ?? require("bs58");
+  const fs = require("node:fs") as typeof import("node:fs");
+  const os = require("node:os") as typeof import("node:os");
+  const path = require("node:path") as typeof import("node:path");
+  const operator = Keypair.generate();
+  const fee = Keypair.generate();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "settler-"));
+  const file = path.join(dir, "key");
+  fs.writeFileSync(file, bs58.encode(fee.secretKey));
+  const fromFile = settler.resolveSettlerSigner(operator, { VRF_SETTLER_SECRET_KEY_FILE: file } as NodeJS.ProcessEnv, true);
+  assert.equal(fromFile.source, "dedicated");
+  assert.ok(fromFile.keypair.publicKey.equals(fee.publicKey), "base58 key file");
+  fs.writeFileSync(file, JSON.stringify(Array.from(fee.secretKey)));
+  assert.ok(settler.resolveSettlerSigner(null, { VRF_SETTLER_SECRET_KEY_FILE: file } as NodeJS.ProcessEnv, true)
+    .keypair.publicKey.equals(fee.publicKey), "solana-keygen JSON key file, read-only operator");
+  assert.throws(() => settler.resolveSettlerSigner(operator, {} as NodeJS.ProcessEnv, true), /VRF_SETTLER_SECRET_KEY_FILE/,
+    "production refuses the operator-key fallback");
+  assert.throws(() => settler.resolveSettlerSigner(operator, { VRF_SETTLER_SECRET_KEY: bs58.encode(fee.secretKey) } as NodeJS.ProcessEnv, true),
+    /Docker secret/, "production refuses the key in an environment variable");
+  fs.writeFileSync(file, bs58.encode(operator.secretKey));
+  assert.throws(() => settler.resolveSettlerSigner(operator, { VRF_SETTLER_SECRET_KEY_FILE: file } as NodeJS.ProcessEnv, false),
+    /not the operator key/, "the settler wallet must be a separate key");
+  const dev = settler.resolveSettlerSigner(operator, {} as NodeJS.ProcessEnv, false);
+  assert.equal(dev.source, "operator", "development may fall back to the operator key");
+  assert.throws(() => settler.resolveSettlerSigner(null, {} as NodeJS.ProcessEnv, false), /AUTHORITY_MODE=hot/);
+  assert.throws(() => settler.parseSecretKey(bs58.encode(fee.publicKey.toBytes())), /64-byte/, "a public key is not a keypair");
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  assert.equal(settler.settlerStandbySlots({} as NodeJS.ProcessEnv), 0, "primary by default");
+  assert.equal(settler.settlerStandbySlots({ VRF_SETTLER_STANDBY_SLOTS: "120" } as NodeJS.ProcessEnv), 120);
+  assert.throws(() => settler.settlerStandbySlots({ VRF_SETTLER_STANDBY_SLOTS: "450" } as NodeJS.ProcessEnv), /below VRF_MAX_PENDING_SLOTS/,
+    "a standby slower than the circuit breaker would never help");
+  assert.throws(() => settler.settlerStandbySlots({ VRF_SETTLER_STANDBY_SLOTS: "-1" } as NodeJS.ProcessEnv), /non-negative/);
+}
+
+console.log("vrf self-test: pool circuit breaker, phase split, cluster pins, account parsing, PDAs, compute budget, drum outcome, oracle selection, gateway protocol, pool slot choice, settler signer passed");

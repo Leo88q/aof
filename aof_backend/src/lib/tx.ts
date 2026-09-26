@@ -1,4 +1,4 @@
-import { Transaction, PublicKey, Signer } from "@solana/web3.js";
+import { Keypair, Transaction, PublicKey, Signer } from "@solana/web3.js";
 import { connection, assertExpectedCluster } from "../provider";
 import { AUTHORITY, AUTHORITY_PUBKEY } from "../config";
 import { sendConfirmedTransaction } from "./transactionLifecycle";
@@ -53,12 +53,25 @@ export async function authorityOnly(
   beforeBroadcast?: (signature: string) => Promise<void>,
 ): Promise<string> {
   requireAuthoritySigning(); // before any RPC work: fail fast, no side effects
+  return sendSignedBy(AUTHORITY as NonNullable<typeof AUTHORITY>, ix, beforeBroadcast);
+}
+
+/**
+ * `signer` is the only signer and the fee payer; simulated before broadcast.
+ * For permissionless instructions (the VRF settler's reveals and refunds),
+ * which need a funded signer, not the operator key.
+ */
+export async function sendSignedBy(
+  signer: Keypair,
+  ix: any[],
+  beforeBroadcast?: (signature: string) => Promise<void>,
+): Promise<string> {
   await assertExpectedCluster();
   const tx = new Transaction().add(...ix);
-  tx.feePayer = AUTHORITY_PUBKEY;
+  tx.feePayer = signer.publicKey;
   const lifetime = await connection.getLatestBlockhash("confirmed");
   tx.recentBlockhash = lifetime.blockhash;
-  tx.sign(AUTHORITY as NonNullable<typeof AUTHORITY>);
+  tx.sign(signer);
   await requireSimulation(tx);
   return sendConfirmedTransaction(connection, tx, lifetime, beforeBroadcast);
 }

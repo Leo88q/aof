@@ -102,7 +102,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d
 | Эксплойт с выводом средств | `emergency_stop(freeze_cashout = true)` — геймплей продолжается | guardian |
 | Критическая ошибка в логике | `emergency_stop(pause_game = true)` → hotfix через upgrade | guardian → Upgrade multisig |
 | Снятие заморозки | `set_cashout_frozen(false)` / `set_paused(false)` | Admin multisig |
-| `vrf-settler` не работает | поднять реплику; новые коммиты уже остановлены circuit breaker'ом (`503 VRF_SETTLEMENT_DEGRADED`) | эксплуатация |
+| `vrf-settler` не работает | резервный экземпляр (`VRF_SETTLER_STANDBY_SLOTS=120`, другой хост) подхватывает коммиты сам; иначе поднять реплику. Новые коммиты уже остановлены circuit breaker'ом (`503 VRF_SETTLEMENT_DEGRADED`) | эксплуатация |
 | Сбой оракула Switchboard дольше часа | ждать: через ~2 ч средства вернутся автоматически; барабан — `set_paused` квестов | эксплуатация / guardian |
 | Нет годных оракулов / Crossbar недоступен (`503 VRF_ORACLE_UNAVAILABLE`) | ждать: новые коммиты не принимаются, деньги не списываются, уже сделанные коммиты раскрываются напрямую через gateway | эксплуатация |
 
@@ -116,7 +116,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d
 2. **Пул аккаунтов случайности** (≈0,009 SOL за слот, платит operator):
    - `POST /vrf/pool/add`: дважды `{"program":"core","count":16}` (не больше 16 за запрос) и один раз `{"program":"quests","count":4}`;
    - проверить `GET /vrf/health`.
-3. **Сервис раскрытия.** `vrf-settler` запускается по умолчанию в `docker-compose.prod.yml` и обязателен. На кошельке operator держать ≥ 1 SOL.
+3. **Сервис раскрытия.** `vrf-settler` запускается по умолчанию в `docker-compose.prod.yml` и обязателен. Он подписывает отдельным кошельком только для комиссий (`secrets/vrf_settler_secret_key`), ключ operator ему не передаётся. На кошельке settler держать ≥ 1 SOL. Резерв: второй экземпляр на другом хосте с `VRF_SETTLER_STANDBY_SLOTS=120`, своим кошельком и RPC.
 4. **Барабан.** Пополнить казну маскотов квестов, не меньше 50 × число одновременных спинов.
 5. **Смоук-тест на devnet** — `node scripts/vrf/devnet-smoke.mjs`.
 6. **Алерты:**

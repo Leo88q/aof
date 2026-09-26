@@ -23,11 +23,19 @@
  * (up to VRF_SETTLER_MAX_BACKOFF_MS, 60 s). Operational signals (JSON logs):
  * settled / refunded / attempt_failed / low_balance / cycle_failed /
  * watchdog_exit, plus a heartbeat file for the container healthcheck.
+ *
+ * Signer: every instruction sent here is permissionless, so the settler signs
+ * with a fee-only wallet (VRF_SETTLER_SECRET_KEY_FILE, lib/settlerSigner.ts)
+ * and runs in AUTHORITY_MODE=read-only; production never hands it the
+ * operator key. Redundancy: a standby instance on another host with
+ * VRF_SETTLER_STANDBY_SLOTS=120 (own wallet and RPC) stays idle while this one
+ * settles within seconds and takes over when it is down.
  */
 import { writeFileSync } from "node:fs";
 import { connection } from "../../src/provider";
-import { AUTHORITY_PUBKEY } from "../../src/config";
-import { authorityOnly } from "../../src/lib/tx";
+import { AUTHORITY } from "../../src/config";
+import { resolveSettlerSigner, settlerStandbySlots } from "../../src/lib/settlerSigner";
+import { sendSignedBy } from "../../src/lib/tx";
 import {
   buildRefundInstructions,
   buildRevealInstructions,
@@ -51,7 +59,7 @@ const MIN_AGE_SLOTS = positive("VRF_SETTLER_MIN_AGE_SLOTS", 2);
 // seconds, so a serial loop would hold pool slots long enough to trip the
 // circuit breaker under load.
 const CONCURRENCY = Math.floor(positive("VRF_SETTLER_CONCURRENCY", 8));
-// The operator pays reveal fees and fronts NFT rent (reimbursed by the reveal).
+// The settler wallet pays reveal fees and fronts NFT rent (reimbursed by the reveal).
 const MIN_BALANCE_LAMPORTS = positive("VRF_SETTLER_MIN_BALANCE_LAMPORTS", 500_000_000);
 const BALANCE_CHECK_MS = 60_000;
 // A cycle stuck on an RPC call longer than this exits the process so the
@@ -59,6 +67,11 @@ const BALANCE_CHECK_MS = 60_000;
 const WATCHDOG_MS = positive("VRF_SETTLER_WATCHDOG_MS", 120_000);
 // Touched after every cycle; docker-compose healthcheck reads its mtime.
 const HEARTBEAT_FILE = process.env.VRF_SETTLER_HEARTBEAT_FILE || "/tmp/vrf-settler.heartbeat";
+// Standby mode: only commits older than this many slots (0 = primary).
+const STANDBY_SLOTS = settlerStandbySlots();
+// Fee-only wallet in production; the operator key only as a dev fallback.
+const SIGNER = resolveSettlerSigner(AUTHORITY);
+const CRANKER = SIGNER.keypair.publicKey;
 
 const nextAttempt = new Map<string, number>();
 const failures = new Map<string, number>();
@@ -78,14 +91,15 @@ async function settle(c: PendingCommit, currentSlot: number): Promise<void> {
   const key = label(c);
   const now = Date.now();
   if ((nextAttempt.get(key) || 0) > now) return;
+  if (currentSlot - c.commitSlot < STANDBY_SLOTS) return; // the primary settler's turn
   const phase = commitPhase(c.commitSlot, currentSlot);
   if (phase === "revealable" && currentSlot - c.seedSlot < MIN_AGE_SLOTS) return;
   nextAttempt.set(key, now + RETRY_MS);
   try {
     const ixs = phase === "revealable"
-      ? await buildRevealInstructions(c, AUTHORITY_PUBKEY)
-      : await buildRefundInstructions(c, AUTHORITY_PUBKEY);
-    const sig = await authorityOnly(ixs);
+      ? await buildRevealInstructions(c, CRANKER)
+      : await buildRefundInstructions(c, CRANKER);
+    const sig = await sendSignedBy(SIGNER.keypair, ixs);
     failures.delete(key);
     nextAttempt.delete(key);
     log("log", phase === "revealable" ? "settled" : "refunded", { commit: key, ageSlots: currentSlot - c.commitSlot, sig });
@@ -103,9 +117,9 @@ async function settle(c: PendingCommit, currentSlot: number): Promise<void> {
 async function checkBalance(): Promise<void> {
   if (Date.now() - lastBalanceCheck < BALANCE_CHECK_MS) return;
   lastBalanceCheck = Date.now();
-  const lamports = await connection.getBalance(AUTHORITY_PUBKEY, "confirmed");
+  const lamports = await connection.getBalance(CRANKER, "confirmed");
   if (lamports < MIN_BALANCE_LAMPORTS) {
-    log("warn", "low_balance", { operator: AUTHORITY_PUBKEY.toBase58(), lamports, minLamports: MIN_BALANCE_LAMPORTS });
+    log("warn", "low_balance", { signer: CRANKER.toBase58(), lamports, minLamports: MIN_BALANCE_LAMPORTS });
   }
 }
 
@@ -140,7 +154,11 @@ async function cycle(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  log("log", "start", { intervalMs: INTERVAL_MS, concurrency: CONCURRENCY, operator: AUTHORITY_PUBKEY.toBase58() });
+  log("log", "start", { intervalMs: INTERVAL_MS, concurrency: CONCURRENCY, standbySlots: STANDBY_SLOTS,
+    signer: CRANKER.toBase58(), signerSource: SIGNER.source });
+  if (SIGNER.source === "operator") {
+    log("warn", "operator_key_signer", { hint: "set VRF_SETTLER_SECRET_KEY_FILE to a fee-only wallet (required in production)" });
+  }
   setInterval(() => {
     if (running && Date.now() - cycleStartedAt > WATCHDOG_MS) {
       log("error", "watchdog_exit", { stuckMs: Date.now() - cycleStartedAt });

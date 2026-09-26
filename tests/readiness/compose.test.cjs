@@ -81,7 +81,7 @@ test('F-06 overrides only target services of the production base', () => {
   }
 });
 
-test('F-06 vrf-settler is mandatory, signs with the secret key and has a liveness check', () => {
+test('F-06 vrf-settler is mandatory, signs with its own fee-only key and has a liveness check', () => {
   const prod = read('docker-compose.prod.yml');
   const settler = serviceBlock(prod, 'vrf-settler');
   assert.ok(settler, 'vrf-settler service');
@@ -90,7 +90,12 @@ test('F-06 vrf-settler is mandatory, signs with the secret key and has a livenes
   assert.match(settler, /healthcheck:[\s\S]*vrf-settler\.heartbeat/);
   assert.match(settler, /restart: unless-stopped/);
   const secrets = serviceBlock(read('docker-compose.secrets.yml'), 'vrf-settler');
-  assert.ok(secrets, 'docker-compose.secrets.yml gives the settler the operator key');
-  assert.match(secrets, /AUTHORITY_SECRET_KEY_FILE: \/run\/secrets\/authority_secret_key/);
+  assert.ok(secrets, 'docker-compose.secrets.yml wires the settler signer');
+  // Reveal/refund are permissionless: the settler gets a fee-only wallet and
+  // never the operator key (which co-signs commits and mints resources).
+  assert.match(secrets, /VRF_SETTLER_SECRET_KEY_FILE: \/run\/secrets\/vrf_settler_secret_key/);
+  assert.match(secrets, /AUTHORITY_MODE: read-only/);
+  assert.doesNotMatch(secrets, /authority_secret_key|AUTHORITY_SECRET_KEY/, 'the settler must not receive the operator key');
+  assert.match(read('docker-compose.secrets.yml'), /vrf_settler_secret_key:\n    file: \.\/secrets\/vrf_settler_secret_key/);
   for (const file of composeFiles) assert.doesNotMatch(read(file), /commit-expirer/, `${file}: the removed worker is still referenced`);
 });
