@@ -523,7 +523,8 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     await expectError(cancel(stranger, await ensureAta(mint, stranger.publicKey)), "Unauthorized");
 
     const buyerToken = await ensureAta(mint, buyer.publicKey);
-    await program.methods.marketplaceBuyBounded(new BN(1_000_000), new BN(Math.floor(Date.now() / 1000) + 300)).accounts({
+    // A quote may live at most 300 s by the chain clock; stay well inside it.
+    await program.methods.marketplaceBuyBounded(new BN(1_000_000), new BN(Math.floor(Date.now() / 1000) + 120)).accounts({
       config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority, mint, tool: toolPda(mint),
       listing, listingVault, buyerToken, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([buyer]).rpc();
