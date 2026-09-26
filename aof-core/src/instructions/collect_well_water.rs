@@ -35,25 +35,11 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
     require!(well.owner == ctx.accounts.user.key(), AofError::Unauthorized);
 
     let now = Clock::get()?.unix_timestamp;
-    // elapsed всегда >= 0 благодаря saturating_sub, безопасно cast в u64
-    let elapsed_u64: u64 = now.saturating_sub(well.last_collected_at).max(0) as u64;
-
-    // Ставка воды/час в зависимости от погоды (u64)
-    let rate_per_hour: u64 = match ctx.accounts.weather_state.weather {
-        WEATHER_BLACKOUT => WELL_RATE_BLACKOUT,
-        WEATHER_NOMINAL => WELL_RATE_NOMINAL,
-        WEATHER_SURGE => WELL_RATE_SURGE,
-        WEATHER_FRENZY => WELL_RATE_FRENZY,
-        _ => WELL_RATE_NOMINAL,
-    };
-
-    // Вода = elapsed (сек) * rate (в час) / 3600 — все u64
-    let accrual_seconds = elapsed_u64.min(WELL_MAX_ACCRUAL_SECONDS);
-    let water_amount: u64 = accrual_seconds
-        .checked_mul(rate_per_hour)
-        .ok_or(AofError::MathOverflow)?
-        .checked_div(3600)
-        .ok_or(AofError::MathOverflow)?;
+    // [SECURITY_CHECKLIST_REVIEW F-D] Each second of the (<= 24 h) window is
+    // priced at the weather of its own day, recomputed from the day id. The
+    // cached `weather_state` no longer decides the rate, so collecting only on
+    // frenzy days or leaving a stale frenzy uncranked gains nothing.
+    let water_amount: u64 = well_accrual(well.last_collected_at, now)?;
 
     require!(water_amount > 0, AofError::WellEmpty);
 

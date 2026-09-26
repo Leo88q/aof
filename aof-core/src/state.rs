@@ -851,6 +851,53 @@ pub fn charge_vault_withdrawal(
     guard.charge(amount, slot)
 }
 
+/// [SECURITY_CHECKLIST_REVIEW F-D] Weather is a pure function of the UTC day, so
+/// the weather of any past day can be recomputed exactly. `weather_crank` only
+/// caches today's value in `WeatherState` for UIs.
+pub fn weather_for_day(day_id: u32) -> u8 {
+    let hash_val = (day_id as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_shr(32);
+    // 10% blackout, 50% nominal, 30% surge, 10% frenzy
+    match hash_val % 100 {
+        0..=9 => WEATHER_BLACKOUT,
+        10..=59 => WEATHER_NOMINAL,
+        60..=89 => WEATHER_SURGE,
+        _ => WEATHER_FRENZY,
+    }
+}
+
+pub fn well_rate_per_hour(weather: u8) -> u64 {
+    match weather {
+        WEATHER_BLACKOUT => WELL_RATE_BLACKOUT,
+        WEATHER_NOMINAL => WELL_RATE_NOMINAL,
+        WEATHER_SURGE => WELL_RATE_SURGE,
+        WEATHER_FRENZY => WELL_RATE_FRENZY,
+        _ => WELL_RATE_NOMINAL,
+    }
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-D] Water accrued between `last` and `now`
+/// (unix seconds): only the most recent `WELL_MAX_ACCRUAL_SECONDS` count, and
+/// every second is priced at the weather of its own day. The well used to apply
+/// the *cached* weather to the whole window, so collecting only on frenzy days
+/// (or never cranking a stale frenzy) paid up to 20/h instead of the fair ~9/h.
+/// A 24 h window spans at most two days, so the loop runs at most twice.
+pub fn well_accrual(last: i64, now: i64) -> core::result::Result<u64, crate::errors::AofError> {
+    use crate::errors::AofError;
+    if now <= last {
+        return Ok(0);
+    }
+    let mut t = core::cmp::max(last, now.saturating_sub(WELL_MAX_ACCRUAL_SECONDS as i64));
+    let mut rate_seconds: u128 = 0;
+    while t < now {
+        let day = t.div_euclid(86_400);
+        let segment_end = core::cmp::min(day.saturating_add(1).saturating_mul(86_400), now);
+        let seconds = (segment_end - t) as u128;
+        rate_seconds += seconds * well_rate_per_hour(weather_for_day(day as u32)) as u128;
+        t = segment_end;
+    }
+    u64::try_from(rate_seconds / 3600).map_err(|_| AofError::MathOverflow)
+}
+
 /// EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)
 #[account]
 #[derive(InitSpace)]

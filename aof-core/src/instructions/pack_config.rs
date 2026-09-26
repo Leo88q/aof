@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::{InitPackConfig, SetPackConfig};
 use crate::errors::*;
+use crate::events::PackConfigChanged;
 
 fn validate_odds(odds: &[u16; 5]) -> Result<()> {
     let sum: u32 = odds.iter().map(|x| *x as u32).sum();
@@ -19,6 +20,7 @@ pub fn init_handler(ctx: Context<InitPackConfig>, pack_type: u8, price_lamports:
     c.price_lamports = price_lamports;
     c.odds_bps = odds_bps;
     c.bump = ctx.bumps.pack_config;
+    emit!(PackConfigChanged { pack_type, price_lamports, odds_bps, slot: Clock::get()?.slot });
     Ok(())
 }
 
@@ -27,5 +29,7 @@ pub fn set_handler(ctx: Context<SetPackConfig>, price_lamports: u64, odds_bps: [
     let c = &mut ctx.accounts.pack_config;
     c.price_lamports = price_lamports;
     c.odds_bps = odds_bps;
+    let pack_type = c.pack_type;
+    emit!(PackConfigChanged { pack_type, price_lamports, odds_bps, slot: Clock::get()?.slot });
     Ok(())
 }

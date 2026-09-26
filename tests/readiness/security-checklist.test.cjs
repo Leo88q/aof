@@ -415,8 +415,23 @@ test('#20 critical admin mutations stay observable (emit an event)', () => {
     ['instructions/issuance_cap.rs', 'init_handler'],
     ['instructions/issuance_cap.rs', 'set_handler'],
     ['instructions/sweep_gas_fees.rs', 'handler'],
+    // Previously silent admin mutations (review F-C):
+    ['instructions/authority.rs', 'cancel_pending_authority'],
+    ['instructions/pack_config.rs', 'init_handler'],
+    ['instructions/pack_config.rs', 'set_handler'],
+    ['instructions/reroll_random.rs', 'init_config_handler'],
+    ['instructions/reroll_random.rs', 'set_config_handler'],
+    ['instructions/season.rs', 'init_season_handler'],
+    ['instructions/season.rs', 'grant_xp_handler'],
+    ['instructions/init_material_mints.rs', 'handler'],
   ];
   for (const [file, fn] of pinned) assert.match(fnBody(core(file), fn), /emit!\(/, `${file}::${fn}`);
+  for (const file of ['programs/aof-liquidity/src/instructions/authority.rs',
+    'programs/aof-quests/src/instructions/quests/authority.rs',
+    'programs/aof-rebirth/src/instructions/authority.rs']) {
+    assert.match(fnBody(read(file), 'cancel_pending_authority_handler'), /emit!\(AuthorityRotationCancelled/, file);
+  }
+  assert.match(fnBody(read('programs/aof-market/src/lib.rs'), 'cancel_pending_authority'), /emit!\(AuthorityRotationCancelled/);
 });
 
 // ---------------------------------------------------------------- D. Anchor specifics
@@ -452,4 +467,52 @@ test('the host security suite stays wired into the aof-core test build', () => {
     'an_order_cannot_be_matched_against_itself', 'fake_system_program_is_rejected_before_any_init_or_cpi']) {
     assert.match(suite, new RegExp(`#\\[test\\]\\s*fn ${fn}\\(`), fn);
   }
+});
+
+// ---------------------------------------------------------------- Follow-up decisions (2026-09-26)
+
+const configAttrs = (ctx) => {
+  const f = (sources.aof_core.structs.get(ctx) || []).find((x) => x.name === 'config');
+  assert.ok(f, `${ctx}.config not found`);
+  return f.attrs;
+};
+
+test('F-C exit paths are never paused; every trade entry is', () => {
+  const exits = ['WithdrawGas', 'Unstake', 'CollectorUnstake', 'MarketplaceCancel', 'OfferCancelCtx',
+    'RentalEndCtx', 'RentalRevokeCtx', 'CancelBuyOrder', 'CancelSellOrder', 'CraftOrderCancelCtx'];
+  for (const ctx of exits) assert.doesNotMatch(configAttrs(ctx), /config\.paused/, `${ctx} must stay usable during a pause`);
+  const entries = ['OfferAcceptCtx', 'OfferCreateCtx', 'MarketplaceList', 'MarketplaceBuy', 'AuctionCreateCtx',
+    'AuctionBidCtx', 'RentalListCtx', 'RentalStartCtx', 'PlaceBuyOrder', 'PlaceSellOrder', 'DepositGas'];
+  for (const ctx of entries) assert.match(configAttrs(ctx), /!config\.paused/, `${ctx} must be stopped by a pause`);
+});
+
+test('F-I trading entry points refuse freezable NFTs', () => {
+  for (const ctx of ['MarketplaceList', 'AuctionCreateCtx', 'OfferAcceptCtx', 'OfferCreateCtx', 'RentalListCtx']) {
+    const mint = (sources.aof_core.structs.get(ctx) || []).find((x) => x.name === 'mint');
+    assert.ok(mint, `${ctx}.mint not found`);
+    assert.match(mint.attrs, /mint\.freeze_authority\.is_none\(\)/, ctx);
+  }
+});
+
+test('F-C set_fees has hard ceilings', () => {
+  const body = fnBody(core('instructions/set_fees.rs'), 'handler');
+  assert.match(body, /craft_fee\s*<=\s*MAX_CRAFT_FEE_MICROS/);
+  assert.match(body, /unstake_fee\s*<=\s*MAX_UNSTAKE_FEE_MICROS/);
+  assert.ok(body.indexOf('FeeTooHigh') < body.indexOf('cfg.craft_fee ='), 'check before the write');
+});
+
+test('F-D the well prices every second at its own day, not at the cached weather', () => {
+  const body = fnBody(core('instructions/collect_well_water.rs'), 'handler');
+  assert.doesNotMatch(body, /weather_state\.weather/);
+  assert.match(body, /well_accrual\(/);
+  assert.match(fnBody(core('instructions/weather_crank.rs'), 'handler'), /weather_for_day\(/);
+});
+
+test('season passes are sold once and only inside their season; migrate_tool stays disabled', () => {
+  const pass = fnBody(core('instructions/season.rs'), 'purchase_pass_handler');
+  for (const guard of ['SeasonNotStarted', 'SeasonEnded', 'SeasonPassAlreadyPremium', 'SEASON_LENGTH_SECONDS']) {
+    assert.ok(pass.includes(guard), guard);
+  }
+  assert.ok(pass.indexOf('SeasonPassAlreadyPremium') < pass.indexOf('system_program::transfer'), 'guards before payment');
+  assert.match(fnBody(core('instructions/migrate_tool.rs'), 'handler'), /require!\(\s*false\s*,\s*AofError::FeatureDisabled\s*\)/);
 });

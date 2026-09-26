@@ -48,6 +48,12 @@ pub const FEE_PER_PACK_MICROS: u64 = 10_000;
 // CONFIG_SPACE и не трогать layout уже описанного вами аккаунта.
 pub const FEE_PER_REROLL_MICROS: u64 = 60_000;
 
+// [SECURITY_CHECKLIST_REVIEW F-C] Hard ceilings for `set_fees` (10x the defaults).
+// `unstake` requires `gastank.balance_micros >= unstake_fee`, so an unbounded
+// fee (e.g. u64::MAX) would have held every staked NFT hostage.
+pub const MAX_CRAFT_FEE_MICROS: u64 = 1_000_000; // 1 SOL
+pub const MAX_UNSTAKE_FEE_MICROS: u64 = 100_000; // 0.1 SOL
+
 /// Max mining hours by rarity
 pub const MAX_HOURS_COMMON: u8 = 8;
 pub const MAX_HOURS_UNCOMMON: u8 = 12;

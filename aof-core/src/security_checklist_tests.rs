@@ -41,6 +41,7 @@ const WALLET_LAMPORTS: u64 = 5_000_000_000;
 
 thread_local! {
     static CPI_CALLS: Cell<usize> = Cell::new(0);
+    static LAST_CPI_DATA: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(Vec::new());
 }
 
 struct HostRuntime;
@@ -67,11 +68,12 @@ impl SyscallStubs for HostRuntime {
 
     fn sol_invoke_signed(
         &self,
-        _instruction: &Instruction,
+        instruction: &Instruction,
         _account_infos: &[AccountInfo],
         _signers_seeds: &[&[&[u8]]],
     ) -> ProgramResult {
         CPI_CALLS.with(|calls| calls.set(calls.get() + 1));
+        LAST_CPI_DATA.with(|data| *data.borrow_mut() = instruction.data.clone());
         Ok(())
     }
 }
@@ -84,10 +86,20 @@ fn runtime() {
         let _default_stubs = set_syscall_stubs(Box::new(HostRuntime));
     });
     CPI_CALLS.with(|calls| calls.set(0));
+    LAST_CPI_DATA.with(|data| data.borrow_mut().clear());
 }
 
 fn cpi_calls() -> usize {
     CPI_CALLS.with(|calls| calls.get())
+}
+
+/// Amount of the last recorded SPL Token `MintTo` CPI (tag 7, u64 LE amount).
+fn last_minted_amount() -> u64 {
+    LAST_CPI_DATA.with(|data| {
+        let data = data.borrow();
+        assert_eq!(data.first(), Some(&7u8), "the last CPI was not an SPL MintTo");
+        u64::from_le_bytes(data[1..9].try_into().unwrap())
+    })
 }
 
 // ======================================================================
@@ -1137,4 +1149,211 @@ fn declared_account_space_matches_the_serialized_layout() {
     );
     assert_eq!(serialized_len(&tool(k, k, k, &"x".repeat(32))), TOOL_DATA_SPACE);
     assert!(TOOL_KINDS.iter().all(|kind| kind.len() <= 32));
+}
+
+// ======================================================================
+// F. Pause, fees, season pass, weather  (F-C, F-D, F-I follow-ups)
+// ======================================================================
+
+/// F-C: a pause stops new activity but never locks players out of their own
+/// deposits — `withdraw_gas` is one of the exit paths that stay open.
+#[test]
+fn exits_stay_open_while_the_game_is_paused() {
+    runtime();
+    let mut w = World::new();
+    w.config.paused = true;
+    let user = Pubkey::new_unique();
+    let tank_key = pda(&[GASTANK_SEED, user.as_ref()]).0;
+    let rent = rent_exempt(GASTANK_SPACE);
+    let tank = program_account(tank_key, &gas_tank(user, 10_000, 0, 0), GASTANK_SPACE);
+    set_lamports(&tank, rent + 10_000 * MICROS_TO_LAMPORTS);
+    let user_info = wallet(user, true);
+    let (mut accounts, bumps) = parse::<WithdrawGas>(
+        vec![w.config_info(), user_info.clone(), tank.clone(), system_program_info()],
+        &4_000u64.to_le_bytes(),
+    )
+    .unwrap();
+    crate::instructions::withdraw_gas::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), 4_000)
+        .unwrap();
+    assert_eq!(user_info.lamports(), WALLET_LAMPORTS + 4_000 * MICROS_TO_LAMPORTS);
+    assert_eq!(tank.lamports(), rent + 6_000 * MICROS_TO_LAMPORTS);
+
+    // ...while an entry such as a new deposit is still stopped.
+    let err = rejected(
+        validate::<DepositGas>(
+            vec![w.config_info(), wallet(user, true), tank.clone(), system_program_info()],
+            &1_000u64.to_le_bytes(),
+        ),
+        "Paused",
+    );
+    assert!(blames(&err, "config"), "{err}");
+}
+
+fn offer_accept_accounts(w: &World, freeze_authority: Option<Pubkey>) -> Vec<AccountInfo<'static>> {
+    let (seller, buyer, mint) = (Pubkey::new_unique(), Pubkey::new_unique(), Pubkey::new_unique());
+    let offer = Offer { buyer, mint, price_lamports: 2_000_000, active: true };
+    vec![
+        w.config_info(),
+        wallet(seller, true),
+        spl_mint(mint, 1, None, freeze_authority),
+        program_account(pda(&[TOOL_SEED, mint.as_ref()]).0, &tool(mint, seller, seller, "plasma_cutter"), TOOL_DATA_SPACE),
+        program_account(pda(&[OFFER_SEED, mint.as_ref(), buyer.as_ref()]).0, &offer, OFFER_SPACE),
+        wallet(buyer, false),
+        wallet(w.treasury, false),
+        token_account(Pubkey::new_unique(), mint, seller, 1),
+        token_account(Pubkey::new_unique(), mint, buyer, 0),
+        token_program_info(),
+    ]
+}
+
+/// F-C / F-I: accepting an offer is a trade entry — it was the only trade path
+/// a pause did not stop — and a freezable NFT is never traded.
+#[test]
+fn offer_accept_honours_the_pause_and_refuses_freezable_nfts() {
+    runtime();
+    let mut w = World::new();
+    validate::<OfferAcceptCtx>(offer_accept_accounts(&w, None), &[]).unwrap();
+    let err = rejected(
+        validate::<OfferAcceptCtx>(offer_accept_accounts(&w, Some(Pubkey::new_unique())), &[]),
+        "InvalidMint",
+    );
+    assert!(blames(&err, "mint"), "{err}");
+    w.config.paused = true;
+    let err = rejected(validate::<OfferAcceptCtx>(offer_accept_accounts(&w, None), &[]), "Paused");
+    assert!(blames(&err, "config"), "{err}");
+}
+
+/// F-C: `set_fees` has hard ceilings; `unstake_fee = u64::MAX` used to make
+/// every staked NFT impossible to unstake.
+#[test]
+fn set_fees_is_capped() {
+    runtime();
+    let w = World::new();
+    let run = |craft_fee: u64, unstake_fee: u64| {
+        let (mut accounts, bumps) =
+            parse::<SetFees>(vec![w.config_info(), wallet(w.authority, true)], &[]).unwrap();
+        crate::instructions::set_fees::handler(
+            Context::new(&crate::ID, &mut accounts, &[], bumps),
+            craft_fee,
+            unstake_fee,
+        )
+    };
+    assert!(run(MAX_CRAFT_FEE_MICROS, MAX_UNSTAKE_FEE_MICROS).is_ok());
+    rejected(run(MAX_CRAFT_FEE_MICROS + 1, 0), "FeeTooHigh");
+    rejected(run(0, MAX_UNSTAKE_FEE_MICROS + 1), "FeeTooHigh");
+    rejected(run(0, u64::MAX), "FeeTooHigh");
+}
+
+const SEASON_ID: u32 = 7;
+
+/// Run the REAL `purchase_season_pass` handler; returns (result, CPIs, premium).
+fn season_pass_purchase(start_time: i64, already_premium: bool) -> (Result<()>, usize, bool) {
+    runtime();
+    let w = World::new();
+    let user = Pubkey::new_unique();
+    let id = SEASON_ID.to_le_bytes();
+    let (season_key, season_bump) = pda(&[SEASON_SEED, &id]);
+    let season = Season { season_id: SEASON_ID, start_time, bump: season_bump };
+    let pass = SeasonPass { owner: user, season_id: SEASON_ID, xp: 0, premium: already_premium, claimed_bitmap: 0 };
+    let infos = vec![
+        w.config_info(),
+        wallet(user, true),
+        wallet(w.treasury, false),
+        program_account(season_key, &season, SEASON_SPACE),
+        program_account(pda(&[SEASON_PASS_SEED, user.as_ref(), &id]).0, &pass, SEASON_PASS_SPACE),
+        system_program_info(),
+    ];
+    let (mut accounts, bumps) = parse::<PurchaseSeasonPass>(infos, &[]).unwrap();
+    let result =
+        crate::instructions::season::purchase_pass_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    (result, cpi_calls(), accounts.season_pass.premium)
+}
+
+/// A pass is charged once, and only while its season runs.
+#[test]
+fn season_pass_is_sold_once_and_only_during_its_season() {
+    let (ok, cpis, premium) = season_pass_purchase(NOW_TS - 86_400, false);
+    assert!(ok.is_ok(), "{ok:?}");
+    assert_eq!((cpis, premium), (1, true), "one payment, flag set");
+
+    let (again, cpis, _) = season_pass_purchase(NOW_TS - 86_400, true);
+    rejected(again, "SeasonPassAlreadyPremium");
+    assert_eq!(cpis, 0, "no second charge");
+
+    rejected(season_pass_purchase(NOW_TS + 60, false).0, "SeasonNotStarted");
+    rejected(season_pass_purchase(NOW_TS - SEASON_LENGTH_SECONDS, false).0, "SeasonEnded");
+}
+
+fn accrual(last: i64, now: i64) -> u64 {
+    well_accrual(last, now).ok().expect("accrual overflow")
+}
+
+/// F-D: every second of the window is priced at the weather of its own day.
+#[test]
+fn well_accrual_prices_each_second_at_its_own_days_weather() {
+    let day = (20_000u32..30_000)
+        .find(|&d| weather_for_day(d) == WEATHER_FRENZY && weather_for_day(d - 1) == WEATHER_NOMINAL)
+        .expect("a nominal day followed by a frenzy day");
+    let boundary = day as i64 * 86_400;
+    let half = 12 * 3_600;
+    let fair = accrual(boundary - half, boundary + half);
+    assert_eq!(fair, 12 * WELL_RATE_NOMINAL + 12 * WELL_RATE_FRENZY);
+    assert!(fair < 24 * WELL_RATE_FRENZY, "the old rule paid frenzy for the whole window");
+
+    assert_eq!(accrual(boundary - 5 * 86_400, boundary), accrual(boundary - 86_400, boundary), "24 h cap");
+    assert_eq!(accrual(boundary, boundary), 0);
+    assert_eq!(accrual(boundary + 1, boundary), 0);
+}
+
+/// The documented odds (10/50/30/10 %) hold, i.e. the fair rate is ~9/h.
+#[test]
+fn weather_distribution_matches_the_documented_odds() {
+    let mut counts = [0u32; 4];
+    for day in 0..20_000u32 {
+        counts[weather_for_day(day) as usize] += 1;
+    }
+    // Expected 2 000 / 10 000 / 6 000 / 2 000 of 20 000 days, within 1 point.
+    for (count, expected) in counts.iter().zip([2_000u32, 10_000, 6_000, 2_000]) {
+        assert!(count.abs_diff(expected) <= 200, "{counts:?}");
+    }
+}
+
+/// F-D end to end: a stale FRENZY cached in `weather_state` no longer decides
+/// what the well pays; the REAL handler mints exactly `well_accrual`.
+#[test]
+fn collect_well_water_ignores_a_stale_cached_weather() {
+    runtime();
+    let w = World::new();
+    let user = Pubkey::new_unique();
+    let last = NOW_TS - 10 * 3_600;
+    let (well_key, well_bump) = pda(&[WELL_STATE_SEED, user.as_ref()]);
+    let (weather_key, weather_bump) = pda(&[WEATHER_STATE_SEED]);
+    let well = WellState { owner: user, water_buffer: 0, last_collected_at: last, bump: well_bump };
+    let stale = WeatherState { day_id: 1, weather: WEATHER_FRENZY, updated_at: 86_400, bump: weather_bump };
+    let mut villager = player(user);
+    villager.villagers = 1;
+    let infos = vec![
+        w.config_info(),
+        wallet(user, true),
+        program_account(pda(&[PLAYER_SEED, user.as_ref()]).0, &villager, PLAYER_SPACE),
+        w.mm_info(),
+        program_account(well_key, &well, WELL_STATE_SPACE),
+        program_account(weather_key, &stale, WEATHER_STATE_SPACE),
+        w.auth_info(),
+        spl_mint(w.mm.water, 0, Some(w.auth_key), None),
+        token_account(Pubkey::new_unique(), w.mm.water, user, 0),
+        token_program_info(),
+        system_program_info(),
+    ];
+    let (mut accounts, bumps) = parse::<CollectWellWater>(infos, &[]).unwrap();
+    let result =
+        crate::instructions::collect_well_water::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    assert!(result.is_ok(), "{result:?}");
+    let expected = accrual(last, NOW_TS);
+    assert_eq!(last_minted_amount(), expected);
+    let today = (NOW_TS / 86_400) as u32;
+    if weather_for_day(today) != WEATHER_FRENZY || weather_for_day(today - 1) != WEATHER_FRENZY {
+        assert!(expected < 10 * WELL_RATE_FRENZY, "the stale frenzy rate was not applied");
+    }
+    assert_eq!(accounts.well_state.last_collected_at, NOW_TS);
 }

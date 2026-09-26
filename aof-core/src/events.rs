@@ -437,3 +437,47 @@ pub struct LotteryRoundRefunded {
     pub tickets_sold: u64,
     pub at: i64,
 }
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] A cancelled authority rotation used to be
+/// silent, so monitoring could not see a proposed takeover being withdrawn.
+#[event]
+pub struct AuthorityRotationCancelled {
+    pub authority: Pubkey,
+    pub cancelled: Pubkey,
+    pub slot: u64,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Admin configuration changes are observable.
+#[event]
+pub struct PackConfigChanged {
+    pub pack_type: u8,
+    pub price_lamports: u64,
+    pub odds_bps: [u16; 5],
+    pub slot: u64,
+}
+
+#[event]
+pub struct RerollConfigChanged {
+    pub odds_bps: [u16; 5],
+    pub slot: u64,
+}
+
+#[event]
+pub struct SeasonInitialized {
+    pub season_id: u32,
+    pub start_time: i64,
+}
+
+#[event]
+pub struct SeasonXpGranted {
+    pub owner: Pubkey,
+    pub season_id: u32,
+    pub amount: u32,
+    pub total_xp: u32,
+}
+
+#[event]
+pub struct MaterialMintsInitialized {
+    pub authority: Pubkey,
+    pub slot: u64,
+}

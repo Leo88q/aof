@@ -9670,6 +9670,84 @@ export type AofCore = {
         166,
         61
       ]
+    },
+    {
+      "name": "authorityRotationCancelled",
+      "discriminator": [
+        130,
+        2,
+        252,
+        115,
+        135,
+        42,
+        1,
+        109
+      ]
+    },
+    {
+      "name": "packConfigChanged",
+      "discriminator": [
+        194,
+        194,
+        98,
+        16,
+        219,
+        238,
+        75,
+        79
+      ]
+    },
+    {
+      "name": "rerollConfigChanged",
+      "discriminator": [
+        175,
+        101,
+        186,
+        190,
+        168,
+        190,
+        111,
+        34
+      ]
+    },
+    {
+      "name": "seasonInitialized",
+      "discriminator": [
+        192,
+        104,
+        122,
+        236,
+        147,
+        151,
+        4,
+        93
+      ]
+    },
+    {
+      "name": "seasonXpGranted",
+      "discriminator": [
+        9,
+        27,
+        4,
+        8,
+        191,
+        108,
+        233,
+        73
+      ]
+    },
+    {
+      "name": "materialMintsInitialized",
+      "discriminator": [
+        220,
+        142,
+        120,
+        50,
+        96,
+        184,
+        47,
+        187
+      ]
     }
   ],
   "errors": [
@@ -10257,6 +10335,21 @@ export type AofCore = {
       "code": 6116,
       "name": "invalidExplorationTier",
       "msg": "Exploration tier is out of range"
+    },
+    {
+      "code": 6117,
+      "name": "feeTooHigh",
+      "msg": "Fee exceeds the hard ceiling"
+    },
+    {
+      "code": 6118,
+      "name": "seasonNotStarted",
+      "msg": "Season has not started yet"
+    },
+    {
+      "code": 6119,
+      "name": "seasonPassAlreadyPremium",
+      "msg": "Premium season pass already purchased"
     }
   ],
   "types": [
@@ -13148,6 +13241,132 @@ export type AofCore = {
           {
             "name": "at",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "authorityRotationCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "cancelled",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "packConfigChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "packType",
+            "type": "u8"
+          },
+          {
+            "name": "priceLamports",
+            "type": "u64"
+          },
+          {
+            "name": "oddsBps",
+            "type": {
+              "array": [
+                "u16",
+                5
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rerollConfigChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oddsBps",
+            "type": {
+              "array": [
+                "u16",
+                5
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seasonInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seasonId",
+            "type": "u32"
+          },
+          {
+            "name": "startTime",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seasonXpGranted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "seasonId",
+            "type": "u32"
+          },
+          {
+            "name": "amount",
+            "type": "u32"
+          },
+          {
+            "name": "totalXp",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "materialMintsInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

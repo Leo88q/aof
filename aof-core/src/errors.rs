@@ -253,4 +253,11 @@ pub enum AofError {
     EmptyCraftOrder,
     #[msg("Exploration tier is out of range")]
     InvalidExplorationTier,
+    // [SECURITY_CHECKLIST_REVIEW] appended at the end: existing codes must not move.
+    #[msg("Fee exceeds the hard ceiling")]
+    FeeTooHigh,
+    #[msg("Season has not started yet")]
+    SeasonNotStarted,
+    #[msg("Premium season pass already purchased")]
+    SeasonPassAlreadyPremium,
 }

@@ -24,6 +24,7 @@ pub fn init_config_handler(ctx: Context<InitRerollConfig>, odds_bps: [u16; 5]) -
     let c = &mut ctx.accounts.reroll_config;
     c.odds_bps = odds_bps;
     c.bump = ctx.bumps.reroll_config;
+    emit!(RerollConfigChanged { odds_bps, slot: Clock::get()?.slot });
     Ok(())
 }
 
@@ -34,6 +35,7 @@ pub fn set_config_handler(ctx: Context<SetRerollConfig>, odds_bps: [u16; 5]) -> 
     // from a single roll.
     require!(odds_bps[4] == 0, AofError::InvalidOddsWeights);
     ctx.accounts.reroll_config.odds_bps = odds_bps;
+    emit!(RerollConfigChanged { odds_bps, slot: Clock::get()?.slot });
     Ok(())
 }
 

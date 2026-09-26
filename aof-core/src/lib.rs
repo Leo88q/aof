@@ -413,7 +413,9 @@ pub struct DepositGas<'info> {
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct WithdrawGas<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -950,7 +952,9 @@ pub struct Stake<'info> {
 
 #[derive(Accounts)]
 pub struct Unstake<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -1213,7 +1217,9 @@ pub struct CollectorStake<'info> {
 
 #[derive(Accounts)]
 pub struct CollectorUnstake<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -1897,7 +1903,10 @@ pub struct MarketplaceList<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         seeds = [TOOL_SEED, mint.key().as_ref()],
@@ -1965,7 +1974,9 @@ pub struct MarketplaceBuy<'info> {
 
 #[derive(Accounts)]
 pub struct MarketplaceCancel<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
@@ -1990,7 +2001,10 @@ pub struct AuctionCreateCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         seeds = [TOOL_SEED, mint.key().as_ref()],
@@ -2082,6 +2096,10 @@ pub struct OfferCreateCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub buyer: Signer<'info>,
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(init, payer = buyer, space = OFFER_SPACE, seeds = [OFFER_SEED, mint.key().as_ref(), buyer.key().as_ref()], bump)]
     pub offer: Account<'info, Offer>,
@@ -2090,11 +2108,14 @@ pub struct OfferCreateCtx<'info> {
 
 #[derive(Accounts)]
 pub struct OfferAcceptCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         mut,
@@ -2129,7 +2150,9 @@ pub struct OfferAcceptCtx<'info> {
 
 #[derive(Accounts)]
 pub struct OfferCancelCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     pub mint: Account<'info, Mint>,
     #[account(
@@ -2154,7 +2177,10 @@ pub struct RentalListCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         seeds = [TOOL_SEED, mint.key().as_ref()],
@@ -2210,7 +2236,9 @@ pub struct RentalStartCtx<'info> {
 
 #[derive(Accounts)]
 pub struct RentalEndCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     pub caller: Signer<'info>,
     pub mint: Account<'info, Mint>,
@@ -2237,7 +2265,9 @@ pub struct RentalEndCtx<'info> {
 
 #[derive(Accounts)]
 pub struct RentalRevokeCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -2648,7 +2678,9 @@ pub struct PlaceSellOrder<'info> {
 
 #[derive(Accounts)]
 pub struct CancelBuyOrder<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
@@ -2671,7 +2703,9 @@ pub struct CancelBuyOrder<'info> {
 
 #[derive(Accounts)]
 pub struct CancelSellOrder<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
@@ -2776,7 +2810,9 @@ pub struct CraftOrderFulfillCtx<'info> {
 #[derive(Accounts)]
 pub struct CraftOrderCancelCtx<'info> {
     /// [AUDIT F-19] cancelling returns escrowed SOL, so it honours the pause.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub creator: Signer<'info>,
