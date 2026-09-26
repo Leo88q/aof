@@ -100,6 +100,34 @@ describe("aof-core: security & core flows", () => {
     throw new Error(`expected ${code}, but call succeeded`);
   }
 
+  // Like expectError, but also pins the account Anchor blamed ("AnchorError
+  // caused by account: <name>").
+  async function expectAccountError(p: Promise<any>, code: string, account: string) {
+    try { await p; } catch (e: any) {
+      const c = e?.error?.errorCode?.code ?? "";
+      const origin = typeof e?.error?.origin === "string" ? e.error.origin : "";
+      if (c === code && origin === account) return;
+      throw new Error(`expected ${code} on ${account}, got: ${c} on ${origin || "?"} | ${e?.message?.slice(0, 160)}`);
+    }
+    throw new Error(`expected ${code} on ${account}, but call succeeded`);
+  }
+
+  // [F-06] Switchboard On-Demand accounts of a VRF commit (default = mainnet
+  // build). The local validator has neither Switchboard nor a pool slot, which
+  // is exactly the production "pool empty" state.
+  const SWITCHBOARD_PROGRAM = new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv");
+  const SWITCHBOARD_QUEUE = new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w");
+  const u32le = (n: number) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+  const u64le = (n: BN) => n.toArrayLike(Buffer, "le", 8);
+  const vrfCommitAccounts = () => {
+    const randomness = pda([B("vrf_randomness"), u32le(0)]);
+    return {
+      vrfSlot: pda([B("vrf_slot"), randomness.toBuffer()]), randomness,
+      vrfAuthority: pda([B("vrf_authority")]), queue: SWITCHBOARD_QUEUE, oracle: Keypair.generate().publicKey,
+      recentSlothashes: SLOT_HASHES, switchboardProgram: SWITCHBOARD_PROGRAM,
+    };
+  };
+
   async function mintTool(to: PublicKey, toolType = "axe") {
     const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
     const tokenAccount = await ensureAta(mint, to);
@@ -485,14 +513,20 @@ describe("aof-core: security & core flows", () => {
     }).signers([owner]).rpc();
 
     const rentalListing = pda([B("rental_listing"), mint.toBuffer()]);
-    await program.methods.rentalList(10_000, new BN(24 * 3600), new BN(24 * 3600), new BN(0)).accounts({
+    // [SECURITY_CHECKLIST_REVIEW F-H] a listed NFT sits in escrow (an ATA of
+    // the listing PDA); the owner split is capped at 95% (5% platform fee).
+    const rentalVault = await ensureAta(mint, rentalListing);
+    await program.methods.rentalList(9_500, new BN(24 * 3600), new BN(24 * 3600), new BN(0)).accounts({
       config: configPda, owner: owner.publicKey, mint, tool: toolPda(mint), rentalListing,
+      ownerToken: tokenAccount, rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     }).signers([owner]).rpc();
+    expect((await balance(rentalVault)).toString()).to.equal("1");
     const rentalAgreement = pda([B("rental_agreement"), mint.toBuffer()]);
-    await program.methods.rentalStart(new BN(24 * 3600)).accounts({
+    // rental_start is retired; rental_start_bounded takes the renter's fee ceiling.
+    await program.methods.rentalStartBounded(new BN(24 * 3600), new BN(0)).accounts({
       config: configPda, renter: renter.publicKey, mint, tool: toolPda(mint), rentalListing,
-      owner: owner.publicKey, treasury: authority, rentalAgreement, systemProgram: SystemProgram.programId,
+      owner: owner.publicKey, treasury: authority, rentalAgreement, rentalVault, systemProgram: SystemProgram.programId,
     }).signers([renter]).rpc();
 
     const ownerWheat = await ensureAta(wheatMint, owner.publicKey);
@@ -616,8 +650,13 @@ describe("aof-core: security & core flows", () => {
     expect(bal).to.equal("100");
   });
 
-  it("new pack commitments reject unsafe randomness without charging the user", async () => {
-    // New payments must fail atomically, including rent paid by init.
+  // [F-06] Paid randomness mechanics commit through Switchboard On-Demand. With
+  // no pool slot (no Switchboard on this validator) a commit must fail while
+  // Anchor loads the accounts, before any lamport, token or PDA changes. The
+  // full commit/reveal/refund cycle runs in the host tests
+  // (aof-core/src/security_checklist_tests.rs, emulated Switchboard) and on
+  // devnet (scripts/vrf/devnet-smoke.mjs).
+  it("VRF pack commit: an empty Switchboard pool fails the commit before any charge", async () => {
     const packConfig = pda([B("pack_config"), Buffer.from([0])]);
     const PRICE = 100_000_000;
     try {
@@ -628,68 +667,61 @@ describe("aof-core: security & core flows", () => {
       rethrowUnlessAlreadyInitialised("initPackConfig", e);
     }
     const user = Keypair.generate(); await airdrop(user);
-    const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
-    const secret = crypto.randomBytes(32);
-    const commitHash = crypto.createHash("sha256").update(secret).digest();
-    const packCommit = pda([B("pack_commit"), mint.toBuffer()]);
+    const nonce = new BN(1);
+    const packCommit = pda([B("pack_commit"), user.publicKey.toBuffer(), u64le(nonce)]);
     const before = await provider.connection.getBalance(user.publicKey);
-    await expectError(program.methods.packOpenCommit({ small: {} }, Array.from(commitHash)).accounts({
-      config: configPda, authority, user: user.publicKey,
-      packConfig, auth: authPda, mint, packCommit,
-      systemProgram: SystemProgram.programId }).signers([user]).rpc(), "FeatureDisabled");
+    // The operator (here the bootstrap authority) co-signs every pack commit.
+    await expectAccountError(program.methods.packOpenCommit({ small: {} }, nonce, new BN(PRICE)).accountsStrict({
+      config: configPda, authority, user: user.publicKey, packConfig, packCommit, ...vrfCommitAccounts(),
+      systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc(), "AccountNotInitialized", "vrf_slot");
     expect(await provider.connection.getBalance(user.publicKey)).to.equal(before);
     expect(await provider.connection.getAccountInfo(packCommit)).to.equal(null);
   });
 
-  it("new forge commitments reject selective-abort randomness and roll back resource burns", async () => {
-    // Regression: even a fully funded user cannot create an unsafe commitment.
-    // Legacy design: the SOL fee is escrowed on the ForgeCommit PDA and
-    // the burned wood/stone amounts are recorded so forge_attempt_expire can
-    // re-mint them after the reveal window. Level-0 attempt: 200 wood + 200
-    // stone + 33_000_000 lamports (+ 20_000_000 with the protector).
+  it("VRF forge commit: an empty Switchboard pool fails the commit and burns nothing", async () => {
     const user = Keypair.generate(); await airdrop(user);
-    // [AUDIT F-17] mint_tool canonicalises tool_type against TOOL_KINDS and
-    // rejects anything outside that set, so the fixture has to use a canonical
-    // kind ("pick"); "pickaxe" now dies in setup with InvalidToolType before the
-    // forge call is ever sent.
+    // [AUDIT F-17] mint_tool only accepts canonical tool kinds.
     const { mint: toolMint } = await mintTool(user.publicKey, "pick");
     const userWood = await giveResource("wood", woodMint, user.publicKey, 1000);
     const userStone = await giveResource("stone", stoneMint, user.publicKey, 1000);
     const woodBefore = await balance(userWood);
     const stoneBefore = await balance(userStone);
-    const treasuryBefore = await provider.connection.getBalance(authority);
-    const secret = crypto.randomBytes(32);
-    const commitHash = crypto.createHash("sha256").update(secret).digest();
     const slotType = 0;
     const enchantSlot = pda([B("enchant_slot"), toolMint.toBuffer(), Buffer.from([slotType])]);
     const forgeCommit = pda([B("forge_commit"), toolMint.toBuffer(), Buffer.from([slotType])]);
-    await expectError(program.methods.forgeAttemptCommit(slotType, Array.from(commitHash), true).accounts({
-      config: configPda, user: user.publicKey, tool: toolPda(toolMint), toolMint, enchantSlot, forgeCommit,
-      woodMint, userWood, stoneMint, userStone,
-      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId }).signers([user]).rpc(), "FeatureDisabled");
+    await expectAccountError(program.methods.forgeAttemptCommit(slotType, true).accountsStrict({
+      config: configPda, authority, user: user.publicKey, tool: toolPda(toolMint), toolMint, enchantSlot, forgeCommit,
+      woodMint, userWood, stoneMint, userStone, ...vrfCommitAccounts(),
+      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc(), "AccountNotInitialized", "vrf_slot");
     expect((await balance(userWood)).toString()).to.equal(woodBefore.toString());
     expect((await balance(userStone)).toString()).to.equal(stoneBefore.toString());
     expect(await provider.connection.getAccountInfo(forgeCommit)).to.equal(null);
+    expect(await provider.connection.getAccountInfo(enchantSlot)).to.equal(null);
   });
 
-  it("disabled commit-reveal mechanics stay fail-closed: reroll_random_commit", async () => {
-    // Same fail-closed policy as packs (reroll_random.rs burns the tool before
-    // reveal and has no refund path). The guard runs before any state change,
-    // so it must trigger even with a freshly minted tool and empty gastank.
+  it("VRF reroll commit: an empty Switchboard pool fails the commit and keeps the tool", async () => {
+    const rerollConfig = pda([B("reroll_config")]);
+    if (!(await provider.connection.getAccountInfo(rerollConfig))) {
+      await program.methods.initRerollConfig([5500, 3000, 1100, 400, 0])
+        .accounts({ config: configPda, authority, rerollConfig, systemProgram: SystemProgram.programId }).rpc();
+    }
     const user = Keypair.generate(); await airdrop(user);
     const { mint: burnMint, tokenAccount: burnToken } = await mintTool(user.publicKey);
     const gAcc = { config: configPda, user: user.publicKey, gastank: gastankPda(user.publicKey), systemProgram: SystemProgram.programId };
     await program.methods.depositGas(new BN(100_000_000)).accounts(gAcc).signers([user]).rpc();
-    const newMint = await createMint(provider.connection, setupPayer, authPda, null, 0);
-    const commitHash = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest();
-    await expectError((program.methods as any).rerollRandomCommit(Array.from(commitHash)).accounts({
-      config: configPda, user: user.publicKey, gastank: gastankPda(user.publicKey),
-      burnTool: toolPda(burnMint), burnMint, burnToken, newMint,
-      rerollCommit: pda([B("reroll_commit"), newMint.toBuffer()]),
+    const nonce = new BN(1);
+    const rerollCommit = pda([B("reroll_commit"), user.publicKey.toBuffer(), u64le(nonce)]);
+    await expectAccountError(program.methods.rerollRandomCommit(nonce).accountsStrict({
+      config: configPda, authority, user: user.publicKey, gastank: gastankPda(user.publicKey), rerollConfig,
+      burnTool: toolPda(burnMint), burnMint, burnToken, rerollCommit, ...vrfCommitAccounts(),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-    }).signers([user]).rpc(), "FeatureDisabled");
+    }).signers([user]).rpc(), "AccountNotInitialized", "vrf_slot");
     const td = await program.account.toolData.fetch(toolPda(burnMint));
     expect(td.owner.toString()).to.equal(user.publicKey.toString());
+    expect((await balance(burnToken)).toString()).to.equal("1");
+    expect(await provider.connection.getAccountInfo(rerollCommit)).to.equal(null);
   });
 
   it("start_milling: burns wheat+stone from writable mints, arms the mill, blocks re-start and early collect", async () => {
@@ -875,25 +907,38 @@ describe("aof-core: security & core flows", () => {
       await expectError(pay(UNIT.muln(3)), "VaultGuardLimitExceeded"); // epoch budget spent
     });
 
-    it("F-19: pause stops the cancel paths", async () => {
+    it("F-19 / F-C: pause blocks new listings but never locks the seller's NFT", async () => {
+      // Owner decision (SECURITY_CHECKLIST_REVIEW F-C, supersedes F-19): pause
+      // stops new activity, while exits that only return a player's own
+      // assets (marketplace cancel, rental end, refunds) stay open.
       const seller = Keypair.generate(); await airdrop(seller);
       const { mint, tokenAccount } = await mintTool(seller.publicKey);
+      const second = await mintTool(seller.publicKey);
+      const listAccounts = (m: PublicKey, sellerToken: PublicKey, listing: PublicKey, listingVault: PublicKey) => ({
+        config: configPda, seller: seller.publicKey, mint: m, tool: toolPda(m),
+        sellerToken, listing, listingVault,
+        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      });
       const listing = pda([B("listing"), mint.toBuffer()]);
       const listingVault = await ensureAta(mint, listing);
-      const listAcc = {
-        config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint),
-        sellerToken: tokenAccount, listing, listingVault,
-        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-      };
-      await program.methods.marketplaceList(new BN(1_000)).accounts(listAcc).signers([seller]).rpc();
-      const cancel = () => program.methods.marketplaceCancel().accounts({
-        config: configPda, mint, listing, seller: seller.publicKey, listingVault,
-        sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
-      }).signers([seller]).rpc();
+      await program.methods.marketplaceList(new BN(1_000))
+        .accounts(listAccounts(mint, tokenAccount, listing, listingVault)).signers([seller]).rpc();
+      const secondListing = pda([B("listing"), second.mint.toBuffer()]);
+      const secondVault = await ensureAta(second.mint, secondListing);
       await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
-      await expectError(cancel(), "Paused");
-      await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
-      await cancel();
+      try {
+        await expectError(program.methods.marketplaceList(new BN(1_000))
+          .accounts(listAccounts(second.mint, second.tokenAccount, secondListing, secondVault)).signers([seller]).rpc(), "Paused");
+        await program.methods.marketplaceCancel().accounts({
+          config: configPda, mint, listing, seller: seller.publicKey, listingVault,
+          sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
+        }).signers([seller]).rpc();
+        expect((await balance(tokenAccount)).toString()).to.equal("1");
+        expect(await provider.connection.getAccountInfo(listing)).to.equal(null);
+      } finally {
+        // Never leave the program paused for the rest of the suite.
+        await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+      }
     });
 
     it("F-10: an NFT can be listed again after a cancel", async () => {
