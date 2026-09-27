@@ -24,6 +24,16 @@ function testCanonicalDigest(): void {
   const withProof = { ...payload, walletProof: proof };
   assert.equal(walletProofDigest(payload), walletProofDigest(withProof));
   assert.notEqual(walletProofDigest(payload), walletProofDigest({ ...payload, z: 4 }));
+
+  // [nf-mutate 2026-09-28] the nesting guard (`depth > 32`) had no test: a
+  // 33-level payload must be refused, a 32-level one must still canonicalise.
+  const nest = (levels: number): unknown => (levels === 0 ? 1 : { k: nest(levels - 1) });
+  assert.equal(canonicalJson(nest(32)).length, 32 * 6 + 1);
+  assert.throws(() => canonicalJson(nest(33)), /nesting exceeds limit/);
+  assert.throws(() => canonicalJson(Array.from({ length: 34 }).reduce<unknown>((inner) => [inner], 1)), /nesting exceeds limit/);
+  // Non-object bodies digest as an empty object; arrays are bodies too.
+  assert.equal(walletProofDigest(null), walletProofDigest({}));
+  assert.equal(walletProofDigest("string"), walletProofDigest({}));
 }
 
 function testEd25519Signature(): void {

@@ -54,6 +54,16 @@ async function main() {
   assert.deepEqual(parsePurchaseBounds({ maxPriceLamports: "18446744073709551615", expiresAt: "150" }, 100), { maxPriceLamports: "18446744073709551615", expiresAt: "150" });
   for (const bad of [1, "-1", "1e9", "18446744073709551616"]) assert.throws(() => parsePurchaseBounds({ maxPriceLamports: bad, expiresAt: "150" }, 100));
   for (const bad of [100, "100", "401", "9223372036854775807"]) assert.throws(() => parsePurchaseBounds({ maxPriceLamports: "1", expiresAt: bad }, 100));
+  // [nf-mutate 2026-09-28] survivors: `deadline - now > 300` → `+` and `>` → `>=` passed
+  // with toy timestamps. Pin the window with a realistic clock: exactly 300 s
+  // ahead is the last accepted deadline, 301 s is rejected.
+  const realNow = 1_800_000_000;
+  assert.equal(parsePurchaseBounds({ maxPriceLamports: "1", expiresAt: String(realNow + 300) }, realNow).expiresAt, String(realNow + 300));
+  assert.equal(parsePurchaseBounds({ maxPriceLamports: "1", expiresAt: String(realNow + 1) }, realNow).expiresAt, String(realNow + 1));
+  assert.throws(() => parsePurchaseBounds({ maxPriceLamports: "1", expiresAt: String(realNow + 301) }, realNow));
+  assert.throws(() => parsePurchaseBounds({ maxPriceLamports: "1", expiresAt: String(realNow) }, realNow));
+  assert.throws(() => parsePurchaseBounds({ maxPriceLamports: "0", expiresAt: String(realNow + 10) }, realNow));
+  assert.throws(() => parsePurchaseBounds({ maxPriceLamports: "01", expiresAt: String(realNow + 10) }, realNow));
   assert.deepEqual(serializeChainValue({ values: [new BN("18446744073709551615"), 9007199254740993n], recipient }), { values: ["18446744073709551615", "9007199254740993"], recipient: recipient.toBase58() });
 
   const row: any = { id, rewardVersion: 1, rewardAmount: 1, claimMint: expected.mint, user: expected.recipient, claimSignature: "duplicate-retry" };
