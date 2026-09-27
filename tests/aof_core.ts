@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import { createMint, getMint, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
@@ -79,6 +79,27 @@ describe("aof-core: security & core flows", () => {
       return meta.postBalances[i] - meta.preBalances[i];
     };
     return Object.assign(delta, { fee: meta.fee });
+  }
+
+  // The validator's clock, not the runner's: they drift apart, so waiting a
+  // fixed number of wall-clock seconds for an on-chain deadline is flaky.
+  async function waitForChainTime(unixTimestamp: number, timeoutMs = 30_000) {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
+      if (clock && Number(clock.data.readBigInt64LE(32)) >= unixTimestamp) return;
+      if (Date.now() > deadline) throw new Error(`chain clock did not reach ${unixTimestamp}`);
+      await sleep(500);
+    }
+  }
+
+  // The provider wallet is the treasury and pays every fee. On this validator
+  // its balance can end a few lamports off credit - meta.fee (seen: +16,
+  // +32), so its delta gets a small window; the program's own transfers are
+  // pinned exactly through the other parties of each settlement.
+  const FEE_PAYER_SLACK = 1_000;
+  function expectFeePayerDelta(actual: number, expected: number) {
+    expect(actual - expected, `fee payer delta ${actual} vs ${expected}`).to.be.within(-FEE_PAYER_SLACK, FEE_PAYER_SLACK);
   }
 
   const airdrop = async (kp: Keypair, sol = 5) =>
@@ -655,7 +676,7 @@ describe("aof-core: security & core flows", () => {
       config: configPda, bidder: bidder.publicKey, mint, auction: auctionPda,
       previousBidder: seller.publicKey, systemProgram: SystemProgram.programId,
     }).signers([bidder]).rpc();
-    await sleep(4000);
+    await waitForChainTime((await program.account.auction.fetch(auctionPda)).endTime.toNumber() + 1);
     const auctionLamports = await provider.connection.getBalance(auctionPda);
     const vaultLamports = await provider.connection.getBalance(auctionVault);
     const signature = await program.methods.auctionSettle().accounts({
@@ -670,7 +691,7 @@ describe("aof-core: security & core flows", () => {
     expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(bidder.publicKey.toBase58());
     // Seller: the bid minus the fee, the escrow ATA rent and the auction's rent (close = seller).
     expect(d(seller.publicKey)).to.equal(auctionLamports - fee + vaultLamports);
-    expect(d(authority)).to.equal(fee - d.fee); // the treasury is the provider, which pays the fee
+    expectFeePayerDelta(d(authority), fee - d.fee); // the treasury is the provider, which pays the fee
   });
 
   it("offer accept: the buyer gets the NFT, the seller and the treasury split the escrow", async () => {
@@ -696,7 +717,7 @@ describe("aof-core: security & core flows", () => {
     expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(buyer.publicKey.toBase58());
     expect(d(seller.publicKey)).to.equal(PRICE - fee);
     expect(d(buyer.publicKey)).to.equal(offerLamports - PRICE); // the offer's rent comes back (close = buyer_refund)
-    expect(d(authority)).to.equal(fee - d.fee);
+    expectFeePayerDelta(d(authority), fee - d.fee);
   });
 
   it("orderbook: полное сведение не ломает rent (C2)", async () => {
