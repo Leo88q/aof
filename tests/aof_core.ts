@@ -232,6 +232,35 @@ describe("aof-core: security & core flows", () => {
     }
   });
 
+  // An auction with a bid cannot end sooner than 5 minutes after that bid
+  // (anti-snipe). It is opened here, first, and settled by the last test of
+  // this suite, so the rest of the suite runs while the window elapses.
+  let biddedAuction: { seller: Keypair; bidder: Keypair; mint: PublicKey; tokenAccount: PublicKey;
+    auctionPda: PublicKey; auctionVault: PublicKey; winnerToken: PublicKey; bid: number } | undefined;
+
+  it("auction with a bid: a bid inside the last 5 minutes pushes the end 5 minutes out (settled at the end of the suite)", async () => {
+    const seller = Keypair.generate(); await airdrop(seller);
+    const bidder = Keypair.generate(); await airdrop(bidder);
+    const { mint, tokenAccount } = await mintTool(seller.publicKey);
+    const auctionPda = pda([B("auction"), mint.toBuffer()]);
+    const auctionVault = await ensureAta(mint, auctionPda);
+    const winnerToken = await ensureAta(mint, bidder.publicKey);
+    await program.methods.auctionCreate(new BN(1_000_000), new BN(2)).accounts({
+      config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint), sellerToken: tokenAccount,
+      auction: auctionPda, auctionVault, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([seller]).rpc();
+    const created = (await program.account.auction.fetch(auctionPda)).endTime.toNumber();
+    const bid = 20_000_000;
+    await program.methods.auctionBid(new BN(bid)).accounts({
+      config: configPda, bidder: bidder.publicKey, mint, auction: auctionPda,
+      previousBidder: seller.publicKey, systemProgram: SystemProgram.programId,
+    }).signers([bidder]).rpc();
+    const extended = (await program.account.auction.fetch(auctionPda)).endTime.toNumber();
+    // AUCTION_ANTI_SNIPE_EXTENSION_SECONDS = 300, counted from the bid.
+    expect(extended - created).to.be.within(295, 302);
+    biddedAuction = { seller, bidder, mint, tokenAccount, auctionPda, auctionVault, winnerToken, bid };
+  });
+
   it("issuance cap: per-kind budget blocks over-issuance, cap=0 halts, set never resets the counter", async () => {
     const user = Keypair.generate(); await airdrop(user);
     const stranger = Keypair.generate(); await airdrop(stranger);
@@ -655,45 +684,12 @@ describe("aof-core: security & core flows", () => {
     expect(await provider.connection.getBalance(auctionPda)).to.equal(auctionRent + 30_000_000);
   });
 
-  // [RUNTIME LAMPORT RULE] Both paths below used to move lamports directly
-  // before their token CPI. The runtime re-checks the instruction's lamport sum
-  // at every CPI from the accounts passed to it, so each settlement failed with
-  // UnbalancedInstruction: an auction with a bid could never be settled (bid
-  // and NFT locked for good) and no offer could be accepted.
-  it("auction settle with a bid: the winner gets the NFT, the seller and the treasury split the bid", async () => {
-    const seller = Keypair.generate(); await airdrop(seller);
-    const bidder = Keypair.generate(); await airdrop(bidder);
-    const { mint, tokenAccount } = await mintTool(seller.publicKey);
-    const auctionPda = pda([B("auction"), mint.toBuffer()]);
-    const auctionVault = await ensureAta(mint, auctionPda);
-    const winnerToken = await ensureAta(mint, bidder.publicKey);
-    await program.methods.auctionCreate(new BN(1_000_000), new BN(2)).accounts({
-      config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint), sellerToken: tokenAccount,
-      auction: auctionPda, auctionVault, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-    }).signers([seller]).rpc();
-    const BID = 20_000_000;
-    await program.methods.auctionBid(new BN(BID)).accounts({
-      config: configPda, bidder: bidder.publicKey, mint, auction: auctionPda,
-      previousBidder: seller.publicKey, systemProgram: SystemProgram.programId,
-    }).signers([bidder]).rpc();
-    await waitForChainTime((await program.account.auction.fetch(auctionPda)).endTime.toNumber() + 1);
-    const auctionLamports = await provider.connection.getBalance(auctionPda);
-    const vaultLamports = await provider.connection.getBalance(auctionVault);
-    const signature = await program.methods.auctionSettle().accounts({
-      config: configPda, mint, auction: auctionPda, seller: seller.publicKey, treasury: authority,
-      auctionVault, winnerToken, tool: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID,
-    }).rpc();
-    const d = await txDeltas(signature);
-    const fee = Math.floor(BID * 400 / 10_000); // AUCTION_FEE_BPS
-    expect((await balance(winnerToken)).toString()).to.equal("1");
-    expect(await provider.connection.getAccountInfo(auctionPda)).to.equal(null);
-    expect(await provider.connection.getAccountInfo(auctionVault)).to.equal(null);
-    expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(bidder.publicKey.toBase58());
-    // Seller: the bid minus the fee, the escrow ATA rent and the auction's rent (close = seller).
-    expect(d(seller.publicKey)).to.equal(auctionLamports - fee + vaultLamports);
-    expectFeePayerDelta(d(authority), fee - d.fee); // the treasury is the provider, which pays the fee
-  });
-
+  // [RUNTIME LAMPORT RULE] Offer acceptance (and auction settlement, tested at
+  // the end of this suite) used to move lamports directly before the token
+  // CPI. The runtime re-checks the instruction's lamport sum at every CPI from
+  // the accounts passed to it, so each failed with UnbalancedInstruction: no
+  // offer could be accepted, and an auction with a bid could never be settled
+  // (bid and NFT locked for good).
   it("offer accept: the buyer gets the NFT, the seller and the treasury split the escrow", async () => {
     const seller = Keypair.generate(); await airdrop(seller);
     const buyer = Keypair.generate(); await airdrop(buyer);
@@ -1215,5 +1211,26 @@ describe("aof-core: security & core flows", () => {
     }
   });
 
+  describe("after the 5-minute anti-snipe window", () => {
+    it("auction settle with a bid: the winner gets the NFT, the seller and the treasury split the bid", async () => {
+      if (!biddedAuction) throw new Error("the auction-with-a-bid test did not open its auction");
+      const { seller, bidder, mint, auctionPda, auctionVault, winnerToken, bid } = biddedAuction;
+      await waitForChainTime((await program.account.auction.fetch(auctionPda)).endTime.toNumber() + 1, 420_000);
+      const auctionLamports = await provider.connection.getBalance(auctionPda);
+      const vaultLamports = await provider.connection.getBalance(auctionVault);
+      const signature = await program.methods.auctionSettle().accounts({
+        config: configPda, mint, auction: auctionPda, seller: seller.publicKey, treasury: authority,
+        auctionVault, winnerToken, tool: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID,
+      }).rpc();
+      const d = await txDeltas(signature);
+      const fee = Math.floor(bid * 400 / 10_000); // AUCTION_FEE_BPS
+      expect((await balance(winnerToken)).toString()).to.equal("1");
+      expect(await provider.connection.getAccountInfo(auctionPda)).to.equal(null);
+      expect(await provider.connection.getAccountInfo(auctionVault)).to.equal(null);
+      expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(bidder.publicKey.toBase58());
+      // Seller: the bid minus the fee, the escrow ATA rent and the auction's rent (close = seller).
+      expect(d(seller.publicKey)).to.equal(auctionLamports - fee + vaultLamports);
+      expectFeePayerDelta(d(authority), fee - d.fee); // the treasury is the provider, which pays the fee
+    });
+  });
 });
-
