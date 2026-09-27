@@ -907,6 +907,75 @@ describe("aof-core: security & core flows", () => {
       await expectError(pay(UNIT.muln(3)), "VaultGuardLimitExceeded"); // epoch budget spent
     });
 
+    it("F-C: the guardian freezes cash-out; payouts stop, gameplay and own exits go on, only the admin unfreezes", async () => {
+      // Owner requirement: fraudsters holding an inflated in-game balance must
+      // not withdraw it, and the game must not suffer.
+      const guardian = Keypair.generate(); await airdrop(guardian, 1);
+      const stranger = Keypair.generate(); await airdrop(stranger, 1);
+      const player = Keypair.generate(); await airdrop(player, 1);
+      const cfg = async () => (await program.account.config.fetch(configPda)) as any;
+      const stop = (caller: Keypair, pauseGame: boolean, freezeCashout: boolean) =>
+        program.methods.emergencyStop(pauseGame, freezeCashout)
+          .accounts({ config: configPda, caller: caller.publicKey }).signers([caller]).rpc();
+      await program.methods.setRoles(authority, guardian.publicKey).accounts({ config: configPda, authority }).rpc();
+      try {
+        expect((await cfg()).guardian.toBase58()).to.equal(guardian.publicKey.toBase58());
+
+        // A payout route that works before the incident...
+        await giveResource("stone", stoneMint, player.publicKey, 1); // creates the Player PDA
+        const vaultToken = await ensureAta(stoneMint, vaultPda);
+        await giveResource("stone", stoneMint, vaultPda, 20);
+        const guard = pda([B("vault_guard"), stoneMint.toBuffer()]);
+        await program.methods.initVaultGuard(new BN(2_000), UNIT.muln(10), UNIT.muln(3))
+          .accounts({ config: configPda, authority, mint: stoneMint, vaultGuard: guard, systemProgram: SystemProgram.programId })
+          .rpc();
+        const playerStone = await ensureAta(stoneMint, player.publicKey);
+        const pay = () => program.methods.payOut(UNIT).accounts({
+          config: configPda, authority, materialMints: materialMintsPda, vaultGuard: guard,
+          player: playerPda(player.publicKey), vault: vaultPda, mint: stoneMint, vaultToken,
+          userToken: playerStone, tokenProgram: TOKEN_PROGRAM_ID,
+        }).rpc();
+        await pay();
+        // ...and SOL the player deposited before it.
+        const gastank = pda([B("gastank"), player.publicKey.toBuffer()]);
+        const gasAccounts = { config: configPda, user: player.publicKey, gastank, systemProgram: SystemProgram.programId };
+        await program.methods.depositGas(new BN(10_000_000)).accounts(gasAccounts).signers([player]).rpc();
+
+        // Only the guardian or the admin pulls an emergency stop, and a stop must switch something on.
+        await expectError(stop(stranger, false, true), "Unauthorized");
+        await expectError(stop(guardian, false, false), "InvalidAmount");
+        await stop(guardian, false, true);
+        const frozen = await cfg();
+        expect([frozen.paused, frozen.cashoutFrozen]).to.deep.equal([false, true]);
+
+        // Value cannot leave the game...
+        const before = await balance(playerStone);
+        await expectError(pay(), "CashoutFrozen");
+        expect((await balance(playerStone)).toString()).to.equal(before.toString());
+        // ...the game goes on (resource issuance is not frozen)...
+        await giveResource("stone", stoneMint, player.publicKey, 1);
+        expect((await balance(playerStone)).gt(before)).to.equal(true);
+        // ...and the player takes their own deposit back.
+        const lamportsBefore = await provider.connection.getBalance(player.publicKey);
+        await program.methods.withdrawGas(new BN(10_000)).accounts(gasAccounts).signers([player]).rpc();
+        expect(await provider.connection.getBalance(player.publicKey) - lamportsBefore).to.equal(10_000_000); // the provider pays the fee
+
+        // The guardian cannot lift the freeze; the admin can, and payouts resume.
+        await expectError(program.methods.setCashoutFrozen(false)
+          .accounts({ config: configPda, authority: guardian.publicKey }).signers([guardian]).rpc(), "Unauthorized");
+        await program.methods.setCashoutFrozen(false).accounts({ config: configPda, authority }).rpc();
+        expect((await cfg()).cashoutFrozen).to.equal(false);
+        await pay();
+        expect((await balance(playerStone)).gt(before)).to.equal(true);
+      } finally {
+        // Never leave the rest of the suite frozen, paused or with a foreign guardian.
+        const c = await cfg();
+        if (c.cashoutFrozen) await program.methods.setCashoutFrozen(false).accounts({ config: configPda, authority }).rpc();
+        if (c.paused) await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+        await program.methods.setRoles(authority, authority).accounts({ config: configPda, authority }).rpc();
+      }
+    });
+
     it("F-19 / F-C: pause blocks new listings but never locks the seller's NFT", async () => {
       // Owner decision (SECURITY_CHECKLIST_REVIEW F-C, supersedes F-19): pause
       // stops new activity, while exits that only return a player's own
