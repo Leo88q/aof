@@ -70,9 +70,32 @@ ensure_deps_in() { # dir label
   fi
 }
 
+# watchtower/ своих зависимостей не имеет и живёт на aof_backend/node_modules (NODE_PATH).
+# Но Node ищет модули сначала вверх по дереву: если в КОРНЕ репо лежит старый node_modules
+# (например, от прежней CRA-сборки — ajv@6 вместо ajv@8), test:watchtower падает с
+# "Cannot read properties of undefined (reading 'code')" в ajv-formats.
+# Симлинк watchtower/node_modules -> ../aof_backend/node_modules закрывает вопрос
+# (он предусмотрен в .gitignore).
+ensure_watchtower_link() {
+  local link="$ROOT/watchtower/node_modules"
+  [ -d "$ROOT/watchtower" ] || return 0
+  if [ -L "$link" ]; then
+    [ -e "$link" ] && return 0
+    rm -f "$link"   # битый симлинк
+  elif [ -e "$link" ]; then
+    warn "watchtower/node_modules — настоящая папка, а не симлинк на ../aof_backend/node_modules; при проблемах с ajv удали её"
+    return 0
+  fi
+  ln -s ../aof_backend/node_modules "$link"
+  echo "watchtower/node_modules -> ../aof_backend/node_modules (симлинк создан)"
+}
+
 ensure_deps() {
   [ "$SKIP_FRONTEND" = "1" ] || ensure_deps_in "$FE" "frontend/"
-  [ "$SKIP_BACKEND" = "1" ] || ensure_deps_in "$BE" "aof_backend/"
+  if [ "$SKIP_BACKEND" != "1" ]; then
+    ensure_deps_in "$BE" "aof_backend/"
+    ensure_watchtower_link
+  fi
 }
 
 rand_hex() { node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))'; }
@@ -230,6 +253,7 @@ cmd_install() {
   need_node
   log "npm ci frontend/"; (cd "$FE" && npm ci --no-audit --no-fund) && file_sha "$FE/package-lock.json" >"$FE/node_modules/.dev-local.lock-sha"
   log "npm ci aof_backend/"; (cd "$BE" && npm ci --no-audit --no-fund) && file_sha "$BE/package-lock.json" >"$BE/node_modules/.dev-local.lock-sha"
+  ensure_watchtower_link
 }
 
 cmd_test() {
