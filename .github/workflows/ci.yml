@@ -1391,6 +1391,36 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-test.log "Anchor test (local validator)" 10
 
+      # [SECURITY_CHECKLIST #27] tests/aof_cu_report.ts measures the compute
+      # units of every aof-core instruction the suites exercised. On success
+      # the table becomes the job summary and the check-run output, readable
+      # via GET /repos/{owner}/{repo}/check-runs/{id} without the log endpoint.
+      - name: Publish compute-unit report
+        if: steps.anchor_test.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          report=target/cu-report.md
+          if [ ! -f "$report" ]; then
+            echo "::warning::$report was not written - tests/aof_cu_report.ts did not run"
+            exit 0
+          fi
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          job_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.name == "Anchor test (local validator)") | .id' 2>/dev/null | head -1)
+          if [ -z "$job_id" ]; then
+            echo "::notice::could not resolve the check-run id - the report is in the job summary only"
+            exit 0
+          fi
+          jq -n \
+            --arg title "Compute units per aof-core instruction (local validator)" \
+            --arg summary "Measured by tests/aof_cu_report.ts from the transaction history of this run." \
+            --rawfile text "$report" \
+            '{output: {title: $title, summary: $summary, text: $text}}' > /tmp/cu-report-payload.json
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$job_id" --input /tmp/cu-report-payload.json >/dev/null \
+            || echo "::notice::check-run output not updated - the report is in the job summary only"
+
   secrets-scan:
     name: Secret scan (full git history)
     # Permanent gate replacing the one-off history scan documented in
