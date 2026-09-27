@@ -113,9 +113,45 @@ pub fn settle_handler(ctx: Context<AuctionSettleCtx>) -> Result<()> {
     require!(now >= ctx.accounts.auction.end_time, AofError::AuctionNotEnded);
 
     let amount = ctx.accounts.auction.current_bid;
-    if amount > 0 {
-        let (seller_cut, fee) = crate::economics::split_bps(amount, AUCTION_FEE_BPS)?;
+    let bump = ctx.bumps.auction;
+    let mint_key = ctx.accounts.mint.key();
+    let seeds: &[&[u8]] = &[AUCTION_SEED, mint_key.as_ref(), &[bump]];
 
+    // The NFT goes to the winner, or back to the seller when nobody bid
+    // (winner_token == seller_token then).
+    token::transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.auction_vault.to_account_info(),
+                to: ctx.accounts.winner_token.to_account_info(),
+                authority: ctx.accounts.auction.to_account_info(),
+            },
+            &[seeds],
+        ),
+        1,
+    )?;
+
+    // [AUDIT F-24] Recover the escrow ATA rent; the auction PDA itself is
+    // closed by the `close = seller` constraint on the Accounts struct.
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        token::CloseAccount {
+            account: ctx.accounts.auction_vault.to_account_info(),
+            destination: ctx.accounts.seller.to_account_info(),
+            authority: ctx.accounts.auction.to_account_info(),
+        },
+        &[seeds],
+    ))?;
+
+    if amount > 0 {
+        // [RUNTIME LAMPORT RULE] The winning bid is split only after the last
+        // CPI. At every CPI the runtime re-checks this instruction's lamport
+        // sum from the accounts passed to that CPI: debiting the auction (the
+        // transfer authority) before it while the credited seller and
+        // treasury are not passed failed every settlement with a bid
+        // (UnbalancedInstruction), locking the bid and the NFT for good.
+        let (seller_cut, fee) = crate::economics::split_bps(amount, AUCTION_FEE_BPS)?;
         let auction_info = ctx.accounts.auction.to_account_info();
         let reserve = Rent::get()?.minimum_balance(auction_info.data_len());
         // Sequential checked credits also support seller == treasury.
@@ -126,21 +162,6 @@ pub fn settle_handler(ctx: Context<AuctionSettleCtx>) -> Result<()> {
             &auction_info, &ctx.accounts.treasury.to_account_info(), fee, reserve,
         )?;
 
-        let bump = ctx.bumps.auction;
-        let mint_key = ctx.accounts.mint.key();
-        let seeds: &[&[u8]] = &[AUCTION_SEED, mint_key.as_ref(), &[bump]];
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.auction_vault.to_account_info(),
-                    to: ctx.accounts.winner_token.to_account_info(),
-                    authority: ctx.accounts.auction.to_account_info(),
-                },
-                &[seeds],
-            ),
-            1,
-        )?;
         ctx.accounts.tool.owner = ctx.accounts.auction.current_bidder;
         ctx.accounts.tool.operator = ctx.accounts.auction.current_bidder;
 
@@ -149,39 +170,7 @@ pub fn settle_handler(ctx: Context<AuctionSettleCtx>) -> Result<()> {
             winner: ctx.accounts.auction.current_bidder,
             amount,
         });
-    } else {
-        // никто не ставил — вернуть NFT продавцу
-        let bump = ctx.bumps.auction;
-        let mint_key = ctx.accounts.mint.key();
-        let seeds: &[&[u8]] = &[AUCTION_SEED, mint_key.as_ref(), &[bump]];
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.auction_vault.to_account_info(),
-                    to: ctx.accounts.winner_token.to_account_info(), // == seller_token when no bids
-                    authority: ctx.accounts.auction.to_account_info(),
-                },
-                &[seeds],
-            ),
-            1,
-        )?;
     }
-
-    // [AUDIT F-24] Recover the escrow ATA rent; the auction PDA itself is
-    // closed by the `close = seller` constraint on the Accounts struct.
-    let bump = ctx.bumps.auction;
-    let mint_key = ctx.accounts.mint.key();
-    let seeds: &[&[u8]] = &[AUCTION_SEED, mint_key.as_ref(), &[bump]];
-    token::close_account(CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        token::CloseAccount {
-            account: ctx.accounts.auction_vault.to_account_info(),
-            destination: ctx.accounts.seller.to_account_info(),
-            authority: ctx.accounts.auction.to_account_info(),
-        },
-        &[seeds],
-    ))?;
 
     ctx.accounts.auction.active = false;
     Ok(())

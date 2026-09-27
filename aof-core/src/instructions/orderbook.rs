@@ -214,12 +214,6 @@ pub fn match_handler(ctx: Context<MatchResourceOrders>) -> Result<()> {
     let maker_fee = gross.checked_mul(ORDERBOOK_MAKER_FEE_BPS as u64).ok_or(AofError::MathOverflow)? / 10_000;
     let seller_receives = gross.checked_sub(maker_fee).ok_or(AofError::MathOverflow)?;
 
-    **ctx.accounts.buy_order.to_account_info().try_borrow_mut_lamports()? -=
-        gross.checked_add(taker_fee).ok_or(AofError::MathOverflow)?;
-    **ctx.accounts.seller.try_borrow_mut_lamports()? += seller_receives;
-    **ctx.accounts.treasury.try_borrow_mut_lamports()? +=
-        taker_fee.checked_add(maker_fee).ok_or(AofError::MathOverflow)?;
-
     let sell_bump = ctx.bumps.sell_order;
     let seller_key = ctx.accounts.sell_order.maker;
     let mint_key = ctx.accounts.mint.key();
@@ -236,6 +230,16 @@ pub fn match_handler(ctx: Context<MatchResourceOrders>) -> Result<()> {
         ),
         amount,
     )?;
+
+    // [RUNTIME LAMPORT RULE] Direct lamport moves only after the last CPI (at
+    // every CPI the runtime re-checks this instruction's lamport sum from the
+    // accounts passed to it). This path only worked because none of the three
+    // accounts happens to be passed to the transfer above.
+    **ctx.accounts.buy_order.to_account_info().try_borrow_mut_lamports()? -=
+        gross.checked_add(taker_fee).ok_or(AofError::MathOverflow)?;
+    **ctx.accounts.seller.try_borrow_mut_lamports()? += seller_receives;
+    **ctx.accounts.treasury.try_borrow_mut_lamports()? +=
+        taker_fee.checked_add(maker_fee).ok_or(AofError::MathOverflow)?;
 
     ctx.accounts.buy_order.amount_remaining -= amount;
     ctx.accounts.sell_order.amount_remaining -= amount;

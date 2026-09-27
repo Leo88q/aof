@@ -54,12 +54,7 @@ pub fn commit_handler(ctx: Context<RerollRandomCommit>, nonce: u64) -> Result<()
         .checked_add(tank.balance_micros.checked_mul(MICROS_TO_LAMPORTS).ok_or(AofError::MathOverflow)?)
         .and_then(|x| x.checked_add(tank.dust_lamports))
         .ok_or(AofError::MathOverflow)?;
-    crate::economics::transfer_owned_lamports(
-        &ctx.accounts.gastank.to_account_info(),
-        &ctx.accounts.reroll_commit.to_account_info(),
-        fee_lamports,
-        tank_reserve,
-    )?;
+    // The fee itself moves after the last CPI below (runtime lamport rule).
 
     // The settlement NFT's rent is prepaid so that any cranker is made whole.
     let deposit = vrf::tool_settlement_rent(&Rent::get()?);
@@ -110,6 +105,18 @@ pub fn commit_handler(ctx: Context<RerollRandomCommit>, nonce: u64) -> Result<()
         vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
     };
     let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+
+    // [RUNTIME LAMPORT RULE] Direct lamport moves only after the last CPI: at
+    // every CPI the runtime re-checks this instruction's lamport sum from the
+    // accounts passed to that CPI. Moving the fee into the commit before the
+    // deposit transfer (which passes the commit but not the gas tank) failed
+    // every reroll commit with UnbalancedInstruction on the real runtime.
+    crate::economics::transfer_owned_lamports(
+        &ctx.accounts.gastank.to_account_info(),
+        &ctx.accounts.reroll_commit.to_account_info(),
+        fee_lamports,
+        tank_reserve,
+    )?;
 
     let rc = &mut ctx.accounts.reroll_commit;
     rc.user = ctx.accounts.user.key();
