@@ -165,6 +165,25 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
     "falls back to eligible oracles without live health");
   assert.throws(() => vrf.pickOracle([cand(1, { quoteFresh: false })]), /VRF_ORACLE_UNAVAILABLE/);
   assert.throws(() => vrf.pickOracle([]), /VRF_ORACLE_UNAVAILABLE/);
+
+  // The mirror agrees with the installed SDK's own eligibility rule on SDK-shaped
+  // inspection entries (a Switchboard upgrade that changes the rule fails here).
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { isRandomnessOracleCandidateEligible } = require("@switchboard-xyz/common");
+  const sdkShaped = (over: Record<string, unknown> = {}) => ({
+    oracleId: k(7).toBase58(), oracle: { pubkey: k(7) }, gatewayUrl: "https://gw.example", isOnQueue: true,
+    isVerified: true, heartbeatFresh: true, quoteFresh: true, liveHealthy: false, ...over,
+  });
+  for (const over of [
+    {}, { liveHealthy: true }, { heartbeatFresh: false }, { quoteFresh: false }, { isVerified: false },
+    { isOnQueue: false }, { gatewayUrl: "" }, { gatewayUrl: null }, { restricted: true }, { restricted: false },
+    { gatewayEnabled: false }, { gatewayEnabled: true }, { pullOracleEnabled: false }, { pullOracleEnabled: true },
+  ]) {
+    const entry = sdkShaped(over);
+    const mapped = vrf.oracleCandidateFromInspection(entry);
+    assert.ok(mapped.oracle.equals(k(7)));
+    assert.equal(vrf.oracleEligible(mapped), isRandomnessOracleCandidateEligible(entry), JSON.stringify(over));
+  }
 }
 
 // ---- gateway protocol: no RPC URL leak, strict response shape

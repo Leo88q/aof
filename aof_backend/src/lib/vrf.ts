@@ -339,26 +339,34 @@ const ORACLE_STALE_OK_MS = 5 * 60_000;
 let oracleCache: { candidates: OracleCandidate[]; at: number } | undefined;
 let oracleRefresh: Promise<void> | undefined;
 
-async function refreshOracles(connection: Connection): Promise<void> {
+/** One entry of Queue.inspectRandomnessOracles().candidates as an OracleCandidate. */
+export function oracleCandidateFromInspection(c: any): OracleCandidate {
+  return {
+    oracle: new PublicKey(c.oracle.pubkey.toBase58()),
+    gatewayUrl: String(c.gatewayUrl || ""),
+    isOnQueue: Boolean(c.isOnQueue),
+    isVerified: Boolean(c.isVerified),
+    heartbeatFresh: Boolean(c.heartbeatFresh),
+    quoteFresh: Boolean(c.quoteFresh),
+    liveHealthy: Boolean(c.liveHealthy),
+    restricted: c.restricted,
+    gatewayEnabled: c.gatewayEnabled,
+    pullOracleEnabled: c.pullOracleEnabled,
+  };
+}
+
+/** The trusted queue's randomness oracles as the SDK inspects them (uncached). */
+export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
   const sb = await sdk();
   const prog = await switchboardProgram(connection);
   const queue = new sb.Queue(prog, switchboard().queue as any);
   const inspection: any = await queue.inspectRandomnessOracles();
-  oracleCache = {
-    at: Date.now(),
-    candidates: (inspection.candidates || []).map((c: any) => ({
-      oracle: new PublicKey(c.oracle.pubkey.toBase58()),
-      gatewayUrl: String(c.gatewayUrl || ""),
-      isOnQueue: Boolean(c.isOnQueue),
-      isVerified: Boolean(c.isVerified),
-      heartbeatFresh: Boolean(c.heartbeatFresh),
-      quoteFresh: Boolean(c.quoteFresh),
-      liveHealthy: Boolean(c.liveHealthy),
-      restricted: c.restricted,
-      gatewayEnabled: c.gatewayEnabled,
-      pullOracleEnabled: c.pullOracleEnabled,
-    })),
-  };
+  return { inspection, candidates: (inspection.candidates || []).map(oracleCandidateFromInspection) };
+}
+
+async function refreshOracles(connection: Connection): Promise<void> {
+  const { candidates } = await inspectOracles(connection);
+  oracleCache = { at: Date.now(), candidates };
 }
 
 /** Oracle for a new commit (queue inspection cached for 30 s). */
