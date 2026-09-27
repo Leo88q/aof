@@ -48,7 +48,7 @@ export function ContentPage({ id }: { id: string }) {
           <Section title="Наш продукт">
             <div className="nf-product">
               <div className="nf-product__visual">
-                <img src="/assets/brand/game-poster.png" alt="NeuroForge — Age of Intelligence" className="nf-product__poster" />
+                <span className="site-frame"><img src="/assets/brand/game-poster.png" alt="NeuroForge — Age of Intelligence" className="nf-product__poster" /></span>
                 <img src="/assets/brand/game-banner.png" alt="NeuroForge key art" className="nf-product__banner" />
               </div>
               <div className="nf-product__info">
