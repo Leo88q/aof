@@ -12,25 +12,30 @@ interface ResourceBarProps {
 }
 
 /**
- * Три счётчика ресурсов на главной: FOOD / WOOD / STONE.
+ * Три счётчика ресурсов на главной: Данные / Схема / Кремний (DATA / CIRCUIT / SILICON).
+ * Бэкенд отдаёт балансы под legacy-ключами FOOD / WOOD / STONE — маппим здесь.
  * Источник правды — SPL-балансы на цепи (через /query/balances).
  * Автообновление при смене refreshKey (например, после collect_mining).
  */
 export function ResourceBar({ owner, refreshKey }: ResourceBarProps) {
   const { setTab } = useNav();
-  const [balances, setBalances] = useState<Record<string, number>>({ FOOD: 0, WOOD: 0, STONE: 0 });
+  const [balances, setBalances] = useState<Record<string, number>>({ DATA: 0, CIRCUIT: 0, SILICON: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!owner) {
-      setBalances({ FOOD: 0, WOOD: 0, STONE: 0 });
+      setBalances({ DATA: 0, CIRCUIT: 0, SILICON: 0 });
       setLoading(false);
       return;
     }
     setLoading(true);
     api.query.balances(owner)
-      .then((b: any) => setBalances({ FOOD: b?.FOOD ?? 0, WOOD: b?.WOOD ?? 0, STONE: b?.STONE ?? 0 }))
-      .catch(() => setBalances({ FOOD: 0, WOOD: 0, STONE: 0 }))
+      .then((b: any) => setBalances({
+        DATA: b?.DATA ?? b?.FOOD ?? 0,
+        CIRCUIT: b?.CIRCUIT ?? b?.WOOD ?? 0,
+        SILICON: b?.SILICON ?? b?.STONE ?? 0,
+      }))
+      .catch(() => setBalances({ DATA: 0, CIRCUIT: 0, SILICON: 0 }))
       .finally(() => setLoading(false));
   }, [owner, refreshKey]);
 

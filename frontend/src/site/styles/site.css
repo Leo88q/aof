@@ -831,3 +831,115 @@
   margin-top: 16px;
   flex-wrap: wrap;
 }
+
+/* ===== Арт на сайте: плашки ресурсов, NFT-инструменты, цепочка ===== */
+.site-plate {
+  display: inline-grid;
+  border-radius: 12px;
+  background: #0A0A14;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  box-shadow: 0 6px 18px rgba(10, 10, 20, 0.28), inset 0 0 0 1px rgba(0, 212, 255, 0.06);
+}
+.site-plate img { border-radius: inherit; }
+
+.site-card__art { display: block; width: 100%; margin-bottom: 14px; }
+.site-card:hover .site-card__art { border-color: rgba(0, 212, 255, 0.5); }
+
+.site-io-icon { flex-shrink: 0; border-radius: 8px; }
+.site-recipe-in,
+.site-recipe-out {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+}
+
+.site-media-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.site-media-row__art { display: block; }
+@media (max-width: 640px) {
+  .site-media-row { grid-template-columns: 1fr; }
+  .site-media-row__art { max-width: 220px; }
+}
+
+.site-tool__art { display: block; width: 100%; margin-bottom: 6px; }
+.site-tool--3 .site-tool__art,
+.site-tool--4 .site-tool__art { border-color: rgba(232, 185, 138, 0.6); }
+
+.site-nft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+.site-nft__hero { display: block; width: 100%; margin-bottom: 12px; }
+.site-nft h3 { margin: 0 0 10px; font-family: var(--aof-font-display); font-size: 1.15rem; }
+.site-nft__rarities {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.site-nft__rarities li { display: grid; gap: 4px; justify-items: center; text-align: center; }
+.site-nft__rarities small { font-size: 0.62rem; letter-spacing: 0.02em; color: var(--aof-forest); }
+.site-nft__rarities .site-plate { width: 100%; border-radius: 8px; }
+
+.site-icon-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--aof-parchment);
+  background-image: var(--site-paper-texture);
+  border: 1px solid var(--aof-oak);
+  border-radius: var(--aof-radius-sm);
+}
+.site-icon-strip__item {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 78px;
+  text-decoration: none;
+  color: inherit;
+}
+.site-icon-strip__item small { font-size: 0.66rem; line-height: 1.15; text-align: center; color: var(--aof-forest); }
+.site-icon-strip__item:hover .site-plate { border-color: rgba(0, 212, 255, 0.6); transform: translateY(-2px); }
+.site-icon-strip .site-plate { transition: transform var(--aof-dur-release), border-color var(--aof-dur-release); }
+
+.site-chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 4px;
+}
+.site-chain__step { display: inline-flex; align-items: center; gap: 4px; }
+.site-chain__node {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: var(--aof-oak-dark);
+  font-family: var(--aof-font-display);
+  font-size: 1rem;
+  border-radius: var(--aof-radius-sm);
+  transition: background var(--aof-dur-release);
+}
+.site-chain__node:hover { background: rgba(0, 212, 255, 0.08); }
+.site-chain__arrow { font-size: 1.6rem; color: var(--aof-copper); padding: 0 6px; }
+
+.site-glossary__with-icon { display: grid; grid-template-columns: 44px 1fr; column-gap: 14px; }
+.site-glossary__with-icon .site-glossary__icon { grid-row: 1 / span 2; align-self: start; }
+.site-glossary__with-icon dt,
+.site-glossary__with-icon dd { grid-column: 2; }

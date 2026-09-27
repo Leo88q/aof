@@ -138,7 +138,7 @@ export function DailyRewardButton() {
           
           {status?.nextReward && !claimed && (
             <p className="text-straw text-xs">
-              День {status.nextReward.day}: <span className="text-wheat-500 font-bold">+{status.nextReward.potato}</span> POTATO
+              День {status.nextReward.day}: <span className="text-wheat-500 font-bold">+{status.nextReward.potato}</span> MIND
               {status.nextReward.bonus && (
                 <span className="ml-1 text-gold">• {status.nextReward.bonus}</span>
               )}
@@ -147,7 +147,7 @@ export function DailyRewardButton() {
           
           {claimed && claimedReward && (
             <p className="text-sprout-500 text-xs font-bold">
-              ✓ Получено: +{claimedReward.potato} POTATO!
+              ✓ Получено: +{claimedReward.potato} MIND!
             </p>
           )}
         </div>

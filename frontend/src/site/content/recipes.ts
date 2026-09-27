@@ -1,30 +1,30 @@
 import type { Recipe } from './schema';
 
 export const recipes: Recipe[] = [
-  // === ЦЕПОЧКА ХЛЕБА ===
+  // === ЦЕПОЧКА МОДЕЛИ ===
   {
     id: 'mill_flour',
     verification: 'editorial',
     name: 'Перемол синапсов',
     station: 'mill',
-    inputs: [{ resourceId: 'wheat', amount: 5 }],
-    outputs: [{ resourceId: 'flour', amount: 3 }],
+    inputs: [{ resourceId: 'synapse', amount: 5 }],
+    outputs: [{ resourceId: 'signal', amount: 3 }],
     energy: 8,
     time: '~4 минуты игрового времени',
     description: 'Базовая переработка: 5 синапсов → 3 сигнала. Модуль переработки принимает только полностью созревшие данные.',
-    narrative: 'Жернова не любят спешки. Мельник загружает данные небольшими порциями и слушает: когда звук становится ровным, сигнал готова. Пять колосьев дают три горсти — такова цена переработкаа.'
+    narrative: 'Модуль переработки не любит спешки. Оператор подаёт синапсы небольшими пакетами и слушает шум шины: когда он становится ровным, сигнал готов. Пять синапсов дают три пакета сигнала — такова цена переработки.'
   },
   {
     id: 'bake_bread',
     verification: 'editorial',
-    name: 'Тренировка модельа',
+    name: 'Тренировка модели',
     station: 'oven',
-    inputs: [{ resourceId: 'flour', amount: 2 }, { resourceId: 'water', amount: 1 }, { resourceId: 'coal', amount: 1 }],
-    outputs: [{ resourceId: 'bread', amount: 1 }],
+    inputs: [{ resourceId: 'signal', amount: 2 }, { resourceId: 'power', amount: 1 }, { resourceId: 'compute', amount: 1 }],
+    outputs: [{ resourceId: 'model', amount: 1 }],
     energy: 12,
     time: '~8 минут игрового времени',
     description: 'Продуктовое описание цепочки тренировки: сигнал + энергопоток + вычислительный цикл для жара. Эффект модели не подтверждён on-chain.',
-    narrative: 'Тренажёр топится углём, а не дровами — дуб жалко жечь на модель. Тесто поднимается в тишине, пока жар равномерно пропекает корку. Когда модель ломается с паром — работа закончена.'
+    narrative: 'Тренажёр питается вычислительными циклами, а не голым энергопотоком — циклы жалко тратить впустую. Веса сходятся в тишине, пока сигнал равномерно прогоняется через слои. Когда кривая потерь ложится ровно — работа закончена.'
   },
   
   // === ИНСТРУМЕНТЫ ===
@@ -33,7 +33,7 @@ export const recipes: Recipe[] = [
     verification: 'editorial',
     name: 'Обычный плазменный резчик',
     station: 'workbench',
-    inputs: [{ resourceId: 'wood', amount: 3 }, { resourceId: 'stone', amount: 2 }],
+    inputs: [{ resourceId: 'circuit', amount: 3 }, { resourceId: 'silicon', amount: 2 }],
     outputs: [{ resourceId: 'tools', amount: 1 }],
     energy: 15,
     toolRequired: undefined,
@@ -45,7 +45,7 @@ export const recipes: Recipe[] = [
     verification: 'editorial',
     name: 'Усиленный плазменный резчик',
     station: 'forge',
-    inputs: [{ resourceId: 'wood', amount: 5 }, { resourceId: 'stone', amount: 4 }, { resourceId: 'coal', amount: 3 }],
+    inputs: [{ resourceId: 'circuit', amount: 5 }, { resourceId: 'silicon', amount: 4 }, { resourceId: 'compute', amount: 3 }],
     outputs: [{ resourceId: 'tools', amount: 1 }],
     energy: 25,
     description: 'Инструмент enhanced-редкости. Усиленная кромка, композитная рукоять, полимерная обмотка. 20 прочности.',
@@ -56,7 +56,7 @@ export const recipes: Recipe[] = [
     verification: 'editorial',
     name: 'Квантовый плазменный резчик',
     station: 'forge',
-    inputs: [{ resourceId: 'wood', amount: 8 }, { resourceId: 'stone_blue', amount: 2 }, { resourceId: 'coal', amount: 5 }, { resourceId: 'copper', amount: 1 }],
+    inputs: [{ resourceId: 'circuit', amount: 8 }, { resourceId: 'blueCore', amount: 2 }, { resourceId: 'compute', amount: 5 }, { resourceId: 'photonBit', amount: 1 }],
     outputs: [{ resourceId: 'tools', amount: 1 }],
     energy: 40,
     description: 'Редкий инструмент. Булатная сталь с медным ошейником. 20 прочности + бонус к определённым действиям.',
@@ -68,10 +68,10 @@ export const recipes: Recipe[] = [
     name: 'Трансцендентный плазменный резчик',
     station: 'forge',
     inputs: [
-      { resourceId: 'wood', amount: 12 },
-      { resourceId: 'stone_red', amount: 1 },
-      { resourceId: 'gem_orange', amount: 1 },
-      { resourceId: 'coal', amount: 8 }
+      { resourceId: 'circuit', amount: 12 },
+      { resourceId: 'redCore', amount: 1 },
+      { resourceId: 'neuralChip', amount: 1 },
+      { resourceId: 'compute', amount: 8 }
     ],
     outputs: [{ resourceId: 'tools', amount: 1 }],
     energy: 60,
@@ -86,13 +86,13 @@ export const recipes: Recipe[] = [
     name: 'Синяя фляга',
     station: 'glassworks',
     inputs: [
-      { resourceId: 'sand_white', amount: 3 },
-      { resourceId: 'gem_blue', amount: 1 },
-      { resourceId: 'coal', amount: 2 }
+      { resourceId: 'clearQuartz', amount: 3 },
+      { resourceId: 'quantumBit', amount: 1 },
+      { resourceId: 'compute', amount: 2 }
     ],
-    outputs: [{ resourceId: 'flask_blue', amount: 1 }],
+    outputs: [{ resourceId: 'cryoFluid', amount: 1 }],
     energy: 20,
-    description: 'Рданныекционное описание стеклодувной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
+    description: 'Редакционное описание стеклодувной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
     narrative: 'Стеклодув выдувает флягу одним дыханием. Синий цвет — от гема, растворённого в расплаве. Жидкость внутри прохладная даже в жару.',
   },
   {
@@ -101,13 +101,13 @@ export const recipes: Recipe[] = [
     name: 'Жёлтая фляга',
     station: 'glassworks',
     inputs: [
-      { resourceId: 'sand_yellow', amount: 4 },
-      { resourceId: 'gem_orange', amount: 1 },
-      { resourceId: 'coal', amount: 3 }
+      { resourceId: 'amberQuartz', amount: 4 },
+      { resourceId: 'neuralChip', amount: 1 },
+      { resourceId: 'compute', amount: 3 }
     ],
-    outputs: [{ resourceId: 'flask_yellow', amount: 1 }],
+    outputs: [{ resourceId: 'voltFluid', amount: 1 }],
     energy: 25,
-    description: 'Рданныекционное описание янтарной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
+    description: 'Редакционное описание янтарной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
     narrative: 'Янтарное стекло гуще, тяжелее. Жидкость внутри вязкая, как мёд. Стеклодув говорит: эта фляга для дней, когда нужно сделать невозможное.'
   },
   {
@@ -116,13 +116,13 @@ export const recipes: Recipe[] = [
     name: 'Зелёная фляга',
     station: 'alchemist',
     inputs: [
-      { resourceId: 'sand_white', amount: 5 },
-      { resourceId: 'gem_green', amount: 1 },
-      { resourceId: 'water', amount: 2 }
+      { resourceId: 'clearQuartz', amount: 5 },
+      { resourceId: 'bioChip', amount: 1 },
+      { resourceId: 'power', amount: 2 }
     ],
-    outputs: [{ resourceId: 'flask_green', amount: 1 }],
+    outputs: [{ resourceId: 'bioFluid', amount: 1 }],
     energy: 35,
-    description: 'Рданныекционное описание полного восстановления энергии. Точный эффект и рецепт не подтверждены on-chain.',
+    description: 'Редакционное описание полного восстановления энергии. Точный эффект и рецепт не подтверждены on-chain.',
     narrative: 'Алхимик работает в тишине, без помощников. Зелёная жидкость светится изнутри слабо, но этого достаточно, чтобы читать при ней. Говорят, в ней растворён лист первого схемы мастерской.'
   },
   
@@ -133,15 +133,15 @@ export const recipes: Recipe[] = [
     name: 'Ритуальная модель',
     station: 'oven',
     inputs: [
-      { resourceId: 'potato', amount: 3 },
-      { resourceId: 'flour', amount: 2 },
-      { resourceId: 'coal', amount: 1 }
+      { resourceId: 'mind', amount: 3 },
+      { resourceId: 'signal', amount: 2 },
+      { resourceId: 'compute', amount: 1 }
     ],
-    outputs: [{ resourceId: 'food', amount: 5 }],
+    outputs: [{ resourceId: 'data', amount: 5 }],
     energy: 15,
     potatoCost: 3,
     description: 'Коллаборационный рецепт. 3 MIND + сигнал + вычислительный цикл = 5 единиц провизии.',
-    narrative: 'MIND приходит из другой игры, но в тренажёра NeuroForge ведёт себя как любой другой корнеплод. Пир получается румяный, с коркой. Мастера шутят: "Картошка не знает, откуда пришла — ей всё равно вкусно."'
+    narrative: 'MIND приходит из другой игры, но в тренажёре NeuroForge ведёт себя как любой другой ресурс. Сборка получается плотной и стабильной. Мастера шутят: "MIND не знает, откуда пришёл — ему всё равно, где работать."'
   },
   {
     id: 'potato_ritual',
@@ -149,14 +149,14 @@ export const recipes: Recipe[] = [
     name: 'Ритуал обмена',
     station: 'workbench',
     inputs: [
-      { resourceId: 'potato', amount: 10 },
-      { resourceId: 'love_heart', amount: 1 }
+      { resourceId: 'mind', amount: 10 },
+      { resourceId: 'soulCore', amount: 1 }
     ],
     outputs: [{ resourceId: 'skr', amount: 50 }],
     energy: 20,
     potatoCost: 10,
-    description: 'Превращение 10 MIND + 1 Love Heart → 50 SKR. Одноразовый ритуал эпохи.',
-    narrative: 'Ритуал проводят в полнолуние. MIND сгорает без остатка, Love Heart темнеет и трескается. Взамен — горсть медных монет SKR. Мастера говорят: это не обмен, это благодарность между мирами.'
+    description: 'Превращение 10 MIND + 1 Ядро-душа (Soul Core) → 50 SKR. Одноразовый ритуал эпохи.',
+    narrative: 'Ритуал проводят в полнолуние. MIND сгорает без остатка, Ядро-душа темнеет и трескается. Взамен — горсть монет SKR. Мастера говорят: это не обмен, это благодарность между мирами.'
   },
   {
     id: 'potato_boost',
@@ -164,8 +164,8 @@ export const recipes: Recipe[] = [
     name: 'Ускорение эпохи',
     station: 'alchemist',
     inputs: [
-      { resourceId: 'potato', amount: 5 },
-      { resourceId: 'flask_purple', amount: 1 }
+      { resourceId: 'mind', amount: 5 },
+      { resourceId: 'quantumFluid', amount: 1 }
     ],
     outputs: [],
     energy: 10,

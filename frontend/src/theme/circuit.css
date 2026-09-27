@@ -1,0 +1,247 @@
+/* =====================================================================
+   NeuroForge — тема «ЧИП / МИКРОСХЕМА»
+   Все окна, панели, карточки и модалки игры выглядят как компоненты на
+   печатной плате: тёмная подложка с дорожками, золотые контактные
+   площадки по углам, ряды выводов (pins) по краям, метка «pin 1».
+   Подключается после manor.css / plates.css и перекрывает их.
+   Сайт (/site) этот слой не трогает — там свой «бумажный» стиль.
+   ===================================================================== */
+
+:root {
+  --nf-chip-radius: 14px;
+  --nf-chip-line: rgba(0, 212, 255, 0.30);
+  --nf-chip-line-hi: rgba(0, 212, 255, 0.55);
+  --nf-chip-line-soft: rgba(0, 212, 255, 0.14);
+  --nf-chip-pad: rgba(255, 199, 92, 0.85);      /* золото контактных площадок */
+  --nf-chip-pad-dim: rgba(255, 199, 92, 0.55);
+  --nf-chip-pin: rgba(0, 212, 255, 0.55);
+  --nf-chip-pin-dim: rgba(0, 212, 255, 0.32);
+  --nf-chip-bg: linear-gradient(180deg, rgba(20, 24, 44, 0.97), rgba(12, 14, 28, 0.985) 55%, rgba(8, 9, 20, 1));
+  --nf-chip-bg-inner: linear-gradient(180deg, rgba(0, 212, 255, 0.035), rgba(0, 212, 255, 0) 60%);
+  /* дорожки платы — плитка 96×96 */
+  --nf-chip-trace: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' fill='none' stroke='%2300D4FF' stroke-opacity='0.15' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 24h22l10 10v22'/%3E%3Cpath d='M88 12v20l-12 12H52'/%3E%3Cpath d='M20 88V70l8-8h20'/%3E%3Cpath d='M60 88v-14l14-14h14'/%3E%3Cpath d='M4 52h10'/%3E%3Cpath d='M84 40h8'/%3E%3Ccircle cx='8' cy='24' r='2'/%3E%3Ccircle cx='40' cy='56' r='2'/%3E%3Ccircle cx='88' cy='12' r='2'/%3E%3Ccircle cx='52' cy='44' r='2'/%3E%3Ccircle cx='20' cy='88' r='2'/%3E%3Ccircle cx='48' cy='62' r='2'/%3E%3Ccircle cx='60' cy='88' r='2'/%3E%3Ccircle cx='88' cy='60' r='2'/%3E%3Ccircle cx='14' cy='52' r='1.5' fill='%2300D4FF' fill-opacity='0.25'/%3E%3Ccircle cx='84' cy='40' r='1.5' fill='%2300D4FF' fill-opacity='0.25'/%3E%3C/svg%3E");
+  /* тонкая сетка платы */
+  --nf-chip-grid-h: linear-gradient(rgba(0, 212, 255, 0.035) 1px, transparent 1px);
+  --nf-chip-grid-v: linear-gradient(90deg, rgba(0, 212, 255, 0.035) 1px, transparent 1px);
+  --nf-chip-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 212, 255, 0.06), inset 0 0 28px rgba(0, 212, 255, 0.045);
+  --nf-chip-shadow-lift: 0 18px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.55), 0 0 24px rgba(0, 212, 255, 0.14), inset 0 0 0 1px rgba(0, 212, 255, 0.10);
+}
+
+/* ---------- 1. КОРПУС ЧИПА: Card (nf-chip) и legacy-панели ---------- */
+
+/* Card.tsx — Tailwind-дефолты сняты, поэтому базовый вид задаём с нулевой
+   специфичностью: утилиты, переданные через className (bg-gradient-*,
+   border-gold/30 …), по-прежнему побеждают. */
+:where(.nf-chip) {
+  border: 1px solid var(--nf-chip-line);
+  border-radius: var(--nf-chip-radius);
+  background:
+    var(--nf-chip-trace) 0 0 / 96px 96px repeat,
+    var(--nf-chip-grid-h) 0 0 / 24px 24px repeat,
+    var(--nf-chip-grid-v) 0 0 / 24px 24px repeat,
+    var(--nf-chip-bg);
+  box-shadow: var(--nf-chip-shadow);
+  color: var(--nf-text, #E0E4F0);
+  transition: transform 0.4s var(--nf-heavy, ease), box-shadow 0.4s var(--nf-heavy, ease), border-color 0.3s;
+}
+.nf-chip {
+  position: relative;
+  isolation: isolate;
+}
+:where(.nf-chip.cursor-pointer:hover) {
+  border-color: var(--nf-chip-line-hi);
+  box-shadow: var(--nf-chip-shadow-lift);
+}
+
+/* Legacy-панели, которые manor.css красит через !important */
+.card, .list, .tool-card, .resource-card, .action-card, .mn-panel, .recipe-card, .pantry-item, .mn-modal {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--nf-chip-radius) !important;
+  border: 1px solid var(--nf-chip-line) !important;
+  background:
+    var(--nf-chip-trace) 0 0 / 96px 96px repeat,
+    var(--nf-chip-grid-h) 0 0 / 24px 24px repeat,
+    var(--nf-chip-grid-v) 0 0 / 24px 24px repeat,
+    var(--nf-chip-bg) !important;
+  box-shadow: var(--nf-chip-shadow) !important;
+}
+.card:hover, .tool-card:hover, .mn-panel:hover, .resource-card:hover, .recipe-card:hover, .pantry-item:hover {
+  border-color: var(--nf-chip-line-hi) !important;
+  box-shadow: var(--nf-chip-shadow-lift) !important;
+}
+.mn-modal { width: min(560px, 100%); }
+.mn-modal .body { position: relative; z-index: 1; }
+
+/* Обвязка корпуса: угловые площадки, ряды выводов, метка pin-1.
+   z-index:-1 внутри isolate — слой лежит над фоном и под содержимым. */
+.nf-chip::after,
+.card::after, .list::after, .tool-card::after, .resource-card::after, .action-card::after,
+.mn-panel::after, .recipe-card::after, .pantry-item::after, .mn-modal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    /* угловые контактные площадки */
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    /* метка pin-1 */
+    radial-gradient(circle, rgba(0, 212, 255, 0.95) 0 1.6px, rgba(0, 212, 255, 0.25) 2.2px, transparent 3px),
+    /* ряды выводов слева и справа */
+    repeating-linear-gradient(180deg, var(--nf-chip-pin) 0 3px, transparent 3px 10px),
+    repeating-linear-gradient(180deg, var(--nf-chip-pin) 0 3px, transparent 3px 10px),
+    /* ряды выводов сверху и снизу */
+    repeating-linear-gradient(90deg, var(--nf-chip-pin-dim) 0 3px, transparent 3px 10px),
+    repeating-linear-gradient(90deg, var(--nf-chip-pin-dim) 0 3px, transparent 3px 10px),
+    /* блик по верхней кромке */
+    var(--nf-chip-bg-inner);
+  background-size:
+    6px 6px, 6px 6px, 6px 6px, 6px 6px,
+    8px 8px,
+    3px calc(100% - 44px), 3px calc(100% - 44px),
+    calc(100% - 64px) 3px, calc(100% - 64px) 3px,
+    100% 100%;
+  background-position:
+    6px 6px, calc(100% - 6px) 6px, 6px calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
+    13px 6px,
+    2px 50%, calc(100% - 2px) 50%,
+    50% 2px, 50% calc(100% - 2px),
+    0 0;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+/* manor.css гасил .card::after — вернули; неоновый верхний край оставляем */
+.card::before, .mn-panel::before { z-index: 1; }
+
+/* Компактные карточки (тайлы рынка, элементы кладовой) — площадки мельче */
+.resource-card::after, .pantry-item::after, .recipe-card::after {
+  background-size:
+    4px 4px, 4px 4px, 4px 4px, 4px 4px,
+    6px 6px,
+    2px calc(100% - 32px), 2px calc(100% - 32px),
+    calc(100% - 44px) 2px, calc(100% - 44px) 2px,
+    100% 100%;
+  background-position:
+    4px 4px, calc(100% - 4px) 4px, 4px calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+    9px 4px,
+    1px 50%, calc(100% - 1px) 50%,
+    50% 1px, 50% calc(100% - 1px),
+    0 0;
+}
+
+/* ---------- 2. ВНУТРЕННИЕ БЛОКИ — «микросхемы на плате» ----------
+   Tailwind-контейнеры внутри чипа (bg-soil-800/60 rounded-xl …): те же
+   площадки и выводы, но через background-image, чтобы не трогать позицию
+   и stacking-context. Нулевая специфичность — утилиты всегда сильнее. */
+:where(.nf-chip, .card, .mn-panel, .mn-modal, .tool-card, .action-card)
+  :where(div, section, article, li, form, details, summary)[class*="rounded-"][class*="bg-soil-"],
+:where(.nf-chip, .card, .mn-panel, .mn-modal, .tool-card, .action-card)
+  :where(div, section, article, li, form)[class*="rounded-"][class*="border-straw"] {
+  background-image:
+    linear-gradient(var(--nf-chip-pad-dim), var(--nf-chip-pad-dim)),
+    linear-gradient(var(--nf-chip-pad-dim), var(--nf-chip-pad-dim)),
+    linear-gradient(var(--nf-chip-pad-dim), var(--nf-chip-pad-dim)),
+    linear-gradient(var(--nf-chip-pad-dim), var(--nf-chip-pad-dim)),
+    repeating-linear-gradient(90deg, var(--nf-chip-pin-dim) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(90deg, var(--nf-chip-pin-dim) 0 2px, transparent 2px 7px),
+    var(--nf-chip-bg-inner);
+  background-size: 4px 4px, 4px 4px, 4px 4px, 4px 4px, 36% 2px, 36% 2px, 100% 100%;
+  background-position:
+    4px 4px, calc(100% - 4px) 4px, 4px calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+    50% 0, 50% 100%,
+    0 0;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.07), 0 2px 10px rgba(0, 0, 0, 0.25);
+  border-color: var(--nf-chip-line-soft);
+}
+
+/* Поля ввода внутри чипов — тонкий цианистый контур, без площадок */
+:where(.nf-chip, .card, .mn-panel, .mn-modal) :where(input, select, textarea)[class*="bg-soil-"] {
+  border-color: var(--nf-chip-line-soft);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 212, 255, 0.04);
+}
+:where(.nf-chip, .card, .mn-panel, .mn-modal) :where(input, select, textarea)[class*="bg-soil-"]:focus {
+  border-color: var(--nf-chip-line-hi);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
+}
+
+/* ---------- 3. МОДАЛКИ (Tailwind: fixed inset-0 > панель) ---------- */
+:where(.fixed.inset-0) > :where(div, form, section)[class*="rounded-"][class*="bg-"] {
+  background-image:
+    var(--nf-chip-trace),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    linear-gradient(var(--nf-chip-pad), var(--nf-chip-pad)),
+    repeating-linear-gradient(180deg, var(--nf-chip-pin) 0 3px, transparent 3px 10px),
+    repeating-linear-gradient(180deg, var(--nf-chip-pin) 0 3px, transparent 3px 10px),
+    var(--nf-chip-bg-inner);
+  background-size: 96px 96px, 6px 6px, 6px 6px, 6px 6px, 6px 6px, 3px calc(100% - 44px), 3px calc(100% - 44px), 100% 100%;
+  background-position:
+    0 0,
+    6px 6px, calc(100% - 6px) 6px, 6px calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
+    2px 50%, calc(100% - 2px) 50%,
+    0 0;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  border: 1px solid var(--nf-chip-line);
+  box-shadow: var(--nf-chip-shadow-lift);
+}
+
+/* ---------- 4. ПЛАШКИ АРТА — «сокет» с угловыми скобами ---------- */
+.nf-plate {
+  position: relative;
+  border-radius: 10px;
+  border-color: rgba(0, 212, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(6, 6, 15, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 10px rgba(0, 212, 255, 0.06);
+}
+.nf-plate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  --b: rgba(0, 212, 255, 0.55);
+  background-image:
+    linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)),
+    linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)),
+    linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)),
+    linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b));
+  background-size: 8px 1px, 1px 8px, 8px 1px, 1px 8px, 8px 1px, 1px 8px, 8px 1px, 1px 8px;
+  background-position:
+    3px 3px, 3px 3px,
+    calc(100% - 3px) 3px, calc(100% - 3px) 3px,
+    3px calc(100% - 3px), 3px calc(100% - 3px),
+    calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) calc(100% - 3px);
+  background-repeat: no-repeat;
+}
+
+/* ---------- 5. ШИНЫ: верхняя навигация и нижний таббар ---------- */
+.nav-bar::after, .tabbar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--nf-chip-pin-dim) 0 3px, transparent 3px 11px),
+    linear-gradient(90deg, transparent, var(--nf-chip-line-soft) 15%, var(--nf-chip-line-soft) 85%, transparent);
+  background-size: 100% 3px, 100% 1px;
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+}
+.nav-bar::after { bottom: 0; }
+.tabbar::before { top: 0; transform: scaleY(-1); }
+
+/* ---------- 6. ДОСТУПНОСТЬ / ПЕЧАТЬ ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :where(.nf-chip), .card, .tool-card, .mn-panel { transition: none; }
+}
+@media print {
+  .nf-chip::after, .card::after, .mn-panel::after, .nf-plate::after, .nav-bar::after, .tabbar::before { display: none; }
+}

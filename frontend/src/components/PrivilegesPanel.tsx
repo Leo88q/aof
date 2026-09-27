@@ -166,7 +166,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (редкая награда)</li>
-                <li>Покупка за <b>5000 POTATO</b> в магазине</li>
+                <li>Покупка за <b>5000 MIND</b> в магазине</li>
                 <li>Топ-10 рейтинга в конце эпохи</li>
               </ul>
             </div>
@@ -184,7 +184,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
               <b className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Как получить:</b>
               <ul style={{margin: "4px 0 0 0", paddingLeft: "16px", lineHeight: "1.6"}}>
                 <li>Квесты эпохи (ультра-редкая награда)</li>
-                <li>Покупка за <b>10000 POTATO</b> в магазине</li>
+                <li>Покупка за <b>10000 MIND</b> в магазине</li>
                 <li>Топ-3 рейтинга в конце эпохи</li>
                 <li>Специальные события (лимит: 100 шт/эпоху)</li>
               </ul>

@@ -319,7 +319,7 @@ export function ProfileHome() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.economyOverview} alt="" className="w-5 h-5" /> Economy Monitor</h3>
-            <p className="text-straw/60 text-xs mt-1">Мониторинг POTATO экономики (admin)</p>
+            <p className="text-straw/60 text-xs mt-1">Мониторинг MIND-экономики (admin)</p>
           </div>
           <span className="text-2xl text-straw">→</span>
         </div>

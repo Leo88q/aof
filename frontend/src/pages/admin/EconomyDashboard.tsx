@@ -107,7 +107,7 @@ export function EconomyDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-6 h-6" /> OpenClaw Economy Monitor</h2>
-            <p className="text-straw text-sm">Real-time мониторинг экономики POTATO</p>
+            <p className="text-straw text-sm">Real-time мониторинг экономики MIND</p>
           </div>
           <button
             onClick={takeSnapshot}
@@ -132,7 +132,7 @@ export function EconomyDashboard() {
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-soil-800/60">
-              <p className="text-straw text-xs mb-1">POTATO Supply<QualityBadge q={latest.fieldQuality?.potatoSupply} /></p>
+              <p className="text-straw text-xs mb-1">MIND Supply<QualityBadge q={latest.fieldQuality?.potatoSupply} /></p>
               <p className="text-wheat-500 text-xl font-bold">
                 {latest.fieldQuality?.potatoSupply === "unavailable" ? "—" : `${(Number(latest.potatoSupply) / 1e9).toFixed(2)}M`}
               </p>

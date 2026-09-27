@@ -2,7 +2,8 @@ import type { CSSProperties } from "react";
 
 /**
  * Square plate. The image is always contained, never cropped.
- * Source art is padded, so a chip, a circle, or a card shows the whole object.
+ * Source art is pre-trimmed to the object (scripts/assets/trim-art.sh), so the
+ * item fills the plate instead of floating in a black frame.
  */
 export function ArtPlate({
   src,

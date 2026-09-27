@@ -68,7 +68,7 @@ export function PlantingPanel() {
     try {
       const seedsMint = await getMintAsync("NEURON");
       if (!seedsMint) {
-        toast.show("❌ Mint SEEDS не найден. Проверьте деплой контракта.");
+        toast.show("❌ Mint NEURON не найден. Проверьте деплой контракта.");
         return;
       }
       const resp = await api.chain.plantSeeds({
@@ -83,7 +83,7 @@ export function PlantingPanel() {
         setSelectedPlot(null);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Error посева"}`);
+        toast.show(`❌ ${r.error || "Ошибка нейрального посева"}`);
       }
     } catch (e: any) {
       toast.show(`❌ ${e.message || "Error"}`);
@@ -98,7 +98,7 @@ export function PlantingPanel() {
     try {
       const wheatMint = await getMintAsync("SYNAPSE");
       if (!wheatMint) {
-        toast.show("❌ Mint WHEAT не найден");
+        toast.show("❌ Mint SYNAPSE не найден");
         return;
       }
       if (!reaper) {
@@ -140,7 +140,7 @@ export function PlantingPanel() {
     return (
       <Card className="p-4">
         <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
-        <p className="text-straw text-sm text-center py-4">Подключите кошелёк для посева</p>
+        <p className="text-straw text-sm text-center py-4">Подключите кошелёк для нейрального посева</p>
       </Card>
     );
   }

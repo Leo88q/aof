@@ -109,7 +109,7 @@ export function MillPanel() {
     setMilling(true);
     try {
       const flourMint = await getMintAsync("SIGNAL");
-      if (!flourMint) { toast.show("❌ Mint FLOUR не найден"); return; }
+      if (!flourMint) { toast.show("❌ Mint SIGNAL не найден"); return; }
       const resp = await api.chain.collectFlour({
         user: walletAddr,
         flourMint,
@@ -209,7 +209,7 @@ export function MillPanel() {
               disabled={milling}
               className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50"
             >
-              {milling ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("FLOUR")} alt="" className="w-4 h-4" /> Собрать муку</span>}
+              {milling ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("FLOUR")} alt="" className="w-4 h-4" /> Собрать сигнал</span>}
             </button>
           )}
         </div>

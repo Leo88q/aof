@@ -113,7 +113,7 @@ export function SandboxPage() {
           
           <div>
             <label className="text-straw text-xs block mb-1">
-              Daily POTATO mint: <span className="text-wheat-500 font-bold">{dailyMint.toLocaleString()}</span>
+              Daily MIND mint: <span className="text-wheat-500 font-bold">{dailyMint.toLocaleString()}</span>
             </label>
             <input
               type="range"
