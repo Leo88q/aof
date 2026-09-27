@@ -1,0 +1,3 @@
+# CI copies the workspace Cargo.lock here before building (see Cargo.toml).
+Cargo.lock
+target/

@@ -2,7 +2,7 @@
  * [SECURITY_CHECKLIST #27] Compute units that aof-core instructions actually
  * consume, measured on the local validator.
  *
- * Runs after tests/aof_core.ts and tests/aof_extended.ts and reads this
+ * Runs after the other validator suites (see Anchor.toml [scripts] test) and reads this
  * validator's transaction history, so the other suites need no changes. The
  * consumption of every top-level aof-core invocation is attributed to its
  * instruction through Anchor's "Instruction: X" log line. The test fails when
@@ -22,6 +22,7 @@ import path from "path";
 /** Compute limit per instruction of a transaction without a ComputeBudget instruction. */
 const DEFAULT_INSTRUCTION_LIMIT = 200_000;
 /** 75% of it: an instruction above this needs an explicit compute budget in every client. */
+const VRF_INSTRUCTION = /^(VrfPoolAdd|\w+Commit|\w+Reveal)$/;
 const HEADROOM_LIMIT = 150_000;
 
 /** [instruction name, consumed CU] for every top-level invocation of `programId`. */
@@ -102,7 +103,7 @@ describe("aof-core: compute units per instruction (SECURITY_CHECKLIST #27)", () 
     const table = [
       `# aof-core: compute units on the local validator`,
       ``,
-      `${rows.length} of ${idlInstructions} IDL instructions exercised by tests/aof_core.ts and tests/aof_extended.ts, ` +
+      `${rows.length} of ${idlInstructions} IDL instructions exercised by the validator suites, ` +
         `${transactions} successful transactions (${unattributed} without attributable logs). ` +
         `Limit without a ComputeBudget instruction: ${DEFAULT_INSTRUCTION_LIMIT.toLocaleString("en-US")} CU per instruction; ` +
         `test threshold ${HEADROOM_LIMIT.toLocaleString("en-US")} CU.`,
@@ -111,6 +112,15 @@ describe("aof-core: compute units per instruction (SECURITY_CHECKLIST #27)", () 
       `|---|---:|---:|---:|---:|`,
       ...rows.map((r) => `| ${r.name} | ${r.calls} | ${r.max} | ${r.median} | ${(100 * r.max / DEFAULT_INSTRUCTION_LIMIT).toFixed(1)}% |`),
       ``,
+      ...(rows.some((r) => VRF_INSTRUCTION.test(r.name))
+        ? [
+          `VRF instructions (VrfPoolAdd, *Commit, *Reveal) ran against the Switchboard test double ` +
+            `(tests/mock-switchboard). The real randomness_reveal also recovers the oracle's secp256k1 signature, ` +
+            `so production consumption of the reveals is higher; the backend sends VRF transactions with an ` +
+            `explicit 400,000 CU budget.`,
+          ``,
+        ]
+        : []),
     ].join("\n");
     fs.mkdirSync(path.join(process.cwd(), "target"), { recursive: true });
     fs.writeFileSync(path.join(process.cwd(), "target", "cu-report.md"), table);
