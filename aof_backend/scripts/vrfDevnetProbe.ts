@@ -3,8 +3,9 @@
  * run against the real devnet queue, oracles and gateways:
  *
  *   1. oracle selection: on every candidate of the queue inspection our
- *      oracleEligible() gives the same verdict as the SDK's own rule, and
- *      selectOracle() returns an eligible oracle;
+ *      oracleEligible() gives the same verdict as the SDK's own rule, both
+ *      compute the same majority oracle version, and selectOracle() returns
+ *      an eligible oracle on that version;
  *   2. one randomness account is created (its authority is the probe wallet,
  *      not a program PDA) and committed to every eligible oracle in turn;
  *   3. every commit is revealed through vrfReveal(), the production code: the
@@ -182,23 +183,30 @@ async function main() {
     }
   });
   const eligible = candidates.filter(vrf.oracleEligible);
+  const livePool = eligible.some((c) => c.liveHealthy) ? eligible.filter((c) => c.liveHealthy) : eligible;
+  const majority = vrf.majorityVersion(livePool);
+  const sdkMajority = inspection.metadata?.majorityVersion ?? null;
   const selected = await vrf.selectOracle(connection);
-  const selectedEligible = eligible.some((c) => c.oracle.equals(selected));
+  const selectedCandidate = eligible.find((c) => c.oracle.equals(selected));
+  const selectedEligible = Boolean(selectedCandidate);
+  const selectedOnMajority = majority === null || (selectedCandidate?.version || "").trim() === majority;
   const reasons = new Map<string, string[]>(
     (inspection.metadata?.evaluations || []).map((e: any) => [String(e.oracleId), e.rejectionReasons || []]),
   );
   log(`- oracles on the queue: ${candidates.length}; eligible: ${eligible.length}; live-healthy eligible: ${eligible.filter((c) => c.liveHealthy).length}`);
   log(`- our eligibility rule vs the SDK's: ${disagreements.length ? `DISAGREE on ${disagreements.join(", ")}` : "identical on every candidate"}`);
-  log(`- selectOracle(): ${selected.toBase58()} (${selectedEligible ? "eligible" : "NOT ELIGIBLE"})`);
+  log(`- majority oracle version: ours ${majority ?? "-"}, SDK ${sdkMajority ?? "-"}; SDK's own pick ${inspection.selectedCandidate?.oracle?.pubkey?.toBase58?.() ?? "-"}`);
+  log(`- selectOracle(): ${selected.toBase58()} (${selectedEligible ? "eligible" : "NOT ELIGIBLE"}, ${selectedOnMajority ? "majority version" : "NOT ON THE MAJORITY VERSION"})`);
   log("");
-  log("| Oracle | Gateway | Eligible | Live | SDK rejection reasons |");
-  log("|---|---|---|---|---|");
+  log("| Oracle | Gateway | Version | Eligible | Live | SDK rejection reasons |");
+  log("|---|---|---|---|---|---|");
   for (const c of candidates) {
     const host = c.gatewayUrl ? (() => { try { return new URL(c.gatewayUrl).host; } catch { return c.gatewayUrl; } })() : "-";
-    log(`| ${short(c.oracle)} | ${host} | ${vrf.oracleEligible(c) ? "yes" : "no"} | ${c.liveHealthy ? "yes" : "no"} | ${(reasons.get(c.oracle.toBase58()) || []).join(", ") || "-"} |`);
+    log(`| ${short(c.oracle)} | ${host} | ${c.version || "-"} | ${vrf.oracleEligible(c) ? "yes" : "no"} | ${c.liveHealthy ? "yes" : "no"} | ${(reasons.get(c.oracle.toBase58()) || []).join(", ") || "-"} |`);
   }
   log("");
-  const selectionOk = disagreements.length === 0 && selectedEligible && eligible.length > 0;
+  const selectionOk = disagreements.length === 0 && selectedEligible && selectedOnMajority &&
+    majority === sdkMajority && eligible.length > 0;
 
   // ---- 2. wallet
   const { wallet, source } = loadWallet();

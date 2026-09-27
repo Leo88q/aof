@@ -311,6 +311,8 @@ export type OracleCandidate = {
   restricted?: boolean;
   gatewayEnabled?: boolean;
   pullOracleEnabled?: boolean;
+  /** Oracle software version as reported by live health (may be absent). */
+  version?: string | null;
 };
 
 /** Mirrors isRandomnessOracleCandidateEligible of @switchboard-xyz/common. */
@@ -319,18 +321,42 @@ export function oracleEligible(c: OracleCandidate): boolean {
     c.restricted !== true && c.gatewayEnabled !== false && c.pullOracleEnabled !== false;
 }
 
+/** Mirrors computeMajorityVersion of @switchboard-xyz/common: the most frequent version, first one on a tie. */
+export function majorityVersion(candidates: OracleCandidate[]): string | null {
+  const counts = new Map<string, number>();
+  for (const c of candidates) {
+    const version = (c.version || "").trim();
+    if (version) counts.set(version, (counts.get(version) ?? 0) + 1);
+  }
+  let majority: string | null = null;
+  let max = 0;
+  for (const [version, count] of counts) {
+    if (count > max) {
+      majority = version;
+      max = count;
+    }
+  }
+  return majority;
+}
+
 /**
- * Uniform pick among eligible oracles, live-healthy ones first. The SDK's own
- * selector always returns the single "best" oracle; spreading commits keeps
- * this game off one writable oracle account (randomness_commit writes it) and
- * limits the blast radius of one oracle going dark to its share of commits.
+ * Uniform pick among eligible oracles: live-healthy ones first and, within
+ * them, the ones on the majority software version (the SDK's selector flags
+ * the others "version-mismatch" and never picks them while a majority-version
+ * oracle is available). The SDK always returns its single "best" oracle;
+ * spreading commits keeps this game off one writable oracle account
+ * (randomness_commit writes it) and limits the blast radius of one oracle
+ * going dark to its share of commits.
  */
 export function pickOracle(candidates: OracleCandidate[], random: () => number = Math.random): PublicKey {
   const eligible = candidates.filter(oracleEligible);
   const live = eligible.filter((c) => c.liveHealthy);
   const pool = live.length ? live : eligible;
   if (!pool.length) throw vrfUnavailable("VRF_ORACLE_UNAVAILABLE");
-  return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))].oracle;
+  const majority = majorityVersion(pool);
+  const preferred = majority === null ? pool : pool.filter((c) => (c.version || "").trim() === majority);
+  const choice = preferred.length ? preferred : pool;
+  return choice[Math.min(choice.length - 1, Math.floor(random() * choice.length))].oracle;
 }
 
 const ORACLE_CACHE_MS = 30_000;
@@ -352,6 +378,7 @@ export function oracleCandidateFromInspection(c: any): OracleCandidate {
     restricted: c.restricted,
     gatewayEnabled: c.gatewayEnabled,
     pullOracleEnabled: c.pullOracleEnabled,
+    version: c.version ?? null,
   };
 }
 

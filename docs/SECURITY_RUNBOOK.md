@@ -119,6 +119,14 @@ docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d
 3. **Сервис раскрытия.** `vrf-settler` запускается по умолчанию в `docker-compose.prod.yml` и обязателен. Он подписывает отдельным кошельком только для комиссий (`secrets/vrf_settler_secret_key`), ключ operator ему не передаётся. На кошельке settler держать ≥ 1 SOL. Резерв: второй экземпляр на другом хосте с `VRF_SETTLER_STANDBY_SLOTS=120`, своим кошельком и RPC.
 4. **Барабан.** Пополнить казну маскотов квестов, не меньше 50 × число одновременных спинов.
 5. **Смоук-тест на devnet** — `node scripts/vrf/devnet-smoke.mjs`.
-6. **Алерты:**
+6. **Devnet-проба в CI** (workflow «VRF devnet probe», еженедельно после слияния в основную ветку). Без devnet SOL она проверяет только выбор оракула, а круговую часть (commit → gateway без `rpc` → reveal) пропускает: faucet отказывает CI-раннерам. Чтобы включить её, выполните один раз:
+   ```bash
+   solana-keygen new --no-bip39-passphrase -o devnet-probe.json
+   solana-keygen pubkey devnet-probe.json    # пополнить на https://faucet.solana.com (0,5–1 SOL)
+   gh secret set DEVNET_PROBE_KEYPAIR --repo Leo88q/aof < devnet-probe.json
+   rm devnet-probe.json
+   ```
+   Это отдельный кошелёк только для devnet, к боевым ключам он отношения не имеет. Одного пополнения хватает на сотни прогонов.
+7. **Алерты:**
    - `/vrf/health` вернул `healthy=false`;
    - коммит без раскрытия дольше 5 мин.

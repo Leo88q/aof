@@ -3,6 +3,8 @@
 > **Обновление 2026-09-26.** Открытые вопросы F-C, F-D, F-G и F-H обсуждены и закрыты. Мелочи из раздела 3 тоже закрыты: сезонный пропуск, `offer_accept`, `migrate_tool`. Также добавлены разделение ролей и заморозка вывода. Решения, статус, порядок развёртывания и план по VRF (пункт 10) — в `SECURITY_OPEN_ISSUES_PROPOSALS_2026-09-26.md`.
 >
 > **Обновление 2026-09-27.** Случайность на SlotHashes удалена. Все шесть механик со случайностью работают на Switchboard On-Demand: commit через CPI игровой PDA, permissionless reveal, возврат после окна. Пункты 10 и 17 по части RNG закрыты. См. `docs/VRF_SWITCHBOARD.md`.
+>
+> **Обновление 2026-09-27 (2).** Пункты 5, 10, 17 и 27 переоценены по текущему коду и закрыты: F-G и F-D исправлены, случайность на VRF, CU измерены на локальном валидаторе (validator-job в CI снова работает). Частично остаются #20 (нужны multisig и timelock — это действие владельца) и #23 (лишний `mut`, на безопасность не влияет). Таблицы ниже обновлены; исходные формулировки находок в разделе 3 сохранены.
 
 Область проверки:
 - **все 6 on-chain программ** (`aof-core`, `aof-market`, `aof-liquidity`, `aof-quests`, `aof-rebirth`, `aof-session-keys`, Anchor 0.30.1);
@@ -15,11 +17,11 @@
 
 | | |
 |---|---|
-| Пунктов чек-листа закрыто полностью | **24 из 30** |
-| Частично / требуют решений владельца | 6: #5, #10, #17, #20, #23, #27 |
+| Пунктов чек-листа закрыто полностью | **28 из 30** (при первой проверке — 24) |
+| Частично / требуют решений владельца | 2: #20 (multisig/timelock — действие владельца), #23 (косметика). При первой проверке — 6: #5, #10, #17, #20, #23, #27 |
 | Найдено проблем | 1 High, 6 Medium, 2 Low, мелочи |
 | **Исправлено в этой ветке** | **F-E (High), F-F, F-A, F-I, F-B** |
-| Оставлено открытым (нужны продуктовые решения) | F-C, F-H, F-G, F-D |
+| Оставлено открытым (нужны продуктовые решения) | При первой проверке: F-C, F-H, F-G, F-D. Все четыре закрыты 2026-09-26 |
 | Добавлено тестов | 19 Rust host-тестов + 16 статических Node-тестов |
 
 Главное:
@@ -46,10 +48,10 @@
 | **F-A** | Medium | #4, #5 | `sweep_gas_fees` делал `system_program::transfer` из PDA, которым владеет программа и в котором есть данные. Runtime это всегда отвергает, так что комиссии в казну не попадали никогда. При починке учтена «пыль» `dust_lamports`, которая принадлежит пользователю. | **Исправлено** |
 | **F-I** | Medium | #11 | Mint нового NFT-инструмента проверялся на `decimals`, `supply` и `mint_authority`, но **не на `freeze_authority`**. Пользователь мог скрафтить NFT со своей freeze authority, продать его и заморозить у покупателя. Или заморозить эскроу аукциона: тогда расчёт невозможен, а SOL участника заблокированы. Политика «non-freezable» была только в клиентском `txGuard`. | **Исправлено** (7 контекстов) |
 | **F-B** | Medium | #6 | `craft`/`reroll` сжигали NFT, но оставляли `ToolData` («призрак»). Такой инструмент продолжал собирать урожай, чинился и сдавался в аренду. | **Исправлено** (`close = user`) |
-| F-H | Medium | #2, #28 | Аренда: `RentalList/Start` не проверяют, где лежит NFT. Можно сдать инструмент, который сейчас в эскроу аукциона, и тогда `AuctionSettle` блокируется до конца аренды, а срок аренды задаёт владелец. Нет delist, при revoke после grace нет пропорционального возврата, `owner_split_bps = 10000` обнуляет комиссию платформы. | Открыто |
-| F-G | Low/Med | #5 | Возврат предыдущей ставки аукциона идёт напрямую на его кошелёк. Если ставка меньше 890 880 lamports, а кошелёк обнулён, возврат падает с `InsufficientFundsForRent`, и перебить ставку нельзя. Обходится допополнением кошелька в той же транзакции. | Открыто |
-| F-C | Medium | #20 | Централизация: один ключ authority, нет timelock/multisig. `set_fees` без верхней границы: `unstake_fee = u64::MAX` блокирует unstake, то есть NFT становятся «заложниками». Пауза блокирует и выходы (withdraw_gas, unstake, отмены, LP withdraw). Часть admin-инструкций без событий: `cancel_pending_authority`, pack/reroll config, `init_season`, `grant_season_xp`, `init_material_mints`. | Открыто |
-| F-D | Low | #10 | Погода предсказуема (`unix_timestamp / 86400`), а `collect_well_water` применяет текущую погоду ко всему прошедшему окну до 24 ч. | Открыто |
+| F-H | Medium | #2, #28 | Аренда: `RentalList/Start` не проверяют, где лежит NFT. Можно сдать инструмент, который сейчас в эскроу аукциона, и тогда `AuctionSettle` блокируется до конца аренды, а срок аренды задаёт владелец. Нет delist, при revoke после grace нет пропорционального возврата, `owner_split_bps = 10000` обнуляет комиссию платформы. | Закрыто 2026-09-26: NFT в escrow листинга, `rental_delist`, пропорциональный возврат, лимиты |
+| F-G | Low/Med | #5 | Возврат предыдущей ставки аукциона идёт напрямую на его кошелёк. Если ставка меньше 890 880 lamports, а кошелёк обнулён, возврат падает с `InsufficientFundsForRent`, и перебить ставку нельзя. Обходится допополнением кошелька в той же транзакции. | Закрыто 2026-09-26: ставка не меньше 0,001 SOL (`AUCTION_MIN_BID_LAMPORTS`) |
+| F-C | Medium | #20 | Централизация: один ключ authority, нет timelock/multisig. `set_fees` без верхней границы: `unstake_fee = u64::MAX` блокирует unstake, то есть NFT становятся «заложниками». Пауза блокирует и выходы (withdraw_gas, unstake, отмены, LP withdraw). Часть admin-инструкций без событий: `cancel_pending_authority`, pack/reroll config, `init_season`, `grant_season_xp`, `init_material_mints`. | Закрыто 2026-09-26: потолки `set_fees`, выходы во время паузы, события, роли; multisig/timelock — действие владельца |
+| F-D | Low | #10 | Погода предсказуема (`unix_timestamp / 86400`), а `collect_well_water` применяет текущую погоду ко всему прошедшему окну до 24 ч. | Закрыто 2026-09-26: начисление по погоде каждого дня окна (`well_accrual`) |
 
 Мелочи:
 - сезонный пропуск можно купить повторно, проверки активного сезона нет;
@@ -85,7 +87,7 @@
 | 2 нет has_one/mint/owner | 🔧 ✅ | Адресные и `constraint`-привязки mint/owner на всех пользовательских путях; PDA игрока связаны с подписантом. **F-E** (guard загружался, но не проверялся) исправлено. 8 unchecked-аккаунтов без собственного ограничения: 4 привязаны через seeds/constraint других полей, 4 — «ключи-значения», их список явно зафиксирован в тесте. | Rust `collect_flour_binds_…`, `a_gas_tank_can_only_be_withdrawn_by_its_owner`, `sweep_cannot_redirect_the_treasury`, `referral_payout_*`; Node #2/#16 |
 | 3 payer не signer | ✅ | Все плательщики и admin-подписи имеют тип `Signer<'info>`. | Rust `admin_instruction_requires_the_stored_authority_signature` (`AccountNotSigner`) |
 | 4 system_program без проверки | 🔧 ✅ | Везде `Program<'info, System/Token>`, SlotHashes проверяются по адресу. Все `system_program::Transfer` списывают с `Signer`. **F-A** исправлено. | Rust `fake_system_program_is_rejected_before_any_init_or_cpi` (`InvalidProgramId` до любого `init`/CPI); Node #4, F-A |
-| 5 rent exemption | ⚠️ | `transfer_owned_lamports` сохраняет резерв; `withdraw_gas` не опускает tank ниже ренты; инвариант эскроу ордербука. Открыто: **F-G** (возврат ставки аукциона). | Rust `withdraw_gas_conserves_…`, `sweep_moves_exactly_…`, `order_matching_…` |
+| 5 rent exemption | ✅ | `transfer_owned_lamports` сохраняет резерв; `withdraw_gas` не опускает tank ниже ренты; инвариант эскроу ордербука. **F-G** закрыт: ставка не меньше 0,001 SOL, это больше rent-exempt минимума 890 880 lamports, так что возврат перебитой ставки проходит и на обнулённый кошелёк. | Rust `withdraw_gas_conserves_…`, `sweep_moves_exactly_…`, `order_matching_…` |
 | 6 неинициализированное состояние | 🔧 ✅ | `Account<T>` проверяет владельца, дискриминатор и инициализацию. «Призраки» `ToolData` (**F-B**) исправлены. | Rust `config_must_…` (`AccountNotInitialized`, `AccountOwnedByWrongProgram`, нулевые данные); Node F-B |
 
 ### B. Состояние и логика
@@ -95,7 +97,7 @@
 | 7 CPI до фиксации состояния | ✅ | CPI идут только в SPL Token и System, они не вызывают программу обратно. Все проверки и списания бюджета выполняются **до** CPI (тормоза vault, лимит эмиссии, `IssuanceCap`, `RewardReceipt`). | Rust: 0 CPI во всех отказах; Node: тормоза раньше `token::transfer`, лимит раньше `mint_to` |
 | 8 self-CPI / instruction sysvar | ✅ | Нет raw `invoke`, self-CPI, интроспекции инструкций и `remaining_accounts`. | Node #8/#24/#30 |
 | 9 устаревшие кэшированные значения | ✅ | После CPI баланс нигде не читается без `reload` (market `cancel_limit_order` делает reload; есть тест `reload_tests` и гейт SW008). В core значения после CPI вычисляются арифметически из снимка до CPI. | существующие `reload_tests`, `scripts/test-p0-security.py` |
-| 10 доверие Clock | ⚠️ | `unix_timestamp` используется только для таймеров (cooldown, аренда, аукцион), где погрешность в секунды или минуты допустима. Вся случайность на SlotHashes **выключена** — 13 точек входа, каждая за своим гейтом. Открыто: **F-D** (погода). | Node #8/#10/#17 |
+| 10 доверие Clock | ✅ | `unix_timestamp` используется только для таймеров (cooldown, аренда, аукцион), где погрешность в секунды или минуты допустима. Случайность на SlotHashes удалена: все шесть механик со случайностью работают на Switchboard On-Demand. **F-D** закрыт: колодец считает каждую секунду окна по погоде её собственного дня. | Node #8/#10/#17 |
 
 ### C. Токены и экономика
 
@@ -107,10 +109,10 @@
 | 14 непроверенное вычитание | ✅ | `checked_sub` везде, где важно. Сырые `-=`/`+=` по lamports только после явных проверок (`withdraw_gas`, ордербук). | Rust `withdraw_gas_…` (сохранение суммы), `order_matching_…` |
 | 15 округление в пользу атакующего | ✅ | Округление вниз, комиссия ≤ суммы. | Rust `order_matching_…` (`taker + maker ≤ gross`); `economics::tests` |
 | 16 казна не PDA / слив админом | 🔧 ✅ | `treasury` задаётся один раз в `initialize` и проверяется `address = config.treasury`. Выводы из vault ограничены `VaultGuard`. **F-E** исправлено. | Rust `sweep_cannot_redirect_the_treasury`, `referral_payout_*`, `vault_brakes_are_one_shared_gate` |
-| 17 front-running / MEV | ⚠️ | `marketplace_buy_bounded(max_price, expires_at ≤ 300 s)`; ордербук исполняется по цене стоящего ордера, покупатель защищён собственным лимитом; RNG выключен. Commit-reveal для аукционов и офферов не нужен. | Node #17 (RNG выключен) |
+| 17 front-running / MEV | ✅ | `marketplace_buy_bounded(max_price, expires_at ≤ 300 s)`; ордербук исполняется по цене стоящего ордера, покупатель защищён собственным лимитом. Случайность — Switchboard On-Demand: оплата и коммит в одной транзакции, значение в этот момент никому не известно, раскрытие permissionless. Commit-reveal для аукционов и офферов не нужен. | Node #17 (RNG выключен) |
 | 18 неограниченные циклы | ✅ | Циклы только по массивам фиксированной длины и константам. Нет `remaining_accounts`. Строковые аргументы канонизируются (`TOOL_KINDS`) или ограничены по длине. | Node #18 (списки исключений на уровне аргументов) |
 | 19 спам событиями | ✅ | Одно-два события на инструкцию, размеры фиксированы, пользовательских строк нет. | — |
-| 20 «режим бога» у админа | ⚠️ | Есть: двухшаговая ротация authority, привязка к upgrade authority, лимиты `VaultGuard`/`IssuanceCap`/supply cap, события на критичных setter'ах. Нет: multisig/timelock, верхних границ `set_fees`, выходов во время паузы, событий на части admin-инструкций (**F-C**). | Node #20 (12 критичных setter'ов обязаны эмитить события); Rust `referral_payout_is_bounded_by_the_vault_guard` |
+| 20 «режим бога» у админа | ⚠️ | Есть: двухшаговая ротация authority, привязка к upgrade authority, лимиты `VaultGuard`/`IssuanceCap`/supply cap, события на всех admin-setter'ах. После **F-C** (2026-09-26) добавлены потолки `set_fees`, выходы своих средств во время паузы, роли admin/operator/guardian, заморозка вывода. Нет: multisig/timelock — это действие владельца (Squads 3-of-5 и 2-of-3, timelock 48 ч, `docs/SECURITY_RUNBOOK.md`). | Node #20 (12 критичных setter'ов обязаны эмитить события); Rust `referral_payout_is_bounded_by_the_vault_guard` |
 
 ### D. Специфика Anchor
 
@@ -127,7 +129,7 @@
 
 | # | Вердикт | Доказательство | Тесты |
 |---|---|---|---|
-| 27 compute budget | ⚠️ | Тяжёлые контексты в `Box`, циклы ограничены, клиентский guard ограничивает CU до 1,4 млн. Реальное потребление CU не измерено: TS-интеграция в CI не запускается, validator-job падает (известная проблема, не связана с этой веткой). | — |
+| 27 compute budget | ✅ | Тяжёлые контексты в `Box`, циклы ограничены, клиентский guard ограничивает CU до 1,4 млн. **Измерено на локальном валидаторе** (CI, коммит `e813891`): 55 из 113 инструкций aof-core, 180 успешных транзакций. Самая тяжёлая — `start_baking`, 37 506 CU, то есть 18,8% от 200 000 CU, которые инструкция получает без ComputeBudget. Тест падает, если любая инструкция превысит 150 000 CU. Таблица публикуется в выводе job «Anchor test». VRF-инструкции на валидаторе не выполняются (там нет Switchboard): бэкенд задаёт им бюджет 400 000 CU, а CU самого раскрытия Switchboard покажет devnet-проба, когда у неё будет devnet SOL. | `tests/aof_cu_report.ts` |
 | 28 refund при close не тому | ✅ | Цель каждого `close` — подписант или адрес, закреплённый ограничением. | Rust `rental_close_refund_is_bound_to_the_renter`; Node #28 |
 | 29 дубликаты аккаунтов | ✅ | Один и тот же ордер в роли обеих сторон отвергается. `transfer_owned_lamports` требует `from ≠ to`. Двойной NFT в `reroll` падает на втором burn. | Rust `an_order_cannot_be_matched_against_itself` |
 | 30 устаревшие sysvar | ✅ | `Clock::get`/`Rent::get`; нет `Fees`/`RecentBlockhashes`. | Node #30 |
@@ -196,4 +198,4 @@ Rust (`aof-core/src/security_checklist_tests.rs`):
    - применить `RENTAL_FEE_BPS`.
 3. **F-G**: `min_bid ≥ Rent::minimum_balance(0)` в `auction_create` или pull-возвраты.
 4. Для уже существующих на devnet «призрачных» `ToolData` и NFT с freeze authority: проверять хранение NFT в `repair`/`harvest_wheat`/`rental_*` или пересоздать devnet-состояние.
-5. Починить validator-job в CI, чтобы запускались TS-интеграционные тесты и измерение CU.
+5. Починить validator-job в CI, чтобы запускались TS-интеграционные тесты и измерение CU. **Сделано:** 36 из 36 строгих тестов, CU измеряются в каждом прогоне (`tests/aof_cu_report.ts`).

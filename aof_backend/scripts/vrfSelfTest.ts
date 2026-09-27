@@ -184,6 +184,37 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
     assert.ok(mapped.oracle.equals(k(7)));
     assert.equal(vrf.oracleEligible(mapped), isRandomnessOracleCandidateEligible(entry), JSON.stringify(over));
   }
+
+  // Majority software version first, like the SDK's selector (devnet 2026-09-27
+  // showed one live oracle flagged "version-mismatch"): every pick lands on an
+  // oracle of the version the SDK would choose from.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { selectRandomnessOracle } = require("@switchboard-xyz/common");
+  const versioned = (seed: number, version: string | null, over: Record<string, unknown> = {}) => ({
+    oracleId: k(seed).toBase58(), oracle: { pubkey: k(seed) }, gatewayUrl: "https://gw.example", isOnQueue: true,
+    isVerified: true, heartbeatFresh: true, quoteFresh: true, liveHealthy: true, version, ...over,
+  });
+  const fleets = [
+    [versioned(1, "3.2.0"), versioned(2, "3.2.0"), versioned(3, "3.1.9"), versioned(4, "3.2.0")],
+    [versioned(1, "3.1.9"), versioned(2, "3.2.0"), versioned(3, "3.2.0")],
+    // the stale-heartbeat majority does not count: the version is decided among the pool
+    [versioned(1, "old", { heartbeatFresh: false }), versioned(2, "old", { heartbeatFresh: false }), versioned(3, "new"), versioned(4, null)],
+    // live-healthy pool empty -> fallback tier over all eligible
+    [versioned(1, "a", { liveHealthy: false }), versioned(2, "b", { liveHealthy: false }), versioned(3, "b", { liveHealthy: false })],
+    [versioned(1, null), versioned(2, null)],
+  ];
+  for (const fleet of fleets) {
+    const sdkPick = selectRandomnessOracle(fleet);
+    const mapped = fleet.map(vrf.oracleCandidateFromInspection);
+    const expected = sdkPick.metadata.majorityVersion;
+    assert.equal(vrf.majorityVersion(mapped.filter(vrf.oracleEligible).filter((c, _i, all) =>
+      all.some((x) => x.liveHealthy) ? c.liveHealthy : true)), expected);
+    for (const r of [0, 0.2, 0.4, 0.6, 0.8, 0.999]) {
+      const picked = mapped.find((c) => c.oracle.equals(vrf.pickOracle(mapped, () => r)))!;
+      if (expected !== null) assert.equal(picked.version, expected, `fleet ${JSON.stringify(fleet.map((c) => c.version))} r=${r}`);
+      assert.ok(vrf.oracleEligible(picked));
+    }
+  }
 }
 
 // ---- gateway protocol: no RPC URL leak, strict response shape
