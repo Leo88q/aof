@@ -17,9 +17,10 @@ import {
 /** Картинка ресурса/предмета в квадратной плашке (`.nf-plate`, object-fit: contain). */
 function SitePlate({ src, alt = '', size, className = '' }: { src?: string; alt?: string; size?: number | string; className?: string }) {
   if (!src) return null;
+  const isIcon = src.startsWith('/assets/icons/');
   const style = size === undefined ? undefined : { width: size, height: typeof size === 'number' ? size : undefined };
   return (
-    <span className={'nf-plate site-plate' + (className ? ' ' + className : '')} style={style}>
+    <span className={'nf-plate site-plate' + (isIcon ? ' nf-plate--icon site-plate--icon' : '') + (className ? ' ' + className : '')} style={style}>
       <img src={src} alt={alt} loading="lazy" decoding="async" draggable={false} />
     </span>
   );

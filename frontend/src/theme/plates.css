@@ -17,7 +17,14 @@
   object-fit: contain;
   object-position: center;
   display: block;
-  background: #0A0A14;
+}
+
+/* Прозрачные PNG-иконки (/assets/icons/**): без подложки, рамки и скоб —
+   иконка лежит прямо на панели. Сокет остаётся только у плашек-артов. */
+.nf-plate.nf-plate--icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .nf-plate__fallback {

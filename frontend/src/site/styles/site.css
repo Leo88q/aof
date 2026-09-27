@@ -841,6 +841,10 @@
   box-shadow: 0 6px 18px rgba(10, 10, 20, 0.28), inset 0 0 0 1px rgba(0, 212, 255, 0.06);
 }
 .site-plate img { border-radius: inherit; }
+.site-plate.site-plate--icon { background: transparent; border-color: transparent; box-shadow: none; }
+.site-plate.site-plate--icon img { filter: drop-shadow(0 2px 4px rgba(10, 10, 20, 0.35)); }
+.site-card:hover .site-card__art.site-plate--icon,
+.site-icon-strip__item:hover .site-plate--icon { border-color: transparent; }
 
 .site-card__art { display: block; width: 100%; margin-bottom: 14px; }
 .site-card:hover .site-card__art { border-color: rgba(0, 212, 255, 0.5); }

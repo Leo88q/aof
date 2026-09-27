@@ -220,6 +220,14 @@
   background-repeat: no-repeat;
 }
 
+/* Иконки без сокета: прозрачные PNG лежат прямо на плате */
+.nf-plate.nf-plate--icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.nf-plate.nf-plate--icon::after { content: none; }
+
 /* ---------- 5. ШИНЫ: верхняя навигация и нижний таббар ---------- */
 .nav-bar::after, .tabbar::before {
   content: "";
