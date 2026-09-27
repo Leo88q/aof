@@ -21,7 +21,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createMint, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
@@ -102,8 +102,10 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   let price: BN;
   let odds: number[];
 
+  // Default commitment on purpose: .rpc() confirms at the provider's
+  // commitment, and a stricter read can still see the previous state.
   async function readRandomness() {
-    const info = await connection.getAccountInfo(randomness, "confirmed");
+    const info = await connection.getAccountInfo(randomness);
     if (!info) throw new Error("randomness account missing");
     const d = info.data;
     return {
@@ -129,17 +131,33 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       config: configPda, cranker, packCommit, user, treasury, mint,
       userToken: getAssociatedTokenAddressSync(mint, user),
       toolData: pda([B("tool"), mint.toBuffer()]), auth: authPda,
-      vrfSlot, randomness, vrfAuthority, oracle, queue: SB_QUEUE,
-      stats: pda([B("OracleRandomnessStats"), oracle.toBuffer()], SB_PROGRAM),
-      recentSlothashes: SLOT_HASHES,
-      rewardEscrow: getAssociatedTokenAddressSync(NATIVE_MINT, randomness, true),
-      wrappedSolMint: NATIVE_MINT, programState: SB_STATE, switchboardProgram: SB_PROGRAM,
+      ...switchboardRevealAccounts(oracle),
       tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     };
   };
 
   const revealParams = (value: Buffer) => ({ signature: Array(64).fill(0), recoveryId: 0, value: Array.from(value) });
+
+  /** Shared Switchboard accounts of every reveal. */
+  const switchboardRevealAccounts = (oracle: PublicKey) => ({
+    vrfSlot, randomness, vrfAuthority, oracle, queue: SB_QUEUE,
+    stats: pda([B("OracleRandomnessStats"), oracle.toBuffer()], SB_PROGRAM),
+    recentSlothashes: SLOT_HASHES,
+    rewardEscrow: getAssociatedTokenAddressSync(NATIVE_MINT, randomness, true),
+    wrappedSolMint: NATIVE_MINT, programState: SB_STATE, switchboardProgram: SB_PROGRAM,
+  });
+
+  /** A tool NFT issued by the program, as tests/aof_core.ts mintTool does. */
+  async function mintTool(owner: Keypair) {
+    const mint = await createMint(connection, owner, authPda, null, 0);
+    const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, owner, mint, owner.publicKey)).address;
+    await program.methods.mintTool("axe", { common: {} }).accounts({
+      config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: owner.publicKey,
+      toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).rpc();
+    return { mint, tokenAccount };
+  }
 
   async function commitPack(oracle: PublicKey) {
     const user = Keypair.generate();
@@ -264,8 +282,11 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const commitLamports = await connection.getBalance(packCommit);
     const accounts = revealAccounts(cranker.publicKey, user.publicKey, packCommit, oracle);
     const signature = await program.methods.packOpenReveal(revealParams(value)).accounts(accounts).signers([cranker]).rpc();
+    // getTransaction needs "confirmed"; .rpc() may have returned at "processed".
+    await connection.confirmTransaction(signature, "confirmed");
     const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-    const fee = tx?.meta?.fee ?? 0;
+    if (!tx?.meta) throw new Error("reveal transaction not found");
+    const fee = tx.meta.fee;
 
     // Outcome = aof-core's roll of the published value for this commit.
     const expected = rollTool(value, "pack", packCommit, odds);
@@ -324,5 +345,65 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const slot = await program.account.vrfSlot.fetch(vrfSlot);
     expect(slot.lock.toBase58()).to.equal(zero);
     expect([slot.commits.toString(), slot.reveals.toString()]).to.deep.equal(["2", "2"]);
+  });
+
+  it("random reroll: the commit burns the old tool and takes the fee from the gas tank, the reveal mints the rolled tool", async () => {
+    const rerollConfig = pda([B("reroll_config")]);
+    const rerollOdds: number[] = (await program.account.rerollConfig.fetch(rerollConfig)).oddsBps.map(Number);
+    const user = Keypair.generate();
+    await airdrop(user);
+    const { mint: burnMint, tokenAccount: burnToken } = await mintTool(user);
+    const gastank = pda([B("gastank"), user.publicKey.toBuffer()]);
+    await program.methods.depositGas(new BN(100_000_000)).accounts({
+      config: configPda, user: user.publicKey, gastank, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc();
+    const tankBefore = (await program.account.gasTank.fetch(gastank)).balanceMicros.toNumber();
+
+    const oracle = Keypair.generate().publicKey;
+    const nonce = new BN(11);
+    const rerollCommit = pda([B("reroll_commit"), user.publicKey.toBuffer(), u64le(nonce)]);
+    await program.methods.rerollRandomCommit(nonce).accounts({
+      config: configPda, authority, user: user.publicKey, gastank, rerollConfig,
+      burnTool: pda([B("tool"), burnMint.toBuffer()]), burnMint, burnToken, rerollCommit,
+      vrfSlot, randomness, vrfAuthority, queue: SB_QUEUE, oracle, recentSlothashes: SLOT_HASHES,
+      switchboardProgram: SB_PROGRAM, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc();
+    // The old tool is gone at commit time: token account and ToolData closed.
+    expect(await connection.getAccountInfo(burnToken)).to.equal(null);
+    expect(await connection.getAccountInfo(pda([B("tool"), burnMint.toBuffer()]))).to.equal(null);
+    const commit = await program.account.rerollCommit.fetch(rerollCommit);
+    expect((await program.account.gasTank.fetch(gastank)).balanceMicros.toNumber())
+      .to.equal(tankBefore - commit.feeLamports.toNumber() / 1_000);
+    expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(rerollCommit.toBase58());
+
+    const cranker = Keypair.generate();
+    await airdrop(cranker, 2);
+    const value = crypto.createHash("sha256").update("aof localnet vrf reroll").digest();
+    const newMint = pda([B("reroll_mint"), rerollCommit.toBuffer()]);
+    const newToolData = pda([B("tool"), newMint.toBuffer()]);
+    const treasuryBefore = await connection.getBalance(treasury);
+    const signature = await program.methods.rerollRandomReveal(revealParams(value)).accounts({
+      config: configPda, cranker: cranker.publicKey, rerollCommit, user: user.publicKey, treasury, newMint,
+      newToken: getAssociatedTokenAddressSync(newMint, user.publicKey), newToolData, auth: authPda,
+      ...switchboardRevealAccounts(oracle),
+      tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    }).signers([cranker]).rpc();
+    await connection.confirmTransaction(signature, "confirmed");
+    const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    if (!tx?.meta) throw new Error("reveal transaction not found");
+
+    const expected = rollTool(value, "reroll", rerollCommit, rerollOdds);
+    const tool = await program.account.toolData.fetch(newToolData);
+    expect(Object.keys(tool.rarity)[0]).to.equal(RARITIES[expected.rarity]);
+    expect(tool.toolType).to.equal(expected.toolType);
+    expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
+    expect((await connection.getTokenAccountBalance(getAssociatedTokenAddressSync(newMint, user.publicKey))).value.amount)
+      .to.equal("1");
+    expect(await connection.getAccountInfo(rerollCommit)).to.equal(null);
+    expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero);
+    const treasuryPaysFee = treasury.equals(authority);
+    expect((await connection.getBalance(treasury)) - treasuryBefore)
+      .to.equal(commit.feeLamports.toNumber() - (treasuryPaysFee ? tx.meta.fee : 0));
   });
 });
