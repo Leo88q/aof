@@ -160,14 +160,7 @@ pub struct PackOpened {
     pub pack_type: u8,
     pub rarity: Rarity,
     pub tool_type: String,
-}
-
-#[event]
-pub struct PackCommitExpired {
-    pub user: Pubkey,
-    pub mint: Pubkey,
-    pub pack_type: u8,
-    pub refunded_lamports: u64,
+    pub pack_commit: Pubkey,
 }
 
 #[event]
@@ -356,6 +349,79 @@ pub struct ForgeCommitExpired {
     pub stone_refunded: u64,
 }
 
+// ===== [F-06] Switchboard On-Demand settlement (see vrf.rs) =====
+
+/// Mechanic ids used by the VRF events.
+pub const VRF_MECHANIC_PACK: u8 = 0;
+pub const VRF_MECHANIC_REROLL: u8 = 1;
+pub const VRF_MECHANIC_EXPLORATION: u8 = 2;
+pub const VRF_MECHANIC_FORGE: u8 = 3;
+pub const VRF_MECHANIC_LOTTERY: u8 = 4;
+
+/// A paid commit locked a pool randomness account and is waiting for the
+/// oracle. Monitoring alerts on commits that stay unsettled.
+#[event]
+pub struct VrfCommitted {
+    pub mechanic: u8,
+    pub commit: Pubkey,
+    pub user: Pubkey,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub commit_slot: u64,
+    /// Lamports held in escrow by the commit (price/fee + settlement deposit).
+    pub escrow_lamports: u64,
+}
+
+/// The oracle value that settled a commit. Every outcome is a pure function of
+/// (value, mechanic tag, commit key) and the snapshot on the commit, so anyone
+/// can recompute it from this event.
+#[event]
+pub struct VrfSettled {
+    pub mechanic: u8,
+    pub commit: Pubkey,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub value: [u8; 32],
+    pub cranker: Pubkey,
+}
+
+/// Refund of a commit the oracle never revealed inside the reveal window.
+#[event]
+pub struct VrfCommitRefunded {
+    pub mechanic: u8,
+    pub commit: Pubkey,
+    pub user: Pubkey,
+    pub refunded_lamports: u64,
+}
+
+#[event]
+pub struct VrfSlotAdded {
+    pub index: u32,
+    pub randomness: Pubkey,
+    pub vrf_slot: Pubkey,
+}
+
+#[event]
+pub struct VrfSlotRetiredChanged {
+    pub vrf_slot: Pubkey,
+    pub retired: bool,
+}
+
+/// A lock whose holder account no longer exists was cleared.
+#[event]
+pub struct VrfSlotRecovered {
+    pub vrf_slot: Pubkey,
+    pub stale_lock: Pubkey,
+}
+
+#[event]
+pub struct LotteryTicketRefunded {
+    pub round_id: u64,
+    pub ticket_number: u64,
+    pub buyer: Pubkey,
+    pub lamports: u64,
+}
+
 /// [AUDIT F-01] Every authority withdrawal from the vault, with the guard
 /// budget it was charged against. Indexers/monitoring must alert on spikes
 /// here: the guard bounds a single key, it does not make it invisible.
@@ -436,4 +502,101 @@ pub struct LotteryRoundRefunded {
     pub lamports: u64,
     pub tickets_sold: u64,
     pub at: i64,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] A cancelled authority rotation used to be
+/// silent, so monitoring could not see a proposed takeover being withdrawn.
+#[event]
+pub struct AuthorityRotationCancelled {
+    pub authority: Pubkey,
+    pub cancelled: Pubkey,
+    pub slot: u64,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Admin configuration changes are observable.
+#[event]
+pub struct PackConfigChanged {
+    pub pack_type: u8,
+    pub price_lamports: u64,
+    pub odds_bps: [u16; 5],
+    pub slot: u64,
+}
+
+#[event]
+pub struct RerollConfigChanged {
+    pub odds_bps: [u16; 5],
+    pub slot: u64,
+}
+
+#[event]
+pub struct SeasonInitialized {
+    pub season_id: u32,
+    pub start_time: i64,
+}
+
+#[event]
+pub struct SeasonXpGranted {
+    pub owner: Pubkey,
+    pub season_id: u32,
+    pub amount: u32,
+    pub total_xp: u32,
+}
+
+#[event]
+pub struct MaterialMintsInitialized {
+    pub authority: Pubkey,
+    pub slot: u64,
+}
+
+// ===== [SECURITY_CHECKLIST_REVIEW F-C] roles and emergency switches =====
+#[event]
+pub struct ConfigMigrated {
+    pub authority: Pubkey,
+    pub operator: Pubkey,
+    pub guardian: Pubkey,
+    pub slot: u64,
+}
+
+#[event]
+pub struct RolesChanged {
+    pub authority: Pubkey,
+    pub operator: Pubkey,
+    pub guardian: Pubkey,
+    pub slot: u64,
+}
+
+#[event]
+pub struct EmergencyStopActivated {
+    pub caller: Pubkey,
+    pub paused: bool,
+    pub cashout_frozen: bool,
+    pub slot: u64,
+}
+
+#[event]
+pub struct CashoutFreezeChanged {
+    pub authority: Pubkey,
+    pub frozen: bool,
+    pub slot: u64,
+}
+
+// ===== [SECURITY_CHECKLIST_REVIEW F-G / F-H] trading =====
+#[event]
+pub struct AuctionCancelled {
+    pub seller: Pubkey,
+    pub mint: Pubkey,
+}
+
+#[event]
+pub struct RentalListed {
+    pub mint: Pubkey,
+    pub owner: Pubkey,
+    pub price_per_hour_lamports: u64,
+    pub owner_split_bps: u16,
+}
+
+#[event]
+pub struct RentalDelisted {
+    pub mint: Pubkey,
+    pub owner: Pubkey,
 }

@@ -1,18 +1,15 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, Burn, CloseAccount, MintTo};
+use anchor_spl::token::{self, Burn, CloseAccount};
 use crate::constants::*;
-use crate::{RerollRandomCommit, RerollRandomReveal, InitRerollConfig, SetRerollConfig};
+use crate::{RerollRandomCommit, RerollRandomReveal, RerollRandomExpire, InitRerollConfig, SetRerollConfig};
 use crate::errors::*;
 use crate::events::*;
-use crate::state::Rarity;
-use crate::randomness::*;
+use crate::instructions::settlement;
+use crate::vrf::{self, VrfRevealParams};
 
-/// [НОВОЕ]: настоящая рандомизированная пересдача — то, что было заявлено
-/// как "reroll" во всех версиях TOR, но не существовало ни в Ronin-коде
-/// (детерминированный `Math.random`-эквивалент без commit-reveal), ни в
-/// первой версии этой программы (`reroll` там — детерминированный fuse,
-/// оставлен как есть под тем же именем, см. AUDIT_V1). Здесь — честный
-/// commit-reveal той же схемы, что и паки.
+/// Random reroll: burn one tool, receive a tool of random rarity/type drawn
+/// from the reroll odds table. Settled by Switchboard On-Demand exactly like
+/// the packs (see vrf.rs); the deterministic fuse keeps the name `reroll`.
 pub fn init_config_handler(ctx: Context<InitRerollConfig>, odds_bps: [u16; 5]) -> Result<()> {
     let sum: u32 = odds_bps.iter().map(|x| *x as u32).sum();
     require!(sum == 10_000, AofError::InvalidOddsWeights);
@@ -24,6 +21,7 @@ pub fn init_config_handler(ctx: Context<InitRerollConfig>, odds_bps: [u16; 5]) -
     let c = &mut ctx.accounts.reroll_config;
     c.odds_bps = odds_bps;
     c.bump = ctx.bumps.reroll_config;
+    emit!(RerollConfigChanged { odds_bps, slot: Clock::get()?.slot });
     Ok(())
 }
 
@@ -34,25 +32,48 @@ pub fn set_config_handler(ctx: Context<SetRerollConfig>, odds_bps: [u16; 5]) -> 
     // from a single roll.
     require!(odds_bps[4] == 0, AofError::InvalidOddsWeights);
     ctx.accounts.reroll_config.odds_bps = odds_bps;
+    emit!(RerollConfigChanged { odds_bps, slot: Clock::get()?.slot });
     Ok(())
 }
 
-pub fn commit_handler(ctx: Context<RerollRandomCommit>, commit_hash: [u8; 32]) -> Result<()> {
-    // The tool is burned before reveal and there is no expiry/refund path.
-    // Fail closed in the program, not only in the API route.
-    require!(false, AofError::FeatureDisabled);
-    require!(
-        ctx.accounts.gastank.balance_micros >= FEE_PER_REROLL_MICROS,
-        AofError::InsufficientBalance
-    );
-    ctx.accounts.gastank.balance_micros = ctx
-        .accounts
-        .gastank
+pub fn commit_handler(ctx: Context<RerollRandomCommit>, nonce: u64) -> Result<()> {
+    // The reroll fee leaves the gas tank for this commit's escrow (it used to
+    // stay in the tank as a sweepable fee): reveal -> treasury, refund -> user.
+    let tank = &mut ctx.accounts.gastank;
+    require!(tank.balance_micros >= FEE_PER_REROLL_MICROS, AofError::InsufficientBalance);
+    tank.balance_micros = tank
         .balance_micros
         .checked_sub(FEE_PER_REROLL_MICROS)
         .ok_or(AofError::MathOverflow)?;
+    let fee_lamports = FEE_PER_REROLL_MICROS
+        .checked_mul(MICROS_TO_LAMPORTS)
+        .ok_or(AofError::MathOverflow)?;
+    // Everything that still belongs to the user stays in the tank.
+    let tank_reserve = Rent::get()?
+        .minimum_balance(GASTANK_SPACE)
+        .checked_add(tank.balance_micros.checked_mul(MICROS_TO_LAMPORTS).ok_or(AofError::MathOverflow)?)
+        .and_then(|x| x.checked_add(tank.dust_lamports))
+        .ok_or(AofError::MathOverflow)?;
+    // The fee itself moves after the last CPI below (runtime lamport rule).
 
-    // сжигаем инструмент сразу в момент коммита — необратимость коммита
+    // The settlement NFT's rent is prepaid so that any cranker is made whole.
+    let deposit = vrf::tool_settlement_rent(&Rent::get()?);
+    anchor_lang::system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.user.to_account_info(),
+                to: ctx.accounts.reroll_commit.to_account_info(),
+            },
+        ),
+        deposit,
+    )?;
+
+    // The tool is burned at commit (irreversible); its attributes are kept so
+    // that a refund can restore an equivalent tool.
+    let burned_tool_type = ctx.accounts.burn_tool.tool_type.clone();
+    let burned_rarity = ctx.accounts.burn_tool.rarity;
+    let burned_durability = ctx.accounts.burn_tool.durability;
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -73,73 +94,162 @@ pub fn commit_handler(ctx: Context<RerollRandomCommit>, commit_hash: [u8; 32]) -
         },
     ))?;
 
-    let slot = Clock::get()?.slot;
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.reroll_commit.key();
+    let accounts = vrf::CommitAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+    };
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+
+    // [RUNTIME LAMPORT RULE] Direct lamport moves only after the last CPI: at
+    // every CPI the runtime re-checks this instruction's lamport sum from the
+    // accounts passed to that CPI. Moving the fee into the commit before the
+    // deposit transfer (which passes the commit but not the gas tank) failed
+    // every reroll commit with UnbalancedInstruction on the real runtime.
+    crate::economics::transfer_owned_lamports(
+        &ctx.accounts.gastank.to_account_info(),
+        &ctx.accounts.reroll_commit.to_account_info(),
+        fee_lamports,
+        tank_reserve,
+    )?;
+
     let rc = &mut ctx.accounts.reroll_commit;
     rc.user = ctx.accounts.user.key();
+    rc.nonce = nonce;
     rc.burn_mint = ctx.accounts.burn_mint.key();
-    rc.new_mint = ctx.accounts.new_mint.key();
-    rc.commit_hash = commit_hash;
-    rc.commit_slot = slot;
+    rc.burned_tool_type = burned_tool_type;
+    rc.burned_rarity = burned_rarity;
+    rc.burned_durability = burned_durability;
+    rc.odds_bps = ctx.accounts.reroll_config.odds_bps;
+    rc.fee_lamports = fee_lamports;
+    rc.deposit_lamports = deposit;
+    rc.randomness = ctx.accounts.randomness.key();
+    rc.seed_slot = seed_slot;
+    rc.commit_slot = clock.slot;
+    rc.bump = ctx.bumps.reroll_commit;
+
+    emit!(VrfCommitted {
+        mechanic: VRF_MECHANIC_REROLL,
+        commit: commit_key,
+        user: rc.user,
+        randomness: rc.randomness,
+        seed_slot,
+        commit_slot: clock.slot,
+        escrow_lamports: fee_lamports.saturating_add(deposit),
+    });
     Ok(())
 }
 
-/// [AUDIT F-06] Disabled — authority-held secret, no forced settlement, and
-/// the tool is burned at commit time so a withheld reveal is an outright loss.
-pub fn reveal_handler(ctx: Context<RerollRandomReveal>, secret: [u8; 32]) -> Result<()> {
-    require!(false, AofError::RandomnessDisabled);
-    #[allow(unreachable_code)]
-    {
-    require!(
-        hash_secret(&secret) == ctx.accounts.reroll_commit.commit_hash,
-        AofError::CommitMismatch
+/// Permissionless settlement (see pack_open_reveal).
+pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams) -> Result<()> {
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.reroll_commit.key();
+    let (randomness, seed_slot, commit_slot) = (
+        ctx.accounts.reroll_commit.randomness,
+        ctx.accounts.reroll_commit.seed_slot,
+        ctx.accounts.reroll_commit.commit_slot,
     );
-    let slot_hash = get_slot_hash(&ctx.accounts.slot_hashes, ctx.accounts.reroll_commit.commit_slot)?;
-    let entropy = derive_entropy(&secret, &slot_hash, b"reroll");
-    let roll = entropy_u64(&entropy);
-    let rarity_idx = weighted_pick(roll, &ctx.accounts.reroll_config.odds_bps);
-    let rarity = Rarity::from_u8(rarity_idx as u8).ok_or(AofError::MathOverflow)?;
-
-    let mut roll2_bytes = [0u8; 8];
-    roll2_bytes.copy_from_slice(&entropy[8..16]);
-    let roll2 = u64::from_le_bytes(roll2_bytes);
-    let tool_type_idx = (roll2 % PACK_TOOL_TYPES.len() as u64) as usize;
-    let tool_type = PACK_TOOL_TYPES[tool_type_idx].to_string();
-
-    let auth_bump = ctx.bumps.auth;
-    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-    token::mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            MintTo {
-                mint: ctx.accounts.new_mint.to_account_info(),
-                to: ctx.accounts.new_token.to_account_info(),
-                authority: ctx.accounts.auth.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        1,
+    let accounts = vrf::RevealAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        stats: ctx.accounts.stats.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+        payer: ctx.accounts.cranker.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
+        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
+        program_state: ctx.accounts.program_state.to_account_info(),
+    };
+    let value = vrf::reveal(
+        &mut ctx.accounts.vrf_slot,
+        &commit_key,
+        &randomness,
+        seed_slot,
+        commit_slot,
+        &accounts,
+        &params,
+        ctx.bumps.vrf_authority,
+        clock.slot,
     )?;
 
-    let td = &mut ctx.accounts.new_tool_data;
-    td.mint = ctx.accounts.new_mint.key();
-    td.owner = ctx.accounts.reroll_commit.user;
-    td.tool_type = tool_type.clone();
-    td.rarity = rarity;
-    td.durability = MAX_DURABILITY;
-    td.is_mining = false;
-    td.mining_end = 0;
-    td.staked = false;
-    td.unlock_at = 0;
-    td.last_mined_hours = 0;
-    td.operator = ctx.accounts.reroll_commit.user;
+    let (rarity, tool_type) = settlement::roll_tool(&value, b"reroll", &commit_key, &ctx.accounts.reroll_commit.odds_bps)?;
+    settlement::mint_tool_nft(
+        &ctx.accounts.token_program.to_account_info(),
+        &ctx.accounts.new_mint.to_account_info(),
+        &ctx.accounts.new_token.to_account_info(),
+        &ctx.accounts.auth.to_account_info(),
+        ctx.bumps.auth,
+    )?;
+    let user = ctx.accounts.reroll_commit.user;
+    settlement::write_tool(&mut ctx.accounts.new_tool_data, ctx.accounts.new_mint.key(), user, tool_type.clone(), rarity, MAX_DURABILITY);
 
+    let commit_info = ctx.accounts.reroll_commit.to_account_info();
+    let fee = ctx.accounts.reroll_commit.fee_lamports;
+    settlement::release_escrow(&commit_info, &ctx.accounts.treasury.to_account_info(), fee)?;
+    let deposit = ctx.accounts.reroll_commit.deposit_lamports;
+    settlement::reimburse_settler(&commit_info, &ctx.accounts.cranker.to_account_info(), deposit)?;
+    ctx.accounts.reroll_commit.fee_lamports = 0;
+    ctx.accounts.reroll_commit.deposit_lamports = 0;
+
+    emit!(VrfSettled {
+        mechanic: VRF_MECHANIC_REROLL,
+        commit: commit_key,
+        randomness,
+        seed_slot,
+        value,
+        cranker: ctx.accounts.cranker.key(),
+    });
     emit!(RerollResult {
-        user: ctx.accounts.reroll_commit.user,
+        user,
         burned_mint: ctx.accounts.reroll_commit.burn_mint,
         new_mint: ctx.accounts.new_mint.key(),
         rarity,
         tool_type,
     });
     Ok(())
-    }
+}
+
+/// Refund of a reroll the oracle never revealed: the burned tool comes back as
+/// an equivalent NFT (same type, rarity and durability) and the fee returns to
+/// the user. Permissionless, only once the reveal window has closed.
+pub fn expire_handler(ctx: Context<RerollRandomExpire>) -> Result<()> {
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.reroll_commit.key();
+    let commit_slot = ctx.accounts.reroll_commit.commit_slot;
+    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
+
+    settlement::mint_tool_nft(
+        &ctx.accounts.token_program.to_account_info(),
+        &ctx.accounts.new_mint.to_account_info(),
+        &ctx.accounts.new_token.to_account_info(),
+        &ctx.accounts.auth.to_account_info(),
+        ctx.bumps.auth,
+    )?;
+    let rc = &ctx.accounts.reroll_commit;
+    let (user, tool_type, rarity, durability) = (rc.user, rc.burned_tool_type.clone(), rc.burned_rarity, rc.burned_durability);
+    settlement::write_tool(&mut ctx.accounts.new_tool_data, ctx.accounts.new_mint.key(), user, tool_type, rarity, durability);
+
+    // The fee stays on the commit and reaches the user through `close = user`;
+    // only the fronted NFT rent goes back to the settler.
+    let commit_info = ctx.accounts.reroll_commit.to_account_info();
+    let deposit = ctx.accounts.reroll_commit.deposit_lamports;
+    settlement::reimburse_settler(&commit_info, &ctx.accounts.cranker.to_account_info(), deposit)?;
+    let fee = ctx.accounts.reroll_commit.fee_lamports;
+
+    emit!(VrfCommitRefunded {
+        mechanic: VRF_MECHANIC_REROLL,
+        commit: commit_key,
+        user,
+        refunded_lamports: fee,
+    });
+    Ok(())
 }

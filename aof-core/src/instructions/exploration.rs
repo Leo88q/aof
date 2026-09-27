@@ -1,21 +1,21 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, Burn};
+use anchor_spl::token::{self, Burn, MintTo};
 use crate::constants::*;
-use crate::{StartExplorationCommit, ExploreReveal, UpgradeExplorationTier};
+use crate::{StartExplorationCommit, ExploreReveal, ExploreExpire, UpgradeExplorationTier};
 use crate::errors::*;
 use crate::events::*;
-use crate::randomness::*;
+use crate::state::check_supply_cap;
+use crate::ResourceKind;
+use crate::vrf::{self, VrfRevealParams};
 
 fn day_start_of(ts: i64) -> i64 {
     ts - (ts % 86400)
 }
 
-pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [u8; 32]) -> Result<()> {
-    // Four resources are burned before reveal, while there is no on-chain
-    // expiry/refund/cancel path. The API is disabled, but direct program
-    // callers must be blocked as well.
-    require!(false, AofError::FeatureDisabled);
-
+/// [F-06] Start a trip: burn the trip cost, snapshot the tier and commit a
+/// pool randomness account (see vrf.rs). The operator co-signs as the backend
+/// gate; the outcome is out of everyone's hands from here on.
+pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let state = &mut ctx.accounts.exploration_state;
     if state.owner == Pubkey::default() {
@@ -25,6 +25,10 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [
         state.trips_today = 0;
         state.day_start = day_start_of(now);
     }
+    require!(
+        state.tier >= 1 && state.tier <= MAX_EXPLORATION_TIER,
+        AofError::InvalidExplorationTier
+    );
 
     let idx = (state.tier - 1) as usize;
     let cooldown = (EXPLORATION_COOLDOWN_HOURS[idx] as i64) * 3600;
@@ -38,6 +42,12 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [
         state.trips_today < EXPLORATION_TRIPS_PER_DAY[idx],
         AofError::ExplorationDailyLimitReached
     );
+    state.last_trip_at = now;
+    state.trips_today = state
+        .trips_today
+        .checked_add(1)
+        .ok_or(AofError::MathOverflow)?;
+    let tier = state.tier;
 
     // TRIP_COST — {food:75, wood:35, stone:35, meat:50}
     for (mint, from, cost) in [
@@ -60,86 +70,159 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>, commit_hash: [
         )?;
     }
 
-    let slot = Clock::get()?.slot;
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.exploration_commit.key();
+    let accounts = vrf::CommitAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+    };
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+
     let ec = &mut ctx.accounts.exploration_commit;
     ec.user = ctx.accounts.user.key();
     ec.tool_mint = ctx.accounts.tool_mint.key();
-    ec.commit_hash = commit_hash;
-    ec.commit_slot = slot;
+    ec.tier = tier;
+    ec.food_burned = TRIP_COST_FOOD;
+    ec.wood_burned = TRIP_COST_WOOD;
+    ec.stone_burned = TRIP_COST_STONE;
+    ec.meat_burned = TRIP_COST_MEAT;
+    ec.randomness = ctx.accounts.randomness.key();
+    ec.seed_slot = seed_slot;
+    ec.commit_slot = clock.slot;
+    ec.bump = ctx.bumps.exploration_commit;
 
-    state.last_trip_at = now;
-    state.trips_today = state
-        .trips_today
-        .checked_add(1)
-        .ok_or(AofError::MathOverflow)?;
+    emit!(VrfCommitted {
+        mechanic: VRF_MECHANIC_EXPLORATION,
+        commit: commit_key,
+        user: ec.user,
+        randomness: ec.randomness,
+        seed_slot,
+        commit_slot: clock.slot,
+        escrow_lamports: 0,
+    });
     Ok(())
 }
 
-/// [AUDIT F-06] Disabled — same authority-secret commit/reveal weakness as the
-/// packs, and the trip cost is burned before the reveal exists.
-pub fn reveal_handler(ctx: Context<ExploreReveal>, secret: [u8; 32]) -> Result<()> {
-    require!(false, AofError::RandomnessDisabled);
-    #[allow(unreachable_code)]
-    {
-    require!(
-        hash_secret(&secret) == ctx.accounts.exploration_commit.commit_hash,
-        AofError::CommitMismatch
+/// Success roll and reward amount of a trip at `tier` (1-based).
+pub fn trip_outcome(value: &[u8; 32], commit: &Pubkey, tier: u8) -> Result<(bool, u64)> {
+    require!(tier >= 1 && tier <= MAX_EXPLORATION_TIER, AofError::InvalidExplorationTier);
+    let idx = (tier - 1) as usize;
+    let roll = vrf::derive_roll(value, b"explore", commit.as_ref());
+    let success = vrf::bps(vrf::lane(&roll, 0)) < EXPLORATION_SUCCESS_BPS[idx] as u64;
+    if !success {
+        return Ok((false, 0));
+    }
+    let span = (EXPLORATION_SHARDS_MAX[idx] - EXPLORATION_SHARDS_MIN[idx] + 1) as u64;
+    let amount = EXPLORATION_SHARDS_MIN[idx] as u64 + vrf::below(vrf::lane(&roll, 1), span);
+    // [ДИЗАЙН-РЕШЕНИЕ, см. constants.rs]: вместо отдельных "шардов"
+    // (которых нет в модели крафта этой программы) — бонусные WOOD/STONE.
+    Ok((true, amount.checked_mul(RESOURCE_UNIT).ok_or(AofError::MathOverflow)?))
+}
+
+/// [F-06] Permissionless settlement of a trip (see pack_open_reveal). Rewards
+/// go to the player's canonical ATAs, re-created by the settler if the player
+/// closed them: a closed account must not be a way to make a bad roll
+/// unsettleable.
+pub fn reveal_handler(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> Result<()> {
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.exploration_commit.key();
+    let (randomness, seed_slot, commit_slot, tier) = (
+        ctx.accounts.exploration_commit.randomness,
+        ctx.accounts.exploration_commit.seed_slot,
+        ctx.accounts.exploration_commit.commit_slot,
+        ctx.accounts.exploration_commit.tier,
     );
-    let slot_hash = get_slot_hash(&ctx.accounts.slot_hashes, ctx.accounts.exploration_commit.commit_slot)?;
-    let entropy = derive_entropy(&secret, &slot_hash, b"explore");
-    let roll = entropy_u64(&entropy) % 10_000;
+    let accounts = vrf::RevealAccounts {
+        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
+        randomness: ctx.accounts.randomness.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+        queue: ctx.accounts.queue.to_account_info(),
+        stats: ctx.accounts.stats.to_account_info(),
+        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
+        payer: ctx.accounts.cranker.to_account_info(),
+        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info(),
+        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
+        program_state: ctx.accounts.program_state.to_account_info(),
+    };
+    let value = vrf::reveal(
+        &mut ctx.accounts.vrf_slot,
+        &commit_key,
+        &randomness,
+        seed_slot,
+        commit_slot,
+        &accounts,
+        &params,
+        ctx.bumps.vrf_authority,
+        clock.slot,
+    )?;
 
-    let idx = (ctx.accounts.exploration_state.tier - 1) as usize;
-    let success = roll < EXPLORATION_SUCCESS_BPS[idx] as u64;
-
-    let (mut wood_reward, mut stone_reward) = (0u64, 0u64);
+    let (success, reward) = trip_outcome(&value, &commit_key, tier)?;
     if success {
-        let mut r2 = [0u8; 8];
-        r2.copy_from_slice(&entropy[8..16]);
-        let span = (EXPLORATION_SHARDS_MAX[idx] - EXPLORATION_SHARDS_MIN[idx] + 1) as u64;
-        let amount = EXPLORATION_SHARDS_MIN[idx] as u64 + (u64::from_le_bytes(r2) % span);
-        // [ДИЗАЙН-РЕШЕНИЕ, см. constants.rs]: вместо отдельных "шардов"
-        // (которых нет в модели крафта этой программы) — бонусные WOOD/STONE.
-        wood_reward = amount.checked_mul(RESOURCE_UNIT).ok_or(AofError::MathOverflow)?;
-        stone_reward = amount.checked_mul(RESOURCE_UNIT).ok_or(AofError::MathOverflow)?;
-
-        let auth_bump = ctx.bumps.auth;
-        let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-        token::mint_to(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                anchor_spl::token::MintTo {
-                    mint: ctx.accounts.wood_mint.to_account_info(),
-                    to: ctx.accounts.user_wood.to_account_info(),
-                    authority: ctx.accounts.auth.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            wood_reward,
-        )?;
-        token::mint_to(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                anchor_spl::token::MintTo {
-                    mint: ctx.accounts.stone_mint.to_account_info(),
-                    to: ctx.accounts.user_stone.to_account_info(),
-                    authority: ctx.accounts.auth.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            stone_reward,
-        )?;
+        // Emission paths check the global supply ceiling before minting.
+        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, reward)?;
+        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, reward)?;
+        let token_program = ctx.accounts.token_program.to_account_info();
+        let auth = ctx.accounts.auth.to_account_info();
+        mint_resource(&token_program, &ctx.accounts.wood_mint.to_account_info(), &ctx.accounts.user_wood.to_account_info(), &auth, ctx.bumps.auth, reward)?;
+        mint_resource(&token_program, &ctx.accounts.stone_mint.to_account_info(), &ctx.accounts.user_stone.to_account_info(), &auth, ctx.bumps.auth, reward)?;
     }
 
+    emit!(VrfSettled {
+        mechanic: VRF_MECHANIC_EXPLORATION,
+        commit: commit_key,
+        randomness,
+        seed_slot,
+        value,
+        cranker: ctx.accounts.cranker.key(),
+    });
     emit!(ExplorationCompleted {
         user: ctx.accounts.exploration_commit.user,
         tool_mint: ctx.accounts.exploration_commit.tool_mint,
         success,
-        wood_reward,
-        stone_reward,
+        wood_reward: reward,
+        stone_reward: reward,
     });
     Ok(())
-    }
+}
+
+/// [F-06] Refund of a trip the oracle never revealed: the burned trip cost is
+/// re-minted to the player. Permissionless, only once the reveal window has
+/// closed. The re-mint restores supply the commit burned, so it cannot exceed
+/// the ceiling the burn was taken from.
+pub fn expire_handler(ctx: Context<ExploreExpire>) -> Result<()> {
+    let clock = Clock::get()?;
+    let commit_key = ctx.accounts.exploration_commit.key();
+    let commit_slot = ctx.accounts.exploration_commit.commit_slot;
+    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
+
+    let ec = &ctx.accounts.exploration_commit;
+    let (food, wood, stone, meat) = (ec.food_burned, ec.wood_burned, ec.stone_burned, ec.meat_burned);
+    let mm = &ctx.accounts.material_mints;
+    check_supply_cap(mm, ResourceKind::Data, ctx.accounts.food_mint.supply, food)?;
+    check_supply_cap(mm, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, wood)?;
+    check_supply_cap(mm, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, stone)?;
+    check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.meat_mint.supply, meat)?;
+    let token_program = ctx.accounts.token_program.to_account_info();
+    let auth = ctx.accounts.auth.to_account_info();
+    mint_resource(&token_program, &ctx.accounts.food_mint.to_account_info(), &ctx.accounts.user_food.to_account_info(), &auth, ctx.bumps.auth, food)?;
+    mint_resource(&token_program, &ctx.accounts.wood_mint.to_account_info(), &ctx.accounts.user_wood.to_account_info(), &auth, ctx.bumps.auth, wood)?;
+    mint_resource(&token_program, &ctx.accounts.stone_mint.to_account_info(), &ctx.accounts.user_stone.to_account_info(), &auth, ctx.bumps.auth, stone)?;
+    mint_resource(&token_program, &ctx.accounts.meat_mint.to_account_info(), &ctx.accounts.user_meat.to_account_info(), &auth, ctx.bumps.auth, meat)?;
+
+    emit!(VrfCommitRefunded {
+        mechanic: VRF_MECHANIC_EXPLORATION,
+        commit: commit_key,
+        user: ctx.accounts.exploration_commit.user,
+        refunded_lamports: 0,
+    });
+    Ok(())
 }
 
 pub fn upgrade_tier_handler(ctx: Context<UpgradeExplorationTier>) -> Result<()> {
@@ -175,4 +258,28 @@ pub fn upgrade_tier_handler(ctx: Context<UpgradeExplorationTier>) -> Result<()> 
 
     state.tier = state.tier.checked_add(1).ok_or(AofError::MathOverflow)?;
     Ok(())
+}
+
+/// Mint `amount` of a resource with the auth PDA (callers check the supply
+/// cap first).
+fn mint_resource<'info>(
+    token_program: &AccountInfo<'info>,
+    mint: &AccountInfo<'info>,
+    to: &AccountInfo<'info>,
+    auth: &AccountInfo<'info>,
+    auth_bump: u8,
+    amount: u64,
+) -> Result<()> {
+    if amount == 0 {
+        return Ok(());
+    }
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+    token::mint_to(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            MintTo { mint: mint.clone(), to: to.clone(), authority: auth.clone() },
+            signer_seeds,
+        ),
+        amount,
+    )
 }

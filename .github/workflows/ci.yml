@@ -533,6 +533,13 @@ jobs:
             log "::error::SBPF stack frame overflow in the build output - the loader would reject this program at deploy time"
             rc=1
           fi
+          # The companion diagnostic: a call whose arguments spill over the
+          # caller's frame. The build stays green but execution is undefined
+          # (seen together with the overflow above on ExploreExpire, F-06).
+          if grep -nE "overwrites values in the frame" /tmp/anchor-build.log; then
+            log "::error::SBPF call overwrites the caller's stack frame - undefined behaviour at runtime"
+            rc=1
+          fi
           log "anchor build --no-idl exit code: $rc"
           exit "$rc"
 
@@ -902,6 +909,18 @@ jobs:
         run: |
           set -uo pipefail
           npm run test:security-invariants 2>&1 | tee -a /tmp/backend-build.log
+          status="${PIPESTATUS[0]}"
+          [ "$status" -eq 0 ] || exit "$status"
+          # [SECURITY_CHECKLIST #65] session keys are encrypted at rest.
+          npm run test:session-keystore 2>&1 | tee -a /tmp/backend-build.log
+          status="${PIPESTATUS[0]}"
+          [ "$status" -eq 0 ] || exit "$status"
+          # [SECURITY_CHECKLIST #48] fraud-review hold on value-issuing routes.
+          npm run test:fraud-hold 2>&1 | tee -a /tmp/backend-build.log
+          status="${PIPESTATUS[0]}"
+          [ "$status" -eq 0 ] || exit "$status"
+          # [F-06] Switchboard pool circuit breaker, settlement phases, PDAs.
+          npm run test:vrf 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Integration test - Prisma idempotency CAS (temporary SQLite)
@@ -1183,6 +1202,44 @@ jobs:
             echo "::warning::the artifact carries no synced Anchor.toml; keeping the checked-out copy"
           fi
 
+      - name: Cache the Switchboard test double build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/solana
+            tests/mock-switchboard/target
+          key: ${{ runner.os }}-mock-switchboard-${{ env.AGAVE_VERSION }}-${{ hashFiles('tests/mock-switchboard/src/**', 'tests/mock-switchboard/Cargo.toml', 'Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mock-switchboard-${{ env.AGAVE_VERSION }}-
+
+      - name: Load the Switchboard test double at the Switchboard program id
+        # [F-06] tests/aof_vrf_localnet.ts runs the full VRF commit -> reveal ->
+        # settlement path on this validator. A Switchboard oracle cannot sign
+        # for a local chain, so tests/mock-switchboard (same discriminators,
+        # accounts, layout and state transitions; no enclave signature check)
+        # is built here and put into the validator's genesis at the mainnet
+        # Switchboard id the default build trusts. It exists only on this
+        # throwaway validator. The workspace Cargo.lock pins its dependencies.
+        # The output goes to /tmp/anchor-test.log too: when this step fails, the
+        # failure publisher posts that file (the Actions log endpoint is not
+        # reachable from every environment).
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          cp Cargo.lock tests/mock-switchboard/Cargo.lock
+          {
+            echo "### building tests/mock-switchboard"
+            RUSTUP_TOOLCHAIN="$RUST_VERSION" cargo-build-sbf \
+              --manifest-path tests/mock-switchboard/Cargo.toml --sbf-out-dir target/mock 2>&1 | tail -60
+          } | tee -a /tmp/anchor-test.log
+          if [ ! -f target/mock/mock_switchboard.so ]; then
+            echo "::error::the Switchboard test double did not build" | tee -a /tmp/anchor-test.log
+            exit 1
+          fi
+          ls -l target/mock/mock_switchboard.so
+          printf '\n[[test.genesis]]\naddress = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"\nprogram = "target/mock/mock_switchboard.so"\n' >> Anchor.toml
+          tail -4 Anchor.toml
+
       - name: Report the build-time program id sync
         # The Actions log endpoint is not reachable from every environment, so
         # the programs job ships its sync report inside the artifact. Everything
@@ -1346,6 +1403,9 @@ jobs:
       - name: Anchor test
         id: anchor_test
         if: steps.idl_check.outputs.available == 'true'
+        env:
+          # tests/aof_vrf_localnet.ts must not skip here (the double is loaded above).
+          AOF_REQUIRE_SWITCHBOARD_MOCK: "1"
         run: |
           set -uo pipefail
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -1371,6 +1431,36 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-test.log "Anchor test (local validator)" 10
+
+      # [SECURITY_CHECKLIST #27] tests/aof_cu_report.ts measures the compute
+      # units of every aof-core instruction the suites exercised. On success
+      # the table becomes the job summary and the check-run output, readable
+      # via GET /repos/{owner}/{repo}/check-runs/{id} without the log endpoint.
+      - name: Publish compute-unit report
+        if: steps.anchor_test.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          report=target/cu-report.md
+          if [ ! -f "$report" ]; then
+            echo "::warning::$report was not written - tests/aof_cu_report.ts did not run"
+            exit 0
+          fi
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          job_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.name == "Anchor test (local validator)") | .id' 2>/dev/null | head -1)
+          if [ -z "$job_id" ]; then
+            echo "::notice::could not resolve the check-run id - the report is in the job summary only"
+            exit 0
+          fi
+          jq -n \
+            --arg title "Compute units per aof-core instruction (local validator)" \
+            --arg summary "Measured by tests/aof_cu_report.ts from the transaction history of this run." \
+            --rawfile text "$report" \
+            '{output: {title: $title, summary: $summary, text: $text}}' > /tmp/cu-report-payload.json
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$job_id" --input /tmp/cu-report-payload.json >/dev/null \
+            || echo "::notice::check-run output not updated - the report is in the job summary only"
 
   secrets-scan:
     name: Secret scan (full git history)

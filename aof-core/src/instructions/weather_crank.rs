@@ -20,20 +20,9 @@ pub fn handler(ctx: Context<WeatherCrank>) -> Result<()> {
         return Err(AofError::WeatherAlreadyUpdated.into());
     }
 
-    // Детерминированный выбор погоды из дня (golden ratio hash)
-    let seed = day_id as u64;
-    let hash_val = seed
-        .wrapping_mul(0x9E3779B97F4A7C15)
-        .wrapping_shr(32);
-
-    // Погода: 0=засуха, 1=солнце, 2=дождь, 3=фестиваль
-    // Вероятности: 10% засуха, 50% солнце, 30% дождь, 10% фестиваль
-    let weather_type = match hash_val % 100 {
-        0..=9 => WEATHER_BLACKOUT,
-        10..=59 => WEATHER_NOMINAL,
-        60..=89 => WEATHER_SURGE,
-        _ => WEATHER_FRENZY,
-    };
+    // Детерминированный выбор погоды из дня (golden ratio hash), общий с
+    // collect_well_water: state::weather_for_day.
+    let weather_type = weather_for_day(day_id);
 
     weather.day_id = day_id;
     weather.weather = weather_type;

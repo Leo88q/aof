@@ -253,4 +253,42 @@ pub enum AofError {
     EmptyCraftOrder,
     #[msg("Exploration tier is out of range")]
     InvalidExplorationTier,
+    // [SECURITY_CHECKLIST_REVIEW] appended at the end: existing codes must not move.
+    #[msg("Fee exceeds the hard ceiling")]
+    FeeTooHigh,
+    #[msg("Season has not started yet")]
+    SeasonNotStarted,
+    #[msg("Premium season pass already purchased")]
+    SeasonPassAlreadyPremium,
+    #[msg("Cash-out is frozen: value cannot leave the game right now")]
+    CashoutFrozen,
+    #[msg("Role key must be set")]
+    InvalidRole,
+    #[msg("Destination must be the owner's canonical associated token account")]
+    NonCanonicalTokenAccount,
+    #[msg("Not a Switchboard randomness account of the trusted program")]
+    InvalidRandomnessAccount,
+    #[msg("Randomness is not freshly committed (or already revealed)")]
+    RandomnessNotFresh,
+    #[msg("Randomness has not been revealed in this slot")]
+    RandomnessNotRevealed,
+    #[msg("Switchboard randomness commit must precede this instruction in the same transaction")]
+    RandomnessCommitMissing,
+    // [F-06] program-owned Switchboard pool (appended: existing codes must not move).
+    #[msg("VRF pool slot is busy with another commit")]
+    VrfSlotBusy,
+    #[msg("VRF pool slot is retired")]
+    VrfSlotRetired,
+    #[msg("VRF pool slot is not held by this commit")]
+    VrfSlotNotHeld,
+    #[msg("Reveal window has closed; the commit can only be refunded")]
+    RevealWindowClosed,
+    #[msg("Price exceeds the caller's maximum")]
+    PriceAboveMaximum,
+    #[msg("Lottery ticket sales are closed")]
+    LotterySalesClosed,
+    #[msg("Lottery sales window is still open")]
+    LotterySalesOpen,
+    #[msg("Lottery round still holds funds")]
+    LotteryRoundNotEmpty,
 }

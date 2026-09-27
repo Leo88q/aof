@@ -746,6 +746,19 @@
         215,
         226
       ]
+    },
+    {
+      "name": "AuthorityRotationCancelled",
+      "discriminator": [
+        130,
+        2,
+        252,
+        115,
+        135,
+        42,
+        1,
+        109
+      ]
     }
   ],
   "errors": [
@@ -997,6 +1010,26 @@
           {
             "name": "at",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "cancelled",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Token, TokenAccount, Mint};
+use crate::vrf::{AddressLookupTableProgram, SwitchboardOnDemand, VrfRevealParams};
 
 pub mod constants;
 pub mod errors;
@@ -8,6 +10,9 @@ pub mod events;
 pub mod instructions;
 pub mod state;
 pub mod randomness;
+pub mod vrf;
+#[cfg(test)]
+mod security_checklist_tests;
 
 pub use state::*;
 pub use constants::*;
@@ -220,6 +225,49 @@ pub struct SetMiningEnabled<'info> {
     pub authority: Signer<'info>,
 }
 
+/// [SECURITY_CHECKLIST_REVIEW F-C] One-time in-place growth of the v1 Config to
+/// the v2 layout (role fields appended). Must be the first transaction after
+/// deploying this version: until then no instruction can load `Config`.
+#[derive(Accounts)]
+pub struct MigrateConfigV2<'info> {
+    /// CHECK: a v1 Config cannot be deserialized as the v2 type; the handler
+    /// checks owner, discriminator, the exact v1 size and the stored authority.
+    #[account(mut, seeds = [CONFIG_SEED], bump)]
+    pub config: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Admin assigns the operator/guardian keys.
+#[derive(Accounts)]
+pub struct SetRoles<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Guardian (or admin) switches the pause
+/// and/or the cash-out freeze ON; switching off is admin-only.
+#[derive(Accounts)]
+pub struct EmergencyStop<'info> {
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED], bump = config.bump,
+        constraint = caller.key() == config.guardian || caller.key() == config.authority @ AofError::Unauthorized
+    )]
+    pub config: Box<Account<'info, Config>>,
+    pub caller: Signer<'info>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-C] Admin sets or clears the cash-out freeze.
+#[derive(Accounts)]
+pub struct SetCashoutFrozen<'info> {
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
+}
+
 // =====================================================================
 // [AUDIT F-01] Vault withdrawal guards
 // =====================================================================
@@ -411,7 +459,9 @@ pub struct DepositGas<'info> {
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct WithdrawGas<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -427,7 +477,7 @@ pub struct WithdrawGas<'info> {
 
 #[derive(Accounts)]
 pub struct SweepGasFees<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(mut, seeds = [GASTANK_SEED, gastank.owner.as_ref()], bump)]
@@ -472,7 +522,7 @@ pub struct SetIssuanceCap<'info> {
 pub struct MintResource<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Box<Account<'info, Config>>,
@@ -516,7 +566,7 @@ pub struct MintResource<'info> {
 pub struct MintResourceOnce<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Box<Account<'info, Config>>,
@@ -591,7 +641,7 @@ pub struct BurnResource<'info> {
 pub struct MintTool<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Account<'info, Config>,
@@ -604,6 +654,7 @@ pub struct MintTool<'info> {
         mut,
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -674,6 +725,7 @@ pub struct MigrateTool<'info> {
         mut,
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
+        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -696,7 +748,7 @@ pub struct MigrateTool<'info> {
 pub struct Craft<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
         constraint = !config.paused @ AofError::Paused
     )]
     pub config: Box<Account<'info, Config>>,
@@ -712,6 +764,10 @@ pub struct Craft<'info> {
     pub gastank: Box<Account<'info, GasTank>>,
     #[account(
         mut,
+        // [SECURITY_CHECKLIST_REVIEW F-B] the NFT is burned by this instruction;
+        // its ToolData must go with it (as in burn_tool/burn_nft), otherwise a
+        // "ghost" tool keeps harvesting, can be repaired and rented out.
+        close = user,
         seeds = [TOOL_SEED, prev_mint.key().as_ref()],
         bump,
         constraint = prev_tool.mint == prev_mint.key() @ AofError::InvalidMint,
@@ -730,7 +786,8 @@ pub struct Craft<'info> {
         mut,
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
-        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint,
+        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
@@ -807,6 +864,10 @@ pub struct Reroll<'info> {
     pub gastank: Box<Account<'info, GasTank>>,
     #[account(
         mut,
+        // [SECURITY_CHECKLIST_REVIEW F-B] the NFT is burned by this instruction;
+        // its ToolData must go with it (as in burn_tool/burn_nft), otherwise a
+        // "ghost" tool keeps harvesting, can be repaired and rented out.
+        close = user,
         seeds = [TOOL_SEED, mint_a.key().as_ref()],
         bump,
         constraint = tool_a.owner == user.key() @ AofError::NotToolOwner,
@@ -822,6 +883,10 @@ pub struct Reroll<'info> {
     pub token_a: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
+        // [SECURITY_CHECKLIST_REVIEW F-B] the NFT is burned by this instruction;
+        // its ToolData must go with it (as in burn_tool/burn_nft), otherwise a
+        // "ghost" tool keeps harvesting, can be repaired and rented out.
+        close = user,
         seeds = [TOOL_SEED, mint_b.key().as_ref()],
         bump,
         constraint = tool_b.owner == user.key() @ AofError::NotToolOwner,
@@ -842,7 +907,8 @@ pub struct Reroll<'info> {
         mut,
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
-        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+        constraint = new_mint.supply == 0 @ AofError::InvalidMint,
+        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
@@ -932,7 +998,9 @@ pub struct Stake<'info> {
 
 #[derive(Accounts)]
 pub struct Unstake<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -1111,8 +1179,9 @@ pub struct BurnNft<'info> {
 pub struct PayOut<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
-        constraint = !config.paused @ AofError::Paused
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
+        constraint = !config.paused @ AofError::Paused,
+        constraint = !config.cashout_frozen @ AofError::CashoutFrozen
     )]
     pub config: Box<Account<'info, Config>>,
     pub authority: Signer<'info>,
@@ -1195,7 +1264,9 @@ pub struct CollectorStake<'info> {
 
 #[derive(Accounts)]
 pub struct CollectorUnstake<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -1237,7 +1308,7 @@ pub struct CollectorUnstake<'info> {
 /// slots/boost остаются в конфиге бэкенда (см. AUDIT_V3.md).
 #[derive(Accounts)]
 pub struct AdjustPlayerCapacity<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(
@@ -1282,90 +1353,182 @@ pub struct SetPackConfig<'info> {
     pub pack_config: Account<'info, PackConfig>,
 }
 
+/// [F-06] Operator-only: add one Switchboard randomness account to the
+/// program-owned pool (see vrf.rs / instructions::vrf_pool).
 #[derive(Accounts)]
-#[instruction(pack_type: PackType, commit_hash: [u8;32])]
-pub struct PackOpenCommit<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
+#[instruction(index: u32, recent_slot: u64)]
+pub struct VrfPoolAdd<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = operator.key() == config.operator @ AofError::Unauthorized)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub operator: Signer<'info>,
+    /// CHECK: PDA that becomes the Switchboard authority of the new account.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: created by Switchboard's randomness_init at this program's PDA.
+    #[account(mut, seeds = [VRF_RANDOMNESS_SEED, &index.to_le_bytes()], bump)]
+    pub randomness: UncheckedAccount<'info>,
+    #[account(init, payer = operator, space = VRF_SLOT_SPACE, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: wSOL ATA of the randomness account, created by Switchboard.
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(mut, address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    /// CHECK: Switchboard LUT signer PDA ["LutSigner", randomness].
+    #[account(constraint = lut_signer.key() == crate::vrf::lut_signer_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub lut_signer: UncheckedAccount<'info>,
+    /// CHECK: address lookup table Switchboard creates for (lut_signer, recent_slot).
+    #[account(mut, constraint = lut.key() == crate::vrf::lut_address(&lut_signer.key(), recent_slot) @ AofError::InvalidRandomnessAccount)]
+    pub lut: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
+    pub address_lookup_table_program: Program<'info, AddressLookupTableProgram>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct VrfPoolSetRetired<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = operator.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
+    pub operator: Signer<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, vrf_slot.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Account<'info, VrfSlot>,
+}
+
+#[derive(Accounts)]
+pub struct VrfSlotRecover<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = operator.key() == config.operator @ AofError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    pub operator: Signer<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, vrf_slot.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Account<'info, VrfSlot>,
+    /// CHECK: the account named by the lock; must no longer exist.
+    #[account(address = vrf_slot.lock)]
+    pub holder: UncheckedAccount<'info>,
+}
+
+/// [F-06] Paid pack opening: escrow + odds snapshot + Switchboard commit in one
+/// instruction. The operator co-signs as the backend gate.
+#[derive(Accounts)]
+#[instruction(pack_type: PackType, nonce: u64)]
+pub struct PackOpenCommit<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
     pub authority: Signer<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(seeds = [PACK_CONFIG_SEED, &[pack_type.to_u8()]], bump = pack_config.bump)]
-    pub pack_config: Account<'info, PackConfig>,
-    /// CHECK: auth PDA is the only supported mint authority for tools.
-    #[account(seeds = [AUTH_SEED], bump)]
-    pub auth: UncheckedAccount<'info>,
-    /// Mint is created by the caller but must be an unused zero-decimal tool mint
-    /// controlled by the program authority PDA.
-    #[account(
-        constraint = mint.decimals == 0 @ AofError::InvalidMint,
-        constraint = mint.supply == 0 @ AofError::InvalidMint,
-        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
-    )]
-    pub mint: Account<'info, Mint>,
+    pub pack_config: Box<Account<'info, PackConfig>>,
     #[account(
         init, payer = user, space = PACK_COMMIT_SPACE,
-        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()], bump
+        seeds = [PACK_COMMIT_SEED, user.key().as_ref(), &nonce.to_le_bytes()], bump
     )]
-    pub pack_commit: Account<'info, PackCommit>,
+    pub pack_commit: Box<Account<'info, PackCommit>>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
+    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub system_program: Program<'info, System>,
 }
 
+/// [F-06] Permissionless pack settlement. The tool NFT is a PDA of the commit,
+/// created here, so nobody can squat or pre-mint it between commit and reveal.
 #[derive(Accounts)]
 pub struct PackOpenReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    /// Anyone may settle; fronts the NFT rent and is reimbursed from the deposit.
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub cranker: Signer<'info>,
     #[account(
         mut,
         close = user,
-        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()],
-        bump,
-        constraint = pack_commit.mint == mint.key() @ AofError::InvalidMint
+        seeds = [PACK_COMMIT_SEED, pack_commit.user.as_ref(), &pack_commit.nonce.to_le_bytes()],
+        bump = pack_commit.bump
     )]
-    pub pack_commit: Account<'info, PackCommit>,
-    /// CHECK: получатель — тот же user, что делал commit; закрываем ренту ему
+    pub pack_commit: Box<Account<'info, PackCommit>>,
+    /// CHECK: the committing player: receives the NFT, the commit rent and any unused deposit.
     #[account(mut, address = pack_commit.user)]
     pub user: UncheckedAccount<'info>,
-    /// CHECK: казна получает escrow только здесь, когда исход уже известен.
+    /// CHECK: receives the escrowed price only here, once the outcome is final.
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
-    #[account(seeds = [PACK_CONFIG_SEED, &[pack_commit.pack_type]], bump = pack_config.bump)]
-    pub pack_config: Account<'info, PackConfig>,
     #[account(
-        mut,
-        constraint = mint.decimals == 0 @ AofError::InvalidMint,
-        constraint = mint.supply == 0 @ AofError::InvalidMint,
-        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
+        init, payer = cranker,
+        seeds = [PACK_MINT_SEED, pack_commit.key().as_ref()], bump,
+        mint::decimals = 0, mint::authority = auth
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = cranker, associated_token::mint = mint, associated_token::authority = user)]
+    pub user_token: Box<Account<'info, TokenAccount>>,
     #[account(
-        mut,
-        constraint = user_token.mint == mint.key(),
-        constraint = user_token.owner == user.key(),
-        constraint = user_token.amount == 0
-    )]
-    pub user_token: Account<'info, TokenAccount>,
-    #[account(
-        init, payer = authority, space = TOOL_DATA_SPACE,
+        init, payer = cranker, space = TOOL_DATA_SPACE,
         seeds = [TOOL_SEED, mint.key().as_ref()], bump
     )]
-    pub tool_data: Account<'info, ToolData>,
-    /// CHECK: auth PDA
+    pub tool_data: Box<Account<'info, ToolData>>,
+    /// CHECK: auth PDA, mint authority of tool NFTs.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    /// CHECK: sysvar SlotHashes
+    #[account(mut, seeds = [VRF_SLOT_SEED, pack_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
+    #[account(mut, address = pack_commit.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
+    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
+    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub stats: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
-    pub slot_hashes: UncheckedAccount<'info>,
+    pub recent_slothashes: UncheckedAccount<'info>,
+    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
-/// Возврат просроченного pack-коммита. Permissionless: любой может вызвать,
-/// деньги всегда идут только `pack_commit.user`. Разрешён строго после того,
-/// как хэш слота коммита гарантированно выпал из SlotHashes, поэтому
-/// `reveal` и `expire` для одного коммита взаимоисключающи.
+/// [F-06] Refund of a pack opening the oracle never revealed. Permissionless;
+/// only once the reveal window has closed; everything goes to `pack_commit.user`.
 #[derive(Accounts)]
 pub struct PackOpenExpire<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
@@ -1373,17 +1536,15 @@ pub struct PackOpenExpire<'info> {
     #[account(
         mut,
         close = user,
-        seeds = [PACK_COMMIT_SEED, mint.key().as_ref()],
-        bump,
-        constraint = pack_commit.mint == mint.key() @ AofError::InvalidMint,
-        constraint = !pack_commit.revealed @ AofError::CommitMismatch
+        seeds = [PACK_COMMIT_SEED, pack_commit.user.as_ref(), &pack_commit.nonce.to_le_bytes()],
+        bump = pack_commit.bump
     )]
-    pub pack_commit: Account<'info, PackCommit>,
-    /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
+    pub pack_commit: Box<Account<'info, PackCommit>>,
+    /// CHECK: receives the escrow and the rent — the same user that committed.
     #[account(mut, address = pack_commit.user)]
     pub user: UncheckedAccount<'info>,
-    /// CHECK: только как seed pack_commit; supply/authority не важны для возврата.
-    pub mint: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, pack_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
 }
 
 // ----- Reroll (честный) -----
@@ -1409,14 +1570,17 @@ pub struct SetRerollConfig<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(commit_hash: [u8;32])]
+#[instruction(nonce: u64)]
 pub struct RerollRandomCommit<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(mut, seeds = [GASTANK_SEED, user.key().as_ref()], bump, constraint = gastank.owner == user.key() @ AofError::Unauthorized)]
-    pub gastank: Account<'info, GasTank>,
+    pub gastank: Box<Account<'info, GasTank>>,
+    #[account(seeds = [REROLL_CONFIG_SEED], bump = reroll_config.bump)]
+    pub reroll_config: Box<Account<'info, RerollConfig>>,
     #[account(
         mut, seeds = [TOOL_SEED, burn_mint.key().as_ref()], bump,
         close = user,
@@ -1425,53 +1589,141 @@ pub struct RerollRandomCommit<'info> {
         constraint = !burn_tool.staked @ AofError::AlreadyStaked,
         constraint = !burn_tool.is_mining @ AofError::AlreadyMining,
     )]
-    pub burn_tool: Account<'info, ToolData>,
+    pub burn_tool: Box<Account<'info, ToolData>>,
     #[account(mut)]
-    pub burn_mint: Account<'info, Mint>,
+    pub burn_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = burn_token.mint == burn_mint.key(), constraint = burn_token.owner == user.key(), constraint = burn_token.amount == 1)]
-    pub burn_token: Account<'info, TokenAccount>,
-    /// CHECK: mint будущего инструмента, создаётся клиентом заранее
-    pub new_mint: Account<'info, Mint>,
+    pub burn_token: Box<Account<'info, TokenAccount>>,
     #[account(
         init, payer = user, space = REROLL_COMMIT_SPACE,
-        seeds = [REROLL_COMMIT_SEED, new_mint.key().as_ref()], bump
+        seeds = [REROLL_COMMIT_SEED, user.key().as_ref(), &nonce.to_le_bytes()], bump
     )]
-    pub reroll_commit: Account<'info, RerollCommit>,
+    pub reroll_commit: Box<Account<'info, RerollCommit>>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
+    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct RerollRandomReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
-    pub authority: Signer<'info>,
-    #[account(seeds = [REROLL_CONFIG_SEED], bump = reroll_config.bump)]
-    pub reroll_config: Account<'info, RerollConfig>,
-    #[account(mut, close = payer, seeds = [REROLL_COMMIT_SEED, new_mint.key().as_ref()], bump)]
-    pub reroll_commit: Account<'info, RerollCommit>,
-    /// CHECK: получатель закрытой ренты коммита — тот же user
-    #[account(mut, address = reroll_commit.user)]
-    pub payer: UncheckedAccount<'info>,
+    pub cranker: Signer<'info>,
     #[account(
         mut,
-        constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
-        constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
-        constraint = new_mint.supply == 0 @ AofError::InvalidMint
+        close = user,
+        seeds = [REROLL_COMMIT_SEED, reroll_commit.user.as_ref(), &reroll_commit.nonce.to_le_bytes()],
+        bump = reroll_commit.bump
     )]
-    pub new_mint: Account<'info, Mint>,
-    #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == payer.key(), constraint = new_token.amount == 0)]
-    pub new_token: Account<'info, TokenAccount>,
-    #[account(init, payer = authority, space = TOOL_DATA_SPACE, seeds = [TOOL_SEED, new_mint.key().as_ref()], bump)]
-    pub new_tool_data: Account<'info, ToolData>,
+    pub reroll_commit: Box<Account<'info, RerollCommit>>,
+    /// CHECK: the committing player.
+    #[account(mut, address = reroll_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    /// CHECK: receives the escrowed reroll fee once the outcome is final.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(
+        init, payer = cranker,
+        seeds = [REROLL_MINT_SEED, reroll_commit.key().as_ref()], bump,
+        mint::decimals = 0, mint::authority = auth
+    )]
+    pub new_mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = cranker, associated_token::mint = new_mint, associated_token::authority = user)]
+    pub new_token: Box<Account<'info, TokenAccount>>,
+    #[account(init, payer = cranker, space = TOOL_DATA_SPACE, seeds = [TOOL_SEED, new_mint.key().as_ref()], bump)]
+    pub new_tool_data: Box<Account<'info, ToolData>>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    /// CHECK: sysvar SlotHashes
+    #[account(mut, seeds = [VRF_SLOT_SEED, reroll_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
+    #[account(mut, address = reroll_commit.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
+    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
+    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub stats: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
-    pub slot_hashes: UncheckedAccount<'info>,
+    pub recent_slothashes: UncheckedAccount<'info>,
+    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [F-06] Refund of a reroll the oracle never revealed: an equivalent tool is
+/// minted at the same commit-derived PDA the reveal would have used (reveal
+/// and refund are mutually exclusive in time), and the fee goes back.
+#[derive(Accounts)]
+pub struct RerollRandomExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub cranker: Signer<'info>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [REROLL_COMMIT_SEED, reroll_commit.user.as_ref(), &reroll_commit.nonce.to_le_bytes()],
+        bump = reroll_commit.bump
+    )]
+    pub reroll_commit: Box<Account<'info, RerollCommit>>,
+    /// CHECK: the committing player.
+    #[account(mut, address = reroll_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, reroll_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    #[account(
+        init, payer = cranker,
+        seeds = [REROLL_MINT_SEED, reroll_commit.key().as_ref()], bump,
+        mint::decimals = 0, mint::authority = auth
+    )]
+    pub new_mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = cranker, associated_token::mint = new_mint, associated_token::authority = user)]
+    pub new_token: Box<Account<'info, TokenAccount>>,
+    #[account(init, payer = cranker, space = TOOL_DATA_SPACE, seeds = [TOOL_SEED, new_mint.key().as_ref()], bump)]
+    pub new_tool_data: Box<Account<'info, ToolData>>,
+    /// CHECK: auth PDA
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1482,14 +1734,12 @@ pub struct RerollRandomReveal<'info> {
 // отклонял программу целиком (CI run 34908007614):
 //   Function <aof_core::StartExplorationCommit as Accounts<..>>::try_accounts overflows the maximum
 //   allowed frame space ... Estimated function frame size: 5824 bytes.
-// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
-// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
-// порядок, ограничения и IDL не меняются.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель).
 #[derive(Accounts)]
-#[instruction(commit_hash: [u8;32])]
 pub struct StartExplorationCommit<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(mut)]
@@ -1535,41 +1785,136 @@ pub struct StartExplorationCommit<'info> {
     pub meat_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
     pub user_meat: Box<Account<'info, TokenAccount>>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
+    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
+/// [F-06] Permissionless trip settlement. Rewards go to the player's canonical
+/// ATAs, re-created by the settler if the player closed them.
 #[derive(Accounts)]
 pub struct ExploreReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
-    pub authority: Signer<'info>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(mut)]
+    pub cranker: Signer<'info>,
     #[account(
         mut,
-        seeds = [EXPLORATION_STATE_SEED, exploration_commit.user.as_ref()],
-        bump,
-        constraint = exploration_state.owner == exploration_commit.user @ AofError::Unauthorized
+        close = user,
+        seeds = [EXPLORATION_COMMIT_SEED, exploration_commit.tool_mint.as_ref()],
+        bump = exploration_commit.bump
     )]
-    pub exploration_state: Account<'info, ExplorationState>,
-    #[account(mut, close = payer, seeds = [EXPLORATION_COMMIT_SEED, exploration_commit.tool_mint.as_ref()], bump)]
-    pub exploration_commit: Account<'info, ExplorationCommit>,
-    /// CHECK: получатель ренты — user, делавший commit
+    pub exploration_commit: Box<Account<'info, ExplorationCommit>>,
+    /// CHECK: the committing player (rent + rewards).
     #[account(mut, address = exploration_commit.user)]
-    pub payer: UncheckedAccount<'info>,
+    pub user: UncheckedAccount<'info>,
     #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == payer.key())]
-    pub user_wood: Account<'info, TokenAccount>,
+    pub wood_mint: Box<Account<'info, Mint>>,
+    #[account(init_if_needed, payer = cranker, associated_token::mint = wood_mint, associated_token::authority = user)]
+    pub user_wood: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == payer.key())]
-    pub user_stone: Account<'info, TokenAccount>,
+    pub stone_mint: Box<Account<'info, Mint>>,
+    #[account(init_if_needed, payer = cranker, associated_token::mint = stone_mint, associated_token::authority = user)]
+    pub user_stone: Box<Account<'info, TokenAccount>>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    /// CHECK: sysvar SlotHashes
+    #[account(mut, seeds = [VRF_SLOT_SEED, exploration_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
+    #[account(mut, address = exploration_commit.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
+    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
+    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub stats: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
-    pub slot_hashes: UncheckedAccount<'info>,
+    pub recent_slothashes: UncheckedAccount<'info>,
+    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [F-06] Refund of a trip the oracle never revealed: the burned trip cost is
+/// re-minted to the player's canonical ATAs. No outcome is at stake any more
+/// (the reveal window is closed), so a closed ATA only delays the player's own
+/// refund until they re-create it; no `init_if_needed` here keeps the account
+/// validation inside the SBF stack frame.
+#[derive(Accounts)]
+pub struct ExploreExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [EXPLORATION_COMMIT_SEED, exploration_commit.tool_mint.as_ref()],
+        bump = exploration_commit.bump
+    )]
+    pub exploration_commit: Box<Account<'info, ExplorationCommit>>,
+    /// CHECK: the committing player.
+    #[account(mut, address = exploration_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, exploration_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: auth PDA — mint authority of the resources.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut, address = config.food_mint)]
+    pub food_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = food_mint, associated_token::authority = user)]
+    pub user_food: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = wood_mint, associated_token::authority = user)]
+    pub user_wood: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = stone_mint, associated_token::authority = user)]
+    pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.meat)]
+    pub meat_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = meat_mint, associated_token::authority = user)]
+    pub user_meat: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1659,8 +2004,9 @@ pub struct ReferralUpgradeCtx<'info> {
 pub struct PayOutWithReferral<'info> {
     #[account(
         seeds = [CONFIG_SEED], bump = config.bump,
-        has_one = authority @ AofError::Unauthorized,
-        constraint = !config.paused @ AofError::Paused
+        constraint = authority.key() == config.operator @ AofError::Unauthorized,
+        constraint = !config.paused @ AofError::Paused,
+        constraint = !config.cashout_frozen @ AofError::CashoutFrozen
     )]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
@@ -1696,14 +2042,13 @@ pub struct PayOutWithReferral<'info> {
 // отклонял программу целиком (CI run 34908007614):
 //   Function <aof_core::ForgeAttemptCommit as Accounts<..>>::try_accounts overflows the maximum
 //   allowed frame space ... Estimated function frame size: 4544 bytes.
-// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель),
-// что уже используется в этом файле для других инструкций. Состав аккаунтов, их
-// порядок, ограничения и IDL не меняются.
+// `Box<..>` уводит данные аккаунтов в кучу (в стеке остаётся 8-байтный указатель).
 #[derive(Accounts)]
-#[instruction(slot_type: u8, commit_hash: [u8;32])]
+#[instruction(slot_type: u8)]
 pub struct ForgeAttemptCommit<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
+    pub authority: Signer<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump, constraint = tool.owner == user.key() @ AofError::NotToolOwner)]
@@ -1729,58 +2074,114 @@ pub struct ForgeAttemptCommit<'info> {
     pub stone_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
     pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
+    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct ForgeAttemptReveal<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
-    pub authority: Signer<'info>,
-    #[account(mut, seeds = [ENCHANT_SLOT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]], bump)]
-    pub enchant_slot: Account<'info, EnchantSlot>,
-    #[account(mut, close = payer, seeds = [FORGE_COMMIT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]], bump)]
-    pub forge_commit: Account<'info, ForgeCommit>,
-    /// CHECK: получатель ренты — user, делавший commit
-    #[account(mut, address = forge_commit.user)]
-    pub payer: UncheckedAccount<'info>,
-    /// CHECK: казна получает escrow-fee только здесь, когда исход известен.
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
-    /// CHECK: sysvar SlotHashes
-    #[account(address = SLOT_HASHES_ID)]
-    pub slot_hashes: UncheckedAccount<'info>,
-}
-
-/// Возврат просроченного forge-коммита: сожжённые wood/stone минтятся обратно
-/// (auth PDA — mint authority ресурсов), SOL-fee из escrow и рента идут user.
-/// Permissionless; разрешён только после окна SlotHashes, так что не может
-/// сработать параллельно с валидным reveal.
-#[derive(Accounts)]
-pub struct ForgeAttemptExpire<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub cranker: Signer<'info>,
+    #[account(mut, seeds = [ENCHANT_SLOT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]], bump)]
+    pub enchant_slot: Box<Account<'info, EnchantSlot>>,
     #[account(
         mut,
         close = user,
         seeds = [FORGE_COMMIT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]],
-        bump
+        bump = forge_commit.bump
+    )]
+    pub forge_commit: Box<Account<'info, ForgeCommit>>,
+    /// CHECK: the committing player receives the commit rent.
+    #[account(mut, address = forge_commit.user)]
+    pub user: UncheckedAccount<'info>,
+    /// CHECK: казна получает escrow-fee только здесь, когда исход известен.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, forge_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
+    #[account(mut, address = forge_commit.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
+    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
+    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub stats: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [F-06] Refund of a forge attempt the oracle never revealed: burned wood and
+/// stone are re-minted to the player's canonical ATAs, the escrowed fee and
+/// the rent go back. Permissionless; only once the reveal window has closed.
+#[derive(Accounts)]
+pub struct ForgeAttemptExpire<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(
+        mut,
+        close = user,
+        seeds = [FORGE_COMMIT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]],
+        bump = forge_commit.bump
     )]
     pub forge_commit: Box<Account<'info, ForgeCommit>>,
     /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
     #[account(mut, address = forge_commit.user)]
     pub user: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, forge_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: auth PDA — mint authority ресурсов.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     #[account(mut, address = config.wood_mint)]
     pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == forge_commit.user @ AofError::Unauthorized)]
+    #[account(mut, associated_token::mint = wood_mint, associated_token::authority = user)]
     pub user_wood: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.stone_mint)]
     pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == forge_commit.user @ AofError::Unauthorized)]
+    #[account(mut, associated_token::mint = stone_mint, associated_token::authority = user)]
     pub user_stone: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
@@ -1805,9 +2206,6 @@ pub struct BuyLotteryTicket<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub buyer: Signer<'info>,
-    /// CHECK: казна (30% с билета)
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
     pub lottery_round: Account<'info, LotteryRound>,
     #[account(
@@ -1829,31 +2227,116 @@ pub struct BuyLotteryTicket<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// [F-06] Permissionless draw settlement (Switchboard reveal via CPI).
 #[derive(Accounts)]
 pub struct DrawLottery<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
-    pub authority: Signer<'info>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub cranker: Signer<'info>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
-    pub lottery_round: Account<'info, LotteryRound>,
-    /// CHECK: sysvar SlotHashes
+    pub lottery_round: Box<Account<'info, LotteryRound>>,
+    /// CHECK: receives the house share of the pool at the draw.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, lottery_round.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
+    #[account(mut, address = lottery_round.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
+    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
+    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
+    pub stats: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
-    pub slot_hashes: UncheckedAccount<'info>,
+    pub recent_slothashes: UncheckedAccount<'info>,
+    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
+    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
+    pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
+    /// CHECK: Switchboard program state PDA ["STATE"].
+    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
+    pub program_state: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
+/// [F-06] Close sales and commit the draw. Operator at any time, anyone after
+/// LOTTERY_SALES_SECONDS (checked in the handler).
 #[derive(Accounts)]
 pub struct CommitLotteryDraw<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
-    pub authority: Signer<'info>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    pub cranker: Signer<'info>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
-    pub lottery_round: Account<'info, LotteryRound>,
+    pub lottery_round: Box<Account<'info, LotteryRound>>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
+    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
+    pub randomness: UncheckedAccount<'info>,
+    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
+    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
+    pub vrf_authority: UncheckedAccount<'info>,
+    /// CHECK: the trusted Switchboard queue.
+    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
+    pub queue: UncheckedAccount<'info>,
+    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
+    #[account(mut)]
+    pub oracle: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
+    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
+}
+
+/// [F-06] Expire a draw the oracle never revealed; the round can draw again.
+#[derive(Accounts)]
+pub struct ExpireLotteryDraw<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
+    pub lottery_round: Box<Account<'info, LotteryRound>>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, lottery_round.randomness.as_ref()], bump = vrf_slot.bump)]
+    pub vrf_slot: Box<Account<'info, VrfSlot>>,
+}
+
+/// [F-06] Full refund of one ticket of an undrawn round after the timeout.
+#[derive(Accounts)]
+pub struct RefundLotteryTicket<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
+    pub lottery_round: Box<Account<'info, LotteryRound>>,
+    #[account(
+        mut,
+        close = buyer,
+        seeds = [LOTTERY_TICKET_SEED, &lottery_round.round_id.to_le_bytes(), &lottery_ticket.ticket_number.to_le_bytes()],
+        bump,
+        constraint = lottery_ticket.round_id == lottery_round.round_id @ AofError::InvalidAmount
+    )]
+    pub lottery_ticket: Account<'info, LotteryTicket>,
+    /// CHECK: the ticket's buyer; the only possible recipient.
+    #[account(mut, address = lottery_ticket.buyer)]
+    pub buyer: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ClaimLotteryPrize<'info> {
     /// [AUDIT F-19] the emergency pause must also stop prize payouts.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
     pub lottery_round: Account<'info, LotteryRound>,
@@ -1876,7 +2359,10 @@ pub struct MarketplaceList<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         seeds = [TOOL_SEED, mint.key().as_ref()],
@@ -1902,7 +2388,7 @@ pub struct MarketplaceList<'info> {
 
 #[derive(Accounts)]
 pub struct MarketplaceBuy<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub buyer: Signer<'info>,
@@ -1944,7 +2430,9 @@ pub struct MarketplaceBuy<'info> {
 
 #[derive(Accounts)]
 pub struct MarketplaceCancel<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
@@ -1969,7 +2457,10 @@ pub struct AuctionCreateCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         seeds = [TOOL_SEED, mint.key().as_ref()],
@@ -2019,7 +2510,7 @@ pub struct AuctionBidCtx<'info> {
 
 #[derive(Accounts)]
 pub struct AuctionSettleCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
@@ -2037,7 +2528,7 @@ pub struct AuctionSettleCtx<'info> {
     pub auction_vault: Account<'info, TokenAccount>,
     /// победитель (или продавец, если ставок не было) — получатель NFT
     #[account(mut, constraint = winner_token.mint == mint.key(),
-    constraint = winner_token.owner == (if auction.current_bid > 0 { auction.current_bidder } else { auction.seller }) @ AofError::Unauthorized)]
+    constraint = winner_token.owner == (if auction.current_bid > 0 { auction.current_bidder } else { auction.seller }) @ AofError::Unauthorized, constraint = is_canonical_ata(&winner_token.key(), &winner_token.owner, &mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub winner_token: Account<'info, TokenAccount>,
     #[account(
         mut,
@@ -2052,6 +2543,32 @@ pub struct AuctionSettleCtx<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// [SECURITY_CHECKLIST_REVIEW F-G] The seller withdraws an auction without bids.
+/// Exit path (returns the seller's own NFT): never paused.
+#[derive(Accounts)]
+pub struct AuctionCancelCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub seller: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        close = seller,
+        seeds = [AUCTION_SEED, mint.key().as_ref()],
+        bump,
+        constraint = auction.seller == seller.key() @ AofError::Unauthorized,
+        constraint = auction.active @ AofError::NotActive,
+        constraint = auction.current_bid == 0 @ AofError::StillActive
+    )]
+    pub auction: Account<'info, Auction>,
+    #[account(mut, constraint = auction_vault.owner == auction.key(), constraint = auction_vault.mint == mint.key())]
+    pub auction_vault: Account<'info, TokenAccount>,
+    #[account(mut, constraint = seller_token.mint == mint.key(), constraint = seller_token.owner == seller.key())]
+    pub seller_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
 // ----- Оффер -----
 
 #[derive(Accounts)]
@@ -2061,6 +2578,10 @@ pub struct OfferCreateCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub buyer: Signer<'info>,
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(init, payer = buyer, space = OFFER_SPACE, seeds = [OFFER_SEED, mint.key().as_ref(), buyer.key().as_ref()], bump)]
     pub offer: Account<'info, Offer>,
@@ -2069,11 +2590,14 @@ pub struct OfferCreateCtx<'info> {
 
 #[derive(Accounts)]
 pub struct OfferAcceptCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         mut,
@@ -2108,7 +2632,9 @@ pub struct OfferAcceptCtx<'info> {
 
 #[derive(Accounts)]
 pub struct OfferCancelCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     pub mint: Account<'info, Mint>,
     #[account(
@@ -2133,7 +2659,10 @@ pub struct RentalListCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    #[account(mut)]
+    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
+    // before the creation-time check): it could be frozen in the counterparty's
+    // wallet or in escrow.
+    #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
         seeds = [TOOL_SEED, mint.key().as_ref()],
@@ -2147,13 +2676,20 @@ pub struct RentalListCtx<'info> {
     pub tool: Account<'info, ToolData>,
     #[account(init, payer = owner, space = RENTAL_LISTING_SPACE, seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
     pub rental_listing: Account<'info, RentalListing>,
+    // [SECURITY_CHECKLIST_REVIEW F-H] the NFT moves into escrow for as long as
+    // the listing exists.
+    #[account(mut, constraint = owner_token.mint == mint.key(), constraint = owner_token.owner == owner.key(), constraint = owner_token.amount == 1)]
+    pub owner_token: Account<'info, TokenAccount>,
+    #[account(mut, constraint = rental_vault.owner == rental_listing.key(), constraint = rental_vault.mint == mint.key())]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 #[instruction(duration_seconds: i64)]
 pub struct RentalStartCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub renter: Signer<'info>,
@@ -2184,12 +2720,22 @@ pub struct RentalStartCtx<'info> {
     pub treasury: UncheckedAccount<'info>,
     #[account(init, payer = renter, space = RENTAL_AGREEMENT_SPACE, seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
     pub rental_agreement: Account<'info, RentalAgreement>,
+    // [SECURITY_CHECKLIST_REVIEW F-H] custody proof: only an escrowed NFT can be
+    // rented (not one listed elsewhere, in an auction or burned).
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive,
+        constraint = rental_vault.amount == 1 @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct RentalEndCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     pub caller: Signer<'info>,
     pub mint: Account<'info, Mint>,
@@ -2216,7 +2762,9 @@ pub struct RentalEndCtx<'info> {
 
 #[derive(Accounts)]
 pub struct RentalRevokeCtx<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -2234,6 +2782,49 @@ pub struct RentalRevokeCtx<'info> {
     /// CHECK: rent refund recipient is fixed to the agreement renter.
     #[account(mut, address = rental_agreement.renter)]
     pub renter_refund: UncheckedAccount<'info>,
+    // [SECURITY_CHECKLIST_REVIEW F-H] terms of the paid rental, for the pro-rata
+    // refund of an early revocation (a listing cannot change while rented).
+    #[account(
+        seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()],
+        bump,
+        constraint = rental_listing.mint == mint.key() @ AofError::InvalidMint
+    )]
+    pub rental_listing: Account<'info, RentalListing>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-H] Withdraw a rental listing that is not rented
+/// out: the escrowed NFT returns to the tool's current owner, the listing and
+/// escrow rent to whoever paid for them. Exit path: never paused.
+#[derive(Accounts)]
+pub struct RentalDelistCtx<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    pub caller: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == tool.owner @ AofError::StillActive
+    )]
+    pub tool: Account<'info, ToolData>,
+    #[account(
+        mut,
+        close = lister,
+        seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()],
+        bump,
+        constraint = caller.key() == rental_listing.owner || caller.key() == tool.owner @ AofError::Unauthorized
+    )]
+    pub rental_listing: Account<'info, RentalListing>,
+    /// CHECK: the listing/escrow rent goes back to whoever paid for the listing.
+    #[account(mut, address = rental_listing.owner @ AofError::Unauthorized)]
+    pub lister: UncheckedAccount<'info>,
+    #[account(mut, constraint = rental_vault.owner == rental_listing.key(), constraint = rental_vault.mint == mint.key())]
+    pub rental_vault: Account<'info, TokenAccount>,
+    #[account(mut, constraint = owner_token.mint == mint.key(), constraint = owner_token.owner == tool.owner @ AofError::NotToolOwner)]
+    pub owner_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 // [БЛОК L] Инициализация MaterialMints PDA
@@ -2627,7 +3218,9 @@ pub struct PlaceSellOrder<'info> {
 
 #[derive(Accounts)]
 pub struct CancelBuyOrder<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
@@ -2650,7 +3243,9 @@ pub struct CancelBuyOrder<'info> {
 
 #[derive(Accounts)]
 pub struct CancelSellOrder<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub maker: Signer<'info>,
@@ -2675,7 +3270,7 @@ pub struct CancelSellOrder<'info> {
 
 #[derive(Accounts)]
 pub struct MatchResourceOrders<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
     pub material_mints: Box<Account<'info, MaterialMints>>,
@@ -2698,7 +3293,7 @@ pub struct MatchResourceOrders<'info> {
     #[account(mut, constraint = sell_vault.owner == sell_order.key(), constraint = sell_vault.mint == mint.key())]
     pub sell_vault: Account<'info, TokenAccount>,
     /// покупатель — владелец buy_order, получает ресурс
-    #[account(mut, constraint = buyer_token.mint == mint.key(), constraint = buyer_token.owner == buy_order.maker)]
+    #[account(mut, constraint = buyer_token.mint == mint.key(), constraint = buyer_token.owner == buy_order.maker, constraint = is_canonical_ata(&buyer_token.key(), &buyer_token.owner, &mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub buyer_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -2720,7 +3315,7 @@ pub struct CraftOrderCreateCtx<'info> {
 #[derive(Accounts)]
 pub struct CraftOrderFulfillCtx<'info> {
     /// [AUDIT F-19] the pause must also stop premium payouts.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub fulfiller: Signer<'info>,
@@ -2741,13 +3336,13 @@ pub struct CraftOrderFulfillCtx<'info> {
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = fulfiller_wood.mint == wood_mint.key(), constraint = fulfiller_wood.owner == fulfiller.key())]
     pub fulfiller_wood: Account<'info, TokenAccount>,
-    #[account(mut, constraint = creator_wood.mint == wood_mint.key(), constraint = creator_wood.owner == craft_order.creator)]
+    #[account(mut, constraint = creator_wood.mint == wood_mint.key(), constraint = creator_wood.owner == craft_order.creator, constraint = is_canonical_ata(&creator_wood.key(), &creator_wood.owner, &wood_mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub creator_wood: Account<'info, TokenAccount>,
     #[account(address = config.stone_mint)]
     pub stone_mint: Account<'info, Mint>,
     #[account(mut, constraint = fulfiller_stone.mint == stone_mint.key(), constraint = fulfiller_stone.owner == fulfiller.key())]
     pub fulfiller_stone: Account<'info, TokenAccount>,
-    #[account(mut, constraint = creator_stone.mint == stone_mint.key(), constraint = creator_stone.owner == craft_order.creator)]
+    #[account(mut, constraint = creator_stone.mint == stone_mint.key(), constraint = creator_stone.owner == craft_order.creator, constraint = is_canonical_ata(&creator_stone.key(), &creator_stone.owner, &stone_mint.key()) @ AofError::NonCanonicalTokenAccount)]
     pub creator_stone: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -2755,7 +3350,9 @@ pub struct CraftOrderFulfillCtx<'info> {
 #[derive(Accounts)]
 pub struct CraftOrderCancelCtx<'info> {
     /// [AUDIT F-19] cancelling returns escrowed SOL, so it honours the pause.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow/NFT, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub creator: Signer<'info>,
@@ -2804,7 +3401,7 @@ pub struct PurchaseSeasonPass<'info> {
 
 #[derive(Accounts)]
 pub struct GrantSeasonXp<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -2823,7 +3420,7 @@ pub struct GrantSeasonXp<'info> {
 #[derive(Accounts)]
 #[instruction(level: u8, premium_track: bool)]
 pub struct ClaimSeasonReward<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub authority: Signer<'info>,
     #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
@@ -2896,6 +3493,22 @@ pub mod aof_core {
     // =================================================================
     pub fn set_mining_enabled(ctx: Context<SetMiningEnabled>, enabled: bool) -> Result<()> {
         instructions::set_mining_enabled(ctx, enabled)
+    }
+
+    pub fn migrate_config_v2(ctx: Context<MigrateConfigV2>) -> Result<()> {
+        instructions::roles::migrate_config_v2_handler(ctx)
+    }
+
+    pub fn set_roles(ctx: Context<SetRoles>, operator: Pubkey, guardian: Pubkey) -> Result<()> {
+        instructions::roles::set_roles_handler(ctx, operator, guardian)
+    }
+
+    pub fn emergency_stop(ctx: Context<EmergencyStop>, pause_game: bool, freeze_cashout: bool) -> Result<()> {
+        instructions::roles::emergency_stop_handler(ctx, pause_game, freeze_cashout)
+    }
+
+    pub fn set_cashout_frozen(ctx: Context<SetCashoutFrozen>, frozen: bool) -> Result<()> {
+        instructions::roles::set_cashout_frozen_handler(ctx, frozen)
     }
 
     // =================================================================
@@ -3147,13 +3760,15 @@ pub mod aof_core {
     pub fn set_pack_config(ctx: Context<SetPackConfig>, price_lamports: u64, odds_bps: [u16;5]) -> Result<()> {
         instructions::pack_config::set_handler(ctx, price_lamports, odds_bps)
     }
-    pub fn pack_open_commit(ctx: Context<PackOpenCommit>, pack_type: PackType, commit_hash: [u8;32]) -> Result<()> {
-        instructions::pack_open_commit::handler(ctx, pack_type, commit_hash)
+    /// [F-06] Paid pack opening: escrow + odds snapshot + Switchboard commit.
+    pub fn pack_open_commit(ctx: Context<PackOpenCommit>, pack_type: PackType, nonce: u64, max_price_lamports: u64) -> Result<()> {
+        instructions::pack_open_commit::handler(ctx, pack_type, nonce, max_price_lamports)
     }
-    pub fn pack_open_reveal(ctx: Context<PackOpenReveal>, secret: [u8;32]) -> Result<()> {
-        instructions::pack_open_reveal::handler(ctx, secret)
+    /// [F-06] Permissionless settlement with the oracle's signed value.
+    pub fn pack_open_reveal(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<()> {
+        instructions::pack_open_reveal::handler(ctx, params)
     }
-    /// Refund an expired pack commit (escrow + rent back to the player).
+    /// Refund a pack commit the oracle never revealed (escrow + rent back to the player).
     pub fn pack_open_expire(ctx: Context<PackOpenExpire>) -> Result<()> {
         instructions::pack_open_expire::handler(ctx)
     }
@@ -3165,19 +3780,19 @@ pub mod aof_core {
     pub fn set_reroll_config(ctx: Context<SetRerollConfig>, odds_bps: [u16;5]) -> Result<()> {
         instructions::reroll_random::set_config_handler(ctx, odds_bps)
     }
-    pub fn reroll_random_commit(ctx: Context<RerollRandomCommit>, commit_hash: [u8;32]) -> Result<()> {
-        instructions::reroll_random::commit_handler(ctx, commit_hash)
+    pub fn reroll_random_commit(ctx: Context<RerollRandomCommit>, nonce: u64) -> Result<()> {
+        instructions::reroll_random::commit_handler(ctx, nonce)
     }
-    pub fn reroll_random_reveal(ctx: Context<RerollRandomReveal>, secret: [u8;32]) -> Result<()> {
-        instructions::reroll_random::reveal_handler(ctx, secret)
+    pub fn reroll_random_reveal(ctx: Context<RerollRandomReveal>, params: VrfRevealParams) -> Result<()> {
+        instructions::reroll_random::reveal_handler(ctx, params)
     }
 
     // --- Exploration ---
-    pub fn start_exploration_commit(ctx: Context<StartExplorationCommit>, commit_hash: [u8;32]) -> Result<()> {
-        instructions::exploration::start_commit_handler(ctx, commit_hash)
+    pub fn start_exploration_commit(ctx: Context<StartExplorationCommit>) -> Result<()> {
+        instructions::exploration::start_commit_handler(ctx)
     }
-    pub fn explore_reveal(ctx: Context<ExploreReveal>, secret: [u8;32]) -> Result<()> {
-        instructions::exploration::reveal_handler(ctx, secret)
+    pub fn explore_reveal(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> Result<()> {
+        instructions::exploration::reveal_handler(ctx, params)
     }
     pub fn upgrade_exploration_tier(ctx: Context<UpgradeExplorationTier>) -> Result<()> {
         instructions::exploration::upgrade_tier_handler(ctx)
@@ -3195,13 +3810,13 @@ pub mod aof_core {
     }
 
     // --- Кузница риска ---
-    pub fn forge_attempt_commit(ctx: Context<ForgeAttemptCommit>, slot_type: u8, commit_hash: [u8;32], use_protector: bool) -> Result<()> {
-        instructions::forge::commit_handler(ctx, slot_type, commit_hash, use_protector)
+    pub fn forge_attempt_commit(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_protector: bool) -> Result<()> {
+        instructions::forge::commit_handler(ctx, slot_type, use_protector)
     }
-    pub fn forge_attempt_reveal(ctx: Context<ForgeAttemptReveal>, secret: [u8;32]) -> Result<()> {
-        instructions::forge::reveal_handler(ctx, secret)
+    pub fn forge_attempt_reveal(ctx: Context<ForgeAttemptReveal>, params: VrfRevealParams) -> Result<()> {
+        instructions::forge::reveal_handler(ctx, params)
     }
-    /// Refund an expired forge commit (re-mint burned wood/stone, return escrowed fee + rent).
+    /// Refund a forge commit the oracle never revealed (re-mint burned wood/stone, return escrowed fee + rent).
     pub fn forge_attempt_expire(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
         instructions::forge::expire_handler(ctx)
     }
@@ -3213,11 +3828,11 @@ pub mod aof_core {
     pub fn buy_lottery_ticket(ctx: Context<BuyLotteryTicket>) -> Result<()> {
         instructions::lottery::buy_ticket_handler(ctx)
     }
-    pub fn draw_lottery(ctx: Context<DrawLottery>, secret: [u8; 32]) -> Result<()> {
-        instructions::lottery::draw_handler(ctx, secret)
+    pub fn draw_lottery(ctx: Context<DrawLottery>, params: VrfRevealParams) -> Result<()> {
+        instructions::lottery::draw_handler(ctx, params)
     }
-    pub fn commit_lottery_draw(ctx: Context<CommitLotteryDraw>, commit_hash: [u8; 32]) -> Result<()> {
-        instructions::lottery::commit_draw_handler(ctx, commit_hash)
+    pub fn commit_lottery_draw(ctx: Context<CommitLotteryDraw>) -> Result<()> {
+        instructions::lottery::commit_draw_handler(ctx)
     }
     pub fn claim_lottery_prize(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
         instructions::lottery::claim_prize_handler(ctx)
@@ -3246,6 +3861,9 @@ pub mod aof_core {
     pub fn auction_bid(ctx: Context<AuctionBidCtx>, amount: u64) -> Result<()> {
         instructions::auction::bid_handler(ctx, amount)
     }
+    pub fn auction_cancel(ctx: Context<AuctionCancelCtx>) -> Result<()> {
+        instructions::auction::cancel_handler(ctx)
+    }
     pub fn auction_settle(ctx: Context<AuctionSettleCtx>) -> Result<()> {
         instructions::auction::settle_handler(ctx)
     }
@@ -3265,8 +3883,17 @@ pub mod aof_core {
     pub fn rental_list(ctx: Context<RentalListCtx>, owner_split_bps: u16, min_duration: i64, max_duration: i64, price_per_hour_lamports: u64) -> Result<()> {
         instructions::rental::list_handler(ctx, owner_split_bps, min_duration, max_duration, price_per_hour_lamports)
     }
+    // [SECURITY_CHECKLIST_REVIEW F-H] Rental terms can change now (delist and
+    // relist), so a renter must sign a fee ceiling: the old discriminator stays
+    // fail-closed, exactly like marketplace_buy.
     pub fn rental_start(ctx: Context<RentalStartCtx>, duration_seconds: i64) -> Result<()> {
-        instructions::rental::start_handler(ctx, duration_seconds)
+        err!(AofError::FeatureDisabled)
+    }
+    pub fn rental_start_bounded(ctx: Context<RentalStartCtx>, duration_seconds: i64, max_total_fee: u64) -> Result<()> {
+        instructions::rental::start_handler(ctx, duration_seconds, max_total_fee)
+    }
+    pub fn rental_delist(ctx: Context<RentalDelistCtx>) -> Result<()> {
+        instructions::rental::delist_handler(ctx)
     }
     pub fn rental_end(ctx: Context<RentalEndCtx>) -> Result<()> {
         instructions::rental::end_handler(ctx)
@@ -3317,5 +3944,33 @@ pub mod aof_core {
         instructions::season::claim_reward_handler(ctx, level, premium_track)
     }
 
-
+    // ===== [F-06] Switchboard On-Demand: program-owned randomness pool =====
+    /// Operator: add pool randomness account #index (authority = this program's PDA).
+    pub fn vrf_pool_add(ctx: Context<VrfPoolAdd>, index: u32, recent_slot: u64) -> Result<()> {
+        instructions::vrf_pool::add_handler(ctx, index, recent_slot)
+    }
+    /// Operator: take a free pool slot out of rotation (or back in).
+    pub fn vrf_pool_set_retired(ctx: Context<VrfPoolSetRetired>, retired: bool) -> Result<()> {
+        instructions::vrf_pool::set_retired_handler(ctx, retired)
+    }
+    /// Operator: clear a lock whose holder account no longer exists.
+    pub fn vrf_slot_recover(ctx: Context<VrfSlotRecover>) -> Result<()> {
+        instructions::vrf_pool::recover_handler(ctx)
+    }
+    /// Refund a random reroll the oracle never revealed.
+    pub fn reroll_random_expire(ctx: Context<RerollRandomExpire>) -> Result<()> {
+        instructions::reroll_random::expire_handler(ctx)
+    }
+    /// Refund an exploration trip the oracle never revealed.
+    pub fn explore_expire(ctx: Context<ExploreExpire>) -> Result<()> {
+        instructions::exploration::expire_handler(ctx)
+    }
+    /// Reopen a lottery round whose draw the oracle never revealed.
+    pub fn expire_lottery_draw(ctx: Context<ExpireLotteryDraw>) -> Result<()> {
+        instructions::lottery::expire_draw_handler(ctx)
+    }
+    /// Full refund of one ticket of an undrawn round after the timeout.
+    pub fn refund_lottery_ticket(ctx: Context<RefundLotteryTicket>) -> Result<()> {
+        instructions::lottery::refund_ticket_handler(ctx)
+    }
 }

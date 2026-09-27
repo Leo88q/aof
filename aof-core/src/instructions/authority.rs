@@ -52,6 +52,12 @@ pub fn cancel_pending_authority(ctx: Context<CancelPendingAuthority>) -> Result<
         config.pending_authority != Pubkey::default(),
         AofError::NoPendingAuthority
     );
+    let cancelled = config.pending_authority;
     config.pending_authority = Pubkey::default();
+    emit!(AuthorityRotationCancelled {
+        authority: ctx.accounts.authority.key(),
+        cancelled,
+        slot: Clock::get()?.slot,
+    });
     Ok(())
 }

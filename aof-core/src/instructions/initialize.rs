@@ -41,5 +41,10 @@ pub fn handler(ctx: Context<Initialize>, treasury: Pubkey) -> Result<()> {
     // [AUDIT F-02] No rotation pending at bootstrap.
     cfg.pending_authority = Pubkey::default();
     cfg.authority_updated_at = Clock::get()?.unix_timestamp;
+    // [SECURITY_CHECKLIST_REVIEW F-C] Single-key bootstrap; the admin splits the
+    // roles with `set_roles` and then rotates itself to the multisig.
+    cfg.operator = cfg.authority;
+    cfg.guardian = cfg.authority;
+    cfg.cashout_frozen = false;
     Ok(())
 }

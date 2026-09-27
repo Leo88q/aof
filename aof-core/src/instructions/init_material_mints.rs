@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::InitMaterialMints;
 use crate::constants::*;
 use crate::errors::AofError;
+use crate::events::MaterialMintsInitialized;
 
 #[inline(never)]
 fn require_distinct_mints(mints: &[Pubkey]) -> Result<()> {
@@ -130,5 +131,6 @@ pub fn handler(
     // Starting at 0 would mean "halted", which would break the whole economy
     // before anybody had a chance to configure it.
     mm.max_supply = [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT];
+    emit!(MaterialMintsInitialized { authority: ctx.accounts.authority.key(), slot: Clock::get()?.slot });
     Ok(())
 }

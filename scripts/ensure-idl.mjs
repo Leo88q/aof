@@ -9,36 +9,16 @@
  * This script copies aof_backend/src/idl/*.json -> target/idl/*.json
  * so `anchor test` and tests/aof_core.ts can run without regenerating IDL.
  */
-import fs from 'fs';
-import path from 'path';
+import { createRequire } from 'module';
 
-const root = process.cwd();
-const srcDir = path.join(root, 'aof_backend', 'src', 'idl');
-const dstDir = path.join(root, 'target', 'idl');
+const require = createRequire(import.meta.url);
+const { seedIdl } = require('./seed-idl.cjs');
 
-if (!fs.existsSync(srcDir)) {
-  console.error(`[ensure-idl] source dir not found: ${srcDir}`);
+// Program ids are patched to the target/deploy keypairs (what `anchor test`
+// deploys); without a build the committed ids are kept.
+const seeded = seedIdl({ root: process.cwd(), log: (m) => console.log(`[ensure-idl] ${m}`) });
+if (seeded === 0) {
+  console.error('[ensure-idl] no IDL seeded from aof_backend/src/idl');
   process.exit(1);
 }
-
-fs.mkdirSync(dstDir, { recursive: true });
-
-const files = fs.readdirSync(srcDir).filter(f => f.endsWith('.json'));
-if (files.length === 0) {
-  console.error(`[ensure-idl] no json files in ${srcDir}`);
-  process.exit(1);
-}
-
-let seeded = 0;
-for (const file of files) {
-  const src = path.join(srcDir, file);
-  const dst = path.join(dstDir, file);
-  // For localnet, keep the canonical address from committed IDL.
-  // CI patches address to match generated keypairs; local dev uses
-  // the real devnet ids from Anchor.toml, which already match committed IDLs.
-  fs.copyFileSync(src, dst);
-  console.log(`[ensure-idl] seeded ${file} -> target/idl/${file}`);
-  seeded++;
-}
-
 console.log(`[ensure-idl] done: ${seeded} IDL(s) seeded. If you need fresh IDL, run anchor build --no-idl and regenerate manually (currently blocked upstream).`);

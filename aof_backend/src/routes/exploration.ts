@@ -1,107 +1,82 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
-import { authPda, configPda, explorationCommitPda, explorationStatePda, materialMintsPda } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
-import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
+import { program, connection } from "../provider";
+import { configPda, explorationCommitPda, explorationStatePda, materialMintsPda, toolPda } from "../lib/pda";
+import { coSign, pk } from "../lib/tx";
+import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
+import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 
 const r = Router();
 
+/**
+ * [F-06] Start an exploration trip: the trip cost is burned, the tier is
+ * snapshotted and a Switchboard commit locks a pool slot (operator co-signs as
+ * the backend gate). The vrf-settler reveals it; POST /reveal lets the player
+ * do it (or refund after the window) without the backend.
+ */
 r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_commit"), async (req, res) => {
-  // Exploration commits burn four resource mints immediately. Without a
-  // typed expiry refund/cancel instruction it is unsafe to accept new ones.
-  return res.status(503).json({
-    error: "EXPLORATION_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
-  });
   try {
     const user = pk(req.body.user);
     const toolMint = pk(req.body.toolMint);
-    const tool = pk(req.body.toolData || req.body.tool);
-    const foodMint = pk(req.body.foodMint);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
-    const meatMint = pk(req.body.meatMint);
-    const { hash } = await newCommit(`explore:${toolMint.toBase58()}`);
-
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
-    const [explorationState] = explorationStatePda(user);
+    const cfg: any = await (program.account as any).config.fetch(config);
+    const mm: any = await (program.account as any).materialMints.fetch(materialMints);
+    const ata = (mint: PublicKey) => getAssociatedTokenAddressSync(mint, user);
     const [explorationCommit] = explorationCommitPda(toolMint);
-    const userFood = getAssociatedTokenAddressSync(foodMint, user);
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
-    const userMeat = getAssociatedTokenAddressSync(meatMint, user);
+    const slot = await reservePoolSlot(program, connection);
+    const vrf = await vrfCommitAccounts(program, connection, slot);
 
     const ix = await (program.methods as any)
-      .startExplorationCommit(hash)
+      .startExplorationCommit()
       .accounts({
         config,
+        authority: AUTHORITY_PUBKEY,
         materialMints,
         user,
-        explorationState,
-        tool,
+        explorationState: explorationStatePda(user)[0],
         toolMint,
+        tool: toolPda(toolMint)[0],
         explorationCommit,
-        foodMint,
-        userFood,
-        woodMint,
-        userWood,
-        stoneMint,
-        userStone,
-        meatMint,
-        userMeat,
+        foodMint: cfg.foodMint,
+        userFood: ata(cfg.foodMint),
+        woodMint: cfg.woodMint,
+        userWood: ata(cfg.woodMint),
+        stoneMint: cfg.stoneMint,
+        userStone: ata(cfg.stoneMint),
+        meatMint: mm.meat,
+        userMeat: ata(mm.meat),
+        ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     const tx = await coSign([ix], user);
-    res.json({ tx });
+    res.json({ tx, explorationCommit: explorationCommit.toBase58() });
+  } catch (e: any) {
+    res.status(e.status || 400).json({ error: e.message });
+  }
+});
+
+r.get("/status/:explorationCommit", async (req, res) => {
+  try {
+    res.json(await commitStatus("exploration", new PublicKey(req.params.explorationCommit)));
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-r.post("/reveal", requireCircuitOpen, requireWalletLimits("exploration_reveal"), requireIdempotency, async (req, res) => {
+/** Transaction for the player to settle (or after the window refund) a trip. */
+r.post("/reveal", requireCircuitOpen, requireWalletLimits("exploration_reveal"), async (req, res) => {
   try {
-    const toolMint = pk(req.body.toolMint);
     const user = pk(req.body.user);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
-    const key = `explore:${toolMint.toBase58()}`;
-    const secret = await peekSecret(key);
-
-    const [config] = configPda();
-    const [explorationState] = explorationStatePda(user);
-    const [explorationCommit] = explorationCommitPda(toolMint);
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
-    const [auth] = authPda();
-
-    const ix = await (program.methods as any)
-      .exploreReveal(secret)
-      .accounts({
-        config,
-        authority: AUTHORITY_PUBKEY,
-        explorationState,
-        explorationCommit,
-        payer: user,
-        woodMint,
-        userWood,
-        stoneMint,
-        userStone,
-        auth,
-        slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    await markUsed(key);
-    res.json({ sig });
+    const commit = req.body.explorationCommit ? pk(req.body.explorationCommit) : explorationCommitPda(pk(req.body.toolMint))[0];
+    res.json(await selfSettleTransaction("exploration", commit, user));
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e.status || 400).json({ error: e.message });
   }
 });
 

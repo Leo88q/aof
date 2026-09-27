@@ -43,6 +43,9 @@ pub mod pack_config;
 pub mod pack_open_commit;
 pub mod pack_open_reveal;
 pub mod pack_open_expire;
+// [F-06] Switchboard On-Demand pool and shared settlement helpers.
+pub mod vrf_pool;
+pub mod settlement;
 pub mod reroll_random;
 pub mod exploration;
 pub mod referral;
@@ -58,6 +61,7 @@ pub mod season;
 
 pub mod mint_resource_once;
 pub mod issuance_cap;
+pub mod roles;
 
 // [AUDIT F-02/F-03/F-27] lib.rs calls these handlers as `instructions::<fn>`
 // (the new admin/governance instructions live in `authority` / `admin_config`),

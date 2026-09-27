@@ -105,9 +105,15 @@ export const collectorAllowPda = (mint: PublicKey) => find([enc("collector_allow
 export const craftEconomyPda = () => find([enc("craft_economy")]);
 export const collectorPda = (mint: PublicKey) => find([enc("collector"), mint.toBuffer()]);
 export const packConfigPda = (packType: number) => find([enc("pack_config"), u8(packType)]);
-export const packCommitPda = (mint: PublicKey) => find([enc("pack_commit"), mint.toBuffer()]);
+/// [F-06] One pending opening per (user, nonce); the NFT is the PDA mint below.
+export const packCommitPda = (user: PublicKey, nonce: BN | bigint | number | string) =>
+  find([enc("pack_commit"), user.toBuffer(), u64le(nonce)]);
+export const packMintPda = (packCommit: PublicKey) => find([enc("pack_mint"), packCommit.toBuffer()]);
 export const rerollConfigPda = () => find([enc("reroll_config")]);
-export const rerollCommitPda = (newMint: PublicKey) => find([enc("reroll_commit"), newMint.toBuffer()]);
+export const rerollCommitPda = (user: PublicKey, nonce: BN | bigint | number | string) =>
+  find([enc("reroll_commit"), user.toBuffer(), u64le(nonce)]);
+/// [F-06] Reveal and refund of a reroll mint at the same commit-derived PDA.
+export const rerollMintPda = (rerollCommit: PublicKey) => find([enc("reroll_mint"), rerollCommit.toBuffer()]);
 export const explorationStatePda = (owner: PublicKey) => find([enc("exploration_state"), owner.toBuffer()]);
 export const explorationCommitPda = (toolMint: PublicKey) => find([enc("exploration_commit"), toolMint.toBuffer()]);
 export const referralLinkPda = (referred: PublicKey) => find([enc("referral_link"), referred.toBuffer()]);

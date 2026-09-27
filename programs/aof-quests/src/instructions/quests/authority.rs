@@ -66,6 +66,12 @@ pub fn accept_authority_handler(ctx: Context<AcceptAuthority>) -> Result<()> {
 pub fn cancel_pending_authority_handler(ctx: Context<CancelPendingAuthority>) -> Result<()> {
     let c = &mut ctx.accounts.quest_config;
     require!(c.pending_authority != Pubkey::default(), QuestError::NoPendingAuthority);
+    let cancelled = c.pending_authority;
     c.pending_authority = Pubkey::default();
+    emit!(AuthorityRotationCancelled {
+        authority: ctx.accounts.authority.key(),
+        cancelled,
+        slot: Clock::get()?.slot,
+    });
     Ok(())
 }

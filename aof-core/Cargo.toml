@@ -12,6 +12,8 @@ name = "aof_core"
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
+# Trust the devnet Switchboard On-Demand program in vrf.rs (mainnet otherwise).
+devnet = []
 cpi = ["no-entrypoint"]
 default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]

@@ -38,11 +38,6 @@ pub fn accept_handler(ctx: Context<OfferAcceptCtx>) -> Result<()> {
     let price = ctx.accounts.offer.price_lamports;
     let (seller_cut, fee) = crate::economics::split_bps(price, OFFER_FEE_BPS)?;
 
-    let escrow = ctx.accounts.offer.to_account_info();
-    let reserve = Rent::get()?.minimum_balance(escrow.data_len());
-    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.seller.to_account_info(), seller_cut, reserve)?;
-    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.treasury.to_account_info(), fee, reserve)?;
-
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -54,6 +49,16 @@ pub fn accept_handler(ctx: Context<OfferAcceptCtx>) -> Result<()> {
         ),
         1,
     )?;
+
+    // [RUNTIME LAMPORT RULE] Direct lamport moves only after the last CPI: at
+    // every CPI the runtime re-checks this instruction's lamport sum from the
+    // accounts passed to that CPI, so crediting the seller (the transfer
+    // authority) before it while the debited escrow is not passed fails the
+    // whole instruction with UnbalancedInstruction.
+    let escrow = ctx.accounts.offer.to_account_info();
+    let reserve = Rent::get()?.minimum_balance(escrow.data_len());
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.seller.to_account_info(), seller_cut, reserve)?;
+    crate::economics::transfer_owned_lamports(&escrow, &ctx.accounts.treasury.to_account_info(), fee, reserve)?;
 
     ctx.accounts.tool.owner = ctx.accounts.offer.buyer;
     ctx.accounts.tool.operator = ctx.accounts.offer.buyer;

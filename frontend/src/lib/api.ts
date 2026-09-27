@@ -1,4 +1,5 @@
 import { createWalletProof } from "./wallet";
+import { humanizeVrfError } from "./vrfErrors";
 
 // Production uses the same-origin reverse-proxy path. A fully qualified URL
 // remains available for a separately hosted backend via VITE_API_URL.
@@ -54,6 +55,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/auction/create", subject: "auction_create", field: "seller" },
   { path: "/auction/bid", subject: "auction_bid", field: "bidder" },
   { path: "/auction/settle", subject: "auction_settle", field: "caller" },
+  { path: "/auction/cancel", subject: "auction_cancel", field: "seller" },
   { path: "/hot-market/skip", subject: "hot_market_skip", field: "player" },
   { path: "/offer/create", subject: "offer_create", field: "buyer" },
   { path: "/offer/accept", subject: "offer_accept", field: "seller" },
@@ -62,6 +64,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/rental/start", subject: "rental_start", field: "renter" },
   { path: "/rental/end", subject: "rental_end", field: "caller" },
   { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
+  { path: "/rental/delist", subject: "rental_delist", field: "caller" },
   { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
   { path: "/orderbook/sell/place", subject: "orderbook_sell_place", field: "maker" },
   { path: "/orderbook/buy/cancel", subject: "orderbook_buy_cancel", field: "maker" },
@@ -126,7 +129,7 @@ async function parseApiResponse(res: Response): Promise<any> {
       (typeof data === "string" ? data : "") ||
       (errorText && !errorText.includes("<!DOCTYPE") && !errorText.includes("<html") ? errorText.slice(0, 200) : "") ||
       `HTTP ${res.status}`;
-    throw new Error(message);
+    throw new Error(humanizeVrfError(String(message)));
   }
 
   if (data === null) {
@@ -309,7 +312,9 @@ export const api = {
 
   // === Паки ===
   packs: {
+    configs: () => get("/packs/configs"),
     commit: (v: any) => post("/packs/commit", v),
+    status: (packCommit: string) => get(`/packs/status/${packCommit}`),
     reveal: (v: any) => post("/packs/reveal", v),
     configInit: (v: any) => post("/packs/config/init", v),
     configSet: (v: any) => post("/packs/config/set", v),
@@ -320,12 +325,14 @@ export const api = {
     fuse: (v: any) => post("/reroll/fuse", v),
     randomCommit: (v: any) => post("/reroll/random/commit", v),
     randomReveal: (v: any) => post("/reroll/random/reveal", v),
+    randomStatus: (rerollCommit: string) => get(`/reroll/random/status/${rerollCommit}`),
     configInit: (v: any) => post("/reroll/config/init", v),
   },
 
   // === Exploration ===
   exploration: {
     startCommit: (v: any) => post("/exploration/start/commit", v),
+    status: (commit: string) => get(`/exploration/status/${commit}`),
     reveal: (v: any) => post("/exploration/reveal", v),
     upgradeTier: (v: any) => post("/exploration/upgrade-tier", v),
   },
@@ -340,6 +347,7 @@ export const api = {
   // === Квантовая кузница + скины передатчика ===
   forge: {
     commit: (v: any) => post("/forge/commit", v),
+    status: (forgeCommit: string) => get(`/forge/status/${forgeCommit}`),
     reveal: (v: any) => post("/forge/reveal", v),
     bowCommit: (v: any) => post("/forge/bow/commit", v),
     bowReveal: (v: any) => post("/forge/bow/reveal", v),
@@ -349,9 +357,24 @@ export const api = {
   lottery: {
     roundInit: (v: any) => post("/lottery/round/init", v),
     ticketBuy: (v: any) => post("/lottery/ticket/buy", v),
+    ticketRefund: (v: any) => post("/lottery/ticket/refund", v),
+    round: (roundId: string) => get(`/lottery/round/${roundId}`),
     drawCommit: (v: any) => post("/lottery/draw/commit", v),
     drawReveal: (v: any) => post("/lottery/draw/reveal", v),
     claim: (v: any) => post("/lottery/claim", v),
+  },
+
+  // === [F-06] Барабан удачи (Switchboard) ===
+  drum: {
+    commit: (v: any) => post("/drum/commit", v),
+    status: (user: string) => get(`/drum/status/${user}`),
+    reveal: (v: any) => post("/drum/reveal", v),
+  },
+
+  // === [F-06] Switchboard pool / pending commits ===
+  vrf: {
+    health: () => get("/vrf/health"),
+    pending: (user: string) => get(`/vrf/pending?user=${encodeURIComponent(user)}`),
   },
 
   // === Маркетплейс ===
@@ -366,6 +389,7 @@ export const api = {
     create: (v: any) => post("/auction/create", v),
     bid: (v: any) => post("/auction/bid", v),
     settle: (v: any) => post("/auction/settle", v),
+    cancel: (v: any) => post("/auction/cancel", v),
   },
 
   // === Офферы ===
@@ -381,6 +405,7 @@ export const api = {
     start: (v: any) => post("/rental/start", v),
     end: (v: any) => post("/rental/end", v),
     revoke: (v: any) => post("/rental/revoke", v),
+    delist: (v: any) => post("/rental/delist", v),
   },
 
   // === Ордербук ресурсов ===
@@ -508,11 +533,6 @@ export const api = {
     list: (user: string) => get(`/comeback/${user}`),
     claim: (v: any) => post("/comeback/claim", v),
   },
-  drum: {
-    commit: (v: any) => post("/drum/commit", v),
-    reveal: (v: any) => post("/drum/reveal", v),
-  },
-
   neighbors: {
     list: (user: string) => get(`/neighbors/list/${user}`),
     visit: (v: any) => post("/neighbors/visit", v),

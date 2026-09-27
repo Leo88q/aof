@@ -234,3 +234,53 @@ test("core instruction table covers the committed IDL", () => {
   assert.equal(new Set(CORE_INSTRUCTIONS.map((s) => s.discriminator.join(","))).size, CORE_INSTRUCTIONS.length,
     "discriminators must be unique");
 });
+
+// ---------------------------------------------------------------------------
+// [F-06] Switchboard-settled packs
+// ---------------------------------------------------------------------------
+import { PACK_OPEN_COMMIT_DISCRIMINATOR, expectedSigners } from "../src/lib/transactionIntent";
+import { SWITCHBOARD_PROGRAMS } from "../src/lib/txGuard";
+
+function packCommitFixture(maxPrice = 100_000_000n, packType = 0) {
+  const operator = Keypair.generate().publicKey;
+  const keys = [
+    PublicKey.findProgramAddressSync([Buffer.from("config")], core)[0], operator, user.publicKey,
+    ...Array.from({ length: 10 }, () => Keypair.generate().publicKey),
+  ];
+  const data = Buffer.alloc(25);
+  data.set(PACK_OPEN_COMMIT_DISCRIMINATOR);
+  data[8] = packType;
+  data.writeBigUInt64LE(42n, 9);
+  data.writeBigUInt64LE(maxPrice, 17);
+  const intent = { kind: "packOpen" as const, user: user.publicKey.toBase58(), packType, maxPriceLamports: maxPrice.toString() };
+  return { ix: { programId: core.toBase58(), keys, data }, intent, operator };
+}
+
+test("pack intent binds the wallet, the pack type and the price ceiling", () => {
+  const { ix, intent } = packCommitFixture();
+  assert.doesNotThrow(() => validateTransactionIntent([ix], intent, user.publicKey));
+  const pricier = Buffer.from(ix.data); pricier.writeBigUInt64LE(100_000_001n, 17);
+  assert.throws(() => validateTransactionIntent([{ ...ix, data: pricier }], intent, user.publicKey), /ceiling/);
+  const bigger = Buffer.from(ix.data); bigger[8] = 2;
+  assert.throws(() => validateTransactionIntent([{ ...ix, data: bigger }], intent, user.publicKey), /type/);
+  const keys = [...ix.keys]; keys[2] = other;
+  assert.throws(() => validateTransactionIntent([{ ...ix, keys }], intent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([ix, ix], intent, user.publicKey));
+  const drain = { programId: SystemProgram.programId.toBase58(), keys: [user.publicKey, other], data: Buffer.alloc(12) };
+  assert.throws(() => validateTransactionIntent([ix, drain], intent, user.publicKey), /outside/);
+  assert.equal(expectedSigners(intent), 2, "the operator co-signs a pack commit");
+  assert.equal(expectedSigners(undefined), 1);
+});
+
+test("Switchboard is accepted only as the game program's CPI, never as a top-level instruction", async () => {
+  const direct = transaction(new TransactionInstruction({ programId: new PublicKey(SWITCHBOARD_PROGRAMS[0]), keys: [], data: Buffer.alloc(8) }));
+  assert.equal((await guard(direct)).safe, false);
+  const viaGame = transaction(new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) }));
+  const logsWithCpi: any = {
+    ...rpc,
+    simulateTransaction: async () => ({ value: { err: null, logs: [
+      `Program ${core.toBase58()} invoke [1]`, `Program ${SWITCHBOARD_PROGRAMS[0]} invoke [2]`,
+    ] } }),
+  };
+  assert.equal((await guard(viaGame, {}, logsWithCpi)).safe, true);
+});

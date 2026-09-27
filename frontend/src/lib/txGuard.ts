@@ -3,7 +3,7 @@
  * Защита от drain-атак и подозрительной активности
  */
 
-import { TransactionIntent, validateTransactionIntent } from "./transactionIntent";
+import { TransactionIntent, expectedSigners, validateTransactionIntent } from "./transactionIntent";
 import { Connection, Transaction, PublicKey, VersionedTransaction } from "@solana/web3.js";
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
@@ -58,6 +58,15 @@ const AOF_PROGRAMS = [
   "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq", // core
 ];
 
+// [F-06] Switchboard On-Demand (mainnet, devnet). The game programs CPI it to
+// commit/reveal their own randomness accounts, so it shows up in simulation
+// logs; a TOP-LEVEL Switchboard instruction is never built for a player and is
+// rejected by the instruction policy below.
+export const SWITCHBOARD_PROGRAMS = [
+  "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv",
+  "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2",
+];
+
 // Известные скам/MEV программы (расширять по мере обнаружения)
 const KNOWN_SCAM_PROGRAMS = new Set([
   // Добавлять сюда известные скам-программы
@@ -98,7 +107,9 @@ export async function guardTransaction(
     const simulationTx = tx instanceof Transaction
       ? VersionedTransaction.deserialize(tx.serialize({ requireAllSignatures: false }))
       : tx;
-    if (cfg.intent && simulationTx.message.header.numRequiredSignatures !== 1) throw new Error("Unexpected additional signer");
+    if (cfg.intent && simulationTx.message.header.numRequiredSignatures !== expectedSigners(cfg.intent)) {
+      throw new Error("Unexpected additional signer");
+    }
     const fee = await connection.getFeeForMessage(simulationTx.message, "confirmed");
     if (fee.value === null || !Number.isSafeInteger(fee.value) || fee.value < 0 ||
         fee.value > (cfg.maxNetworkFeeLamports ?? 150_000)) {
@@ -329,6 +340,9 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
     [new TextEncoder().encode("auth")], new PublicKey(AOF_PROGRAMS[5]),
   )[0];
   for (const ix of instructions) {
+    if (SWITCHBOARD_PROGRAMS.includes(ix.programId)) {
+      throw new Error("Switchboard may only be invoked by the game program, never directly");
+    }
     if (ix.programId === SYSTEM_PROGRAM_ID) {
       const opcode = readU32(ix.data, 0);
       if (opcode === 2 && ix.data.length === 12 && ix.keys[0]?.equals(user)) continue;
@@ -422,6 +436,7 @@ export function getAofGuardConfig(gameProgramId?: string): GuardConfig {
     ...AOF_PROGRAMS,
     ...(gameProgramId ? [gameProgramId] : []),
     ...Array.from(SAFE_PROGRAMS),
+    ...SWITCHBOARD_PROGRAMS,
   ]));
   return {
     maxLamportsSpent: 500_000, // explicit direct SOL outflow, not a fee guess

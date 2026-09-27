@@ -18,7 +18,25 @@ export interface MarketplaceBuyIntent {
   readonly maxPriceLamports: string;
   readonly expiresAt: string;
 }
-export type TransactionIntent = MarketplaceBuyIntent;
+/**
+ * [F-06] Paid pack opening, co-signed by the game operator. The wallet only
+ * signs if the transaction is exactly one pack_open_commit for this wallet,
+ * pack type and the price ceiling the player accepted on screen.
+ */
+export interface PackOpenIntent {
+  readonly kind: "packOpen";
+  readonly user: string;
+  readonly packType: number;
+  readonly maxPriceLamports: string;
+}
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent;
+export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
+
+/** Signatures a transaction for `intent` may carry: the wallet, plus the
+ * operator's co-signature for co-signed game commits. */
+export function expectedSigners(intent: TransactionIntent | undefined): number {
+  return intent?.kind === "packOpen" ? 2 : 1;
+}
 type Instruction = { programId: string; keys: PublicKey[]; data: Uint8Array };
 
 export function isMarketplaceBuy(ix: Instruction): boolean {
@@ -84,6 +102,7 @@ export function validateTransactionIntent(
     if (instructions.some(isMarketplaceBuy)) throw new Error("Marketplace purchase requires a local user intent");
     return; // Other operations still use the existing guard policy, not full intent validation.
   }
+  if (intent.kind === "packOpen") return validatePackOpenIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -109,4 +128,24 @@ export function validateTransactionIntent(
     }
   }
   if (buys !== 1) throw new Error("Missing marketplace purchase");
+}
+
+function validatePackOpenIntent(instructions: Instruction[], intent: PackOpenIntent, user: PublicKey): void {
+  positiveU64(intent.maxPriceLamports);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the pack intent");
+  if (!Number.isInteger(intent.packType) || intent.packType < 0 || intent.packType > 2) throw new Error("Unknown pack type");
+  let commits = 0;
+  for (const ix of instructions) {
+    const isCommit = ix.programId === CORE_PROGRAM_ID && PACK_OPEN_COMMIT_DISCRIMINATOR.every((v, i) => ix.data[i] === v);
+    if (isCommit) {
+      // disc(8) | pack_type u8 | nonce u64 | max_price_lamports u64
+      if (++commits !== 1 || ix.data.length !== 25 || !ix.keys[2]?.equals(user)) throw new Error("Unexpected pack commit accounts or data");
+      if (ix.data[8] !== intent.packType) throw new Error("Pack type differs from user intent");
+      const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+      if (view.getBigUint64(17, true) !== BigInt(intent.maxPriceLamports)) throw new Error("Pack price ceiling differs from user intent");
+    } else if (ix.programId !== COMPUTE) {
+      throw new Error("Extra instruction is outside the pack intent");
+    }
+  }
+  if (commits !== 1) throw new Error("Missing pack commit");
 }

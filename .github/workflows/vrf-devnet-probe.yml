@@ -1,0 +1,81 @@
+# [F-06] Real-network check of the Switchboard On-Demand path the game relies
+# on (aof_backend/scripts/vrfDevnetProbe.ts): oracle selection against the live
+# devnet queue, then commit -> gateway reveal WITHOUT an RPC URL -> on-chain
+# reveal, once per eligible oracle. The sandboxes used for development cannot
+# reach Solana RPCs; GitHub runners can.
+#
+# Funding: repository secret DEVNET_PROBE_KEYPAIR (solana-keygen JSON of a
+# devnet wallet with ~0.5 SOL; one run spends ~0.002 SOL of rent that is not
+# refunded plus fees). Without it the probe asks the faucet and, if refused,
+# reports SKIPPED (neutral) after the read-only oracle-selection checks.
+# Optional secret DEVNET_RPC_URL overrides the public devnet endpoint.
+#
+# schedule and workflow_dispatch only fire once this file is on the default
+# branch; on feature branches the push trigger below runs it when the probe or
+# the code it exercises changes.
+name: VRF devnet probe
+on:
+  push:
+    paths:
+      - aof_backend/scripts/vrfDevnetProbe.ts
+      - aof_backend/src/lib/vrf.ts
+      - aof_backend/package-lock.json
+      - .github/workflows/vrf-devnet-probe.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1" # Mondays 05:23 UTC
+permissions:
+  contents: read
+  checks: write
+concurrency:
+  group: vrf-devnet-probe-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  probe:
+    name: Switchboard devnet probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: aof_backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: aof_backend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Probe
+        id: probe
+        env:
+          DEVNET_PROBE_KEYPAIR: ${{ secrets.DEVNET_PROBE_KEYPAIR }}
+          DEVNET_RPC_URL: ${{ secrets.DEVNET_RPC_URL }}
+          VRF_PROBE_REPORT: ${{ runner.temp }}/vrf-devnet-probe.md
+        run: npx ts-node --project tsconfig.json --transpile-only scripts/vrfDevnetProbe.ts
+      - name: Publish report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ runner.temp }}/vrf-devnet-probe.md
+        run: |
+          set -uo pipefail
+          if [ ! -f "$REPORT" ]; then
+            echo "::warning::the probe wrote no report"
+            exit 0
+          fi
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          title=$(head -1 "$REPORT" | sed 's/^# //')
+          case "$title" in
+            *SKIPPED*) echo "::warning title=VRF devnet probe::$title" ;;
+            *FAILED*) echo "::error title=VRF devnet probe::$title" ;;
+            *) echo "::notice title=VRF devnet probe::$title" ;;
+          esac
+          job_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.name == "Switchboard devnet probe") | .id' 2>/dev/null | head -1)
+          [ -n "$job_id" ] || exit 0
+          jq -n --arg title "$title" --arg summary "aof_backend/scripts/vrfDevnetProbe.ts against the live devnet queue." \
+            --rawfile text "$REPORT" '{output: {title: $title, summary: $summary, text: $text}}' > "$RUNNER_TEMP/probe-payload.json"
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$job_id" --input "$RUNNER_TEMP/probe-payload.json" >/dev/null \
+            || echo "::notice::check-run output not updated"

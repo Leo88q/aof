@@ -45,7 +45,7 @@ services:
   #   trust   trust-worker    yes         via backend /trust/snapshot/update
   #   push    push-worker     yes         no
   #   indexer chain-indexer   yes (ledger) no — source of truth for economy metrics
-  #   recovery commit-expirer no (secretStore only)  yes
+  #   (none)  vrf-settler     no          yes (permissionless reveal/refund fees)
   #
   # farm-trader is intentionally NOT listed: it is a market-making bot, and
   # whether it belongs in production is a product decision, not an ops default.
@@ -145,6 +145,32 @@ services:
     restart: unless-stopped
     depends_on:
       chain-indexer:
+        condition: service_healthy
+    env_file:
+      - path: ./aof_backend/.env
+      # WATCHTOWER_* settings (watchtower/config.example.env); optional file.
+      - path: ./watchtower/.env
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/app/data/aof.db?connection_limit=1
+      WATCHTOWER_EVENT_PROVIDER: indexer
+      WATCHTOWER_ENABLE_WRITES: "false"
+    ports:
+      - "127.0.0.1:${WATCHTOWER_EXPORTER_PORT:-8790}:8790"
+    volumes:
+      - aof_data:/app/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  chain-indexer:
     profiles: [indexer]
     build: ./aof_backend
     restart: unless-stopped
@@ -169,12 +195,16 @@ services:
       timeout: 5s
       retries: 3
 
-  # Opt-in recovery worker; not a second automatic writer on the SQLite DB.
-  commit-expirer:
-    profiles: [recovery]
+  # [F-06] REQUIRED in production: settles every Switchboard-backed commit
+  # (packs, reroll, exploration, forge, lottery, drum) within seconds and
+  # refunds the ones the oracle never revealed. It writes nothing to the DB.
+  # While it is down, commits pile up and the API stops accepting new ones
+  # (VRF_SETTLEMENT_DEGRADED); run a second replica for redundancy — reveals
+  # are idempotent on-chain.
+  vrf-settler:
     build: ./aof_backend
     restart: unless-stopped
-    command: ["node", "dist-workers/services/commit-expirer/index.js"]
+    command: ["node", "dist-workers/services/vrf-settler/index.js"]
     depends_on:
       backend:
         condition: service_healthy
@@ -188,6 +218,14 @@ services:
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    # The worker touches /tmp/vrf-settler.heartbeat after every cycle (3 s) and
+    # exits on a stuck cycle (watchdog), which `restart` turns into a restart.
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=require('fs').statSync('/tmp/vrf-settler.heartbeat');process.exit(Date.now()-s.mtimeMs<60000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
 volumes:
   aof_data:

@@ -38,17 +38,27 @@ assert.match(section(core, "pub struct AuctionSettleCtx", "pub struct OfferCreat
 assert.match(rental, /let current_owner = ctx\.accounts\.tool\.owner;/g);
 assert.equal((rental.match(/let current_owner = ctx\.accounts\.tool\.owner;/g) ?? []).length, 2);
 
-// Paid commit/reveal flows with no on-chain expiry/refund path must fail closed
-// in the program itself. API 503 responses alone are not a security boundary.
-for (const [name, source] of [
-  ["lottery", lottery],
-  ["exploration", exploration],
-  ["random reroll", randomReroll],
-  ["drum", questsDrum],
-  ["rebirth", rebirth],
+// Rebirth has no safe settlement yet and must fail closed in the program itself.
+// API 503 responses alone are not a security boundary.
+assert.match(rebirth, /require!\(false, .*FeatureDisabled/, "rebirth must fail closed on-chain");
+
+// [F-06] Randomness mechanics are live only through the program-owned
+// Switchboard pool: commit via vrf::commit, permissionless reveal via
+// vrf::reveal, refund only after the window via vrf::release_for_refund.
+for (const [name, source, steps] of [
+  ["packs", read("aof-core/src/instructions/pack_open_commit.rs") + read("aof-core/src/instructions/pack_open_reveal.rs")
+    + read("aof-core/src/instructions/pack_open_expire.rs"), 3],
+  ["random reroll", randomReroll, 3],
+  ["exploration", exploration, 3],
+  ["forge", forge, 3],
+  ["lottery", lottery, 3],
+  ["drum", questsDrum + read("programs/aof-quests/src/instructions/drum/drum_reveal.rs")
+    + read("programs/aof-quests/src/instructions/drum/drum_expire.rs"), 3],
 ] as const) {
-  assert.match(source, /require!\(false, .*FeatureDisabled/,
-    `${name} must fail closed on-chain`);
+  assert.doesNotMatch(source, /require!\(false/, `${name} is still hard-disabled`);
+  assert.doesNotMatch(source, /hash_secret|get_slot_hash|slot_hashes/, `${name} still uses the legacy commit-reveal`);
+  const used = ["vrf::commit(", "vrf::reveal(", "vrf::release_for_refund("].filter((f) => source.includes(f));
+  assert.equal(used.length, steps, `${name}: commit, reveal and refund must all go through vrf.rs`);
 }
 
 const coreIdl = JSON.parse(read("aof_backend/src/idl/aof_core.json"));
@@ -79,9 +89,6 @@ const siteStatus = (id: string) => {
 };
 const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
 const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
-  { id: "lottery", route: "lottery.ts", code: /LOTTERY_TICKETS_DISABLED/, guard: ["aof-core/src/instructions/lottery.rs", /require!\(false, AofError::FeatureDisabled\)/] },
-  { id: "exploration", route: "exploration.ts", code: /EXPLORATION_COMMITS_DISABLED/, guard: ["aof-core/src/instructions/exploration.rs", /require!\(false, AofError::FeatureDisabled\)/] },
-  { id: "drum", route: "drum.ts", code: /DRUM_COMMITS_DISABLED/, guard: ["programs/aof-quests/src/instructions/drum/drum_commit.rs", /require!\(false, QuestError::FeatureDisabled\)/] },
   { id: "hot_market", route: "hotMarket.ts", code: /HOT_MARKET_DISABLED/, guard: ["programs/aof-market/src/lib.rs", /err!\(MarketError::TradingDisabled\)/] },
   { id: "rebirth", route: "rebirth.ts", code: /REBIRTH_DISABLED/, guard: ["programs/aof-rebirth/src/instructions/do_rebirth.rs", /require!\(false, RebirthError::FeatureDisabled\)/] },
   { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /require!\(false, SkError::AtomicBindingRequired\)/] },
@@ -91,9 +98,32 @@ for (const layer of disabledLayers) {
   assert.match(backendRoute(layer.route), layer.code, `${layer.id}: backend route is not fail-closed`);
   assert.equal(siteStatus(layer.id), "soon", `${layer.id}: site content must be status:'soon' while the on-chain guard exists`);
 }
-for (const id of ["lottery", "exploration", "reroll", "drum", "hot_market", "collectors", "rebirth", "session"]) {
+for (const id of ["hot_market", "collectors", "rebirth", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
+// [F-06] Live VRF mechanics are enabled identically in every layer:
+//   on-chain vrf.rs  ->  backend route builds a pool commit  ->  site status:'live'  ->  no app notice.
+const liveVrf: Array<{ id: string; route: string; builder: RegExp }> = [
+  { id: "packs", route: "packs.ts", builder: /packOpenCommit/ },
+  { id: "forge", route: "forge.ts", builder: /forgeAttemptCommit/ },
+  { id: "lottery", route: "lottery.ts", builder: /commitLotteryDraw/ },
+  { id: "exploration", route: "exploration.ts", builder: /startExplorationCommit/ },
+  { id: "drum", route: "drum.ts", builder: /drumCommit/ },
+];
+for (const layer of liveVrf) {
+  const route = backendRoute(layer.route);
+  assert.match(route, layer.builder, `${layer.id}: route does not build the commit`);
+  assert.match(route, /reservePoolSlot\(/, `${layer.id}: route must lock a healthy pool slot (circuit breaker)`);
+  assert.match(route, /vrfCommitAccounts\(/, `${layer.id}: route must pass the Switchboard commit accounts`);
+  const live = route.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(live, /(PACK|FORGE|LOTTERY|EXPLORATION|DRUM|REROLL)[A-Z_]*_DISABLED/, `${layer.id}: route still answers a disabled code`);
+  assert.doesNotMatch(live, /newCommit\(|peekSecret\(/, `${layer.id}: legacy server secret`);
+  assert.equal(siteStatus(layer.id), "live", `${layer.id}: site content must be status:'live'`);
+  assert.doesNotMatch(appNotice, new RegExp(`^  ${layer.id}: \\{`, "m"), `${layer.id}: still listed in DISABLED_MECHANICS`);
+}
+assert.match(backendRoute("reroll.ts"), /reservePoolSlot\(/);
+assert.doesNotMatch(appNotice, /^  reroll: \{/m);
+
 
 // [AUDIT F-16] Collector perks are no longer hard-disabled: the on-chain
 // `require!(false, AofError::CollectorNotConfigured)` is gone and eligibility is
@@ -120,47 +150,55 @@ for (const id of ["lottery", "exploration", "reroll", "drum", "hot_market", "col
   assert.match(admin, /registerCollectorMint/);
   assert.match(admin, /revokeCollectorMint/);
 }
-// Legacy pack recovery is retained: the price must be escrowed on the PackCommit PDA (no
-// treasury account in the commit context), released to the treasury only in
-// reveal, and refundable through pack_open_expire after the reveal window.
-assert.match(pack, /require!\(false, .*FeatureDisabled/, "packs: insecure randomness must be disabled");
+// [F-06] Escrow contract of the paid commits: nothing reaches the treasury
+// before the outcome is final; the refund contexts pay only the committing user.
 assert.doesNotMatch(section(core, "pub struct PackOpenCommit", "pub struct PackOpenReveal"), /treasury/,
   "pack_open_commit must not pay the treasury before reveal");
 assert.match(section(core, "pub struct PackOpenReveal", "pub struct PackOpenExpire"), /address = config\.treasury/);
 const packExpireCtx = section(core, "pub struct PackOpenExpire", "// ----- Reroll");
 assert.match(packExpireCtx, /close = user/);
 assert.match(packExpireCtx, /address = pack_commit\.user/);
-assert.match(packExpireCtx, /constraint = !pack_commit\.revealed/);
-assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /COMMIT_EXPIRY_SLOTS/);
-assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /AofError::CommitNotExpired/);
+assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /vrf::release_for_refund/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "pack_open_expire"), "pack_open_expire missing from committed IDL");
 assert.ok(coreIdl.errors.some((error: any) => error.name === "CommitNotExpired"));
-assert.equal(siteStatus("packs"), "soon");
-assert.match(backendRoute("packs.ts"), /PACK_COMMITS_DISABLED/);
-assert.match(backendRoute("packs.ts"), /packOpenExpire/);
-assert.match(appNotice, /^  packs: \{/m);
+assert.ok(coreIdl.errors.some((error: any) => error.name === "RevealWindowClosed"));
+assert.match(backendRoute("packs.ts"), /selfSettleTransaction\("pack"/, "players can settle their own pack");
 
-// Legacy forge recovery: same escrow contract as packs, plus the burned resources must be
-// recorded on the commit and re-minted by the expire path.
-assert.match(forge, /require!\(false, .*FeatureDisabled/, "forge: insecure randomness must be disabled");
 assert.doesNotMatch(section(core, "pub struct ForgeAttemptCommit", "pub struct ForgeAttemptReveal"), /treasury/,
   "forge_attempt_commit must not pay the treasury before reveal");
 assert.match(section(core, "pub struct ForgeAttemptReveal", "pub struct ForgeAttemptExpire"), /address = config\.treasury/);
 const forgeExpireCtx = section(core, "pub struct ForgeAttemptExpire", "// ----- Лотерея");
 assert.match(forgeExpireCtx, /close = user/);
 assert.match(forgeExpireCtx, /address = forge_commit\.user/);
-assert.match(forgeExpireCtx, /user_wood\.owner == forge_commit\.user/);
-assert.match(forgeExpireCtx, /user_stone\.owner == forge_commit\.user/);
+assert.match(forgeExpireCtx, /associated_token::authority = user/);
 assert.match(forge, /fc\.wood_burned = wood_cost/);
 assert.match(forge, /fc\.stone_burned = stone_cost/);
-assert.match(forge, /pub fn expire_handler[\s\S]*COMMIT_EXPIRY_SLOTS[\s\S]*AofError::CommitNotExpired[\s\S]*token::mint_to/);
+assert.match(forge, /pub fn expire_handler[\s\S]*vrf::release_for_refund[\s\S]*check_supply_cap[\s\S]*token::mint_to/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "forge_attempt_expire"), "forge_attempt_expire missing from committed IDL");
-assert.equal(siteStatus("forge"), "soon");
-assert.match(backendRoute("forge.ts"), /FORGE_COMMITS_DISABLED/);
-assert.match(backendRoute("forge.ts"), /forgeAttemptExpire/);
-assert.match(appNotice, /^  forge: \{/m);
 
-// Random reroll has no separate site entry; it is covered on-chain + backend + app notice.
-assert.match(backendRoute("reroll.ts"), /REROLL_COMMITS_DISABLED/);
+// Lottery: player money only goes back to players or into the prize.
+assert.doesNotMatch(section(core, "pub struct BuyLotteryTicket", "pub struct DrawLottery"), /treasury/,
+  "ticket money must stay escrowed on the round until the draw");
+assert.match(lottery, /pub fn refund_ticket_handler[\s\S]*transfer_owned_lamports[\s\S]*buyer/);
+assert.match(section(core, "pub struct RefundLotteryTicket", "#[derive(Accounts)]\npub struct ClaimLotteryPrize"),
+  /close = buyer/);
 
-console.log("security invariant self-test: rental/auction constraints, fail-closed guards, IDL flag parity, disabled-mechanic layer parity passed");
+// The settler worker replaced the legacy commit-expirer.
+assert.ok(fs.existsSync(path.join(repo, "aof_backend/services/vrf-settler/index.ts")));
+assert.ok(!fs.existsSync(path.join(repo, "aof_backend/services/commit-expirer/index.ts")));
+assert.match(read("docker-compose.prod.yml"), /vrf-settler:\n    build/, "the settler runs by default in production");
+assert.match(read("docker-compose.prod.yml"), /vrf-settler\.heartbeat/, "the settler has a liveness healthcheck");
+{
+  const settler = read("aof_backend/services/vrf-settler/index.ts");
+  assert.match(settler, /CONCURRENCY/, "settlements run in parallel (a serial loop trips the circuit breaker under load)");
+  assert.match(settler, /watchdog_exit/, "a stuck cycle restarts the worker");
+  assert.match(settler, /low_balance/, "the settler wallet balance is monitored");
+  assert.match(settler, /resolveSettlerSigner\(/, "the settler signs with its own fee-only wallet");
+  assert.doesNotMatch(settler, /authorityOnly|AUTHORITY_PUBKEY/, "the settler never signs with the operator key");
+  // Every reveal / refund transaction carries the compute budget (CU + priority fee).
+  const settlement = read("aof_backend/src/lib/vrfSettlement.ts");
+  assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), await refundInstruction\(c, cranker\)\]/);
+  assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), ix\]/);
+}
+
+console.log("security invariant self-test: rental/auction constraints, fail-closed guards, IDL flag parity, disabled/live mechanic layer parity, VRF escrow contracts passed");

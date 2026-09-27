@@ -1,0 +1,560 @@
+/**
+ * [F-06] Switchboard On-Demand settlement — backend side.
+ *
+ * The on-chain programs own their randomness accounts (authority = program
+ * PDA "vrf_authority"), so this module never signs anything for Switchboard.
+ * It only:
+ *   - picks a free pool slot and a live oracle for a commit transaction;
+ *   - fetches the oracle's signed reveal from the Switchboard gateway (without
+ *     forwarding this backend's RPC URL) and turns it into the accounts +
+ *     params of a program reveal instruction;
+ *   - reports pool health (the commit routes refuse new commits while any
+ *     commit is stuck — the circuit breaker of docs/VRF_SWITCHBOARD.md).
+ *
+ * Anyone can settle a commit with the same data, so the backend being slow or
+ * down never blocks a player: the player can fetch the reveal and settle.
+ */
+import {
+  ComputeBudgetProgram,
+  Connection,
+  PublicKey,
+  SYSVAR_SLOT_HASHES_PUBKEY,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, NATIVE_MINT } from "@solana/spl-token";
+import { RPC_URL } from "../config";
+
+export type SwitchboardCluster = "mainnet" | "devnet";
+
+/** Mirrors aof-core/src/vrf.rs (pinned by tests/readiness/vrf.test.cjs). */
+export const SWITCHBOARD: Record<SwitchboardCluster, { programId: PublicKey; queue: PublicKey; state: PublicKey }> = {
+  mainnet: {
+    programId: new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"),
+    queue: new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"),
+    state: new PublicKey("7Gs9n5FQMeC9XcEhg281bRZ6VHRrCvqp5Yq1j78HkvNa"),
+  },
+  devnet: {
+    programId: new PublicKey("Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"),
+    queue: new PublicKey("EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7"),
+    state: new PublicKey("4UFmCebEmzESoDTtHrmaftXj7YAsAH4HMios3yMWyVUT"),
+  },
+};
+export const ADDRESS_LOOKUP_TABLE_PROGRAM_ID = new PublicKey("AddressLookupTab1e1111111111111111111111111");
+
+/** aof-core/src/constants.rs::VRF_REFUND_AFTER_SLOTS (reveal window / refund threshold). */
+export const VRF_REFUND_AFTER_SLOTS = 18_000;
+
+/**
+ * Must match the program build: `--features devnet` programs trust the devnet
+ * Switchboard, default builds trust mainnet. SWITCHBOARD_CLUSTER is explicit
+ * in production; otherwise it follows the RPC URL.
+ */
+export function switchboardCluster(env: NodeJS.ProcessEnv = process.env, rpcUrl = RPC_URL): SwitchboardCluster {
+  const explicit = (env.SWITCHBOARD_CLUSTER || "").trim().toLowerCase();
+  if (explicit === "mainnet" || explicit === "devnet") return explicit;
+  if (explicit) throw new Error("SWITCHBOARD_CLUSTER must be mainnet or devnet");
+  return /devnet|localhost|127\.0\.0\.1/i.test(rpcUrl) ? "devnet" : "mainnet";
+}
+
+export function switchboard(env: NodeJS.ProcessEnv = process.env) {
+  return SWITCHBOARD[switchboardCluster(env)];
+}
+
+// ---------------------------------------------------------------- addresses
+
+const enc = (s: string) => Buffer.from(s, "utf8");
+
+export function vrfAuthorityPda(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([enc("vrf_authority")], programId)[0];
+}
+
+export function vrfRandomnessPda(programId: PublicKey, index: number): PublicKey {
+  const le = Buffer.alloc(4);
+  le.writeUInt32LE(index, 0);
+  return PublicKey.findProgramAddressSync([enc("vrf_randomness"), le], programId)[0];
+}
+
+export function vrfSlotPda(programId: PublicKey, randomness: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([enc("vrf_slot"), randomness.toBuffer()], programId)[0];
+}
+
+export function statsPda(oracle: PublicKey, env: NodeJS.ProcessEnv = process.env): PublicKey {
+  return PublicKey.findProgramAddressSync([enc("OracleRandomnessStats"), oracle.toBuffer()], switchboard(env).programId)[0];
+}
+
+export function rewardEscrowAddress(randomness: PublicKey): PublicKey {
+  return getAssociatedTokenAddressSync(NATIVE_MINT, randomness, true);
+}
+
+export function lutSignerPda(randomness: PublicKey, env: NodeJS.ProcessEnv = process.env): PublicKey {
+  return PublicKey.findProgramAddressSync([enc("LutSigner"), randomness.toBuffer()], switchboard(env).programId)[0];
+}
+
+export function lutAddress(lutSigner: PublicKey, recentSlot: number | bigint): PublicKey {
+  const le = Buffer.alloc(8);
+  le.writeBigUInt64LE(BigInt(recentSlot), 0);
+  return PublicKey.findProgramAddressSync([lutSigner.toBuffer(), le], ADDRESS_LOOKUP_TABLE_PROGRAM_ID)[0];
+}
+
+/** Wallet guard ceiling for the priority fee (frontend/src/lib/txGuard.ts). */
+export const VRF_MAX_PRIORITY_MICROLAMPORTS = 100_000;
+
+/**
+ * Compute budget for VRF instructions (Switchboard reveal + NFT settlement):
+ * a CU limit (VRF_COMPUTE_UNITS, default 400k) and a small priority fee
+ * (VRF_PRIORITY_MICROLAMPORTS per CU, default 5000 ≈ 0.000002 SOL at 400k CU)
+ * so reveals keep landing under congestion. The fee is clamped to what the
+ * wallet guard accepts, otherwise player self-settle transactions would be
+ * refused by the client.
+ */
+export function vrfComputeBudget(env: NodeJS.ProcessEnv = process.env): TransactionInstruction[] {
+  const units = Math.min(Math.max(Number(env.VRF_COMPUTE_UNITS) || 400_000, 1), 1_400_000);
+  const configured = env.VRF_PRIORITY_MICROLAMPORTS === undefined || env.VRF_PRIORITY_MICROLAMPORTS === ""
+    ? 5_000
+    : Number(env.VRF_PRIORITY_MICROLAMPORTS);
+  const price = Number.isFinite(configured) && configured > 0
+    ? Math.min(Math.floor(configured), VRF_MAX_PRIORITY_MICROLAMPORTS)
+    : 0;
+  const ixs = [ComputeBudgetProgram.setComputeUnitLimit({ units })];
+  if (price > 0) ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: price }));
+  return ixs;
+}
+
+// ---------------------------------------------------------------- randomness account
+
+/** RandomnessAccountData prefix (see aof-core/src/vrf.rs offsets). */
+export type RandomnessData = {
+  authority: PublicKey;
+  queue: PublicKey;
+  seedSlothash: Buffer;
+  seedSlot: bigint;
+  oracle: PublicKey;
+  revealSlot: bigint;
+  value: Buffer;
+};
+
+const RANDOMNESS_DISCRIMINATOR = Buffer.from([10, 66, 229, 135, 220, 239, 217, 114]);
+
+export function parseRandomness(data: Buffer): RandomnessData {
+  if (data.length < 408 || !data.subarray(0, 8).equals(RANDOMNESS_DISCRIMINATOR)) {
+    throw new Error("Not a Switchboard randomness account");
+  }
+  return {
+    authority: new PublicKey(data.subarray(8, 40)),
+    queue: new PublicKey(data.subarray(40, 72)),
+    seedSlothash: Buffer.from(data.subarray(72, 104)),
+    seedSlot: data.readBigUInt64LE(104),
+    oracle: new PublicKey(data.subarray(112, 144)),
+    revealSlot: data.readBigUInt64LE(144),
+    value: Buffer.from(data.subarray(152, 184)),
+  };
+}
+
+// ---------------------------------------------------------------- pool
+
+export type PoolSlot = {
+  vrfSlot: PublicKey;
+  randomness: PublicKey;
+  index: number;
+  lock: PublicKey;
+  lockedAtSlot: number;
+  retired: boolean;
+};
+
+export type PoolHealth = {
+  total: number;
+  free: number;
+  locked: number;
+  retired: number;
+  oldestLockAgeSlots: number;
+  healthy: boolean;
+  reason?: string;
+};
+
+/** A commit older than this means the settler (or the oracle) is not keeping up. */
+export function maxPendingSlots(env: NodeJS.ProcessEnv = process.env): number {
+  const v = Number(env.VRF_MAX_PENDING_SLOTS);
+  return Number.isFinite(v) && v > 0 ? v : 450; // ~3 minutes
+}
+
+/** Pure: the circuit-breaker decision over the pool (unit-tested). */
+export function evaluatePool(slots: PoolSlot[], currentSlot: number, env: NodeJS.ProcessEnv = process.env): PoolHealth {
+  const active = slots.filter((s) => !s.retired);
+  const locked = active.filter((s) => !s.lock.equals(PublicKey.default));
+  const oldest = locked.reduce((max, s) => Math.max(max, currentSlot - s.lockedAtSlot), 0);
+  const health: PoolHealth = {
+    total: slots.length,
+    free: active.length - locked.length,
+    locked: locked.length,
+    retired: slots.length - active.length,
+    oldestLockAgeSlots: oldest,
+    healthy: true,
+  };
+  if (active.length === 0) {
+    health.healthy = false;
+    health.reason = "VRF_POOL_EMPTY";
+  } else if (oldest > maxPendingSlots(env)) {
+    health.healthy = false;
+    health.reason = "VRF_SETTLEMENT_DEGRADED";
+  } else if (health.free === 0) {
+    health.healthy = false;
+    health.reason = "VRF_POOL_EXHAUSTED";
+  }
+  return health;
+}
+
+export async function listPoolSlots(program: any): Promise<PoolSlot[]> {
+  const rows: Array<{ publicKey: PublicKey; account: any }> = await program.account.vrfSlot.all();
+  return rows.map(({ publicKey, account }) => ({
+    vrfSlot: publicKey,
+    randomness: account.randomness,
+    index: Number(account.index),
+    lock: account.lock,
+    lockedAtSlot: Number(account.lockedAtSlot),
+    retired: Boolean(account.retired),
+  }));
+}
+
+const reservations = new Map<string, number>();
+const RESERVATION_MS = 45_000;
+
+export type PoolShard = { index: number; count: number };
+
+/**
+ * VRF_POOL_SHARD="i/n" for n backend replicas: replica i prefers the pool
+ * slots with index % n == i. Reservations are per process, so without it two
+ * replicas can hand the same free slot to two players and one signed commit
+ * fails with VrfSlotBusy. A replica whose share is busy falls back to any
+ * free slot (rare with a pool sized for the peak).
+ */
+export function poolShard(env: NodeJS.ProcessEnv = process.env): PoolShard | null {
+  const raw = (env.VRF_POOL_SHARD || "").trim();
+  if (!raw) return null;
+  const m = /^(\d+)\/(\d+)$/.exec(raw);
+  if (!m) throw new Error(`VRF_POOL_SHARD must look like "i/n" (e.g. 0/2), got "${raw}"`);
+  const shard = { index: Number(m[1]), count: Number(m[2]) };
+  if (shard.count < 1 || shard.index >= shard.count) throw new Error(`VRF_POOL_SHARD "${raw}": need 0 <= i < n`);
+  return shard;
+}
+
+/** Pure: a random free, unreserved slot, preferring this replica's shard. */
+export function pickPoolSlot(
+  slots: PoolSlot[],
+  reserved: ReadonlySet<string>,
+  shard: PoolShard | null,
+  random: () => number = Math.random,
+): PoolSlot | null {
+  const free = slots.filter((s) => !s.retired && s.lock.equals(PublicKey.default) && !reserved.has(s.vrfSlot.toBase58()));
+  if (!free.length) return null;
+  const mine = shard ? free.filter((s) => s.index % shard.count === shard.index) : free;
+  const candidates = mine.length ? mine : free;
+  return candidates[Math.floor(random() * candidates.length)];
+}
+
+/**
+ * Pick a free, unreserved pool slot at random (a lost race only fails that one
+ * transaction with VrfSlotBusy). Throws a 503-style error when the pool is
+ * unhealthy: new paid commits must not pile up behind a stuck settlement.
+ */
+export async function reservePoolSlot(program: any, connection: Connection): Promise<PoolSlot> {
+  const shard = poolShard(); // a bad value fails the request loudly, before any RPC
+  const [slots, currentSlot] = await Promise.all([listPoolSlots(program), connection.getSlot("confirmed")]);
+  const health = evaluatePool(slots, currentSlot);
+  if (!health.healthy && health.reason !== "VRF_POOL_EXHAUSTED") throw vrfUnavailable(health.reason!);
+  const now = Date.now();
+  for (const [key, until] of reservations) if (until < now) reservations.delete(key);
+  const pick = pickPoolSlot(slots, new Set(reservations.keys()), shard);
+  if (!pick) throw vrfUnavailable("VRF_POOL_EXHAUSTED");
+  reservations.set(pick.vrfSlot.toBase58(), now + RESERVATION_MS);
+  return pick;
+}
+
+export function vrfUnavailable(reason: string): Error {
+  const error = new Error(reason);
+  (error as { status?: number }).status = 503;
+  (error as { expose?: boolean }).expose = true;
+  return error;
+}
+
+// ---------------------------------------------------------------- Switchboard SDK
+
+type SbModule = typeof import("@switchboard-xyz/on-demand");
+let sbModule: Promise<SbModule> | undefined;
+let sbProgram: Promise<any> | undefined;
+
+async function sdk(): Promise<SbModule> {
+  if (!sbModule) sbModule = import("@switchboard-xyz/on-demand");
+  return sbModule;
+}
+
+async function switchboardProgram(connection: Connection): Promise<any> {
+  if (!sbProgram) {
+    sbProgram = sdk()
+      .then((sb) => sb.AnchorUtils.loadProgramFromConnection(connection as any, undefined, switchboard().programId as any))
+      .catch((error) => {
+        sbProgram = undefined;
+        throw error;
+      });
+  }
+  return sbProgram;
+}
+
+/** One oracle of the queue as the SDK's randomness selector sees it. */
+export type OracleCandidate = {
+  oracle: PublicKey;
+  gatewayUrl: string;
+  isOnQueue: boolean;
+  isVerified: boolean;
+  heartbeatFresh: boolean;
+  quoteFresh: boolean;
+  liveHealthy: boolean;
+  restricted?: boolean;
+  gatewayEnabled?: boolean;
+  pullOracleEnabled?: boolean;
+  /** Oracle software version as reported by live health (may be absent). */
+  version?: string | null;
+};
+
+/** Mirrors isRandomnessOracleCandidateEligible of @switchboard-xyz/common. */
+export function oracleEligible(c: OracleCandidate): boolean {
+  return Boolean(c.gatewayUrl) && c.isOnQueue && c.isVerified && c.heartbeatFresh && c.quoteFresh &&
+    c.restricted !== true && c.gatewayEnabled !== false && c.pullOracleEnabled !== false;
+}
+
+/** Mirrors computeMajorityVersion of @switchboard-xyz/common: the most frequent version, first one on a tie. */
+export function majorityVersion(candidates: OracleCandidate[]): string | null {
+  const counts = new Map<string, number>();
+  for (const c of candidates) {
+    const version = (c.version || "").trim();
+    if (version) counts.set(version, (counts.get(version) ?? 0) + 1);
+  }
+  let majority: string | null = null;
+  let max = 0;
+  for (const [version, count] of counts) {
+    if (count > max) {
+      majority = version;
+      max = count;
+    }
+  }
+  return majority;
+}
+
+/**
+ * Uniform pick among eligible oracles: live-healthy ones first and, within
+ * them, the ones on the majority software version (the SDK's selector flags
+ * the others "version-mismatch" and never picks them while a majority-version
+ * oracle is available). The SDK always returns its single "best" oracle;
+ * spreading commits keeps this game off one writable oracle account
+ * (randomness_commit writes it) and limits the blast radius of one oracle
+ * going dark to its share of commits.
+ */
+export function pickOracle(candidates: OracleCandidate[], random: () => number = Math.random): PublicKey {
+  const eligible = candidates.filter(oracleEligible);
+  const live = eligible.filter((c) => c.liveHealthy);
+  const pool = live.length ? live : eligible;
+  if (!pool.length) throw vrfUnavailable("VRF_ORACLE_UNAVAILABLE");
+  const majority = majorityVersion(pool);
+  const preferred = majority === null ? pool : pool.filter((c) => (c.version || "").trim() === majority);
+  const choice = preferred.length ? preferred : pool;
+  return choice[Math.min(choice.length - 1, Math.floor(random() * choice.length))].oracle;
+}
+
+const ORACLE_CACHE_MS = 30_000;
+// A failed refresh keeps serving the last good list this long.
+const ORACLE_STALE_OK_MS = 5 * 60_000;
+let oracleCache: { candidates: OracleCandidate[]; at: number } | undefined;
+let oracleRefresh: Promise<void> | undefined;
+
+/** One entry of Queue.inspectRandomnessOracles().candidates as an OracleCandidate. */
+export function oracleCandidateFromInspection(c: any): OracleCandidate {
+  return {
+    oracle: new PublicKey(c.oracle.pubkey.toBase58()),
+    gatewayUrl: String(c.gatewayUrl || ""),
+    isOnQueue: Boolean(c.isOnQueue),
+    isVerified: Boolean(c.isVerified),
+    heartbeatFresh: Boolean(c.heartbeatFresh),
+    quoteFresh: Boolean(c.quoteFresh),
+    liveHealthy: Boolean(c.liveHealthy),
+    restricted: c.restricted,
+    gatewayEnabled: c.gatewayEnabled,
+    pullOracleEnabled: c.pullOracleEnabled,
+    version: c.version ?? null,
+  };
+}
+
+/** The trusted queue's randomness oracles as the SDK inspects them (uncached). */
+export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+  const sb = await sdk();
+  const prog = await switchboardProgram(connection);
+  const queue = new sb.Queue(prog, switchboard().queue as any);
+  const inspection: any = await queue.inspectRandomnessOracles();
+  return { inspection, candidates: (inspection.candidates || []).map(oracleCandidateFromInspection) };
+}
+
+async function refreshOracles(connection: Connection): Promise<void> {
+  const { candidates } = await inspectOracles(connection);
+  oracleCache = { at: Date.now(), candidates };
+}
+
+/** Oracle for a new commit (queue inspection cached for 30 s). */
+export async function selectOracle(connection: Connection): Promise<PublicKey> {
+  const age = oracleCache ? Date.now() - oracleCache.at : Infinity;
+  if (age > ORACLE_CACHE_MS) {
+    oracleRefresh ||= refreshOracles(connection).finally(() => { oracleRefresh = undefined; });
+    try {
+      await oracleRefresh;
+    } catch (error) {
+      if (!oracleCache || Date.now() - oracleCache.at > ORACLE_STALE_OK_MS) throw vrfUnavailable("VRF_ORACLE_UNAVAILABLE");
+      console.warn("[vrf] oracle refresh failed, using the cached list:", String((error as Error)?.message || error).slice(0, 200));
+    }
+  }
+  return pickOracle(oracleCache!.candidates);
+}
+
+/** Accounts every VRF commit instruction takes after its own accounts. */
+export async function vrfCommitAccounts(program: any, connection: Connection, slot: PoolSlot) {
+  const sbc = switchboard();
+  return {
+    vrfSlot: slot.vrfSlot,
+    randomness: slot.randomness,
+    vrfAuthority: vrfAuthorityPda(program.programId),
+    queue: sbc.queue,
+    oracle: await selectOracle(connection),
+    recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
+    switchboardProgram: sbc.programId,
+  };
+}
+
+export type RevealParams = { signature: number[]; recoveryId: number; value: number[] };
+
+/** Gateway URL stored on an oracle account (NUL-padded bytes); http(s) only. */
+export function gatewayUrlFromBytes(bytes: ArrayLike<number>): string {
+  const raw = Buffer.from(Array.from(bytes)).toString("utf8").replace(/\0+$/, "").trim();
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("Oracle has no usable gateway URL");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("Oracle has no usable gateway URL");
+  return url.toString().replace(/\/+$/, "");
+}
+
+/**
+ * Body of POST {gateway}/gateway/api/v1/randomness_reveal. The SDK's revealIx
+ * also sends this backend's RPC URL, which usually embeds a paid API key, to a
+ * third-party oracle operator; the gateway resolves the slot hash without it,
+ * so it is only sent when SWITCHBOARD_GATEWAY_RPC_URL is set explicitly.
+ */
+export function revealRequestBody(randomness: PublicKey, seedSlothash: Uint8Array, seedSlot: bigint, rpc?: string) {
+  const body: Record<string, unknown> = {
+    slothash: Array.from(seedSlothash),
+    randomness_key: randomness.toBuffer().toString("hex"),
+    slot: Number(seedSlot),
+  };
+  if (rpc) body.rpc = rpc;
+  return body;
+}
+
+/**
+ * The gateway's answer as program reveal params. Not trusted beyond shape:
+ * Switchboard verifies the enclave signature in randomness_reveal and the
+ * program reads the value back from the account.
+ */
+export function parseRevealResponse(json: any): RevealParams {
+  const signature = Buffer.from(String(json?.signature ?? ""), "base64");
+  if (signature.length !== 64) throw new Error("Switchboard gateway: signature must be 64 bytes");
+  const recoveryId = Number(json?.recovery_id);
+  if (!Number.isInteger(recoveryId) || recoveryId < 0 || recoveryId > 3) throw new Error("Switchboard gateway: bad recovery id");
+  const value = json?.value;
+  if (!Array.isArray(value) || value.length !== 32 || !value.every((b: unknown) => Number.isInteger(b) && (b as number) >= 0 && (b as number) <= 255)) {
+    throw new Error("Switchboard gateway: value must be 32 bytes");
+  }
+  return { signature: Array.from(signature), recoveryId, value: value as number[] };
+}
+
+const GATEWAY_TIMEOUT_MS = 10_000;
+
+/**
+ * The oracle's signed reveal for `randomness`, as program reveal params plus
+ * the Switchboard accounts of the reveal CPI. Asks the gateway of the oracle
+ * Switchboard assigned at commit directly (no fixed delay: the settler waits
+ * VRF_SETTLER_MIN_AGE_SLOTS, and a gateway that has not seen the seed slot yet
+ * just fails the attempt, which is retried).
+ */
+export async function vrfReveal(program: any, connection: Connection, randomness: PublicKey, _payer: PublicKey) {
+  const sbc = switchboard();
+  const info = await connection.getAccountInfo(randomness, "confirmed");
+  if (!info || !info.owner.equals(sbc.programId)) throw new Error("Randomness account not found");
+  const r = parseRandomness(info.data);
+  if (!r.queue.equals(sbc.queue)) throw new Error("Randomness account is not on the trusted queue");
+  if (r.revealSlot !== 0n) throw new Error("Randomness already revealed");
+  if (r.oracle.equals(PublicKey.default)) throw new Error("Randomness has no committed oracle");
+
+  const sb = await sdk();
+  const prog = await switchboardProgram(connection);
+  const oracleData: any = await new sb.Oracle(prog, r.oracle as any).loadData();
+  if (new PublicKey(oracleData.queue.toBase58()).toBase58() !== sbc.queue.toBase58()) {
+    throw new Error("Committed oracle serves another queue");
+  }
+  const gateway = gatewayUrlFromBytes(oracleData.gatewayUri);
+  const response = await fetch(`${gateway}/gateway/api/v1/randomness_reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(revealRequestBody(randomness, r.seedSlothash, r.seedSlot, process.env.SWITCHBOARD_GATEWAY_RPC_URL || undefined)),
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Switchboard gateway ${new URL(gateway).host} HTTP ${response.status}: ${text.slice(0, 200)}`);
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("Switchboard gateway: response is not JSON");
+  }
+  const params = parseRevealResponse(json);
+  const accounts = {
+    vrfSlot: vrfSlotPda(program.programId, randomness),
+    randomness,
+    vrfAuthority: vrfAuthorityPda(program.programId),
+    oracle: r.oracle,
+    queue: sbc.queue,
+    stats: statsPda(r.oracle),
+    recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
+    rewardEscrow: rewardEscrowAddress(randomness),
+    wrappedSolMint: NATIVE_MINT,
+    programState: sbc.state,
+    switchboardProgram: sbc.programId,
+  };
+  return { params, accounts };
+}
+
+/** Accounts + args of `vrf_pool_add` for pool index `index` (core or quests program). */
+export async function vrfPoolAddAccounts(program: any, connection: Connection, index: number) {
+  const sbc = switchboard();
+  const randomness = vrfRandomnessPda(program.programId, index);
+  const recentSlot = await connection.getSlot("finalized");
+  const lutSigner = lutSignerPda(randomness);
+  return {
+    recentSlot,
+    accounts: {
+      vrfAuthority: vrfAuthorityPda(program.programId),
+      randomness,
+      vrfSlot: vrfSlotPda(program.programId, randomness),
+      rewardEscrow: rewardEscrowAddress(randomness),
+      queue: sbc.queue,
+      programState: sbc.state,
+      lutSigner,
+      lut: lutAddress(lutSigner, recentSlot),
+      wrappedSolMint: NATIVE_MINT,
+      switchboardProgram: sbc.programId,
+      addressLookupTableProgram: ADDRESS_LOOKUP_TABLE_PROGRAM_ID,
+    },
+  };
+}
+
+/** Random u64 nonce for commit PDAs, as a decimal string (BN-friendly). */
+export function randomNonce(): string {
+  const b = require("crypto").randomBytes(8) as Buffer;
+  return b.readBigUInt64LE(0).toString();
+}

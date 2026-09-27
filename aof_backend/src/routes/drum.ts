@@ -1,84 +1,85 @@
 import { Router } from "express";
-import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
+import { EventParser } from "@coral-xyz/anchor";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import {AUTHORITY_PUBKEY} from "../config";
-import { questsProgram } from "../provider";
+import { questsProgram, connection } from "../provider";
 import { drumCommitPda, questConfigPda } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
-import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
+import { coSign, pk } from "../lib/tx";
+import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
+import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { commitStatus, drumOutcomeFromLogs, DrumOutcome, selfSettleTransaction } from "../lib/vrfSettlement";
 
+/**
+ * [F-06] Drum of Luck on the aof-quests randomness pool. The spin costs 5
+ * mascots (to the treasury at commit); the prize is fixed by Switchboard and
+ * paid by the permissionless reveal; an unrevealed spin is refunded.
+ */
 const r = Router();
 
-// Commit для Барабана Удачи (пользователь платит за спин)
 r.post("/commit", requireCircuitOpen, requireWalletLimits("drum_commit"), async (req, res) => {
-  // The quest program has no typed expiry refund for a paid spin. Refuse new
-  // commits rather than taking a token that may become unrevealable.
-  return res.status(503).json({
-    error: "DRUM_COMMITS_DISABLED_UNTIL_EXPIRY_REFUND_WORKER_IS_DEPLOYED",
-  });
   try {
     const user = pk(req.body.user);
-    const { hash } = await newCommit(`drum:${user.toBase58()}`);
-
     const [drumCommit] = drumCommitPda(user);
     const [questConfig] = questConfigPda();
-
-    // [ФИКС] Читаем конфиг для минта и казны (стоимость спина списывается в казну)
-    const config: any = await (questsProgram.account as any)["questConfig"].fetch(questConfig);
-    const userMascot = getAssociatedTokenAddressSync(config.mascotMint, user);
+    const config: any = await (questsProgram.account as any).questConfig.fetch(questConfig);
+    const slot = await reservePoolSlot(questsProgram, connection);
+    const vrf = await vrfCommitAccounts(questsProgram, connection, slot);
 
     const ix = await (questsProgram.methods as any)
-      .drumCommit(hash)
+      .drumCommit()
       .accounts({
         drumCommit,
         questConfig,
         user,
         treasuryMascot: config.treasuryMascot,
-        userMascot,
+        userMascot: getAssociatedTokenAddressSync(config.mascotMint, user),
+        ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     const tx = await coSign([ix], user);
-    res.json({ tx });
+    res.json({ tx, drumCommit: drumCommit.toBase58() });
+  } catch (e: any) {
+    res.status(e.status || 400).json({ error: e.message });
+  }
+});
+
+/** Outcome of the player's latest spin (newest transaction of the commit PDA first). */
+async function latestDrumOutcome(drumCommit: PublicKey): Promise<DrumOutcome> {
+  const parser = new EventParser(questsProgram.programId, questsProgram.coder);
+  const signatures = await connection.getSignaturesForAddress(drumCommit, { limit: 10 }, "confirmed");
+  for (const s of signatures) {
+    if (s.err) continue;
+    const tx = await connection.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    const logs = tx?.meta?.logMessages;
+    if (!logs) continue;
+    const outcome = drumOutcomeFromLogs(logs, s.signature, parser);
+    if (outcome === "committed") break; // newest spin has no settlement yet
+    if (outcome) return outcome;
+  }
+  return { state: "none" };
+}
+
+r.get("/status/:user", async (req, res) => {
+  try {
+    const [drumCommit] = drumCommitPda(new PublicKey(req.params.user));
+    const status = await commitStatus("drum", drumCommit);
+    // The drum pays mascots instead of minting an NFT: once the commit is
+    // closed the result is only in the events of its transactions.
+    res.json(status.state === "pending" ? status : await latestDrumOutcome(drumCommit));
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// Reveal для Барабана Удачи (сервер подписывает, приз из казны)
-r.post("/reveal", requireCircuitOpen, requireWalletLimits("drum_reveal"), requireIdempotency, async (req, res) => {
+/** Transaction for the player to settle (or after the window refund) their spin. */
+r.post("/reveal", requireCircuitOpen, requireWalletLimits("drum_reveal"), async (req, res) => {
   try {
     const user = pk(req.body.user);
-    const key = `drum:${user.toBase58()}`;
-    const secret = await peekSecret(key);
-
-    const [drumCommit] = drumCommitPda(user);
-    const [questConfig] = questConfigPda();
-
-    // [ФИКС] Читаем конфиг для минта и казны (выплата приза из казны)
-    const config: any = await (questsProgram.account as any)["questConfig"].fetch(questConfig);
-    const userMascot = getAssociatedTokenAddressSync(config.mascotMint, user);
-
-    const ix = await (questsProgram.methods as any)
-      .drumReveal(secret)
-      .accounts({
-        drumCommit,
-        questConfig,
-        authority: AUTHORITY_PUBKEY,
-        user,
-        slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
-        treasuryMascot: config.treasuryMascot,
-        userMascot,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    await markUsed(key);
-    res.json({ sig });
+    res.json(await selfSettleTransaction("drum", drumCommitPda(user)[0], user));
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e.status || 400).json({ error: e.message });
   }
 });
 

@@ -13,10 +13,20 @@ pub fn init_season_handler(ctx: Context<InitSeason>, season_id: u32) -> Result<(
     s.season_id = season_id;
     s.start_time = Clock::get()?.unix_timestamp;
     s.bump = ctx.bumps.season;
+    emit!(SeasonInitialized { season_id, start_time: s.start_time });
     Ok(())
 }
 
 pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
+    // [SECURITY_CHECKLIST_REVIEW] A pass used to be sold for any season id at any
+    // time (including seasons that had ended) and a second purchase silently
+    // charged 0.15 SOL again for a flag that was already set.
+    let now = Clock::get()?.unix_timestamp;
+    let start = ctx.accounts.season.start_time;
+    require!(now >= start, AofError::SeasonNotStarted);
+    let end = start.checked_add(SEASON_LENGTH_SECONDS).ok_or(AofError::MathOverflow)?;
+    require!(now < end, AofError::SeasonEnded);
+    require!(!ctx.accounts.season_pass.premium, AofError::SeasonPassAlreadyPremium);
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -56,6 +66,7 @@ pub fn grant_xp_handler(ctx: Context<GrantSeasonXp>, amount: u32) -> Result<()> 
         p.claimed_bitmap = 0;
     }
     p.xp = p.xp.saturating_add(amount);
+    emit!(SeasonXpGranted { owner: p.owner, season_id: p.season_id, amount, total_xp: p.xp });
     Ok(())
 }
 

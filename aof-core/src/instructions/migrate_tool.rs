@@ -13,6 +13,11 @@ pub fn handler(
     rarity: Rarity,
     durability: u8,
 ) -> Result<()> {
+    // [SECURITY_CHECKLIST_REVIEW] Disabled: a migrated tool was minted into the
+    // vault with owner = operator = vault PDA and there is no instruction that
+    // ever hands it to a player, so every migrated NFT stayed stuck. The legacy
+    // migration is finished; re-enable only together with an assign step.
+    require!(false, AofError::FeatureDisabled);
     require!(tool_type.len() <= 32, AofError::ToolTypeTooLong);
     require!(durability <= MAX_DURABILITY, AofError::DurabilityExceedsMax);
     let cpi_accounts = MintTo {

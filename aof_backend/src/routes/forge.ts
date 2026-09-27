@@ -1,96 +1,79 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
-import {TREASURY, AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
-import { authPda, configPda, enchantSlotPda, forgeCommitPda, toolPda, bowCommitPda, skinPda, materialMintsPda } from "../lib/pda";
+import {AUTHORITY_PUBKEY} from "../config";
+import { program, connection } from "../provider";
+import { authPda, configPda, enchantSlotPda, forgeCommitPda, toolPda, bowCommitPda, skinPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
-import { fetchOne } from "../lib/decode";
-import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { requireAdmin } from "../middleware/adminAuth";
+import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
+import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 
 const r = Router();
 
-/** Shared with services/commit-expirer: build forge_attempt_expire for a ForgeCommit PDA. */
-export async function buildForgeExpireIx(forgeCommit: PublicKey) {
-  const [config] = configPda();
-  const [cfg, commit]: any[] = await Promise.all([
-    fetchOne("config", config),
-    (program.account as any).forgeCommit.fetch(forgeCommit),
-  ]);
-  if (!cfg) throw new Error("config account not found");
-  const woodMint = new PublicKey(cfg.woodMint);
-  const stoneMint = new PublicKey(cfg.stoneMint);
-  return (program.methods as any)
-    .forgeAttemptExpire()
-    .accounts({
-      config,
-      forgeCommit,
-      user: commit.user,
-      auth: authPda()[0],
-      woodMint,
-      userWood: getAssociatedTokenAddressSync(woodMint, commit.user),
-      stoneMint,
-      userStone: getAssociatedTokenAddressSync(stoneMint, commit.user),
-      tokenProgram: TOKEN_PROGRAM_ID,
-    })
-    .instruction();
-}
-
-r.post("/commit", (_req, res) => {
-  res.status(503).json({ error: "FORGE_COMMITS_DISABLED_UNTIL_VERIFIED_RANDOMNESS_SETTLEMENT" });
-});
-
-r.post("/reveal", requireCircuitOpen, requireWalletLimits("forge_reveal"), requireIdempotency, async (req, res) => {
+/**
+ * [F-06] Forge attempt: wood/stone burned, fee (+protector) escrowed, level
+ * snapshotted, Switchboard commit on a pool slot (operator co-signs as the
+ * backend gate). Settled by the vrf-settler or by the player (POST /reveal).
+ */
+r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async (req, res) => {
   try {
+    const user = pk(req.body.user);
     const toolMint = pk(req.body.toolMint);
     const slotType = Number(req.body.slotType);
-    const user = pk(req.body.user);
-    const key = `forge:${toolMint.toBase58()}:${slotType}`;
-    const secret = await peekSecret(key);
-
+    if (!Number.isInteger(slotType) || slotType < 0 || slotType > 2) throw new Error("slotType must be 0, 1 or 2");
+    const useProtector = req.body.useProtector === true;
     const [config] = configPda();
-    const [enchantSlot] = enchantSlotPda(toolMint, slotType);
+    const cfg: any = await (program.account as any).config.fetch(config);
     const [forgeCommit] = forgeCommitPda(toolMint, slotType);
+    const slot = await reservePoolSlot(program, connection);
+    const vrf = await vrfCommitAccounts(program, connection, slot);
 
     const ix = await (program.methods as any)
-      .forgeAttemptReveal(secret)
+      .forgeAttemptCommit(slotType, useProtector)
       .accounts({
         config,
         authority: AUTHORITY_PUBKEY,
-        enchantSlot,
+        user,
+        tool: toolPda(toolMint)[0],
+        toolMint,
+        enchantSlot: enchantSlotPda(toolMint, slotType)[0],
         forgeCommit,
-        payer: user,
-        treasury: TREASURY,
-        slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
+        woodMint: cfg.woodMint,
+        userWood: getAssociatedTokenAddressSync(cfg.woodMint, user),
+        stoneMint: cfg.stoneMint,
+        userStone: getAssociatedTokenAddressSync(cfg.stoneMint, user),
+        ...vrf,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
-    const sig = await authorityOnly([ix]);
-    await markUsed(key);
-    res.json({ sig });
+    const tx = await coSign([ix], user);
+    res.json({ tx, forgeCommit: forgeCommit.toBase58() });
+  } catch (e: any) {
+    res.status(e.status || 400).json({ error: e.message });
+  }
+});
+
+r.get("/status/:forgeCommit", async (req, res) => {
+  try {
+    res.json(await commitStatus("forge", new PublicKey(req.params.forgeCommit)));
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-/**
- * Refund of an expired forge commit: re-mints the burned wood/stone to the
- * committer and returns the escrowed fee + rent. On-chain the instruction is
- * permissionless and only succeeds after COMMIT_EXPIRY_SLOTS; admin-only here
- * because the authority pays the transaction fee (used by commit-expirer).
- */
-r.post("/expire", requireCircuitOpen, requireAdmin, async (req, res) => {
+/** Transaction for the player to settle (or after the window refund) an attempt. */
+r.post("/reveal", requireCircuitOpen, requireWalletLimits("forge_reveal"), async (req, res) => {
   try {
-    const toolMint = pk(req.body.toolMint);
-    const slotType = Number(req.body.slotType);
-    const [forgeCommit] = forgeCommitPda(toolMint, slotType);
-    const ix = await buildForgeExpireIx(forgeCommit);
-    const sig = await authorityOnly([ix]);
-    await markUsed(`forge:${toolMint.toBase58()}:${slotType}`).catch(() => {});
-    res.json({ sig });
+    const user = pk(req.body.user);
+    const commit = req.body.forgeCommit
+      ? pk(req.body.forgeCommit)
+      : forgeCommitPda(pk(req.body.toolMint), Number(req.body.slotType))[0];
+    res.json(await selfSettleTransaction("forge", commit, user));
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e.status || 400).json({ error: e.message });
   }
 });
 

@@ -284,7 +284,13 @@ pub mod aof_market {
     pub fn cancel_pending_authority(ctx: Context<CancelPendingAuthority>) -> Result<()> {
         let c = &mut ctx.accounts.config;
         require!(c.pending_authority != Pubkey::default(), MarketError::NoPendingAuthority);
+        let cancelled = c.pending_authority;
         c.pending_authority = Pubkey::default();
+        emit!(AuthorityRotationCancelled {
+            authority: ctx.accounts.authority.key(),
+            cancelled,
+            slot: Clock::get()?.slot,
+        });
         Ok(())
     }
 

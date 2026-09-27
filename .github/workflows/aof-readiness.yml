@@ -16,7 +16,11 @@ jobs:
           node-version: '22'
       - run: python3 scripts/check-idl-drift.py
       - run: python3 scripts/test-p0-security.py
+      # [F-06] aof-quests carries a generated copy of aof-core's vrf.rs.
+      - run: python3 scripts/sync-quests-vrf.py --check
       - run: node --test tests/readiness/*.test.cjs
+      # [SECURITY_CHECKLIST #66] blocking audit of shipped (runtime) dependencies
+      - run: node scripts/audit-gate.mjs
       - run: npm test --prefix src/os
   tenant-isolation:
     runs-on: ubuntu-latest

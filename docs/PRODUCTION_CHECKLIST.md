@@ -34,7 +34,7 @@
 - [ ] Mainnet canary утверждён владельцем с лимитами и планом аварийной остановки.
 
 ## Отдельные проекты, не «галочки»
-- [ ] VRF + mandatory settlement + frozen odds; только затем новые packs/forge.
+- [x] VRF + mandatory settlement + frozen odds; только затем новые packs/forge. Сделано 2026-09-27 (Switchboard On-Demand): `docs/VRF_SWITCHBOARD.md`. На стороне владельца остаются пул и `vrf-settler`.
 - [ ] Bubblegum V2 cosmetic pilot + DAS/proof negative tests.
 - [ ] cNFT custody/market/rental/craft adapter и миграция — без двойного владения.
 - [ ] Light compressed state/nullifiers pilot с реальными CU/latency/TCO.

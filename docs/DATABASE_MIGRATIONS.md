@@ -75,7 +75,7 @@ Backend datastore: Prisma 5 + SQLite (`aof_backend/prisma/schema.prisma`,
 SQLite has no online down-migrations; the rollback unit is the file snapshot.
 
 1. Stop the backend and all workers (`indexer`, `trust-worker`, `farm-trader`,
-   `price-cranker`, `push-worker`, `commit-expirer`) - they share the file.
+   `price-cranker`, `push-worker`, `vrf-settler`) - they share the file.
 2. `sqlite3 live.db ".backup live.failed.db"` (preserve evidence).
 3. Replace `live.db` with the pre-migration snapshot taken in §3 step 3 /
    the production equivalent, verify `sha256sum`.

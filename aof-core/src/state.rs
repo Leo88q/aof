@@ -30,6 +30,22 @@ pub struct Config {
     // was frozen forever at the value captured during the first initialize().
     pub pending_authority: Pubkey,  // 32
     pub authority_updated_at: i64,  // 8
+    // ===== [SECURITY_CHECKLIST_REVIEW F-C] Config v2: role separation =====
+    // Appended fields only: a v1 account is a strict prefix of this layout and
+    // `migrate_config_v2` grows it in place. `authority` is the admin (meant to
+    // be a Squads multisig with a time lock): configuration, limits, rotation.
+    /// Hot backend key for routine, budget-bounded operations only (craft
+    /// co-sign, rewards within IssuanceCap, vault payouts within VaultGuard,
+    /// tool mints, season XP). It cannot change any rule or limit.
+    pub operator: Pubkey,           // 32
+    /// Emergency key: may only switch the pause / cash-out freeze ON.
+    pub guardian: Pubkey,           // 32
+    /// Cash-out freeze: gameplay continues, but value cannot leave the game
+    /// economy (trades paying SOL out, vault payouts). Guardian or admin set it,
+    /// only the admin clears it.
+    pub cashout_frozen: bool,       // 1
+    /// Room for future fields without another migration.
+    pub reserved: [u8; 32],         // 32
 }
 
 /// [AUDIT F-17] Canonical tool kinds. `ToolData.tool_type` is a free-form
@@ -374,19 +390,31 @@ pub struct PackConfig {
     pub bump: u8,
 }
 
+/// A paid pack opening waiting for its Switchboard reveal.
+/// seeds = [PACK_COMMIT_SEED, user, nonce_le]. The tool NFT is minted at the
+/// PDA [PACK_MINT_SEED, this account] by the settling reveal.
 #[account]
 #[derive(InitSpace)]
 pub struct PackCommit {
     pub user: Pubkey,
-    pub mint: Pubkey,
+    /// Client-chosen, lets one wallet hold several pending openings.
+    pub nonce: u64,
     pub pack_type: u8,
-    pub commit_hash: [u8; 32],
-    pub commit_slot: u64,
-    pub revealed: bool,
-    /// Pack price held in escrow on this PDA until reveal (then forwarded to
-    /// the treasury) or expiry (then refunded to `user`). Never paid out
-    /// before the outcome is known, so a lost secret cannot cost the player.
+    /// Odds snapshot taken at commit: a later `set_pack_config` cannot change
+    /// the table an already-paid opening is settled with.
+    pub odds_bps: [u16; 5],
+    /// Pack price, escrowed on this PDA until the outcome is known: reveal ->
+    /// treasury, refund -> user. Never paid out earlier.
     pub paid_lamports: u64,
+    /// Rent the settler fronts for the NFT mint, its ATA and ToolData,
+    /// prepaid by the user so that ANY cranker (backend, player, third party)
+    /// is made whole by the reveal. Returned to the user on refund.
+    pub deposit_lamports: u64,
+    /// Pool randomness account locked by this commit and its seed slot.
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Reroll (честный, RNG) -----
@@ -398,14 +426,28 @@ pub struct RerollConfig {
     pub bump: u8,
 }
 
+/// seeds = [REROLL_COMMIT_SEED, user, nonce_le]. The burned tool is recorded
+/// so that a refund (oracle never revealed) can restore an equivalent tool.
 #[account]
 #[derive(InitSpace)]
 pub struct RerollCommit {
     pub user: Pubkey,
+    pub nonce: u64,
     pub burn_mint: Pubkey,
-    pub new_mint: Pubkey,
-    pub commit_hash: [u8; 32],
+    #[max_len(32)]
+    pub burned_tool_type: String,
+    pub burned_rarity: Rarity,
+    pub burned_durability: u8,
+    /// Odds snapshot taken at commit (see PackCommit::odds_bps).
+    pub odds_bps: [u16; 5],
+    /// Reroll fee moved out of the gas tank into this escrow (lamports).
+    pub fee_lamports: u64,
+    /// Prepaid rent for the settlement NFT (mint + ATA + ToolData).
+    pub deposit_lamports: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
     pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Exploration -----
@@ -420,13 +462,24 @@ pub struct ExplorationState {
     pub day_start: i64,
 }
 
+/// seeds = [EXPLORATION_COMMIT_SEED, tool_mint].
 #[account]
 #[derive(InitSpace)]
 pub struct ExplorationCommit {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
-    pub commit_hash: [u8; 32],
+    /// Tier snapshot taken at commit: upgrading while the trip is pending
+    /// must not change its odds.
+    pub tier: u8,
+    /// Resources burned at commit, re-minted on refund.
+    pub food_burned: u64,
+    pub wood_burned: u64,
+    pub stone_burned: u64,
+    pub meat_burned: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
     pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Рефералы -----
@@ -463,15 +516,19 @@ pub struct ForgeCommit {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
     pub slot_type: u8,
-    pub commit_hash: [u8; 32],
-    pub commit_slot: u64,
+    /// Enchant level at commit; the reveal settles exactly this upgrade step.
+    pub level_before: u8,
     pub use_protector: bool,
     /// SOL fee (+protector) escrowed on this PDA until reveal (-> treasury)
-    /// or expiry (-> user).
+    /// or refund (-> user).
     pub paid_lamports: u64,
-    /// Resources burned at commit; re-minted to the user on expiry.
+    /// Resources burned at commit; re-minted to the user on refund.
     pub wood_burned: u64,
     pub stone_burned: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub commit_slot: u64,
+    pub bump: u8,
 }
 
 // ----- Лотерея -----
@@ -480,20 +537,26 @@ pub struct ForgeCommit {
 #[derive(InitSpace)]
 pub struct LotteryRound {
     pub round_id: u64,
+    /// Escrowed ticket money: every ticket price until the draw, then the
+    /// prize (the draw moves LOTTERY_DEV_BPS to the treasury).
     pub pool_lamports: u64,
     pub tickets_sold: u64,
-    pub draw_slot: u64,
+    /// Switchboard seed slot of the draw commit. Byte-compatible with the old
+    /// `draw_slot` field (same type and position), so existing rounds decode.
+    pub seed_slot: u64,
     pub drawn: bool,
     pub winning_ticket: u64,
     pub claimed: bool,
     pub bump: u8,
-    /// [AUDIT F-23] Round creation time; starts the refund timeout that stops
-    /// an unrevealed round from stranding its pool forever.
+    /// [AUDIT F-23] Round creation time; starts the sales window and the
+    /// refund timeout.
     pub created_at: i64,
-    // [ФИКС] commit-reveal поля для розыгрыша (закрывают вектор гриферства)
+    /// A draw is in flight: ticket sales are closed.
     pub draw_committed: bool,
     pub draw_commit_slot: u64,
-    pub draw_commit_hash: [u8; 32],
+    /// Pool randomness account of the draw. Byte-compatible with the old
+    /// 32-byte `draw_commit_hash`.
+    pub randomness: Pubkey,
 }
 
 #[account]
@@ -514,6 +577,26 @@ pub struct LotteryTicketCounter {
     pub buyer: Pubkey,
     pub round_id: u64,
     pub count: u8,
+    pub bump: u8,
+}
+
+/// [F-06] One Switchboard randomness account of the program-owned pool.
+/// seeds = [VRF_SLOT_SEED, randomness]. `lock` names the commit PDA that is
+/// waiting for this account's reveal; a slot serves one commit at a time.
+#[account]
+#[derive(InitSpace)]
+pub struct VrfSlot {
+    /// Switchboard randomness account (PDA [VRF_RANDOMNESS_SEED, index_le] of
+    /// this program, authority = PDA [VRF_AUTHORITY_SEED]).
+    pub randomness: Pubkey,
+    pub index: u32,
+    /// Commit PDA holding the slot; Pubkey::default() when free.
+    pub lock: Pubkey,
+    pub locked_at_slot: u64,
+    /// Operator switch for a misbehaving account; only a free slot retires.
+    pub retired: bool,
+    pub commits: u64,
+    pub reveals: u64,
     pub bump: u8,
 }
 
@@ -819,6 +902,92 @@ impl VaultGuard {
             .ok_or(AofError::MathOverflow)?;
         Ok(())
     }
+}
+
+/// [AUDIT F-01][SECURITY_CHECKLIST_REVIEW F-E] The three brakes every authority
+/// withdrawal from the staking vault has to pass, BEFORE any token CPI:
+///  1. only a registered **resource** mint may leave the vault (staked tool
+///     NFTs are never in the resource registry, so they cannot be pulled out);
+///  2. the per-mint `VaultGuard` must belong to exactly that mint;
+///  3. the amount is charged against the guard's per-tx / per-epoch budget.
+///
+/// Shared by `pay_out` and `pay_out_with_referral`. The referral variant was
+/// documented as having "the same three brakes as PayOut" and even loaded
+/// `material_mints` + `vault_guard`, but its handler never used them, so a
+/// leaked authority key could drain any vault mint without a ceiling. Keeping
+/// the checks in one function makes that kind of drift impossible to repeat.
+pub fn charge_vault_withdrawal(
+    config: &Config,
+    material_mints: &MaterialMints,
+    guard: &mut VaultGuard,
+    mint: &Pubkey,
+    amount: u64,
+    slot: u64,
+) -> core::result::Result<(), crate::errors::AofError> {
+    use crate::errors::AofError;
+    if !config.is_resource_mint(material_mints, mint) {
+        return Err(AofError::NotAResourceMint);
+    }
+    if guard.mint != *mint {
+        return Err(AofError::InvalidMint);
+    }
+    guard.charge(amount, slot)
+}
+
+/// [SECURITY_CHECKLIST #33] `token` is the canonical associated token account
+/// of (owner, mint). Enforced where a third party — a permissionless settler,
+/// matcher or fulfiller — picks the destination of someone else's tokens, so a
+/// winner's NFT or a buyer's resources cannot be parked in a non-canonical
+/// account that wallets never show.
+pub fn is_canonical_ata(token: &Pubkey, owner: &Pubkey, mint: &Pubkey) -> bool {
+    *token == anchor_spl::associated_token::get_associated_token_address(owner, mint)
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-D] Weather is a pure function of the UTC day, so
+/// the weather of any past day can be recomputed exactly. `weather_crank` only
+/// caches today's value in `WeatherState` for UIs.
+pub fn weather_for_day(day_id: u32) -> u8 {
+    let hash_val = (day_id as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_shr(32);
+    // 10% blackout, 50% nominal, 30% surge, 10% frenzy
+    match hash_val % 100 {
+        0..=9 => WEATHER_BLACKOUT,
+        10..=59 => WEATHER_NOMINAL,
+        60..=89 => WEATHER_SURGE,
+        _ => WEATHER_FRENZY,
+    }
+}
+
+pub fn well_rate_per_hour(weather: u8) -> u64 {
+    match weather {
+        WEATHER_BLACKOUT => WELL_RATE_BLACKOUT,
+        WEATHER_NOMINAL => WELL_RATE_NOMINAL,
+        WEATHER_SURGE => WELL_RATE_SURGE,
+        WEATHER_FRENZY => WELL_RATE_FRENZY,
+        _ => WELL_RATE_NOMINAL,
+    }
+}
+
+/// [SECURITY_CHECKLIST_REVIEW F-D] Water accrued between `last` and `now`
+/// (unix seconds): only the most recent `WELL_MAX_ACCRUAL_SECONDS` count, and
+/// every second is priced at the weather of its own day. The well used to apply
+/// the *cached* weather to the whole window, so collecting only on frenzy days
+/// (or never cranking a stale frenzy) paid up to 20/h instead of the fair ~9/h.
+/// A 24 h window spans at most two days, so the loop runs at most twice.
+pub fn well_accrual(last: i64, now: i64) -> core::result::Result<u64, crate::errors::AofError> {
+    use crate::errors::AofError;
+    if now <= last {
+        return Ok(0);
+    }
+    let mut t = core::cmp::max(last, now.saturating_sub(WELL_MAX_ACCRUAL_SECONDS as i64));
+    let mut rate_seconds: u128 = 0;
+    while t < now {
+        let day = t.div_euclid(86_400);
+        let segment_end = core::cmp::min(day.saturating_add(1).saturating_mul(86_400), now);
+        let seconds = (segment_end - t) as u128;
+        rate_seconds += seconds * well_rate_per_hour(weather_for_day(day as u32)) as u128;
+        t = segment_end;
+    }
+    u64::try_from(rate_seconds / 3600).map_err(|_| AofError::MathOverflow)
 }
 
 /// EnergyAccount — ленивая энергия игрока (реген +1 за 30 мин до капа 20)
@@ -1254,6 +1423,10 @@ mod state_tests {
             mining_enabled: true,
             pending_authority: Pubkey::default(),
             authority_updated_at: 0,
+            operator: Pubkey::default(),
+            guardian: Pubkey::default(),
+            cashout_frozen: false,
+            reserved: [0u8; 32],
         };
         let mut mints = mm(SUPPLY_CAP_UNLIMITED);
         for kind in [

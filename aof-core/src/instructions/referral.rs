@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, Burn};
 use crate::constants::*;
+use crate::state::charge_vault_withdrawal;
 use crate::{ReferralBindCtx, ReferralUpgradeCtx, PayOutWithReferral};
 use crate::errors::*;
 use crate::events::*;
@@ -77,6 +78,28 @@ pub fn pay_out_with_referral_handler(ctx: Context<PayOutWithReferral>, amount: u
         (ctx.accounts.referral_link.tier as usize) < REFERRAL_PCT_BPS.len(),
         AofError::ReferralMaxTier
     );
+    require!(
+        ctx.accounts.vault_token.amount >= amount,
+        AofError::VaultInsufficient
+    );
+
+    // [SECURITY_CHECKLIST_REVIEW F-E] `PayOutWithReferral` promised "the same
+    // three brakes as PayOut" and loads `material_mints` + the per-mint
+    // `vault_guard`, but this handler never consulted them: a leaked authority
+    // key could move ANY mint the vault holds (resources past every cap, and
+    // even staked tool NFTs once a guard PDA exists for them). The brakes now
+    // run here, before any CPI, through the very function `pay_out` uses.
+    let slot = Clock::get()?.slot;
+    let mint_key = ctx.accounts.mint.key();
+    charge_vault_withdrawal(
+        &ctx.accounts.config,
+        &ctx.accounts.material_mints,
+        &mut ctx.accounts.vault_guard,
+        &mint_key,
+        amount,
+        slot,
+    )?;
+
     let pct_bps = REFERRAL_PCT_BPS[ctx.accounts.referral_link.tier as usize] as u64;
     let referrer_cut = amount.checked_mul(pct_bps).ok_or(AofError::MathOverflow)? / 10_000;
     let user_cut = amount.checked_sub(referrer_cut).ok_or(AofError::MathOverflow)?;
@@ -118,6 +141,16 @@ pub fn pay_out_with_referral_handler(ctx: Context<PayOutWithReferral>, amount: u
         referrer: ctx.accounts.referral_link.referrer,
         referred: ctx.accounts.referral_link.referred,
         amount: referrer_cut,
+    });
+    // Vault monitors key on VaultWithdrawal; a referral payout used to leave the
+    // vault without it, i.e. invisible to the same alerting as `pay_out`.
+    emit!(VaultWithdrawal {
+        mint: mint_key,
+        recipient: ctx.accounts.referral_link.referred,
+        amount,
+        withdrawn_in_epoch: ctx.accounts.vault_guard.withdrawn_in_epoch,
+        cap_per_epoch: ctx.accounts.vault_guard.cap_per_epoch,
+        slot,
     });
     Ok(())
 }

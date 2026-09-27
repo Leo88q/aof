@@ -4,15 +4,8 @@ const path = require('path');
 const { execSync } = require('child_process');
 const root = process.cwd();
 function log(m){console.log(`[ensure-env] ${m}`);}
-const srcDir = path.join(root,'aof_backend','src','idl');
-const dstDir = path.join(root,'target','idl');
-if(fs.existsSync(srcDir)){
-  fs.mkdirSync(dstDir,{recursive:true});
-  fs.readdirSync(srcDir).filter(f=>f.endsWith('.json')).forEach(f=>{
-    fs.copyFileSync(path.join(srcDir,f), path.join(dstDir,f));
-    log(`seeded IDL ${f}`);
-  });
-}
+// IDL, address patched to the target/deploy keypair (see seed-idl.cjs).
+require('./seed-idl.cjs').seedIdl({ root, log });
 const walletPath = path.join(root,'solana','keys','aof-authority-devnet.json');
 if(!fs.existsSync(walletPath)){
   log(`wallet not found at ${walletPath}, creating...`);
