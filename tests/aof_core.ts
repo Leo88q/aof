@@ -64,6 +64,23 @@ describe("aof-core: security & core flows", () => {
   }
   const balance = async (ata: PublicKey) => new BN((await provider.connection.getTokenAccountBalance(ata)).value.amount);
 
+  // Lamport change of each account inside one transaction (pre/post balances of
+  // its metadata), plus the fee its payer was charged. Exact even for the
+  // provider wallet, which also pays every fee of the suite.
+  async function txDeltas(signature: string) {
+    await provider.connection.confirmTransaction(signature, "confirmed");
+    const tx = await provider.connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    if (!tx?.meta) throw new Error(`transaction ${signature} not found`);
+    const meta = tx.meta;
+    const keys = tx.transaction.message.getAccountKeys().staticAccountKeys;
+    const delta = (key: PublicKey) => {
+      const i = keys.findIndex((k) => k.equals(key));
+      if (i < 0) throw new Error(`${key.toBase58()} is not an account of ${signature}`);
+      return meta.postBalances[i] - meta.preBalances[i];
+    };
+    return Object.assign(delta, { fee: meta.fee });
+  }
+
   const airdrop = async (kp: Keypair, sol = 5) =>
     provider.connection.confirmTransaction(
       await provider.connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL));
@@ -615,6 +632,71 @@ describe("aof-core: security & core flows", () => {
     await bid(b2, 30_000_000); // previous_bidder aliases bidder, but not escrow
     expect(selfBidBefore - await provider.connection.getBalance(b2.publicKey)).to.equal(10_000_000);
     expect(await provider.connection.getBalance(auctionPda)).to.equal(auctionRent + 30_000_000);
+  });
+
+  // [RUNTIME LAMPORT RULE] Both paths below used to move lamports directly
+  // before their token CPI. The runtime re-checks the instruction's lamport sum
+  // at every CPI from the accounts passed to it, so each settlement failed with
+  // UnbalancedInstruction: an auction with a bid could never be settled (bid
+  // and NFT locked for good) and no offer could be accepted.
+  it("auction settle with a bid: the winner gets the NFT, the seller and the treasury split the bid", async () => {
+    const seller = Keypair.generate(); await airdrop(seller);
+    const bidder = Keypair.generate(); await airdrop(bidder);
+    const { mint, tokenAccount } = await mintTool(seller.publicKey);
+    const auctionPda = pda([B("auction"), mint.toBuffer()]);
+    const auctionVault = await ensureAta(mint, auctionPda);
+    const winnerToken = await ensureAta(mint, bidder.publicKey);
+    await program.methods.auctionCreate(new BN(1_000_000), new BN(2)).accounts({
+      config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint), sellerToken: tokenAccount,
+      auction: auctionPda, auctionVault, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).signers([seller]).rpc();
+    const BID = 20_000_000;
+    await program.methods.auctionBid(new BN(BID)).accounts({
+      config: configPda, bidder: bidder.publicKey, mint, auction: auctionPda,
+      previousBidder: seller.publicKey, systemProgram: SystemProgram.programId,
+    }).signers([bidder]).rpc();
+    await sleep(4000);
+    const auctionLamports = await provider.connection.getBalance(auctionPda);
+    const vaultLamports = await provider.connection.getBalance(auctionVault);
+    const signature = await program.methods.auctionSettle().accounts({
+      config: configPda, mint, auction: auctionPda, seller: seller.publicKey, treasury: authority,
+      auctionVault, winnerToken, tool: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID,
+    }).rpc();
+    const d = await txDeltas(signature);
+    const fee = Math.floor(BID * 400 / 10_000); // AUCTION_FEE_BPS
+    expect((await balance(winnerToken)).toString()).to.equal("1");
+    expect(await provider.connection.getAccountInfo(auctionPda)).to.equal(null);
+    expect(await provider.connection.getAccountInfo(auctionVault)).to.equal(null);
+    expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(bidder.publicKey.toBase58());
+    // Seller: the bid minus the fee, the escrow ATA rent and the auction's rent (close = seller).
+    expect(d(seller.publicKey)).to.equal(auctionLamports - fee + vaultLamports);
+    expect(d(authority)).to.equal(fee - d.fee); // the treasury is the provider, which pays the fee
+  });
+
+  it("offer accept: the buyer gets the NFT, the seller and the treasury split the escrow", async () => {
+    const seller = Keypair.generate(); await airdrop(seller);
+    const buyer = Keypair.generate(); await airdrop(buyer);
+    const { mint, tokenAccount: sellerToken } = await mintTool(seller.publicKey);
+    const offer = pda([B("offer"), mint.toBuffer(), buyer.publicKey.toBuffer()]);
+    const PRICE = 30_000_000;
+    await program.methods.offerCreate(new BN(PRICE)).accounts({
+      config: configPda, buyer: buyer.publicKey, mint, offer, systemProgram: SystemProgram.programId,
+    }).signers([buyer]).rpc();
+    const buyerToken = await ensureAta(mint, buyer.publicKey);
+    const offerLamports = await provider.connection.getBalance(offer);
+    const signature = await program.methods.offerAccept().accounts({
+      config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint), offer, buyerRefund: buyer.publicKey,
+      treasury: authority, sellerToken, buyerToken, tokenProgram: TOKEN_PROGRAM_ID,
+    }).signers([seller]).rpc();
+    const d = await txDeltas(signature);
+    const fee = Math.floor(PRICE * 250 / 10_000); // OFFER_FEE_BPS
+    expect((await balance(buyerToken)).toString()).to.equal("1");
+    expect((await balance(sellerToken)).toString()).to.equal("0");
+    expect(await provider.connection.getAccountInfo(offer)).to.equal(null);
+    expect((await program.account.toolData.fetch(toolPda(mint))).owner.toBase58()).to.equal(buyer.publicKey.toBase58());
+    expect(d(seller.publicKey)).to.equal(PRICE - fee);
+    expect(d(buyer.publicKey)).to.equal(offerLamports - PRICE); // the offer's rent comes back (close = buyer_refund)
+    expect(d(authority)).to.equal(fee - d.fee);
   });
 
   it("orderbook: полное сведение не ломает rent (C2)", async () => {

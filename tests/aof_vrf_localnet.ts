@@ -93,6 +93,24 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     throw new Error(`expected ${code}, but the call succeeded`);
   }
 
+  // Lamport change of each account inside one transaction (its pre/post
+  // balances), plus the fee its payer was charged. Exact even for the provider
+  // wallet, which is the treasury here and pays every fee of the suite.
+  async function txDeltas(signature: string) {
+    await connection.confirmTransaction(signature, "confirmed");
+    const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    if (!tx?.meta) throw new Error(`transaction ${signature} not found`);
+    const meta = tx.meta;
+    const keys = tx.transaction.message.getAccountKeys().staticAccountKeys;
+    const index = (key: PublicKey) => {
+      const i = keys.findIndex((k) => k.equals(key));
+      if (i < 0) throw new Error(`${key.toBase58()} is not an account of ${signature}`);
+      return i;
+    };
+    const delta = (key: PublicKey) => meta.postBalances[index(key)] - meta.preBalances[index(key)];
+    return Object.assign(delta, { fee: meta.fee, pre: (key: PublicKey) => meta.preBalances[index(key)] });
+  }
+
   let index = -1;
   // The commit made by the commit test, settled by the reveal test.
   let pending: { user: Keypair; packCommit: PublicKey; oracle: PublicKey } | undefined;
@@ -276,17 +294,9 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       .accounts(revealAccounts(cranker.publicKey, user.publicKey, packCommit, Keypair.generate().publicKey))
       .signers([cranker]).rpc(), "InvalidRandomnessAccount");
 
-    const treasuryBefore = await connection.getBalance(treasury);
-    const crankerBefore = await connection.getBalance(cranker.publicKey);
-    const userBefore = await connection.getBalance(user.publicKey);
-    const commitLamports = await connection.getBalance(packCommit);
     const accounts = revealAccounts(cranker.publicKey, user.publicKey, packCommit, oracle);
     const signature = await program.methods.packOpenReveal(revealParams(value)).accounts(accounts).signers([cranker]).rpc();
-    // getTransaction needs "confirmed"; .rpc() may have returned at "processed".
-    await connection.confirmTransaction(signature, "confirmed");
-    const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-    if (!tx?.meta) throw new Error("reveal transaction not found");
-    const fee = tx.meta.fee;
+    const d = await txDeltas(signature);
 
     // Outcome = aof-core's roll of the published value for this commit.
     const expected = rollTool(value, "pack", packCommit, odds);
@@ -306,17 +316,17 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(slot.lock.toBase58()).to.equal(zero);
     expect(slot.reveals.toString()).to.equal("1");
 
-    // Money: the price goes to the treasury, the settler's rent comes back,
-    // what is left of the commit account returns to the player.
+    // Money, to the lamport inside the reveal transaction: the price goes to
+    // the treasury, the settler gets back exactly the rent it fronted for the
+    // NFT accounts, and the rest of the commit account returns to the player.
     expect(await connection.getAccountInfo(packCommit)).to.equal(null);
-    const treasuryDelta = (await connection.getBalance(treasury)) - treasuryBefore;
+    const commitLamports = d.pre(packCommit);
+    expect(d(packCommit)).to.equal(-commitLamports);
     const treasuryPaysFee = treasury.equals(authority); // the provider wallet pays the fee
-    expect(treasuryDelta).to.equal(commit.paidLamports.toNumber() - (treasuryPaysFee ? fee : 0));
-    const settlementRent = (await connection.getBalance(accounts.mint)) + (await connection.getBalance(accounts.userToken))
-      + (await connection.getBalance(accounts.toolData));
-    expect((await connection.getBalance(cranker.publicKey)) - crankerBefore).to.equal(commit.depositLamports.toNumber() - settlementRent);
-    expect((await connection.getBalance(user.publicKey)) - userBefore)
-      .to.equal(commitLamports - commit.paidLamports.toNumber() - commit.depositLamports.toNumber());
+    expect(d(treasury)).to.equal(commit.paidLamports.toNumber() - (treasuryPaysFee ? d.fee : 0));
+    const settlementRent = d(accounts.mint) + d(accounts.userToken) + d(accounts.toolData);
+    expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent);
+    expect(d(user.publicKey)).to.equal(commitLamports - commit.paidLamports.toNumber() - commit.depositLamports.toNumber());
 
     // Settled once: the commit account is gone.
     await expectError(program.methods.packOpenReveal(revealParams(value)).accounts(accounts).signers([cranker]).rpc(),
@@ -381,7 +391,6 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const value = crypto.createHash("sha256").update("aof localnet vrf reroll").digest();
     const newMint = pda([B("reroll_mint"), rerollCommit.toBuffer()]);
     const newToolData = pda([B("tool"), newMint.toBuffer()]);
-    const treasuryBefore = await connection.getBalance(treasury);
     const signature = await program.methods.rerollRandomReveal(revealParams(value)).accounts({
       config: configPda, cranker: cranker.publicKey, rerollCommit, user: user.publicKey, treasury, newMint,
       newToken: getAssociatedTokenAddressSync(newMint, user.publicKey), newToolData, auth: authPda,
@@ -389,9 +398,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     }).signers([cranker]).rpc();
-    await connection.confirmTransaction(signature, "confirmed");
-    const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-    if (!tx?.meta) throw new Error("reveal transaction not found");
+    const d = await txDeltas(signature);
 
     const expected = rollTool(value, "reroll", rerollCommit, rerollOdds);
     const tool = await program.account.toolData.fetch(newToolData);
@@ -403,7 +410,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(await connection.getAccountInfo(rerollCommit)).to.equal(null);
     expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero);
     const treasuryPaysFee = treasury.equals(authority);
-    expect((await connection.getBalance(treasury)) - treasuryBefore)
-      .to.equal(commit.feeLamports.toNumber() - (treasuryPaysFee ? tx.meta.fee : 0));
+    expect(d(treasury)).to.equal(commit.feeLamports.toNumber() - (treasuryPaysFee ? d.fee : 0));
+    expect(d(rerollCommit)).to.equal(-d.pre(rerollCommit));
   });
 });
