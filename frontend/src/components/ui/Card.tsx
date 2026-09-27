@@ -15,8 +15,7 @@ export function Card({ children, onClick, className = "" }: CardProps) {
       onClick={onClick}
       className={`nf-chip relative p-4 ${onClick ? "cursor-pointer" : ""} ${className}`}
     >
-      {/* Neon top edge (корпус чипа рисует theme/circuit.css) */}
-      <div className="absolute top-0 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-wheat-500/40 to-transparent pointer-events-none" />
+      {/* Корпус чипа (фаски, кромка, выводы, шелкография) рисует theme/circuit.css */}
       {children}
     </motion.div>
   );
