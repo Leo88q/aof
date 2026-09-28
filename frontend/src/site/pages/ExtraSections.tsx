@@ -10,6 +10,49 @@ import {
   roadmapItems, roadmapEraNames, manifestoPrinciples, manifestoClosing, rulesList,
   mechanics,
 } from '../content/game';
+import {
+  resourceIcon, resourcePlate, resourceVisual, toolPlate, TOOL_NFTS, TOOL_RARITIES, UI_ICONS,
+} from '../../lib/visualAssets';
+
+/** Картинка ресурса/предмета в квадратной плашке (`.nf-plate`, object-fit: contain). */
+function SitePlate({ src, alt = '', size, className = '' }: { src?: string; alt?: string; size?: number | string; className?: string }) {
+  if (!src) return null;
+  const isIcon = src.startsWith('/assets/icons/');
+  const style = size === undefined ? undefined : { width: size, height: typeof size === 'number' ? size : undefined };
+  return (
+    <span className={'nf-plate site-plate' + (isIcon ? ' nf-plate--icon site-plate--icon' : '') + (className ? ' ' + className : '')} style={style}>
+      <img src={src} alt={alt} loading="lazy" decoding="async" draggable={false} />
+    </span>
+  );
+}
+
+/** Строка входа/выхода рецепта: иконка + имя + количество. `tools` и `skr` — не ресурсы каталога. */
+function RecipeIo({ recipeId, resourceId, amount, kind }: { recipeId: string; resourceId: string; amount: number; kind: 'in' | 'out' }) {
+  let icon: string | undefined;
+  let label: string;
+  if (resourceId === 'tools') {
+    const rarity = /legendary/.test(recipeId) ? 'legendary' : /epic/.test(recipeId) ? 'epic' : /rare/.test(recipeId) ? 'rare' : /uncommon/.test(recipeId) ? 'uncommon' : 'common';
+    icon = toolPlate('plasma_cutter', rarity);
+    label = 'Инструмент (NFT)';
+  } else if (resourceId === 'skr') {
+    icon = UI_ICONS.tokenCoin;
+    label = 'SKR';
+  } else {
+    const res = resourcesById.get(resourceId);
+    icon = resourceIcon(resourceId);
+    label = res ? res.name : resourceId;
+  }
+  return (
+    <li className={kind === 'in' ? 'site-recipe-in' : 'site-recipe-out'}>
+      <SitePlate src={icon} size={40} className="site-io-icon" />
+      <span>{label} ×{amount}</span>
+    </li>
+  );
+}
+
+const TOOL_RARITY_LABEL: Record<string, string> = {
+  common: 'Base', uncommon: 'Enhanced', rare: 'Quantum', epic: 'Singularity', legendary: 'Transcendent',
+};
 
 function groups(): [string, typeof recipes][] {
   const map = new Map<string, typeof recipes>();
@@ -95,19 +138,26 @@ function SeasonWheelDemo() {
 }
 
 function ChainDiagram() {
-  const names = ['Нейроны', 'Синапс', 'Сигнал', 'Модель'];
+  const steps = [
+    { id: 'neuron', name: 'Нейроны' },
+    { id: 'synapse', name: 'Синапс' },
+    { id: 'signal', name: 'Сигнал' },
+    { id: 'model', name: 'Модель' },
+  ];
   return (
     <figure className="site-diagram site-paper">
-      <svg viewBox="0 0 680 140" role="img" aria-label="Нейроны, синапс, сигнал, модель">
-        {names.map((name, i) => (
-          <g key={name}>
-            {i < 3 && <path d={'M' + (110 + i * 165) + ' 65h70'} stroke="var(--aof-copper)" strokeWidth="3" />}
-            <rect x={10 + i * 165} y="25" width="110" height="80" rx="8" fill="var(--aof-oak)" stroke="var(--aof-copper)" strokeWidth="2" />
-            <text x={65 + i * 165} y="71" textAnchor="middle" fill="var(--aof-parchment)" fontSize="18">{name}</text>
-          </g>
+      <ol className="site-chain" aria-label="Нейроны, синапс, сигнал, модель">
+        {steps.map((st, i) => (
+          <li key={st.id} className="site-chain__step">
+            <Link to={'/site/resources/' + (resourcesById.get(st.id)?.slug ?? st.id)} className="site-chain__node">
+              <SitePlate src={resourceIcon(st.id)} alt="" size={72} />
+              <span>{st.name}</span>
+            </Link>
+            {i < steps.length - 1 && <span className="site-chain__arrow" aria-hidden="true">→</span>}
+          </li>
         ))}
-      </svg>
-      <figcaption>Выращивай → перемалывай → выпекай. Схема качественная, без норм расхода.</figcaption>
+      </ol>
+      <figcaption>Выращивай → перерабатывай → тренируй. Схема качественная, без норм расхода.</figcaption>
     </figure>
   );
 }
@@ -200,29 +250,23 @@ export function ExtraSections({ id }: { id: string }) {
               {list.map((r) => {
                 const missingResources = [...r.inputs, ...r.outputs]
                   .map((item) => item.resourceId)
-                  .filter((resourceId, index, ids) => !resourcesById.has(resourceId) && ids.indexOf(resourceId) === index);
+                  .filter((resourceId, index, ids) => resourceId !== 'tools' && resourceId !== 'skr' && !resourcesById.has(resourceId) && ids.indexOf(resourceId) === index);
                 return (
                   <article key={r.id} className="site-card site-paper site-recipe">
                     <span className="site-badge">
                       {r.verification === 'on-chain-verified'
                         ? 'On-chain проверено'
-                        : 'Рданныекционный пример · on-chain не подтверждён'}
+                        : 'Редакционный пример · on-chain не подтверждён'}
                     </span>
                     <h4>{r.name}</h4>
                     <ul className="site-recipe-io">
-                      {r.inputs.map((i) => {
-                        const res = resourcesById.get(i.resourceId);
-                        return <li key={i.resourceId} className="site-recipe-in">{res ? res.name : i.resourceId} ×{i.amount}</li>;
-                      })}
+                      {r.inputs.map((i) => <RecipeIo key={i.resourceId} recipeId={r.id} resourceId={i.resourceId} amount={i.amount} kind="in" />)}
                     </ul>
                     <p className="site-recipe-arrow" aria-hidden="true">↓</p>
                     <ul className="site-recipe-io">
                       {r.outputs.length > 0
-                        ? r.outputs.map((o) => {
-                            const res = resourcesById.get(o.resourceId);
-                            return <li key={o.resourceId} className="site-recipe-out">{res ? res.name : o.resourceId} ×{o.amount}</li>;
-                          })
-                        : <li className="site-recipe-out">Эффект без предмета</li>}
+                        ? r.outputs.map((o) => <RecipeIo key={o.resourceId} recipeId={r.id} resourceId={o.resourceId} amount={o.amount} kind="out" />)
+                        : <li className="site-recipe-out"><span>Эффект без предмета</span></li>}
                     </ul>
                     <p className="site-recipe-meta">
                       Энергия: {r.energy}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на MIND' : ''}{r.potatoCost ? ` · MIND ×${r.potatoCost}` : ''}
@@ -246,7 +290,12 @@ export function ExtraSections({ id }: { id: string }) {
     return (
       <>
         <Section title="Откуда пришёл MIND">
-          {potatoOrigin.paragraphs.map((p) => <p className="site-reading" key={p.slice(0, 24)}>{p}</p>)}
+          <div className="site-media-row">
+            <SitePlate src={resourcePlate('mind')} alt="MIND" size="min(100%, 220px)" className="site-media-row__art" />
+            <div>
+              {potatoOrigin.paragraphs.map((p) => <p className="site-reading" key={p.slice(0, 24)}>{p}</p>)}
+            </div>
+          </div>
         </Section>
         <Section title="Пять способов потратить">
           <div className="site-grid">
@@ -483,7 +532,7 @@ export function ExtraSections({ id }: { id: string }) {
             </article>
           ))}
         </div>
-        <blockquote className="site-narrative">Статусы — рданныекционный план сайта и продукта. Они не являются подтверждённым релизом, аудитом или публичным обязательством.</blockquote>
+        <blockquote className="site-narrative">Статусы — редакционный план сайта и продукта. Они не являются подтверждённым релизом, аудитом или публичным обязательством.</blockquote>
       </Section>
     );
   }
@@ -518,12 +567,17 @@ export function ExtraSections({ id }: { id: string }) {
         <label className="site-search-label">Найди термин<input type="search" value={glossQuery} onChange={(e) => setGlossQuery(e.target.value)} /></label>
         <p role="status">Найдено: {glossFiltered.length}</p>
         <dl className="site-glossary">
-          {glossFiltered.map((g) => (
-            <div className="site-paper" key={g.term}>
-              <dt>{g.term}</dt>
-              <dd>{g.definition}</dd>
-            </div>
-          ))}
+          {glossFiltered.map((g) => {
+            const match = resources.find((r) => r.name.toLowerCase() === g.term.toLowerCase()) || resourceVisual(g.term);
+            const icon = match ? resourceIcon(match.id) : undefined;
+            return (
+              <div className={'site-paper' + (icon ? ' site-glossary__with-icon' : '')} key={g.term}>
+                {icon && <SitePlate src={icon} size={44} className="site-glossary__icon" />}
+                <dt>{g.term}</dt>
+                <dd>{g.definition}</dd>
+              </div>
+            );
+          })}
         </dl>
         {glossFiltered.length === 0 && <p>Такого термина нет.</p>}
       </Section>
@@ -550,7 +604,7 @@ export function ExtraSections({ id }: { id: string }) {
 
   if (id === 'trust') {
     return (
-      <Section title="Пять мданныельонов доверия">
+      <Section title="Пять медальонов доверия">
         <div className="site-grid">
           {trustTiers.map((t, i) => (
             <article key={t.name} className="site-card site-paper" style={{ textAlign: 'center' }}>
@@ -572,21 +626,39 @@ export function ExtraSections({ id }: { id: string }) {
 
   if (id === 'tools') {
     return (
-      <Section title="Пять редкостей — пять характеров">
-        <div className="site-grid">
-          {rarities.map((r, i) => (
-            <article key={r.name} className={'site-tool site-paper site-tool--' + i}>
-              <svg viewBox="0 0 100 120" width="90" aria-hidden="true">
-                <path d="M40 108l17-84" stroke="var(--aof-oak)" strokeWidth="10" />
-                <path d="M38 20Q65 1 91 20l-5 24-35-9z" fill="var(--aof-concrete)" stroke="var(--aof-copper)" strokeWidth={i + 1} />
-              </svg>
-              <h3>{r.name}</h3>
-              <p>{r.text}</p>
-            </article>
-          ))}
-        </div>
-        <blockquote className="site-narrative">Rarity — характеристика предмета, а не гарантия выгодной сделки: легендарный инструмент в простых руках дешевле обычного в рабочих.</blockquote>
-      </Section>
+      <>
+        <Section title="Пять редкостей — пять характеров">
+          <div className="site-grid">
+            {rarities.map((r, i) => (
+              <article key={r.name} className={'site-tool site-paper site-tool--' + i}>
+                <SitePlate src={toolPlate('plasma_cutter', TOOL_RARITIES[i])} alt={`Плазменный резчик · ${r.name}`} size="100%" className="site-tool__art" />
+                <h3>{r.name}</h3>
+                <p>{r.text}</p>
+              </article>
+            ))}
+          </div>
+          <blockquote className="site-narrative">Rarity — характеристика предмета, а не гарантия выгодной сделки: легендарный инструмент в простых руках дешевле обычного в рабочих.</blockquote>
+        </Section>
+        <Section title="Пять инструментов — двадцать пять NFT">
+          <p className="site-reading">Каждый инструмент существует в пяти редкостях. Ниже — все плашки NFT, которые выдаёт кузница: базовая сборка слева, Transcendent справа.</p>
+          <div className="site-nft-grid">
+            {TOOL_NFTS.map((t) => (
+              <article key={t.id} className="site-card site-paper site-nft">
+                <SitePlate src={t.base} alt={t.name} size="100%" className="site-nft__hero" />
+                <h3>{t.name}</h3>
+                <ul className="site-nft__rarities">
+                  {TOOL_RARITIES.map((rar) => (
+                    <li key={rar}>
+                      <SitePlate src={toolPlate(t.id, rar)} alt={`${t.name} · ${TOOL_RARITY_LABEL[rar]}`} size="100%" />
+                      <small>{TOOL_RARITY_LABEL[rar]}</small>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </Section>
+      </>
     );
   }
 
@@ -614,9 +686,18 @@ export function ExtraSections({ id }: { id: string }) {
           <div className="site-grid">
             {resources.slice(0, 8).map((r) => (
               <Link className="site-card site-paper" key={r.id} to={'/site/resources/' + r.slug}>
+                <SitePlate src={resourcePlate(r.id)} alt="" size="100%" className="site-card__art" />
                 <p className="site-eyebrow">Материал</p>
                 <h3>{r.name}</h3>
                 <p>{r.lead}</p>
+              </Link>
+            ))}
+          </div>
+          <div className="site-icon-strip" aria-label="Все ресурсы">
+            {resources.map((r) => (
+              <Link key={r.id} to={'/site/resources/' + r.slug} title={r.name} className="site-icon-strip__item">
+                <SitePlate src={resourceIcon(r.id)} alt={r.name} size={56} />
+                <small>{r.name}</small>
               </Link>
             ))}
           </div>

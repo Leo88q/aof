@@ -27,6 +27,7 @@
  *
  *   npx ts-node --project tsconfig.json --transpile-only scripts/vrfDevnetProbe.ts
  */
+import "dotenv/config";
 import fs from "node:fs";
 import {
   Connection,
@@ -45,6 +46,10 @@ process.env.RPC_URL = process.env.DEVNET_RPC_URL || "https://api.devnet.solana.c
 process.env.PROGRAM_ID ||= "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
 process.env.TREASURY_PUBKEY ||= "11111111111111111111111111111111";
 process.env.AUTHORITY_MODE = "read-only";
+// [AOF-H1] read-only forbids a hot key in env; a local dev .env may carry one.
+delete process.env.AUTHORITY_SECRET_KEY;
+delete process.env.AUTHORITY_SECRET_KEY_FILE;
+delete process.env.ALLOW_HOT_AUTHORITY_KEY;
 process.env.AUTHORITY_PUBKEY ||= "11111111111111111111111111111111";
 // The production setting under test: the gateway gets no RPC URL.
 delete process.env.SWITCHBOARD_GATEWAY_RPC_URL;

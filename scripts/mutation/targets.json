@@ -1,0 +1,128 @@
+{
+  "$comment": "Mutation-testing targets for scripts/mutation/nf-mutate.mjs. `cwd` is relative to the repo root, `file` relative to cwd. `requires` marks targets that need a toolchain the sandbox/CI runner may lack (cargo, generated Prisma client); they are skipped, not failed.",
+  "targets": [
+    {
+      "id": "wallet-proof",
+      "file": "src/security/walletProofCore.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:wallet-proof",
+      "why": "Signature/nonce/domain checks of every mutating request."
+    },
+    {
+      "id": "authority-gate",
+      "file": "src/security/authorityGate.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:authority-gate",
+      "why": "Fail-closed custody of the hot authority key (AOF-H1)."
+    },
+    {
+      "id": "purchase-bounds",
+      "file": "src/security/purchaseBounds.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:reward-receipts",
+      "why": "Price / expiry ceilings the client must sign."
+    },
+    {
+      "id": "reward-receipt",
+      "file": "src/lib/rewardReceipt.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:reward-receipts",
+      "why": "One reward id -> one mint; replay protection for issuance."
+    },
+    {
+      "id": "resource-registry",
+      "file": "src/lib/resourceRegistryCore.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:resource-registry",
+      "why": "Which mints the backend may ever touch."
+    },
+    {
+      "id": "fraud-hold",
+      "file": "src/security/fraudHold.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:fraud-hold",
+      "why": "Holds on suspicious wallets before payouts."
+    },
+    {
+      "id": "chain-indexer",
+      "file": "src/lib/chainIndexerCore.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:chain-indexer",
+      "why": "The finalized ledger Watchtower and the economy monitor read."
+    },
+    {
+      "id": "vrf-settlement",
+      "file": "src/lib/vrfSettlement.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:vrf-settlement && npm run -s test:vrf",
+      "why": "Commit/reveal/refund account wiring of every randomised mechanic (offline test vs IDL + devnet probe)."
+    },
+    {
+      "id": "read-cache",
+      "file": "src/lib/readCache.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:read-cache",
+      "why": "Single-flight/TTL cache in front of /query/* RPC reads (anti-amplification)."
+    },
+    {
+      "id": "admin-auth",
+      "file": "src/middleware/adminAuth.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:admin-auth",
+      "requires": "prisma-client",
+      "why": "ops vs read tokens; production-only 404 gate."
+    },
+    {
+      "id": "fraud-signals",
+      "file": "src/lib/fraudSignals.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:fraud-signals",
+      "requires": "prisma-client",
+      "why": "Review-queue signals (no auto-ban)."
+    },
+    {
+      "id": "watchtower-normalizer",
+      "file": "src/event-normalizer.ts",
+      "cwd": "watchtower",
+      "cmd": "npm run -s test:events && npm run -s test:decoder",
+      "why": "Wallet hashing / scrubbing before anything leaves the exporter."
+    },
+    {
+      "id": "tx-guard",
+      "file": "src/lib/txGuard.ts",
+      "cwd": "frontend",
+      "cmd": "npm run -s test:security",
+      "why": "Client-side drain protection: instruction policy, SOL/token outflow ceilings, simulation gate."
+    },
+    {
+      "id": "tx-intent",
+      "file": "src/lib/transactionIntent.ts",
+      "cwd": "frontend",
+      "cmd": "npm run -s test:security",
+      "why": "Binds what the player approved (accounts, price, deadline) to what gets signed."
+    },
+    {
+      "id": "core-instructions",
+      "file": "src/lib/coreInstructions.ts",
+      "cwd": "frontend",
+      "cmd": "npm run -s test:security",
+      "why": "Which core instructions a wallet may ever sign."
+    },
+    {
+      "id": "core-economics",
+      "file": "aof-core/src/economics.rs",
+      "cwd": ".",
+      "cmd": "cargo test -p aof-core --lib --quiet",
+      "requires": "cargo",
+      "why": "Mint cost / EV / cap arithmetic on-chain. Prefer `make mutants` (cargo-mutants) for the full Rust workspace."
+    },
+    {
+      "id": "core-state-guards",
+      "file": "aof-core/src/state.rs",
+      "cwd": ".",
+      "cmd": "cargo test -p aof-core --lib --quiet",
+      "requires": "cargo",
+      "why": "VaultGuard / IssuanceCap brakes on the authority key."
+    }
+  ]
+}

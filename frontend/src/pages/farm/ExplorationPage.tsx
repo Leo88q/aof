@@ -99,13 +99,13 @@ export function ExplorationPage() {
             <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATA")} alt="" className="w-4 h-4" /> Данные (DATA)</span><span className="text-parchment font-bold">{EXPLORATION_COST.data}</span></div>
             <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="w-4 h-4" /> Схема (CIRCUIT)</span><span className="text-parchment font-bold">{EXPLORATION_COST.circuit}</span></div>
             <div className="flex justify-between"><span className="text-straw inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="w-4 h-4" /> Кремний (SILICON)</span><span className="text-parchment font-bold">{EXPLORATION_COST.silicon}</span></div>
-            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATASET")} alt="" className="w-4 h-4" /> Датасет (MEAT)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.dataset}</span></div>
+            <div className="flex justify-between border-t border-straw/20 pt-2 mt-2"><span className="text-wheat-500 font-semibold inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("DATASET")} alt="" className="w-4 h-4" /> Датасет (DATASET)</span><span className="text-wheat-500 font-bold">{EXPLORATION_COST.dataset}</span></div>
           </div>
         </div>
 
         <div className="bg-gold/10 border border-gold/30 rounded-xl p-4 mb-4">
           <h3 className="text-gold font-semibold text-sm mb-2">Награда при успехе:</h3>
-          <p className="text-straw text-xs">Успех и количество WOOD/STONE определяет оракул Switchboard по tier, зафиксированному при старте.</p>
+          <p className="text-straw text-xs">Успех и количество Схем/Кремния (CIRCUIT/SILICON) определяет оракул Switchboard по tier, зафиксированному при старте.</p>
         </div>
 
         <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
@@ -145,7 +145,7 @@ export function ExplorationPage() {
         <div className="space-y-2 text-xs text-straw">
           <p>1. <span className="text-parchment">Commit:</span> ресурсы сжигаются, hash фиксируется программой.</p>
           <p>2. <span className="text-parchment">Reveal:</span> сервер передаёт секрет после подтверждения commit.</p>
-          <p>3. <span className="text-parchment">Награда:</span> программа либо минтит WOOD/STONE, либо фиксирует неуспех.</p>
+          <p>3. <span className="text-parchment">Награда:</span> программа либо минтит Схемы/Кремний (CIRCUIT/SILICON), либо фиксирует неуспех.</p>
         </div>
       </Card>
     </div>

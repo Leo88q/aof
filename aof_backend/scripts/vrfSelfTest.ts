@@ -3,12 +3,20 @@
  * settlement phase split, cluster selection, randomness account parsing and
  * the address derivations the on-chain contexts bind.
  */
+import "dotenv/config";
 import assert from "node:assert/strict";
 import { PublicKey } from "@solana/web3.js";
 
+// Offline self-test: it must never need (or hold) the authority secret.
+// Load .env first (src/config does the same), then force the read-only
+// posture and strip any hot key a local dev .env may carry — otherwise the
+// [AOF-H1] gate correctly refuses "read-only + AUTHORITY_SECRET_KEY".
 process.env.PROGRAM_ID ||= "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
 process.env.TREASURY_PUBKEY ||= "11111111111111111111111111111111";
-process.env.AUTHORITY_MODE ||= "read-only";
+process.env.AUTHORITY_MODE = "read-only";
+delete process.env.AUTHORITY_SECRET_KEY;
+delete process.env.AUTHORITY_SECRET_KEY_FILE;
+delete process.env.ALLOW_HOT_AUTHORITY_KEY;
 process.env.AUTHORITY_PUBKEY ||= "11111111111111111111111111111111";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -145,6 +153,16 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   const committed = Buffer.concat([disc("DrumCommitted"), k(1).toBuffer(), k(2).toBuffer(), u64(99)]);
   assert.equal(drumOutcomeFromLogs(logs(committed), "sig3", parser), "committed");
   assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program ${pid} success`], "sig4", parser), null);
+  // [nf-mutate] an unrelated event ahead of the outcome must be skipped, not
+  // reported as a fresh commit; the first drum event decides.
+  const u32 = (n: number) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+  const unlocked = Buffer.concat([disc("AchievementUnlocked"), k(1).toBuffer(), u32(3)]);
+  const both = [
+    `Program ${pid} invoke [1]`, `Program data: ${unlocked.toString("base64")}`, `Program data: ${refunded.toString("base64")}`,
+    `Program data: ${committed.toString("base64")}`, `Program ${pid} success`,
+  ];
+  assert.deepEqual(drumOutcomeFromLogs(both, "sig5", parser), { state: "refunded", amount: 5, signature: "sig5" });
+  assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program data: ${unlocked.toString("base64")}`, `Program ${pid} success`], "sig6", parser), null);
 }
 
 // ---- oracle selection: only eligible oracles, live-healthy first, load spread

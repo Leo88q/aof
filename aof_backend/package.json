@@ -40,7 +40,11 @@
     "build:workers": "tsc -p tsconfig.workers.json",
     "build:watchtower": "tsc -p ../watchtower/tsconfig.json --outDir ../watchtower/dist",
     "test:reward-receipts": "ts-node --project tsconfig.json --transpile-only scripts/rewardReceiptSelfTest.ts",
-    "test:vrf": "ts-node --project tsconfig.json --transpile-only scripts/vrfSelfTest.ts"
+    "test:vrf": "ts-node --project tsconfig.json --transpile-only scripts/vrfSelfTest.ts",
+    "test:vrf-settlement": "ts-node --project tsconfig.json --transpile-only scripts/vrfSettlementSelfTest.ts",
+    "test:read-cache": "ts-node --project tsconfig.json --transpile-only scripts/readCacheSelfTest.ts",
+    "loadtest": "node ../scripts/loadtest/nf-load.mjs",
+    "test:mutation": "node ../scripts/mutation/nf-mutate.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

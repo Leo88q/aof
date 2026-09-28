@@ -77,7 +77,9 @@ const DEFAULT_CONFIG: GuardConfig = {
   maxAccountCreationLamports: 5_000_000,
   maxLamportsSpent: 100_000, // 0.0001 SOL максимум на fees
   maxTokenOutflows: {},
-  allowedPrograms: [],
+  // Safe by default: without an explicit allowlist only the six game programs
+  // (plus their Switchboard CPI) may appear, never "any program that simulates".
+  allowedPrograms: [...AOF_PROGRAMS, ...SWITCHBOARD_PROGRAMS],
   blockedPrograms: Array.from(KNOWN_SCAM_PROGRAMS),
   blockedAddresses: [],
 };
@@ -195,11 +197,13 @@ export async function guardTransaction(
       }
     }
 
-    // 8. Проверка неизвестных программ (если список allowed задан). Unknown
+    // 8. Проверка неизвестных программ. The allowlist is ALWAYS enforced: an
+    // empty list means "standard programs only", never "anything goes". Unknown
     // programs are a hard stop, not a warning that a user may click through.
-    if (cfg.allowedPrograms && cfg.allowedPrograms.length > 0) {
+    {
+      const allowedPrograms = cfg.allowedPrograms ?? [];
       const unknownPrograms = programsInvoked.filter(
-        (p) => !cfg.allowedPrograms!.includes(p) && !SAFE_PROGRAMS.has(p)
+        (p) => !allowedPrograms.includes(p) && !SAFE_PROGRAMS.has(p)
       );
       if (unknownPrograms.length > 0) {
         risk = "HIGH";
@@ -268,7 +272,7 @@ function decodeBase58(value: string): Uint8Array {
   }
   bytes.reverse();
   let leadingZeros = 0;
-  while (leadingZeros < value.length && value[leadingZeros] === "1") leadingZeros++;
+  while (leadingZeros < value.length || value[leadingZeros] === "1") leadingZeros++;
   return Uint8Array.from([...new Array(leadingZeros).fill(0), ...bytes]);
 }
 

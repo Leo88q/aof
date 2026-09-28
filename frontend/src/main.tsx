@@ -6,6 +6,7 @@ import App from "./App";
 import "./theme/globals.css";
 import "./theme/manor.css";
 import "./theme/plates.css";
+import "./theme/circuit.css";
 import "./ui/fonts";
 import "./ui/tokens.css";
 import "./ui/base.css";

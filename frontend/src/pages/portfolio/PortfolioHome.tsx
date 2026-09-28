@@ -164,7 +164,7 @@ export function PortfolioHome() {
         <div className="text-4xl font-bold text-wheat-500">
           <AnimatedCounter value={portfolio?.netWorth?.total ?? 0} duration={1200} />
         </div>
-        <p className="text-straw text-xs mt-1">POTATO</p>
+        <p className="text-straw text-xs mt-1">MIND</p>
       </Card>
 
       {/* График истории */}
@@ -283,7 +283,7 @@ export function PortfolioHome() {
                   <p className="text-straw text-[10px]">Mint: {l.mint?.slice(0, 8)}...</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-wheat-500 text-xs font-bold">{fmtNum(l.pricePotato)} POTATO</p>
+                  <p className="text-wheat-500 text-xs font-bold">{fmtNum(l.pricePotato)} MIND</p>
                 </div>
               </div>
             ))}

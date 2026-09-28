@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UI_ICONS } from "../lib/visualAssets";
+import { UI_ICONS, resourceIcon } from "../lib/visualAssets";
 import { ResourceGlyph } from "./visual/ResourceGlyph";
 import { api } from "../lib/api";
 import { useFlash } from "../lib/marketUtils";
@@ -43,11 +43,17 @@ export function ComebackModal({ bonus, onClose }: ComebackModalProps) {
     }
   }
 
-  const rewardText = [
-    `${bonus.reward.core} WOOD`,
-    bonus.reward.drumSpin ? <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.drum} alt="" className="w-4 h-4" /> Спин барабана</span> : null,
-    bonus.reward.forgeFree ? <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.craft} alt="" className="w-4 h-4" /> Бесплатная ковка</span> : null,
-  ].filter(Boolean).join(" ");
+  // Награда «core» — базовый ресурс Схема (CIRCUIT). Рендерим элементами, а не
+  // join(" "): JSX в строке превращался в "[object Object]".
+  const rewardText = (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="inline-flex items-center gap-1">
+        <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="w-4 h-4" /> {bonus.reward.core} Схема
+      </span>
+      {bonus.reward.drumSpin && <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.drum} alt="" className="w-4 h-4" /> Спин барабана</span>}
+      {bonus.reward.forgeFree && <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.craft} alt="" className="w-4 h-4" /> Бесплатная ковка</span>}
+    </span>
+  );
 
   return (
     <AnimatePresence>

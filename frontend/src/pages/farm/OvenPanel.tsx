@@ -108,7 +108,7 @@ export function OvenPanel() {
     setBaking(true);
     try {
       const breadMint = await getMintAsync("MODEL");
-      if (!breadMint) { toast.show("❌ Mint BREAD не найден"); return; }
+      if (!breadMint) { toast.show("❌ Mint MODEL не найден"); return; }
       const resp = await api.chain.collectBread({
         user: walletAddr,
         breadMint,

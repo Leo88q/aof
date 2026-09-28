@@ -1,0 +1,192 @@
+/**
+ * Boundary and policy tests for src/lib/txGuard.ts — the last check between a
+ * built transaction and the wallet's signature prompt.
+ *
+ * nf-mutate (2026-09-28) scored the guard at 48.9 %: fee/spend/rent ceilings
+ * were only tested far from their limits, the compute-budget, ATA and mint
+ * policies had no negative cases per field, and the block lists and
+ * simulation-log program extraction were untested. Every test below pins one
+ * of those survivors.
+ */
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  ComputeBudgetProgram, Keypair, MessageV0, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction,
+} from "@solana/web3.js";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction,
+  createAssociatedTokenAccountInstruction, createInitializeMint2Instruction, createInitializeMintInstruction, getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
+import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
+
+const user = Keypair.generate();
+const other = Keypair.generate().publicKey;
+const core = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const auth = PublicKey.findProgramAddressSync([Buffer.from("auth")], core)[0];
+const coreIx = () => new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) });
+const transaction = (...ix: TransactionInstruction[]) =>
+  new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }).add(...ix);
+const rpcWith = (over: { fee?: number | null; logs?: string[] } = {}): any => ({
+  getFeeForMessage: async () => ({ value: over.fee === undefined ? 10_000 : over.fee }),
+  simulateTransaction: async () => ({ value: { err: null, logs: over.logs || [] } }),
+});
+const guard = (tx: Transaction | VersionedTransaction, overrides: any = {}, rpc = rpcWith()) =>
+  guardTransaction(tx, user.publicKey, { ...getAofGuardConfig(), ...overrides }, rpc);
+const transfer = (lamports: number, from = user.publicKey) => SystemProgram.transfer({ fromPubkey: from, toPubkey: other, lamports });
+
+test("network fee: exactly the ceiling passes, one lamport more, null, negative or fractional fail", async () => {
+  assert.equal((await guard(transaction(coreIx()), {}, rpcWith({ fee: 150_000 }))).safe, true);
+  assert.equal((await guard(transaction(coreIx()), {}, rpcWith({ fee: 150_001 }))).safe, false);
+  assert.equal((await guard(transaction(coreIx()), { maxNetworkFeeLamports: 5_000 }, rpcWith({ fee: 5_000 }))).safe, true);
+  assert.equal((await guard(transaction(coreIx()), { maxNetworkFeeLamports: 5_000 }, rpcWith({ fee: 5_001 }))).safe, false);
+  for (const fee of [null, -1, 10.5, Number.NaN]) {
+    const result = await guard(transaction(coreIx()), {}, rpcWith({ fee: fee as any }));
+    assert.equal(result.safe, false, `fee ${fee}`);
+    assert.match(result.reason || "", /fee/i);
+  }
+});
+
+test("explicit SOL outflow: summed over the wallet's transfers, allowed up to the limit inclusive", async () => {
+  const none = await guard(transaction(coreIx()));
+  assert.equal(none.safe, true);
+  assert.equal(none.details?.lamportsSpent, 0);
+  const atLimit = await guard(transaction(transfer(300_000), transfer(200_000)));
+  assert.equal(atLimit.safe, true);
+  assert.equal(atLimit.details?.lamportsSpent, 500_000);
+  assert.equal(atLimit.risk, "LOW");
+  const over = await guard(transaction(transfer(300_000), transfer(200_001)));
+  assert.equal(over.safe, false);
+  assert.equal(over.risk, "HIGH");
+  assert.match(over.reason || "", /Высокая стоимость/);
+  // A transfer whose source is not the connected wallet is not a transfer the wallet may sign at all.
+  assert.equal((await guard(transaction(transfer(1, other)))).safe, false);
+  // System transfer must be exactly 12 bytes: opcode + u64. Trailing bytes are not a transfer.
+  const padded = transfer(1_000);
+  padded.data = Buffer.concat([padded.data, Buffer.from([0])]);
+  assert.equal((await guard(transaction(padded))).safe, false);
+  // A game instruction whose bytes happen to look like a transfer is never counted as SOL spend.
+  const lookalike = new TransactionInstruction({
+    programId: core, keys: [{ pubkey: user.publicKey, isSigner: true, isWritable: true }, { pubkey: other, isSigner: false, isWritable: true }],
+    data: Buffer.from([2, 0, 0, 0, 0x40, 0x42, 0x0f, 0, 0, 0, 0, 0]),
+  });
+  const notCounted = await guard(transaction(lookalike));
+  assert.equal(notCounted.safe, true);
+  assert.equal(notCounted.details?.lamportsSpent, 0);
+});
+
+test("compute budget: unit limit in (0, 1.4M] and price ≤ 100k microlamports, exact layouts only", async () => {
+  const ok = async (ix: TransactionInstruction) => assert.equal((await guard(transaction(ix, coreIx()))).safe, true, JSON.stringify([...ix.data]));
+  const bad = async (ix: TransactionInstruction) => assert.equal((await guard(transaction(ix, coreIx()))).safe, false, JSON.stringify([...ix.data]));
+  await ok(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }));
+  await ok(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }));
+  await ok(ComputeBudgetProgram.setComputeUnitLimit({ units: 1 }));
+  await bad(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_001 }));
+  await bad(ComputeBudgetProgram.setComputeUnitLimit({ units: 0 }));
+  await ok(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 }));
+  await ok(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 0 }));
+  await bad(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_001 }));
+  await bad(ComputeBudgetProgram.requestHeapFrame({ bytes: 64 * 1024 }));
+  const cb = (data: number[]) => new TransactionInstruction({ programId: ComputeBudgetProgram.programId, keys: [], data: Buffer.from(data) });
+  await bad(cb([2, 0x40, 0x42, 0x0f, 0, 0, 0, 0, 0])); // limit with a u64 body
+  await bad(cb([3, 0x10, 0x27, 0, 0]));               // price with a u32 body
+  await bad(cb([2, 0x40, 0x42, 0x0f]));                // truncated
+  await bad(cb([]));
+});
+
+test("prep-mint policy: one user-funded 82-byte classic mint, 0 decimals, program auth, no freeze authority, rent ceiling inclusive", async () => {
+  const mint = Keypair.generate();
+  const create = (over: Partial<{ from: PublicKey; lamports: number; space: number; programId: PublicKey; mint: PublicKey }> = {}) =>
+    SystemProgram.createAccount({
+      fromPubkey: over.from || user.publicKey, newAccountPubkey: over.mint || mint.publicKey, lamports: over.lamports ?? 1_461_600,
+      space: over.space ?? 82, programId: over.programId || TOKEN_PROGRAM_ID,
+    });
+  const init = (decimals = 0, mintAuth = auth, freeze: PublicKey | null = null, m = mint.publicKey) => createInitializeMintInstruction(m, decimals, mintAuth, freeze);
+  const ata = () => createAssociatedTokenAccountIdempotentInstruction(user.publicKey, getAssociatedTokenAddressSync(mint.publicKey, user.publicKey), user.publicKey, mint.publicKey);
+  const run = async (...ix: TransactionInstruction[]) => (await guard(transaction(...ix))).safe;
+
+  assert.equal(await run(create(), init(), ata()), true);
+  assert.equal(await run(create(), createInitializeMint2Instruction(mint.publicKey, 0, auth, null), ata()), true, "InitializeMint2 is the same policy");
+  assert.equal(await run(create({ lamports: 5_000_000 }), init(), ata()), true, "rent exactly at the ceiling");
+  assert.equal(await run(create({ lamports: 5_000_001 }), init(), ata()), false, "rent above the ceiling");
+  assert.equal(await run(create({ from: other }), init(), ata()), false, "someone else may not fund it");
+  assert.equal(await run(create({ space: 165 }), init(), ata()), false, "only an 82-byte mint, not a token account");
+  assert.equal(await run(create({ programId: TOKEN_2022_PROGRAM_ID }), init(), ata()), false, "owner must be the classic token program");
+  assert.equal(await run(create(), init(1), ata()), false, "decimals must be 0");
+  assert.equal(await run(create(), init(0, other), ata()), false, "mint authority must be the game's auth PDA");
+  assert.equal(await run(create(), init(0, auth, other), ata()), false, "no freeze authority");
+  assert.equal(await run(create(), ata()), false, "allocation without initialisation");
+  assert.equal(await run(init(), ata()), false, "initialisation without allocation");
+  const second = Keypair.generate();
+  assert.equal(await run(create(), init(), create({ mint: second.publicKey }), init(0, auth, null, second.publicKey), ata()), false, "at most one mint per transaction");
+  assert.equal(await run(create(), createInitializeMintInstruction(mint.publicKey, 0, auth, null, TOKEN_2022_PROGRAM_ID), ata()), false, "Token-2022 needs its own reviewed policy");
+});
+
+test("ATA policy: idempotent creation only, paid by the wallet, canonical address, at most four per transaction", async () => {
+  const mints = Array.from({ length: 5 }, () => Keypair.generate().publicKey);
+  const idem = (mint: PublicKey, owner = user.publicKey, payer = user.publicKey, address = getAssociatedTokenAddressSync(mint, owner)) =>
+    createAssociatedTokenAccountIdempotentInstruction(payer, address, owner, mint);
+  const run = async (...ix: TransactionInstruction[]) => (await guard(transaction(...ix, coreIx()))).safe;
+  assert.equal(await run(idem(mints[0])), true);
+  assert.equal(await run(idem(mints[0], other)), true, "an ATA for another owner is fine as long as the wallet only pays rent");
+  assert.equal(await run(...mints.slice(0, 4).map((m) => idem(m))), true, "four ATAs");
+  assert.equal(await run(...mints.map((m) => idem(m))), false, "five ATAs");
+  assert.equal(await run(createAssociatedTokenAccountInstruction(user.publicKey, getAssociatedTokenAddressSync(mints[0], user.publicKey), user.publicKey, mints[0])), false, "non-idempotent create");
+  assert.equal(await run(idem(mints[0], user.publicKey, other)), false, "payer must be the wallet");
+  assert.equal(await run(idem(mints[0], user.publicKey, user.publicKey, getAssociatedTokenAddressSync(mints[0], other))), false, "address must match owner+mint");
+  const tampered = idem(mints[0]);
+  tampered.keys[5] = { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false };
+  assert.equal(await run(tampered), false, "token program slot must be the classic token program");
+  const tamperedSystem = idem(mints[0]);
+  tamperedSystem.keys[4] = { pubkey: other, isSigner: false, isWritable: false };
+  assert.equal(await run(tamperedSystem), false);
+  assert.equal(ASSOCIATED_TOKEN_PROGRAM_ID.toBase58(), "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+});
+
+test("block lists: a blocked program or address in the transaction is a hard HIGH", async () => {
+  const blockedProgram = await guard(transaction(coreIx()), { blockedPrograms: [core.toBase58()] });
+  assert.equal(blockedProgram.safe, false);
+  assert.equal(blockedProgram.risk, "HIGH");
+  assert.match(blockedProgram.reason || "", /заблокированная программа/);
+  const withKey = new TransactionInstruction({ programId: core, keys: [{ pubkey: other, isSigner: false, isWritable: false }], data: Buffer.alloc(8) });
+  const blockedAddress = await guard(transaction(withKey), { blockedAddresses: [other.toBase58()] });
+  assert.equal(blockedAddress.safe, false);
+  assert.match(blockedAddress.reason || "", /заблокированный адрес/);
+  assert.equal((await guard(transaction(withKey), { blockedAddresses: [Keypair.generate().publicKey.toBase58()] })).safe, true);
+});
+
+test("program allowlist is always enforced: CPI programs seen only in simulation logs count, and an empty list is not a bypass", async () => {
+  const ok = await guard(transaction(coreIx()), {}, rpcWith({ logs: [`Program ${core.toBase58()} invoke [1]`, `Program ${core.toBase58()} success`] }));
+  assert.equal(ok.safe, true);
+  assert.deepEqual(ok.details?.programsInvoked, [core.toBase58()]);
+  const cpi = await guard(transaction(coreIx()), {}, rpcWith({ logs: [`Program ${core.toBase58()} invoke [1]`, `Program ${other.toBase58()} invoke [2]`, `Program ${other.toBase58()} success`] }));
+  assert.equal(cpi.safe, false, "an unknown program reached through CPI is still unknown");
+  assert.match(cpi.reason || "", /Неизвестные программы/);
+  assert.ok(cpi.details?.programsInvoked?.includes(other.toBase58()));
+  const noise = await guard(transaction(coreIx()), {}, rpcWith({ logs: [`Program log: invoke ${other.toBase58()}`, "Program consumption: 1 units"] }));
+  assert.equal(noise.safe, true, "only real invoke lines name programs");
+  assert.equal((await guard(transaction(coreIx()), { allowedPrograms: [] })).safe, false, "empty allowlist = standard programs only");
+  assert.equal((await guard(transaction(transfer(1)), { allowedPrograms: [] })).safe, true, "System Program is always standard");
+  assert.equal((await guardTransaction(transaction(coreIx()), user.publicKey, {}, rpcWith())).safe, true, "the default config already allows the six game programs");
+  assert.equal((await guardTransaction(transaction(new TransactionInstruction({ programId: other, keys: [], data: Buffer.alloc(8) })), user.publicKey, {}, rpcWith())).safe, false, "…and nothing else");
+});
+
+test("fee payer and message shape: the wallet must pay; one lookup table is enough to refuse", async () => {
+  const legacy = transaction(coreIx());
+  const message = legacy.compileMessage();
+  const paidByOther = new Transaction({ feePayer: other, recentBlockhash: other.toBase58() }).add(coreIx());
+  const versionedOther = new VersionedTransaction(paidByOther.compileMessage());
+  const result = await guard(versionedOther);
+  assert.equal(result.safe, false);
+  assert.match(result.reason || "", /Плательщик/);
+  const oneLookup = new VersionedTransaction(new MessageV0({
+    header: message.header, staticAccountKeys: message.accountKeys, recentBlockhash: message.recentBlockhash,
+    compiledInstructions: message.compiledInstructions, addressTableLookups: [{ accountKey: other, writableIndexes: [0], readonlyIndexes: [] }],
+  }));
+  assert.equal((await guard(oneLookup)).safe, false);
+  const noLookup = new VersionedTransaction(new MessageV0({
+    header: message.header, staticAccountKeys: message.accountKeys, recentBlockhash: message.recentBlockhash,
+    compiledInstructions: message.compiledInstructions, addressTableLookups: [],
+  }));
+  assert.equal((await guard(noLookup)).safe, true);
+  assert.equal((await guard(new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }))).safe, false, "empty transaction");
+});

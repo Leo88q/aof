@@ -23,6 +23,8 @@ test-ledger/
 # OS
 .DS_Store
 *.log
+# Local dev data (scripts/dev-local.sh): SQLite DB + session keys
+data/
 data/session-keys/
 .env.bak
 

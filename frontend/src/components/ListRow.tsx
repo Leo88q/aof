@@ -7,9 +7,10 @@ export function ListRow({
 }) {
   return (
     <button className="list-row" onClick={onClick}>
-      <span className="icon" style={{ background: iconBg }}>
+      {/* Прозрачные PNG-иконки лежат прямо на плате, без цветной подложки */}
+      <span className="icon" style={icon.startsWith("/") ? undefined : { background: iconBg }}>
         {icon.startsWith("/") ? (
-          <img src={icon} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
+          <img src={icon} alt="" width={28} height={28} style={{ objectFit: "contain", display: "block" }} />
         ) : icon}
       </span>
       <span className="label">{label}</span>
