@@ -275,6 +275,9 @@ test('#111 нулевые и пылевые значения: guard-ы на пу
     'burn_resource', 'mint_resource', 'deposit_gas', 'craft_order', 'marketplace', 'offer',
     'orderbook', 'collect_mining', 'collect_bread', 'collect_flour', 'collect_well_water',
     'lottery', 'pay_out', 'withdraw_gas', 'exploration',
+    // #111-хвост: sweep — единственный путь, двигающий lamports, и он же
+    // раньше не имел явного guard-а на нулевую сумму.
+    'sweep_gas_fees',
   ];
   const noGuard = [];
   for (const name of valuePaths) {
@@ -292,6 +295,19 @@ test('#111 нулевые и пылевые значения: guard-ы на пу
   }
   assert.ok(zeroGuards >= 15, `ZeroAmount-проверок должно быть много (сейчас ${zeroGuards}) — нулевые суммы не должны доходить до SPL (#111)`);
   assert.match(read('aof-core/src/errors.rs'), /ZeroAmount/, 'ошибка ZeroAmount обязана существовать');
+
+  // #111-хвост: нулевой sweep не должен доходить до перевода lamports, а
+  // резерв обязан удерживать логический баланс, пыль и ренту.
+  const sweep = read('aof-core/src/instructions/sweep_gas_fees.rs')
+    .replace(/\/\/[^\n]*/g, '')            // построчные комментарии
+    .replace(/\/\*[\s\S]*?\*\//g, ''); // блочные комментарии
+  assert.match(sweep, /require!\(excess > 0, AofError::ZeroAmount\)/,
+    'у sweep_gas_fees нет явного guard-а на нулевую сумму (#111)');
+  assert.match(sweep, /balance_micros[\s\S]{0,120}MICROS_TO_LAMPORTS/,
+    'резерв sweep обязан считать логический баланс по MICROS_TO_LAMPORTS');
+  assert.match(sweep, /dust_lamports/, 'резерв sweep обязан удерживать пыль пользователя');
+  assert.match(sweep, /minimum_balance\(GASTANK_SPACE\)/, 'резерв sweep обязан удерживать ренту');
+  assert.match(sweep, /transfer_owned_lamports\(/, 'sweep обязан двигать lamports напрямую, а не через System Program');
   const receipt = read('aof-core/src/instructions/mint_resource_once.rs');
   assert.match(receipt, /RewardReceipt|reward_receipt/, 'claim награды обязан быть идемпотентным через receipt/reward_id (#111)');
   assert.match(read('docs/UPSTREAM_AND_PROGRAM_LIFECYCLE.md'), /границах|fuzz/i, 'крайние значения обязаны гоняться на границах (fuzz на форке) (#117)');

@@ -39,6 +39,13 @@ pub fn handler(ctx: Context<SweepGasFees>) -> Result<()> {
     require!(current_lamports > floor, AofError::NoExcessToSweep);
     let excess = current_lamports.checked_sub(floor).ok_or(AofError::MathOverflow)?;
 
+    // [#111] Явный guard на нулевую сумму. Условие `current_lamports > floor`
+    // выше уже исключает ноль (excess >= 1 по построению), но это единственный
+    // путь в программе, который двигает lamports, поэтому проверка дублируется
+    // намеренно: если первое условие когда-нибудь ослабят до `>=`, нулевой
+    // перевод всё равно не пройдёт и в казну не уйдёт пустая транзакция.
+    require!(excess > 0, AofError::ZeroAmount);
+
     let gastank_info = ctx.accounts.gastank.to_account_info();
     let treasury_info = ctx.accounts.treasury.to_account_info();
     crate::economics::transfer_owned_lamports(&gastank_info, &treasury_info, excess, floor)?;
