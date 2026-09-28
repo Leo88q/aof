@@ -4,12 +4,9 @@ import { useNav } from "../../nav/NavContext";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
 import { useStore } from "../../store/useStore";
-import { StatChip } from "../../components/ui/StatChip";
-import { LiquidBar } from "../../components/ui/LiquidBar";
 import { Card } from "../../components/ui/Card";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { FarmPlot } from "./FarmPlot";
-import { ResourceBar } from "../../components/ui/ResourceBar";
 import { WeatherWidget } from "../../components/ui/WeatherWidget";
 import { InboxHome } from "../inbox/InboxHome";
 import { CompendiumHome } from "../compendium/CompendiumHome";
@@ -24,16 +21,18 @@ import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
 import { resourceIcon, UI_ICONS, toolPlate } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { LabResourcePanel, LabStateRow } from "../../components/farm/LabPanels";
+import { buildingFor } from "../../lib/buildings";
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
   const { push } = useNav();
   const { user, setUser, weather, setWeather, energy, setEnergy } = useStore();
-  const [streak, setStreak] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("aof_onboarded") === "1");
   const [subTab, setSubTab] = useState<SubTab>("dashboard");
+  const [staked, setStaked] = useState<any[]>([]);
 
   type SubTab = "dashboard" | "well" | "plant" | "mill" | "oven";
 
@@ -53,17 +52,18 @@ export function FarmDashboard() {
       if (!walletAddr) {
         setWeather(null);
         setEnergy(null);
-        setStreak(null);
+        setStaked([]);
         return;
       }
-      const [weatherData, energyData, streakData] = await Promise.all([
+      const [weatherData, energyData, toolsData] = await Promise.all([
         api.weather.current().catch(() => null),
         api.energy.balance(walletAddr).catch(() => null),
-        api.streaks.get(walletAddr).catch(() => null),
+        api.query.myTools(walletAddr).catch(() => null),
       ]);
       setWeather(weatherData);
       setEnergy(energyData);
-      setStreak(streakData);
+      const tools = Array.isArray(toolsData) ? toolsData : toolsData?.tools || [];
+      setStaked(tools.filter((t: any) => t?.staked || t?.isMining));
     } catch (e) {
       console.error("Не удалось загрузить данные:", e);
     } finally {
@@ -92,49 +92,54 @@ export function FarmDashboard() {
 
   return (
     <div className="p-4 pt-6 pb-24">
-      {/* Заголовок */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex justify-between items-start mb-4"
-      >
+      {/* Заголовок: сначала титул на всю ширину, затем ряд действий.
+          Раньше титул, три кнопки и погодный чип делили одну строку и на 360–390px
+          распирали её до 440px: чип уезжал за правый край экрана. */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-6 h-6 shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight text-center">
+            Нейро-лаборатория
+          </h1>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => push("farm", "drum", (<><NavHeader title="Квантовый барабан" tabKey="farm" /><DrumSpin /></>))}
-            className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
+            className="w-10 h-10 shrink-0 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center hover:bg-soil-700 transition"
             title="Квантовый барабан"
+            aria-label="Квантовый барабан"
           >
             <img src={UI_ICONS.drum} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
           <button
             onClick={() => push("farm", "lottery", (<><NavHeader title="Лотерея" tabKey="farm" /><LotteryPage /></>))}
-            className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
+            className="w-10 h-10 shrink-0 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center hover:bg-soil-700 transition"
             title="Лотерея"
+            aria-label="Лотерея"
           >
             <img src={UI_ICONS.lottery} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
           <button
             onClick={() => push("farm", "exploration", (<><NavHeader title="Экспедиция" tabKey="farm" /><ExplorationPage /></>))}
-            className="w-10 h-10 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center text-xl hover:bg-soil-700 transition"
+            className="w-10 h-10 shrink-0 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center hover:bg-soil-700 transition"
             title="Экспедиция"
+            aria-label="Экспедиция"
           >
             <img src={UI_ICONS.expedition} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
           </button>
+          <div className="ml-auto min-w-0 flex-1 flex justify-end">
+            <WeatherWidget compact />
+          </div>
         </div>
-        <div className="flex-1 text-center">
-          <h1 className="text-2xl font-bold text-parchment flex items-center justify-center gap-2"><ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-7 h-7" /> Нейро-лаборатория</h1>
-          <p className="text-straw text-sm mt-1">С возвращением, оператор</p>
-        </div>
-        <WeatherWidget />
       </motion.div>
 
-      {/* Подвкладки */}
-      <div className="flex gap-1 bg-soil-800/50 p-1 rounded-lg mb-4 overflow-x-auto">
+      {/* Подвкладки: на узких экранах переносятся в две строки, ничего не прячем */}
+      <div className="flex flex-wrap gap-1 bg-soil-800/50 p-1 rounded-lg mb-4">
         {subTabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setSubTab(t.key)}
-            className={`flex-1 min-w-max px-2 py-1.5 rounded-md text-xs font-bold transition whitespace-nowrap ${
+            className={`flex-1 basis-[30%] min-w-0 px-2 py-1.5 rounded-md text-[11px] font-bold transition ${
               subTab === t.key
                 ? "bg-sprout-600 text-parchment"
                 : "text-straw hover:bg-soil-700"
@@ -145,7 +150,7 @@ export function FarmDashboard() {
             ) : (
               <span>{t.icon} </span>
             )}
-            {t.label}
+            <span className="align-text-bottom">{t.label}</span>
           </button>
         ))}
       </div>
@@ -155,37 +160,42 @@ export function FarmDashboard() {
         <>
           <ActiveBuffs />
 
-          <ResourceBar owner={walletAddr} refreshKey={refreshKey} />
+          <LabResourcePanel owner={walletAddr} refreshKey={refreshKey} />
 
-          <div className="grid grid-cols-3 gap-2 mb-4 mt-4">
-            <StatChip icon={resourceIcon("POWER")} value="12.4" label="SOL газ" accent="gold" />
-            <StatChip
-              icon={resourceIcon("POWER")}
-              value={energy && typeof energy.amount === "number" ? `${energy.amount}/${energy.cap ?? 100}` : "—"}
-              label="Энергия"
-              accent="water"
-            />
-            <StatChip icon={UI_ICONS.rewardDaily} value={streak && typeof streak.current !== "undefined" ? String(streak.current) : "—"} label="Стрик" accent="green" />
-          </div>
-
-          {energy && typeof energy.amount === "number" && typeof energy.cap === "number" && energy.cap > 0 && (
-            <Card className="mb-4">
-              <LiquidBar
-                level={(energy.amount / energy.cap) * 100}
-                color="#00D4FF"
-                label="Энергия"
-                icon={resourceIcon("POWER")}
-              />
-            </Card>
-          )}
+          <LabStateRow owner={walletAddr} refreshKey={refreshKey} energy={energy} weather={weather} />
 
           <Card className="mb-4" onClick={() => push("farm", "farm", <FarmPlot />)}>
-            <h3 className="text-sm font-semibold text-parchment mb-3">Твоя лаборатория →</h3>
-            <div className="aspect-video bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden">
-              <div className="text-center">
-                <span className="flex items-center justify-center gap-2"><ResourceGlyph icon={toolPlate("plasma_cutter") || ""} alt="" className="w-8 h-8" /><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-8 h-8" /><ResourceGlyph icon={toolPlate("data_harvester") || ""} alt="" className="w-8 h-8" /><ResourceGlyph icon={toolPlate("quantum_transmitter") || ""} alt="" className="w-8 h-8" /></span>
-                <p className="text-straw text-xs mt-2">Визуализация построек из канонических инструментов</p>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-parchment">Твоя лаборатория →</h3>
+              <span className="text-[11px] text-straw">
+                {staked.length > 0 ? `построек: ${staked.length}` : "построек нет"}
+              </span>
+            </div>
+            <div className="aspect-[16/9] bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden px-3">
+              {staked.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {staked.slice(0, 6).map((t: any) => (
+                    <div key={t.mint || t.toolType} className="flex flex-col items-center gap-1 w-[68px]">
+                      <ResourceGlyph icon={buildingFor(t.toolType)?.icon} alt={buildingFor(t.toolType)?.name || ""} className="w-9 h-9" />
+                      <span className="text-[9.5px] leading-tight text-straw text-center line-clamp-2">
+                        {buildingFor(t.toolType)?.name || t.toolType}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <span className="flex items-center justify-center gap-2">
+                    <ResourceGlyph icon={buildingFor("plasma_cutter")?.icon} alt="" className="w-9 h-9" />
+                    <ResourceGlyph icon={buildingFor("silicon_extractor")?.icon} alt="" className="w-9 h-9" />
+                    <ResourceGlyph icon={buildingFor("data_harvester")?.icon} alt="" className="w-9 h-9" />
+                    <ResourceGlyph icon={buildingFor("quantum_transmitter")?.icon} alt="" className="w-9 h-9" />
+                  </span>
+                  <p className="text-straw text-xs mt-2">
+                    Поставь инструмент в стойку — на участке появится постройка
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 

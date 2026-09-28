@@ -4,26 +4,34 @@ import { useWalletStore } from "../../store/walletStore";
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
-// Группировка ресурсов по категориям (из мастер-документа §3)
+// Группировка ресурсов по категориям (из мастер-документа §3).
+//
+// Базовые ресурсы больше не идут отдельной витриной: балансы Данных/Схемы/Кремния
+// показываются на обзоре лаборатории вместе с остальными добываемыми ресурсами
+// (components/farm/LabPanels.tsx), а здесь они лежат в одном списке с модельной
+// цепочкой. Так один и тот же ресурс не встречается в интерфейсе дважды.
+const LAB_RESOURCE_KEYS = ["DATA", "CIRCUIT", "SILICON", "POWER", "NEURON", "SYNAPSE", "SIGNAL", "MODEL"];
+
 const CATEGORIES = [
   {
-    title: "Базовые",
+    title: "Производство лаборатории",
+    hint: "Добывается на участке и видно на обзоре лаборатории",
     icon: UI_ICONS.labOverview,
     items: [
       { key: "DATA", label: "Данные", icon: resourceIcon("DATA") || "", accent: "#00D4FF" },
       { key: "CIRCUIT", label: "Схема", icon: resourceIcon("CIRCUIT") || "", accent: "#00E5A0" },
       { key: "SILICON", label: "Кремний", icon: resourceIcon("SILICON") || "", accent: "#9B59FF" },
-    ],
-  },
-  {
-    title: "Модельная цепочка",
-    icon: UI_ICONS.transformations,
-    items: [
       { key: "NEURON", label: "Нейрон", icon: resourceIcon("NEURON") || "", accent: "#4F7BFF" },
       { key: "SYNAPSE", label: "Синапс", icon: resourceIcon("SYNAPSE") || "", accent: "#00D4FF" },
       { key: "SIGNAL", label: "Сигнал", icon: resourceIcon("SIGNAL") || "", accent: "#60EFFF" },
       { key: "MODEL", label: "Модель", icon: resourceIcon("MODEL") || "", accent: "#FFD700" },
       { key: "POWER", label: "Энергопоток", icon: resourceIcon("POWER") || "", accent: "#9B59FF" },
+    ],
+  },
+  {
+    title: "Расходники и топливо",
+    icon: UI_ICONS.transformations,
+    items: [
       { key: "COMPUTE", label: "Вычисления", icon: resourceIcon("COMPUTE") || "", accent: "#FF3CAC" },
       { key: "DATASET", label: "Датасет", icon: resourceIcon("DATASET") || "", accent: "#FF3366" },
     ],
@@ -107,6 +115,7 @@ export function ResourceOverview() {
           <h3 className="category-title">
             <span className="category-icon"><ResourceGlyph icon={cat.icon} alt="" className="w-5 h-5" /></span>
             {cat.title}
+            {cat.hint && <span className="category-hint">{cat.hint}</span>}
           </h3>
           <div className="resource-grid">
             {cat.items.map((item) => {

@@ -158,8 +158,9 @@ export function sparks(x: number, y: number, n = 14, material: Material = "magic
 
 function tick() {
   if (!canvas || !c2d) return;
-  const w = canvas.width = innerWidth * devicePixelRatio, h = canvas.height = innerHeight * devicePixelRatio;
-  const g = c2d; g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); g.clearRect(0, 0, w, h);
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = canvas.width = Math.floor(innerWidth * dpr), h = canvas.height = Math.floor(innerHeight * dpr);
+  const g = c2d; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
   if (Math.random() < .3) spawnAmbient();
   particles = particles.filter(p => p.life++ < p.max && p.y < innerHeight + 20 && p.y > -30);
   for (const p of particles) {
@@ -195,7 +196,10 @@ export function initManorFx() {
   if (document.getElementById("mn-fx-canvas")) return;
   document.documentElement.dataset.motion = prefs.motion ? "on" : "off";
   if (prefs.motion) {
-    canvas = document.createElement("canvas"); canvas.id = "mn-fx-canvas"; document.body.appendChild(canvas);
+    canvas = document.createElement("canvas"); canvas.id = "mn-fx-canvas";
+    // CSS-рамзер: без него canvas остаётся 2x-ширины (DPR) и распирает страницу.
+    canvas.style.width = "100%"; canvas.style.height = "100%";
+    document.body.appendChild(canvas);
     c2d = canvas.getContext("2d");
     const mist = document.createElement("div"); mist.className = "mn-mist"; document.body.appendChild(mist);
     raf = requestAnimationFrame(tick);

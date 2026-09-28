@@ -1,6 +1,7 @@
 import { Card } from "../../components/ui/Card";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
 
 /**
  * The previous screen displayed synthetic candles and a synthetic queue while
@@ -12,9 +13,10 @@ export function HotMarket() {
   return (
     <div className="p-4 pt-6 pb-32">
       <h1 className="text-2xl font-bold text-parchment mb-4 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketHot} alt="" className="w-7 h-7" /> Хот-маркет</h1>
-      <Card>
-        <p className="text-parchment font-semibold">Временно недоступно</p>
-        <p className="text-straw text-sm mt-2 leading-relaxed">
+      {/* Единый источник правды по отключённым механикам — FeatureDisabledNotice. */}
+      <FeatureDisabledNotice id="hot_market" />
+      <Card className="mt-3">
+        <p className="text-straw text-sm leading-relaxed">
           On-chain пул и его реальный инвентарь инструментов ещё не проиндексированы.
           Торговля, цены и графики отключены, чтобы не показывать синтетические данные
           и не принимать платежи без подтверждённого лота.

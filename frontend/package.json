@@ -12,7 +12,8 @@
     "lint:aof-colors": "stylelint \"src/ui/**/*.css\" --config stylelint.aof.config.mjs --max-warnings 0",
     "test:aof-stylelint": "node --test scripts/stylelint/no-raw-color.test.mjs",
     "test:security": "tsx --test tests/security.test.ts tests/txGuard.test.ts",
-    "assets:trim": "bash scripts/assets/trim-art.sh"
+    "assets:trim": "bash scripts/assets/trim-art.sh",
+    "test:ui": "tsx --test tests/ui-regressions.test.ts"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

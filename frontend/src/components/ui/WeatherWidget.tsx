@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { api } from "../../lib/api";
 import { Card } from "./Card";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { ResourceGlyph } from "../visual/ResourceGlyph";
 
 /**
  * On-chain weather states -> scene artwork. The art is named after the
@@ -60,7 +61,7 @@ interface ForecastDay {
   dayOfSeason: number;
 }
 
-export function WeatherWidget() {
+export function WeatherWidget({ compact = false }: { compact?: boolean }) {
   const [current, setCurrent] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +92,9 @@ export function WeatherWidget() {
   }, []);
 
   if (loading) {
+    if (compact) {
+      return <div className="h-8 w-24 rounded-xl bg-soil-800/70 animate-pulse" aria-hidden="true" />;
+    }
     return (
       <Card className="p-4 bg-soil-800 border border-straw/10">
         <div className="animate-pulse space-y-2">
@@ -102,12 +106,44 @@ export function WeatherWidget() {
   }
 
   if (!current || typeof current !== "object" || !current.type || typeof current.type !== "string") {
+    // Компактный режим (шапка вкладки): одна строка с обрезкой вместо карточки,
+    // которая раньше расширяла шапку до 440px и уезжала за край экрана.
+    if (compact) {
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 min-w-0 max-w-full h-8 px-2.5 rounded-xl bg-soil-800/80 border border-amber-500/20"
+          title="Погода недоступна из канонической сети"
+        >
+          <ResourceGlyph icon={UI_ICONS.weatherNominal} alt="" className="w-4 h-4 shrink-0 opacity-60" />
+          <span className="text-amber-400 text-[10px] truncate">нет данных сети</span>
+        </span>
+      );
+    }
     return (
       <Card className="p-4 bg-soil-800 border border-amber-500/20">
         <p className="text-amber-400 text-xs">Погода недоступна из канонической сети</p>
       </Card>
     );
   }
+
+  const loadChip = (
+    <span
+      className="inline-flex items-center gap-1.5 min-w-0 max-w-full h-8 px-2.5 rounded-xl bg-soil-800/80 border border-straw/15"
+      title={`Нагрузка сети: ${WEATHER_LABELS[current.type] || current.type}`}
+    >
+      <img
+        src={WEATHER_ICONS[current.type] || UI_ICONS.weatherNominal}
+        alt=""
+        className="w-5 h-5 object-contain shrink-0"
+      />
+      <span className="text-parchment text-[11px] font-semibold truncate">
+        {WEATHER_LABELS[current.type] || current.type}
+      </span>
+      <span className="text-straw text-[10px] shrink-0">· д.{((current.dayOfSeason ?? 0) + 1)}/42</span>
+    </span>
+  );
+
+  if (compact) return loadChip;
 
   return (
     <Card className="p-4 bg-gradient-to-br from-soil-800 to-soil-900 border border-straw/10">

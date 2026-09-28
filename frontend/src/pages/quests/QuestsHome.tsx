@@ -24,13 +24,19 @@ export function QuestsHome() {
   const [claimedIds, setClaimedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Loading квестов
+  // Loading квестов. Без кошелька запроса нет — иначе индикатор загрузки
+  // оставался на экране навсегда (вечный скелет вместо «подключите кошелёк»).
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      setQuests([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     api.quests
       .list(address)
-      .then((data: any) => setQuests(data.quests || []))
-      .catch(() => {})
+      .then((data: any) => setQuests(Array.isArray(data?.quests) ? data.quests : []))
+      .catch(() => setQuests([]))
       .finally(() => setLoading(false));
   }, [address]);
 
@@ -104,7 +110,9 @@ export function QuestsHome() {
         <div className="space-y-3">
           {quests.length === 0 ? (
             <Card className="text-center py-8">
-              <p className="text-straw">Нет активных заданий</p>
+              <p className="text-straw">
+                {address ? "Нет активных заданий" : "Подключите кошелёк, чтобы увидеть задания"}
+              </p>
             </Card>
           ) : (
             quests.map((quest, i) => {
@@ -164,7 +172,13 @@ export function QuestsHome() {
             Недельный челлендж
           </h3>
           <p className="text-straw text-sm mb-3">Внесение отключено до появления проверяемого списания медалей и расчёта наград.</p>
-          <LiquidBar level={64} color="#FFD700" label="Прогресс недели · только просмотр" icon={UI_ICONS.challenges} />
+          {/* Раньше здесь рисовалась полоса прогресса с зашитым значением 64% —
+              это была декорация без источника данных. Пока механика отключена,
+              показываем состояние вместо выдуманного прогресса. */}
+          <div className="rounded-2xl border border-straw/15 bg-soil-800/60 px-3 py-3 text-center">
+            <img src={UI_ICONS.challenges} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
+            <p className="text-straw text-xs">Прогресс недели появится, когда расчёт наград станет ончейн.</p>
+          </div>
           <button
             type="button"
             disabled

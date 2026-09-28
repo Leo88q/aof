@@ -17,6 +17,14 @@ const WEATHER_RATES = {
 
 type WeatherKey = keyof typeof WEATHER_RATES;
 
+/** Тип нагрузки из канонического роута -> значение WeatherState.weather (0..3). */
+const WEATHER_INDEX: Record<WeatherKey, number> = {
+  drought: 0,
+  sunny: 1,
+  rain: 2,
+  festival: 3,
+};
+
 function weatherKey(value: any): WeatherKey | null {
   const n = Number(value);
   if (n === 0) return "drought";
@@ -37,12 +45,17 @@ export function WellPanel() {
 
   async function loadState() {
     if (!walletAddr) return;
-    const [weatherState, wellState, mint] = await Promise.all([
+    // /weather/current и /query/weather-state читают один и тот же WeatherState PDA.
+    // Берём первый: он же питает чип нагрузки в шапке, поэтому панель и шапка
+    // больше не показывают разные состояния одного аккаунта.
+    const [current, weatherState, wellState, mint] = await Promise.all([
+      api.weather.current().catch(() => null),
       api.query.weatherState().catch(() => null),
       api.query.wellState(walletAddr).catch(() => null),
       getMintAsync("POWER"),
     ]);
-    setWeather(weatherState);
+    const fromType = current?.type ? WEATHER_INDEX[current.type as WeatherKey] : undefined;
+    setWeather(fromType !== undefined ? { weather: fromType } : weatherState);
     setWell(wellState);
     setWaterMint(mint);
   }
@@ -90,13 +103,13 @@ export function WellPanel() {
   }
 
   if (!walletAddr) {
-    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg">🔋 Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
+    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
   }
 
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2">🔋 Сетевая станция</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3>
         <span className="text-xs text-straw">Источник: on-chain</span>
       </div>
 
