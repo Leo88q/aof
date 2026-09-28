@@ -1,0 +1,203 @@
+{
+  "$comment": "Единый реестр всех программ и CPI-целей, от которых зависит NeuroForge (чек-лист #98/#116/#128). Проверяется на каждом коммите: node scripts/security/program-registry.mjs --check. Адреса сверяются с declare_id! и Anchor.toml; у каждой записи обязателен план по authority и хотя бы один монитор. Депрекейтнутая запись обязана иметь evidence и successor — 'забыли осушить' не проходит проверку.",
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-28",
+  "clusters": ["localnet", "devnet", "mainnet"],
+  "owner": "NeuroForge maintainers",
+  "programs": [
+    {
+      "name": "aof_core",
+      "onChain": true,
+      "address": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+      "source": "aof-core/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_core.json",
+      "status": "active",
+      "purpose": "Ядро: конфиг, роли, ресурсы, инструменты, стейкинг, крафт, VaultGuard/IssuanceCap, аукционы, аренда, orderbook, выплаты",
+      "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч (docs/SECURITY_RUNBOOK.md §1–3) — действие владельца до mainnet",
+      "deprecation": null,
+      "monitoring": ["authority-change", "upgrade", "balance", "issuance-caps", "security-advisories"],
+      "valueBearing": true
+    },
+    {
+      "name": "aof_market",
+      "onChain": true,
+      "address": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+      "source": "programs/aof-market/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_market.json",
+      "status": "active",
+      "purpose": "Хот-маркет, листинги, VaultGuard-совместимые выплаты",
+      "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч — действие владельца до mainnet",
+      "deprecation": null,
+      "monitoring": ["authority-change", "upgrade", "balance", "security-advisories"],
+      "valueBearing": true
+    },
+    {
+      "name": "aof_quests",
+      "onChain": true,
+      "address": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+      "source": "programs/aof-quests/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_quests.json",
+      "status": "active",
+      "purpose": "Квесты, достижения, барабан удачи, VRF-коммиты (копия vrf.rs, сверяется sync-quests-vrf.py)",
+      "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч — действие владельца до mainnet",
+      "deprecation": null,
+      "monitoring": ["authority-change", "upgrade", "balance", "security-advisories"],
+      "valueBearing": true
+    },
+    {
+      "name": "aof_rebirth",
+      "onChain": true,
+      "address": "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
+      "source": "programs/aof-rebirth/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_rebirth.json",
+      "status": "active",
+      "purpose": "Возрождение (престиж), сезонные множители",
+      "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч — действие владельца до mainnet",
+      "deprecation": null,
+      "monitoring": ["authority-change", "upgrade", "security-advisories"],
+      "valueBearing": true
+    },
+    {
+      "name": "aof_liquidity",
+      "onChain": true,
+      "address": "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
+      "source": "programs/aof-liquidity/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_liquidity.json",
+      "status": "active",
+      "purpose": "Пул ликвидности хот-маркета",
+      "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч — действие владельца до mainnet",
+      "deprecation": null,
+      "monitoring": ["authority-change", "upgrade", "balance", "security-advisories"],
+      "valueBearing": true
+    },
+    {
+      "name": "aof_session_keys",
+      "onChain": true,
+      "address": "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+      "source": "programs/aof-session-keys/src/lib.rs",
+      "idl": "aof_backend/src/idl/aof_session_keys.json",
+      "status": "active",
+      "purpose": "Сессионные ключи ботов: целевая программа, allowlist инструкций, лимиты, отзыв (спенд отключён до атомарной привязки)",
+      "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч — действие владельца до mainnet",
+      "deprecation": null,
+      "monitoring": ["authority-change", "upgrade", "security-advisories"],
+      "valueBearing": false
+    }
+  ],
+  "external": [
+    {
+      "name": "spl_token",
+      "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "kind": "cpi-target",
+      "status": "active",
+      "why": "Все SPL-переводы ресурсов и NFT; Token-2022 намеренно не поддерживается (#38/#39)",
+      "pin": "program-id pinned in code; revision tracked via upstream watch",
+      "monitoring": ["security-advisories", "upstream-release"],
+      "upstreamId": "spl-token"
+    },
+    {
+      "name": "associated_token_account",
+      "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      "kind": "cpi-target",
+      "status": "active",
+      "why": "Создание канонических ATA; в txGuard разрешено только идемпотентное создание (#33/#114)",
+      "pin": "program-id pinned in code; revision tracked via upstream watch",
+      "monitoring": ["security-advisories", "upstream-release"],
+      "upstreamId": "spl-associated-token-account"
+    },
+    {
+      "name": "system_program",
+      "address": "11111111111111111111111111111111",
+      "kind": "cpi-target",
+      "status": "active",
+      "why": "lamports, создание аккаунтов",
+      "pin": "n/a (ядро Solana)",
+      "monitoring": ["upstream-release"],
+      "upstreamId": "solana-agave"
+    },
+    {
+      "name": "compute_budget",
+      "address": "ComputeBudget111111111111111111111111111111",
+      "kind": "cpi-target",
+      "status": "active",
+      "why": "Приоритетная комиссия; txGuard ограничивает оба opcode (#114)",
+      "pin": "n/a (ядро Solana)",
+      "monitoring": ["upstream-release"],
+      "upstreamId": "solana-agave"
+    },
+    {
+      "name": "address_lookup_table",
+      "address": "AddressLookupTab1e1111111111111111111111111",
+      "kind": "cpi-target",
+      "status": "active",
+      "why": "Switchboard-раскрытия ссылаются на lookup-таблицы; константа зашита в vrf.rs",
+      "pin": "n/a (ядро Solana)",
+      "monitoring": ["upstream-release"],
+      "upstreamId": "solana-agave"
+    },
+    {
+      "name": "switchboard_on_demand_mainnet",
+      "address": "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv",
+      "kind": "oracle",
+      "status": "active",
+      "why": "VRF: commit/reveal в шести механиках; раскрытие проверяет подпись оракула (docs/VRF_SWITCHBOARD.md)",
+      "pin": "aof-core/src/vrf.rs (без --features devnet)",
+      "relatedAddresses": [
+        "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w",
+        "7Gs9n5FQMeC9XcEhg281bRZ6VHRrCvqp5Yq1j78HkvNa",
+        "AddressLookupTab1e1111111111111111111111111"
+      ],
+      "monitoring": ["security-advisories", "upstream-release", "oracle-health"],
+      "upstreamId": "switchboard-on-demand"
+    },
+    {
+      "name": "switchboard_on_demand_devnet",
+      "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2",
+      "kind": "oracle",
+      "status": "devnet-only",
+      "why": "VRF на devnet (--features devnet)",
+      "pin": "aof-core/src/vrf.rs (--features devnet)",
+      "relatedAddresses": [
+        "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7",
+        "4UFmCebEmzESoDTtHrmaftXj7YAsAH4HMios3yMWyVUT",
+        "AddressLookupTab1e1111111111111111111111111"
+      ],
+      "monitoring": ["security-advisories", "upstream-release", "oracle-health"],
+      "upstreamId": "switchboard-on-demand"
+    }
+  ],
+  "retired": [
+    {
+      "name": "ronin_firestore_functions",
+      "kind": "offchain-legacy",
+      "source": "functions/index.js",
+      "retiredAt": "2026-09-20",
+      "successor": "aof_backend (Solana)",
+      "authority": "none (не деплоится из этого репозитория)",
+      "evidence": "docs/REVIEW_DB_TESTS_LOAD_AI_2026-09-28.md §1.1 (Firestore — наследие), AUDIT_2026-09-20.md п. 8",
+      "drained": true,
+      "monitoring": ["reintroduced-deploy-config"]
+    },
+    {
+      "name": "farm_trader_live_mode",
+      "kind": "offchain-worker",
+      "source": "aof_backend/services/farm-trader/executor.ts",
+      "retiredAt": "2026-09-26",
+      "successor": "simulation-only (реальные ордера не подписываются)",
+      "authority": "none",
+      "evidence": "SECURITY_CHECKLIST_GAMES_2026-09-26.md #65/#73; tests/readiness/ai-agent-surface.test.cjs",
+      "drained": true,
+      "monitoring": ["reintroduced-live-signing"]
+    }
+  ],
+  "policy": {
+    "deprecatedMustBeDrained": true,
+    "deprecatedMustHaveEvidence": true,
+    "deprecatedMustHaveSuccessor": true,
+    "activeMustHaveUpgradeAuthorityPlan": true,
+    "activeMustHaveMonitoring": true,
+    "unknownProgramIsNeverTrusted": "CPI и txGuard допускают только адреса из programs[]+external[]; новый адрес без записи в реестре — ошибка сборки/теста, а не предупреждение",
+    "finalAuthority": "upgradeAuthorityPlan описывает целевое состояние; после финализации право обновления уходит в Squads (или в None) и фиксируется в отчёте о деплое, а не в коде",
+    "registryIsAllowlist": "Добавление записи в programs[]/external[] — отдельный ревьюируемый диф, как новый MCP-сервер в политике агентов"
+  }
+}

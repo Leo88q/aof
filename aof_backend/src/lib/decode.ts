@@ -1,6 +1,8 @@
+import { BorshCoder } from "@coral-xyz/anchor";
 import { program, connection } from "../provider";
 import { PROGRAM_ID } from "../config";
 import { ReadCache, envNonNegativeInt } from "./readCache";
+import { assertSignerReadPolicy, readAccountQuorum } from "./rpcQuorum";
 
 /**
  * Read cache for the public `/query/*` surface (routes/query.ts) ONLY. Write
@@ -25,6 +27,31 @@ export async function fetchAll(accountName: string, filters: any[] = []) {
 export async function fetchOne(accountName: string, address: any) {
   try {
     return await (program.account as any)[accountName].fetch(address);
+  } catch {
+    return null;
+  }
+}
+
+const accountCoder = new BorshCoder(program.idl as any);
+
+/**
+ * [#103] Вариант fetchOne для решений, ведущих к подписи (минт, выплата,
+ * co-sign). Читает аккаунт с кворума независимых RPC (`RPC_QUORUM_URLS`) и
+ * требует согласия минимум `RPC_QUORUM_MIN_AGREEMENT` хостов, иначе бросает
+ * RpcQuorumError. В production без настроенного кворума чтение запрещено
+ * (fail-closed): подписант, который доверяет одному источнику, повторяет
+ * историю KelpDAO. Без кворума (development) ведёт себя как обычный fetchOne.
+ */
+export async function fetchOneForSigner(accountName: string, address: any) {
+  const policy = assertSignerReadPolicy();
+  if (policy.endpoints.length === 0) return fetchOne(accountName, address);
+  const { sample } = await readAccountQuorum(String(address), {
+    endpoints: policy.endpoints,
+    minAgreement: policy.minAgreement,
+  });
+  if (!sample || !sample.dataBase64) return null;
+  try {
+    return accountCoder.accounts.decode(accountName, Buffer.from(sample.dataBase64, "base64"));
   } catch {
     return null;
   }

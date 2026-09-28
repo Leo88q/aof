@@ -47,7 +47,11 @@ target/
 
 # === IDE И ОС ===
 .idea/
-.vscode/
+# [SECURITY #106/#107] Ревьюируемые файлы политики рабочего окружения остаются в Git:
+# allowlist расширений, выключенный автозапуск задач, Workspace Trust.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 *.swp
 *.swo
 *~

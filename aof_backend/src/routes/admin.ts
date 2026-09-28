@@ -3,7 +3,7 @@ import { SystemProgram, Transaction, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import {AUTHORITY, TREASURY, AUTHORITY_PUBKEY} from "../config";
-import { fetchOne } from "../lib/decode";
+import { fetchOne, fetchOneForSigner } from "../lib/decode";
 import { program, connection, sessionProgram } from "../provider";
 import {
   authPda,
@@ -278,7 +278,7 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [auth] = authPda();
-    const cfg: any = await fetchOne("config", config);
+    const cfg: any = await fetchOneForSigner("config", config);
     if (!cfg || !cfg.treasury) return res.status(400).json({ error: "Config not initialized" });
     const mint = kind === "Food" ? cfg.foodMint
       : kind === "Wood" ? cfg.woodMint
@@ -378,8 +378,8 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
     const [materialMints] = materialMintsPda();
     const [auth] = authPda();
     
-    const cfg: any = await fetchOne("config", config);
-    const mm: any = await fetchOne("materialMints", materialMints);
+    const cfg: any = await fetchOneForSigner("config", config);
+    const mm: any = await fetchOneForSigner("materialMints", materialMints);
     const treasury = cfg?.treasury ? new PublicKey(cfg.treasury.toString()) : null;
     
     if (!cfg || !mm || !treasury) {
@@ -530,7 +530,7 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
     const user = pk(req.body.user);
     const amount = Number(req.body.amount || 10000);
     const [config] = configPda();
-    const cfg: any = await fetchOne("config", config);
+    const cfg: any = await fetchOneForSigner("config", config);
     
     if (!cfg?.potatoMint) {
       return res.status(400).json({ error: "PotatoMint not configured" });

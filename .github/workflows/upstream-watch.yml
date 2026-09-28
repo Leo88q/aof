@@ -1,0 +1,71 @@
+name: Upstream watch
+
+# Зачем (чек-лист #116/#128):
+#   Целью становится не только наш код, но и код, который мы не пишем: VRF-оракул,
+#   SPL Token, Anchor, RPC-стек. Liquid Network потерял ≈$320 млн, потому что
+#   security-фикс Elements не попал в теговый релиз, а ПО федерации не обновлялось.
+#   Этот workflow еженедельно сверяет наши пины с OSV и релизами GitHub и открывает
+#   issue при находке. Сам он ничего не обновляет: обновление зависимости — отдельный
+#   ревьюируемый PR.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # понедельник, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Registry and pins (offline)
+        run: |
+          node scripts/security/program-registry.mjs --check
+          node scripts/security/upstream-watch.mjs --check
+
+      - name: Query OSV and GitHub releases
+        id: watch
+        continue-on-error: true
+        run: node scripts/security/upstream-watch.mjs --online --out upstream-watch.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-watch
+          path: upstream-watch.md
+          if-no-files-found: warn
+
+      - name: Open or update the tracking issue
+        if: steps.watch.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TITLE="Upstream watch: новые advisory/релизы требуют разбора"
+          BODY=$(cat <<EOF
+          Еженедельная проверка апстримов нашла расхождения (см. artifact \`upstream-watch\`).
+
+          $(sed -n '1,200p' upstream-watch.md)
+
+          Порядок разбора: обновить пин в \`security/upstream-dependencies.json\` вместе с lock-файлом,
+          проверить, не затронуты ли наши форки (включая копию \`vrf.rs\` в \`aof-quests\`, сверяется
+          \`scripts/sync-quests-vrf.py\`), прогнать CI. Dependabot у нас не включён осознанно:
+          снабженческая атака через автоматический merge — отдельный риск (#107).
+          EOF
+          )
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          fi

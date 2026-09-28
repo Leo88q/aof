@@ -18,6 +18,15 @@ jobs:
       - run: python3 scripts/test-p0-security.py
       # [F-06] aof-quests carries a generated copy of aof-core's vrf.rs.
       - run: python3 scripts/sync-quests-vrf.py --check
+      # [SECURITY #98/#116/#128] реестр программ/апстримов/ключей: адреса сверяются
+      # с declare_id!/Anchor.toml/IDL/txGuard, у депрекейта обязателен drain,
+      # пины апстримов обязаны существовать в lock-файлах.
+      - run: node scripts/security/program-registry.mjs --check
+      # [SECURITY #130] навыки и конфиги ИИ-агентов: опасные инструкции и SHA-пиннинг.
+      - run: node scripts/security/check-agent-skills.mjs
+      # [SECURITY #116/#128] апстрим-дозор (offline): у каждой зависимости есть
+      # pin в lock-файле, источник advisory и запись в реестре форков/движков.
+      - run: node scripts/security/upstream-watch.mjs --check
       - run: node --test tests/readiness/*.test.cjs
       # [SECURITY_CHECKLIST #66] blocking audit of shipped (runtime) dependencies
       - run: node scripts/audit-gate.mjs

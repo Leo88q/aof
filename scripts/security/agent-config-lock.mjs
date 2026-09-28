@@ -38,7 +38,9 @@ const CANDIDATE_FILES = [
   "opencode.json", ".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".claude/settings.json", ".claude/mcp.json",
   ".gemini/settings.json", ".codex/config.toml", ".roo/mcp.json", ".continue/config.json", ".continue/config.yaml",
 ];
-const CANDIDATE_DIRS = [".claude/commands", ".claude/agents", ".cursor/rules", ".github/instructions", ".github/prompts", ".roo", ".windsurf/rules", "prompts"];
+// [#130] Каталоги навыков — такой же исполняемый агентом текст, как MCP-описания:
+// вредоносный навык может быть просто набором инструкций (инциденты ClawHub/OpenClaw 2026).
+const CANDIDATE_DIRS = [".claude/commands", ".claude/agents", ".claude/skills", "skills", ".cursor/rules", ".github/instructions", ".github/prompts", ".roo", ".windsurf/rules", "prompts"];
 
 const files = new Set(CANDIDATE_FILES.filter((f) => existsSync(resolve(ROOT, f))));
 for (const d of CANDIDATE_DIRS) walk(resolve(ROOT, d), (f) => files.add(relative(ROOT, f)));
