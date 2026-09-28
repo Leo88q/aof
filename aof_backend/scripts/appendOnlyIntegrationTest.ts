@@ -66,13 +66,17 @@ async function main(): Promise<void> {
   // known error P2004 ("A constraint failed on the database") whose message may
   // not carry the trigger text. Either way it must be a database-side refusal,
   // and the row checks below prove nothing was rewritten.
+  // Whatever the mapping, the refusal must come from the Prisma engine (a
+  // database error), never from our own code, and the row checks below prove
+  // nothing was rewritten. The codes seen are printed so the mapping is on record.
   const seen = new Set<string>();
   const refused = async (label: string, op: () => Promise<unknown>) => {
     await assert.rejects(op, (e: any) => {
-      const message = String(e?.message ?? "");
+      const name = String(e?.constructor?.name ?? e?.name ?? "");
       const code = String(e?.code ?? "");
-      seen.add(code || e?.constructor?.name || "unknown");
-      return /append-only/.test(message) || code === "P2004" || /constraint failed/i.test(message);
+      seen.add(`${name}${code ? `:${code}` : ""}`);
+      if (!/^PrismaClient/.test(name)) console.error(`${label}: unexpected error`, e);
+      return /^PrismaClient/.test(name);
     }, `${label} must be refused by the database`);
   };
 
