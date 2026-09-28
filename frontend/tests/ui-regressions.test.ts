@@ -432,3 +432,37 @@ function walkApp(): string[] {
   walk("src");
   return out;
 }
+
+test("экран вкладки не схлопывается в нулевую высоту (чёрный экран с одним доком)", () => {
+  // Дефект 2026-09-28: при сведении четырёх слоёв в forge.css у .page-stack
+  // пропала высота. Стек занимал 0 px, .page с position:absolute не имел
+  // размеров — игрок видел только нижний док на чёрном фоне. Держим цепочку
+  // высот целиком: html/body/#root → пейджер (inline height:100%) → .page-stack → .page.
+  const css = read("src/theme/forge.css");
+  assert.match(css, /html, body, #root \{[^}]*height: 100%/, "высотная цепочка html/body/#root потеряна");
+  assert.match(css, /\.page-stack \{[^}]*height: 100%/, ".page-stack обязан получать высоту процентом");
+  assert.match(css, /\.page-stack \{[^}]*min-height: 0/, ".page-stack должен позволять сжатие во flex-колонке");
+  assert.match(css, /\.page \{[^}]*position: absolute/, ".page обязан растягиваться по стеку вкладки");
+  const pager = read("src/nav/TabPager.tsx");
+  assert.match(pager, /height: "100%"/, "пейджер вкладок обязан задавать высоту цепочке");
+});
+
+test("совместимые классы сохраняют раскладку, а не только цвет", () => {
+  // Тот же свод четырёх слоёв потерял объявления геометрии: кладовая, каталог
+  // ресурсов, рецепты и подтабы разъезжались. Проверяем именно раскладку.
+  const css = read("src/theme/forge.css");
+  const layout: Array<[string, RegExp, string]> = [
+    ["resource-card", /\.resource-card \{[^}]*display: flex/, "карточка ресурса обязана быть строкой"],
+    ["resource-icon", /\.resource-icon \{[^}]*justify-content: center/, "иконка ресурса должна центрироваться"],
+    ["resource-label", /\.resource-label \{[^}]*text-overflow: ellipsis/, "подпись ресурса должна обрезаться"],
+    ["pantry-item", /\.pantry-item \{[^}]*display: flex/, "строка кладовой обязана быть строкой"],
+    ["pantry-item-info", /\.pantry-item-info \{[^}]*min-width: 0/, "тексту кладовой нужно сжатие"],
+    ["pantry-filter", /\.pantry-filter \{[^}]*justify-content: center/, "фильтр кладовой должен центрироваться"],
+    ["sub-tab-btn", /\.sub-tab-btn \{[^}]*display: flex/, "подтаб обязан быть строкой"],
+    ["recipe-btn", /\.recipe-btn \{[^}]*width: 100%/, "кнопка рецепта обязана занимать строку"],
+    ["economy-root", /\.economy-root \{[^}]*padding: 12px/, "экономике нужен внутренний отступ"],
+    ["economy-empty", /\.economy-empty \{[^}]*text-align: center/, "пустое состояние экономики центрируется"],
+    ["workshop-msg", /\.workshop-msg \{[^}]*padding: 10px/, "сообщению мастерской нужен отступ"],
+  ];
+  for (const [name, re, why] of layout) assert.match(css, re, `${name}: ${why}`);
+});

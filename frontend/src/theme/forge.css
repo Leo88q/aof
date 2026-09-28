@@ -127,6 +127,12 @@
 }
 
 /* ---------- 1. БАЗА ---------- */
+html, body, #root {
+  /* Цепочка высот обязательна: .page-stack берёт высоту процентом от
+     пейджера, а .page растягивается по нему. Без неё стек экрана получал
+     нулевую высоту, и игрок видел только нижний док на чёрном фоне. */
+  height: 100%;
+}
 html {
   overflow-x: clip;
   background: var(--fg-void);
@@ -178,7 +184,13 @@ h1, h2, h3, .fg-title {
   display: flex;
   flex-direction: column;
 }
-.page-stack { position: relative; flex: 1; overflow: hidden; }
+.page-stack {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 .page {
   position: absolute;
   inset: 0;
@@ -1081,6 +1093,26 @@ input.fg-input:focus {
 .list-row .label { flex: 1; min-width: 0; }
 .list-row .chevron { color: var(--fg-muted); font-size: 14px; }
 .list-row .value { color: var(--fg-dim); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* Раскладка совместимых классов, восстановленная сверкой со старыми слоями.
+   При сведении globals/manor/plates/circuit в один файл потерялись не только
+   краски, но и объявления геометрии: у кладовой, каталога ресурсов, рецептов и
+   подтабов пропали display:flex / gap / min-width, и экраны разъезжались —
+   иконка над текстом вместо строки, кнопка рецепта шириной в слово. Здесь только
+   раскладка; палитра и материал остаются новыми. */
+.resource-card { display: flex; align-items: center; gap: 10px; }
+.resource-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.resource-info { flex: 1; }
+.resource-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pantry-item { display: flex; align-items: center; gap: 12px; }
+.pantry-item-info { flex: 1; min-width: 0; }
+.pantry-filter { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.sub-tab-btn { display: flex; align-items: center; gap: 6px; }
+.recipe-btn { width: 100%; }
+.recipe-card { text-align: center; }
+.economy-root { padding: 12px; }
+.economy-empty { padding: 40px 20px; text-align: center; }
+.workshop-msg { padding: 10px; text-align: center; }
 
 /* Экономика/кладовая/рецепты: плитки остаются, вид — тихий уровень */
 .resource-card, .pantry-item, .recipe-card { padding: 12px; }

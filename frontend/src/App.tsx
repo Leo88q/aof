@@ -7,6 +7,7 @@ import { TabFallback } from "./nav/TabFallback";
 import { TAB_VIEWS } from "./nav/tabChunks";
 import { useVipStatus } from "./lib/useVipStatus";
 import { SceneBackdrop } from "./components/visual/SceneBackdrop";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const V = TAB_VIEWS;
 
@@ -79,7 +80,12 @@ export default function App() {
         <div className="app-shell">
           <SceneBackdrop />
           <Toast />
-          <TabPager />
+          {/* Падение ленты вкладок раньше оставляло игрока с одним доком на
+              чёрном экране без единого слова. Теперь сбой показывается словами,
+              а док и шапка остаются живыми. */}
+          <ErrorBoundary label="экраны">
+            <TabPager />
+          </ErrorBoundary>
           <TabBar />
         </div>
       </NavProvider>
