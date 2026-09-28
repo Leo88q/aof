@@ -51,7 +51,7 @@ if (!providerUrl) {
   log(`  export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899`);
   log(`  export ANCHOR_WALLET=${walletPath}`);
 } else {
-  log(`ANCHOR_PROVIDER_URL=${providerUrl}`);
+  log(`ANCHOR_PROVIDER_URL is configured (value redacted)`);
 }
 
 log(`done. You can now run:`);

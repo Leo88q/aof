@@ -1,3 +1,4 @@
+import { functionalStorage } from "../../legal/consent";
 import { ActiveBuffs } from "../../components/ActiveBuffs";
 import { useEffect, useState } from "react";
 import { useNav } from "../../nav/NavContext";
@@ -31,7 +32,7 @@ export function FarmDashboard() {
   const { user, setUser, weather, setWeather, energy, setEnergy } = useStore();
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [onboarded, setOnboarded] = useState(() => localStorage.getItem("aof_onboarded") === "1");
+  const [onboarded, setOnboarded] = useState(() => functionalStorage.getItem("aof_onboarded") === "1");
   const [subTab, setSubTab] = useState<SubTab>("dashboard");
   const [staked, setStaked] = useState<any[]>([]);
 
@@ -78,7 +79,7 @@ export function FarmDashboard() {
     return (
       <OnboardingWizard
         onComplete={() => {
-          localStorage.setItem("aof_onboarded", "1");
+          functionalStorage.setItem("aof_onboarded", "1");
           setOnboarded(true);
         }}
       />

@@ -1,31 +1,14 @@
-# gitleaks configuration for AOF. Extends the default ruleset; allowlist covers
-# documented placeholders and Solana public keys (base58 32-byte pubkeys are
-# not secrets; 64-byte keypairs are and remain detected by the default rules).
+# Scan templates, lockfiles and IDLs too: file-wide exclusions hide leaks.
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Placeholders, examples, and public identifiers"
-paths = [
-  '''aof_backend/\.env\.example$''',
-  '''frontend/\.env\.example$''',
-  '''package-lock\.json$''',
-  '''Cargo\.lock$''',
-  '''src/idl/.*\.json$''',
-  '''^idl_raw\.json$''',
-]
-regexes = [
-  '''<long random string>''',
-  '''<different long random string>''',
-  '''<random string>''',
-  '''postgresql://user:pass@host''',
-  '''file:(\.\./|/app/|/abs/)''',
-  # Solana 32-byte public keys: base58, 43-44 chars, no 0/O/I/l (documented
-  # in the header above). \b on both sides so an 88-char base58 64-byte
-  # secret key can never match a 43-44 window inside itself.
-  '''\b[1-9A-HJ-NP-Za-km-z]{43,44}\b''',
-  # The same kind of public key as raw hex: the 32 bytes of the SPL Token
-  # program id (TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA), a base58 test
-  # vector in tests/readiness/seed-idl.test.cjs (history of commit cd50932).
-  '''06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9''',
-]
+[[rules]]
+id = "solana-keypair-array"
+description = "Potential Solana 64-byte secret key array; manually triage fixtures"
+regex = '''\[(?:\s*\d{1,3}\s*,){63}\s*\d{1,3}\s*\]'''
+
+[[rules]]
+id = "base58-private-key-assignment"
+description = "Potential base58 private key assigned to a secret field"
+regex = '''(?i)(?:private[_-]?key|secret[_-]?key|mnemonic)\s*["']?\s*[:=]\s*["']?([1-9A-HJ-NP-Za-km-z]{87,88})\b'''
+secretGroup = 1

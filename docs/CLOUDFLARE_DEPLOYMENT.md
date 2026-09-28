@@ -11,12 +11,12 @@
 3. Задайте настройки сборки (**Build settings**):
    * **Framework preset**: `Vite`
    * **Root directory**: `frontend`
-   * **Build command**: `npm run build`
+   * **Build command**: `npm run build:release`
    * **Build output directory**: `dist`
 4. В разделе **Environment variables** добавьте переменные:
    * `NODE_VERSION`: `20`
    * `VITE_SOLANA_NETWORK`: `mainnet-beta` (или `devnet` для тестов)
-   * `VITE_RPC_URL`: `https://mainnet.helius-rpc.com/?api-key=ВАШ_КЛЮЧ`
+   * `VITE_RPC_URL`: публичный RPC без секретов либо HTTPS URL собственного RPC-прокси. **Все `VITE_*` публичны**; ключ провайдера хранится только на прокси. Прокси требует allowlist методов, лимиты запросов/размера и бюджета; не открытый relay
    * `VITE_API_URL`: `https://api.yourdomain.com` (адрес бэкенда)
    * `VITE_PROGRAM_ID`: `HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq`
 5. Нажмите **Save and Deploy**. Cloudflare автоматически соберёт проект и выдаст адрес вида `https://aof-xxx.pages.dev`.
@@ -31,7 +31,7 @@
    ```bash
    cd frontend
    npm ci
-   npm run build
+   npm run build:release
    ```
 2. Разверните скомпилированную папку `dist` через Wrangler:
    ```bash
@@ -44,3 +44,9 @@
 ## Важные файлы конфигурации (уже добавлены в репозиторий):
 * `frontend/public/_routes.json` — настройка роутинга для SPA.
 * `frontend/public/_headers` — заголовки безопасности и кэширование статики.
+
+## Production gate для правовых документов
+
+`npm run build:release` намеренно отказывает, пока `src/legal/operator.json` не заполнен и тексты не утверждены. Инструкции: `docs/LEGAL_AND_PRIVACY_OPERATIONS.md`. Не обходить gate заменой команды на `npm run build`: обычная сборка предназначена для разработки и staging. После успешной release-сборки генерируются `/.well-known/security.txt`, robots и sitemap с проверенным canonical origin. Проверить доставку письма на security-контакт и соответствие версии документа перед деплоем.
+
+Для разработки / демонстрации draft-документов: `npm run dev` либо обычный `npm run build`. Эти команды не являются одобрением production.

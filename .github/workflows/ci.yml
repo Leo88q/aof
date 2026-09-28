@@ -1504,7 +1504,7 @@ jobs:
           fetch-depth: 0
 
       - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITLEAKS_ENABLE_SUMMARY: "true"
@@ -1550,6 +1550,14 @@ jobs:
           npm run test:ui 2>&1 | tee -a /tmp/frontend-build.log || exit "${PIPESTATUS[0]}"
           npm run build 2>&1 | tee -a /tmp/frontend-build.log || rc=$?
           exit "$rc"
+
+      - name: Reject private files and source maps in public output
+        run: |
+          python3 ../scripts/security/test-public-output.py
+          python3 ../scripts/security/check-public-output.py dist
+
+      - name: Privacy and legal release regressions
+        run: npm run test:privacy
 
       - name: Stylelint rule self-test
         run: npm run test:aof-stylelint

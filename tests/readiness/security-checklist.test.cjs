@@ -728,7 +728,7 @@ test('#50 the frontend ships HSTS and an enforced baseline CSP', () => {
   const headers = read('frontend/public/_headers');
   assert.match(headers, /Strict-Transport-Security: max-age=\d+/);
   const csp = (headers.match(/^\s*Content-Security-Policy: (.+)$/m) || [])[1] || '';
-  for (const directive of ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'"]) {
+  for (const directive of ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'none'", "script-src 'self'"]) {
     assert.ok(csp.includes(directive), directive);
   }
   assert.match(headers, /Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'/);

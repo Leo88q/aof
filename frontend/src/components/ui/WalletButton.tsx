@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { WalletSafetyNotice } from "../../legal/WalletSafetyNotice";
 import { motion } from "framer-motion";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../visual/ResourceGlyph";
@@ -9,6 +11,7 @@ export function WalletButton() {
   const { address, connected, connecting, connect, disconnect, walletName } =
     useWalletStore();
   const { isVip } = useStore();
+  const [showNotice, setShowNotice] = useState(false);
 
   async function handleClick() {
     if (connected) {
@@ -30,26 +33,36 @@ export function WalletButton() {
 
   return (
     <div className="flex flex-col items-end gap-1">
-    <motion.button
-      onClick={handleClick}
-      whileTap={{ scale: 0.95 }}
-      className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-        connected
-          ? "bg-sprout-600 text-white"
-          : "bg-wheat-600 text-soil-950"
-      }`}
-    >
-      {connecting
-        ? "Подключение..."
-        : connected
-        ? <span className="inline-flex items-center gap-1.5">
-            <ResourceGlyph icon={isVip ? UI_ICONS.rewardCore : UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" />
-            {walletName} • {shortAddr}
-          </span>
-        : <span className="inline-flex items-center gap-1.5">
-            <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
-          </span>}
-    </motion.button>
+      <motion.button
+        disabled={connecting}
+        onClick={() => (connected ? void handleClick() : setShowNotice(true))}
+        whileTap={{ scale: 0.95 }}
+        className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+          connected
+            ? "bg-sprout-600 text-white"
+            : "bg-wheat-600 text-soil-950"
+        }`}
+      >
+        {connecting
+          ? "Подключение..."
+          : connected
+          ? <span className="inline-flex items-center gap-1.5">
+              <ResourceGlyph icon={isVip ? UI_ICONS.rewardCore : UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" />
+              {walletName} • {shortAddr}
+            </span>
+          : <span className="inline-flex items-center gap-1.5">
+              <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
+            </span>}
+      </motion.button>
+      {showNotice && !connected && (
+        <WalletSafetyNotice
+          onCancel={() => setShowNotice(false)}
+          onContinue={() => {
+            setShowNotice(false);
+            void handleClick();
+          }}
+        />
+      )}
       {offerPhantom && (
         <a
           href={phantomBrowseLink()}

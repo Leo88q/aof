@@ -1,3 +1,2 @@
 User-agent: *
 Allow: /site/
-Sitemap: http://localhost:3000/sitemap.xml

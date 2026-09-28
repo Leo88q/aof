@@ -1,3 +1,4 @@
+import { functionalStorage } from "../legal/consent";
 /**
  * manorFx — тактильный слой дизайн-системы Manor:
  *  • звук по материалу (WebAudio-синтез, без файлов): wood / stone / metal / magic
@@ -19,13 +20,13 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 
 const prefs = {
-  get sound() { return localStorage.getItem("manor.sound") !== "0"; },
-  set sound(v: boolean) { localStorage.setItem("manor.sound", v ? "1" : "0"); },
+  get sound() { return functionalStorage.getItem("manor.sound") !== "0"; },
+  set sound(v: boolean) { functionalStorage.setItem("manor.sound", v ? "1" : "0"); },
   get motion() {
-    if (localStorage.getItem("manor.motion") === "0") return false;
+    if (functionalStorage.getItem("manor.motion") === "0") return false;
     return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   },
-  set motion(v: boolean) { localStorage.setItem("manor.motion", v ? "1" : "0"); document.documentElement.dataset.motion = v ? "on" : "off"; },
+  set motion(v: boolean) { functionalStorage.setItem("manor.motion", v ? "1" : "0"); document.documentElement.dataset.motion = v ? "on" : "off"; },
 };
 
 function audio(): AudioContext | null {
