@@ -110,3 +110,27 @@ watchtower/dist/
 
 # [SECURITY_CHECKLIST #65] Docker secret files (docker-compose.secrets.yml)
 secrets/
+
+# Production audit: key material and database exports (SQL migrations stay tracked)
+id.json
+keypair*.json
+wallet*.json
+*.keystore
+serviceAccount*.json
+credentials*
+secrets*
+*.sqlite
+*.sqlite3
+*.db
+*.db-*
+*.dump
+*.sql
+!**/prisma/**/*.sql
+!src/os/sql/*.sql
+!tests/sql/*.sql
+!watchtower/migrations/*.sql
+out/
+# Keep reviewed, value-free templates visible even below backend rules.
+!**/.env.example
+# Legacy reviewed Watchtower template (not a live environment file).
+!watchtower/config.example.env

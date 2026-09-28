@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { WalletSafetyNotice } from "../../legal/WalletSafetyNotice";
 import { motion } from "framer-motion";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../visual/ResourceGlyph";
@@ -8,6 +10,7 @@ export function WalletButton() {
   const { address, connected, connecting, connect, disconnect, walletName } =
     useWalletStore();
   const { isVip } = useStore();
+  const [showNotice, setShowNotice] = useState(false);
 
   async function handleClick() {
     if (connected) {
@@ -26,8 +29,10 @@ export function WalletButton() {
     : "";
 
   return (
+    <>
     <motion.button
-      onClick={handleClick}
+      disabled={connecting}
+      onClick={() => connected ? void handleClick() : setShowNotice(true)}
       whileTap={{ scale: 0.95 }}
       className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
         connected
@@ -46,5 +51,7 @@ export function WalletButton() {
             <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
           </span>}
     </motion.button>
+    {showNotice && !connected && <WalletSafetyNotice onCancel={() => setShowNotice(false)} onContinue={() => { setShowNotice(false); void handleClick(); }} />}
+    </>
   );
 }

@@ -5,6 +5,8 @@ const devBackend = process.env.VITE_DEV_BACKEND_URL || "http://127.0.0.1:8080";
 
 export default defineConfig({
   plugins: [react()],
+  // Production browser code is public; never publish source maps.
+  build: { sourcemap: false },
   server: {
     host: "0.0.0.0",
     port: 3000,

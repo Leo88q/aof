@@ -18,7 +18,7 @@ export function AppWalletProvider({ children }: { children: React.ReactNode }) {
   const wallets = useMemo(() => [], []);
   return (
     <SafeConnectionProvider endpoint={RPC_URL}>
-      <SafeWalletProvider wallets={wallets} autoConnect>
+      <SafeWalletProvider wallets={wallets} autoConnect={false}>
         {children}
       </SafeWalletProvider>
     </SafeConnectionProvider>
