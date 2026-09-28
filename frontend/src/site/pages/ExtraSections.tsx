@@ -170,7 +170,7 @@ const badgeDefs = [
   { id: 'commit', name: 'Проверяющий', text: 'Сверь локальный commit/reveal.' },
   { id: 'pack', name: 'Распаковщик', text: 'Открой демонстрационный пак.' },
   { id: 'drum', name: 'Ритм мастера', text: 'Попробуй демонстрационный барабан.' },
-  { id: 'chronicler', name: 'Летописец', text: 'Открой летопись сайта (changelog).' },
+  { id: 'chronicler', name: 'Планировщик', text: 'Открой карту развития: что делаем сейчас и что дальше.' },
 ];
 function readJournal(): { visits: string[]; badges: string[] } {
   try {
@@ -676,7 +676,7 @@ export function ExtraSections({ id }: { id: string }) {
           <Button to="/site/resources">Осмотри ресурс</Button>
           <Button to="/site/packs" variant="ghost">Попробуй пак</Button>
           <Button to="/site/lottery" variant="ghost">Найди ритм</Button>
-          <Button to="/site/changelog" variant="ghost">Открой летопись</Button>
+          <Button to="/site/roadmap" variant="ghost">Открой карту развития</Button>
         </div>
       </Section>
     );
