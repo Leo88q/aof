@@ -924,3 +924,17 @@ test("привилегии пропуска собираются из ответ
   assert.match(backend, /energyRegenMinutesPlanned/, "ускоренный возврат энергии обязан быть помечен планом");
   assert.ok(!/energyCap: isVip \? 30/.test(backend), "сервис снова выдаёт план за действующую привилегию");
 });
+
+test("каждая особая секция сайта принадлежит существующей странице", async () => {
+  // Дефект прошлой эпохи: в ExtraSections оставались ветки для страниц, которых
+  // нет в дереве (например, погодный блок без адреса) — игрок не мог их открыть.
+  const { pages } = await import("../src/site/content/pages");
+  const ids = new Set(pages.map((p: { id: string }) => p.id));
+  const source = read("src/site/pages/ExtraSections.tsx");
+  const branches = [...source.matchAll(/if \(id === (["'])([a-z-]+)\1\)/g)].map((m) => m[2]);
+  assert.ok(branches.length >= 18, "особые секции сайта пропали");
+  const orphans = branches.filter((branch) => !ids.has(branch));
+  assert.deepEqual(orphans, [], `в разметку вернулись секции без страниц: ${orphans.join(", ")}`);
+  const duplicates = branches.filter((branch, index) => branches.indexOf(branch) !== index);
+  assert.deepEqual(duplicates, [], `две ветки одной страницы: ${duplicates.join(", ")}`);
+});
