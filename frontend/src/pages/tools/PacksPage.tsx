@@ -6,6 +6,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtSol, useFlash } from "../../lib/marketUtils";
 import type { PackOpenIntent } from "../../lib/transactionIntent";
 import { humanizeVrfError } from "../../lib/vrfErrors";
@@ -91,7 +92,7 @@ export function PacksPage() {
   async function open(pack: (typeof PACKS)[number]) {
     if (!address) return flash("❌ Подключите кошелёк");
     const cfg = configs[pack.id];
-    if (!cfg) return flash("❌ Капсула ещё не настроена on-chain");
+    if (!cfg) return flash("❌ Капсула ещё не настроена в сети");
     setBusy(pack.id);
     try {
       flash("Готовим транзакцию: оплата в escrow + Switchboard commit…", 8000);
@@ -102,7 +103,7 @@ export function PacksPage() {
       flash("✅ Оплачено. Оракул Switchboard раскрывает результат…", 8000);
       watch(resp.packCommit);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
+      flash(`${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(null);
     }
@@ -115,10 +116,10 @@ export function PacksPage() {
       const resp: any = await api.packs.reveal({ user: address, packCommit });
       const r = await handleTxResponse(resp);
       if (!r.success) throw new Error(r.error || "Транзакция не выполнена");
-      flash(resp.phase === "refundable" ? "✅ Возврат отправлен" : "✅ Результат раскрыт вашей транзакцией", 6000);
+      flash(resp.phase === "refundable" ? "Возврат отправлен" : "Результат раскрыт вашей транзакцией", 6000);
       watch(packCommit);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
+      flash(`${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(null);
     }
@@ -161,8 +162,11 @@ export function PacksPage() {
           )}
           {opening.state === "settled" && opening.tool && (
             <>
-              <img src={toolPlate(opening.tool.toolType, rarityKey(opening.tool.rarity)) || UI_ICONS.packs} alt=""
-                className="w-20 h-20 mx-auto object-contain rounded-xl" />
+              {/* Картина ставится на плитку того же цвета, что её фон, — иначе
+                  вокруг арта видна рамка другого оттенка. */}
+              <div className="w-24 mx-auto">
+                <ArtPlate src={toolPlate(opening.tool.toolType, rarityKey(opening.tool.rarity)) || UI_ICONS.packs} alt="" size="100%" />
+              </div>
               <p className="font-bold mt-3" style={{ color: RARITY_META[rarityKey(opening.tool.rarity)]?.color }}>
                 {RARITY_RU[["common", "uncommon", "rare", "epic", "legendary"].indexOf(rarityKey(opening.tool.rarity))] || opening.tool.rarity}
               </p>
@@ -184,7 +188,7 @@ export function PacksPage() {
                   <p className="text-straw text-xs">{cfg ? `${fmtSol(cfg.priceLamports)} ◎` : "не настроена"}</p>
                 </div>
                 <button onClick={() => open(pack)} disabled={!cfg || !address || busy !== null}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white text-sm font-bold disabled:opacity-40">
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white text-sm font-bold disabled:opacity-40">
                   {busy === pack.id ? "…" : "Открыть"}
                 </button>
               </div>

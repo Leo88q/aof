@@ -5,27 +5,33 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
 import { LegalPage, PrivacyControls } from "./legal/LegalCenter";
 import { initializePrivacy } from "./legal/consent";
-import "./theme/globals.css";
-import "./theme/manor.css";
-import "./theme/plates.css";
-import "./theme/circuit.css";
+// Единственный слой представления: палитра, приборы, навигация, совместимость.
+import "./theme/forge.css";
 import "./ui/fonts";
-import "./ui/tokens.css";
-import "./ui/base.css";
-import "./ui/reduced-motion.css";
-import { initManorFx } from "./lib/manorFx";
+
+const VisualGallery = lazy(() =>
+  import("./gallery/VisualGallery").then((m) => ({ default: m.VisualGallery }))
+);
 
 const SiteApp = lazy(() =>
   import("./site/SiteApp").then((m) => ({ default: m.SiteApp }))
 );
 
 initializePrivacy();
-initManorFx();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
+        {/* Инструментальная палитра: витрина приборов на живом коде. */}
+        <Route
+          path="/visual"
+          element={
+            <Suspense fallback={<div className="fg-screen" style={{ margin: 24 }}>Собираем приборы…</div>}>
+              <VisualGallery />
+            </Suspense>
+          }
+        />
         <Route path="/legal/:slug" element={<LegalPage />} />
         <Route path="/legal/archive/:version/:slug" element={<LegalPage />} />
         <Route
@@ -33,7 +39,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           element={
             <Suspense
               fallback={
-                <div style={{ padding: 40, fontFamily: "monospace" }}>
+                <div className="fg-screen" style={{ margin: 24, fontFamily: "var(--fg-font-text)" }}>
                   Открываем мастерскую…
                 </div>
               }

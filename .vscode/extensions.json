@@ -1,0 +1,17 @@
+{
+  "//": "[SECURITY #107] Allowlist расширений. Июнь 2026: 15 вредоносных плагинов JetBrains Marketplace воровали API-ключи ИИ-сервисов. Ставим только из этого списка, у каждого — проверенный издатель; расширения, которых здесь нет, в рабочем окружении не устанавливаются.",
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-docker"
+  ],
+  "unwantedRecommendations": [
+    "github.copilot",
+    "github.copilot-chat",
+    "continue.continue",
+    "codeium.codeium",
+    "tabnine.tabnine-vscode"
+  ]
+}

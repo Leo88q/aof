@@ -4,27 +4,34 @@ export const recipes: Recipe[] = [
   // === ЦЕПОЧКА МОДЕЛИ ===
   {
     id: 'mill_flour',
-    verification: 'editorial',
-    name: 'Перемол синапсов',
+    verification: 'on-chain-verified',
+    name: 'Сепарация синапсов',
     station: 'mill',
-    inputs: [{ resourceId: 'synapse', amount: 5 }],
+    inputs: [
+      { resourceId: 'synapse', amount: 6 },
+      { resourceId: 'silicon', amount: 1 }
+    ],
     outputs: [{ resourceId: 'signal', amount: 3 }],
-    energy: 8,
-    time: '~4 минуты игрового времени',
-    description: 'Базовая переработка: 5 синапсов → 3 сигнала. Модуль переработки принимает только полностью созревшие данные.',
-    narrative: 'Модуль переработки не любит спешки. Оператор подаёт синапсы небольшими пакетами и слушает шум шины: когда он становится ровным, сигнал готов. Пять синапсов дают три пакета сигнала — такова цена переработки.'
+    energy: 2,
+    time: '1 час на малой партии; есть средняя и большая',
+    description: 'Малая партия: 6 синапсов и 1 кремний дают 3 сигнала. Средняя берёт 18 и 2, большая — 40 и 4.',
+    narrative: 'Модуль сепарации не любит спешки. Оператор подаёт синапсы небольшими партиями и слушает шум шины: когда он становится ровным, сигнал готов. Пять синапсов дают три пакета сигнала — такова цена сепарации.'
   },
   {
     id: 'bake_bread',
-    verification: 'editorial',
-    name: 'Тренировка модели',
+    verification: 'on-chain-verified',
+    name: 'Обучение модели',
     station: 'oven',
-    inputs: [{ resourceId: 'signal', amount: 2 }, { resourceId: 'power', amount: 1 }, { resourceId: 'compute', amount: 1 }],
-    outputs: [{ resourceId: 'model', amount: 1 }],
-    energy: 12,
-    time: '~8 минут игрового времени',
-    description: 'Продуктовое описание цепочки тренировки: сигнал + энергопоток + вычислительный цикл для жара. Эффект модели не подтверждён on-chain.',
-    narrative: 'Тренажёр питается вычислительными циклами, а не голым энергопотоком — циклы жалко тратить впустую. Веса сходятся в тишине, пока сигнал равномерно прогоняется через слои. Когда кривая потерь ложится ровно — работа закончена.'
+    inputs: [
+      { resourceId: 'signal', amount: 4 },
+      { resourceId: 'power', amount: 3 },
+      { resourceId: 'compute', amount: 2 }
+    ],
+    outputs: [{ resourceId: 'model', amount: 3 }],
+    energy: 2,
+    time: '2 часа на малой партии; есть средняя и большая',
+    description: 'Малая партия: 4 сигнала, 3 энергопотока и 2 вычислительных цикла дают 3 модели. На схемах выход меньше — 2 модели за 5 схем.',
+    narrative: 'Учебный стенд питается вычислительными циклами, а не голым энергопотоком — циклы жалко тратить впустую. Веса сходятся в тишине, пока сигнал равномерно прогоняется через слои. Когда кривая потерь ложится ровно — работа закончена.'
   },
   
   // === ИНСТРУМЕНТЫ ===
@@ -82,51 +89,76 @@ export const recipes: Recipe[] = [
   // === ФЛЯГИ ===
   {
     id: 'craft_flask_blue',
-    verification: 'editorial',
+    verification: 'on-chain-verified',
     name: 'Синяя фляга',
     station: 'glassworks',
     inputs: [
-      { resourceId: 'clearQuartz', amount: 3 },
-      { resourceId: 'quantumBit', amount: 1 },
-      { resourceId: 'compute', amount: 2 }
+      { resourceId: 'quantumBit', amount: 2 },
+      { resourceId: 'data', amount: 5 }
     ],
     outputs: [{ resourceId: 'cryoFluid', amount: 1 }],
-    energy: 20,
-    description: 'Редакционное описание стеклодувной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
+    energy: 0,
+    description: 'Два квантовых бита и пять единиц данных — расплав даёт одну синюю флягу. Крафт мгновенный, энергия не тратится.',
     narrative: 'Стеклодув выдувает флягу одним дыханием. Синий цвет — от гема, растворённого в расплаве. Жидкость внутри прохладная даже в жару.',
   },
   {
     id: 'craft_flask_yellow',
-    verification: 'editorial',
+    verification: 'on-chain-verified',
     name: 'Жёлтая фляга',
     station: 'glassworks',
     inputs: [
-      { resourceId: 'amberQuartz', amount: 4 },
-      { resourceId: 'neuralChip', amount: 1 },
-      { resourceId: 'compute', amount: 3 }
+      { resourceId: 'neuralChip', amount: 2 },
+      { resourceId: 'silicon', amount: 3 }
     ],
     outputs: [{ resourceId: 'voltFluid', amount: 1 }],
-    energy: 25,
-    description: 'Редакционное описание янтарной фляги. Числовой эффект восстановления энергии не подтверждён on-chain.',
+    energy: 0,
+    description: 'Два нейронных чипа и три части кремния — одна жёлтая фляга. Крафт мгновенный, энергия не тратится.',
     narrative: 'Янтарное стекло гуще, тяжелее. Жидкость внутри вязкая, как мёд. Стеклодув говорит: эта фляга для дней, когда нужно сделать невозможное.'
   },
   {
     id: 'craft_flask_green',
-    verification: 'editorial',
+    verification: 'on-chain-verified',
     name: 'Зелёная фляга',
     station: 'alchemist',
     inputs: [
-      { resourceId: 'clearQuartz', amount: 5 },
-      { resourceId: 'bioChip', amount: 1 },
-      { resourceId: 'power', amount: 2 }
+      { resourceId: 'circuit', amount: 5 },
+      { resourceId: 'neuron', amount: 5 }
     ],
     outputs: [{ resourceId: 'bioFluid', amount: 1 }],
-    energy: 35,
-    description: 'Редакционное описание полного восстановления энергии. Точный эффект и рецепт не подтверждены on-chain.',
+    energy: 0,
+    description: 'Пять схем и пять нейронов — одна зелёная фляга. Крафт мгновенный, энергия не тратится.',
     narrative: 'Алхимик работает в тишине, без помощников. Зелёная жидкость светится изнутри слабо, но этого достаточно, чтобы читать при ней. Говорят, в ней растворён лист первого схемы мастерской.'
   },
   
   // === MIND-РЕЦЕПТЫ (кросс-игровые) ===
+  {
+    id: 'craft_flask_pink',
+    verification: 'on-chain-verified',
+    name: 'Розовая фляга',
+    station: 'alchemist',
+    inputs: [
+      { resourceId: 'roseQuartz', amount: 3 },
+      { resourceId: 'data', amount: 5 }
+    ],
+    outputs: [{ resourceId: 'nanoFluid', amount: 1 }],
+    energy: 0,
+    description: 'Три части розового кварца и пять единиц данных — одна розовая фляга. Крафт мгновенный, энергия не тратится.',
+    narrative: 'Розовый кварц берут из песчаных пластов: он мягче прочих и потому идёт в самые тонкие работы.'
+  },
+  {
+    id: 'craft_flask_purple',
+    verification: 'on-chain-verified',
+    name: 'Фиолетовая фляга',
+    station: 'alchemist',
+    inputs: [
+      { resourceId: 'purpleCore', amount: 1 },
+      { resourceId: 'bioChip', amount: 1 }
+    ],
+    outputs: [{ resourceId: 'quantumFluid', amount: 1 }],
+    energy: 0,
+    description: 'Фиолетовое ядро и биочип — одна фиолетовая фляга, самая редкая из пяти. Крафт мгновенный, энергия не тратится.',
+    narrative: 'Фиолетовое ядро не дробят: его кладут в расплав целиком, иначе жидкость теряет тон.'
+  },
   {
     id: 'potato_feast',
     verification: 'editorial',
@@ -140,8 +172,8 @@ export const recipes: Recipe[] = [
     outputs: [{ resourceId: 'data', amount: 5 }],
     energy: 15,
     potatoCost: 3,
-    description: 'Коллаборационный рецепт. 3 MIND + сигнал + вычислительный цикл = 5 единиц провизии.',
-    narrative: 'MIND приходит из другой игры, но в тренажёре NeuroForge ведёт себя как любой другой ресурс. Сборка получается плотной и стабильной. Мастера шутят: "MIND не знает, откуда пришёл — ему всё равно, где работать."'
+    description: 'Гостевой рецепт: 3 MIND, два сигнала и вычислительный цикл дают пять единиц данных.',
+    narrative: 'MIND приходит из другой игры, но в учебном стенде NeuroForge ведёт себя как любой другой ресурс. Сборка получается плотной и стабильной. Мастера шутят: "MIND не знает, откуда пришёл — ему всё равно, где работать."'
   },
   {
     id: 'potato_ritual',
@@ -155,7 +187,7 @@ export const recipes: Recipe[] = [
     outputs: [{ resourceId: 'skr', amount: 50 }],
     energy: 20,
     potatoCost: 10,
-    description: 'Превращение 10 MIND + 1 Ядро-душа (Soul Core) → 50 SKR. Одноразовый ритуал эпохи.',
+    description: '10 MIND и Ядро-душа обмениваются на 50 SKR — один раз за эпоху. Обмен ещё не запущен.',
     narrative: 'Ритуал проводят в полнолуние. MIND сгорает без остатка, Ядро-душа темнеет и трескается. Взамен — горсть монет SKR. Мастера говорят: это не обмен, это благодарность между мирами.'
   },
   {
@@ -170,8 +202,8 @@ export const recipes: Recipe[] = [
     outputs: [],
     energy: 10,
     potatoCost: 5,
-    description: 'Сокращает время текущего эпохи на 20%. MIND и фиофазувая фляга сгорают полностью.',
-    narrative: 'Алхимик смешивает MIND с легендарной эссенцией. Смесь вспыхивает фиолетовым фазовым светом, и где-то в глубине игры колесо эпох крутится быстрее. Говорят, это единственный способ подтолкнуть время.'
+    description: 'По замыслу сокращает время текущего цикла на 20%: MIND и фиолетовая фляга расходуются полностью. Ускорение пока не запущено.',
+    narrative: 'Алхимик смешивает MIND с легендарной эссенцией. Смесь вспыхивает фиолетовым светом, и где-то в глубине игры колесо эпох крутится быстрее. Говорят, это единственный способ подтолкнуть время.'
   }
 ];
 
@@ -185,8 +217,8 @@ for (const r of recipes) {
 export const stationNames: Record<string, string> = {
   workbench: 'Квантовая кузница',
   forge: 'Кузница',
-  mill: 'Модуль переработки',
-  oven: 'Тренажёр',
+  mill: 'Модуль сепарации',
+  oven: 'Учебный стенд',
   glassworks: 'Стеклодувня',
   alchemist: 'Алхимик'
 };

@@ -1,14 +1,20 @@
 import React from "react";
 
 export function ListRow({
-  icon, iconBg, label, value, onClick,
+  icon, label, value, onClick,
 }: {
-  icon: string; iconBg: string; label: string; value?: string; onClick?: () => void;
+  icon: string;
+  /** Оставлено для совместимости вызовов: подложка теперь одна на весь список
+      (см. .list-row .icon в theme/forge.css), цветные плитки убраны. */
+  iconBg?: string;
+  label: string;
+  value?: string;
+  onClick?: () => void;
 }) {
   return (
     <button className="list-row" onClick={onClick}>
       {/* Прозрачные PNG-иконки лежат прямо на плате, без цветной подложки */}
-      <span className="icon" style={icon.startsWith("/") ? undefined : { background: iconBg }}>
+      <span className="icon">
         {icon.startsWith("/") ? (
           <img src={icon} alt="" width={28} height={28} style={{ objectFit: "contain", display: "block" }} />
         ) : icon}

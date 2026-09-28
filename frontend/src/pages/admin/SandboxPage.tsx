@@ -146,8 +146,8 @@ export function SandboxPage() {
               <div className="p-3 rounded-lg bg-soil-800/60">
                 <p className="text-straw text-xs mb-1">Инфляция за {result.days} дней</p>
                 <p className={`text-2xl font-bold ${
-                  result.potatoInflation > 50 ? "text-red-400" : 
-                  result.potatoInflation > 25 ? "text-yellow-400" : "text-sprout-500"
+                  result.potatoInflation > 50 ? "text-ember-400" : 
+                  result.potatoInflation > 25 ? "text-gold-400" : "text-sprout-500"
                 }`}>
                   {result.potatoInflation.toFixed(1)}%
                 </p>
@@ -189,7 +189,7 @@ export function SandboxPage() {
                 .map(([res, change]) => (
                   <div key={res} className="flex items-center justify-between p-2 rounded bg-soil-800/40">
                     <span className="text-parchment text-sm font-mono">{res}</span>
-                    <span className={`font-bold ${change > 0 ? "text-sprout-500" : "text-red-400"}`}>
+                    <span className={`font-bold ${change > 0 ? "text-sprout-500" : "text-ember-400"}`}>
                       {change > 0 ? "+" : ""}{change.toFixed(1)}%
                     </span>
                   </div>
@@ -199,8 +199,8 @@ export function SandboxPage() {
 
           {/* Предупреждения */}
           {result.warnings.length > 0 && (
-            <Card className="mb-4 bg-red-500/10 border-red-500/30">
-              <h3 className="text-red-400 font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-4 h-4" /> Предупреждения</h3>
+            <Card className="mb-4 bg-ember-500/10 border-ember-500/30">
+              <h3 className="text-ember-400 font-semibold text-sm mb-3 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-4 h-4" /> Предупреждения</h3>
               <ul className="space-y-1">
                 {result.warnings.map((w, i) => (
                   <li key={i} className="text-straw text-xs">• {w}</li>
@@ -230,10 +230,10 @@ export function SandboxPage() {
                   <span className="text-straw">День {t.day}</span>
                   <div className="flex gap-3">
                     <span className="text-wheat-500">{(t.potatoSupply / 1000).toFixed(0)}k</span>
-                    <span className={t.inflation > 5 ? "text-red-400" : "text-sprout-500"}>
+                    <span className={t.inflation > 5 ? "text-ember-400" : "text-sprout-500"}>
                       {t.inflation.toFixed(1)}%
                     </span>
-                    <span className="text-blue-400">{t.activeAgents} активных</span>
+                    <span className="text-water-400">{t.activeAgents} активных</span>
                   </div>
                 </div>
               ))}

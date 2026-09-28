@@ -101,12 +101,12 @@ export function Workshop() {
     setBusy(true);
     try {
       const recipe = FULL_RECIPES.find((item) => item.id === recipeId);
-      if (!recipe) throw new Error("Рецепт не найден в on-chain таблице");
+      if (!recipe) throw new Error("Рецепт не найден в таблице сети");
       const input1Mint = await getMintAsync(recipe.inputs[0].key as any);
       const input2Mint = await getMintAsync((recipe.inputs[1] || recipe.inputs[0]).key as any);
       const outputMint = await getMintAsync(recipe.output.key as any);
       if (!input1Mint || !input2Mint || !outputMint) {
-        throw new Error("Реальный mint рецепта не найден в Config/MaterialMints");
+        throw new Error("Рецепт не найден в реестре сети");
       }
       const resp = await api.chain.craftRecipe({
         user: address,
@@ -116,9 +116,9 @@ export function Workshop() {
         outputMint,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Скрафчено: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Скрафчено: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
     } catch (e: any) {
-      flash(`❌ ${e?.response?.data?.error || e.message}`);
+      flash(`${e?.response?.data?.error || e.message}`);
     } finally {
       setBusy(false);
     }
@@ -166,28 +166,28 @@ export function Workshop() {
               <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px"}}>
                 <ResourceGlyph icon={r.icon} alt={r.label} className="w-7 h-7" />
                 <div>
-                  <div style={{color: "#00D4FF", fontSize: "13px", fontWeight: "bold"}}>{r.label}</div>
-                  {(r as any).effect && <div style={{color: "#5A6080", fontSize: "10px"}}>{(r as any).effect}</div>}
+                  <div style={{color: "#5FC9DA", fontSize: "13px", fontWeight: "bold"}}>{r.label}</div>
+                  {(r as any).effect && <div style={{color: "#6B7684", fontSize: "10px"}}>{(r as any).effect}</div>}
                 </div>
               </div>
 
               <div style={{background: "rgba(0,0,0,0.3)", padding: "8px", borderRadius: "6px", marginBottom: "8px"}}>
-                <div style={{color: "#5A6080", fontSize: "10px", marginBottom: "4px"}}>Ингредиенты:</div>
+                <div style={{color: "#6B7684", fontSize: "10px", marginBottom: "4px"}}>Ингредиенты:</div>
                 {(r as any).inputs?.map((inp: any, i: number) => (
-                  <div key={i} style={{display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#E0E4F0"}}>
+                  <div key={i} style={{display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#E6EBF0"}}>
                     <ResourceGlyph icon={inp.icon} alt={inp.label} className="w-4 h-4" />
                     <span>{inp.label}</span>
-                    <span style={{color: "#00D4FF", fontWeight: "bold", marginLeft: "auto"}}>×{inp.amount}</span>
+                    <span style={{color: "#5FC9DA", fontWeight: "bold", marginLeft: "auto"}}>×{inp.amount}</span>
                   </div>
                 ))}
               </div>
 
               <div style={{background: "rgba(16, 185, 129, 0.2)", padding: "6px", borderRadius: "6px", textAlign: "center", border: "1px solid rgba(16, 185, 129, 0.3)"}}>
-                <span style={{color: "#10b981", fontSize: "11px", fontWeight: "bold"}}>
+                <span style={{color: "#5FD3A8", fontSize: "11px", fontWeight: "bold"}}>
                   → <ResourceGlyph icon={resourceIcon((r as any).output.key) || (r as any).output.icon || r.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> ×{(r as any).output.amount}
                 </span>
               </div>
-              {(r as any).effect && <div className="recipe-effect" style={{color: "#FFD700", fontSize: "11px", marginTop: "4px"}}>{(r as any).effect}</div>}
+              {(r as any).effect && <div className="recipe-effect" style={{ marginTop: "4px" }}>{(r as any).effect}</div>}
               <button
                 className="recipe-btn"
                 onClick={() => craft(r.id)}
@@ -203,16 +203,16 @@ export function Workshop() {
       {section === "timed" && (
         <div style={{textAlign: "center", padding: "24px 16px"}}>
           <div style={{marginBottom: "12px"}}><ResourceGlyph icon={UI_ICONS.locEdge} alt="" className="w-12 h-12 inline-block" /></div>
-          <h3 style={{color: "#00D4FF", fontSize: "18px", marginBottom: "8px", fontWeight: "bold"}}>
+          <h3 style={{color: "#5FC9DA", fontSize: "18px", marginBottom: "8px", fontWeight: "bold"}}>
             Модуль переработки и Тренировка теперь во вкладке "Лаборатория"
           </h3>
-          <p style={{color: "#5A6080", fontSize: "13px", marginBottom: "16px", lineHeight: "1.6", maxWidth: "400px", margin: "0 auto 16px"}}>
-            Перейди во вкладку <b style={{color: "#10b981"}}><ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Нейро-лаборатория</b> → подвкладки
-            <b style={{color: "#10b981"}}> <ResourceGlyph icon={UI_ICONS.locFactory} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Переработка</b> и <b style={{color: "#10b981"}}><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Тренировка</b>,
+          <p style={{color: "#6B7684", fontSize: "13px", marginBottom: "16px", lineHeight: "1.6", maxWidth: "400px", margin: "0 auto 16px"}}>
+            Перейди во вкладку <b style={{color: "#5FD3A8"}}><ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Нейро-лаборатория</b> → подвкладки
+            <b style={{color: "#5FD3A8"}}> <ResourceGlyph icon={UI_ICONS.locFactory} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Переработка</b> и <b style={{color: "#5FD3A8"}}><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Тренировка</b>,
             чтобы запустить переработку сигнала или тренировку модели.
           </p>
           <div style={{background: "rgba(16, 185, 129, 0.1)", padding: "12px 16px", borderRadius: "8px", border: "1px solid rgba(16, 185, 129, 0.3)", display: "inline-block"}}>
-            <div style={{color: "#10b981", fontSize: "12px", fontWeight: "bold"}}>
+            <div style={{color: "#5FD3A8", fontSize: "12px", fontWeight: "bold"}}>
               <ResourceGlyph icon={UI_ICONS.buffIdea} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Там же ты найдёшь <ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Сетевая станция и <ResourceGlyph icon={UI_ICONS.plant} alt="" className="w-4 h-4 inline-block align-text-bottom" /> Посев нейронов
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ExtraSections, CrossLinks } from './ExtraSections';
 import { Link, useParams } from 'react-router-dom';
-import { pages, resources, resourcesBySlug, categoryNames, mechanicsById } from '../content/game';
+import { pages, resources, resourcesBySlug, categoryNames, mechanicsById, mechanicRoutes } from '../content/game';
 import { resourcePlate } from '../../lib/visualAssets';
 import {
   PageTitle, Section, Button, Counter, ParchmentCard, StatusBadge,
@@ -28,8 +28,8 @@ export function ContentPage({ id }: { id: string }) {
   return (
     <>
       <PageTitle eyebrow={hero ? 'NeuroForge — Age of Intelligence' : page.group} title={page.title} lead={page.lead}>
-        <div className="nf-grid-bg" aria-hidden="true" />
-        <div className="nf-particles" aria-hidden="true">{Array.from({ length: 16 }).map((_, i) => <span key={i} />)}</div>
+        {/* Сетка дорожек и частицы удалены вместе с легаси-слоем:
+            фон героя — мягкая засветка прибора, см. site-title::before */}
       </PageTitle>
       {hero && (
         <div className="site-hero-actions">
@@ -54,12 +54,12 @@ export function ContentPage({ id }: { id: string }) {
               <div className="nf-product__info">
                 <span className="nf-product__tag">Blockchain Game · Solana</span>
                 <h3>NeuroForge — Age of Intelligence</h3>
-                <p>Игра о развитии искусственного интеллекта на блокчейне Solana. Выращивай нейроны, тренируй модели, куй NFT-инструменты и торгуй на квантовом рынке.</p>
+                <p>Лаборатория-RPG на Solana. Загружай образцы в лунки, разделяй их в сигналы, обучай модели, собирай NFT-инструменты и торгуй на рынке.</p>
                 <ul className="nf-product__features">
                   <li><span className="nf-product__dot" />27 ресурсов и 8 цепочек крафта</li>
                   <li><span className="nf-product__dot" />5 типов инструментов × 5 редкостей</li>
                   <li><span className="nf-product__dot" />6 торговых площадок и квантовый розыгрыш</li>
-                  <li><span className="nf-product__dot" />Полностью on-chain: каждая транзакция проверяема</li>
+                  <li><span className="nf-product__dot" />Каждая ставка и сделка записана в сеть и проверяется кем угодно</li>
                 </ul>
                 <div className="nf-product__cta">
                   <Button to="/site/start">Начать играть</Button>
@@ -127,20 +127,23 @@ export function ContentPage({ id }: { id: string }) {
 export function ResourcesCatalog() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
+  // В фильтре только те категории, где что-то лежит: пустой раздел в списке
+  // выглядел как поломка поиска.
+  const usedCategories = [...new Set(resources.map(r => r.category))];
   const list = resources.filter(r =>
     (category === 'all' || r.category === category) &&
     (r.name + ' ' + r.lead).toLowerCase().includes(query.toLowerCase())
   );
   return (
     <>
-      <PageTitle eyebrow="Каталог" title={resources.length + ' ресурсов'} lead="Восемь категорий." />
+      <PageTitle eyebrow="Каталог" title={resources.length + ' ресурсов'} lead={usedCategories.length + ' категорий: от базовых материалов до гостевых токенов.'} />
       <Section>
         <div className="site-filters">
           <label>Поиск<input type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
           <label>Категория
             <select value={category} onChange={e => setCategory(e.target.value)}>
               <option value="all">Все</option>
-              {Object.entries(categoryNames).map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+              {usedCategories.map((k) => <option key={k} value={k}>{categoryNames[k]}</option>)}
             </select>
           </label>
         </div>
@@ -196,7 +199,13 @@ export function ResourceDetail() {
         <div className="site-actions">
           {resource.relatedMechanics.map(mid => {
             const m = mechanicsById.get(mid);
-            return m ? <Link className="site-chip" key={mid} to={'/site/' + mid}>{m.name}</Link> : null;
+            // Занятие живёт на странице-разделе (mechanicRoutes), а не по своему
+            // id: иначе ссылка вела на несуществующий адрес.
+            const pageId = mechanicRoutes[mid] ?? mid;
+            const target = pages.find(p => p.id === pageId);
+            return m && target ? (
+              <Link className="site-chip" key={mid} to={'/site/' + pageId}>{m.name}</Link>
+            ) : null;
           })}
         </div>
       </Section>

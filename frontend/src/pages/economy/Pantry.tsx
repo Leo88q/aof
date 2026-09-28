@@ -64,7 +64,7 @@ export function Pantry() {
   if (!balances) {
     return (
       <div className="economy-empty">
-        <p className="text-amber-400">Балансы ресурсов недоступны из канонической сети</p>
+        <p className="text-gold-400">Балансы ресурсов недоступны из сети</p>
       </div>
     );
   }

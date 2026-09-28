@@ -128,7 +128,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 h-2 rounded-full bg-soil-800 overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#00E5A0" }} />
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#5FD3A8" }} />
                       </div>
                       <span className="text-straw text-xs">{durability}/{MAX_DURABILITY}</span>
                     </div>
@@ -143,9 +143,9 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
       {/* Помочь другу */}
       <Card>
         <h2 className="text-parchment font-semibold text-sm mb-2 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.friends} alt="" className="w-4 h-4" /> Помочь другу</h2>
-        <p className="text-amber-400 text-xs">
-          Социальные бонусы временно недоступны: канонические on-chain эффекты
-          полива и ремонта ещё не развернуты.
+        <p className="text-gold-400 text-xs">
+          Социальные бонусы временно недоступны: соседские эффекты
+          взаимных обменов и ремонта ещё не развернуты.
         </p>
       </Card>
     </div>

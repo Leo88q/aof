@@ -6,12 +6,13 @@ import { Card } from "../../components/ui/Card";
 import { useWalletStr } from "../../lib/useWalletStr";
 
 const toolTypes = [
-  // [REBRAND] ids = канонические NeuroForge (бэкенд нормализует legacy при mark-seen)
-  { id: "plasma_cutter", icon: toolPlate("plasma_cutter") || "", label: "Плазменный резак" },
-  { id: "silicon_extractor", icon: toolPlate("silicon_extractor") || "", label: "Кремниевый экстрактор" },
-  { id: "data_harvester", icon: toolPlate("data_harvester") || "", label: "Сборщик данных" },
-  { id: "quantum_transmitter", icon: toolPlate("quantum_transmitter") || "", label: "Квантовый передатчик" },
-  { id: "neural_seeder", icon: toolPlate("neural_seeder") || "", label: "Нейральный посев" },
+  // [REBRAND] ids = канонические NeuroForge (бэкенд нормализует legacy при mark-seen).
+  // Картинку даёт toolPlate(id, rarity) на месте: путь к файлу — не подпись.
+  { id: "plasma_cutter", label: "Плазменный резак" },
+  { id: "silicon_extractor", label: "Кремниевый экстрактор" },
+  { id: "data_harvester", label: "Сборщик данных" },
+  { id: "quantum_transmitter", label: "Квантовый передатчик" },
+  { id: "neural_seeder", label: "Нейральный засев" },
 ];
 
 const rarities = [
@@ -79,20 +80,32 @@ export function CompendiumHome() {
       <div className="space-y-3">
         {toolTypes.map((tool) => (
           <Card key={tool.id}>
-            <h3 className="text-parchment text-sm font-semibold mb-2">{tool.icon} {tool.label}</h3>
+            <h3 className="text-parchment text-sm font-semibold mb-2">{tool.label}</h3>
             <div className="grid grid-cols-5 gap-2">
               {rarities.map((rarity) => {
                 const key = `${tool.id}-${rarity.id}`;
                 const isCaught = caught.has(key);
                 return (
+                  /* Найденная редкость показывается картиной, ненайденная — знаком
+                     вопроса: ни в подписи, ни в плитке не должно быть пути к файлу. */
                   <div
                     key={key}
-                    title={isCaught ? "Найдено" : "Не найдено"}
-                    className={`aspect-square rounded-xl border-2 flex items-center justify-center text-2xl ${
-                      isCaught ? `bg-soil-800 ${rarity.color}` : "bg-soil-900 border-soil-800 opacity-40"
+                    title={isCaught ? `Найдено: ${tool.label}, ${rarity.label}` : "Не найдено"}
+                    className={`aspect-square overflow-hidden rounded-xl border-2 flex items-center justify-center text-2xl ${
+                      isCaught ? `bg-soil-900 ${rarity.color}` : "bg-soil-900 border-soil-800 opacity-40"
                     }`}
                   >
-                    {isCaught ? tool.icon : "?"}
+                    {isCaught ? (
+                      <img
+                        src={toolPlate(tool.id, rarity.id)}
+                        alt=""
+                        loading="lazy"
+                        draggable={false}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      "?"
+                    )}
                   </div>
                 );
               })}

@@ -79,7 +79,7 @@ export function FarmPlot() {
   });
 
   async function quick(action: "start" | "collect") {
-    if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка контракта в тестовой сети");
+    if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка правил сети");
     if (!address) return flash("❌ Подключите кошелёк");
     if (!selected) return;
     setBusy(true);
@@ -89,13 +89,13 @@ export function FarmPlot() {
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Готово: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         setSelected(null);
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e?.response?.data?.error || e.message}`);
+      flash(`${e?.response?.data?.error || e.message}`);
     } finally {
       setBusy(false);
     }
@@ -104,7 +104,7 @@ export function FarmPlot() {
   return (
     <div className="p-4 pt-6 pb-24">
       <div className="mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">Мой нейро-лаб</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">Мой участок</h1>
         <p className="text-straw text-[11px] mt-0.5">Инструменты в стойке становятся постройками на участке.</p>
       </div>
 
@@ -203,7 +203,7 @@ export function FarmPlot() {
           <p className="text-straw text-xs">
             {tools === null
               ? toolsFailed
-                ? "Инструменты недоступны из канонической сети — счётчики неизвестны"
+                ? "Инструменты недоступны из сети — счётчики неизвестны"
                 : "Читаем инструменты…"
               : `В инвентаре (не в стойке): ${freeCount}`}
           </p>

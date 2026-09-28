@@ -1,0 +1,13 @@
+{
+  "//": "[SECURITY #106] Чужой код не должен запускаться при открытии папки. Инцидент WaterPlum/Contagious Interview: VS Code-задачи из репозитория «тестового задания» запускались на машине разработчика, где лежали ключи.",
+  "task.autoDetect": "off",
+  "security.workspace.trust.enabled": true,
+  "security.workspace.trust.untrustedFiles": "open",
+  "security.workspace.trust.emptyWindow": false,
+  "npm.autoDetect": "off",
+  "npm.enableScriptExplorer": false,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.eol": "\n",
+  "editor.formatOnSave": false,
+  "terminal.integrated.confirmOnExit": "hasChildProcesses"
+}

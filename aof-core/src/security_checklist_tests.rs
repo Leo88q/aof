@@ -2678,3 +2678,600 @@ fn order_matching_invariants_hold_for_random_orders() {
         );
     }
 }
+
+// ======================================================================
+// H. Матрица крайних значений 0 / 1 / max / dust  (#111)
+// ======================================================================
+//
+// #111 закрывал нулевые суммы guard-ами в полусотне мест и оставлял открытым
+// вопрос: что каждый путь делает на КРАЮ диапазона. Здесь по одному
+// представителю каждого класса путей —
+//   * claim    — `collect_flour` (мельница) и `collect_well_water` (колодец);
+//   * deposit  — `deposit_gas` (лампорты -> микро-единицы газ-бака);
+//   * withdraw — `withdraw_gas` и `sweep_gas_fees`;
+//   * transfer — `match_handler` ордербука и `pay_out_with_referral` (казна) —
+// прогоняется через НАСТОЯЩИЕ handler-ы на amount ∈ {0, 1, max, dust}, и
+// проверяются три свойства:
+//   1) 0 и переполнение отвергаются ДО записи состояния (и до CPI там, где
+//      порядок проверок это позволяет);
+//   2) «пыль» — значение ниже минимальной единицы учёта — либо отвергается,
+//      либо переносится целиком: ни один лампорт и ни одна микро-единица не
+//      исчезают и не появляются из воздуха;
+//   3) «выдано ≤ начислено»: минтится/выплачивается ровно начисленное, а
+//      повторный claim не создаёт новую ценность.
+//
+// `AccountsExit::exit` здесь не вызывается (см. комментарий в шапке файла):
+// состояние после первого вызова копируется в свежий fixture так, как его
+// сохранил бы рантайм.
+
+// ----------------------------------------------------------------------
+// deposit: `deposit_gas`
+// ----------------------------------------------------------------------
+
+struct DepositOutcome {
+    result: Result<()>,
+    micros: u64,
+    dust: u64,
+    cpis: usize,
+}
+
+/// Реальный `deposit_gas::handler` с заданной суммой, логическим балансом и
+/// уже накопленной пылью (лампортами ниже микро-единицы).
+fn deposit(amount: u64, balance_micros: u64, dust_lamports: u64) -> DepositOutcome {
+    runtime();
+    let w = World::new();
+    let user = Pubkey::new_unique();
+    let tank_key = pda(&[GASTANK_SEED, user.as_ref()]).0;
+    let tank = program_account(tank_key, &gas_tank(user, balance_micros, dust_lamports, 0), GASTANK_SPACE);
+    let (mut accounts, bumps) = parse::<DepositGas>(
+        vec![w.config_info(), wallet(user, true), tank, system_program_info()],
+        &amount.to_le_bytes(),
+    )
+    .unwrap();
+    let result =
+        crate::instructions::deposit_gas::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), amount);
+    DepositOutcome {
+        result,
+        micros: accounts.gastank.balance_micros,
+        dust: accounts.gastank.dust_lamports,
+        cpis: cpi_calls(),
+    }
+}
+
+#[test]
+fn deposit_gas_matrix_zero_one_max_and_dust() {
+    let micro = MICROS_TO_LAMPORTS;
+
+    // 0: отвергается до любого движения средств.
+    let zero = deposit(0, 0, 0);
+    rejected(zero.result, "ZeroAmount");
+    assert_eq!((zero.cpis, zero.micros, zero.dust), (0, 0, 0), "нулевой вклад не меняет ничего");
+
+    // dust: вклад меньше микро-единицы переносит все лампорты и ничего не теряет.
+    let dust = deposit(micro - 1, 0, 0);
+    assert!(dust.result.is_ok(), "{:?}", dust.result);
+    assert_eq!((dust.micros, dust.dust), (0, micro - 1), "суб-микро лампорты ждут следующего вклада");
+    assert_eq!(last_system_transfer_lamports(), micro - 1, "переводятся все лампорты до последнего");
+
+    // dust + 1: пыль складывается с новым вкладом в целую микро-единицу.
+    let carried = deposit(1, 0, micro - 1);
+    assert!(carried.result.is_ok(), "{:?}", carried.result);
+    assert_eq!((carried.micros, carried.dust), (1, 0), "пыль переносится, а не пропадает");
+
+    // 1: ровно одна микро-единица сверх уже накопленного баланса.
+    let one = deposit(micro, 7, 0);
+    assert!(one.result.is_ok(), "{:?}", one.result);
+    assert_eq!((one.micros, one.dust), (8, 0));
+
+    // max: логический баланс не должен переполниться.
+    let max = deposit(micro, u64::MAX, 0);
+    rejected(max.result, "MathOverflow");
+    assert_eq!((max.micros, max.dust), (u64::MAX, 0), "отвергнутая запись не тронула бак");
+
+    // max + dust: сумма лампортов проверяется до записи; на Solana такой
+    // отказ откатывает и перевод целиком, поэтому вклад не теряется.
+    let max_dust = deposit(u64::MAX, 0, 1);
+    rejected(max_dust.result, "MathOverflow");
+    assert_eq!((max_dust.micros, max_dust.dust), (0, 1), "пыль переживает отвергнутый вклад");
+
+    // Границы конвертера — та же арифметика, что внутри handler-а.
+    assert_eq!(crate::instructions::deposit_gas::lamports_to_micros(micro - 1).unwrap(), 0);
+    assert_eq!(crate::instructions::deposit_gas::lamports_to_micros(micro).unwrap(), 1);
+    assert_eq!(
+        crate::instructions::deposit_gas::lamports_to_micros(u64::MAX).unwrap(),
+        u64::MAX / micro
+    );
+    assert!(
+        crate::instructions::withdraw_gas::micros_to_lamports(u64::MAX).is_err(),
+        "вывод на максимуме отвергается, а не заворачивается"
+    );
+}
+
+// ----------------------------------------------------------------------
+// claim: `collect_flour` (мельница), `collect_well_water` (колодец)
+// ----------------------------------------------------------------------
+
+struct FlourClaim {
+    result: Result<()>,
+    cpis: usize,
+    in_progress: bool,
+    output_flour: u64,
+}
+
+/// Реальный `collect_flour::handler`: `output_flour` — начисленная партия,
+/// `signal_cap` — потолок выпуска сигнала, `mint_supply` — эмиссия сигнала.
+fn claim_flour(output_flour: u64, signal_cap: u64, mint_supply: u64) -> FlourClaim {
+    runtime();
+    let mut w = World::new();
+    w.mm.max_supply[ResourceKind::Signal as usize] = signal_cap;
+    let user = Pubkey::new_unique();
+    let (mill_key, mill_bump) = pda(&[MILL_STATE_SEED, user.as_ref()]);
+    let mill = MillState {
+        owner: user,
+        in_progress: true,
+        ready_at: NOW_TS - 1,
+        output_flour,
+        bump: mill_bump,
+    };
+    let (mut accounts, bumps) = parse::<CollectFlour>(
+        vec![
+            w.config_info(),
+            wallet(user, true),
+            w.mm_info(),
+            program_account(mill_key, &mill, MILL_STATE_SPACE),
+            w.auth_info(),
+            spl_mint(w.mm.flour, mint_supply, Some(w.auth_key), None),
+            token_account(Pubkey::new_unique(), w.mm.flour, user, 0),
+            token_program_info(),
+        ],
+        &[],
+    )
+    .unwrap();
+    let result =
+        crate::instructions::collect_flour::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    FlourClaim {
+        result,
+        cpis: cpi_calls(),
+        in_progress: accounts.mill_state.in_progress,
+        output_flour: accounts.mill_state.output_flour,
+    }
+}
+
+struct WellClaim {
+    result: Result<()>,
+    cpis: usize,
+    last_collected_at: i64,
+}
+
+/// Реальный `collect_well_water::handler`: `last_collected_at` задаёт окно
+/// начисления, `water_cap` — потолок выпуска энергопотока, `mint_supply` —
+/// его эмиссия.
+fn claim_well(last_collected_at: i64, water_cap: u64, mint_supply: u64) -> WellClaim {
+    runtime();
+    let mut w = World::new();
+    w.mm.max_supply[ResourceKind::Power as usize] = water_cap;
+    let user = Pubkey::new_unique();
+    let (well_key, well_bump) = pda(&[WELL_STATE_SEED, user.as_ref()]);
+    let (weather_key, weather_bump) = pda(&[WEATHER_STATE_SEED]);
+    let well = WellState { owner: user, water_buffer: 0, last_collected_at, bump: well_bump };
+    let now_day = (NOW_TS / 86_400) as u32;
+    let weather = WeatherState {
+        day_id: now_day,
+        weather: weather_for_day(now_day),
+        updated_at: NOW_TS,
+        bump: weather_bump,
+    };
+    let mut villager = player(user);
+    villager.villagers = 1;
+    let (mut accounts, bumps) = parse::<CollectWellWater>(
+        vec![
+            w.config_info(),
+            wallet(user, true),
+            program_account(pda(&[PLAYER_SEED, user.as_ref()]).0, &villager, PLAYER_SPACE),
+            w.mm_info(),
+            program_account(well_key, &well, WELL_STATE_SPACE),
+            program_account(weather_key, &weather, WEATHER_STATE_SPACE),
+            w.auth_info(),
+            spl_mint(w.mm.water, mint_supply, Some(w.auth_key), None),
+            token_account(Pubkey::new_unique(), w.mm.water, user, 0),
+            token_program_info(),
+            system_program_info(),
+        ],
+        &[],
+    )
+    .unwrap();
+    let result =
+        crate::instructions::collect_well_water::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    WellClaim {
+        result,
+        cpis: cpi_calls(),
+        last_collected_at: accounts.well_state.last_collected_at,
+    }
+}
+
+#[test]
+fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
+    // --- мельница: 0 / 1 / max / потолок / максимум эмиссии -----------------
+    let zero = claim_flour(0, SUPPLY_CAP_UNLIMITED, 0);
+    rejected(zero.result, "ZeroAmount");
+    assert_eq!(zero.cpis, 0, "ничего не начислено — ничего не выдается");
+    assert!(zero.in_progress, "отвергнутый сбор не сбрасывает мельницу");
+
+    let one = claim_flour(1, SUPPLY_CAP_UNLIMITED, 0);
+    assert!(one.result.is_ok(), "{:?}", one.result);
+    assert_eq!(last_minted_amount(), 1, "выдано ровно начисленное");
+    assert_eq!(one.cpis, 1, "один минт-CPI");
+    assert_eq!((one.in_progress, one.output_flour), (false, 0), "партия дренируется целиком");
+
+    let max_ok = claim_flour(u64::MAX, SUPPLY_CAP_UNLIMITED, 0);
+    assert!(max_ok.result.is_ok(), "{:?}", max_ok.result);
+    assert_eq!(last_minted_amount(), u64::MAX, "«нет потолка» — минтится ровно начисленное");
+
+    // Потолок ниже начисленного: отказ до CPI, состояние не тронуто.
+    let capped = claim_flour(u64::MAX, u64::MAX - 1, 0);
+    rejected(capped.result, "SupplyCapExceeded");
+    assert_eq!(capped.cpis, 0, "отвергнуто до минт-CPI");
+    assert!(capped.in_progress, "выдано 0 ≤ начислено, партия ждёт решения");
+
+    // Максимум эмиссии + начисленное: потолок не вычисляется — отказ, не перенос.
+    let overflow = claim_flour(2, u64::MAX - 1, u64::MAX);
+    rejected(overflow.result, "MathOverflow");
+    assert_eq!(overflow.cpis, 0, "переполнение потолка отвергается до минта");
+    assert!(overflow.in_progress, "партия не потеряна");
+
+    // --- колодец: окно начисления решает, сколько можно снять --------------
+    let fresh = claim_well(NOW_TS, SUPPLY_CAP_UNLIMITED, 0);
+    rejected(fresh.result, "WellEmpty");
+    assert_eq!(fresh.cpis, 0, "нулевое окно — ноль начислено, ноль выдано");
+
+    // Самое маленькое снимаемое начисление: 1 секунда окна. Ноль секунд до
+    // него не даёт ничего — «пыли» из воздуха не появляется.
+    let (elapsed, smallest) = (1..=3 * 86_400i64)
+        .find_map(|e| {
+            let accrued = accrual(NOW_TS - e, NOW_TS);
+            (accrued > 0).then_some((e, accrued))
+        })
+        .expect("в окне начисления обязано появиться положительное значение");
+    assert_eq!(accrual(NOW_TS, NOW_TS), 0, "окно нулевой длины не начисляет");
+    if elapsed > 1 {
+        assert_eq!(accrual(NOW_TS - (elapsed - 1), NOW_TS), 0, "на секунду короче — ещё ноль");
+    }
+    let tiny = claim_well(NOW_TS - elapsed, SUPPLY_CAP_UNLIMITED, 0);
+    assert!(tiny.result.is_ok(), "{:?}", tiny.result);
+    assert_eq!(last_minted_amount(), smallest, "выдано = начислено, до последней единицы");
+    assert_eq!(tiny.last_collected_at, NOW_TS, "окно начисления стартует заново");
+
+    // Максимум за один вызов ограничен суточным окном и лучшей ставкой.
+    let week = claim_well(NOW_TS - 5 * 86_400, SUPPLY_CAP_UNLIMITED, 0);
+    assert!(week.result.is_ok(), "{:?}", week.result);
+    let accrued_day = accrual(NOW_TS - 86_400, NOW_TS);
+    assert_eq!(last_minted_amount(), accrued_day, "пятидневное окно обрезается сутками");
+    assert_eq!(last_minted_amount(), accrual(NOW_TS - 5 * 86_400, NOW_TS));
+    assert!(
+        accrued_day <= 24 * WELL_RATE_FRENZY,
+        "сутки не могут начислить больше 480 единиц, начислено {accrued_day}"
+    );
+
+    // Потолок ниже начисленного: отказ, и окно начисления остаётся прежним.
+    let window = NOW_TS - elapsed;
+    let capped_well = claim_well(window, smallest - 1, 0);
+    rejected(capped_well.result, "SupplyCapExceeded");
+    assert_eq!(capped_well.cpis, 0);
+    assert_eq!(capped_well.last_collected_at, window, "отвергнутый сбор не перезапускает окно");
+
+    // Максимум эмиссии при потолке ниже начисленного: отказ до минта.
+    let well_overflow = claim_well(NOW_TS - elapsed, u64::MAX - 1, u64::MAX);
+    rejected(well_overflow.result, "MathOverflow");
+    assert_eq!(well_overflow.cpis, 0);
+    assert_eq!(well_overflow.last_collected_at, NOW_TS - elapsed, "окно не тронуто");
+}
+
+/// Повторный сбор того же урожая не создаёт новую ценность: после первого
+/// сбора мельница пуста, и второй вызов отвергается без CPI. Состояние между
+/// вызовами переносится так, как его сохранил бы рантайм.
+#[test]
+fn a_claim_cannot_be_collected_twice() {
+    runtime();
+    let w = World::new();
+    let user = Pubkey::new_unique();
+    let (mill_key, mill_bump) = pda(&[MILL_STATE_SEED, user.as_ref()]);
+    let mill = MillState {
+        owner: user,
+        in_progress: true,
+        ready_at: NOW_TS - 1,
+        output_flour: 50,
+        bump: mill_bump,
+    };
+    let flour_mint = spl_mint(w.mm.flour, 0, Some(w.auth_key), None);
+    let user_flour = token_account(Pubkey::new_unique(), w.mm.flour, user, 0);
+    let infos = |mill_info: AccountInfo<'static>| {
+        vec![
+            w.config_info(),
+            wallet(user, true),
+            w.mm_info(),
+            mill_info,
+            w.auth_info(),
+            flour_mint.clone(),
+            user_flour.clone(),
+            token_program_info(),
+        ]
+    };
+
+    let (mut accounts, bumps) =
+        parse::<CollectFlour>(infos(program_account(mill_key, &mill, MILL_STATE_SPACE)), &[]).unwrap();
+    let result = crate::instructions::collect_flour::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    assert!(result.is_ok(), "{result:?}");
+    assert_eq!(last_minted_amount(), 50, "первый сбор отдаёт начисленное");
+    let cpis_after_first = cpi_calls();
+    assert_eq!(cpis_after_first, 1);
+
+    let drained = MillState::clone(&*accounts.mill_state);
+    assert_eq!(
+        (drained.in_progress, drained.output_flour),
+        (false, 0),
+        "рантайм сохраняет дренаж партии"
+    );
+
+    let (mut again, bumps) =
+        parse::<CollectFlour>(infos(program_account(mill_key, &drained, MILL_STATE_SPACE)), &[]).unwrap();
+    let second =
+        crate::instructions::collect_flour::handler(Context::new(&crate::ID, &mut again, &[], bumps));
+    rejected(second, "MillNotReady");
+    assert_eq!(cpi_calls(), cpis_after_first, "повторный сбор не минтит ничего");
+    assert_eq!(again.mill_state.output_flour, 0, "начисленного больше нет");
+}
+
+// ----------------------------------------------------------------------
+// withdraw: `withdraw_gas` и `sweep_gas_fees`
+// ----------------------------------------------------------------------
+
+#[test]
+fn withdraw_gas_matrix_zero_one_max_and_dust() {
+    let micro = MICROS_TO_LAMPORTS;
+    let rent = rent_exempt(GASTANK_SPACE);
+
+    // 0: отвергается до движения средств.
+    let zero = withdraw(1_000, 0, 1_000 * micro, 0);
+    rejected(zero.result, "ZeroAmount");
+    assert_eq!(zero.tank_lamports, rent + 1_000 * micro, "ни один лампорт не сдвинулся");
+    assert_eq!(zero.user_lamports, WALLET_LAMPORTS);
+    assert_eq!(zero.tank.balance_micros, 1_000, "логический баланс цел");
+
+    // 1: самая мелкая единица бака выводится ровно один раз.
+    let one = withdraw(1_000, 0, 1_000 * micro, 1);
+    assert!(one.result.is_ok(), "{:?}", one.result);
+    assert_eq!(one.tank_lamports, rent + 1_000 * micro - micro);
+    assert_eq!(one.user_lamports, WALLET_LAMPORTS + micro, "микро-единица ушла целиком");
+    assert_eq!(one.tank.balance_micros, 999);
+    assert_eq!(one.tank.cooldown_until, 0, "пылевой вывод не запирает бак на 12 ч");
+
+    // dust: на баке лежит меньше, чем он должен игроку — рента защищена.
+    let dust = withdraw(1_000, 0, micro - 1, 1);
+    rejected(dust.result, "RentExemptionFailed");
+    assert_eq!(dust.tank_lamports, rent + micro - 1, "отвергнутый вывод не двигает лампорты");
+    assert_eq!(dust.user_lamports, WALLET_LAMPORTS);
+    assert_eq!(dust.tank.balance_micros, 1_000);
+
+    // max: конвертация в лампорты не должна переполниться.
+    let max = withdraw(u64::MAX, 0, 0, u64::MAX);
+    rejected(max.result, "MathOverflow");
+    assert_eq!(max.tank_lamports, rent, "ни один лампорт не ушёл");
+    assert_eq!(max.user_lamports, WALLET_LAMPORTS);
+    assert_eq!(max.tank.balance_micros, u64::MAX, "логический баланс не тронут");
+}
+
+#[test]
+fn sweep_matrix_zero_one_max_and_dust() {
+    runtime();
+    let w = World::new();
+    let user = Pubkey::new_unique();
+    let tank_key = pda(&[GASTANK_SEED, user.as_ref()]).0;
+    let rent = rent_exempt(GASTANK_SPACE);
+    let owed = 5_000 * MICROS_TO_LAMPORTS;
+    let dust = 777u64;
+    let floor = rent + owed + dust;
+
+    let tank = program_account(tank_key, &gas_tank(user, 5_000, dust, 0), GASTANK_SPACE);
+    let treasury = wallet(w.treasury, false);
+    let sweep = |tank: &AccountInfo<'static>, treasury: &AccountInfo<'static>| {
+        let (mut accounts, bumps) = parse::<SweepGasFees>(
+            vec![w.config_info(), wallet(w.operator, true), tank.clone(), treasury.clone(), system_program_info()],
+            &[],
+        )
+        .unwrap();
+        crate::instructions::sweep_gas_fees::handler(Context::new(&crate::ID, &mut accounts, &[], bumps))
+    };
+
+    // 0: нет превышения над резервом — нет перевода.
+    set_lamports(&tank, floor);
+    rejected(sweep(&tank, &treasury), "NoExcessToSweep");
+    assert_eq!(tank.lamports(), floor, "ни одного лампорта при нулевом превышении");
+    assert_eq!(treasury.lamports(), WALLET_LAMPORTS, "при нулевом превышении в казну не уходит ничего");
+
+    // 1: единственный лампорт сверх резерва уходит целиком и только он.
+    set_lamports(&tank, floor + 1);
+    let before = treasury.lamports();
+    assert!(sweep(&tank, &treasury).is_ok(), "один лампорт — уже превышение");
+    assert_eq!(treasury.lamports(), before + 1, "переводится ровно превышение");
+    assert_eq!(tank.lamports(), floor, "резерв, долг и пыль остаются игроку");
+
+    // Крупное превышение, которое казна ещё влезает: уходит целиком.
+    let huge = 1_000_000_000_000u64; // 1 000 SOL
+    set_lamports(&tank, floor + huge);
+    let before = treasury.lamports();
+    assert!(sweep(&tank, &treasury).is_ok(), "крупное превышение переводится целиком");
+    assert_eq!(treasury.lamports(), before + huge, "выдано = превышение, до последнего лампорта");
+    assert_eq!(tank.lamports(), floor, "резерв, долг и пыль остаются игроку");
+
+    // max: превышение больше, чем казна физически может принять (сумма двух
+    // балансов не влезает в u64) — перевод отвергается ДО записи, и ни один
+    // лампорт не двигается ни вниз, ни вверх.
+    set_lamports(&tank, u64::MAX);
+    let before = (tank.lamports(), treasury.lamports());
+    rejected(sweep(&tank, &treasury), "MathOverflow");
+    assert_eq!(
+        (tank.lamports(), treasury.lamports()),
+        before,
+        "перевод, который не влезает в кошелёк казны, отвергнут до записи"
+    );
+}
+
+// ----------------------------------------------------------------------
+// transfer: `match_handler` ордербука (биржевой обмен ресурса)
+// ----------------------------------------------------------------------
+
+struct MatchOutcome {
+    result: Result<()>,
+    cpis: usize,
+    escrow_before: u64,
+    buyer_escrow: u64,
+    seller_wallet: u64,
+    treasury: u64,
+    total: u64,
+    buy_remaining: u64,
+    sell_remaining: u64,
+}
+
+/// Верхняя граница фикстуры: столько лампортов тест кладёт в аккаунт, чтобы
+/// суммы по кошелькам заведомо не переполнили u64. Крайние цены матрицы
+/// (`u64::MAX`) в кошелёк не влезают, а проверять нужно отказ handler-а, а не
+/// арифметику самого теста.
+const MAX_FIXTURE_LAMPORTS: u64 = u64::MAX / 8;
+
+/// Реальный `orderbook::match_handler` для встречных заявок; эскроу покупателя
+/// всегда покрывает сделку и остаётся rent-exempt.
+fn match_orders(buy_price: u64, buy_amount: u64, sell_price: u64, sell_amount: u64) -> MatchOutcome {
+    runtime();
+    let w = World::new();
+    let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
+    let mint = w.config.food_mint;
+    let buy_key = pda(&[RESOURCE_ORDER_SEED, buyer.as_ref(), mint.as_ref()]).0;
+    let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
+    let rent = rent_exempt(RESOURCE_ORDER_SPACE);
+    let taker = |gross: u64| gross.saturating_mul(ORDERBOOK_TAKER_FEE_BPS as u64) / 10_000;
+    let escrow = buy_price.saturating_mul(buy_amount).min(MAX_FIXTURE_LAMPORTS);
+    let buy = program_account(
+        buy_key,
+        &resource_order(buyer, true, buy_price, buy_amount, mint),
+        RESOURCE_ORDER_SPACE,
+    );
+    set_lamports(&buy, rent.saturating_add(escrow).saturating_add(taker(escrow)).saturating_add(1));
+    let sell = program_account(
+        sell_key,
+        &resource_order(seller, false, sell_price, sell_amount, mint),
+        RESOURCE_ORDER_SPACE,
+    );
+    let seller_wallet = wallet(seller, false);
+    let treasury = wallet(w.treasury, false);
+    let escrow_before = buy.lamports();
+    let total = buy.lamports() + seller_wallet.lamports() + treasury.lamports();
+    let (mut accounts, bumps) = parse::<MatchResourceOrders>(
+        vec![
+            w.config_info(),
+            w.mm_info(),
+            spl_mint(mint, 1_000_000, Some(w.auth_key), None),
+            buy.clone(),
+            sell.clone(),
+            seller_wallet.clone(),
+            treasury.clone(),
+            token_account(Pubkey::new_unique(), mint, sell_key, sell_amount),
+            token_account(ata(&buyer, &mint), mint, buyer, 0),
+            token_program_info(),
+        ],
+        &[],
+    )
+    .unwrap();
+    let result =
+        crate::instructions::orderbook::match_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    MatchOutcome {
+        result,
+        cpis: cpi_calls(),
+        escrow_before,
+        buyer_escrow: buy.lamports(),
+        seller_wallet: seller_wallet.lamports(),
+        treasury: treasury.lamports(),
+        total,
+        buy_remaining: accounts.buy_order.amount_remaining,
+        sell_remaining: accounts.sell_order.amount_remaining,
+    }
+}
+
+#[test]
+fn transfer_matrix_zero_one_max_and_dust() {
+    // 0: пустая заявка не двигает ни токен, ни лампорт.
+    let zero = match_orders(1_000, 0, 900, 4);
+    rejected(zero.result, "OrderExhausted");
+    assert_eq!(zero.cpis, 0, "нулевой обмен не делает токен-CPI");
+    assert_eq!(zero.buyer_escrow + zero.seller_wallet + zero.treasury, zero.total);
+    assert_eq!((zero.buy_remaining, zero.sell_remaining), (0, 4), "заявки не тронуты");
+
+    // 1 (минимальная единица обмена): комиссии округляются вниз, покупатель
+    // платит ровно сделку плюс тейкерскую комиссию, лампорты сохраняются.
+    let dust = match_orders(1_000, 1, 900, 1);
+    assert!(dust.result.is_ok(), "{:?}", dust.result);
+    let gross = 900u64;
+    let taker_fee = gross * ORDERBOOK_TAKER_FEE_BPS as u64 / 10_000;
+    let maker_fee = gross * ORDERBOOK_MAKER_FEE_BPS as u64 / 10_000;
+    assert_eq!(dust.cpis, 1, "один токен-перевод обменянной единицы");
+    assert_eq!((dust.buy_remaining, dust.sell_remaining), (0, 0), "единица обмена исполнена");
+    assert_eq!(maker_fee, 0, "на одной единице комиссия мейкера округляется вниз до нуля");
+    assert_eq!(dust.seller_wallet, WALLET_LAMPORTS + gross - maker_fee, "выдано = продано минус комиссия");
+    assert_eq!(dust.treasury, WALLET_LAMPORTS + taker_fee + maker_fee, "казна берёт ровно свои bps");
+    assert_eq!(
+        dust.escrow_before - dust.buyer_escrow,
+        gross + taker_fee,
+        "покупатель платит сделку и тейкерскую комиссию, ни лампортом больше"
+    );
+    assert_eq!(
+        dust.buyer_escrow + dust.seller_wallet + dust.treasury,
+        dust.total,
+        "ни один лампорт не создан и не уничтожен"
+    );
+
+    // max: произведение цены и объёма не должно переполниться.
+    let max = match_orders(u64::MAX, 2, u64::MAX, 2);
+    rejected(max.result, "MathOverflow");
+    assert_eq!(max.cpis, 0, "отказ до токен-перевода");
+    assert_eq!((max.buy_remaining, max.sell_remaining), (2, 2), "заявки не тронуты");
+    assert_eq!(
+        max.buyer_escrow + max.seller_wallet + max.treasury,
+        max.total,
+        "ни один лампорт не сдвинулся"
+    );
+
+    // max по комиссии: сделка проходит по цене, а процент от неё переполняется.
+    let fee_overflow = match_orders(u64::MAX / 2, 1, u64::MAX / 2, 1);
+    rejected(fee_overflow.result, "MathOverflow");
+    assert_eq!(fee_overflow.cpis, 0, "отказ до токен-перевода");
+    assert_eq!((fee_overflow.buy_remaining, fee_overflow.sell_remaining), (1, 1));
+}
+
+// ----------------------------------------------------------------------
+// transfer через казну: `pay_out_with_referral`
+// ----------------------------------------------------------------------
+
+#[test]
+fn referral_claim_matrix_zero_one_and_max() {
+    // 0: отвергается до расхода эпохи.
+    let zero = referral_payout(PayoutCase { amount: 0, ..PayoutCase::default() });
+    rejected(zero.0, "ZeroAmount");
+    assert_eq!(zero.1, 0, "ни одного перевода из казны");
+    assert_eq!(zero.2.withdrawn_in_epoch, 0, "лимит эпохи не израсходован");
+
+    // 1: минимальная выплата. Доля реферера округляется вниз до нуля, поэтому
+    // уходит ровно одна единица — выдано = начислено, пыли сверху нет.
+    let one = referral_payout(PayoutCase { amount: 1, ..PayoutCase::default() });
+    assert!(one.0.is_ok(), "{:?}", one.0);
+    assert_eq!(one.1, 1, "рефереру не достаётся пыль: единственный перевод — игроку");
+    assert_eq!(one.2.withdrawn_in_epoch, 1, "лимит эпохи израсходован ровно на выплату");
+
+    // max: казна не может выдать больше, чем в ней есть.
+    let max = referral_payout(PayoutCase {
+        amount: u64::MAX,
+        max_per_tx: u64::MAX,
+        ..PayoutCase::default()
+    });
+    rejected(max.0, "VaultInsufficient");
+    assert_eq!(max.1, 0, "ни одного перевода");
+    assert_eq!(max.2.withdrawn_in_epoch, 0, "отвергнутая выплата не расходует лимит эпохи");
+}

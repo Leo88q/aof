@@ -45,6 +45,7 @@
     "test:vrf": "ts-node --project tsconfig.json --transpile-only scripts/vrfSelfTest.ts",
     "test:vrf-settlement": "ts-node --project tsconfig.json --transpile-only scripts/vrfSettlementSelfTest.ts",
     "test:read-cache": "ts-node --project tsconfig.json --transpile-only scripts/readCacheSelfTest.ts",
+    "test:rpc-quorum": "ts-node --project tsconfig.json --transpile-only scripts/rpcQuorumSelfTest.ts",
     "loadtest": "node ../scripts/loadtest/nf-load.mjs",
     "test:mutation": "node ../scripts/mutation/nf-mutate.mjs"
   },

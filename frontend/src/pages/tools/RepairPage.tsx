@@ -76,7 +76,7 @@ export function RepairPage() {
     if (repairState === "disabled") return flash("❌ Ремонт недоступен на этом деплое");
     if (!address) return flash("❌ Подключите кошелёк — кнопка в шапке");
     if (!tool) return flash("❌ Выберите инструмент");
-    if (!mints.stone || !mints.wood) return flash("❌ В конфиге программы нет минтов Кремния и Схемы");
+    if (!mints.stone || !mints.wood) return flash("❌ В реестре сети нет адресов Кремния и Схемы");
     if (amt <= 0) return flash("❌ Прочность уже полная");
     const q = quote;
     try {
@@ -89,17 +89,17 @@ export function RepairPage() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        flash(`✅ Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
+        flash(`Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
         setReceipt(
           <>Списано: {fmtNum((q?.silicon ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.circuit ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
         );
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(loadTools, 2500);
       } else {
-        flash(`❌ ${r.error}`);
+        flash(`${r.error}`);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
@@ -127,8 +127,8 @@ export function RepairPage() {
         <FeatureDisabledNotice id="tools_repair" />
       )}
       {repairState === "unknown" && (
-        <Card className="border border-amber-500/30 bg-soil-850">
-          <p className="text-amber-400 text-xs">Не удалось проверить готовность ремонта: конфиг программы не читается. Кнопка ремонта пока заблокирована.</p>
+        <Card className="border border-gold-500/30 bg-soil-850">
+          <p className="text-gold-400 text-xs">Не удалось проверить готовность ремонта: реестр сети не читается. Кнопка ремонта пока заблокирована.</p>
         </Card>
       )}
 
@@ -142,7 +142,7 @@ export function RepairPage() {
       {address && tools === null && (
         <Card className="text-center py-8">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-12 h-12 inline-block" /></div>
-          <p className="text-parchment text-sm">Инструменты недоступны из канонической сети</p>
+          <p className="text-parchment text-sm">Инструменты недоступны из сети</p>
         </Card>
       )}
 
@@ -190,7 +190,7 @@ export function RepairPage() {
               <div className="mt-4 h-3 rounded-full bg-soil-800 overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
-                  style={{ width: `${(durability / MAX_DURABILITY) * 100}%`, background: critical ? "#FF3366" : durability <= 10 ? "#FFD700" : "#00E5A0" }}
+                  style={{ width: `${(durability / MAX_DURABILITY) * 100}%`, background: critical ? "#E2685F" : durability <= 10 ? "#E0708A" : "#5FD3A8" }}
                   animate={{ opacity: critical ? [1, 0.45, 1] : [1, 0.8, 1] }}
                   transition={{ repeat: Infinity, duration: critical ? 0.6 : 1.6 }}
                 />

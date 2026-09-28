@@ -25,8 +25,8 @@ type DataQuality = "complete" | "partial" | "unavailable";
 
 const QUALITY_LABEL: Record<DataQuality, { text: string; cls: string }> = {
   complete: { text: "полные данные", cls: "bg-sprout-500/20 text-sprout-500" },
-  partial: { text: "частичные данные", cls: "bg-yellow-500/20 text-yellow-400" },
-  unavailable: { text: "нет данных", cls: "bg-red-500/20 text-red-400" },
+  partial: { text: "частичные данные", cls: "bg-gold-500/20 text-gold-400" },
+  unavailable: { text: "нет данных", cls: "bg-ember-500/20 text-ember-400" },
 };
 
 function QualityBadge({ q }: { q?: DataQuality }) {
@@ -126,7 +126,7 @@ export function EconomyDashboard() {
           </h3>
           {latest.dataQuality && latest.dataQuality !== "complete" && (
             <p className="text-straw text-xs mb-3">
-              On-chain индексатор событий ещё не запущен: mint/burn за 24ч и топ-холдеры недоступны,
+              Индексатор событий ещё не запущен: выпуск и сжигание за 24ч и топ-холдеры недоступны,
               активность считается по off-chain audit log. Не используйте эти цифры как полный учёт экономики.
             </p>
           )}
@@ -153,7 +153,7 @@ export function EconomyDashboard() {
                   max={20}
                   size={40}
                   stroke={4}
-                  color={latest.inflation24h > 10 ? "#FF3366" : latest.inflation24h > 5 ? "#00D4FF" : "#00E5A0"}
+                  color={latest.inflation24h > 10 ? "#E2685F" : latest.inflation24h > 5 ? "#5FC9DA" : "#5FD3A8"}
                   label={`${latest.inflation24h.toFixed(1)}%`}
                 />
               </div>
@@ -166,7 +166,7 @@ export function EconomyDashboard() {
             
             <div className="p-3 rounded-lg bg-soil-800/60">
               <p className="text-straw text-xs mb-1">Трейдеры 24ч</p>
-              <p className="text-blue-400 text-xl font-bold">{latest.activeTraders24h}</p>
+              <p className="text-water-400 text-xl font-bold">{latest.activeTraders24h}</p>
             </div>
             
             <div className="p-3 rounded-lg bg-soil-800/60">
@@ -176,7 +176,7 @@ export function EconomyDashboard() {
             
             <div className="p-3 rounded-lg bg-soil-800/60">
               <p className="text-straw text-xs mb-1">Failed TX</p>
-              <p className={`text-xl font-bold ${latest.failedTxs24h > 200 ? "text-red-400" : "text-parchment"}`}>
+              <p className={`text-xl font-bold ${latest.failedTxs24h > 200 ? "text-ember-400" : "text-parchment"}`}>
                 {latest.failedTxs24h}
               </p>
             </div>
@@ -192,7 +192,7 @@ export function EconomyDashboard() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-parchment font-semibold text-sm flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-4 h-4" /> Алерты</h3>
           {unresolvedAlerts.length > 0 && (
-            <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full">
+            <span className="px-2 py-1 bg-ember-500/20 text-ember-400 text-xs rounded-full">
               {unresolvedAlerts.length} активных
             </span>
           )}
@@ -204,9 +204,9 @@ export function EconomyDashboard() {
           <div className="space-y-2">
             {alerts.slice(0, 10).map(alert => {
               const severityColor = {
-                critical: "bg-red-500/20 border-red-500/40 text-red-400",
-                warning: "bg-yellow-500/20 border-yellow-500/40 text-yellow-400",
-                info: "bg-blue-500/20 border-blue-500/40 text-blue-400",
+                critical: "bg-ember-500/20 border-ember-500/40 text-ember-400",
+                warning: "bg-gold-500/20 border-gold-500/40 text-gold-400",
+                info: "bg-water-500/20 border-water-500/40 text-water-400",
               }[alert.severity] || "bg-soil-800 border-straw/20 text-straw";
               
               return (
@@ -253,7 +253,7 @@ export function EconomyDashboard() {
                 <span className="text-straw">{new Date(snap.timestamp).toLocaleTimeString()}</span>
                 <div className="flex gap-3">
                   <span className="text-wheat-500">{(Number(snap.potatoSupply) / 1e9).toFixed(2)}M</span>
-                  <span className={snap.inflation24h > 10 ? "text-red-400" : snap.inflation24h > 5 ? "text-yellow-400" : "text-sprout-500"}>
+                  <span className={snap.inflation24h > 10 ? "text-ember-400" : snap.inflation24h > 5 ? "text-gold-400" : "text-sprout-500"}>
                     {snap.inflation24h.toFixed(1)}%
                   </span>
                 </div>

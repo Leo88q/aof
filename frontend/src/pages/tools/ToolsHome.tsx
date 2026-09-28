@@ -11,6 +11,8 @@ import { CraftPage } from "./CraftPage";
 import { RepairPage } from "./RepairPage";
 import { CollectionPage } from "./CollectionPage";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { Note, Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
+import { MixerStrips } from "../../ui/forge/devices";
 
 export function ToolsHome() {
   const { push } = useNav();
@@ -33,6 +35,35 @@ export function ToolsHome() {
   }, [address]);
 
   useEffect(() => { loadTools(); }, [loadTools]);
+
+  // Каналы пульта: реальные инструменты из /query/my-tools, а до подключения
+  // кошелька — каталог инструментов в положении «нет данных» (пустая стойка
+  // честно подписана, выдуманной прочности нет).
+  const CATALOG: Array<{ key: string; name: string }> = [
+    { key: "plasma_cutter", name: "Плазменный резчик" },
+    { key: "silicon_extractor", name: "Экстрактор кремния" },
+    { key: "data_harvester", name: "Сборщик данных" },
+    { key: "quantum_transmitter", name: "Квантовый передатчик" },
+    { key: "neural_seeder", name: "Станция засева" },
+  ];
+  const rack = tools ?? [];
+  const channels = rack.length
+    ? rack.slice(0, 8).map((tool: any) => ({
+        key: tool.mint,
+        name: tool.toolType || "инструмент",
+        load: Number.isFinite(Number(tool.durability)) ? Number(tool.durability) / 20 : null,
+        hours: Number.isFinite(Number(tool.durability)) ? Number(tool.durability) : null,
+        active: !!(tool.isMining || tool.mining),
+      }))
+    : CATALOG.map((c) => ({ key: c.key, name: c.name, load: null, hours: null, active: false }));
+  const working = rack.filter((t: any) => t.isMining || t.mining).length;
+  const rackNote = !address
+    ? "Подключи кошелёк — покажем прочность твоих инструментов."
+    : tools === null
+      ? "Стойка не читается: сеть не ответила."
+      : rack.length === 0
+        ? "Инструментов пока нет: собери первый в кузнице или открой капсулу."
+        : "";
 
   const go = (key: string, el: React.ReactNode, title: string) =>
     push("tools", key, (
@@ -66,12 +97,45 @@ export function ToolsHome() {
         </div>
       </Section>
 
+      {/* К5 · пульт стоит на экране всегда: без кошелька каналы показывают
+          каталог инструментов в режиме «нет данных», чтобы приборная панель
+          мастерской была видна и до подключения. */}
+      <div className="content-pad" style={{ marginBottom: 12 }}>
+        <Panel
+          tier="panel"
+          device="mix"
+          id={<Sticker>{rack.length ? `СТОЙКА · ${rack.length}` : "СТОЙКА"}</Sticker>}
+          meta={rack.length ? "ПУЛЬТ" : "НЕТ ДАННЫХ"}
+          title="Пульт мастерской"
+          sub="прочность и режим каналов"
+        >
+          <MixerStrips maxHours={20} channels={channels} />
+          <div style={{ marginTop: 14 }}>
+            <Readouts>
+              <Readout
+                label="В работе"
+                value={rack.length ? String(working) : undefined}
+                dash={!rack.length}
+                hint={rack.length ? "каналы с включённым M" : "нет данных о смене"}
+              />
+              <Readout
+                label="В стойке"
+                value={rack.length ? String(rack.length) : undefined}
+                dash={!rack.length}
+                hint={rack.length ? "всего инструментов" : "стойка пуста"}
+              />
+            </Readouts>
+          </div>
+          {rackNote && <Note quiet>{rackNote}</Note>}
+        </Panel>
+      </div>
+
       <Section label="Ваши инструменты">
         <div className="content-pad">
           {!address && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-10 h-10 inline-block" />
-              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+              <div style={{ color: "var(--fg-dim)", marginTop: 8 }}>
                 Подключите кошелёк, чтобы увидеть инвентарь
               </div>
             </div>
@@ -79,17 +143,17 @@ export function ToolsHome() {
           {address && tools === null && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
-              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+              <div style={{ color: "var(--fg-dim)", marginTop: 8 }}>
                 {loading
                   ? "Читаем инструменты…"
-                  : "Инструменты недоступны из канонической сети — не удалось прочитать инвентарь"}
+                  : "Инструменты недоступны из сети — не удалось прочитать стойку"}
               </div>
             </div>
           )}
           {address && tools !== null && tools.length === 0 && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
-              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+              <div style={{ color: "var(--fg-dim)", marginTop: 8 }}>
                 Инструментов пока нет — откройте первую капсулу дропа
               </div>
             </div>

@@ -20,9 +20,9 @@ const RARITY_RU: Record<string, string> = {
 
 // [НОВОЕ] Метаданные всех 6 ресурсов
 const RES_META: Record<string, { icon: string; label: string; color: string }> = {
-  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-amber-400" },
+  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-gold-400" },
   stone: { icon: resourceIcon("stone") || "", label: "Кремний",   color: "text-stone-400" },
-  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-yellow-500" },
+  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-gold-500" },
   seeds: { icon: resourceIcon("seeds") || "", label: "Нейрон",   color: "text-sprout-500" },
   water: { icon: resourceIcon("water") || "", label: "Энергопоток",     color: "text-water-500" },
   potato: { icon: resourceIcon("potato") || "", label: "MIND",   color: "text-wheat-500" },
@@ -136,12 +136,12 @@ export function CraftPage() {
       const r = await handleTxResponse(resp);
       if (r.success && resp.mint) {
         setNewMint(resp.mint);
-        flash(`✅ Минт готов: ${shortAddr(resp.mint)}`);
+        flash(`Минт готов: ${shortAddr(resp.mint)}`);
       } else {
-        flash(`❌ ${r.error || "минт не вернулся"}`);
+        flash(`${r.error || "минт не вернулся"}`);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     } finally {
       setBusyPrep(false);
     }
@@ -155,7 +155,7 @@ export function CraftPage() {
     
     const requiredMints = ["wood", "stone", "food", "seeds", "water", "potato"];
     for (const res of requiredMints) {
-      if (!resMints[res]) return flash(`❌ В реестре ресурсов нет минта ${res.toUpperCase()}`);
+      if (!resMints[res]) return flash(`В реестре ресурсов нет минта ${res.toUpperCase()}`);
     }
     
     // Проверка баланса
@@ -163,7 +163,7 @@ export function CraftPage() {
       for (const res of requiredMints) {
         const needed = craftQuote[res] || 0;
         if (balances[res] < needed) {
-          return flash(`❌ Not enough ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
+          return flash(`❌ Не хватает ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
         }
       }
     }
@@ -185,7 +185,7 @@ export function CraftPage() {
         skrMint: resMints.skr,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Выкован ${RARITY_RU[targetRk]}: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Выкован ${RARITY_RU[targetRk]}: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         const q = craftQuote;
         if (q) {
@@ -197,7 +197,7 @@ export function CraftPage() {
         setTimeout(loadTools, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
@@ -328,13 +328,13 @@ export function CraftPage() {
                       className={`h-full rounded-full ${
                         status === "sufficient" ? "bg-sprout-500" :
                         status === "partial" ? "bg-wheat-500" :
-                        "bg-red-500"
+                        "bg-ember-500"
                       }`}
                     />
                   </div>
                   {status !== "sufficient" && (
-                    <p className="text-[10px] text-red-400 mt-1">
-                      ⚠️ Not enough {RES_META[res].label}
+                    <p className="text-[10px] text-ember-400 mt-1">
+                      Не хватает {RES_META[res].label}
                     </p>
                   )}
                 </div>
@@ -347,8 +347,8 @@ export function CraftPage() {
               full POTATO amount. */}
           <div className="p-3 rounded-xl bg-soil-800/60 border border-straw/10">
             <p className="text-straw text-[10px]">
-              SKR-скидка отключена: канонический mint SKR ещё не настроен в контракте.
-              Крафт списывает полную стоимость MIND.
+              SKR-скидка отключена: ресурс SKR ещё не прописан в сети.
+              Синтез списывает полную стоимость MIND.
             </p>
           </div>
           

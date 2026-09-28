@@ -2,7 +2,7 @@ import { VipGate } from "../../components/ui/VipGate";
 import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType, IChartApi } from "lightweight-charts";
 import { api } from "../../lib/api";
-import { Card } from "../../components/ui/Card";
+import { Panel, Readout, Readouts, Row, Rows, Sticker } from "../../ui/forge/kit";
 import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
 import { ProgressRing } from "../../components/ProgressRing";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
@@ -74,17 +74,17 @@ export function PortfolioHome() {
 
     const chart = createChart(chartRef.current, {
       height: 200,
-      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#8890B0" },
+      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#9AA7B4" },
       grid: {
         vertLines: { color: "rgba(61, 50, 38, 0.3)" },
         horzLines: { color: "rgba(61, 50, 38, 0.3)" },
       },
-      timeScale: { timeVisible: false, borderColor: "#1A1A30" },
-      rightPriceScale: { borderColor: "#1A1A30" },
+      timeScale: { timeVisible: false, borderColor: "#12161A" },
+      rightPriceScale: { borderColor: "#12161A" },
     });
 
     const series = chart.addAreaSeries({
-      lineColor: "#FFD700",
+      lineColor: "#E0708A",
       topColor: "rgba(232, 163, 61, 0.3)",
       bottomColor: "rgba(232, 163, 61, 0.02)",
       lineWidth: 2,
@@ -104,9 +104,9 @@ export function PortfolioHome() {
     return (
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
-        <Card className="p-8 text-center">
+        <Panel tier="panel" className="p-8 text-center">
           <div className="text-parchment">Читаем портфель…</div>
-        </Card>
+        </Panel>
       
       {/* VIP: Расширенная аналитика */}
 
@@ -118,10 +118,10 @@ export function PortfolioHome() {
     return (
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
-        <Card className="p-8 text-center">
+        <Panel tier="panel" className="p-8 text-center">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Подключите кошелёк, чтобы увидеть портфель</p>
-        </Card>
+        </Panel>
       </div>
     );
   }
@@ -130,10 +130,10 @@ export function PortfolioHome() {
     return (
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
-        <Card className="p-8 text-center">
+        <Panel tier="panel" className="p-8 text-center">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Нет данных портфеля</p>
-        </Card>
+        </Panel>
       </div>
     );
   }
@@ -156,37 +156,38 @@ export function PortfolioHome() {
 
   return (
     <div className="p-4 pt-2 pb-24">
-      <h1 className="text-2xl font-bold mb-4">Портфель</h1>
-
       {/* Общая стоимость */}
-      <Card className="mb-4 text-center">
-        <p className="text-straw text-sm mb-1">Общая стоимость</p>
-        <div className="text-4xl font-bold text-wheat-500">
-          <AnimatedCounter value={portfolio?.netWorth?.total ?? 0} duration={1200} />
-        </div>
-        <p className="text-straw text-xs mt-1">MIND</p>
-      </Card>
+      <Panel tier="panel" device="gel" className="mb-4" id={<Sticker>ПОРТФЕЛЬ</Sticker>} meta="ОЦЕНКА" title="Общая стоимость" sub="оценка сети">
+        <Readouts>
+          <Readout
+            label="Общая стоимость"
+            value={<AnimatedCounter value={portfolio?.netWorth?.total ?? 0} duration={1200} />}
+            unit="MIND"
+            hint="сколько стоит лаборатория по данным сети"
+          />
+        </Readouts>
+      </Panel>
 
       {/* График истории */}
       {portfolio?.history?.[period]?.length > 0 && (
-        <Card className="mb-4">
+        <Panel tier="panel" className="mb-4">
           <div className="flex gap-2 mb-3">
             {(["7d", "30d", "90d"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1 rounded-lg text-xs ${period === p ? "bg-wheat-600 text-soil-950" : "bg-soil-800 text-straw"}`}
+                className={"fg-key fg-key--tiny" + (period === p ? " fg-key--primary" : "")}
               >
                 {p}
               </button>
             ))}
           </div>
           <div ref={chartRef} />
-        </Card>
+        </Panel>
       )}
 
       {/* Активы по категориям */}
-      <Card className="mb-4">
+      <Panel tier="panel" className="mb-4">
         <h3 className="text-sm font-semibold text-parchment mb-3">Активы</h3>
         <div className="space-y-3">
           {categories.map((cat) => {
@@ -205,7 +206,7 @@ export function PortfolioHome() {
                     max={total}
                     size={32}
                     stroke={3}
-                    color="#FFD700"
+                    color="#E0708A"
                     label={`${Math.round(pct)}%`}
                   />
                   <span className="text-straw text-xs flex-1">Доля в портфеле</span>
@@ -214,11 +215,11 @@ export function PortfolioHome() {
             );
           })}
         </div>
-      </Card>
+      </Panel>
 
       {/* Ресурсы */}
       {activeResources.length > 0 && (
-        <Card className="mb-4">
+        <Panel tier="panel" className="mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="inline-block w-4 h-4 align-text-bottom" /> Ресурсы ({activeResources.length})</h3>
           <div className="space-y-2">
             {activeResources.slice(0, 10).map((r) => (
@@ -234,12 +235,12 @@ export function PortfolioHome() {
               <p className="text-straw text-xs text-center">+ ещё {activeResources.length - 10} ресурсов</p>
             )}
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Инструменты */}
       {(portfolio?.tools?.length ?? 0) > 0 && (
-        <Card className="mb-4">
+        <Panel tier="panel" className="mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.craft} alt="" className="w-4 h-4" /> Инструменты ({portfolio.tools.length})</h3>
           <div className="grid grid-cols-2 gap-2">
             {portfolio.tools.slice(0, 6).map((t: any) => {
@@ -268,12 +269,12 @@ export function PortfolioHome() {
           {portfolio.tools.length > 6 && (
             <p className="text-straw text-xs text-center mt-2">+ ещё {portfolio.tools.length - 6} инструментов</p>
           )}
-        </Card>
+        </Panel>
       )}
 
       {/* Активные листинги */}
       {(portfolio?.listings?.length ?? 0) > 0 && (
-        <Card className="mb-4">
+        <Panel tier="panel" className="mb-4">
           <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.marketListing} alt="" className="w-4 h-4" /> Активные листинги ({portfolio.listings.length})</h3>
           <div className="space-y-2">
             {portfolio.listings.slice(0, 5).map((l: any) => (
@@ -291,13 +292,13 @@ export function PortfolioHome() {
               <p className="text-straw text-xs text-center">+ ещё {portfolio.listings.length - 5} листингов</p>
             )}
           </div>
-        </Card>
+        </Panel>
       )}
 
-      {/* Активные ордера */}
+      {/* Активные заявки */}
       {(portfolio?.orders?.length ?? 0) > 0 && (
-        <Card className="mb-4">
-          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Активные ордера ({portfolio.orders.length})</h3>
+        <Panel tier="panel" className="mb-4">
+          <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Активные заявки ({portfolio.orders.length})</h3>
           <div className="space-y-2">
             {portfolio.orders.slice(0, 5).map((o: any) => {
               const amount = Number(o.amountRemaining || 0);
@@ -306,7 +307,7 @@ export function PortfolioHome() {
                 <div key={o.pubkey} className="flex items-center justify-between p-2 rounded-lg bg-soil-800/60">
                   <div className="flex-1">
                     <p className="text-parchment text-xs font-medium">{o.isBuy ? "Покупка" : "Продажа"}</p>
-                    <p className="text-straw text-[10px]">Mint: {o.mint?.slice(0, 8)}...</p>
+                    <p className="text-straw text-[10px]">Лот: {o.mint?.slice(0, 8)}…</p>
                   </div>
                   <div className="text-right">
                     <p className="text-wheat-500 text-xs font-bold">{fmtNum(amount)} × {price.toFixed(4)} SOL</p>
@@ -318,11 +319,11 @@ export function PortfolioHome() {
               <p className="text-straw text-xs text-center">+ ещё {portfolio.orders.length - 5} ордеров</p>
             )}
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Статистика */}
-      <Card>
+      <Panel tier="panel">
         <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsBar} alt="" className="w-4 h-4" /> Статистика</h3>
         <div className="grid grid-cols-2 gap-2">
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
@@ -335,18 +336,18 @@ export function PortfolioHome() {
           </div>
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-2xl font-bold text-wheat-500">{portfolio.stats?.ordersCount ?? 0}</p>
-            <p className="text-straw text-[10px]">Ордеров</p>
+            <p className="text-straw text-[10px]">Заявок</p>
           </div>
           <div className="p-2 rounded-lg bg-soil-800/60 text-center">
             <p className="text-2xl font-bold text-wheat-500">{portfolio.stats?.compendiumPct ?? 0}%</p>
             <p className="text-straw text-[10px]">Каталог</p>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* VIP: Расширенная аналитика */}
       <VipGate isVip={false} feature="Расширенная аналитика портфеля">
-        <Card>
+        <Panel tier="panel">
           <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-4 h-4" /> Аналитика (Premium)</h3>
           <div className="space-y-2 text-straw text-xs">
             <p>• Графики доходности по категориям</p>
@@ -354,7 +355,7 @@ export function PortfolioHome() {
             <p>• Оптимизация портфеля</p>
             <p>• Экспорт данных в CSV</p>
           </div>
-        </Card>
+        </Panel>
       </VipGate>
 
     </div>

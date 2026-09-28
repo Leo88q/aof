@@ -9,6 +9,20 @@ import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { DataUnavailableNotice, isFailClosedError } from "../../lib/availability";
+import { Note, Panel, Sticker } from "../../ui/forge/kit";
+import { PunchedCard } from "../../ui/forge/devices";
+
+/**
+ * К10 · перфокарты Жаккарда. Один шаг задания — одна колонка карты: пробитые
+ * колонки уже отработаны, подсвеченная — следующая. Число колонок выводится из
+ * реального прогресса (quest.pct / progress / target), ничего не дорисовывается.
+ */
+const CARD_STEPS = 12;
+
+function questSteps(pct: number): ("done" | "next" | "open")[] {
+  const filled = Math.max(0, Math.min(CARD_STEPS, Math.round((Number(pct) || 0) / (100 / CARD_STEPS))));
+  return Array.from({ length: CARD_STEPS }, (_, i) => (i < filled ? "done" : i === filled ? "next" : "open"));
+}
 
 const tabs = [
   { id: "daily", icon: UI_ICONS.questsDaily, label: "Задания" },
@@ -73,16 +87,16 @@ export function QuestsHome() {
     try {
       const resp = await api.quests.claim({ user: address, questId });
       if (resp.success) {
-        flash("🎉 Награда получена!");
+        flash("Награда получена — начислено в сети");
         setClaimedIds([...claimedIds, questId]);
         // Перезагружаем квесты
         const data = await api.quests.list(address);
         setQuests(data.quests || []);
       } else {
-        flash(`❌ ${resp.error}`);
+        flash(`${resp.error}`);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
@@ -130,11 +144,33 @@ export function QuestsHome() {
             unavailable ? (
               <DataUnavailableNotice id="quest_progress" />
             ) : (
-              <Card className="text-center py-8">
-                <p className="text-straw">
-                  {address ? "Нет активных заданий" : "Подключите кошелёк, чтобы увидеть задания"}
-                </p>
-              </Card>
+              /* К10 · перфокарта стоит и без данных: пустая карта честно
+                 показывает, что ни один шаг не зачтён, а подпись объясняет,
+                 чего не хватает — кошелька, сети или самих заданий. */
+              <Panel
+                tier="panel"
+                device="cards"
+                id={<Sticker>ЗАДАНИЯ</Sticker>}
+                meta={address ? "0 АКТИВНЫХ" : "БЕЗ КОШЕЛЬКА"}
+                title="Перфокарта прогресса"
+                sub="колонка — шаг задания"
+              >
+                <PunchedCard
+                  title="ПРОГРЕСС"
+                  steps={questSteps(0)}
+                  rows={4}
+                  footLeft="0 / 0"
+                  footMid="шагов"
+                  footRight="—"
+                />
+                <Note quiet>
+                  {!address
+                    ? "Подключите кошелёк, чтобы увидеть задания."
+                    : unavailable
+                      ? "Журнал заданий недоступен: сеть не ответила."
+                      : "Активных заданий нет — сеть ничего не начислила."}
+                </Note>
+              </Panel>
             )
           ) : (
             quests.map((quest, i) => {
@@ -146,24 +182,28 @@ export function QuestsHome() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <Card>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h3 className="text-parchment text-sm font-medium">{quest.title}</h3>
-                        <p className="text-straw text-xs mt-1">{quest.description}</p>
-                      </div>
-                      <span className="text-wheat-500 text-xs ml-2">
-                        {quest.reward.amount} {quest.reward.type}
-                      </span>
+                  <Panel
+                    tier="panel"
+                    device="cards"
+                    id={<Sticker alt>ЗАДАНИЕ {String(quest.id).padStart(2, "0")}</Sticker>}
+                    meta={isClaimed ? "ПОЛУЧЕНО" : quest.claimable ? "ГОТОВО К ВЫДАЧЕ" : "В РАБОТЕ"}
+                    title={quest.title}
+                    sub={`${quest.reward.amount} ${quest.reward.type}`}
+                  >
+                    <p className="fg-note" style={{ marginTop: 0 }}>{quest.description}</p>
+
+                    <div style={{ marginTop: 12 }}>
+                      <PunchedCard
+                        title="ПРОГРЕСС"
+                        steps={questSteps(quest.pct)}
+                        footLeft={`${quest.progress}/${quest.target}`}
+                        footMid={`${quest.pct}%`}
+                        footRight={undefined}
+                      />
                     </div>
 
-                    <LiquidBar
-                      level={quest.pct}
-                      color={quest.claimable ? "#FFD700" : "#00E5A0"}
-                    />
-
-                    <div className="flex justify-between items-center mt-3">
-                      <span className="text-xs text-straw">
+                    <div className="fg-row" style={{ borderTop: "none" }}>
+                      <span className="fg-row__k">
                         <AnimatedCounter value={quest.pct} />% ({quest.progress}/{quest.target})
                       </span>
 
@@ -178,10 +218,10 @@ export function QuestsHome() {
                           Получено
                         </span>
                       ) : (
-                        <span className="text-straw text-xs">В процессе</span>
+                        <span className="fg-row__k">В процессе</span>
                       )}
                     </div>
-                  </Card>
+                  </Panel>
                 </motion.div>
               );
             })
@@ -202,7 +242,7 @@ export function QuestsHome() {
               показываем состояние вместо выдуманного прогресса. */}
           <div className="rounded-2xl border border-straw/15 bg-soil-800/60 px-3 py-3 text-center">
             <img src={UI_ICONS.challenges} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
-            <p className="text-straw text-xs">Прогресс недели появится, когда расчёт наград станет ончейн.</p>
+            <p className="text-straw text-xs">Прогресс недели появится, когда сеть начнёт считать награды.</p>
           </div>
           <button
             type="button"

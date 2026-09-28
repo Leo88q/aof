@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { materialMintsPda, configPda } from "./pda";
-import { fetchOne } from "./decode";
+import { fetchOneForSigner } from "./decode";
 
 // Resource mints use 9 decimals; all amounts passed to SPL instructions are
 // atomic units (10 display units per hour for common).
@@ -44,7 +44,7 @@ export async function getMintForToolType(toolType: string): Promise<PublicKey | 
   // Базовые ресурсы из Config
   if (key === "DATA" || key === "CIRCUIT" || key === "SILICON") {
     const [cfgAddr] = configPda();
-    const cfg: any = await fetchOne("config", cfgAddr);
+    const cfg: any = await fetchOneForSigner("config", cfgAddr);
     const field = key === "DATA" ? "foodMint" : key === "CIRCUIT" ? "woodMint" : "stoneMint";
     const mint = cfg?.[field];
     return mint ? new PublicKey(mint) : null;
@@ -52,7 +52,7 @@ export async function getMintForToolType(toolType: string): Promise<PublicKey | 
 
   // Новые ресурсы из MaterialMints
   const [mmAddr] = materialMintsPda();
-  const mm: any = await fetchOne("materialMints", mmAddr);
+  const mm: any = await fetchOneForSigner("materialMints", mmAddr);
   const fieldMap: Record<string, string> = {
     NEURON: "seeds",
     SYNAPSE: "wheat",

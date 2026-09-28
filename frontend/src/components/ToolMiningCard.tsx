@@ -46,7 +46,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
 
   async function run(kind: "stake" | "start" | "collect" | "unstake") {
     if ((kind === "start" || kind === "collect") && !MINING_ENABLED) {
-      return flashMsg("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
+      return flashMsg("⏸️ Добыча отключена до проверки правил в сети");
     }
     if (!address) return flashMsg("❌ Подключите кошелёк — кнопка в шапке");
     setBusy(true);
@@ -66,13 +66,13 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         resp = await api.tools.collectMining({ user: address, mint: tool.mint });
       }
       const r = await handleTxResponse(resp);
-      flashMsg(r.success ? `✅ Done: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flashMsg(r.success ? `Готово: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(() => onChanged?.(), 2500);
       }
     } catch (e: any) {
-      flashMsg(`❌ ${e?.response?.data?.error || e.message}`);
+      flashMsg(`${e?.response?.data?.error || e.message}`);
     } finally {
       setBusy(false);
     }
@@ -84,12 +84,12 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
 
   const state =
     durabilityPct > 75
-      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#00E5A0" }
+      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#5FD3A8" }
       : durabilityPct > 40
-      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#00D4FF" }
+      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#5FC9DA" }
       : durabilityPct > 15
-      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#FF3366" }
-      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#FF3366" };
+      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#E2685F" }
+      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#E2685F" };
 
   // Прогресс экстрактора: оставшееся время от общего срока текущей добычи
   const totalSec = Math.max(1, toNum(tool.lastMinedHours) * 3600 || hours * 3600);
@@ -107,7 +107,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       <div className="flex items-start gap-3">
         <ArtPlate src={icon} alt={tool.toolType || "Инструмент"} size={84} />
         <div className="flex-1 min-w-0 pt-1">
-          <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{tool.toolType || "Инструмент"}</div>
+          <div className="text-parchment font-semibold text-sm">{tool.toolType || "Инструмент"}</div>
           <div className="text-xs font-medium mt-0.5" style={{ color: meta.color }}>{meta.label}</div>
           <div className="text-straw text-xs mt-1 font-mono opacity-60">{tool.mint?.slice(0, 4)}…{tool.mint?.slice(-4)}</div>
           <div className="mt-2 text-right">
@@ -152,7 +152,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
           </div>
           <button onClick={() => run("start")} disabled={!MINING_ENABLED || busy || durability < 1}
             className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-            {MINING_ENABLED ? "Начать добычу" : "Добыча отключена до проверки on-chain"}
+            {MINING_ENABLED ? "Начать добычу" : "Добыча отключена до проверки в сети"}
           </button>
           <button onClick={() => run("unstake")} disabled={busy || durability < 20}
             className="w-full py-2 rounded-xl bg-soil-700 border border-straw/20 text-straw text-xs disabled:opacity-40">
@@ -168,7 +168,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
               animate={MINING_ENABLED ? { scale: [1, 1.03, 1] } : undefined}
               transition={{ repeat: Infinity, duration: 1.4 }}
               className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-              {MINING_ENABLED ? "Забрать добычу" : "Сбор отключён до проверки on-chain"}
+              {MINING_ENABLED ? "Забрать добычу" : "Сбор отключён до проверки в сети"}
             </motion.button>
           ) : (
             <div>

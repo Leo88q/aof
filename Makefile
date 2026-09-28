@@ -1,7 +1,7 @@
 # Local dev shortcuts that work around the upstream IDL build breakage
 # See docs/BUILD_TROUBLESHOOTING.md
 
-.PHONY: ensure-idl ensure-env build no-idl test test-mocha web-check web-sync web-install web-test web-build web-up load-test load-test-farm mutate mutants security-static audit-bundle
+.PHONY: ensure-idl ensure-env build no-idl test test-mocha web-check web-sync web-install web-test web-build web-up load-test load-test-farm mutate mutants security-static audit-bundle registry-check agent-skills upstream-watch
 
 ensure-idl:
 	node scripts/ensure-idl.mjs 2>/dev/null || node scripts/ensure-idl.js
@@ -66,7 +66,26 @@ mutants:
 security-static:
 	node scripts/security/check-hidden-unicode.mjs
 	node scripts/security/agent-config-lock.mjs --check
+	node scripts/security/check-agent-skills.mjs
+	node scripts/security/program-registry.mjs --check
+	node scripts/security/upstream-watch.mjs --check
 	node --test tests/readiness/ai-agent-surface.test.cjs
+	node --test tests/readiness/attacks-2026-h2.test.cjs
+
+# Реестр программ/апстримов/ключей (#98/#116/#128): адреса, жизненный цикл, пины.
+registry-check:
+	node scripts/security/program-registry.mjs --check
+	node scripts/security/program-registry.mjs --json
+
+# Навыки и конфиги ИИ-агентов (#130): опасные инструкции и пиннинг по SHA-256.
+agent-skills:
+	node scripts/security/check-agent-skills.mjs
+	node scripts/security/check-agent-skills.mjs --list
+
+# Апстрим-дозор: offline всегда, online — по сети (OSV + GitHub releases).
+upstream-watch:
+	node scripts/security/upstream-watch.mjs --check
+	node scripts/security/upstream-watch.mjs --online --out reports/upstream-watch.md
 
 audit-bundle:
 	node scripts/security/ai-audit-bundle.mjs --out /tmp/aof-audit

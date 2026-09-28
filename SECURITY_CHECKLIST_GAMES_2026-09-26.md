@@ -3,6 +3,7 @@
 Продолжение отчётов:
 - `SECURITY_CHECKLIST_REVIEW_2026-09-25.md` — пункты 1–30;
 - `SECURITY_OPEN_ISSUES_PROPOSALS_2026-09-26.md` — решения по открытым вопросам.
+- `SECURITY_CHECKLIST_AI_AGENTS_2026-09-28.md` — пункты 71–82; `SECURITY_CHECKLIST_ATTACKS_2026-09-28.md` — пункты 94–130.
 
 Здесь разобраны часть 1 (31–54) и часть 2 (55–70) по реальному коду: 6 on-chain программ, бэкенд `aof_backend`, сервис `farm-trader`, фронтенд, CI и зависимости.
 

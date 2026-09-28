@@ -104,7 +104,7 @@ export function AuditLogPage() {
                       <span className={`text-xs px-2 py-0.5 rounded font-bold ${
                         isSuccess 
                           ? "bg-sprout-500/20 text-sprout-500" 
-                          : "bg-red-500/20 text-red-500"
+                          : "bg-ember-500/20 text-ember-500"
                       }`}>
                         {log.result?.toUpperCase() || "UNKNOWN"}
                       </span>
@@ -131,7 +131,7 @@ export function AuditLogPage() {
                         href={`https://explorer.solana.com/tx/${log.txSig}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-400 font-mono hover:underline"
+                        className="text-water-400 font-mono hover:underline"
                       >
                         {log.txSig.slice(0, 16)}...
                       </a>
@@ -149,7 +149,7 @@ export function AuditLogPage() {
                     <div>
                       <span className="text-straw">Status:</span>{" "}
                       <span className={`font-mono ${
-                        meta.statusCode >= 400 ? "text-red-400" : "text-sprout-500"
+                        meta.statusCode >= 400 ? "text-ember-400" : "text-sprout-500"
                       }`}>
                         {meta.statusCode}
                       </span>

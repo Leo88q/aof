@@ -20,6 +20,10 @@
 .legal-draft-label { color: #ffe6a0; }
 .legal-consent { border: 1px solid #91b6cf; padding: 1.25rem; border-radius: .75rem; margin-top: 1rem; }
 .legal-consent label { display: flex; align-items: center; gap: .75rem; margin: 1rem 0; }
+/* Короткая полоса выбора: одна строка текста и три кнопки, без заголовка */
+.legal-consent--ask { display: grid; gap: .75rem; background: rgba(255, 255, 255, .03); }
+.legal-consent--ask p { margin: 0; }
+.legal-consent--ask .legal-actions > button { flex: 1 1 160px; }
 .legal-consent input { width: 1.2rem; height: 1.2rem; flex-shrink: 0; }
 .legal-actions > button { flex: 1 1 220px; }
 .wallet-safety { max-width: 42rem; border: 1px solid #91b6cf; border-radius: .75rem; padding: 1rem; margin-top: 1rem; }

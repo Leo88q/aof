@@ -1,218 +1,171 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
-import { UI_ICONS } from "../../lib/visualAssets";
+import {
+  DAYS_PER_SEASON,
+  SEASON_ICONS,
+  WEATHER_BY_INDEX,
+  WEATHER_ICONS,
+  WEATHER_LABELS,
+  fetchWeatherSnapshot,
+  seasonFromDayId,
+  seasonTitle,
+  weatherIndexForDay,
+  type WeatherSnapshot,
+} from "../../lib/weather";
 
-const DAYS_PER_SEASON = 42;
-const SEASONS = [
-  { name: "spring", icon: UI_ICONS.epochInit, color: "from-emerald-500/20 to-cyan-500/20", label: "Эпоха I · Инициализация" },
-  { name: "summer", icon: UI_ICONS.epochTrain, color: "from-amber-500/20 to-orange-500/20", label: "Эпоха II · Обучение" },
-  { name: "autumn", icon: UI_ICONS.epochTune, color: "from-yellow-500/20 to-amber-500/20", label: "Эпоха III · Дообучение" },
-  { name: "winter", icon: UI_ICONS.epochInfer, color: "from-blue-500/20 to-cyan-500/20", label: "Эпоха IV · Инференс" },
-];
+/**
+ * Календарь эпох.
+ *
+ * Дефект 2026-09-28: страница считала погоду дней сама — по своему хешу
+ * (`dayId * 0x9E3779B9` с долями 20/30/40/10), из-за чего расписание не
+ * совпадало с цепью ни в один день, а эффекты («Данные +10%») были выдуманы.
+ * Теперь состояние дня читается из канонического WeatherState PDA, а сетка
+ * эпохи строится функцией `weatherIndexForDay` — тем же правилом, что и в
+ * aof-core (`weather_for_day`, 10/50/30/10). Сеть не хранит отдельного
+ * прогноза: погода любого дня — чистая функция его номера, и это сказано игроку.
+ */
 
-const WEATHER_TYPES = [
-  { type: "sunny", icon: UI_ICONS.weatherNominal, name: "Номинал", effect: "Данные +10%" },
-  { type: "rain", icon: UI_ICONS.weatherSurge, name: "Скачок", effect: "Схема +10%" },
-  { type: "drought", icon: UI_ICONS.weatherBlackout, name: "Блэкаут", effect: "Всё -15%, редкий лут +50%" },
-  { type: "harvest_festival", icon: UI_ICONS.weatherFrenzy, name: "Френзи", effect: "Множитель" },
-];
-
-interface CalendarDay {
+interface DayCell {
   dayId: number;
   date: string;
-  season: string;
-  seasonIndex: number;
-  dayOfSeason: number;
-  weather: string;
+  weatherIndex: number;
   isToday: boolean;
 }
 
 export function SeasonCalendar() {
-  const [calendar, setCalendar] = useState<CalendarDay[]>([]);
+  const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alive, setAlive] = useState(true);
 
   useEffect(() => {
-    const epoch = new Date("2024-01-01").getTime();
-    const today = new Date();
-    const todayMs = today.getTime();
-    const todayDayId = Math.floor((todayMs - epoch) / 86400000);
-    const todayDayOfSeason = todayDayId % DAYS_PER_SEASON;
-
-    const startDayId = todayDayId - todayDayOfSeason;
-    const days: CalendarDay[] = [];
-
-    // Текущий сезон (42 дня)
-    for (let i = 0; i < DAYS_PER_SEASON; i++) {
-      const dayId = startDayId + i;
-      const date = new Date(epoch + dayId * 86400000);
-      const seasonIndex = Math.floor((dayId / DAYS_PER_SEASON) % 4);
-      const dayOfSeason = dayId % DAYS_PER_SEASON;
-      
-      const hash = dayId * 0x9E3779B9;
-      const roll = (hash >>> 0) % 100;
-      let weather = "sunny";
-      if (roll < 20) weather = "drought";
-      else if (roll < 50) weather = "rain";
-      else if (roll < 90) weather = "sunny";
-      else weather = "harvest_festival";
-
-      days.push({
-        dayId,
-        date: date.toISOString().split("T")[0],
-        season: SEASONS[seasonIndex].name,
-        seasonIndex,
-        dayOfSeason,
-        weather,
-        isToday: dayId === todayDayId,
-      });
-    }
-
-    // Следующий сезон (42 дня)
-    for (let i = 0; i < DAYS_PER_SEASON; i++) {
-      const dayId = startDayId + DAYS_PER_SEASON + i;
-      const date = new Date(epoch + dayId * 86400000);
-      const seasonIndex = Math.floor((dayId / DAYS_PER_SEASON) % 4);
-      const dayOfSeason = dayId % DAYS_PER_SEASON;
-      
-      const hash = dayId * 0x9E3779B9;
-      const roll = (hash >>> 0) % 100;
-      let weather = "sunny";
-      if (roll < 20) weather = "drought";
-      else if (roll < 50) weather = "rain";
-      else if (roll < 90) weather = "sunny";
-      else weather = "harvest_festival";
-
-      days.push({
-        dayId,
-        date: date.toISOString().split("T")[0],
-        season: SEASONS[seasonIndex].name,
-        seasonIndex,
-        dayOfSeason,
-        weather,
-        isToday: false,
-      });
-    }
-
-    setCalendar(days);
-    setLoading(false);
-  }, []);
+    let mounted = true;
+    fetchWeatherSnapshot()
+      .then((data) => {
+        if (!mounted) return;
+        setSnapshot(data);
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, [alive]);
 
   if (loading) {
     return (
       <div className="p-8 text-center">
-        <div className="text-parchment">Читаем календарь…</div>
+        <div className="text-parchment">Читаем состояние дня…</div>
       </div>
     );
   }
 
-  const currentSeason = calendar.find(d => d.isToday)?.season || "spring";
-  const currentSeasonData = SEASONS.find(s => s.name === currentSeason);
+  if (!snapshot) {
+    return (
+      <Card className="p-6 bg-soil-800 border border-straw/10 space-y-3">
+        <h2 className="text-lg font-semibold text-parchment">Состояние дня недоступно</h2>
+        <p className="text-straw text-sm leading-relaxed">
+          Сеть не отдала аккаунт погоды. Календарь пуст намеренно: без данных сети
+          расписание не достраивается.
+        </p>
+        <button className="nf-key" type="button" onClick={() => { setLoading(true); setAlive((v) => !v); }}>
+          Прочитать ещё раз
+        </button>
+      </Card>
+    );
+  }
+
+  const season = seasonFromDayId(snapshot.dayId);
+  const todayIso = new Date(snapshot.dayId * 86_400_000).toISOString().slice(0, 10);
+  const epochStart = snapshot.dayId - season.dayOfSeason;
+  const days: DayCell[] = Array.from({ length: DAYS_PER_SEASON }, (_, i) => {
+    const dayId = epochStart + i;
+    return {
+      dayId,
+      date: new Date(dayId * 86_400_000).toISOString().slice(0, 10),
+      weatherIndex: weatherIndexForDay(dayId),
+      isToday: dayId === snapshot.dayId,
+    };
+  });
 
   return (
     <div className="space-y-6">
-      {/* Заголовок сезона */}
-      <Card className={`p-6 bg-gradient-to-br ${currentSeasonData?.color || ""} border border-straw/10`}>
-        <div className="flex items-center justify-between">
+      <Card className="p-6 bg-soil-800 border border-straw/10">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-parchment capitalize flex items-center gap-2">
-              {currentSeasonData?.icon && <img src={currentSeasonData.icon} alt="" className="w-7 h-7 object-contain" />}
-              {currentSeasonData?.label}
+            <h2 className="text-2xl font-bold text-parchment flex items-center gap-2">
+              {SEASON_ICONS[season.season] && (
+                <img src={SEASON_ICONS[season.season]} alt="" className="w-7 h-7 object-contain" />
+              )}
+              {seasonTitle(season.seasonIndex)}
             </h2>
             <p className="text-straw text-sm mt-1">
-              42 дня • Смена погоды каждый день
+              День {season.dayOfSeason + 1} из {DAYS_PER_SEASON} · до смены эпохи {season.daysUntilNextSeason} дн.
             </p>
           </div>
-          <motion.div
-            className="w-16 h-16"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          >
-            {currentSeasonData?.icon && <img src={currentSeasonData.icon} alt="" className="w-16 h-16 object-contain" />}
-          </motion.div>
+          <div className="text-right text-xs text-straw">
+            <div>Сегодня</div>
+            <div className="text-parchment">{todayIso}</div>
+          </div>
         </div>
       </Card>
 
-      {/* Легенда погоды */}
       <Card className="p-4 bg-soil-800 border border-straw/10">
-        <h3 className="text-lg font-semibold text-parchment mb-3">
-          Типы погоды
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          {WEATHER_TYPES.map(w => (
-            <div key={w.type} className="flex items-center gap-3 p-2 bg-soil-700/50 rounded-lg">
-              <img src={w.icon} alt="" className="w-6 h-6 object-contain" />
-              <div>
-                <div className="text-parchment text-sm font-medium">{w.name}</div>
-                <div className="text-straw text-xs">{w.effect}</div>
-              </div>
+        <h3 className="text-lg font-semibold text-parchment mb-3">Состояние станции сегодня</h3>
+        <div className="flex items-center gap-4">
+          <img
+            src={WEATHER_ICONS[snapshot.type]}
+            alt=""
+            className="w-12 h-12 object-contain"
+          />
+          <div>
+            <div className="text-parchment font-semibold">{WEATHER_LABELS[snapshot.type]}</div>
+            <div className="text-straw text-sm">
+              {WEATHER_BY_INDEX[snapshot.weatherIndex]?.rate ?? 0} единиц ресурса в час
+              {snapshot.source === "weather-state" ? " · чтение напрямую из аккаунта сети" : ""}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-4 bg-soil-800 border border-straw/10">
+        <h3 className="text-lg font-semibold text-parchment mb-1">Эпоха целиком</h3>
+        <p className="text-straw text-xs mb-4 leading-relaxed">
+          Погода дня — следствие его номера, а не отдельный прогноз: доля блэкаута 10%,
+          номинала 50%, скачка 30%, френзи 10%. Так же считает сеть, поэтому строку завтрашнего
+          дня можно прочитать заранее.
+        </p>
+        <div className="grid grid-cols-7 gap-1.5">
+          {days.map((day) => (
+            <div
+              key={day.dayId}
+              className={
+                "nf-plate nf-plate--icon rounded-lg p-1.5 text-center" +
+                (day.isToday ? " outline outline-1 outline-wheat-300" : "")
+              }
+              title={`${day.date} · ${WEATHER_LABELS[WEATHER_BY_INDEX[day.weatherIndex].type]}`}
+            >
+              <img
+                src={WEATHER_ICONS[WEATHER_BY_INDEX[day.weatherIndex].type]}
+                alt=""
+                className="w-6 h-6 object-contain mx-auto"
+              />
+              <div className="text-[10px] text-straw mt-0.5">{day.weatherIndex >= 0 ? day.date.slice(8) : "—"}</div>
             </div>
           ))}
         </div>
       </Card>
 
-      {/* Календарь */}
-      <div>
-        <h3 className="text-lg font-semibold text-parchment mb-3">
-          Календарь эпох
-        </h3>
-        <div className="grid grid-cols-7 gap-2">
-          {calendar.map((day, i) => {
-            const weatherData = WEATHER_TYPES.find(w => w.type === day.weather);
-            
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.01 }}
-                className={`
-                  aspect-square p-2 rounded-lg border transition-all
-                  ${day.isToday 
-                    ? "border-gold bg-gold/20 ring-2 ring-gold/50" 
-                    : "border-straw/10 bg-soil-800 hover:bg-soil-700"
-                  }
-                `}
-              >
-                <div className="flex flex-col items-center justify-center h-full">
-                  <img src={weatherData?.icon || UI_ICONS.weatherNominal} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
-                  <div className="text-xs text-straw">
-                    {day.dayOfSeason + 1}
-                  </div>
-                  {day.isToday && (
-                    <div className="text-xs text-gold font-bold mt-1">
-                      Сегодня
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Информация о сезонах */}
       <Card className="p-4 bg-soil-800 border border-straw/10">
-        <h3 className="text-lg font-semibold text-parchment mb-3">
-          Об эпохах
-        </h3>
-        <div className="space-y-3 text-sm text-straw">
-          <p>
-            Каждая эпоха длится <span className="text-parchment font-semibold">42 дня</span>.
-            Всего 4 эпохи в цикле (42 дня каждая).
-          </p>
-          <p>
-            Погода меняется каждый день и влияет на добычу ресурсов:
-          </p>
-          <ul className="space-y-1">
-            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherNominal} alt="" className="w-4 h-4 object-contain" /> Номинал: данные +10%</li>
-            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherSurge} alt="" className="w-4 h-4 object-contain" /> Скачок: схема +10%</li>
-            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherBlackout} alt="" className="w-4 h-4 object-contain" /> Блэкаут: всё -15%, но редкий лут +50%</li>
-            <li className="flex items-center gap-2"><img src={UI_ICONS.weatherFrenzy} alt="" className="w-4 h-4 object-contain" /> Френзи: множитель на все ресурсы</li>
-          </ul>
-          <p className="text-xs text-straw/60 mt-3">
-            Погода детерминирована — одинакова для всех игроков в один день.
-          </p>
+        <h3 className="text-lg font-semibold text-parchment mb-3">Состояния сети</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Object.entries(WEATHER_BY_INDEX).map(([index, meta]) => (
+            <div key={index} className="flex items-center gap-3">
+              <img src={WEATHER_ICONS[meta.type]} alt="" className="w-8 h-8 object-contain" />
+              <div>
+                <div className="text-parchment text-sm font-semibold">{WEATHER_LABELS[meta.type]}</div>
+                <div className="text-straw text-xs">{meta.rate} единиц ресурса в час</div>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
     </div>

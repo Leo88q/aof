@@ -51,7 +51,7 @@ export function FriendsList() {
               Визиты сегодня
             </h3>
             <p className="text-straw text-xs">
-              Социальные бонусы появятся после развёртывания канонической механики
+              Социальные бонусы появятся, когда сеть начнёт считать соседские эффекты
             </p>
           </div>
           <div className="text-right">
@@ -64,7 +64,7 @@ export function FriendsList() {
       {/* Поиск по нику */}
       <Card className="p-4 bg-soil-800 border border-straw/10">
         <h3 className="text-parchment font-semibold text-sm mb-3">
-          🔍 Найти игрока
+          Найти игрока
         </h3>
         <p className="text-straw text-xs mb-3">
           Введите ник или адрес кошелька

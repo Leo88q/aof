@@ -81,7 +81,7 @@ export function MillPanel() {
         getMintAsync("SILICON"),
       ]);
       if (!wheatMint || !stoneMint) {
-        toast.show("❌ Mint-адреса не найдены");
+        toast.show("Ресурсы не найдены в реестре сети", "error");
         return;
       }
       const resp = await api.chain.startMilling({
@@ -92,13 +92,13 @@ export function MillPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`✅ Переработка запущена: ${m.wheat} синапсов → ${m.flour} сигнала`);
+        toast.show(`Переработка запущена: ${m.wheat} синапсов → ${m.flour} сигнала`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Не удалось запустить переработку"}`);
+        toast.show(`${r.error || "Не удалось запустить сепарацию"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setMilling(false);
     }
@@ -109,20 +109,20 @@ export function MillPanel() {
     setMilling(true);
     try {
       const flourMint = await getMintAsync("SIGNAL");
-      if (!flourMint) { toast.show("❌ Mint SIGNAL не найден"); return; }
+      if (!flourMint) { toast.show("Ресурс SIGNAL не найден в сети", "error"); return; }
       const resp = await api.chain.collectFlour({
         user: walletAddr,
         flourMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🥣 Собрано ${millState.flourReady} сигнала!`);
+        toast.show(`🥣 Собрано ${millState.flourReady} сигнала!`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Не удалось собрать результат"}`);
+        toast.show(`${r.error || "Не удалось собрать результат"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setMilling(false);
     }
@@ -159,8 +159,8 @@ export function MillPanel() {
                 onClick={() => setSize(key)}
                 className={`p-2 rounded-lg text-center transition ${
                   size === key
-                    ? "bg-amber-600/30 border-2 border-amber-500"
-                    : "bg-soil-700/50 border border-straw/20 hover:border-amber-500"
+                    ? "bg-gold-600/30 border-2 border-gold-500"
+                    : "bg-soil-700/50 border border-straw/20 hover:border-gold-500"
                 }`}
               >
                 <ResourceGlyph icon={MILL_SIZES[key].icon} alt="" className={(MILL_SIZES[key] as any).sizeCls ?? "w-5 h-5"} />
@@ -179,7 +179,7 @@ export function MillPanel() {
           <button
             onClick={startMilling}
             disabled={milling}
-            className="w-full py-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 text-parchment font-bold text-sm disabled:opacity-50"
+            className="w-full py-2 rounded-lg bg-gradient-to-r from-gold-600 to-gold-600 text-parchment font-bold text-sm disabled:opacity-50"
           >
             {milling ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-4 h-4" /> Запуск...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-4 h-4" /> Запустить помол</span>}
           </button>
@@ -192,12 +192,12 @@ export function MillPanel() {
             <ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-10 h-10 mx-auto animate-spin" />
             {timeLeft > 0 ? (
               <>
-                <p className="text-parchment font-bold">Помол в процессе...</p>
+                <p className="text-parchment font-bold">Сепарация идёт…</p>
                 <p className="text-wheat-500 text-2xl font-bold">{formatTime(timeLeft)}</p>
               </>
             ) : (
               <>
-                <p className="text-parchment font-bold">Сигнал готова!</p>
+                <p className="text-parchment font-bold">Сигнал получен</p>
                 <p className="text-wheat-500 text-2xl font-bold">{millState.flourReady} <ResourceGlyph icon={resourceIcon("FLOUR")} alt="" className="inline-block w-5 h-5 align-text-bottom" /></p>
               </>
             )}
@@ -207,7 +207,7 @@ export function MillPanel() {
             <button
               onClick={collectFlour}
               disabled={milling}
-              className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50"
+              className="btn btn-primary"
             >
               {milling ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("FLOUR")} alt="" className="w-4 h-4" /> Собрать сигнал</span>}
             </button>

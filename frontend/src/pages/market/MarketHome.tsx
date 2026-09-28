@@ -12,6 +12,8 @@ import { OrderbookPage } from "./OrderbookPage";
 import { FlaskMarketplace } from "./FlaskMarketplace";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { DISABLED_MECHANICS, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
+import { Note, Panel, Sticker } from "../../ui/forge/kit";
+import { SonarPPI } from "../../ui/forge/devices";
 
 const SECTIONS = [
   { id: "listing", icon: UI_ICONS.marketListing, label: "Листинг", sub: "Фикс. цена", el: <ListingPage /> },
@@ -38,6 +40,30 @@ export function MarketHome() {
     <div className="p-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold mb-1 text-parchment">Рынок</h1>
       <p className="text-straw text-xs mb-4">Семь торговых площадок — от листингов до квантового розыгрыша</p>
+
+      {/* К6 · эхолот рынка: без данных развёртка пустая и подписана, чтобы
+          приборов не приходилось искать по суб-вкладкам. */}
+      <div className="mb-3">
+        <Panel
+          tier="panel"
+          device="sonar"
+          id={<Sticker>ПРИЛАВКИ</Sticker>}
+          meta="НЕТ ДАННЫХ"
+          title="Эхолот цен"
+          sub="ближе к центру — дешевле"
+        >
+          <SonarPPI
+            blips={[]}
+            legend={
+              <>
+                <span>Витрина: <b>—</b></span>
+                <span>Медиана: <b>—</b></span>
+              </>
+            }
+          />
+          <Note quiet>Прилавки не читаются: сеть не ответила. Развёртка оживёт, когда листинги придут.</Note>
+        </Panel>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {SECTIONS.map((s, i) => (

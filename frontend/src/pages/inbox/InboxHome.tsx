@@ -6,6 +6,8 @@ import { Card } from "../../components/ui/Card";
 import { NavHeader } from "../../components/NavHeader";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { Panel, Readout, Readouts, Sticker, Note } from "../../ui/forge/kit";
+import { CrossPanel, type CrossLink } from "../../ui/forge/devices";
 
 
 function normalizeLetter(item: any, i: number) {
@@ -73,13 +75,13 @@ export function InboxHome() {
         setClaimStatus("⏳ Награда отложена — попробуй заклеймить позже");
       } else {
         const r = await handleTxResponse(res);
-        setClaimStatus(r.success ? `✅ Награда получена: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+        setClaimStatus(r.success ? `Награда получена: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
         if (r.success) {
           setLetters((ls) => ls.map((l) => (l.id === letter.id ? { ...l, claimed: true } : l)));
         }
       }
     } catch (e: any) {
-      setClaimStatus(`❌ ${e.message}`);
+      setClaimStatus(`${e.message}`);
     }
   }
 
@@ -100,6 +102,46 @@ export function InboxHome() {
       <p className="text-straw text-xs mb-4">
         Компенсации, награды за задания, события — всё, что игра хочет тебе сказать.
       </p>
+
+      {/* К9 · кросс-панель АТС: каждый порт сверху — письмо, снизу — состояние.
+          Патч-корд показывает, куда письмо подключено: ждёт выдачи, ждёт
+          прочтения или уже получено. Список — реальный /inbox/:user, порядок
+          писем не переставляется, номера портов честные. */}
+      <Panel
+        tier="panel"
+        device="cross"
+        className="mb-4"
+        id={<Sticker>ЯЩИК</Sticker>}
+        meta={`ПОРТОВ ${letters.length}`}
+        title="Кросс-панель ящика"
+        sub="порт — письмо"
+      >
+        {letters.length > 0 ? (
+          <CrossPanel
+            top={letters.slice(0, 6).map((l) => ({ label: l.sender, lamp: l.read ? "idle" : "ok" }))}
+            bottom={[
+              { label: "ЖДЁТ ВЫДАЧИ" },
+              { label: "ПРОЧИТАНО" },
+              { label: "НОВОЕ" },
+            ]}
+            links={letters.slice(0, 6).map((l, i): CrossLink => ({
+              from: i,
+              to: l.claimed ? 1 : l.hasReward ? 0 : l.read ? 1 : 2,
+              cord: ((i % 4) + 1) as 1 | 2 | 3 | 4,
+              pulse: !l.read,
+            }))}
+          />
+        ) : (
+          <Note quiet>Ящик пуст — кордов нет.</Note>
+        )}
+        <div style={{ marginTop: 14 }}>
+          <Readouts>
+            <Readout label="Писем" value={String(letters.length)} hint="в ящике" />
+            <Readout label="Непрочитанных" value={String(unread)} hint="горят лампы" />
+            <Readout label="С наградой" value={String(letters.filter((l) => l.hasReward).length)} hint="ждут получения" />
+          </Readouts>
+        </div>
+      </Panel>
 
       <div className="space-y-2">
         {letters.map((l, i) => (
@@ -162,7 +204,7 @@ export function InboxHome() {
               )}
               {opened.claimed && (
                 <p className="w-full mt-4 py-3 rounded-2xl bg-soil-800 text-straw text-sm text-center">
-                  ✅ Награда получена
+                  Награда получена
                 </p>
               )}
             </motion.div>

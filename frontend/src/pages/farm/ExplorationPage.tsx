@@ -6,6 +6,7 @@ import { api } from "../../lib/api";
 import { useFlash } from "../../lib/marketUtils";
 import { handleTxResponse } from "../../lib/txFlow";
 import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { humanizeVrfError } from "../../lib/vrfErrors";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
@@ -48,10 +49,10 @@ export function ExplorationPage() {
 
   async function startExploration() {
     if (!address) return flash("❌ Подключите кошелёк");
-    if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
+    if (!bowMint) return flash("Квантовый передатчик не найден в инвентаре");
 
     setLoading(true);
-    flash("Готовим on-chain commit экспедиции (Switchboard)…");
+    flash("Отправляем экспедицию в сеть…");
     try {
       const commitResponse: any = await api.exploration.startCommit({ user: address, toolMint: bowMint });
       const commit = await handleTxResponse(commitResponse);
@@ -60,10 +61,10 @@ export function ExplorationPage() {
       flash("Экспедиция в пути: ждём раскрытия оракула…", 45_000);
       const state = await waitForSettlement(commitResponse.explorationCommit);
       flash(state === "settled"
-        ? "✅ Экспедиция завершена on-chain. Обновите балансы."
+        ? "✅ Экспедиция завершена в сети. Обновите балансы."
         : "⏳ Оракул ещё не раскрыл результат — можно раскрыть самостоятельно.", 8000);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     } finally {
       setLoading(false);
     }
@@ -75,9 +76,9 @@ export function ExplorationPage() {
     try {
       const resp: any = await api.exploration.reveal({ user: address, explorationCommit: commitAddr });
       const r = await handleTxResponse(resp);
-      flash(r.success ? "✅ Результат раскрыт вашей транзакцией" : `❌ ${r.error}`);
+      flash(r.success ? "Результат раскрыт вашей транзакцией" : `${r.error}`);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,7 @@ export function ExplorationPage() {
 
       <Card className="mb-4">
         <div className="text-center mb-4">
-          <img src={toolPlate("quantum_transmitter") || ""} alt="" className="w-14 h-14 object-contain mx-auto rounded-xl" />
+          <ArtPlate src={toolPlate("quantum_transmitter")} alt="" size={56} className="mx-auto" />
           <h2 className="text-parchment font-bold text-lg mt-3">Глубокое обучение</h2>
           <p className="text-straw text-sm mt-2">Запустите квантовый передатчик в глубокое обучение за редкими ресурсами</p>
         </div>
@@ -109,8 +110,8 @@ export function ExplorationPage() {
           <p className="text-straw text-xs">Успех и количество Схем/Кремния (CIRCUIT/SILICON) определяет оракул Switchboard по tier, зафиксированному при старте.</p>
         </div>
 
-        <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
-          <h3 className="text-purple-400 font-semibold text-sm mb-2">Требования:</h3>
+        <div className="bg-nf-purple/10 border border-nf-purple/30 rounded-xl p-4 mb-4">
+          <h3 className="text-nf-purple font-semibold text-sm mb-2">Требования:</h3>
           <ul className="space-y-1 text-xs text-straw">
             <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик</span></li>
             <li>✓ Ресурсы: Данные, Схема, Кремний, Датасет</li>
@@ -127,7 +128,7 @@ export function ExplorationPage() {
         <button
           onClick={startExploration}
           disabled={loading || !address || !bowMint}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
+          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
         >
           {loading ? "Отправляем..." : !bowMint ? "Нужен передатчик в инвентаре" : "Отправить в экспедицию"}
         </button>

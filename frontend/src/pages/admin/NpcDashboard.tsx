@@ -112,7 +112,7 @@ export function NpcDashboard() {
               <p className="text-straw text-xs">Покупки</p>
             </div>
             <div className="p-3 rounded-lg bg-soil-800/60 text-center">
-              <p className="text-red-400 text-2xl font-bold">{stats.sellTrades}</p>
+              <p className="text-ember-400 text-2xl font-bold">{stats.sellTrades}</p>
               <p className="text-straw text-xs">Продажи</p>
             </div>
           </div>
@@ -163,7 +163,7 @@ export function NpcDashboard() {
                   className={`p-3 rounded-lg border ${
                     isBuy 
                       ? "bg-sprout-500/10 border-sprout-500/30" 
-                      : "bg-red-500/10 border-red-500/30"
+                      : "bg-ember-500/10 border-ember-500/30"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -179,7 +179,7 @@ export function NpcDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-bold ${isBuy ? "text-sprout-500" : "text-red-400"}`}>
+                      <p className={`font-bold ${isBuy ? "text-sprout-500" : "text-ember-400"}`}>
                         {trade.metadata.amount} ед.
                       </p>
                       <p className="text-straw text-xs">

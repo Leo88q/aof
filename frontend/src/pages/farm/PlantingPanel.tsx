@@ -68,7 +68,7 @@ export function PlantingPanel() {
     try {
       const seedsMint = await getMintAsync("NEURON");
       if (!seedsMint) {
-        toast.show("❌ Mint NEURON не найден. Проверьте деплой контракта.");
+        toast.show("Ресурс NEURON не найден в реестре сети.", "error");
         return;
       }
       const resp = await api.chain.plantSeeds({
@@ -79,14 +79,14 @@ export function PlantingPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🌱 Посажено ${seedsAmount} семян на тайл ${selectedPlot + 1}!`);
+        toast.show(`🌱 Засеяно: ${seedsAmount} образцов в лунке ${selectedPlot + 1}!`, "success");
         setSelectedPlot(null);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Ошибка нейрального посева"}`);
+        toast.show(`${r.error || "Не удалось засеять образец"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setPlanting(false);
     }
@@ -98,11 +98,11 @@ export function PlantingPanel() {
     try {
       const wheatMint = await getMintAsync("SYNAPSE");
       if (!wheatMint) {
-        toast.show("❌ Mint SYNAPSE не найден");
+        toast.show("Ресурс SYNAPSE не найден в сети", "error");
         return;
       }
       if (!reaper) {
-        toast.show("❌ Инструмент Reaper не найден в инвентаре");
+        toast.show("Станция засева не найдена в инвентаре");
         return;
       }
       const toolMint = reaper.mint;
@@ -115,13 +115,13 @@ export function PlantingPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🧠 Сбор завершён с кластера ${tileIndex + 1}!`);
+        toast.show(`🌱 Сбор завершён из лунки ${tileIndex + 1}!`, "success");
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Не удалось собрать урожай"}`);
+        toast.show(`${r.error || "Не удалось снять культуру"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setHarvesting(null);
     }
@@ -130,7 +130,7 @@ export function PlantingPanel() {
   if (loading) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Культивация образцов</h3>
         <p className="text-straw text-sm text-center py-4">Читаем состояние участка…</p>
       </Card>
     );
@@ -139,19 +139,19 @@ export function PlantingPanel() {
   if (!walletAddr) {
     return (
       <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
-        <p className="text-straw text-sm text-center py-4">Подключите кошелёк для нейрального посева</p>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Культивация образцов</h3>
+        <p className="text-straw text-sm text-center py-4">Подключите кошелёк, чтобы засеять образцы</p>
       </Card>
     );
   }
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Культивация образцов</h3>
 
       {loadError ? (
-        <p className="text-amber-400 text-sm text-center py-4">
-          Состояние участка недоступно из канонической сети. Повторите попытку позже.
+        <p className="text-gold-400 text-sm text-center py-4">
+          Состояние участка недоступно из сети. Повторите попытку позже.
         </p>
       ) : (
       <div className="grid grid-cols-3 gap-2">
@@ -164,10 +164,10 @@ export function PlantingPanel() {
             onKeyDown={(e) => { if (e.key === "Enter" && !tile.planted) setSelectedPlot(tile.index); }}
             className={`p-3 rounded-lg text-center transition ${
               selectedPlot === tile.index
-                ? "bg-green-600/30 border-2 border-green-500"
+                ? "bg-sprout-600/30 border-2 border-sprout-500"
                 : tile.planted
-                ? "bg-amber-900/20 border border-amber-700/40 cursor-not-allowed"
-                : "bg-soil-700/50 border border-straw/20 hover:border-green-500"
+                ? "bg-gold-900/20 border border-gold-700/40 cursor-not-allowed"
+                : "bg-soil-700/50 border border-straw/20 hover:border-sprout-500"
             }`}
           >
             <div className="mb-1">
@@ -179,13 +179,13 @@ export function PlantingPanel() {
                 <div className="w-7 h-7 rounded border border-straw/10 bg-soil-800/40" />
               )}
             </div>
-            <div className="text-[10px] text-parchment font-bold">Тайл {tile.index + 1}</div>
+            <div className="text-[10px] text-parchment font-bold">Лунка {tile.index + 1}</div>
             {tile.planted && (
               <>
                 <div className="text-[10px] text-straw inline-flex items-center gap-0.5">{tile.seedsAmount} <ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-3 h-3" /></div>
                 <div className="w-full bg-soil-700 rounded-full h-1 mt-1 overflow-hidden">
                   <div
-                    className={`h-full ${tile.ready ? "bg-amber-500" : "bg-green-500"}`}
+                    className={`h-full ${tile.ready ? "bg-gold-500" : "bg-sprout-500"}`}
                     style={{ width: `${tile.progress}%` }}
                   />
                 </div>
@@ -193,10 +193,10 @@ export function PlantingPanel() {
                   <button
                     onClick={(e) => { e.stopPropagation(); handleHarvest(tile.index); }}
                     disabled={harvesting === tile.index || !reaper}
-                    title={!reaper ? "Нужен инструмент Reaper" : undefined}
-                    className="mt-1 text-[10px] bg-amber-600 text-parchment px-2 py-0.5 rounded disabled:opacity-50"
+                    title={!reaper ? "Нужна станция засева" : undefined}
+                    className="mt-1 text-[10px] bg-gold-600 text-parchment px-2 py-0.5 rounded disabled:opacity-50"
                   >
-                    {harvesting === tile.index ? "..." : "Собрать"}
+                    {harvesting === tile.index ? "…" : "Снять"}
                   </button>
                 )}
               </>
@@ -209,7 +209,7 @@ export function PlantingPanel() {
 
       {selectedPlot !== null && (
         <div className="bg-soil-800/50 rounded-lg p-3 space-y-2">
-          <p className="text-straw text-xs">Посев на <b className="text-parchment">Тайл {selectedPlot + 1}</b></p>
+          <p className="text-straw text-xs">Засев в <b className="text-parchment">лунку {selectedPlot + 1}</b></p>
           <div className="flex items-center gap-2">
             <span className="text-straw text-xs inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-3.5 h-3.5" /> Нейрон:</span>
             <input
@@ -226,9 +226,9 @@ export function PlantingPanel() {
           <button
             onClick={handlePlant}
             disabled={planting}
-            className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50 hover:brightness-110 transition"
+            className="btn btn-primary"
           >
-            {planting ? "Сеем..." : `Посеять ${seedsAmount} нейронов`}
+            {planting ? "Засеваем…" : `Внести ${seedsAmount} нейронов`}
           </button>
         </div>
       )}

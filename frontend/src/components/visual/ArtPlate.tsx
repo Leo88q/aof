@@ -24,10 +24,12 @@ export function ArtPlate({
     : { width: size };
   return (
     <span className={`nf-plate${isIcon ? " nf-plate--icon" : ""}${className ? ` ${className}` : ""}`} style={style}>
+      {/* Подложка без картинки — нейтральный знак. Раньше здесь печатался
+          исходный путь, и внутренние папки утекали в интерфейс. */}
       {url ? (
         <img src={url} alt={alt} draggable={false} />
       ) : (
-        <span className="nf-plate__fallback" aria-hidden="true">{src && !url ? src : "◇"}</span>
+        <span className="nf-plate__fallback" aria-hidden="true">◇</span>
       )}
     </span>
   );

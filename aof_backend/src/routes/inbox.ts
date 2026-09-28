@@ -8,7 +8,7 @@ import { db } from "../lib/db";
 import {AUTHORITY_PUBKEY} from "../config";
 import { program, connection } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
-import { fetchOne } from "../lib/decode";
+import { fetchOne, fetchOneForSigner } from "../lib/decode";
 import { authorityOnly, pk } from "../lib/tx";
 import { logger } from "../lib/logger";
 import { RESOURCE_UNIT } from "../lib/miningPayout";
@@ -180,8 +180,8 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireNoFraudHold("
       if (kind && item.rewardAmount && item.rewardAmount > 0) {
         const [config] = configPda();
         const [materialMints] = materialMintsPda();
-        const cfg: any = await fetchOne("config", config);
-        const mm: any = await fetchOne("materialMints", materialMints);
+        const cfg: any = await fetchOneForSigner("config", config);
+        const mm: any = await fetchOneForSigner("materialMints", materialMints);
         const mintValue = CONFIG_REWARD_MINT[rewardType]
           ? cfg?.[CONFIG_REWARD_MINT[rewardType]]
           : mm?.[MATERIAL_REWARD_MINT[rewardType]];

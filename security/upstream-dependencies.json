@@ -1,0 +1,144 @@
+{
+  "$comment": "Апстримы, чьи security-релизы и коммиты мы обязаны отслеживать (чек-лист #116/#128). Проверяется offline: node scripts/security/program-registry.mjs --check (каждый pin должен находиться в указанном файле). Online-режим: node scripts/security/upstream-watch.mjs --online (workflow .github/workflows/upstream-watch.yml, еженедельно).",
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-28",
+  "policy": {
+    "privateFixFirst": "Свой фикс уязвимости — сначала приватная ветка, деплой, и только потом публикация коммита (урок Liquid Network/Elements). Публичный diff = готовая инструкция для атакующего.",
+    "forkLagsUpstream": "Если у нас форк/копия апстрим-кода (например, копия vrf.rs в aof-quests), следим за коммитами апстрима и переносим security-фиксы отдельным PR с тестом.",
+    "advisorySourcesRequired": "У каждой зависимости есть хотя бы один advisory-источник и один release/commit-источник."
+  },
+  "dependencies": [
+    {
+      "id": "solana-agave",
+      "what": "Сеть, runtime, CLI и platform-tools, которыми собираются программы",
+      "repo": "anza-xyz/agave",
+      "criticality": "runtime-infrastructure",
+      "pinKind": "reference",
+      "pinnedRef": { "file": "rust-toolchain.toml", "contains": "channel = \"1.89.0\"" },
+      "advisorySources": ["https://github.com/anza-xyz/agave/security/advisories", "https://github.com/anza-xyz/agave/releases"],
+      "watch": ["security-advisories", "releases", "commits"]
+    },
+    {
+      "id": "anchor",
+      "what": "Фреймворк программ (anchor-lang/anchor-spl) и CLI",
+      "repo": "coral-xyz/anchor",
+      "criticality": "runtime-program",
+      "pinKind": "cargo",
+      "crate": "anchor-lang",
+      "pinnedIn": "Cargo.lock",
+      "expectedVersion": "0.30.1",
+      "advisorySources": ["https://github.com/coral-xyz/anchor/security/advisories", "https://github.com/coral-xyz/anchor/releases"],
+      "watch": ["security-advisories", "releases", "commits"]
+    },
+    {
+      "id": "spl-token",
+      "what": "SPL Token program и JS-клиент @solana/spl-token",
+      "repo": "solana-program/token",
+      "criticality": "runtime-program",
+      "pinKind": "npm",
+      "package": "@solana/spl-token",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/solana-program/token/security/advisories", "https://github.com/solana-program/token/releases"],
+      "watch": ["security-advisories", "releases", "commits"]
+    },
+    {
+      "id": "switchboard-on-demand",
+      "what": "VRF-оракул: программа on-chain и SDK @switchboard-xyz/on-demand",
+      "repo": "switchboard-xyz/on-demand",
+      "criticality": "runtime-oracle",
+      "pinKind": "npm",
+      "package": "@switchboard-xyz/on-demand",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/switchboard-xyz/on-demand/security/advisories", "https://github.com/switchboard-xyz/on-demand/releases"],
+      "watch": ["security-advisories", "releases", "commits"]
+    },
+    {
+      "id": "solana-web3js",
+      "what": "Клиент Solana (бэкенд, воркеры, фронтенд)",
+      "repo": "anza-xyz/solana-web3.js",
+      "criticality": "runtime-backend",
+      "pinKind": "npm",
+      "package": "@solana/web3.js",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/anza-xyz/solana-web3.js/security/advisories", "https://github.com/anza-xyz/solana-web3.js/releases"],
+      "watch": ["security-advisories", "releases", "commits"]
+    },
+    {
+      "id": "prisma",
+      "what": "ORM и миграции операционной БД",
+      "repo": "prisma/prisma",
+      "criticality": "runtime-backend",
+      "pinKind": "npm",
+      "package": "prisma",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/prisma/prisma/security/advisories", "https://github.com/prisma/prisma/releases"],
+      "watch": ["security-advisories", "releases"]
+    },
+    {
+      "id": "express",
+      "what": "HTTP API бэкенда",
+      "repo": "expressjs/express",
+      "criticality": "runtime-backend",
+      "pinKind": "npm",
+      "package": "express",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/expressjs/express/security/advisories", "https://github.com/expressjs/express/releases"],
+      "watch": ["security-advisories", "releases"]
+    },
+    {
+      "id": "zod",
+      "what": "Валидация входных данных API",
+      "repo": "colinhacks/zod",
+      "criticality": "runtime-backend",
+      "pinKind": "npm",
+      "package": "zod",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/colinhacks/zod/security/advisories", "https://github.com/colinhacks/zod/releases"],
+      "watch": ["security-advisories", "releases"]
+    },
+    {
+      "id": "vite",
+      "what": "Сборка фронтенда (dev-сервер и build)",
+      "repo": "vitejs/vite",
+      "criticality": "build-frontend",
+      "pinKind": "npm",
+      "package": "vite",
+      "pinnedIn": "frontend/package-lock.json",
+      "advisorySources": ["https://github.com/vitejs/vite/security/advisories", "https://github.com/vitejs/vite/releases"],
+      "watch": ["security-advisories", "releases"]
+    },
+    {
+      "id": "react",
+      "what": "UI-фреймворк",
+      "repo": "facebook/react",
+      "criticality": "build-frontend",
+      "pinKind": "npm",
+      "package": "react",
+      "pinnedIn": "frontend/package-lock.json",
+      "advisorySources": ["https://github.com/facebook/react/security/advisories", "https://github.com/facebook/react/releases"],
+      "watch": ["security-advisories", "releases"]
+    },
+    {
+      "id": "websocket-stack",
+      "what": "ws (бэкенд/воркеры) и socket.io — транспорт игровых событий",
+      "repo": "websockets/ws",
+      "criticality": "runtime-backend",
+      "pinKind": "npm",
+      "package": "ws",
+      "pinnedIn": "aof_backend/package-lock.json",
+      "advisorySources": ["https://github.com/websockets/ws/security/advisories", "https://github.com/websockets/ws/releases"],
+      "watch": ["security-advisories", "releases"]
+    },
+    {
+      "id": "axios",
+      "what": "HTTP-клиент фронтенда",
+      "repo": "axios/axios",
+      "criticality": "build-frontend",
+      "pinKind": "npm",
+      "package": "axios",
+      "pinnedIn": "frontend/package-lock.json",
+      "advisorySources": ["https://github.com/axios/axios/security/advisories", "https://github.com/axios/axios/releases"],
+      "watch": ["security-advisories", "releases"]
+    }
+  ]
+}

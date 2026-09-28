@@ -28,12 +28,12 @@ interface TrustData {
 }
 
 const TIER_NAMES = ["", "Искра", "Узел", "Кластер", "Сеть", "Сингулярность"];
-const TIER_COLORS = ["", "#9ca3af", "#60a5fa", "#00E5A0", "#00D4FF", "#f472b6"];
+const TIER_COLORS = ["", "#9AA7B4", "#8FB3DE", "#5FD3A8", "#5FC9DA", "#E0708A"];
 
 const COMPONENT_META: Record<string, { icon: string; label: string }> = {
   age:        { icon: UI_ICONS.trustAge, label: "Возраст аккаунта" },
   referral:   { icon: UI_ICONS.friends, label: "Рефералы" },
-  trader:     { icon: UI_ICONS.trustTrader, label: "Farm-Trader" },
+  trader:     { icon: UI_ICONS.trustTrader, label: "Авто-трейдер" },
   staking:    { icon: UI_ICONS.trustStaking, label: "Стейкинг" },
   rebirth:    { icon: UI_ICONS.rebirth, label: "Ребёрты" },
   guild:      { icon: UI_ICONS.trustGuild, label: "Гильдия" },
@@ -74,7 +74,7 @@ export function TrustPage() {
   }
 
   const isVerified = data.score >= 400;
-  const tierColor = TIER_COLORS[data.tier] || "#9ca3af";
+  const tierColor = TIER_COLORS[data.tier] || "#9AA7B4";
   const tierName = TIER_NAMES[data.tier] || "—";
   
   const tierThresholds = [0, 200, 400, 600, 800, 1000];
@@ -168,7 +168,7 @@ export function TrustPage() {
           {Object.entries(data.breakdown).map(([key, item], i) => {
             const meta = COMPONENT_META[key] || { icon: "❓", label: key };
             const pct = item.max > 0 ? (item.score / item.max) * 100 : 0;
-            const color = pct >= 70 ? "#00E5A0" : pct >= 40 ? "#00D4FF" : "#FF3366";
+            const color = pct >= 70 ? "#5FD3A8" : pct >= 40 ? "#5FC9DA" : "#E2685F";
             
             return (
               <motion.div
@@ -207,11 +207,11 @@ export function TrustPage() {
 
       {/* Penalty множитель */}
       {data.penaltyMult < 1 && (
-        <Card className="bg-red-500/10 border-red-500/30">
+        <Card className="bg-ember-500/10 border-ember-500/30">
           <div className="flex items-center gap-3">
             <img src={UI_ICONS.noticeError} alt="" className="w-8 h-8 object-contain shrink-0" />
             <div>
-              <h3 className="text-red-400 font-semibold text-sm">Штраф активен</h3>
+              <h3 className="text-ember-400 font-semibold text-sm">Штраф активен</h3>
               <p className="text-straw text-xs">
                 Ваш скор умножается на ×{data.penaltyMult.toFixed(2)} из-за активных флагов
               </p>

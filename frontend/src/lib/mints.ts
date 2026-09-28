@@ -53,7 +53,7 @@ export async function loadMints(): Promise<Partial<Record<ResourceId, string>>> 
       const data = await api.query.materialMints();
       if (data && data.initialized === true && isCompleteCanonicalRegistry(data.mints)) {
         mintCache = data.mints;
-        console.log(`✅ Loaded ${Object.keys(data.mints).length} canonical mints from chain`);
+        console.log(`Loaded ${Object.keys(data.mints).length} canonical mints from chain`);
         return data.mints;
       }
       console.warn("⚠️ Canonical resource registry is incomplete or invalid. Игровые операции недоступны.");

@@ -48,33 +48,33 @@ export function OfferPage() {
   }, [selOwn]);
 
   async function accept(o: any) {
-    if (!address) return flash("❌ Connect your wallet first");
-    if (!treasury) return flash("❌ Treasury config unavailable");
+    if (!address) return flash("Сначала подключите кошелёк");
+    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
     try {
       flash("Принимаем оффер…");
       const resp = await api.offer.accept({ seller: address, mint: selOwn, buyer: o.buyer, treasury });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Сделка состоялась: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Сделка состоялась: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(() => setSelOwn((m) => m), 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function cancelOffer(o: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     try {
       flash("Отзываем оффер…");
       const resp = await api.offer.cancel({ buyer: address, mint: selOwn });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Оффер отозван: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Оффер отозван: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function createOffer() {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     if (!offerMint) return flash("❌ Выберите инструмент из листингов");
     const lamports = Math.round(parseFloat(offerPrice) * 1e9);
     if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите цену оффера в SOL");
@@ -82,10 +82,10 @@ export function OfferPage() {
       flash("Отправляем предложение…");
       const resp = await api.offer.create({ buyer: address, mint: offerMint, priceLamports: String(lamports) });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Оффер отправлен: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Оффер отправлен: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setFormOpen(false);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

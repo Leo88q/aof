@@ -102,8 +102,8 @@ export function DailyRewardButton() {
         {state.kind === "disabled" ? (
           <DataUnavailableNotice id="daily_rewards" />
         ) : (
-          <Card className="mb-0 border border-amber-500/30 bg-soil-850">
-            <p className="text-amber-400 text-xs">Не удалось получить статус ежедневной награды.</p>
+          <Card className="mb-0 border border-gold-500/30 bg-soil-850">
+            <p className="text-gold-400 text-xs">Не удалось получить статус ежедневной награды.</p>
             <button
               onClick={loadStatus}
               className="mt-2 px-3 py-1.5 rounded-xl border border-straw/30 text-parchment text-xs"

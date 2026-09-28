@@ -80,7 +80,7 @@ export function OvenPanel() {
         getMintAsync("COMPUTE"),
       ]);
       if (!flourMint || !waterMint || !woodMint || !coalMint) {
-        toast.show("❌ Mint-адреса не найдены");
+        toast.show("Ресурсы не найдены в реестре сети", "error");
         return;
       }
       const resp = await api.chain.startBaking({
@@ -91,13 +91,13 @@ export function OvenPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🔥 Тренировка запущена! ${m.flour} сигнала → ${m.bread} модели`);
+        toast.show(`✅ Обучение запущено: ${m.flour} сигнала → ${m.bread} модели`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Операция отклонена программой"}`);
+        toast.show(`${r.error || "Операция отклонена программой"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setBaking(false);
     }
@@ -108,20 +108,20 @@ export function OvenPanel() {
     setBaking(true);
     try {
       const breadMint = await getMintAsync("MODEL");
-      if (!breadMint) { toast.show("❌ Mint MODEL не найден"); return; }
+      if (!breadMint) { toast.show("Ресурс MODEL не найден в сети", "error"); return; }
       const resp = await api.chain.collectBread({
         user: walletAddr,
         breadMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`);
+        toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Операция отклонена программой"}`);
+        toast.show(`${r.error || "Операция отклонена программой"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setBaking(false);
     }
@@ -158,8 +158,8 @@ export function OvenPanel() {
                 onClick={() => setSize(key)}
                 className={`p-2 rounded-lg text-center transition ${
                   size === key
-                    ? "bg-red-600/30 border-2 border-red-500"
-                    : "bg-soil-700/50 border border-straw/20 hover:border-red-500"
+                    ? "bg-ember-600/30 border-2 border-ember-500"
+                    : "bg-soil-700/50 border border-straw/20 hover:border-ember-500"
                 }`}
               >
                 <ResourceGlyph icon={OVEN_SIZES[key].icon} alt="" className={(OVEN_SIZES[key] as any).sizeCls ?? "w-5 h-5"} />
@@ -173,14 +173,14 @@ export function OvenPanel() {
             <div className="flex justify-between items-center"><span className="text-straw">Энергопоток:</span><span className="text-parchment inline-flex items-center gap-1">{m.water} <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-4 h-4" /></span></div>
             {m.wood > 0 && <div className="flex justify-between items-center"><span className="text-straw">Схемы:</span><span className="text-parchment inline-flex items-center gap-1">{m.wood} <ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" /></span></div>}
             {m.coal > 0 && <div className="flex justify-between items-center"><span className="text-straw">Вычисления:</span><span className="text-parchment inline-flex items-center gap-1">{m.coal} <ResourceGlyph icon={resourceIcon("COMPUTE") || ""} alt="" className="w-4 h-4" /></span></div>}
-            <div className="flex justify-between items-center"><span className="text-straw">На выходе:</span><span className="text-amber-400 font-bold inline-flex items-center gap-1">{m.bread} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /></span></div>
+            <div className="flex justify-between items-center"><span className="text-straw">На выходе:</span><span className="text-gold-400 font-bold inline-flex items-center gap-1">{m.bread} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /></span></div>
             <div className="flex justify-between"><span className="text-straw">Время:</span><span className="text-parchment">{formatTime(m.time)}</span></div>
           </div>
 
           <button
             onClick={startBaking}
             disabled={baking}
-            className="w-full py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-parchment font-bold text-sm disabled:opacity-50"
+            className="w-full py-2 rounded-lg bg-gradient-to-r from-ember-600 to-gold-600 text-parchment font-bold text-sm disabled:opacity-50"
           >
             {baking ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Запуск...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Запустить тренировку</span>}
           </button>
@@ -193,13 +193,13 @@ export function OvenPanel() {
             <ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-10 h-10 mx-auto animate-pulse" />
             {timeLeft > 0 ? (
               <>
-                <p className="text-parchment font-bold">Тренировка модели…</p>
-                <p className="text-red-400 text-2xl font-bold">{formatTime(timeLeft)}</p>
+                <p className="text-parchment font-bold">Модель обучается…</p>
+                <p className="text-ember-400 text-2xl font-bold">{formatTime(timeLeft)}</p>
               </>
             ) : (
               <>
-                <p className="text-parchment font-bold">Модель готов!</p>
-                <p className="text-amber-400 text-2xl font-bold inline-flex items-center gap-2 justify-center">{ovenState.breadReady} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-6 h-6" /></p>
+                <p className="text-parchment font-bold">Модель обучена</p>
+                <p className="text-gold-400 text-2xl font-bold inline-flex items-center gap-2 justify-center">{ovenState.breadReady} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-6 h-6" /></p>
               </>
             )}
           </div>
@@ -208,7 +208,7 @@ export function OvenPanel() {
             <button
               onClick={collectBread}
               disabled={baking}
-              className="w-full py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-parchment font-bold text-sm disabled:opacity-50"
+              className="btn btn-primary"
             >
               {baking ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /> Собрать модель</span>}
             </button>

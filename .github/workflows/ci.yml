@@ -930,6 +930,11 @@ jobs:
           [ "$status" -eq 0 ] || exit "$status"
           # Single-flight + TTL cache in front of /query/* chain reads.
           npm run test:read-cache 2>&1 | tee -a /tmp/backend-build.log
+          status="${PIPESTATUS[0]}"
+          [ "$status" -eq 0 ] || exit "$status"
+          # [#103] RPC-кворум для решений, ведущих к подписи: согласие хостов,
+          # расхождение = 503, fail-closed в production без RPC_QUORUM_URLS.
+          npm run test:rpc-quorum 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Integration test - Prisma idempotency CAS (temporary SQLite)

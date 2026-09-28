@@ -1,6 +1,5 @@
 import { Toast } from "./components/ui/Toast";
 import React, { Suspense } from "react";
-import { Link } from "react-router-dom";
 import { NavProvider } from "./nav/NavContext";
 import { TabPager } from "./nav/TabPager";
 import { TabBar, TAB_LABELS } from "./nav/TabBar";
@@ -8,6 +7,7 @@ import { TabFallback } from "./nav/TabFallback";
 import { TAB_VIEWS } from "./nav/tabChunks";
 import { useVipStatus } from "./lib/useVipStatus";
 import { SceneBackdrop } from "./components/visual/SceneBackdrop";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const V = TAB_VIEWS;
 
@@ -79,11 +79,13 @@ export default function App() {
       <NavProvider tabs={["farm", "tools", "economy", "market", "quests", "profile"]} roots={ROOTS}>
         <div className="app-shell">
           <SceneBackdrop />
-          <nav aria-label="Безопасность и документы" className="legal-area" style={{ position: "relative", zIndex: 5, padding: "8px 16px" }}>
-            <Link to="/legal/terms">Условия</Link> · <Link to="/legal/privacy">Конфиденциальность</Link> · <Link to="/legal/cookies">Cookies</Link>
-          </nav>
-        <Toast />
-          <TabPager />
+          <Toast />
+          {/* Падение ленты вкладок раньше оставляло игрока с одним доком на
+              чёрном экране без единого слова. Теперь сбой показывается словами,
+              а док и шапка остаются живыми. */}
+          <ErrorBoundary label="экраны">
+            <TabPager />
+          </ErrorBoundary>
           <TabBar />
         </div>
       </NavProvider>
