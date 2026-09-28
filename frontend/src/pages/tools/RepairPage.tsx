@@ -17,7 +17,8 @@ const D9 = 1e9;
 
 export function RepairPage() {
   const { address } = useWalletStore();
-  const [tools, setTools] = useState<any[]>([]);
+  // null = не прочитано (загрузка или сбой), [] = пусто по-настоящему.
+  const [tools, setTools] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [mints, setMints] = useState({ wood: "", stone: "" });
   const [amount, setAmount] = useState(1);
@@ -51,12 +52,12 @@ export function RepairPage() {
         setTools(a);
         setSelected((s) => s || (a[0]?.mint ?? null));
       })
-      .catch(() => setTools([]));
+      .catch(() => setTools(null));
   };
 
   useEffect(() => { loadTools(); }, [address]);
 
-  const tool = tools.find((t) => t.mint === selected);
+  const tool = (tools ?? []).find((t) => t.mint === selected);
   const durability = tool ? Number(tool.durability) : 0;
   const maxRepair = Math.max(0, MAX_DURABILITY - durability);
   const amt = Math.min(amount, maxRepair);
@@ -138,14 +139,21 @@ export function RepairPage() {
         </Card>
       )}
 
-      {address && tools.length === 0 && (
+      {address && tools === null && (
+        <Card className="text-center py-8">
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-12 h-12 inline-block" /></div>
+          <p className="text-parchment text-sm">Инструменты недоступны из канонической сети</p>
+        </Card>
+      )}
+
+      {address && tools !== null && tools.length === 0 && (
         <Card className="text-center py-8">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Инструментов нет — нечего чинить</p>
         </Card>
       )}
 
-      {tools.length > 0 && (
+      {tools !== null && tools.length > 0 && (
         <>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {tools.map((t) => {

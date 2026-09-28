@@ -34,7 +34,9 @@ export function FarmDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [onboarded, setOnboarded] = useState(() => functionalStorage.getItem("aof_onboarded") === "1");
   const [subTab, setSubTab] = useState<SubTab>("dashboard");
-  const [staked, setStaked] = useState<any[]>([]);
+  // null = неизвестно (загрузка или сбой /query/my-tools), [] = реально пусто.
+  const [staked, setStaked] = useState<any[] | null>(null);
+  const [toolsFailed, setToolsFailed] = useState(false);
 
   type SubTab = "dashboard" | "well" | "plant" | "mill" | "oven";
 
@@ -54,7 +56,8 @@ export function FarmDashboard() {
       if (!walletAddr) {
         setWeather(null);
         setEnergy(null);
-        setStaked([]);
+        setStaked(null);
+        setToolsFailed(false);
         return;
       }
       const [weatherData, energyData, toolsData] = await Promise.all([
@@ -66,10 +69,19 @@ export function FarmDashboard() {
       ]);
       setWeather(weatherData);
       setEnergy(energyData);
-      const tools = Array.isArray(toolsData) ? toolsData : toolsData?.tools || [];
-      setStaked(tools.filter((t: any) => t?.staked || t?.isMining));
+      if (toolsData == null) {
+        // Ошибка чтения инвентаря — неизвестно, а не «ноль построек».
+        setStaked(null);
+        setToolsFailed(true);
+      } else {
+        const tools = Array.isArray(toolsData) ? toolsData : toolsData?.tools || [];
+        setStaked(tools.filter((t: any) => t?.staked || t?.isMining));
+        setToolsFailed(false);
+      }
     } catch (e) {
       console.error("Не удалось загрузить данные:", e);
+      setStaked(null);
+      setToolsFailed(true);
     } finally {
       setLoading(false);
     }
@@ -172,11 +184,19 @@ export function FarmDashboard() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-parchment">Твоя лаборатория →</h3>
               <span className="text-[11px] text-straw">
-                {staked.length > 0 ? `построек: ${staked.length}` : "построек нет"}
+                {staked === null
+                  ? toolsFailed ? "построек: —" : "построек: …"
+                  : staked.length > 0 ? `построек: ${staked.length}` : "построек нет"}
               </span>
             </div>
             <div className="aspect-[16/9] bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden px-3">
-              {staked.length > 0 ? (
+              {staked === null ? (
+                <p className="text-straw text-xs text-center px-4">
+                  {toolsFailed
+                    ? "Не удалось прочитать инструменты из канонической сети — постройки неизвестны."
+                    : "Читаем инструменты…"}
+                </p>
+              ) : staked.length > 0 ? (
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {staked.slice(0, 6).map((t: any) => (
                     <div key={t.mint || t.toolType} className="flex flex-col items-center gap-1 w-[68px]">

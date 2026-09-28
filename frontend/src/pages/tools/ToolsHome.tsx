@@ -15,17 +15,18 @@ import { UI_ICONS } from "../../lib/visualAssets";
 export function ToolsHome() {
   const { push } = useNav();
   const { address } = useWalletStore();
-  const [tools, setTools] = useState<any[]>([]);
+  // null = не прочитано (загрузка или сбой), [] = пусто по-настоящему.
+  const [tools, setTools] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   const loadTools = useCallback(async () => {
-    if (!address) { setTools([]); return; }
+    if (!address) { setTools(null); return; }
     setLoading(true);
     try {
       const r: any = await api.query.myTools(address);
       setTools(Array.isArray(r) ? r : r?.tools || []);
     } catch {
-      setTools([]);
+      setTools(null);
     } finally {
       setLoading(false);
     }
@@ -75,15 +76,25 @@ export function ToolsHome() {
               </div>
             </div>
           )}
-          {address && tools.length === 0 && (
+          {address && tools === null && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
               <div style={{ color: "var(--straw)", marginTop: 8 }}>
-                {loading ? "Читаем инструменты…" : "Инструментов пока нет — откройте первую капсулу дропа"}
+                {loading
+                  ? "Читаем инструменты…"
+                  : "Инструменты недоступны из канонической сети — не удалось прочитать инвентарь"}
               </div>
             </div>
           )}
-          {tools.map((tool) => (
+          {address && tools !== null && tools.length === 0 && (
+            <div className="card" style={{ padding: 24, textAlign: "center" }}>
+              <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
+              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+                Инструментов пока нет — откройте первую капсулу дропа
+              </div>
+            </div>
+          )}
+          {(tools ?? []).map((tool) => (
             <ToolMiningCard key={tool.mint} tool={tool} onAction={handleMiningAction} onChanged={loadTools} />
           ))}
         </div>

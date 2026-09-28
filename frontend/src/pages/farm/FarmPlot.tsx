@@ -47,7 +47,9 @@ const SLOTS = [
 export function FarmPlot() {
   const { address } = useWalletStore();
   const { weather } = useStore() as any;
-  const [tools, setTools] = useState<any[]>([]);
+  // null = инвентарь не прочитан (загрузка или 503), [] = пусто по-настоящему.
+  const [tools, setTools] = useState<any[] | null>(null);
+  const [toolsFailed, setToolsFailed] = useState(false);
   const [selected, setSelected] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [txStatus, flash] = useFlash();
@@ -55,14 +57,20 @@ export function FarmPlot() {
   const load = useCallback(() => {
     if (!address) return;
     api.query.myTools(address)
-      .then((r: any) => setTools(Array.isArray(r) ? r : r?.tools || []))
-      .catch(() => {});
+      .then((r: any) => {
+        setTools(Array.isArray(r) ? r : r?.tools || []);
+        setToolsFailed(false);
+      })
+      .catch(() => {
+        setTools(null);
+        setToolsFailed(true);
+      });
   }, [address]);
 
   useEffect(() => { load(); }, [load]);
 
-  const staked = tools.filter((t) => t.staked || t.isMining);
-  const freeCount = tools.length - staked.length;
+  const staked = (tools ?? []).filter((t) => t.staked || t.isMining);
+  const freeCount = (tools ?? []).length - staked.length;
 
   // Карта тайлов: постройки из реальных застейканных инструментов + декор
   const tileMap = new Map<string, any>();
@@ -189,8 +197,16 @@ export function FarmPlot() {
       {/* Сводка */}
       <Card className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-parchment text-sm font-semibold">Построек на участке: {staked.length}</p>
-          <p className="text-straw text-xs">В инвентаре (не в стойке): {freeCount}</p>
+          <p className="text-parchment text-sm font-semibold">
+            Построек на участке: {tools === null ? (toolsFailed ? "—" : "…") : staked.length}
+          </p>
+          <p className="text-straw text-xs">
+            {tools === null
+              ? toolsFailed
+                ? "Инструменты недоступны из канонической сети — счётчики неизвестны"
+                : "Читаем инструменты…"
+              : `В инвентаре (не в стойке): ${freeCount}`}
+          </p>
         </div>
         <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locServerRuins} alt="" className="w-8 h-8" /></span>
       </Card>

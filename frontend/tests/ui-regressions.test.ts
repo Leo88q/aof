@@ -252,6 +252,25 @@ test("пути api.ts совпадают с монтированием роут�
   assert.match(server, /app\.use\("\/season", vipStatus\)/, "vipStatus больше не смонтирован на /season");
 });
 
+test("сбой чтения инвентаря не выглядит как пустой участок", () => {
+  const dash = read("src/pages/farm/FarmDashboard.tsx");
+  assert.match(dash, /const \[staked, setStaked\] = useState<any\[\] \| null>\(null\)/,
+    "staked обязан различать «неизвестно» и «ноль»");
+  assert.match(dash, /staked === null/, "чип «построек» не показывает неизвестность");
+  assert.match(dash, /Не удалось прочитать инструменты из канонической сети/,
+    "карта участка обязана объяснять недоступность, а не молчать");
+  const plot = read("src/pages/farm/FarmPlot.tsx");
+  assert.match(plot, /setTools\(null\)/, "ошибка myTools не должна давать пустой массив");
+  assert.match(plot, /tools === null \? \(toolsFailed \? "—" : "…"\)/,
+    "сводка «Построек на участке» должна показывать —/… вместо 0");
+  const home = read("src/pages/tools/ToolsHome.tsx");
+  assert.match(home, /Инструменты недоступны из канонической сети/,
+    "ToolsHome при сбое говорит «инструментов пока нет»");
+  const repair = read("src/pages/tools/RepairPage.tsx");
+  assert.match(repair, /tools !== null && tools.length === 0/,
+    "RepairPage при сбое говорит «инструментов нет»");
+});
+
 test("кошелёк: Wallet Standard и мобильный deep-link в Phantom", () => {
   const wallet = read("src/lib/wallet.ts");
   assert.match(wallet, /navigator\.wallets/, "detectWallet обязан читать реестр Wallet Standard");
