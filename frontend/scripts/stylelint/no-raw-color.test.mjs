@@ -56,9 +56,13 @@ test('rejects important declarations', async () => {
   assert.ok(warnings(result).some(w => w.rule === 'declaration-no-important'));
 });
 test('exempts only the canonical tokens file', async () => {
-  const result = await lint(':root { --aof-test: #abc; }', 'src/ui/tokens.css');
+  // Канонический файл палитры — `src/theme/forge.css` («Морозное стекло»:
+  // здесь объявлены токены, поэтому сырые цвета тут и только тут допустимы).
+  const result = await lint(':root { --aof-test: #abc; }', 'src/theme/forge.css');
   assert.equal(result.errored, false);
   assert.equal(result.results[0]?.ignored, true);
-  const nested = await lint(':root { --aof-test: #abc; }', 'src/ui/demos/tokens.css');
-  assert.equal(nested.errored, true);
+  // Одноимённый файл в другом месте исключением не пользуется: правило
+  // стережёт любой будущий компонентный CSS.
+  const sameName = await lint(':root { --aof-test: #abc; }', 'src/ui/demos/forge.css');
+  assert.equal(sameName.errored, true);
 });
