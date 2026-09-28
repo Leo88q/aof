@@ -97,7 +97,7 @@ export function Workshop() {
   };
 
   async function craft(recipeId: number) {
-    if (!address) return flash("❌ Connect wallet");
+    if (!address) return flash("❌ Подключите кошелёк");
     setBusy(true);
     try {
       const recipe = FULL_RECIPES.find((item) => item.id === recipeId);

@@ -5,12 +5,13 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
-import { resourceIcon } from "../../lib/visualAssets";
+import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, shortAddr, useFlash } from "../../lib/marketUtils";
 import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 const RARITY_RU: Record<string, string> = {
@@ -127,7 +128,7 @@ export function CraftPage() {
   }, [targetRk]);
 
   async function prepMint() {
-    if (!address) return flash("❌ Connect wallet (кнопка вверху)");
+    if (!address) return flash("❌ Подключите кошелёк — кнопка в шапке");
     setBusyPrep(true);
     flash("Готовим новый минт (инструмент будет создан на нём)…", 8000);
     try {
@@ -147,14 +148,14 @@ export function CraftPage() {
   }
 
   async function doCraft() {
-    if (!address) return flash("❌ Connect wallet");
+    if (!address) return flash("❌ Подключите кошелёк");
     if (!src) return flash("❌ Выберите инструмент для переплавки");
     if (!targetRk) return flash("❌ Это уже максимальная редкость");
     if (!newMint) return flash("❌ Сначала подготовьте новый минт (шаг 1)");
     
     const requiredMints = ["wood", "stone", "food", "seeds", "water", "potato"];
     for (const res of requiredMints) {
-      if (!resMints[res]) return flash(`❌ Минт ${res.toUpperCase()} не найден в конфиге`);
+      if (!resMints[res]) return flash(`❌ В реестре ресурсов нет минта ${res.toUpperCase()}`);
     }
     
     // Проверка баланса
@@ -217,7 +218,7 @@ export function CraftPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -269,7 +270,7 @@ export function CraftPage() {
           </h3>
           {newMint ? (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-sprout-500/10 border border-sprout-500/30">
-              <span className="text-2xl">✅</span>
+              <img src={UI_ICONS.noticeSuccess} alt="" className="w-6 h-6 object-contain shrink-0" />
               <div className="flex-1">
                 <p className="text-parchment text-xs font-medium">Минт готов</p>
                 <p className="text-straw text-[10px]">{shortAddr(newMint)}</p>
@@ -366,7 +367,7 @@ export function CraftPage() {
               animate={{ opacity: 1 }}
               className="mt-3 p-3 rounded-xl bg-sprout-500/10 border border-sprout-500/30 text-xs text-parchment"
             >
-              <p className="font-semibold mb-1">✅ Последний крафт:</p>
+              <p className="font-semibold mb-1 inline-flex items-center gap-1.5"><img src={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 object-contain" /> Последний крафт:</p>
               <p className="text-straw">{craftReceipt}</p>
             </motion.div>
           )}

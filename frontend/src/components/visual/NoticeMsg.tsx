@@ -14,14 +14,15 @@ const SCENE_EMOJI: Record<string, string> = {
  * once here; every render site below the emoji prefix is stripped and the
  * right plate is shown instead, so the whole app reuses exactly two images.
  */
-const SUCCESS = new Set(["✅", "🎉", "✓"]);
-const ERROR = new Set(["❌", "", "️", "", "💀", "✕"]);
+const SUCCESS = new Set(["✅", "🎉", "✓", "↩️", "↩", "🏆"]);
+const ERROR = new Set(["❌", "", "️", "", "💀", "✕", "⏸️", "⏸", "🚫"]);
 
 /** A few resource-flavoured prefixes reuse the existing resource icons. */
 const RESOURCE_EMOJI: Record<string, string> = {
   "🧠": "MIND", "🥔": "MIND", "🥣": "SIGNAL", "🍞": "MODEL", "🌱": "NEURON",
   "🌾": "SYNAPSE", "🪨": "SILICON", "🪵": "CIRCUIT", "💧": "POWER", "⚡": "NEURON",
   "🔋": "POWER", "💻": "COMPUTE", "📊": "DATA", "🔌": "CIRCUIT", "🧱": "SILICON",
+  "🔥": "POWER", "💰": "QUANTUM_BIT", "📦": "DATA",
   "💎": "QUANTUM_BIT", "🧪": "CRYO_FLUID", "🍖": "DATASET",
 };
 

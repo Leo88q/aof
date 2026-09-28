@@ -1545,6 +1545,9 @@ jobs:
           : > /tmp/frontend-build.log
           rc=0
           npm run test:security 2>&1 | tee -a /tmp/frontend-build.log || exit "${PIPESTATUS[0]}"
+          # Регрессии интерфейса лаборатории/сайта (аудит 2026-09-28): мёртвые
+          # поля, хардкод метрик, верстка, которая выезжала за экран телефона.
+          npm run test:ui 2>&1 | tee -a /tmp/frontend-build.log || exit "${PIPESTATUS[0]}"
           npm run build 2>&1 | tee -a /tmp/frontend-build.log || rc=$?
           exit "$rc"
 

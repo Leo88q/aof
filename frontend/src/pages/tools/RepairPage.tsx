@@ -9,24 +9,39 @@ import { toolPlate, resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtNum, useFlash } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
 
 const MAX_DURABILITY = 20;
 const D9 = 1e9;
 
 export function RepairPage() {
   const { address } = useWalletStore();
-  const [tools, setTools] = useState<any[]>([]);
+  // null = не прочитано (загрузка или сбой), [] = пусто по-настоящему.
+  const [tools, setTools] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [mints, setMints] = useState({ wood: "", stone: "" });
   const [amount, setAmount] = useState(1);
-  const [quote, setQuote] = useState<{ stone: number; wood: number } | null>(null);
+  // Ответ /repair-quote: {silicon, circuit, amount} (см. routes/tools.ts, [REBRAND] ex stone/wood).
+  const [quote, setQuote] = useState<{ silicon: number; circuit: number } | null>(null);
   const [receipt, setReceipt] = useState<React.ReactNode | null>(null);
   const [txStatus, flash] = useFlash();
+  /**
+   * Готовность ремонта проверяем до отрисовки кнопки: бэкенд отвечает 503
+   * REPAIR_RESOURCES_NOT_CONFIGURED, пока в Config нет woodMint/stoneMint.
+   * Проверка идёт по тому же аккаунту Config, что читает и роут ремонта.
+   */
+  const [repairState, setRepairState] = useState<"checking" | "ready" | "disabled" | "unknown">("checking");
 
   useEffect(() => {
+    const unset = (v: any) =>
+      !v || typeof v !== "string" || v === "11111111111111111111111111111111" || /^1+$/.test(v);
     api.query.config()
-      .then((c: any) => setMints({ wood: c?.woodMint || "", stone: c?.stoneMint || "" }))
-      .catch(() => {});
+      .then((c: any) => {
+        setMints({ wood: c?.woodMint || "", stone: c?.stoneMint || "" });
+        setRepairState(unset(c?.woodMint) || unset(c?.stoneMint) ? "disabled" : "ready");
+      })
+      .catch(() => setRepairState("unknown"));
   }, []);
 
   const loadTools = () => {
@@ -37,12 +52,12 @@ export function RepairPage() {
         setTools(a);
         setSelected((s) => s || (a[0]?.mint ?? null));
       })
-      .catch(() => setTools([]));
+      .catch(() => setTools(null));
   };
 
   useEffect(() => { loadTools(); }, [address]);
 
-  const tool = tools.find((t) => t.mint === selected);
+  const tool = (tools ?? []).find((t) => t.mint === selected);
   const durability = tool ? Number(tool.durability) : 0;
   const maxRepair = Math.max(0, MAX_DURABILITY - durability);
   const amt = Math.min(amount, maxRepair);
@@ -52,28 +67,31 @@ export function RepairPage() {
   useEffect(() => {
     if (!tool || amt <= 0) { setQuote(null); return; }
     api.tools.repairQuote({ mint: tool.mint, amount: amt })
-      .then((q: any) => setQuote(q))
+      // Канон бэкенда — silicon/circuit; локальные имена не совпадали с ним (был NaN).
+      .then((q: any) => setQuote(q ? { silicon: Number(q.silicon) || 0, circuit: Number(q.circuit) || 0 } : null))
       .catch(() => setQuote(null));
   }, [tool?.mint, amt]);
 
   async function doRepair() {
-    if (!address) return flash("❌ Connect wallet (кнопка вверху)");
+    if (repairState === "disabled") return flash("❌ Ремонт недоступен на этом деплое");
+    if (!address) return flash("❌ Подключите кошелёк — кнопка в шапке");
     if (!tool) return flash("❌ Выберите инструмент");
-    if (!mints.stone || !mints.wood) return flash("❌ Минты ресурсов не загружены");
-    if (amt <= 0) return flash("❌ Durability уже полная");
+    if (!mints.stone || !mints.wood) return flash("❌ В конфиге программы нет минтов Кремния и Схемы");
+    if (amt <= 0) return flash("❌ Прочность уже полная");
     const q = quote;
     try {
       flash("Чиним…");
+      // POST /repair принимает {user, mint, amount}: адреса минтов программа
+      // читает сама из Config, caller-supplied адреса бэкенд не использует.
       const resp = await api.tools.repair({
         user: address, mint: tool.mint,
-        stoneMint: mints.stone, woodMint: mints.wood,
         amount: amt,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
         flash(`✅ Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
         setReceipt(
-          <>Списано: {fmtNum((q?.stone ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.wood ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
+          <>Списано: {fmtNum((q?.silicon ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.circuit ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
         );
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(loadTools, 2500);
@@ -88,13 +106,13 @@ export function RepairPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        Durability тратится майнингом. Ремонт атомарно списывает кремний и схему. Чем реже инструмент — тем дороже.
+        Прочность тратится добычей. Ремонт атомарно списывает Кремний и Схему. Чем реже инструмент — тем дороже.
       </p>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -105,6 +123,15 @@ export function RepairPage() {
         </motion.div>
       )}
 
+      {repairState === "disabled" && (
+        <FeatureDisabledNotice id="tools_repair" />
+      )}
+      {repairState === "unknown" && (
+        <Card className="border border-amber-500/30 bg-soil-850">
+          <p className="text-amber-400 text-xs">Не удалось проверить готовность ремонта: конфиг программы не читается. Кнопка ремонта пока заблокирована.</p>
+        </Card>
+      )}
+
       {!address && (
         <Card className="text-center py-8">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-12 h-12 inline-block" /></div>
@@ -112,14 +139,21 @@ export function RepairPage() {
         </Card>
       )}
 
-      {address && tools.length === 0 && (
+      {address && tools === null && (
+        <Card className="text-center py-8">
+          <div className="mb-2"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-12 h-12 inline-block" /></div>
+          <p className="text-parchment text-sm">Инструменты недоступны из канонической сети</p>
+        </Card>
+      )}
+
+      {address && tools !== null && tools.length === 0 && (
         <Card className="text-center py-8">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-12 h-12 inline-block" /></div>
           <p className="text-parchment text-sm">Инструментов нет — нечего чинить</p>
         </Card>
       )}
 
-      {tools.length > 0 && (
+      {tools !== null && tools.length > 0 && (
         <>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {tools.map((t) => {
@@ -147,7 +181,7 @@ export function RepairPage() {
                     {RARITY_META[rarityKey(tool.rarity)]?.label} · {tool.toolType}
                   </p>
                   <p className="text-straw text-xs">
-                    Durability {durability} / {MAX_DURABILITY}
+                    Прочность {durability} / {MAX_DURABILITY}
                     {critical && <span className="text-wheat-500 font-semibold"> — вот-вот сломается!</span>}
                   </p>
                 </div>
@@ -179,12 +213,12 @@ export function RepairPage() {
                 {quote ? (
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div>
-                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.stone / D9)}</p>
-                      <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("silicon") || ""} alt="" className="w-3.5 h-3.5" /> Кремний</p>
+                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.silicon / D9)}</p>
+                      <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("SILICON") || ""} alt="" className="w-3.5 h-3.5" /> Кремний</p>
                     </div>
                     <div>
-                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.wood / D9)}</p>
-                      <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("wood") || ""} alt="" className="w-3.5 h-3.5" /> Схема</p>
+                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.circuit / D9)}</p>
+                      <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-3.5 h-3.5" /> Схема</p>
                     </div>
                   </div>
                 ) : (
@@ -192,9 +226,13 @@ export function RepairPage() {
                 )}
               </div>
 
-              <button onClick={doRepair} disabled={!mints.stone || maxRepair === 0}
+              <button onClick={doRepair} disabled={repairState !== "ready" || !mints.stone || maxRepair === 0}
                 className="w-full mt-4 py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
-                Починить на {amt} прочности
+                {repairState === "ready"
+                  ? `Починить на ${amt} прочности`
+                  : repairState === "checking"
+                    ? "Проверяем готовность ремонта…"
+                    : "Ремонт недоступен на этом деплое"}
               </button>
             </Card>
           )}

@@ -61,11 +61,11 @@ export function DrumSpin() {
         if (s?.state === "settled") {
           if (poll.current) clearInterval(poll.current);
           setSpin({ state: "settled", prize: Number(s.prize), signature: s.signature });
-          flash(`🎉 Выигрыш: ${s.prize} MASCOT. Результат подтверждён в блокчейне.`, 8000);
+          flash(`🎉 Выигрыш: ${s.prize} MIND. Результат подтверждён в блокчейне.`, 8000);
         } else if (s?.state === "refunded") {
           if (poll.current) clearInterval(poll.current);
           setSpin({ state: "refunded", amount: Number(s.amount) });
-          flash(`↩️ Оракул не ответил вовремя: ${s.amount} MASCOT возвращены.`, 8000);
+          flash(`↩️ Оракул не ответил вовремя: ${s.amount} MIND возвращены.`, 8000);
         }
       } catch {
         /* keep polling: the RPC may lag the confirmation */
@@ -108,7 +108,8 @@ export function DrumSpin() {
 
   const pending = spin?.state === "pending";
   const canSelfSettle = pending && now - spin.startedAt >= SELF_SETTLE_AFTER_MS;
-  const mascotIcon = resourceIcon("MIND") || UI_ICONS.rewardStar;
+  // Канон реестра ресурсов — MIND; «mascot» остался только в именах инструкций aof-quests.
+  const rewardIcon = resourceIcon("MIND") || UI_ICONS.rewardStar;
 
   return (
     <div className="space-y-6">
@@ -118,7 +119,7 @@ export function DrumSpin() {
             <img src={UI_ICONS.drum} alt="" className="w-5 h-5 object-contain" />
             Барабан удачи
           </h3>
-          <p className="text-straw text-xs">Спин стоит {DRUM_SPIN_COST} MASCOT. Баланс проверяет программа.</p>
+          <p className="text-straw text-xs">Спин стоит {DRUM_SPIN_COST} MIND. Баланс проверяет программа.</p>
         </div>
         <div className="text-3xl font-bold text-gold">{DRUM_SPIN_COST}</div>
       </div>
@@ -126,7 +127,7 @@ export function DrumSpin() {
       {status && <div className="text-center text-straw text-sm"><NoticeMsg text={status} /></div>}
 
       <div className="relative flex flex-col items-center justify-center py-8 bg-gradient-to-b from-soil-800 to-soil-900 rounded-2xl border-2 border-wheat-600/30">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-4xl drop-shadow-lg">🔻</div>
+        <ResourceGlyph icon={UI_ICONS.rewardTrophy} alt="" className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 drop-shadow-lg" />
 
         <motion.div
           className="w-48 h-48 rounded-full bg-soil-700 border-4 border-gold/50 flex items-center justify-center overflow-hidden relative"
@@ -138,11 +139,14 @@ export function DrumSpin() {
               <ResourceGlyph icon={UI_ICONS.drum} alt="" className="w-16 h-16 animate-pulse" />
             ) : spin?.state === "settled" ? (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-center">
-                <img src={mascotIcon} alt="" className="w-14 h-14 mx-auto mb-2 object-contain" />
-                <div className="text-parchment font-bold text-sm">+{spin.prize} MASCOT</div>
+                <img src={rewardIcon} alt="" className="w-14 h-14 mx-auto mb-2 object-contain" />
+                <div className="text-parchment font-bold text-sm">+{spin.prize} MIND</div>
               </motion.div>
             ) : spin?.state === "refunded" ? (
-              <div className="text-center text-parchment text-sm font-bold">↩️ {spin.amount} MASCOT</div>
+              <div className="text-center text-parchment text-sm font-bold inline-flex items-center gap-1.5">
+                <img src={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 object-contain" />
+                {spin.amount} MIND
+              </div>
             ) : (
               <ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-16 h-16" />
             )}
@@ -173,16 +177,16 @@ export function DrumSpin() {
         <div className="grid grid-cols-2 gap-3">
           {DRUM_PRIZES.map((prize) => (
             <div key={prize.amount} className="flex items-center gap-3 p-2 bg-soil-700/50 rounded-lg">
-              <img src={mascotIcon} alt="" className="w-7 h-7 object-contain" />
+              <img src={rewardIcon} alt="" className="w-7 h-7 object-contain" />
               <div>
-                <div className="text-parchment text-sm font-medium">{prize.amount} MASCOT</div>
+                <div className="text-parchment text-sm font-medium">{prize.amount} MIND</div>
                 <div className="text-straw text-xs">{(prize.weightBps / 100).toLocaleString("ru-RU")}% шанс</div>
               </div>
             </div>
           ))}
         </div>
         <p className="text-straw text-xs mt-3 text-center">
-          В среднем {DRUM_EXPECTED_PRIZE.toLocaleString("ru-RU")} MASCOT за спин ({Math.round((DRUM_EXPECTED_PRIZE / DRUM_SPIN_COST) * 100)}% возврата).
+          В среднем {DRUM_EXPECTED_PRIZE.toLocaleString("ru-RU")} MIND за спин ({Math.round((DRUM_EXPECTED_PRIZE / DRUM_SPIN_COST) * 100)}% возврата).
         </p>
       </div>
 

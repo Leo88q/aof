@@ -74,7 +74,7 @@ export function NpcDashboard() {
   if (loading) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Loading NPC...</p></Card>
+        <Card><p className="text-straw text-center py-8">Читаем NPC…</p></Card>
       </div>
     );
   }

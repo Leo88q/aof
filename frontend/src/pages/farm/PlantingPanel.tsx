@@ -86,7 +86,7 @@ export function PlantingPanel() {
         toast.show(`❌ ${r.error || "Ошибка нейрального посева"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Error"}`);
+      toast.show(`❌ ${e.message || "Ошибка сети"}`);
     } finally {
       setPlanting(false);
     }
@@ -118,10 +118,10 @@ export function PlantingPanel() {
         toast.show(`🧠 Сбор завершён с кластера ${tileIndex + 1}!`);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Error сбора"}`);
+        toast.show(`❌ ${r.error || "Не удалось собрать урожай"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Error"}`);
+      toast.show(`❌ ${e.message || "Ошибка сети"}`);
     } finally {
       setHarvesting(null);
     }
@@ -131,7 +131,7 @@ export function PlantingPanel() {
     return (
       <Card className="p-4">
         <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> Посев нейронов</h3>
-        <p className="text-straw text-sm text-center py-4">Loading участка...</p>
+        <p className="text-straw text-sm text-center py-4">Читаем состояние участка…</p>
       </Card>
     );
   }

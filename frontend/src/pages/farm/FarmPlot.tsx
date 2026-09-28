@@ -8,30 +8,34 @@ import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import {toolPlate, resourceIcon} from "../../lib/visualAssets";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { buildingFor } from "../../lib/buildings";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { WeatherOverlay } from "../../components/farm/WeatherOverlay";
 import { toNum, useFlash } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const GRID = 8;
+
+// Подписи нагрузки сети: программа присылает служебные ключи эффекта
+// (well_water_rate_15_per_hour), их нельзя показывать игроку как есть.
+const WEATHER_TITLE: Record<string, string> = {
+  sunny: "Номинал",
+  rain: "Скачок",
+  drought: "Блэкаут",
+  festival: "Френзи",
+  harvest_festival: "Френзи",
+};
+const WEATHER_EFFECT: Record<string, string> = {
+  sunny: "Накопление энергопотока: 5/час",
+  rain: "Накопление энергопотока: 15/час",
+  drought: "Накопление энергопотока остановлено",
+  festival: "Накопление энергопотока: 20/час",
+  harvest_festival: "Накопление энергопотока: 20/час",
+};
 // Keep the feature fail-closed until the on-chain program has passed build and
 // validator tests. Enable explicitly only in a verified test environment.
 const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
-
-// Постройки по типу инструмента (ТЗ v4 §1: резчик — стойка схем, экстрактор — шахта кремния, передатчик — вышка данных)
-// [REBRAND] NeuroForge постройки; legacy-id (axe/pick/spear/bow) → те же постройки для старых инструментов.
-const BUILDING: Record<string, { icon: string; name: string }> = {
-  plasma_cutter: { icon: UI_ICONS.buildingPlasma, name: "Плазменный цех" },
-  silicon_extractor: { icon: UI_ICONS.buildingSilicon, name: "Кремниевая шахта" },
-  data_harvester: { icon: UI_ICONS.buildingData, name: "Пост сбора данных" },
-  quantum_transmitter: { icon: UI_ICONS.buildingQuantum, name: "Квантовая вышка" },
-  neural_seeder: { icon: UI_ICONS.buildingNeural, name: "Посевная станция" },
-  axe: { icon: UI_ICONS.buildingPlasma, name: "Плазменный цех" },
-  pick: { icon: UI_ICONS.buildingSilicon, name: "Кремниевая шахта" },
-  spear: { icon: UI_ICONS.buildingData, name: "Пост сбора данных" },
-  bow: { icon: UI_ICONS.buildingQuantum, name: "Квантовая вышка" },
-  reaper: { icon: UI_ICONS.buildingNeural, name: "Посевная станция" },
-};
 
 // Слоты построек по центру участка (спиралью наружу)
 const SLOTS = [
@@ -43,7 +47,9 @@ const SLOTS = [
 export function FarmPlot() {
   const { address } = useWalletStore();
   const { weather } = useStore() as any;
-  const [tools, setTools] = useState<any[]>([]);
+  // null = инвентарь не прочитан (загрузка или 503), [] = пусто по-настоящему.
+  const [tools, setTools] = useState<any[] | null>(null);
+  const [toolsFailed, setToolsFailed] = useState(false);
   const [selected, setSelected] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [txStatus, flash] = useFlash();
@@ -51,14 +57,20 @@ export function FarmPlot() {
   const load = useCallback(() => {
     if (!address) return;
     api.query.myTools(address)
-      .then((r: any) => setTools(Array.isArray(r) ? r : r?.tools || []))
-      .catch(() => {});
+      .then((r: any) => {
+        setTools(Array.isArray(r) ? r : r?.tools || []);
+        setToolsFailed(false);
+      })
+      .catch(() => {
+        setTools(null);
+        setToolsFailed(true);
+      });
   }, [address]);
 
   useEffect(() => { load(); }, [load]);
 
-  const staked = tools.filter((t) => t.staked || t.isMining);
-  const freeCount = tools.length - staked.length;
+  const staked = (tools ?? []).filter((t) => t.staked || t.isMining);
+  const freeCount = (tools ?? []).length - staked.length;
 
   // Карта тайлов: постройки из реальных застейканных инструментов + декор
   const tileMap = new Map<string, any>();
@@ -67,8 +79,8 @@ export function FarmPlot() {
   });
 
   async function quick(action: "start" | "collect") {
-    if (!MINING_ENABLED) return flash("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
-    if (!address) return flash("❌ Connect wallet");
+    if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка контракта в тестовой сети");
+    if (!address) return flash("❌ Подключите кошелёк");
     if (!selected) return;
     setBusy(true);
     try {
@@ -77,7 +89,7 @@ export function FarmPlot() {
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Done: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) {
         setSelected(null);
         setTimeout(load, 2500);
@@ -91,15 +103,15 @@ export function FarmPlot() {
 
   return (
     <div className="p-4 pt-6 pb-24">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-parchment">Мой нейро-лаб</h1>
-        <span className="text-straw text-sm">Визуализация участка</span>
+      <div className="mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">Мой нейро-лаб</h1>
+        <p className="text-straw text-[11px] mt-0.5">Инструменты в стойке становятся постройками на участке.</p>
       </div>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment mb-3">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -126,20 +138,32 @@ export function FarmPlot() {
                         : "bg-soil-700/40 border-transparent"
                 } ${tool ? "cursor-pointer" : "cursor-default"}`}>
                 {tool ? (
-                  <span className="relative">
-                    <ArtPlate src={toolPlate(tool.toolType, rarityKey(tool.rarity))} alt={tool.toolType || "Инструмент"} size={36} />
+                  <span className="relative inline-flex items-center justify-center">
+                    {/* На участке показываем постройку, а не сырой инструмент:
+                        обрезанная иконка постройки читается на 40px, тогда как
+                        квадратная плашка NFT в тайле выглядела как чёрный ящик. */}
+                    <ResourceGlyph
+                      icon={buildingFor(tool.toolType)?.icon || toolPlate(tool.toolType, rarityKey(tool.rarity))}
+                      alt={buildingFor(tool.toolType)?.name || tool.toolType || "Постройка"}
+                      className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-[0_0_6px_rgba(0,212,255,0.35)]"
+                    />
                     {tool.isMining && !done && (
-                      <span className="absolute -top-2 -right-2 text-xs animate-pulse"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /></span>
+                      <span className="absolute -top-2 -right-2 animate-pulse"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-3.5 h-3.5" /></span>
                     )}
-                    {done && <span className="absolute -top-2 -right-2 text-xs"><ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" /></span>}
+                    {done && <span className="absolute -top-2 -right-2"><ResourceGlyph icon={UI_ICONS.noticeSuccess} alt="" className="w-3.5 h-3.5" /></span>}
                   </span>
                 ) : locked ? <ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-5 h-5" /> : decor ? <ResourceGlyph icon={resourceIcon("synapse") || ""} alt="" className="w-5 h-5" /> : ""}
               </button>
             );
           })}
         </div>
-        <div className="flex gap-4 justify-center text-xs text-straw mt-3">
-          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("plasma_cutter") || ""} alt="" className="w-4 h-4" />/<ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> постройки (твои инструменты в стойке)</span>
+        {/* Легенда: переносится по строкам, ничего не выезжает за карточку */}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-straw mt-3 text-center">
+          <span className="inline-flex items-center gap-1">
+            <ResourceGlyph icon={buildingFor("plasma_cutter")?.icon} alt="" className="w-4 h-4" />
+            <ResourceGlyph icon={buildingFor("silicon_extractor")?.icon} alt="" className="w-4 h-4" />
+            постройка из инструмента в стойке
+          </span>
           <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> майнит</span>
           <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> расширение</span>
         </div>
@@ -163,9 +187,9 @@ export function FarmPlot() {
               className="w-8 h-8"
             />
           </span>
-          <div>
-            <p className="text-sm text-parchment capitalize">{weather.type.replace("_", " ")}</p>
-            <p className="text-xs text-straw">{weather.effect || ""}</p>
+          <div className="min-w-0">
+            <p className="text-sm text-parchment">{WEATHER_TITLE[weather.type] || weather.type}</p>
+            <p className="text-xs text-straw">{WEATHER_EFFECT[weather.type] || weather.effect || ""}</p>
           </div>
         </Card>
       )}
@@ -173,8 +197,16 @@ export function FarmPlot() {
       {/* Сводка */}
       <Card className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-parchment text-sm font-semibold">Построек на участке: {staked.length}</p>
-          <p className="text-straw text-xs">В инвентаре (не в стойке): {freeCount}</p>
+          <p className="text-parchment text-sm font-semibold">
+            Построек на участке: {tools === null ? (toolsFailed ? "—" : "…") : staked.length}
+          </p>
+          <p className="text-straw text-xs">
+            {tools === null
+              ? toolsFailed
+                ? "Инструменты недоступны из канонической сети — счётчики неизвестны"
+                : "Читаем инструменты…"
+              : `В инвентаре (не в стойке): ${freeCount}`}
+          </p>
         </div>
         <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locServerRuins} alt="" className="w-8 h-8" /></span>
       </Card>
@@ -188,7 +220,7 @@ export function FarmPlot() {
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-parchment font-semibold flex items-center gap-2">
                   <ArtPlate src={toolPlate(selected.toolType, rarityKey(selected.rarity))} alt={selected.toolType || "Инструмент"} size={36} />
-                  {BUILDING[selected.toolType]?.name || "Постройка"}
+                  {buildingFor(selected.toolType)?.name || "Постройка"}
                 </h3>
                 <button onClick={() => setSelected(null)} className="text-straw px-2">✕</button>
               </div>
@@ -199,7 +231,7 @@ export function FarmPlot() {
                 toNum(selected.miningEnd) <= Date.now() / 1000 ? (
                   <button onClick={() => quick("collect")} disabled={!MINING_ENABLED || busy}
                     className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-                    {MINING_ENABLED ? "Забрать добычу" : "⏸️ Сбор отключён до проверки on-chain"}
+                    {MINING_ENABLED ? "Забрать добычу" : "Сбор ещё не включён"}
                   </button>
                 ) : (
                   <p className="text-straw text-xs mt-1 inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> Идёт добыча — вернись, когда экстрактор закончит</p>
@@ -207,8 +239,13 @@ export function FarmPlot() {
               ) : (
                 <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}
                   className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-                  {MINING_ENABLED ? "Начать добычу" : "⏸️ Добыча отключена до проверки on-chain"}
+                  {MINING_ENABLED ? "Начать добычу" : "Добыча ещё не включена"}
                 </button>
+              )}
+              {!MINING_ENABLED && (
+                <p className="text-straw text-[10px] mt-2 text-center leading-relaxed">
+                  Добыча включится после проверки контракта в тестовой сети. Инструменты и постройки уже сохранены.
+                </p>
               )}
               <p className="text-straw text-xs mt-2 text-center">Тонкая настройка — во вкладке «Инструменты»</p>
             </Card>

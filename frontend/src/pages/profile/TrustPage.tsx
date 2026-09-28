@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { ProgressRing } from "../../components/ProgressRing";
 import { api } from "../../lib/api";
+import { DataUnavailableNotice } from "../../lib/availability";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
@@ -59,7 +60,7 @@ export function TrustPage() {
   if (loading) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Loading индекса доверия...</p></Card>
+        <Card><p className="text-straw text-center py-8">Считаем индекс доверия…</p></Card>
       </div>
     );
   }
@@ -67,7 +68,7 @@ export function TrustPage() {
   if (!data || typeof data.score !== "number" || typeof data.tier !== "number" || !data.breakdown) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Индекс доверия недоступен до развёртывания канонического индексатора</p></Card>
+        <DataUnavailableNotice id="trust_profile" />
       </div>
     );
   }
@@ -208,7 +209,7 @@ export function TrustPage() {
       {data.penaltyMult < 1 && (
         <Card className="bg-red-500/10 border-red-500/30">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">⚠️</span>
+            <img src={UI_ICONS.noticeError} alt="" className="w-8 h-8 object-contain shrink-0" />
             <div>
               <h3 className="text-red-400 font-semibold text-sm">Штраф активен</h3>
               <p className="text-straw text-xs">

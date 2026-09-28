@@ -94,10 +94,10 @@ export function OvenPanel() {
         toast.show(`🔥 Тренировка запущена! ${m.flour} сигнала → ${m.bread} модели`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Error"}`);
+        toast.show(`❌ ${r.error || "Операция отклонена программой"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Error"}`);
+      toast.show(`❌ ${e.message || "Ошибка сети"}`);
     } finally {
       setBaking(false);
     }
@@ -118,10 +118,10 @@ export function OvenPanel() {
         toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Error"}`);
+        toast.show(`❌ ${r.error || "Операция отклонена программой"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Error"}`);
+      toast.show(`❌ ${e.message || "Ошибка сети"}`);
     } finally {
       setBaking(false);
     }

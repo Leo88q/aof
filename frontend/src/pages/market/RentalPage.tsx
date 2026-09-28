@@ -11,6 +11,7 @@ import {
   RARITY_LABEL, RARITY_COLOR, rarityKey,
   fmtSol, shortAddr, toNum, useFlash,
 } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 export function RentalPage() {
   const { address } = useWalletStore();
@@ -145,7 +146,7 @@ export function RentalPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -254,7 +255,7 @@ export function RentalPage() {
                   className="w-full bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
               </div>
               <div>
-                <p className="text-straw text-xs mb-1">Price часа, ◎ (0 = бесплатно)</p>
+                <p className="text-straw text-xs mb-1">Цена часа, ◎ (0 = бесплатно)</p>
                 <input type="number" step="0.0001" min="0" value={pricePerHour} onChange={(e) => setPricePerHour(e.target.value)}
                   className="w-full bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
               </div>

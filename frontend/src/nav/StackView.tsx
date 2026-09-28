@@ -1,6 +1,7 @@
 import React from "react";
 import { AnimatePresence, motion, PanInfo } from "framer-motion";
 import { useNav } from "./NavContext";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export function StackView({ tabKey }: { tabKey: string }) {
   const { stacks, pop } = useNav();
@@ -29,7 +30,8 @@ export function StackView({ tabKey }: { tabKey: string }) {
           dragElastic={0.15}
           onDragEnd={onDragEnd}
         >
-          {top.el}
+          {/* Сбой одного экрана не должен размонтировать весь шелл. */}
+          <ErrorBoundary label={tabKey}>{top.el}</ErrorBoundary>
         </motion.div>
       </AnimatePresence>
     </div>

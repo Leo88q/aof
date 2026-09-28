@@ -36,7 +36,7 @@ export function FriendsList() {
   if (loading) {
     return (
       <div className="p-8 text-center">
-        <div className="text-parchment">Loading...</div>
+        <div className="text-parchment">Читаем список друзей…</div>
       </div>
     );
   }

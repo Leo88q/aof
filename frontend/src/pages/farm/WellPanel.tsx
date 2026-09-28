@@ -4,6 +4,7 @@ import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 import { api } from "../../lib/api";
+import { fetchWeatherSnapshot } from "../../lib/weather";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
@@ -37,12 +38,17 @@ export function WellPanel() {
 
   async function loadState() {
     if (!walletAddr) return;
-    const [weatherState, wellState, mint] = await Promise.all([
-      api.query.weatherState().catch(() => null),
+    // /weather/current и /query/weather-state читают один и тот же WeatherState PDA.
+    // Берём первый: он же питает чип нагрузки в шапке, поэтому панель и шапка
+    // больше не показывают разные состояния одного аккаунта.
+    const [snapshot, wellState, mint] = await Promise.all([
+      fetchWeatherSnapshot(),
       api.query.wellState(walletAddr).catch(() => null),
       getMintAsync("POWER"),
     ]);
-    setWeather(weatherState);
+    // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
+    // чип нагрузки в шапке всегда показывают одно и то же состояние.
+    setWeather(snapshot ? { weather: snapshot.weatherIndex } : null);
     setWell(wellState);
     setWaterMint(mint);
   }
@@ -90,13 +96,13 @@ export function WellPanel() {
   }
 
   if (!walletAddr) {
-    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg">🔋 Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
+    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
   }
 
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2">🔋 Сетевая станция</h3>
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3>
         <span className="text-xs text-straw">Источник: on-chain</span>
       </div>
 
@@ -113,7 +119,7 @@ export function WellPanel() {
             <ResourceGlyph icon={w.icon} alt={w.label} className="w-14 h-14 mx-auto" />
             <div className="flex-1">
               <p className="text-straw text-xs">Нагрузка сети: <b style={{ color: w.color }}>{w.label}</b></p>
-              <p className="text-straw text-xs inline-flex items-center gap-1">Скорость: <b className="text-parchment">{w.rate}</b> <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-3.5 h-3.5" /> /час</p>
+              <p className="text-straw text-xs inline-flex items-center gap-1">Скорость: <b className="text-parchment">{w.rate}</b> <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-3.5 h-3.5" />/час</p>
             </div>
           </div>
 

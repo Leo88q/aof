@@ -1,35 +1,70 @@
 import { Toast } from "./components/ui/Toast";
-import React from "react";
+import React, { Suspense } from "react";
 import { Link } from "react-router-dom";
 import { NavProvider } from "./nav/NavContext";
 import { TabPager } from "./nav/TabPager";
-import { TabBar } from "./nav/TabBar";
-import { AppWalletProvider } from "./wallet/WalletProvider";
+import { TabBar, TAB_LABELS } from "./nav/TabBar";
+import { TabFallback } from "./nav/TabFallback";
+import { TAB_VIEWS } from "./nav/tabChunks";
 import { useVipStatus } from "./lib/useVipStatus";
 import { SceneBackdrop } from "./components/visual/SceneBackdrop";
 
-// Импортируем наши существующие страницы
-import { FarmDashboard } from "./pages/farm/FarmDashboard";
-import { ToolsHome } from "./pages/tools/ToolsHome";
-import { EconomyHome } from "./pages/economy";
-import { MarketHome } from "./pages/market/MarketHome";
-import { QuestsHome } from "./pages/quests/QuestsHome";
-import { PrivilegesPage } from "./pages/PrivilegesPage";
-import { ProfileHome } from "./pages/profile/ProfileHome";
-import { FriendFarmPage } from "./pages/friend/FriendFarmPage";
+const V = TAB_VIEWS;
 
+// Экраны вкладок приходят отдельными чанками (см. nav/tabChunks.ts).
 const ROOTS = {
   // farm объединён с buildings (см. ниже)
-  farm: { key: "root", el: <FarmDashboard /> },
-  tools: { key: "root", el: <ToolsHome /> },
-  economy: { key: "root", el: <EconomyHome /> },
-  market: { key: "root", el: <MarketHome /> },
-  quests: { key: "root", el: <QuestsHome /> },
+  farm: {
+    key: "root",
+    el: (
+      <Suspense fallback={<TabFallback label={TAB_LABELS.farm} />}>
+        <V.farm />
+      </Suspense>
+    ),
+  },
+  tools: {
+    key: "root",
+    el: (
+      <Suspense fallback={<TabFallback label={TAB_LABELS.tools} />}>
+        <V.tools />
+      </Suspense>
+    ),
+  },
+  economy: {
+    key: "root",
+    el: (
+      <Suspense fallback={<TabFallback label={TAB_LABELS.economy} />}>
+        <V.economy />
+      </Suspense>
+    ),
+  },
+  market: {
+    key: "root",
+    el: (
+      <Suspense fallback={<TabFallback label={TAB_LABELS.market} />}>
+        <V.market />
+      </Suspense>
+    ),
+  },
+  quests: {
+    key: "root",
+    el: (
+      <Suspense fallback={<TabFallback label={TAB_LABELS.quests} />}>
+        <V.quests />
+      </Suspense>
+    ),
+  },
   // portfolio перенесено внутрь ProfileHome
   // privileges перенесено внутрь ProfileHome
-  profile: { key: "root", el: <ProfileHome /> },
+  profile: {
+    key: "root",
+    el: (
+      <Suspense fallback={<TabFallback label={TAB_LABELS.profile} />}>
+        <V.profile />
+      </Suspense>
+    ),
+  },
 };
-
 
 // Глобальная загрузка VIP-статуса при подключении кошелька
 function VipLoader() {
@@ -39,7 +74,7 @@ function VipLoader() {
 
 export default function App() {
   return (
-    <AppWalletProvider>
+    <>
       <VipLoader />
       <NavProvider tabs={["farm", "tools", "economy", "market", "quests", "profile"]} roots={ROOTS}>
         <div className="app-shell">
@@ -52,6 +87,6 @@ export default function App() {
           <TabBar />
         </div>
       </NavProvider>
-    </AppWalletProvider>
+    </>
   );
 }

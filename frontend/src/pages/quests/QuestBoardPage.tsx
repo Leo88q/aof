@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { useWalletStr } from "../../lib/useWalletStr";
+import { DataUnavailableNotice } from "../../lib/availability";
 
 interface Quest {
   id: string;
@@ -13,7 +14,9 @@ interface Quest {
   description: string;
   target: any;
   reward: {
-    potato: number;
+    /** Канон — MIND; potato остался в легаси-ответе генератора заданий. */
+    mind?: number;
+    potato?: number;
     xp: number;
     item?: string;
   };
@@ -38,6 +41,7 @@ export function QuestBoardPage() {
   const user = useWalletStr();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -47,9 +51,13 @@ export function QuestBoardPage() {
   async function loadQuests() {
     try {
       const data = await api.quests.daily(user);
-      setQuests(data.quests || []);
-    } catch (e) {
-      console.error("Failed to load quests:", e);
+      setQuests(Array.isArray(data?.quests) ? data.quests : []);
+      setUnavailable(false);
+    } catch {
+      // 503 от /quests/daily = прогресс не индексируется; пустой доски быть не
+      // должно, иначе игрок решит, что заданий просто нет.
+      setQuests([]);
+      setUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -58,7 +66,7 @@ export function QuestBoardPage() {
   if (loading) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Loading квестов...</p></Card>
+        <Card><p className="text-straw text-center py-8">Читаем задания…</p></Card>
       </div>
     );
   }
@@ -113,7 +121,7 @@ export function QuestBoardPage() {
 
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex gap-3 text-xs">
-                  <span className="text-wheat-500 inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("MIND")} alt="" className="w-4 h-4" /> {quest.reward.potato}</span>
+                  <span className="text-wheat-500 inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("MIND")} alt="" className="w-4 h-4" /> {quest.reward.mind ?? quest.reward.potato ?? 0}</span>
                   <span className="text-blue-400 inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-4 h-4" /> {quest.reward.xp} XP</span>
                   {quest.reward.item && (
                     <span className="text-gold inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-4 h-4" /> {quest.reward.item}</span>
@@ -143,11 +151,15 @@ export function QuestBoardPage() {
       </div>
 
       {quests.length === 0 && (
-        <Card>
-          <p className="text-straw text-center py-8">
-            Агент-куратор ещё не принёс задания. Приходите позже!
-          </p>
-        </Card>
+        unavailable ? (
+          <DataUnavailableNotice id="quest_progress" />
+        ) : (
+          <Card>
+            <p className="text-straw text-center py-8">
+              Агент-куратор ещё не принёс задания. Приходите позже!
+            </p>
+          </Card>
+        )
       )}
     </div>
   );

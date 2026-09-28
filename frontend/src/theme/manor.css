@@ -143,6 +143,11 @@ h1, h2, h3, .large-title, .nav-title, .section-label, .tc-name, .action-card .he
 }
 .nav-title { color: var(--nf-cyan); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 14px; }
 .nav-back { color: var(--nf-cyan); font-family: var(--nf-font-body); font-size: 15px; }
+/* Подтабы экономики: 4 пункта не влезают в 390px одной строкой, «Эпохи»
+   обрезались у правого края — разрешаем перенос. */
+.sub-tabs { flex-wrap: wrap; row-gap: 8px; }
+.sub-tab-btn { min-width: 0; }
+
 .tabbar {
   background: rgba(6, 6, 15, 0.8) !important;
   backdrop-filter: blur(28px) saturate(180%) !important;
@@ -150,8 +155,25 @@ h1, h2, h3, .large-title, .nav-title, .section-label, .tc-name, .action-card .he
   border-top: 1px solid var(--nf-border) !important;
   box-shadow: 0 -1px 0 rgba(0,212,255,.05), 0 -8px 24px rgba(0,0,0,.4);
 }
-.tab-btn { color: var(--nf-text-muted); transition: transform .35s var(--nf-spring), color .2s; }
-.tab-btn .tab-label { font-family: var(--nf-font-display); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+.tab-btn { color: var(--nf-text-muted); transition: transform .35s var(--nf-spring), color .2s; min-width: 0; padding-left: 2px; padding-right: 2px; }
+/* 6 подписей в 390px: на 9.5px с трекингом .1em «Лаборатория» была 80px в табе
+   65px и налезала на «Мастерскую». Ступенчато сжимаем и обрезаем как страховку. */
+.tab-btn .tab-label {
+  font-family: var(--nf-font-display);
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 430px) {
+  .tab-btn .tab-label { font-size: 8px; letter-spacing: .01em; }
+}
+@media (max-width: 360px) {
+  .tab-btn .tab-label { font-size: 7.5px; letter-spacing: 0; }
+}
 .tab-btn .tab-icon { filter: saturate(.4) brightness(.7); transition: filter .25s; }
 .tab-btn.active { color: var(--nf-cyan); transform: translateY(-2px); }
 .tab-btn.active .tab-icon { filter: none; text-shadow: 0 0 14px var(--nf-glow-cyan); }
@@ -296,7 +318,8 @@ input[class*="bg-soil-800"]:focus, select[class*="bg-soil-800"]:focus {
   box-shadow: 0 0 8px var(--nf-glow-cyan) !important;
 }
 .sub-tabs { border-bottom: 1px solid var(--nf-border) !important; }
-.category-title { color: var(--nf-cyan) !important; }
+.category-title { color: var(--nf-cyan) !important; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.category-hint { color: var(--nf-text-dim); font-family: var(--nf-font-body); font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .wallet-pill {
   background: rgba(0,212,255,.1) !important;
   color: var(--nf-cyan) !important;
@@ -349,7 +372,7 @@ input[class*="bg-soil-800"]:focus, select[class*="bg-soil-800"]:focus {
   transform: translate(-50%,-50%) scale(0); animation: nfRipple .6s ease-out forwards; }
 .mn-shake { animation: nfShake .5s ease-in-out; box-shadow: 0 0 0 2px var(--nf-danger), 0 0 18px var(--nf-glow-danger) !important; }
 .mn-longpress { animation: nfField 1.2s ease-in-out infinite; }
-#mn-fx-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+#mn-fx-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
 .mn-mist { position: fixed; left: 0; right: 0; bottom: 0; height: 20vh; pointer-events: none; z-index: 1;
   background: linear-gradient(180deg, transparent, rgba(0,212,255,.03) 60%, rgba(155,89,255,.05)); filter: blur(12px); animation: nfMistDrift 14s ease-in-out infinite alternate; }
 
@@ -372,6 +395,10 @@ div[class*="bg-soil-800"][class*="text-parchment"] {
 
 /* ---------- 15. ДОСТУПНОСТЬ ---------- */
 button, .list-row, .tab-btn, .mn-icon-btn { min-width: 44px; min-height: 44px; }
+/* Декоративные слои (canvas частиц, туман, свечение) не должны создавать
+   горизонтальный скролл на телефоне: clip не превращает ось в скролл-контейнер. */
+html { overflow-x: clip; }
+
 html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
   animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important;
 }

@@ -23,6 +23,7 @@ import { TrustPage } from "./TrustPage";
 import { PrivilegesPanel } from "../../components/PrivilegesPanel";
 import { QuestBoardPage } from "../quests/QuestBoardPage";
 import { DailyRewardButton } from "../../components/DailyRewardButton";
+import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
 
 // Утилита: вычисление статуса "Ветеран/Поколение" на основе данных игрока
 function computeVeteranStatus(playerData: any): { title: string; generation: number; emoji: string; icon?: string } {
@@ -401,10 +402,9 @@ export function ProfileHome() {
         </div>
       </Card>
 
-      <p className="text-xs text-straw mt-3">
-        Rebirth отключён до реализации атомарного сброса прогресса эпохи и
-        всех заявленных списаний в контракте. Подпись и списание SOL недоступны.
-      </p>
+      {/* Причина — из единого справочника DISABLED_MECHANICS, чтобы текст
+          не расходился с описанием механики на других экранах. */}
+      <FeatureDisabledNotice id="rebirth" />
     </div>
   );
 }

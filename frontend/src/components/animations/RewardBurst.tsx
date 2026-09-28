@@ -29,7 +29,7 @@ export function RewardBurst({ onClaim, rewardLabel }: RewardBurstProps) {
         animate={{ scale: 1 }}
         className="text-center py-2"
       >
-        <span className="text-2xl">✅</span>
+        <img src={UI_ICONS.noticeSuccess} alt="" className="w-8 h-8 object-contain mx-auto" />
         <p className="text-sprout-500 text-sm mt-1">Получено: {rewardLabel}</p>
       </motion.div>
     );

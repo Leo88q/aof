@@ -5,6 +5,7 @@ import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../visual/ResourceGlyph";
 import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
+import { hasWalletSupport, isMobileBrowser, phantomBrowseLink } from "../../lib/wallet";
 
 export function WalletButton() {
   const { address, connected, connecting, connect, disconnect, walletName } =
@@ -28,30 +29,48 @@ export function WalletButton() {
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
     : "";
 
+  const offerPhantom = !connected && !hasWalletSupport() && isMobileBrowser();
+
   return (
-    <>
-    <motion.button
-      disabled={connecting}
-      onClick={() => connected ? void handleClick() : setShowNotice(true)}
-      whileTap={{ scale: 0.95 }}
-      className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-        connected
-          ? "bg-sprout-600 text-white"
-          : "bg-wheat-600 text-soil-950"
-      }`}
-    >
-      {connecting
-        ? "Подключение..."
-        : connected
-        ? <span className="inline-flex items-center gap-1.5">
-            <ResourceGlyph icon={isVip ? UI_ICONS.rewardCore : UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" />
-            {walletName} • {shortAddr}
-          </span>
-        : <span className="inline-flex items-center gap-1.5">
-            <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
-          </span>}
-    </motion.button>
-    {showNotice && !connected && <WalletSafetyNotice onCancel={() => setShowNotice(false)} onContinue={() => { setShowNotice(false); void handleClick(); }} />}
-    </>
+    <div className="flex flex-col items-end gap-1">
+      <motion.button
+        disabled={connecting}
+        onClick={() => (connected ? void handleClick() : setShowNotice(true))}
+        whileTap={{ scale: 0.95 }}
+        className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+          connected
+            ? "bg-sprout-600 text-white"
+            : "bg-wheat-600 text-soil-950"
+        }`}
+      >
+        {connecting
+          ? "Подключение..."
+          : connected
+          ? <span className="inline-flex items-center gap-1.5">
+              <ResourceGlyph icon={isVip ? UI_ICONS.rewardCore : UI_ICONS.noticeSuccess} alt="" className="w-4 h-4" />
+              {walletName} • {shortAddr}
+            </span>
+          : <span className="inline-flex items-center gap-1.5">
+              <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
+            </span>}
+      </motion.button>
+      {showNotice && !connected && (
+        <WalletSafetyNotice
+          onCancel={() => setShowNotice(false)}
+          onContinue={() => {
+            setShowNotice(false);
+            void handleClick();
+          }}
+        />
+      )}
+      {offerPhantom && (
+        <a
+          href={phantomBrowseLink()}
+          className="text-[11px] leading-tight text-wheat-500 underline underline-offset-2"
+        >
+          Нет кошелька? Открыть в Phantom
+        </a>
+      )}
+    </div>
   );
 }

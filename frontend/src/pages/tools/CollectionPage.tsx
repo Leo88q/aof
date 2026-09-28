@@ -7,11 +7,12 @@ export function CollectionPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-6">
       <p className="text-straw text-xs leading-relaxed">
-        26 ресурсов и 25 NFT инструментов. Кадр целиком: пластина квадратная, рисунок не обрезается.
+        26 добываемых ресурсов, ядро-душа особого назначения и 25 NFT-инструментов (5 типов × 5 редкостей).
+        Кадр целиком: пластина квадратная, рисунок не обрезается.
       </p>
 
       <section>
-        <h2 className="text-parchment font-semibold mb-3">26 ресурсов</h2>
+        <h2 className="text-parchment font-semibold mb-3">26 добываемых ресурсов</h2>
         <div className="nf-gallery">
           {PLAYABLE_RESOURCES.map((r) => (
             <article key={r.id} className="nf-gallery__card">
@@ -24,7 +25,7 @@ export function CollectionPage() {
       </section>
 
       <section>
-        <h2 className="text-parchment font-semibold mb-3">Особое</h2>
+        <h2 className="text-parchment font-semibold mb-3">Особое · 27-й ресурс</h2>
         <div className="nf-gallery">
           {SPECIAL_RESOURCES.map((r) => (
             <article key={r.id} className="nf-gallery__card">

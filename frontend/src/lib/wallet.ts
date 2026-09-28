@@ -22,12 +22,99 @@ function decodeTransaction(txBase64: string): Transaction | VersionedTransaction
   }
 }
 
+/**
+ * Wallet Standard (https://walletstandard.com): часть кошельков регистрируется
+ * только в navigator.wallets и не оставляет window.phantom/backpack/solflare
+ * (Coinbase Wallet и им подобные). Инжект держим в приоритете — он проверен
+ * харнессом и не требует асинхронного реестра.
+ */
+function standardProvider(wallet: any) {
+  let account: any = null;
+  return {
+    isStandard: true,
+    name: typeof wallet.name === "string" && wallet.name ? wallet.name : "Standard wallet",
+    connect: async () => {
+      const feature = wallet.features?.["standard:connect"];
+      if (typeof feature?.connect === "function") {
+        const out = await feature.connect({ silent: false });
+        account = out?.accounts?.[0] ?? account ?? null;
+      }
+      account = account || wallet.accounts?.[0] || null;
+      if (!account?.address) throw new Error("Кошелёк не вернул аккаунт Solana");
+      return { publicKey: new PublicKey(account.address) };
+    },
+    disconnect: async () => {
+      await wallet.features?.["standard:disconnect"]?.disconnect?.();
+      account = null;
+    },
+    signMessage: async (message: Uint8Array) => {
+      const feature = wallet.features?.["solana:signMessage"];
+      if (typeof feature?.signMessage !== "function") {
+        throw new Error("Кошелёк не поддерживает подпись сообщений");
+      }
+      if (!account) throw new Error("Кошелёк не подключён");
+      const out = await feature.signMessage({ message, account });
+      const first = Array.isArray(out) ? out[0] : out;
+      if (!first?.signature) throw new Error("Кошелёк не вернул подпись");
+      return { signature: first.signature as Uint8Array };
+    },
+    signAndSendTransaction: async (tx: any) => {
+      const feature = wallet.features?.["solana:signAndSendTransaction"];
+      if (typeof feature?.signAndSendTransaction !== "function") {
+        throw new Error("Кошелёк не поддерживает отправку транзакций");
+      }
+      if (!account) throw new Error("Кошелёк не подключён");
+      const out = await feature.signAndSendTransaction(tx);
+      const first = Array.isArray(out) ? out[0] : out;
+      if (!first?.signature) throw new Error("Кошелёк не вернул подпись транзакции");
+      return { signature: first.signature as string };
+    },
+  };
+}
+
 function detectWallet(): any {
   const w = window as any;
   if (w.phantom?.solana?.isPhantom) return w.phantom.solana;
   if (w.backpack) return w.backpack;
   if (w.solflare) return w.solflare;
+  try {
+    const registered = w.navigator?.wallets?.get?.();
+    if (Array.isArray(registered) && registered.length > 0) {
+      const solana = registered.filter(
+        (x: any) =>
+          Array.isArray(x?.chains) &&
+          x.chains.some((c: any) => typeof c === "string" && c.startsWith("solana:"))
+      );
+      const preferred = ["Phantom", "Solflare", "Backpack", "Coinbase Wallet"];
+      const picked =
+        preferred.map((n) => solana.find((x: any) => x.name === n)).find(Boolean) || solana[0];
+      if (picked) return standardProvider(picked);
+    }
+  } catch {
+    // Битый реестр не должен ронять подключение: молча остаёмся без кошелька.
+  }
   return null;
+}
+
+/** Есть ли поддерживаемый кошелёк (инжект или Wallet Standard). */
+export function hasWalletSupport(): boolean {
+  return detectWallet() !== null;
+}
+
+/** Мобильный браузер (iOS/Android): сюда имеет смысл показывать deep-link. */
+export function isMobileBrowser(): boolean {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+/**
+ * Browse-дееплинк Phantom: открывает текущую страницу во встроенном браузере
+ * Phantom, где кошелёк уже инжектится как window.phantom.solana. Без сессии и
+ * без ручной передачи параметров — как в документации Phantom (ul/browse).
+ */
+export function phantomBrowseLink(url?: string): string {
+  const target = url || (typeof location !== "undefined" ? location.href : "");
+  const ref = typeof location !== "undefined" && location.origin ? location.origin : "https://phantom.app";
+  return `https://phantom.app/ul/browse/${encodeURIComponent(target)}?ref=${encodeURIComponent(ref)}`;
 }
 
 export interface WalletAdapter {
@@ -47,7 +134,7 @@ export function createWalletAdapter(): WalletAdapter {
       available: false,
       name: "none",
       connect: async () => {
-        throw new Error("Кошелёк не найден. Установите Phantom или Backpack.");
+        throw new Error("Кошелёк не найден. Установите Phantom или откройте игру во встроенном браузере Phantom.");
       },
       disconnect: async () => {},
       signMessage: async () => {
@@ -61,7 +148,7 @@ export function createWalletAdapter(): WalletAdapter {
 
   return {
     available: true,
-    name: provider.isPhantom ? "Phantom" : "Backpack",
+    name: provider.isStandard ? provider.name : provider.isPhantom ? "Phantom" : "Backpack",
     connect: async () => {
       const resp = await provider.connect();
       return new PublicKey(resp.publicKey.toString());

@@ -49,7 +49,7 @@ export function AuditLogPage() {
     return (
       <div className="p-4">
         <Card>
-          <p className="text-straw text-center">Loading логов...</p>
+          <p className="text-straw text-center">Читаем журнал…</p>
         </Card>
       </div>
     );

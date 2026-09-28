@@ -34,7 +34,7 @@ export function LeaderboardPage() {
   if (loading) {
     return (
       <div className="p-4">
-        <Card><p className="text-straw text-center py-8">Loading лидерборда...</p></Card>
+        <Card><p className="text-straw text-center py-8">Читаем лидерборд…</p></Card>
       </div>
     );
   }

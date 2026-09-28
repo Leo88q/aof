@@ -7,10 +7,11 @@ import { Card } from "../../components/ui/Card";
 import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { humanizeVrfError } from "../../lib/vrfErrors";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const FIELD_LABELS: Record<string, string> = {
   roundId: "Раунд",
-  ticketPriceLamports: "Price билета",
+  ticketPriceLamports: "Цена билета",
   ticketsSold: "Билетов продано",
   prizePoolLamports: "Призовой фонд",
   winnerTicket: "Выигрышный билет",
@@ -161,7 +162,7 @@ export function LotteryPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 

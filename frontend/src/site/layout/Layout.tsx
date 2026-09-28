@@ -73,7 +73,7 @@ export function SiteLayout() {
           </nav>
           <div className="site-header-tools">
             <ScrollFlask />
-            <button className="site-small-button" type="button" aria-expanded={mobile} onClick={() => setMobile(!mobile)}>Меню</button>
+            <button className="site-small-button site-menu-toggle" type="button" aria-expanded={mobile} onClick={() => setMobile(!mobile)}>Меню</button>
           </div>
         </div>
         {mobile && (

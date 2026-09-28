@@ -37,7 +37,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
   if (loading) {
     return (
       <Card className={compact ? "p-3" : "p-4"}>
-        <p className="text-straw text-xs text-center">Loading привилегий...</p>
+        <p className="text-straw text-xs text-center">Читаем привилегии…</p>
       </Card>
     );
   }
@@ -52,8 +52,18 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
     );
   }
 
-  const activePrivs = data.privileges.filter((p: Privilege) => p.active);
-  const inactivePrivs = data.privileges.filter((p: Privilege) => !p.active);
+  // Ответ без списка привилегий (или с другим контрактом) раньше ронял экран
+  // целиком: data.privileges.filter бросал TypeError и размонтировал дерево.
+  const list: Privilege[] = Array.isArray(data?.privileges) ? data.privileges : [];
+  if (list.length === 0) {
+    return (
+      <Card className={compact ? "p-3" : "p-4"}>
+        <p className="text-straw text-xs text-center">Не удалось загрузить привилегии</p>
+      </Card>
+    );
+  }
+  const activePrivs = list.filter((p: Privilege) => p.active);
+  const inactivePrivs = list.filter((p: Privilege) => !p.active);
 
   return (
     <div className="space-y-3">
@@ -67,11 +77,11 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-parchment font-bold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-5 h-5" /> Ваши привилегии</h3>
             <span className="text-xs bg-gold/30 text-gold px-2 py-1 rounded-full font-bold">
-              {data.summary.activeCount} / {data.summary.total}
+              {data.summary?.activeCount ?? activePrivs.length} / {data.summary?.total ?? list.length}
             </span>
           </div>
           <p className="text-straw text-xs">
-            Общая скидка на крафт: <span className="text-gold font-bold">{data.summary.totalCraftDiscountPct}%</span>
+            Общая скидка на крафт: <span className="text-gold font-bold">{data.summary?.totalCraftDiscountPct ?? 0}%</span>
           </p>
         </motion.div>
       )}
