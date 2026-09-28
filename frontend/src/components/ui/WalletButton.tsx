@@ -3,6 +3,7 @@ import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../visual/ResourceGlyph";
 import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
+import { hasWalletSupport, isMobileBrowser, phantomBrowseLink } from "../../lib/wallet";
 
 export function WalletButton() {
   const { address, connected, connecting, connect, disconnect, walletName } =
@@ -25,7 +26,10 @@ export function WalletButton() {
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
     : "";
 
+  const offerPhantom = !connected && !hasWalletSupport() && isMobileBrowser();
+
   return (
+    <div className="flex flex-col items-end gap-1">
     <motion.button
       onClick={handleClick}
       whileTap={{ scale: 0.95 }}
@@ -46,5 +50,14 @@ export function WalletButton() {
             <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-4 h-4" /> Подключить кошелёк
           </span>}
     </motion.button>
+      {offerPhantom && (
+        <a
+          href={phantomBrowseLink()}
+          className="text-[11px] leading-tight text-wheat-500 underline underline-offset-2"
+        >
+          Нет кошелька? Открыть в Phantom
+        </a>
+      )}
+    </div>
   );
 }

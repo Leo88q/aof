@@ -234,3 +234,48 @@ test("пути api.ts совпадают с монтированием роут�
   const server = read("../aof_backend/src/server.ts");
   assert.match(server, /app\.use\("\/season", vipStatus\)/, "vipStatus больше не смонтирован на /season");
 });
+
+test("кошелёк: Wallet Standard и мобильный deep-link в Phantom", () => {
+  const wallet = read("src/lib/wallet.ts");
+  assert.match(wallet, /navigator\.wallets/, "detectWallet обязан читать реестр Wallet Standard");
+  assert.match(wallet, /standardProvider/, "стандартные кошельки оборачиваются провайдером");
+  assert.match(wallet, /standard:connect/, "без standard:connect подключение не работает");
+  assert.match(wallet, /solana:signMessage/, "без solana:signMessage не подписываются walletProof");
+  assert.match(wallet, /solana:signAndSendTransaction/, "без solana:signAndSendTransaction не уходят транзакции");
+  assert.match(wallet, /phantom\.app\/ul\/browse/, "mobile deep-link обязан собираться по документации Phantom");
+  assert.match(wallet, /encodeURIComponent/, "целевой URL в deep-link кодируется");
+  const btn = read("src/components/ui/WalletButton.tsx");
+  assert.match(btn, /phantomBrowseLink/, "без кошелька на мобильном кнопка обязана вести в Phantom");
+  assert.match(btn, /isMobileBrowser/, "deep-link показывается только на мобильном");
+  assert.match(btn, /hasWalletSupport/, "проверка наличия кошелька до показа ссылки");
+});
+
+test("мёртвый код не возвращается: wallet-adapter-шелл и lib/ws вычищены", () => {
+  const app = read("src/App.tsx");
+  assert.ok(!app.includes("AppWalletProvider"), "AppWalletProvider вернулся в App — он не имел ни одного потребителя");
+  assert.ok(!app.includes("wallet/WalletProvider"), "модуль WalletProvider был удалён");
+  assert.throws(
+    () => read("src/wallet/WalletProvider.tsx"),
+    "src/wallet/WalletProvider.tsx должен отсутствовать"
+  );
+  assert.throws(() => read("src/lib/ws.ts"), "src/lib/ws.ts должен отсутствовать — никто его не импортировал");
+  const pkg = JSON.parse(read("package.json"));
+  assert.ok(!pkg.dependencies["socket.io-client"], "socket.io-client больше не используется фронтендом");
+  const store = read("src/store/walletStore.ts");
+  assert.match(store, /import\("\.\.\/lib\/wallet"\)/, "web3.js-адаптер грузится только по действию игрока");
+});
+
+test("code-split по вкладкам закреплён: ленивые чанки и prefetch", () => {
+  const chunks = read("src/nav/tabChunks.ts");
+  assert.match(chunks, /lazy\(/, "вкладки обязаны грузиться через React.lazy");
+  assert.match(chunks, /prefetchTab/, "переход должен прогревать соседний чанк");
+  for (const key of ["farm", "tools", "economy", "market", "quests", "profile"]) {
+    assert.ok(chunks.includes(`${key}: lazy(`) || chunks.includes(`${key}: lazy (`), `вкладка ${key} не ленивая`);
+  }
+  const app = read("src/App.tsx");
+  assert.match(app, /Suspense/, "корни вкладок обёрнуты в Suspense со скелетом");
+  const bar = read("src/nav/TabBar.tsx");
+  assert.match(bar, /prefetchTab\(t\.key\)/, "наведение/тап на таб запускает prefetch");
+  const pager = read("src/nav/TabPager.tsx");
+  assert.match(pager, /live\[k\]/, "пейджер монтирует только «живые» вкладки");
+});
