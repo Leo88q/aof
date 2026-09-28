@@ -9,6 +9,10 @@ import { initializePrivacy } from "./legal/consent";
 import "./theme/forge.css";
 import "./ui/fonts";
 
+const VisualGallery = lazy(() =>
+  import("./gallery/VisualGallery").then((m) => ({ default: m.VisualGallery }))
+);
+
 const SiteApp = lazy(() =>
   import("./site/SiteApp").then((m) => ({ default: m.SiteApp }))
 );
@@ -19,6 +23,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
+        {/* Инструментальная палитра: витрина приборов на живом коде. */}
+        <Route
+          path="/visual"
+          element={
+            <Suspense fallback={<div className="fg-screen" style={{ margin: 24 }}>Собираем приборы…</div>}>
+              <VisualGallery />
+            </Suspense>
+          }
+        />
         <Route path="/legal/:slug" element={<LegalPage />} />
         <Route path="/legal/archive/:version/:slug" element={<LegalPage />} />
         <Route

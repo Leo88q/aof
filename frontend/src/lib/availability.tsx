@@ -74,7 +74,7 @@ const FAIL_CLOSED_MESSAGES: Record<string, string> = {
   REFERRAL_TIERS_BIND_DISABLED_USE_CANONICAL_REFERRAL_BIND: "Привязку реферала выполняет сеть по своей процедуре.",
   HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER: "Событийный рынок отключён: сеть ещё не умеет передавать инструмент одним действием.",
   CHALLENGE_CONTRIBUTION_DISABLED_UNTIL_SETTLEMENT_IMPLEMENTED: "Вклад в челленджи включим после реализации расчёта.",
-  FRIEND_WATER_UNAVAILABLE_UNTIL_CANONICAL_SOCIAL_BONUS_IS_DEPLOYED: "Взаимные поливы включим, когда сеть начнёт считать соседский бонус.",
+  FRIEND_WATER_UNAVAILABLE_UNTIL_CANONICAL_SOCIAL_BONUS_IS_DEPLOYED: "Взаимные обмены включим, когда сеть начнёт считать бонус соседства.",
   NEIGHBOR_ACTIONS_UNAVAILABLE_UNTIL_CANONICAL_SOCIAL_EFFECTS_ARE_DEPLOYED: "Визиты к соседям включим, когда сеть начнёт считать соседские эффекты.",
   NEIGHBOR_LIMIT_UNAVAILABLE_UNTIL_CANONICAL_SOCIAL_INDEXING_IS_DEPLOYED: "Лимит визитов станет известен, когда запустится архив соседских связей.",
   REBIRTH_DISABLED_UNTIL_FULL_RESET_IMPLEMENTED: "Перерождение отключено: сеть ещё не умеет сбрасывать лабораторию одним действием.",

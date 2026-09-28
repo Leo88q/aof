@@ -302,6 +302,14 @@ export function ProfileHome() {
             label="Монитор экономики"
             onClick={() => push("profile", "economy", (<><NavHeader title="Монитор экономики" icon={UI_ICONS.economyOverview} tabKey="profile" /><EconomyDashboard /></>))}
           />
+          {/* Витрина приборов: отдельный служебный экран со всеми аппаратами
+              и картой «прибор → вкладка». Открывается в новой вкладке, чтобы
+              не терять место в игре. */}
+          <ListRow
+            icon={UI_ICONS.flasks}
+            label="Палитра приборов"
+            onClick={() => window.open("/visual", "_blank", "noopener")}
+          />
         </div>
       </Panel>
     </div>

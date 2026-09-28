@@ -14,12 +14,12 @@ export const BUILDINGS: Record<string, { icon: string; name: string; resource: s
   silicon_extractor: { icon: UI_ICONS.buildingSilicon, name: "Кремниевая шахта", resource: "SILICON" },
   data_harvester: { icon: UI_ICONS.buildingData, name: "Пост сбора данных", resource: "DATA" },
   quantum_transmitter: { icon: UI_ICONS.buildingQuantum, name: "Квантовая вышка", resource: "SIGNAL" },
-  neural_seeder: { icon: UI_ICONS.buildingNeural, name: "Посевная станция", resource: "NEURON" },
+  neural_seeder: { icon: UI_ICONS.buildingNeural, name: "Станция засева", resource: "NEURON" },
   axe: { icon: UI_ICONS.buildingPlasma, name: "Плазменный цех", resource: "CIRCUIT" },
   pick: { icon: UI_ICONS.buildingSilicon, name: "Кремниевая шахта", resource: "SILICON" },
   spear: { icon: UI_ICONS.buildingData, name: "Пост сбора данных", resource: "DATA" },
   bow: { icon: UI_ICONS.buildingQuantum, name: "Квантовая вышка", resource: "SIGNAL" },
-  reaper: { icon: UI_ICONS.buildingNeural, name: "Посевная станция", resource: "NEURON" },
+  reaper: { icon: UI_ICONS.buildingNeural, name: "Станция засева", resource: "NEURON" },
 };
 
 export function buildingFor(toolType?: string | null) {

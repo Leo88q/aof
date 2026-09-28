@@ -9,7 +9,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { DataUnavailableNotice, isFailClosedError } from "../../lib/availability";
-import { Panel, Sticker } from "../../ui/forge/kit";
+import { Note, Panel, Sticker } from "../../ui/forge/kit";
 import { PunchedCard } from "../../ui/forge/devices";
 
 /**
@@ -144,11 +144,33 @@ export function QuestsHome() {
             unavailable ? (
               <DataUnavailableNotice id="quest_progress" />
             ) : (
-              <Card className="text-center py-8">
-                <p className="text-straw">
-                  {address ? "Нет активных заданий" : "Подключите кошелёк, чтобы увидеть задания"}
-                </p>
-              </Card>
+              /* К10 · перфокарта стоит и без данных: пустая карта честно
+                 показывает, что ни один шаг не зачтён, а подпись объясняет,
+                 чего не хватает — кошелька, сети или самих заданий. */
+              <Panel
+                tier="panel"
+                device="cards"
+                id={<Sticker>ЗАДАНИЯ</Sticker>}
+                meta={address ? "0 АКТИВНЫХ" : "БЕЗ КОШЕЛЬКА"}
+                title="Перфокарта прогресса"
+                sub="колонка — шаг задания"
+              >
+                <PunchedCard
+                  title="ПРОГРЕСС"
+                  steps={questSteps(0)}
+                  rows={4}
+                  footLeft="0 / 0"
+                  footMid="шагов"
+                  footRight="—"
+                />
+                <Note quiet>
+                  {!address
+                    ? "Подключите кошелёк, чтобы увидеть задания."
+                    : unavailable
+                      ? "Журнал заданий недоступен: сеть не ответила."
+                      : "Активных заданий нет — сеть ничего не начислила."}
+                </Note>
+              </Panel>
             )
           ) : (
             quests.map((quest, i) => {

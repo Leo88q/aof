@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 
 /**
  * Регрессии интерфейса, найденные в аудите лаборатории 2026-09-28.
@@ -399,6 +399,9 @@ test("в интерфейсе нет дев-лексики: игрок чита�
   const banned = /\bканоническ|\bончейн|on-chain|\bиндексатор|\bдеплой|\bбэкенд|\bPDA\b|\bконфиг|\bmint\b|\b503\b|\bтранзакц|\bапдейт/i;
   const skip = [
     "src/site/", "src/legal/", "src/pages/admin/", "src/ui/forge/",
+    // Витрина приборов — служебный экран для команды: там допустимы слова
+    // «слайд», «код», «файл». Игрок его не читает.
+    "src/gallery/",
   ];
   const offenders: string[] = [];
   for (const file of walkApp()) {
@@ -465,4 +468,102 @@ test("совместимые классы сохраняют раскладку,
     ["workshop-msg", /\.workshop-msg \{[^}]*padding: 10px/, "сообщению мастерской нужен отступ"],
   ];
   for (const [name, re, why] of layout) assert.match(css, re, `${name}: ${why}`);
+});
+
+test("фоновая сцена вкладки видна: слой не уходит за фон документа", () => {
+  // Жалоба 2026-09-28: «фоновые картинки пропали». Ассеты были целы — сцена
+  // вкладки лежала в слое с отрицательным z-index и уходила за непрозрачный
+  // фон body, потому что у оболочки не было своей системы наложения.
+  const css = read("src/theme/forge.css");
+  assert.match(css, /\.app-shell \{[^}]*isolation: isolate/, "оболочке нужна изоляция слоёв, иначе фон вкладок исчезает");
+  const scene = css.match(/\.nf-scene img \{[^}]*\}/s);
+  assert.ok(scene, "правило .nf-scene img потеряно");
+  const opacity = Number((scene![0].match(/opacity:\s*([\d.]+)/) || [])[1]);
+  assert.ok(opacity >= 0.28, `сцена вкладки слишком бледная: opacity ${opacity}`);
+  const veil = css.match(/\.nf-scene::after \{[^}]*\}/s);
+  assert.ok(veil, "затемняющий слой сцены потерян");
+  const top = Number((veil![0].match(/--fg-void\) (\d+)%/) || [])[1]);
+  assert.ok(top <= 55, `затемняющий слой закрывает сцену: ${top}% сверху`);
+  const assets = readdirSync(join(root, "public/assets/backgrounds"));
+  assert.ok(assets.filter((f: string) => f.endsWith(".jpg")).length >= 10, "ассеты фонов пропали");
+});
+
+test("приборы стоят на своих вкладках и без кошелька", () => {
+  // Тот же разбор: приборы К5, К7, К10 и эхолот рынка показывались только при
+  // подключённом кошельке и непустых данных, поэтому «жили» лишь в лаборатории.
+  const tools = read("src/pages/tools/ToolsHome.tsx");
+  assert.ok(!/address && tools !== null && tools\.length > 0/.test(tools), "пульт К5 снова спрятан за кошелёк");
+  assert.match(tools, /<MixerStrips/, "пульт К5 обязан стоять на экране мастерской");
+  assert.match(tools, /rackNote/, "у пульта обязана быть честная подпись пустого состояния");
+
+  const quests = read("src/pages/quests/QuestsHome.tsx");
+  assert.match(quests, /<PunchedCard[\s\S]{0,400}questSteps\(0\)/, "перфокарта К10 обязана стоять без данных");
+
+  const market = read("src/pages/market/MarketHome.tsx");
+  assert.match(market, /<SonarPPI/, "эхолот рынка обязан стоять на входе, а не только в витрине");
+
+  const dash = read("src/pages/farm/FarmDashboard.tsx");
+  assert.match(dash, /emptyPlateWells/, "планшет К7 обязан показывать пустые лунки без инструментов");
+});
+
+test("инструментальная палитра описывает все 8 аппаратов и 50 слайдов", () => {
+  // Владелец 2026-09-28: «непонятно, где используются новые панели». Палитра
+  // `/visual` — витрина приборов на живом коде плюс карта «прибор → вкладка».
+  const gallery = read("src/gallery/VisualGallery.tsx");
+  const ids = gallery.match(/\bid: "[a-z]+-\d{2}"/g) || [];
+  assert.equal(ids.length, 50, `в палитре должно быть 50 слайдов, найдено ${ids.length}`);
+  assert.match(gallery, /vg-demo/, "слайды с показательными числами обязаны быть помечены");
+  assert.match(gallery, /Прибор|Где в игре/, "слайд обязан говорить, где прибор стоит в игре");
+
+  const map = read("src/gallery/deviceMap.ts");
+  const entries = map.split("{\n    key:").slice(1);
+  assert.equal(entries.length, 9, "в карте приборов должно быть 8 аппаратов К4–К11 и каркас окна");
+  for (const entry of entries) {
+    assert.match(entry, /file: "/, "у прибора обязан быть файл-источник");
+    assert.match(entry, /purpose: "/, "у прибора обязано быть описание");
+  }
+  for (const file of map.match(/src\/[\w/.]+\.tsx?/g) || []) {
+    for (const path of file.split(", ")) {
+      assert.ok(existsSync(join(root, path.trim())), `карта приборов ссылается на удалённый файл: ${path}`);
+    }
+  }
+  assert.match(read("src/main.tsx"), /path="\/visual"/, "витрина приборов должна открываться по /visual");
+});
+
+test("состояния статусов берут цвета из палитры A, а не из молчаливых классов", () => {
+  // Разметка звала text-gold-400, bg-ember-500 и text-water-400 — таких ступеней
+  // в палитре не было, и статусные окна рендерились нейтральными.
+  const cfg = read("tailwind.config.js");
+  for (const step of ["gold", "ember"]) {
+    assert.match(cfg, new RegExp(`${step}: \\{[^}]*DEFAULT: "#`), `${step}: нужна ступенчатая палитра с DEFAULT`);
+  }
+  assert.match(cfg, /water: \{ 400: "#/, "water-400 вызывается из разметки и обязан существовать");
+  const walk = (dir: string): string[] => {
+    const out: string[] = [];
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) out.push(...walk(rel));
+      else if (entry.name.endsWith(".tsx")) out.push(rel);
+    }
+    return out;
+  };
+  const missing: string[] = [];
+  for (const file of walk("src")) {
+    const text = read(file);
+    for (const m of text.matchAll(/\b(?:text|bg|border|from|to|via)-(gold|ember|water|sprout|wheat|soil|nf)-([a-z0-9]+)\b/g)) {
+      const token = m[0];
+      const family = m[1];
+      const step = m[2];
+      const allowed =
+        family === "gold" || family === "ember"
+          ? ["300", "400", "500", "600", "700", "900", "DEFAULT"].includes(step)
+          : family === "water"
+            ? ["400", "500", "600"].includes(step)
+            : family === "sprout"
+              ? ["500", "600", "700"].includes(step)
+              : true;
+      if (!allowed) missing.push(`${file}: ${token}`);
+    }
+  }
+  assert.deepEqual(missing, [], `разметка зовёт цвета, которых нет в палитре:\n${missing.join("\n")}`);
 });

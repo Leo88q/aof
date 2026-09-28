@@ -177,6 +177,10 @@ h1, h2, h3, .fg-title {
 /* ---------- 2. ОБОЛОЧКА ---------- */
 .app-shell {
   position: relative;
+  /* Своя система наложения: фоновая сцена лежит под содержимым, но выше
+     фона документа. Без изоляции .nf-scene с отрицательным z-index уходил
+     за непрозрачный фон body, и сцены вкладок пропадали. */
+  isolation: isolate;
   max-width: 520px;
   margin: 0 auto;
   height: 100dvh;
@@ -1257,12 +1261,12 @@ input.fg-input:focus {
 
 /* Фон сцены: затемнение остаётся, но без «неонового тумана» */
 .nf-scene { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--fg-void); }
-.nf-scene img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .22; }
+.nf-scene img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .3; }
 .nf-scene::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--fg-void) 62%, transparent) 0%, color-mix(in srgb, var(--fg-void) 92%, transparent) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg-void) 46%, transparent) 0%, color-mix(in srgb, var(--fg-void) 86%, transparent) 100%);
 }
 .fg-mist { display: none; }
 
@@ -1282,4 +1286,137 @@ input.fg-input:focus {
 @media print {
   .fg, .fg-screen, .card, .mn-modal { box-shadow: none !important; }
   .fg-dockwrap { display: none; }
+}
+
+/* =====================================================================
+   8. ВИТРИНА ПРИБОРОВ: /visual — инструментальная палитра проекта.
+   Служебный экран: показывает каждый аппарат на живом коде и говорит,
+   где он стоит в игре. Слайды листаются, состояние — в адресе (?s=).
+   ===================================================================== */
+.vg {
+  display: grid;
+  grid-template-columns: 296px minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--fg-void);
+  color: var(--fg-text);
+  font-family: var(--fg-font-text);
+}
+
+.vg-index {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 18px 12px 40px;
+  background: var(--fg-deep);
+  border-right: 1px solid var(--fg-line);
+}
+
+.vg-index__head { display: flex; flex-direction: column; gap: 4px; padding: 0 8px 14px; }
+.vg-index__head b { font-family: var(--fg-font-title); font-size: 15px; letter-spacing: .02em; }
+.vg-index__head span { color: var(--fg-dim); font-size: 11px; }
+.vg-index__back { margin-top: 8px; color: var(--fg-glow); font-size: 12px; text-decoration: none; }
+.vg-index__back:hover { color: var(--fg-accent); }
+
+.vg-index__group { margin-bottom: 12px; }
+.vg-index__title {
+  padding: 6px 8px;
+  color: var(--fg-muted);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.vg-index__item {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.vg-index__item small { display: block; margin-top: 2px; color: var(--fg-muted); font-size: 10px; }
+.vg-index__item:hover { border-color: var(--fg-line); color: var(--fg-text); }
+.vg-index__item.active {
+  border-color: color-mix(in srgb, var(--fg-glow) 45%, transparent);
+  background: var(--fg-glass);
+  color: var(--fg-text);
+}
+.vg-index__num { color: var(--fg-muted); font-family: var(--fg-font-num); font-size: 11px; }
+
+.vg-main { padding: 22px clamp(16px, 4vw, 56px) 72px; max-width: 900px; }
+
+.vg-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.vg-count { color: var(--fg-muted); font-family: var(--fg-font-num); font-size: 12px; }
+.vg-nav {
+  padding: 7px 12px;
+  border: 1px solid var(--fg-line);
+  border-radius: 10px;
+  background: var(--fg-tile);
+  color: var(--fg-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.vg-nav:disabled { opacity: .4; cursor: default; }
+
+.vg-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-family: var(--fg-font-title);
+  font-size: 24px;
+  font-weight: 600;
+}
+.vg-demo {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fg-reward) 22%, transparent);
+  color: var(--fg-reward-soft);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.vg-variant { margin: 0 0 20px; color: var(--fg-dim); font-size: 13px; }
+
+.vg-stage {
+  display: grid;
+  gap: 16px;
+  padding: clamp(14px, 3vw, 28px);
+  border: 1px solid var(--fg-line);
+  border-radius: var(--fg-r-panel, 18px);
+  background: linear-gradient(180deg, var(--fg-bezel) 0%, var(--fg-void) 100%);
+  overflow-x: auto;
+}
+
+.vg-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+
+.vg-facts { display: grid; gap: 14px; margin: 22px 0 0; }
+.vg-facts dt {
+  color: var(--fg-muted);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.vg-facts dd { margin: 4px 0 0; color: var(--fg-text); font-size: 13px; line-height: 1.5; }
+.vg-file { color: var(--fg-glow); font-family: var(--fg-font-num); font-size: 11px; }
+
+.vg-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.vg-swatch { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+.vg-swatch__chip { height: 44px; border: 1px solid var(--fg-line); border-radius: 10px; }
+.vg-swatch__name { color: var(--fg-text); font-family: var(--fg-font-num); font-size: 11px; }
+.vg-swatch__role { color: var(--fg-dim); }
+.vg-swatch__hex { color: var(--fg-muted); font-family: var(--fg-font-num); font-size: 11px; }
+
+@media (max-width: 860px) {
+  .vg { grid-template-columns: 1fr; }
+  .vg-index { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--fg-line); }
 }

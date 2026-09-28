@@ -11,7 +11,7 @@ const toolTypes = [
   { id: "silicon_extractor", icon: toolPlate("silicon_extractor") || "", label: "Кремниевый экстрактор" },
   { id: "data_harvester", icon: toolPlate("data_harvester") || "", label: "Сборщик данных" },
   { id: "quantum_transmitter", icon: toolPlate("quantum_transmitter") || "", label: "Квантовый передатчик" },
-  { id: "neural_seeder", icon: toolPlate("neural_seeder") || "", label: "Нейральный посев" },
+  { id: "neural_seeder", icon: toolPlate("neural_seeder") || "", label: "Нейральный засев" },
 ];
 
 const rarities = [

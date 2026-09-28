@@ -23,11 +23,17 @@ import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
 import { UI_ICONS } from "../../lib/visualAssets";
-import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { LabHero } from "../../components/farm/LabHero";
 import { buildingFor } from "../../lib/buildings";
 import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
 import { Note, Panel, Row, Rows, Sticker } from "../../ui/forge/kit";
+
+/** Пустой микропланшет: все лунки свободны — состояние участка без инструментов. */
+function emptyPlateWells(rows: number, cols: number) {
+  const out: Array<{ r: number; c: number; state: "empty" }> = [];
+  for (let r = 0; r < rows; r += 1) for (let c = 0; c < cols; c += 1) out.push({ r, c, state: "empty" });
+  return out;
+}
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
@@ -211,17 +217,16 @@ export function FarmDashboard() {
                 </div>
               </>
             ) : (
-              <div className="text-center">
-                <span className="flex items-center justify-center gap-2">
-                  <ResourceGlyph icon={buildingFor("plasma_cutter")?.icon} alt="" className="w-9 h-9" />
-                  <ResourceGlyph icon={buildingFor("silicon_extractor")?.icon} alt="" className="w-9 h-9" />
-                  <ResourceGlyph icon={buildingFor("data_harvester")?.icon} alt="" className="w-9 h-9" />
-                  <ResourceGlyph icon={buildingFor("quantum_transmitter")?.icon} alt="" className="w-9 h-9" />
-                </span>
-                <p className="text-straw text-xs mt-2">
-                  Поставь инструмент в стойку — на участке появится постройка
-                </p>
-              </div>
+              /* К7 · планшет стоит и с пустой стойкой: все лунки свободны,
+                 прибор видно до покупки инструментов. */
+              <>
+                <PlateGrid rows={6} cols={8} wells={emptyPlateWells(6, 8)} />
+                <div className="text-center" style={{ marginTop: 10 }}>
+                  <p className="text-straw text-xs">
+                    Поставь инструмент в стойку — лунка займёт своё место
+                  </p>
+                </div>
+              </>
             )}
           </Card>
 
