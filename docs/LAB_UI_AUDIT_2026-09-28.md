@@ -163,3 +163,40 @@
 Регрессии закреплены в `frontend/tests/ui-regressions.test.ts` (20 проверок,
 `npm run test:ui`): единый источник погоды, честные 503-состояния, гейт ремонта,
 канонический MIND на барабане, отсутствие эмодзи-иконок, дрейф пути vipStatus.
+
+---
+
+## Раунд 3: продакт-пункты списка (2026-09-28)
+
+1. **Стартовый бандл 1 203 → 339 kB (gzip 366 → 111 kB).** Каждая вкладка —
+   отдельный lazy-чанк (`nav/tabChunks.ts`), prefetch по наведению/тапу,
+   скелет `TabFallback`; пейджер монтирует только соседние вкладки.
+   `@solana/web3.js` выведен из шелла (proof в api.ts и адаптер в walletStore
+   грузятся динамически) — чанк `wallet` (270 kB) открывается только при
+   подключении или транзакции. Сборка без предупреждений о размере чанков.
+2. **Кошелёк.** `detectWallet()` читает реестр Wallet Standard
+   (`navigator.wallets`) — Coinbase Wallet и им подобные, не оставляющие
+   window-инжекта, подключаются через `standard:connect`,
+   `solana:signMessage`, `solana:signAndSendTransaction`. На мобильном без
+   кошелька под кнопкой появляется «Нет кошелька? Открыть в Phantom» —
+   browse-дееплинк `https://phantom.app/ul/browse/<url>?ref=<origin>`.
+3. **RepairPage: NaN в калькуляторе.** Ответ `/repair-quote` —
+   `{silicon, circuit, amount}` (см. `[REBRAND] ex stone/wood`), а экран
+   читал `quote.stone/quote.wood`. Поля приведены к канону, `POST /repair`
+   больше не шлёт минты, которые бэкенд всё равно берёт из Config.
+4. **Локализация:** 9 × «Loading…» заменены на «Читаем …».
+5. **Мёртвый код:** `lib/ws.ts` (socket.io-client фронтендом не
+   импортировался), `AppWalletProvider` (ни одного потребителя),
+   `ActionForm`, `charts/{Candlestick,PriceHeader,TradeTape}`,
+   `ui/{Icons,ResourceBar,StatChip,Switch}`, `pages/PrivilegesPage`,
+   `site/hooks/{useInView,useScrollProgress}`, `ui/tokens.ts`, `ui/demos/**`.
+6. **Единый текст закрытых механик:** карточка Rebirth в профиле теперь
+   показывает `FeatureDisabledNotice id="rebirth"` вместо собственного
+   абзаца; подписи кнопок добычи — без сырых эмодзи (flash остаётся — его
+   разбирает `NoticeMsg`).
+7. **Обзор ресурсов:** до первого ответа — «Читаем балансы…», после 503 —
+   честное сообщение; раньше ветка `!balances` сразу писала «недоступно».
+
+Проверки: `tsc --noEmit`, `npm run test:ui` (24/24), `npm run build`,
+QA-харнесс на 390 px — 8 экранов, горизонтального оверфлоу нет,
+ошибок консоли нет.

@@ -196,6 +196,18 @@ test("эмодзи не выводятся текстом: плашки вмес
   }
 });
 
+test("закрытые механики объясняются единым текстом, а кнопки без эмодзи-подписей", () => {
+  const profile = read("src/pages/profile/ProfileHome.tsx");
+  assert.match(profile, /FeatureDisabledNotice id="rebirth"/,
+    "причина rebirth обязана браться из DISABLED_MECHANICS, а не дублироваться текстом");
+  const mining = read("src/components/ToolMiningCard.tsx");
+  for (const label of ['"⏸️ Сбор отключён', '"⏸️ Добыча отключена до проверки on-chain"', '"↩️ Вернуть']) {
+    assert.ok(!mining.includes(label), `эмоji-подпись в JSX-кнопке вернулась: ${label}`);
+  }
+  // Flash остаётся с эмодзи — его разбирает NoticeMsg.
+  assert.match(mining, /flashMsg\("⏸️ Добыча отключена/, "flash-версия сообщения должна сохраниться");
+});
+
 test("барабан удачи называет ресурс канонически", () => {
   const drum = read("src/components/DrumSpin.tsx");
   assert.ok(!/MASCOT/.test(drum), "легаси-термин MASCOT вернулся в интерфейс");
