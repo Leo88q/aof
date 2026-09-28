@@ -3095,13 +3095,25 @@ fn sweep_matrix_zero_one_max_and_dust() {
     assert_eq!(treasury.lamports(), before + 1, "переводится ровно превышение");
     assert_eq!(tank.lamports(), floor, "резерв, долг и пыль остаются игроку");
 
-    // max: переводится ровно превышение — вся сумма, ни лампортом больше.
-    let fees = u64::MAX - floor;
-    set_lamports(&tank, u64::MAX);
+    // Крупное превышение, которое казна ещё влезает: уходит целиком.
+    let huge = 1_000_000_000_000u64; // 1 000 SOL
+    set_lamports(&tank, floor + huge);
     let before = treasury.lamports();
-    assert!(sweep(&tank, &treasury).is_ok(), "максимум переводится без переполнения");
-    assert_eq!(treasury.lamports(), before + fees, "выдано = превышение, до последнего лампорта");
-    assert_eq!(tank.lamports(), floor, "на баке остаётся ровно резерв с долгом и пылью");
+    assert!(sweep(&tank, &treasury).is_ok(), "крупное превышение переводится целиком");
+    assert_eq!(treasury.lamports(), before + huge, "выдано = превышение, до последнего лампорта");
+    assert_eq!(tank.lamports(), floor, "резерв, долг и пыль остаются игроку");
+
+    // max: превышение больше, чем казна физически может принять (сумма двух
+    // балансов не влезает в u64) — перевод отвергается ДО записи, и ни один
+    // лампорт не двигается ни вниз, ни вверх.
+    set_lamports(&tank, u64::MAX);
+    let before = (tank.lamports(), treasury.lamports());
+    rejected(sweep(&tank, &treasury), "MathOverflow");
+    assert_eq!(
+        (tank.lamports(), treasury.lamports()),
+        before,
+        "перевод, который не влезает в кошелёк казны, отвергнут до записи"
+    );
 }
 
 // ----------------------------------------------------------------------
@@ -3120,6 +3132,12 @@ struct MatchOutcome {
     sell_remaining: u64,
 }
 
+/// Верхняя граница фикстуры: столько лампортов тест кладёт в аккаунт, чтобы
+/// суммы по кошелькам заведомо не переполнили u64. Крайние цены матрицы
+/// (`u64::MAX`) в кошелёк не влезают, а проверять нужно отказ handler-а, а не
+/// арифметику самого теста.
+const MAX_FIXTURE_LAMPORTS: u64 = u64::MAX / 8;
+
 /// Реальный `orderbook::match_handler` для встречных заявок; эскроу покупателя
 /// всегда покрывает сделку и остаётся rent-exempt.
 fn match_orders(buy_price: u64, buy_amount: u64, sell_price: u64, sell_amount: u64) -> MatchOutcome {
@@ -3131,7 +3149,7 @@ fn match_orders(buy_price: u64, buy_amount: u64, sell_price: u64, sell_amount: u
     let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
     let rent = rent_exempt(RESOURCE_ORDER_SPACE);
     let taker = |gross: u64| gross.saturating_mul(ORDERBOOK_TAKER_FEE_BPS as u64) / 10_000;
-    let escrow = buy_price.saturating_mul(buy_amount);
+    let escrow = buy_price.saturating_mul(buy_amount).min(MAX_FIXTURE_LAMPORTS);
     let buy = program_account(
         buy_key,
         &resource_order(buyer, true, buy_price, buy_amount, mint),
