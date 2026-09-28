@@ -91,7 +91,7 @@ export function PacksPage() {
   async function open(pack: (typeof PACKS)[number]) {
     if (!address) return flash("❌ Подключите кошелёк");
     const cfg = configs[pack.id];
-    if (!cfg) return flash("❌ Капсула ещё не настроена on-chain");
+    if (!cfg) return flash("❌ Капсула ещё не настроена в сети");
     setBusy(pack.id);
     try {
       flash("Готовим транзакцию: оплата в escrow + Switchboard commit…", 8000);

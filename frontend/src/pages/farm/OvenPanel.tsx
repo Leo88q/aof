@@ -80,7 +80,7 @@ export function OvenPanel() {
         getMintAsync("COMPUTE"),
       ]);
       if (!flourMint || !waterMint || !woodMint || !coalMint) {
-        toast.show("❌ Mint-адреса не найдены");
+        toast.show("❌ Ресурсы не найдены в реестре сети");
         return;
       }
       const resp = await api.chain.startBaking({
@@ -108,7 +108,7 @@ export function OvenPanel() {
     setBaking(true);
     try {
       const breadMint = await getMintAsync("MODEL");
-      if (!breadMint) { toast.show("❌ Mint MODEL не найден"); return; }
+      if (!breadMint) { toast.show("❌ Ресурс MODEL не найден в сети"); return; }
       const resp = await api.chain.collectBread({
         user: walletAddr,
         breadMint,

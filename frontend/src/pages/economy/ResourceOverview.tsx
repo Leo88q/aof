@@ -138,8 +138,8 @@ export function ResourceOverview() {
       <div className="economy-empty">
         <p className={loading ? "text-straw" : "text-amber-400"}>
           {loading
-            ? "Читаем балансы из канонической сети…"
-            : "Балансы ресурсов недоступны из канонической сети"}
+            ? "Читаем балансы из сети…"
+            : "Балансы ресурсов недоступны из сети"}
         </p>
       </div>
     );

@@ -68,7 +68,7 @@ export function PlantingPanel() {
     try {
       const seedsMint = await getMintAsync("NEURON");
       if (!seedsMint) {
-        toast.show("❌ Mint NEURON не найден. Проверьте деплой контракта.");
+        toast.show("❌ Ресурс NEURON не найден в реестре сети.");
         return;
       }
       const resp = await api.chain.plantSeeds({
@@ -98,7 +98,7 @@ export function PlantingPanel() {
     try {
       const wheatMint = await getMintAsync("SYNAPSE");
       if (!wheatMint) {
-        toast.show("❌ Mint SYNAPSE не найден");
+        toast.show("❌ Ресурс SYNAPSE не найден в сети");
         return;
       }
       if (!reaper) {
@@ -151,7 +151,7 @@ export function PlantingPanel() {
 
       {loadError ? (
         <p className="text-amber-400 text-sm text-center py-4">
-          Состояние участка недоступно из канонической сети. Повторите попытку позже.
+          Состояние участка недоступно из сети. Повторите попытку позже.
         </p>
       ) : (
       <div className="grid grid-cols-3 gap-2">

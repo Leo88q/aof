@@ -222,7 +222,7 @@ export function LotteryPage() {
           <p className="text-straw text-xs mb-2">Price: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
         )}
         <div className="flex items-center gap-2">
-          <p className="flex-1 text-straw text-xs">Номер билета назначается on-chain по порядку покупки.</p>
+          <p className="flex-1 text-straw text-xs">Номер билета назначает сеть по порядку покупки.</p>
           <button onClick={buyTicket} disabled={!address} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
             <span className="inline-flex items-center gap-1"><img src={UI_ICONS.ticket} alt="" className="w-4 h-4 object-contain" /> Buy</span>
           </button>

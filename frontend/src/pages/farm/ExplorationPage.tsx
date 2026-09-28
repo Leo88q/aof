@@ -51,7 +51,7 @@ export function ExplorationPage() {
     if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
 
     setLoading(true);
-    flash("Готовим on-chain commit экспедиции (Switchboard)…");
+    flash("Отправляем экспедицию в сеть…");
     try {
       const commitResponse: any = await api.exploration.startCommit({ user: address, toolMint: bowMint });
       const commit = await handleTxResponse(commitResponse);
@@ -60,7 +60,7 @@ export function ExplorationPage() {
       flash("Экспедиция в пути: ждём раскрытия оракула…", 45_000);
       const state = await waitForSettlement(commitResponse.explorationCommit);
       flash(state === "settled"
-        ? "✅ Экспедиция завершена on-chain. Обновите балансы."
+        ? "✅ Экспедиция завершена в сети. Обновите балансы."
         : "⏳ Оракул ещё не раскрыл результат — можно раскрыть самостоятельно.", 8000);
     } catch (e: any) {
       flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);

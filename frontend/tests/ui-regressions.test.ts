@@ -164,9 +164,9 @@ test("503 не выглядит как настоящие данные", () => {
   const lab = read("src/components/farm/LabHero.tsx");
   assert.match(lab, /unavailable \? "—"/, "стойка образцов показывает нули при 503");
   const overview = read("src/pages/economy/ResourceOverview.tsx");
-  assert.match(overview, /Балансы ресурсов недоступны из канонической сети/,
+  assert.match(overview, /Балансы ресурсов недоступны из сети/,
     "обзор ресурсов обязан честно сообщать о недоступности вместо нулей");
-  assert.match(overview, /Читаем балансы из канонической сети/,
+  assert.match(overview, /Читаем балансы из сети/,
     "до первого ответа игрок должен видеть загрузку, а не ложную недоступность");
 
   // Ежедневная награда: мёртвая кнопка «Завтра» не возвращается.
@@ -211,7 +211,7 @@ test("закрытые механики объясняются единым те
   assert.match(profile, /FeatureDisabledNotice id="rebirth"/,
     "причина rebirth обязана браться из DISABLED_MECHANICS, а не дублироваться текстом");
   const mining = read("src/components/ToolMiningCard.tsx");
-  for (const label of ['"⏸️ Сбор отключён', '"⏸️ Добыча отключена до проверки on-chain"', '"↩️ Вернуть']) {
+  for (const label of ['"⏸️ Сбор отключён', '"⏸️ Добыча отключена до проверки в сети"', '"↩️ Вернуть']) {
     assert.ok(!mining.includes(label), `эмоji-подпись в JSX-кнопке вернулась: ${label}`);
   }
   // Flash остаётся с эмодзи — его разбирает NoticeMsg.
@@ -267,14 +267,14 @@ test("сбой чтения инвентаря не выглядит как пу
   assert.match(dash, /const \[staked, setStaked\] = useState<any\[\] \| null>\(null\)/,
     "staked обязан различать «неизвестно» и «ноль»");
   assert.match(dash, /staked === null/, "чип «построек» не показывает неизвестность");
-  assert.match(dash, /Не удалось прочитать инструменты из канонической сети/,
+  assert.match(dash, /Не удалось прочитать инструменты из сети/,
     "карта участка обязана объяснять недоступность, а не молчать");
   const plot = read("src/pages/farm/FarmPlot.tsx");
   assert.match(plot, /setTools\(null\)/, "ошибка myTools не должна давать пустой массив");
   assert.match(plot, /tools === null \? \(toolsFailed \? "—" : "…"\)/,
     "сводка «Построек на участке» должна показывать —/… вместо 0");
   const home = read("src/pages/tools/ToolsHome.tsx");
-  assert.match(home, /Инструменты недоступны из канонической сети/,
+  assert.match(home, /Инструменты недоступны из сети/,
     "ToolsHome при сбое говорит «инструментов пока нет»");
   const repair = read("src/pages/tools/RepairPage.tsx");
   assert.match(repair, /tools !== null && tools.length === 0/,
@@ -390,3 +390,45 @@ test("все восемь приборов набора подключены к 
     assert.ok(!banned.test(devices), "в приборах не должно быть выдуманных значений");
   }
 });
+
+test("в интерфейсе нет дев-лексики: игрок читает игровой язык", () => {
+  // Аудит §7: «каноническая сеть», «индексатор», «деплой», «ончейн», коды API
+  // и названия инструкций не должны попадать в текст для игрока. Технические
+  // строки остаются только там, где их читает поддержка: админ-консоль,
+  // правовые документы, поле guard закрытых механик и сам слой доступности.
+  const banned = /\bканоническ|\bончейн|on-chain|\bиндексатор|\bдеплой|\bбэкенд|\bPDA\b|\bконфиг|\bmint\b|\b503\b|\bтранзакц|\bапдейт/i;
+  const skip = [
+    "src/site/", "src/legal/", "src/pages/admin/", "src/ui/forge/",
+  ];
+  const offenders: string[] = [];
+  for (const file of walkApp()) {
+    if (skip.some((prefix) => file.startsWith(prefix)) || file === "src/lib/availability.tsx") continue;
+    const lines = read(file).split("\n");
+    lines.forEach((line, i) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return;
+      if (trimmed.startsWith("import") || trimmed.includes("guard:")) return;
+      const found = line.match(/"([^"\n]{12,})"|>([^<>{}\n]{12,})</g) || [];
+      for (const raw of found) {
+        const text = raw.replace(/^["'>]|["'<]$/g, "");
+        // Только человеческие фразы: с пробелом и кириллицей.
+        if (!/[А-Яа-яЁё]/.test(text) || !text.includes(" ")) continue;
+        if (banned.test(text)) offenders.push(`${file}:${i + 1}: ${text.slice(0, 80)}`);
+      }
+    });
+  }
+  assert.deepEqual(offenders, [], `дев-лексика вернулась в тексты:\n${offenders.join("\n")}`);
+});
+
+function walkApp(): string[] {
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(rel);
+      else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) out.push(rel);
+    }
+  };
+  walk("src");
+  return out;
+}

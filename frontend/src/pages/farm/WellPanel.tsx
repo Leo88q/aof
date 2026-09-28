@@ -76,7 +76,7 @@ export function WellPanel() {
     try {
       const response = await api.chain.weatherCrank({ cranker: walletAddr });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "✅ Нагрузка сети обновлена on-chain" : `❌ ${result.error}`);
+      setMessage(result.success ? "✅ Нагрузка сети обновлена" : `❌ ${result.error}`);
       if (result.success) await loadState();
     } catch (e: any) {
       setMessage(`❌ ${e.message}`);
@@ -91,7 +91,7 @@ export function WellPanel() {
     try {
       const response = await api.chain.collectWellWater({ user: walletAddr, waterMint });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "✅ Станция обработана on-chain; баланс обновится после подтверждения" : `❌ ${result.error}`);
+      setMessage(result.success ? "✅ Станция обработана; баланс обновится после подтверждения" : `❌ ${result.error}`);
       if (result.success) await loadState();
     } catch (e: any) {
       setMessage(`❌ ${e.message}`);
@@ -119,14 +119,14 @@ export function WellPanel() {
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3>
-        <span className="text-xs text-straw">Источник: on-chain</span>
+        <span className="text-xs text-straw">Источник: сеть</span>
       </div>
 
       {!weather || !w ? (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
           <p className="text-straw text-xs">WeatherState не найден. Без него программа не может рассчитать энергопоток.</p>
           <button onClick={crankWeather} disabled={cranking} className="w-full py-2 rounded-lg bg-amber-600 text-parchment text-sm font-bold disabled:opacity-50">
-            {cranking ? "Обновляем…" : "Обновить погоду on-chain"}
+            {cranking ? "Обновляем…" : "Обновить нагрузку в сети"}
           </button>
         </div>
       ) : (
@@ -145,14 +145,14 @@ export function WellPanel() {
               <span className="text-parchment font-bold text-sm">Определяется программой</span>
             </div>
             <p className="text-straw text-[10px] mt-2">
-              Итоговый энергопоток вычисляется on-chain по времени и нагрузке сети;
+              Итоговый энергопоток считает сама сеть по времени и нагрузке;
               локальная оценка не показывается.
             </p>
-            {!well && <p className="text-straw text-[10px] mt-2">PDA сетевой станции ещё нет. Первый вызов создаёт её и начинает накопление.</p>}
+            {!well && <p className="text-straw text-[10px] mt-2">Станции ещё нет в сети. Первый вызов создаёт её и начинает накопление.</p>}
           </div>
 
           <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
-            {collecting ? "Обрабатываем…" : !well ? "Создать сетевую станцию" : "Собрать энергопоток on-chain"}
+            {collecting ? "Обрабатываем…" : !well ? "Создать сетевую станцию" : "Собрать энергопоток"}
           </button>
         </>
       )}

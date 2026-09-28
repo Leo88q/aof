@@ -212,9 +212,9 @@ export function LabHero({
 
       {actions ? <div className="fg-keys">{actions}</div> : null}
 
-      {!owner && <Note quiet>Подключи кошелёк — покажем балансы из канонической сети.</Note>}
+      {!owner && <Note quiet>Подключи кошелёк — покажем балансы из сети.</Note>}
       {owner && unavailable && (
-        <Note quiet>Балансы недоступны из канонической сети. Повтори обновление позже.</Note>
+        <Note quiet>Балансы недоступны из сети. Повтори обновление позже.</Note>
       )}
     </Panel>
   );

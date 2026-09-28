@@ -347,8 +347,8 @@ export function CraftPage() {
               full POTATO amount. */}
           <div className="p-3 rounded-xl bg-soil-800/60 border border-straw/10">
             <p className="text-straw text-[10px]">
-              SKR-скидка отключена: канонический mint SKR ещё не настроен в контракте.
-              Крафт списывает полную стоимость MIND.
+              SKR-скидка отключена: ресурс SKR ещё не прописан в сети.
+              Синтез списывает полную стоимость MIND.
             </p>
           </div>
           

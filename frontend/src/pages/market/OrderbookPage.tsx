@@ -73,7 +73,7 @@ export function OrderbookPage() {
 
   async function place(side: "buy" | "sell") {
     if (!address) return flash("❌ Connect your wallet first");
-    if (!res.mint) return flash("❌ Mint ресурсов ещё не инициализирован");
+    if (!res.mint) return flash("❌ Ресурсы ещё не заведены в сети");
     const priceLam = Math.round(parseFloat(pricePerUnit) * 1e9);
     const amt = Math.round(parseFloat(amount) * 1e9);
     if (!isFinite(priceLam) || priceLam <= 0) return flash("❌ Укажите цену за единицу в SOL");
@@ -170,7 +170,7 @@ export function OrderbookPage() {
         </select>
         <div className="mt-2 text-xs text-straw">
           {resources.length === 0
-            ? "Ресурсные mint-ы не инициализированы — торговля отключена."
+            ? "Ресурсы не заведены в сети — торговля отключена."
             : <>Выбрано: <span className="text-parchment font-bold"><ResourceGlyph icon={res.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {res.label}</span></>}
         </div>
       </div>

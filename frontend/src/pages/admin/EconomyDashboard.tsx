@@ -126,7 +126,7 @@ export function EconomyDashboard() {
           </h3>
           {latest.dataQuality && latest.dataQuality !== "complete" && (
             <p className="text-straw text-xs mb-3">
-              On-chain индексатор событий ещё не запущен: mint/burn за 24ч и топ-холдеры недоступны,
+              Индексатор событий ещё не запущен: выпуск и сжигание за 24ч и топ-холдеры недоступны,
               активность считается по off-chain audit log. Не используйте эти цифры как полный учёт экономики.
             </p>
           )}

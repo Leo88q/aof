@@ -220,7 +220,7 @@ export function QuestsHome() {
               показываем состояние вместо выдуманного прогресса. */}
           <div className="rounded-2xl border border-straw/15 bg-soil-800/60 px-3 py-3 text-center">
             <img src={UI_ICONS.challenges} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
-            <p className="text-straw text-xs">Прогресс недели появится, когда расчёт наград станет ончейн.</p>
+            <p className="text-straw text-xs">Прогресс недели появится, когда сеть начнёт считать награды.</p>
           </div>
           <button
             type="button"

@@ -101,12 +101,12 @@ export function Workshop() {
     setBusy(true);
     try {
       const recipe = FULL_RECIPES.find((item) => item.id === recipeId);
-      if (!recipe) throw new Error("Рецепт не найден в on-chain таблице");
+      if (!recipe) throw new Error("Рецепт не найден в таблице сети");
       const input1Mint = await getMintAsync(recipe.inputs[0].key as any);
       const input2Mint = await getMintAsync((recipe.inputs[1] || recipe.inputs[0]).key as any);
       const outputMint = await getMintAsync(recipe.output.key as any);
       if (!input1Mint || !input2Mint || !outputMint) {
-        throw new Error("Реальный mint рецепта не найден в Config/MaterialMints");
+        throw new Error("Рецепт не найден в реестре сети");
       }
       const resp = await api.chain.craftRecipe({
         user: address,

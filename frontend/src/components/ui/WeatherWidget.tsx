@@ -85,7 +85,7 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
       return (
         <span
           className="inline-flex items-center gap-1.5 min-w-0 max-w-full h-8 px-2.5 rounded-xl bg-soil-800/80 border border-amber-500/20"
-          title="Погода недоступна из канонической сети"
+          title="Погода недоступна из сети"
         >
           <ResourceGlyph icon={UI_ICONS.weatherNominal} alt="" className="w-4 h-4 shrink-0 opacity-60" />
           <span className="text-amber-400 text-[10px] truncate">нет данных сети</span>
@@ -94,7 +94,7 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
     }
     return (
       <Card className="p-4 bg-soil-800 border border-amber-500/20">
-        <p className="text-amber-400 text-xs">Погода недоступна из канонической сети</p>
+        <p className="text-amber-400 text-xs">Погода недоступна из сети</p>
       </Card>
     );
   }

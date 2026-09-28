@@ -46,7 +46,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
 
   async function run(kind: "stake" | "start" | "collect" | "unstake") {
     if ((kind === "start" || kind === "collect") && !MINING_ENABLED) {
-      return flashMsg("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
+      return flashMsg("⏸️ Добыча отключена до проверки правил в сети");
     }
     if (!address) return flashMsg("❌ Подключите кошелёк — кнопка в шапке");
     setBusy(true);
@@ -152,7 +152,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
           </div>
           <button onClick={() => run("start")} disabled={!MINING_ENABLED || busy || durability < 1}
             className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-            {MINING_ENABLED ? "Начать добычу" : "Добыча отключена до проверки on-chain"}
+            {MINING_ENABLED ? "Начать добычу" : "Добыча отключена до проверки в сети"}
           </button>
           <button onClick={() => run("unstake")} disabled={busy || durability < 20}
             className="w-full py-2 rounded-xl bg-soil-700 border border-straw/20 text-straw text-xs disabled:opacity-40">
@@ -168,7 +168,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
               animate={MINING_ENABLED ? { scale: [1, 1.03, 1] } : undefined}
               transition={{ repeat: Infinity, duration: 1.4 }}
               className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-              {MINING_ENABLED ? "Забрать добычу" : "Сбор отключён до проверки on-chain"}
+              {MINING_ENABLED ? "Забрать добычу" : "Сбор отключён до проверки в сети"}
             </motion.button>
           ) : (
             <div>

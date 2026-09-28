@@ -81,7 +81,7 @@ export function MillPanel() {
         getMintAsync("SILICON"),
       ]);
       if (!wheatMint || !stoneMint) {
-        toast.show("❌ Mint-адреса не найдены");
+        toast.show("❌ Ресурсы не найдены в реестре сети");
         return;
       }
       const resp = await api.chain.startMilling({
@@ -109,7 +109,7 @@ export function MillPanel() {
     setMilling(true);
     try {
       const flourMint = await getMintAsync("SIGNAL");
-      if (!flourMint) { toast.show("❌ Mint SIGNAL не найден"); return; }
+      if (!flourMint) { toast.show("❌ Ресурс SIGNAL не найден в сети"); return; }
       const resp = await api.chain.collectFlour({
         user: walletAddr,
         flourMint,

@@ -96,8 +96,8 @@ export function DrumSpin() {
     try {
       const resp: any = await api.drum.reveal({ user: address });
       const r = await handleTxResponse(resp);
-      if (!r.success) throw new Error(r.error || "Транзакция не выполнена");
-      flash(resp.phase === "refundable" ? "✅ Возврат отправлен" : "✅ Приз раскрыт вашей транзакцией", 6000);
+      if (!r.success) throw new Error(r.error || "Действие не выполнено");
+      flash(resp.phase === "refundable" ? "✅ Возврат отправлен" : "✅ Приз раскрыт вашим подтверждением", 6000);
       watch(spin?.state === "pending" ? spin.startedAt : Date.now());
     } catch (e: any) {
       flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
