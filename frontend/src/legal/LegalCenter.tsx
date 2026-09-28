@@ -66,7 +66,11 @@ export function LegalPage() {
 // Non-modal: the visitor can keep reading or using the application after refusal.
 export function PrivacyControls() {
   const [choice, setChoice] = useState(readConsent);
-  const [open, setOpen] = useState(() => !readConsent());
+  // Две ступени: короткая полоса, пока выбора нет, и полная панель — только
+  // когда игрок сам открыл настройки. Раньше на каждом входе разворачивалась
+  // большая панель, и после подтверждения казалось, что выбор не сохранился.
+  const [open, setOpen] = useState(false);
+  const [ask, setAsk] = useState(() => !readConsent());
   const [functional, setFunctional] = useState(() => readConsent()?.functional ?? false);
   const [notice, setNotice] = useState('');
   const gpc = gpcEnabled();
@@ -75,23 +79,51 @@ export function PrivacyControls() {
   useEffect(() => {
     const sync = () => {
       initializePrivacy();
-      const current = readConsent(); setChoice(current); setFunctional(current?.functional ?? false);
-      if (!current) setOpen(true);
+      const current = readConsent();
+      setChoice(current); setFunctional(current?.functional ?? false);
+      // Выбор есть — полоса больше не показывается ни при возврате на вкладку,
+      // ни при синхронизации из другого окна.
+      setAsk(!current);
     };
     window.addEventListener('storage', sync);
     window.addEventListener('focus', sync);
-    return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync); };
+    window.addEventListener('nf:privacy-change', sync);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('nf:privacy-change', sync);
+    };
   }, []);
+  function openSettings() {
+    setOpen(true);
+    requestAnimationFrame(() => panel.current?.focus());
+  }
   function save(allow: boolean) {
-    const result = saveConsent(allow); setChoice(result.choice); setFunctional(result.choice.functional); setOpen(false);
+    const result = saveConsent(allow);
+    setChoice(result.choice); setFunctional(result.choice.functional);
+    setOpen(false); setAsk(false);
     settingsButton.current?.focus();
-    setNotice(result.persisted ? 'Выбор сохранён. Изменить или отозвать его можно здесь в любой момент.' : 'Браузер запретил сохранение. Выбор действует в памяти вкладки и может потребоваться снова.');
+    setNotice(
+      result.mode === 'local'
+        ? 'Выбор сохранён. Изменить или отозвать его можно здесь в любой момент.'
+        : result.mode === 'session'
+          ? 'Браузер не разрешил постоянное хранение: выбор действует до закрытия вкладки, но полоса больше не появится.'
+          : 'Хранилище браузера недоступно: выбор действует, пока открыта страница.',
+    );
   }
   return <footer className="legal-area legal-footer" lang="ru">
     <p><strong>Никогда не вводите seed-фразу или приватный ключ.</strong> Токены и NFT не гарантируют доход. Перед подписью проверяйте сумму, получателя, комиссию и разрешения.</p>
     <LegalLinks />
     {!operator.approved && <p className="legal-draft-label">Правовые документы — проекты. Реквизиты оператора должны быть заполнены до production-релиза.</p>}
-    <button ref={settingsButton} type="button" aria-expanded={open} aria-controls="privacy-controls" onClick={() => { setOpen(!open); if (!open) requestAnimationFrame(() => panel.current?.focus()); }}>Настройки cookies</button>
+    {ask && !open && <div className="legal-consent legal-consent--ask" role="region" aria-label="Выбор локального хранения">
+      <p>Мы храним только ваш выбор, локальный журнал и настройки — и только с вашего разрешения. Аналитики и рекламы нет. Отказ не закрывает доступ к игре.</p>
+      <div className="legal-actions">
+        <button type="button" onClick={() => save(true)} disabled={gpc}>Принять функциональные</button>
+        <button type="button" onClick={() => save(false)}>Только необходимое</button>
+        <button type="button" onClick={openSettings}>Настроить</button>
+      </div>
+    </div>}
+    <button ref={settingsButton} type="button" aria-expanded={open} aria-controls="privacy-controls" onClick={() => { if (open) setOpen(false); else openSettings(); }}>Настройки cookies</button>
     <p role="status">{notice}</p>
     {open && <div ref={panel} tabIndex={-1} id="privacy-controls" className="legal-consent" role="region" aria-label="Выбор локального хранения">
       <h2>Ваш выбор хранения</h2>

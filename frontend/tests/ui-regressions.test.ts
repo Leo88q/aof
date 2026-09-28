@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 /**
  * Регрессии интерфейса, найденные в аудите лаборатории 2026-09-28.
@@ -46,7 +47,9 @@ test("подписи таб-бара не налезают друг на дру�
   const css = read("src/theme/forge.css");
   assert.match(css, /\.fg-dock__tab \{[^}]*min-width: 0/, "вкладка должна ужиматься");
   assert.match(css, /\.fg-dock__tab \.tab-label \{[^}]*text-overflow: ellipsis/, "подпись вкладки должна обрезаться");
-  assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,120}\.fg-dock__tab \.tab-label/, "нет адаптивного размера подписи");
+  // Адаптация подписи теперь не в медиазапросе, а в clamp(): размер едет от
+  // ширины экрана, поэтому «Лаборатория» влезает и на 320px, и на 520px.
+  assert.match(css, /\.fg-dock__tab \.tab-label \{[^}]*font-size: clamp\(/, "нет адаптивного размера подписи");
   const bar = read("src/nav/TabBar.tsx");
   assert.match(bar, /className=\{\"fg-dock__tab\"/, "таб-бар снова не на классе капсулы");
 });
@@ -566,4 +569,56 @@ test("состояния статусов берут цвета из палит�
     }
   }
   assert.deepEqual(missing, [], `разметка зовёт цвета, которых нет в палитре:\n${missing.join("\n")}`);
+});
+
+test("каталог не показывает пути к файлам, а арт инструментов лежит на одном фоне", () => {
+  // Жалоба 2026-09-28: в каталоге печатались внутренние пути — заголовок
+  // «/assets/nfts/plasma-cutter.jpg Плазменный резак», а в плитках вместо
+  // картины стояла та же строка. Плюс фон картин был разным: одна полка
+  // каталога выглядела как разные по качеству предметы.
+  const compendium = read("src/pages/compendium/CompendiumHome.tsx");
+  assert.ok(!/\{tool\.icon\}/.test(compendium), "путь к файлу снова попал в подпись каталога");
+  assert.match(compendium, /toolPlate\(tool\.id, rarity\.id\)/, "плитка каталога обязана показывать картину редкости");
+  assert.match(compendium, /<img[\s\S]{0,160}toolPlate\(tool\.id, rarity\.id\)/, "картина ставится тегом img, а не текстом");
+
+  const plate = read("src/components/visual/ArtPlate.tsx");
+  assert.ok(!/!url \? src/.test(plate), "подложка ArtPlate снова печатает исходный путь");
+
+  // Один фон у всех 25 картин: скрипт меряет рамку каждой и сверяет с плиткой.
+  const report = execFileSync("node", ["scripts/normalize-art-backgrounds.mjs", "--check"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.match(report, /фон у всех картин один/, `фон картин разъехался:\n${report}`);
+});
+
+test("шесть вкладок дока делят ширину и помещаются на телефоне", () => {
+  // Жалоба 2026-09-28: «в нижней панели не помещаются задания и профиль».
+  // Вкладки стояли несжимаемыми (flex: 0 0 auto) с горизонтальной прокруткой —
+  // правые уезжали за край экрана.
+  const css = read("src/theme/forge.css");
+  assert.match(css, /\.fg-dock \{[^}]*width: min\(100%, 520px\)/, "капсуле дока нужна собственная ширина, а не прокрутка");
+  assert.ok(!/\.fg-dock \{[^}]*overflow-x: auto/.test(css), "док снова прокручивается по горизонтали: вкладки прячутся");
+  assert.match(css, /\.fg-dock__tab \{[^}]*flex: 1 1 0/, "вкладки обязаны делить ширину поровну");
+  assert.match(css, /\.fg-dock__tab \{[^}]*flex-direction: column/, "знак над подписью: иначе длинное имя не влезает");
+  assert.match(css, /\.fg-dock__tab \.tab-label \{[^}]*font-size: clamp/, "подпись вкладки должна уменьшаться на узком экране");
+  const bar = read("src/nav/TabBar.tsx");
+  assert.equal((bar.match(/key: "/g) || []).length, 6, "в доке должно быть ровно шесть вкладок");
+});
+
+test("выбор cookies не спрашивают второй раз", () => {
+  // Жалоба 2026-09-28: «настройки кукис не уходят после подтверждения».
+  // Панель открывалась на каждом входе, а выбор терялся, если браузер запрещал
+  // постоянное хранилище (приватный режим, песочница предпросмотра).
+  const consent = read("src/legal/consent.ts");
+  assert.match(consent, /function sessionBacking/, "нужен запасной уровень хранения на вкладку");
+  assert.match(consent, /mode: StorageMode/, "сохранение обязано сообщать, где именно остался выбор");
+  assert.match(consent, /session\.setItem\(CONSENT_KEY/, "при запрете постоянного хранилища выбор пишется в sessionStorage");
+
+  const ui = read("src/legal/LegalCenter.tsx");
+  assert.match(ui, /const \[ask, setAsk\]/, "короткая полоса выбора — отдельное состояние");
+  assert.match(ui, /setOpen\(false\); setAsk\(false\)/, "после выбора закрываются и полоса, и панель");
+  assert.match(ui, /nf:privacy-change/, "панель обязана ловить собственное событие сохранения");
+  assert.match(ui, /\{ask && !open &&/, "полоса выбора показывается только при отсутствии выбора");
+  assert.match(ui, /Режим|mode === 'session'|mode === 'memory'/, "игроку нужно сказать, где остался его выбор");
 });

@@ -285,19 +285,19 @@ h1, h2, h3, .fg-title {
   background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--fg-void) 88%, transparent) 46%);
 }
 .fg-dock {
+  /* Шесть вкладок делят ширину капсулы поровну: раньше они стояли неcжимаемыми
+     (flex: 0 0 auto) с горизонтальной прокруткой — «Задания» и «Профиль»
+     уезжали за край экрана телефона, и до них нельзя было дотянуться. */
   display: flex;
-  gap: 4px;
+  gap: 2px;
   padding: 6px;
-  border-radius: 999px;
+  width: min(100%, 520px);
+  border-radius: 22px;
   background: linear-gradient(180deg, var(--fg-bezel), var(--fg-bezel-2));
   box-shadow: 0 16px 34px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.fg-dock::-webkit-scrollbar { display: none; }
 .fg-dock__tab {
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-width: 0;
   border: 0;
   font: inherit;
@@ -306,26 +306,27 @@ h1, h2, h3, .fg-title {
   letter-spacing: .01em;
   color: var(--fg-muted);
   background: none;
-  padding: 9px 13px;
-  border-radius: 999px;
+  padding: 7px 2px;
+  border-radius: 16px;
+  /* Знак над подписью: так шесть названий читаются целиком даже на 320px */
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  gap: 3px;
   cursor: pointer;
   transition: color .2s var(--fg-ease), background .2s var(--fg-ease);
 }
-.fg-dock__tab img { width: 16px; height: 16px; object-fit: contain; opacity: .5; transition: opacity .2s; }
+.fg-dock__tab img { width: 18px; height: 18px; object-fit: contain; opacity: .5; transition: opacity .2s; }
 /* Подпись вкладки обрезается многоточием, а не распирает капсулу */
 .fg-dock__tab .tab-label {
   min-width: 0;
-  max-width: 84px;
+  max-width: 100%;
+  font-size: clamp(8.5px, 2.4vw, 10.5px);
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-@media (max-width: 430px) {
-  .fg-dock__tab { padding: 8px 10px; font-size: 11px; }
-  .fg-dock__tab .tab-label { font-size: 10.5px; max-width: 62px; }
 }
 .fg-dock__tab--on img { opacity: 1; }
 .fg-dock__tab--on {

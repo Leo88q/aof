@@ -6,6 +6,7 @@ import { api } from "../../lib/api";
 import { useFlash } from "../../lib/marketUtils";
 import { handleTxResponse } from "../../lib/txFlow";
 import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { humanizeVrfError } from "../../lib/vrfErrors";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
@@ -89,7 +90,7 @@ export function ExplorationPage() {
 
       <Card className="mb-4">
         <div className="text-center mb-4">
-          <img src={toolPlate("quantum_transmitter") || ""} alt="" className="w-14 h-14 object-contain mx-auto rounded-xl" />
+          <ArtPlate src={toolPlate("quantum_transmitter")} alt="" size={56} className="mx-auto" />
           <h2 className="text-parchment font-bold text-lg mt-3">Глубокое обучение</h2>
           <p className="text-straw text-sm mt-2">Запустите квантовый передатчик в глубокое обучение за редкими ресурсами</p>
         </div>

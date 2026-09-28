@@ -6,6 +6,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
+import { ArtPlate } from "../../components/visual/ArtPlate";
 import { fmtSol, useFlash } from "../../lib/marketUtils";
 import type { PackOpenIntent } from "../../lib/transactionIntent";
 import { humanizeVrfError } from "../../lib/vrfErrors";
@@ -161,8 +162,11 @@ export function PacksPage() {
           )}
           {opening.state === "settled" && opening.tool && (
             <>
-              <img src={toolPlate(opening.tool.toolType, rarityKey(opening.tool.rarity)) || UI_ICONS.packs} alt=""
-                className="w-20 h-20 mx-auto object-contain rounded-xl" />
+              {/* Картина ставится на плитку того же цвета, что её фон, — иначе
+                  вокруг арта видна рамка другого оттенка. */}
+              <div className="w-24 mx-auto">
+                <ArtPlate src={toolPlate(opening.tool.toolType, rarityKey(opening.tool.rarity)) || UI_ICONS.packs} alt="" size="100%" />
+              </div>
               <p className="font-bold mt-3" style={{ color: RARITY_META[rarityKey(opening.tool.rarity)]?.color }}>
                 {RARITY_RU[["common", "uncommon", "rare", "epic", "legendary"].indexOf(rarityKey(opening.tool.rarity))] || opening.tool.rarity}
               </p>

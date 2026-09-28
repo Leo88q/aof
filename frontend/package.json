@@ -18,7 +18,9 @@
     "legal:report": "node scripts/legal-release.mjs --report",
     "test:privacy": "tsx --test tests/privacy.test.ts tests/legal-release.test.mjs",
     "release:check": "node scripts/legal-release.mjs",
-    "build:release": "npm run release:check && npm run build && node scripts/legal-release.mjs --emit-security && python3 ../scripts/security/check-public-output.py dist"
+    "build:release": "npm run release:check && npm run build && node scripts/legal-release.mjs --emit-security && python3 ../scripts/security/check-public-output.py dist",
+    "art:check": "node scripts/normalize-art-backgrounds.mjs --check",
+    "art:normalize": "node scripts/normalize-art-backgrounds.mjs --write"
   },
   "dependencies": {
     "@fontsource/exo-2": "5.3.0",
@@ -47,6 +49,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
+    "jpeg-js": "0.4.4",
     "postcss": "^8.4.38",
     "postcss-value-parser": "^4.2.0",
     "storybook": "^8.6.18",
