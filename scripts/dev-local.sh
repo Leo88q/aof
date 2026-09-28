@@ -272,7 +272,7 @@ cmd_test() {
     for t in test:audit-security test:admin-auth test:chain-indexer test:fraud-signals test:watchtower \
              test:wallet-proof test:wallet-proof-middleware test:authority-gate test:reward-receipts \
              test:resource-registry test:security-invariants test:session-keystore test:fraud-hold test:vrf test:vrf-settlement test:read-cache \
-             test:idempotency-db; do
+             test:idempotency-db test:append-only-db; do
       echo "--- $t ---"
       (cd "$BE" && npm run -s "$t")
     done

@@ -38,6 +38,30 @@ Backend datastore: Prisma 5 + SQLite (`aof_backend/prisma/schema.prisma`,
 * **No destructive migrations without a two-step plan:** column drops and
   type changes go expand -> backfill -> contract across two releases.
 
+## 2a. Append-only ledgers (2026-09-28)
+
+`prisma/migrations/202609280001_append_only_ledgers` installs database triggers
+that refuse `UPDATE`/`DELETE` on the tables whose rows prove what happened:
+`AuditLog`, `AuditRecord`, `WalletOperation`, `EconomySnapshot`,
+`TraderExecution`. The API, the workers and the admin tools only ever insert
+into them; a bug, a stolen `ADMIN_TOKEN` or a compromised worker cannot erase
+its own trace. Consequences:
+
+- **Retention is done by archiving whole snapshots** (`scripts/backup-db.sh`),
+  never by deleting rows in place. Personal data in these tables (`ip`,
+  `userAgent`) therefore needs a retention decision at the snapshot level.
+- A migration that needs to rewrite one of these tables must first `DROP
+  TRIGGER` and re-create it in the same migration.
+- Provider split: SQLite trigger syntax has no PostgreSQL translation, so the
+  SQLite `migration.sql` wraps it in `-- sqlite-only:begin` / `-- sqlite-only:end`
+  (skipped by `scripts/gen-postgres-schema.py`) and ships the PL/pgSQL
+  equivalent in `postgres.sql` next to it, which the generator appends to the
+  generated PostgreSQL baseline. Any future provider-specific DDL follows the
+  same convention.
+- CI proves it on both providers: `npm run test:append-only-db` (temporary
+  SQLite via `prisma migrate deploy`) and `npm run test:append-only-db:pg`
+  (service container with the generated baseline).
+
 ## 3. Staging procedure (must be executed before any production deploy)
 
 1. Provision a staging database file outside the repo, e.g.

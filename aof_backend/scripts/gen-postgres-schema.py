@@ -56,7 +56,19 @@ def gen_schema(src: str) -> str:
 
 def translate_sql(sql: str) -> str:
     lines = []
+    sqlite_only = False
     for line in sql.splitlines():
+        # `-- sqlite-only:begin` … `-- sqlite-only:end` marks DDL that has no
+        # PostgreSQL translation (triggers); the migration ships a postgres.sql
+        # with the equivalent, appended by gen_baseline().
+        if line.strip() == "-- sqlite-only:begin":
+            sqlite_only = True
+            continue
+        if line.strip() == "-- sqlite-only:end":
+            sqlite_only = False
+            continue
+        if sqlite_only:
+            continue
         if line.strip().upper().startswith("PRAGMA"):
             continue
         line = re.sub(r"\bDATETIME\b", "TIMESTAMP(3)", line)
@@ -71,6 +83,10 @@ def gen_baseline() -> str:
         sql = (mig / "migration.sql").read_text()
         parts.append(f"\n-- ===== from {mig.name} =====\n")
         parts.append(translate_sql(sql))
+        pg_only = mig / "postgres.sql"
+        if pg_only.exists():
+            parts.append(f"\n-- ===== postgres-only from {mig.name}/postgres.sql =====\n")
+            parts.append(pg_only.read_text().rstrip() + "\n")
     return "".join(parts)
 
 

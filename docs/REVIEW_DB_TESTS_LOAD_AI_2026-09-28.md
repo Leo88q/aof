@@ -44,6 +44,7 @@
 
 ### 1.3. Замечания по БД
 
+0. **Append-only теперь принудительно** (добавлено в этом же проходе, миграция `202609280001_append_only_ledgers`): `AuditLog`, `AuditRecord`, `WalletOperation`, `EconomySnapshot`, `TraderExecution` не принимают `UPDATE`/`DELETE` на уровне БД (триггеры SQLite и PL/pgSQL; проверяется в CI на обоих провайдерах, `docs/DATABASE_MIGRATIONS.md` §2a). Не под триггерами: `ChainTx/ChainEvent/ChainMintDelta` (индексер использует upsert при повторной синхронизации — уникальный ключ `signature+eventIndex` защищает от дублей, но не от перезаписи), `IdempotencyRecord`, `FraudCase`, `EconomyAlert` (у них есть легитимные обновления статуса).
 1. **SQLite в проде = один writer** (`connection_limit=1`, воркеры за compose-profiles). Это главный архитектурный лимит масштабирования (см. §3). Postgres-overlay готов, cut-over не делался.
 2. **Персональные данные**: `AuditLog.ip/userAgent`, `AuditRecord.ipAddress/userAgent`, `DeviceFingerprint` — без политики хранения (нет retention/prune-задач в `cron.ts`). Нужен срок хранения (например, 90 дней) и анонимизация при экспорте (в Watchtower уже хэш `playerId`).
 3. **Нет ежедневного snapshot-теста восстановления** в CI (drill есть только как скрипт).

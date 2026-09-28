@@ -29,6 +29,8 @@
     "test:fraud-hold": "ts-node --project tsconfig.json --transpile-only scripts/fraudHoldSelfTest.ts",
     "test:idempotency-db": "NODE_PATH=$PWD/node_modules ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
     "test:idempotency-db:pg": "prisma generate --schema prisma/postgres/schema.prisma && NODE_PATH=$PWD/node_modules ts-node --project tsconfig.json --transpile-only scripts/idempotencyIntegrationTest.ts",
+    "test:append-only-db": "NODE_PATH=$PWD/node_modules ts-node --project tsconfig.json --transpile-only scripts/appendOnlyIntegrationTest.ts",
+    "test:append-only-db:pg": "prisma generate --schema prisma/postgres/schema.prisma && NODE_PATH=$PWD/node_modules ts-node --project tsconfig.json --transpile-only scripts/appendOnlyIntegrationTest.ts",
     "test:audit-security": "ts-node --project tsconfig.json --transpile-only scripts/auditSecuritySelfTest.ts",
     "test:admin-auth": "ts-node --project tsconfig.json --transpile-only scripts/adminAuthSelfTest.ts",
     "test:fraud-signals": "ts-node --project tsconfig.json --transpile-only scripts/fraudSignalsSelfTest.ts",

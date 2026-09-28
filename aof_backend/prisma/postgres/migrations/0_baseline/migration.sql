@@ -820,3 +820,44 @@ CREATE TABLE "FraudCase" (
 CREATE UNIQUE INDEX "FraudCase_openKey_key" ON "FraudCase"("openKey");
 CREATE INDEX "FraudCase_status_severity_lastSeen_idx" ON "FraudCase"("status", "severity", "lastSeen");
 CREATE INDEX "FraudCase_wallet_idx" ON "FraudCase"("wallet");
+
+-- ===== from 202609280001_append_only_ledgers =====
+-- Append-only ledgers (docs/REVIEW_DB_TESTS_LOAD_AI_2026-09-28.md §1.3).
+--
+-- The rows that prove what happened can be added, never rewritten or removed:
+-- not by the API, not by an admin tool, not by a compromised worker that holds
+-- the same database credentials. Enforced by the database itself, so a bug or
+-- a stolen ADMIN_TOKEN cannot erase its own trace.
+--
+--   AuditLog         every mutating request, actor from wallet proof
+--   AuditRecord      value-moving operations (signature, status, ip)
+--   WalletOperation  per-wallet rate/volume counters
+--   EconomySnapshot  economy monitor snapshots
+--   TraderExecution  farm-trader simulation results
+--
+-- None of these tables has an UPDATE/DELETE call site in src/, services/ or
+-- scripts/ (grep 2026-09-28). Retention is done by archiving whole database
+-- snapshots (scripts/backup-db.sh), never by deleting rows in place.
+--
+-- The PostgreSQL equivalent lives in postgres.sql next to this file; the block
+-- below is SQLite syntax and is skipped by scripts/gen-postgres-schema.py.
+
+-- ===== postgres-only from 202609280001_append_only_ledgers/postgres.sql =====
+-- PostgreSQL half of 202609280001_append_only_ledgers (appended to the
+-- generated prisma/postgres/migrations/0_baseline by scripts/gen-postgres-schema.py).
+CREATE OR REPLACE FUNCTION aof_append_only() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME USING ERRCODE = 'insufficient_privilege';
+END;
+$$;
+
+CREATE TRIGGER "AuditLog_append_only" BEFORE UPDATE OR DELETE ON "AuditLog"
+  FOR EACH ROW EXECUTE FUNCTION aof_append_only();
+CREATE TRIGGER "AuditRecord_append_only" BEFORE UPDATE OR DELETE ON "AuditRecord"
+  FOR EACH ROW EXECUTE FUNCTION aof_append_only();
+CREATE TRIGGER "WalletOperation_append_only" BEFORE UPDATE OR DELETE ON "WalletOperation"
+  FOR EACH ROW EXECUTE FUNCTION aof_append_only();
+CREATE TRIGGER "EconomySnapshot_append_only" BEFORE UPDATE OR DELETE ON "EconomySnapshot"
+  FOR EACH ROW EXECUTE FUNCTION aof_append_only();
+CREATE TRIGGER "TraderExecution_append_only" BEFORE UPDATE OR DELETE ON "TraderExecution"
+  FOR EACH ROW EXECUTE FUNCTION aof_append_only();
