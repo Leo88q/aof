@@ -44,8 +44,14 @@
 
 ## Остаток работ по долгу безопасности
 
-- `#111: матрица 0/1/max/dust` — тесты на каждый путь claim/deposit/withdraw/transfer и
-  инвариант «выдано ≤ начислено» в `aof-core/src/security_checklist_tests.rs` (не начат).
+- `#111: матрица 0/1/max/dust` — **закрыт 2026-09-28** семью host-тестами на реальных
+  handler-ах в секции «H» файла `aof-core/src/security_checklist_tests.rs`
+  (`deposit_gas`, `collect_flour`, `collect_well_water`, `withdraw_gas`, `sweep_gas_fees`,
+  `orderbook::match_handler`, `pay_out_with_referral`) и инвариантом «выдано ≤ начислено».
+  Прогон — `cargo test --locked --workspace --lib` в CI: Rust-тулчейна в этой песочнице нет
+  (`cargo`/`rustc` не установлены, `crates.io`/`static.rust-lang.org` недоступны), тесты
+  проверены разбором Rust-грамматикой (tree-sitter: 0 синтаксических ошибок) и сверкой всех
+  использованных констант/полей/handler-ов с исходниками `aof-core`.
 - Эскизы приборов — по приоритету владельца после `#111`.
 
 ## Что нашёл аудит заглушек этого дня
