@@ -14,6 +14,7 @@
     "test:security": "tsx --test tests/security.test.ts tests/txGuard.test.ts",
     "assets:trim": "bash scripts/assets/trim-art.sh",
     "test:ui": "tsx --test tests/ui-regressions.test.ts",
+    "legal:report": "node scripts/legal-release.mjs --report",
     "test:privacy": "tsx --test tests/privacy.test.ts tests/legal-release.test.mjs",
     "release:check": "node scripts/legal-release.mjs",
     "build:release": "npm run release:check && npm run build && node scripts/legal-release.mjs --emit-security && python3 ../scripts/security/check-public-output.py dist"

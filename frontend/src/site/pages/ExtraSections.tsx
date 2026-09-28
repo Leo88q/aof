@@ -119,10 +119,10 @@ function WeatherDemo() {
 
 function SeasonWheelDemo() {
   const [season, setSeason] = useState(0);
-  const names = ['Весна', 'Вторую фазу', 'Третью фазу', 'Завершение цикла'];
+  const names = ['Фаза I', 'Фаза II', 'Фаза III', 'Завершение цикла'];
   return (
     <div className="site-season">
-      <button type="button" className="site-season-button" onClick={() => setSeason((s) => (s + 1) % 4)} aria-label={'Эпох: ' + names[season] + '. Сменить'}>
+      <button type="button" className="site-season-button" onClick={() => setSeason((s) => (s + 1) % 4)} aria-label={'Эпоха: ' + names[season] + '. Сменить'}>
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <circle cx="50" cy="50" r="43" fill="var(--aof-oak)" stroke="var(--aof-copper)" strokeWidth="5" />
           {[0, 1, 2, 3].map((i) => (
@@ -147,7 +147,7 @@ function ChainDiagram() {
   ];
   return (
     <figure className="site-diagram site-paper">
-      <ol className="site-chain" aria-label="Нейроны, синапс, сигнал, модель">
+      <ol className="site-chain" aria-label="Образец, синапс, сигнал, модель">
         {steps.map((st, i) => (
           <li key={st.id} className="site-chain__step">
             <Link to={'/site/resources/' + (resourcesById.get(st.id)?.slug ?? st.id)} className="site-chain__node">
@@ -158,7 +158,7 @@ function ChainDiagram() {
           </li>
         ))}
       </ol>
-      <figcaption>Выращивай → перерабатывай → тренируй. Схема качественная, без норм расхода.</figcaption>
+      <figcaption>Культивируй → разделяй → обучай. Схема качественная, без норм расхода.</figcaption>
     </figure>
   );
 }
@@ -170,7 +170,7 @@ const badgeDefs = [
   { id: 'commit', name: 'Проверяющий', text: 'Сверь локальный commit/reveal.' },
   { id: 'pack', name: 'Распаковщик', text: 'Открой демонстрационный пак.' },
   { id: 'drum', name: 'Ритм мастера', text: 'Попробуй демонстрационный барабан.' },
-  { id: 'chronicler', name: 'Вторую фазуписец', text: 'Открой вторую фазупись сайта (changelog).' },
+  { id: 'chronicler', name: 'Летописец', text: 'Открой летопись сайта (changelog).' },
 ];
 function readJournal(): { visits: string[]; badges: string[] } {
   try {
@@ -261,8 +261,8 @@ export function ExtraSections({ id }: { id: string }) {
                   <article key={r.id} className="site-card site-paper site-recipe">
                     <span className="site-badge">
                       {r.verification === 'on-chain-verified'
-                        ? 'On-chain проверено'
-                        : 'Редакционный пример · on-chain не подтверждён'}
+                        ? 'Проверено сетью'
+                        : 'Редакционный пример · сетью не подтверждён'}
                     </span>
                     <h4>{r.name}</h4>
                     <ul className="site-recipe-io">
@@ -603,7 +603,7 @@ export function ExtraSections({ id }: { id: string }) {
     return (
       <Section title="Колесо эпох">
         <SeasonWheelDemo />
-        <blockquote className="site-narrative">Колесо поворачивает только оформление: эпоха в текущей конфигурации длится 42 дня и держит 42 ступени пропуска.</blockquote>
+        <blockquote className="site-narrative">Колесо поворачивает только оформление: сейчас эпоха длится 42 дня и держит 42 ступени пропуска.</blockquote>
       </Section>
     );
   }
@@ -676,7 +676,7 @@ export function ExtraSections({ id }: { id: string }) {
           <Button to="/site/resources">Осмотри ресурс</Button>
           <Button to="/site/packs" variant="ghost">Попробуй пак</Button>
           <Button to="/site/lottery" variant="ghost">Найди ритм</Button>
-          <Button to="/site/changelog" variant="ghost">Открой вторую фазупись</Button>
+          <Button to="/site/changelog" variant="ghost">Открой летопись</Button>
         </div>
       </Section>
     );

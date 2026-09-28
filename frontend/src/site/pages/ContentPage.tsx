@@ -54,12 +54,12 @@ export function ContentPage({ id }: { id: string }) {
               <div className="nf-product__info">
                 <span className="nf-product__tag">Blockchain Game · Solana</span>
                 <h3>NeuroForge — Age of Intelligence</h3>
-                <p>Игра о развитии искусственного интеллекта на блокчейне Solana. Выращивай нейроны, тренируй модели, куй NFT-инструменты и торгуй на квантовом рынке.</p>
+                <p>Лаборатория-RPG на Solana. Загружай образцы в лунки, разделяй их в сигналы, обучай модели, собирай NFT-инструменты и торгуй на рынке.</p>
                 <ul className="nf-product__features">
                   <li><span className="nf-product__dot" />27 ресурсов и 8 цепочек крафта</li>
                   <li><span className="nf-product__dot" />5 типов инструментов × 5 редкостей</li>
                   <li><span className="nf-product__dot" />6 торговых площадок и квантовый розыгрыш</li>
-                  <li><span className="nf-product__dot" />Полностью on-chain: каждая транзакция проверяема</li>
+                  <li><span className="nf-product__dot" />Каждая ставка и сделка записана в сеть и проверяется кем угодно</li>
                 </ul>
                 <div className="nf-product__cta">
                   <Button to="/site/start">Начать играть</Button>
