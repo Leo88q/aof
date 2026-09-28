@@ -357,3 +357,36 @@ test("палитра «Морозное стекло» живёт в одном 
   walk("src");
   assert.deepEqual(offenders, [], `легаси-неон вернулся: ${offenders.join(", ")}`);
 });
+
+test("все восемь приборов набора подключены к экранам на реальных данных", () => {
+  // Прибор → экран. Если экран перестанет собирать прибор на данных, тест
+  // упадёт: набор не должен снова стать набором макетов.
+  const wiring: [string, string, string][] = [
+    ["CryoRack", "src/components/farm/LabHero.tsx", "криобанк на герое «Твоя лаборатория»"],
+    ["MixerStrips", "src/pages/tools/ToolsHome.tsx", "пульт на инструментах"],
+    ["EchoTrace", "src/pages/farm/FarmDashboard.tsx", "эхолот в журнале смены"],
+    ["SonarPPI", "src/pages/market/ListingPage.tsx", "сонар на прилавках рынка"],
+    ["PlateGrid", "src/pages/farm/FarmDashboard.tsx", "микропланшет на участке"],
+    ["GelLanes", "src/pages/economy/ResourceOverview.tsx", "гель на складе"],
+    ["CrossPanel", "src/pages/inbox/InboxHome.tsx", "кросс-панель на сообщениях"],
+    ["PunchedCard", "src/pages/quests/QuestsHome.tsx", "перфокарты на заданиях"],
+    ["DrumChart", "src/components/farm/WeatherRecorder.tsx", "барограф на сетевой станции"],
+  ];
+  for (const [device, file, why] of wiring) {
+    assert.match(read(file), new RegExp(`<${device}\\b`), `${why}: ${device} не вызывается из ${file}`);
+  }
+
+  // Приборы не рисуют данные из воздуха: у каждого состояния «нет данных»
+  // есть прочерк или честная подпись.
+  assert.match(read("src/components/farm/WeatherRecorder.tsx"), /dash=\{!/, "барограф обязан показывать прочерк без данных");
+  assert.match(read("src/pages/economy/ResourceOverview.tsx"), /Все позиции пусты — полос нет/, "гель обязан говорить о пустом складе словами");
+  assert.match(read("src/pages/inbox/InboxHome.tsx"), /Ящик пуст — кордов нет/, "кросс-панель обязана говорить о пустом ящике словами");
+  assert.match(read("src/pages/market/ListingPage.tsx"), /listings\.length > 0 &&/, "сонар не должен рисоваться без загруженных лотов");
+  // Каждый прибор набора умеет честно молчать: у эхолота пустая лента — это
+  // прямая линия дна без развёртки, а не нарисованный график.
+  assert.match(read("src/ui/forge/devices.tsx"), /depth === null/, "эхолот обязан различать «нет данных» и глубину");
+  const devices = read("src/ui/forge/devices.tsx");
+  for (const banned of [/Math\.random/, /hardcode/i]) {
+    assert.ok(!banned.test(devices), "в приборах не должно быть выдуманных значений");
+  }
+});

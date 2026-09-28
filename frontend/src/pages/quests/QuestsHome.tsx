@@ -9,6 +9,20 @@ import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { DataUnavailableNotice, isFailClosedError } from "../../lib/availability";
+import { Panel, Sticker } from "../../ui/forge/kit";
+import { PunchedCard } from "../../ui/forge/devices";
+
+/**
+ * К10 · перфокарты Жаккарда. Один шаг задания — одна колонка карты: пробитые
+ * колонки уже отработаны, подсвеченная — следующая. Число колонок выводится из
+ * реального прогресса (quest.pct / progress / target), ничего не дорисовывается.
+ */
+const CARD_STEPS = 12;
+
+function questSteps(pct: number): ("done" | "next" | "open")[] {
+  const filled = Math.max(0, Math.min(CARD_STEPS, Math.round((Number(pct) || 0) / (100 / CARD_STEPS))));
+  return Array.from({ length: CARD_STEPS }, (_, i) => (i < filled ? "done" : i === filled ? "next" : "open"));
+}
 
 const tabs = [
   { id: "daily", icon: UI_ICONS.questsDaily, label: "Задания" },
@@ -146,24 +160,28 @@ export function QuestsHome() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <Card>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h3 className="text-parchment text-sm font-medium">{quest.title}</h3>
-                        <p className="text-straw text-xs mt-1">{quest.description}</p>
-                      </div>
-                      <span className="text-wheat-500 text-xs ml-2">
-                        {quest.reward.amount} {quest.reward.type}
-                      </span>
+                  <Panel
+                    tier="panel"
+                    device="cards"
+                    id={<Sticker alt>ЗАДАНИЕ {String(quest.id).padStart(2, "0")}</Sticker>}
+                    meta={isClaimed ? "ПОЛУЧЕНО" : quest.claimable ? "ГОТОВО К ВЫДАЧЕ" : "В РАБОТЕ"}
+                    title={quest.title}
+                    sub={`${quest.reward.amount} ${quest.reward.type}`}
+                  >
+                    <p className="fg-note" style={{ marginTop: 0 }}>{quest.description}</p>
+
+                    <div style={{ marginTop: 12 }}>
+                      <PunchedCard
+                        title="ПРОГРЕСС"
+                        steps={questSteps(quest.pct)}
+                        footLeft={`${quest.progress}/${quest.target}`}
+                        footMid={`${quest.pct}%`}
+                        footRight={undefined}
+                      />
                     </div>
 
-                    <LiquidBar
-                      level={quest.pct}
-                      color={quest.claimable ? "#E0708A" : "#5FD3A8"}
-                    />
-
-                    <div className="flex justify-between items-center mt-3">
-                      <span className="text-xs text-straw">
+                    <div className="fg-row" style={{ borderTop: "none" }}>
+                      <span className="fg-row__k">
                         <AnimatedCounter value={quest.pct} />% ({quest.progress}/{quest.target})
                       </span>
 
@@ -178,10 +196,10 @@ export function QuestsHome() {
                           Получено
                         </span>
                       ) : (
-                        <span className="text-straw text-xs">В процессе</span>
+                        <span className="fg-row__k">В процессе</span>
                       )}
                     </div>
-                  </Card>
+                  </Panel>
                 </motion.div>
               );
             })

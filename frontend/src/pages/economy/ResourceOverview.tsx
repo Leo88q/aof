@@ -3,6 +3,37 @@ import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { Panel, Readout, Readouts, Sticker, Note } from "../../ui/forge/kit";
+import { GelLanes, type GelLane, type GelBand } from "../../ui/forge/devices";
+
+/**
+ * К8 · гель-электрофорез. Дорожка — категория склада, полоса — позиция ресурса.
+ * Полоса идёт тем выше, чем больше запаса (тяжёлый фрагмент меньше уходит от
+ * лунки), поэтому картинка читается как «где у меня густо, а где пусто».
+ * Масштаб логарифмический от самой полной позиции склада — иначе один крупный
+ * ресурс прижимал бы все остальные к лунке. Ноль не рисуется: пустая позиция
+ * остаётся пустой дорожкой, а не полосой на нуле.
+ */
+function gelLanes(categories: typeof CATEGORIES, balances: Record<string, number>): GelLane[] {
+  const all = categories.flatMap((c) => c.items);
+  const top = Math.max(1, ...all.map((i) => Number(balances[i.key] ?? 0)));
+  const logTop = Math.log1p(top);
+  return categories
+    .map((cat) => {
+      const filled = cat.items.filter((i) => Number(balances[i.key] ?? 0) > 0);
+      const bands: GelBand[] = filled.map((i) => {
+        const amount = Number(balances[i.key] ?? 0);
+        const ratio = logTop > 1 ? Math.log1p(amount) / logTop : 1;
+        return {
+          // 0.06 — у самой лунки (полно), 0.88 — у нижнего края (мало)
+          at: 0.06 + 0.82 * (1 - Math.min(1, Math.max(0, ratio))),
+          kind: amount < top * 0.05 ? "weak" : "fresh",
+        };
+      });
+      return { key: cat.title, name: cat.title.split(" ")[0], bands };
+    })
+    .filter((lane) => lane.bands.length > 0);
+}
 
 // Группировка ресурсов по категориям (из мастер-документа §3).
 //
@@ -114,8 +145,44 @@ export function ResourceOverview() {
     );
   }
 
+  const lanes = gelLanes(CATEGORIES, balances);
+  const allItems = CATEGORIES.flatMap((c) => c.items);
+  const withStock = allItems.filter((i) => Number(balances[i.key] ?? 0) > 0);
+  const fullest = withStock.reduce<{ label: string; amount: number } | null>((acc, i) => {
+    const amount = Number(balances[i.key] ?? 0);
+    return !acc || amount > acc.amount ? { label: i.label, amount } : acc;
+  }, null);
+
   return (
     <div className="economy-overview">
+      {/* Склад читается как гель: сколько чего лежит — видно по полосам дорожек */}
+      <Panel
+        tier="panel"
+        device="gel"
+        id={<Sticker>СКЛАД</Sticker>}
+        meta="ГЕЛЬ-АНАЛИЗ"
+        title="Гель склада"
+        sub="полоса — позиция ресурса"
+        className="mb-2"
+      >
+        {lanes.length > 0 ? (
+          <GelLanes lanes={lanes} />
+        ) : (
+          <Note quiet>Все позиции пусты — полос нет.</Note>
+        )}
+        <div style={{ marginTop: 16 }}>
+          <Readouts>
+            <Readout label="Позиций с запасом" value={String(withStock.length)} hint={`всего позиций: ${allItems.length}`} />
+            <Readout
+              label="Полнее всего"
+              value={fullest ? String(fullest.amount.toLocaleString()) : undefined}
+              dash={!fullest}
+              hint={fullest ? fullest.label : "запасов нет"}
+            />
+          </Readouts>
+        </div>
+      </Panel>
+
       {CATEGORIES.map((cat) => (
         <div key={cat.title} className="resource-category">
           <h3 className="category-title">

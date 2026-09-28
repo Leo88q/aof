@@ -22,11 +22,12 @@ import { ExplorationPage } from "./ExplorationPage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
-import { resourceIcon, UI_ICONS, toolPlate } from "../../lib/visualAssets";
+import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { LabHero } from "../../components/farm/LabHero";
 import { buildingFor } from "../../lib/buildings";
-import { PlateGrid } from "../../ui/forge/devices";
+import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
+import { Note, Panel, Row, Rows, Sticker } from "../../ui/forge/kit";
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
@@ -239,23 +240,31 @@ export function FarmDashboard() {
             </Card>
           </div>
 
-          <Card>
-            <h3 className="text-sm font-semibold text-parchment mb-3">Сводка смены</h3>
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 text-sm">
-                <ResourceGlyph icon={resourceIcon("neuron") || ""} alt="" className="w-5 h-5" />
-                <span className="text-straw">Нагрузка сегодня: {(({ sunny: "Номинал", rain: "Скачок", drought: "Блэкаут", festival: "Френзи" } as Record<string, string>)[weather?.type || ""] || weather?.type || "недоступна")}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-5 h-5" />
-                <span className="text-straw">История добычи недоступна без канонического индексатора</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <ResourceGlyph icon={UI_ICONS.chartsUp} alt="" className="w-5 h-5" />
-                <span className="text-straw">Рыночная динамика недоступна без проверенных ценовых данных</span>
-              </div>
-            </div>
-          </Card>
+          {/* К6 · эхолот журнала: лента пока пустая, и прибор говорит об этом
+              прямо. История добычи появится, когда включится канонический
+              индексатор: рисовать её «примерно» проект себе не позволяет. */}
+          <Panel
+            tier="panel"
+            device="sonar"
+            id={<Sticker alt>ЖУРНАЛ</Sticker>}
+            meta="ЛЕНТА НЕ ЗАПРАВЛЕНА"
+            title="Журнал смены"
+            sub="нагрузка и работа участка"
+          >
+            <EchoTrace marks={[]} depth={null} />
+            <Rows>
+              <Row
+                k="Нагрузка сети сегодня"
+                v={({ sunny: "Номинал", rain: "Скачок", drought: "Блэкаут", festival: "Френзи" } as Record<string, string>)[weather?.type || ""] || "—"}
+              />
+              <Row k="История добычи" v="—" note="нет индексатора" />
+              <Row k="Динамика цен" v="—" note="только текущие прилавки" />
+            </Rows>
+            <Note quiet>
+              Лента глубин пишется по каноническому индексатору — пока его нет, прибор честно молчит
+              вместо выдуманного графика.
+            </Note>
+          </Panel>
         </>
       )}
 

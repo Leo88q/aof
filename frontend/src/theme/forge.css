@@ -977,41 +977,6 @@ h1, h2, h3, .fg-title {
   background: linear-gradient(180deg, #39434B, #1B2126);
 }
 
-/* Монитор состояния: волна, крупные цифры, мягкие клавиши */
-.wave { border-radius: 8px; background: #0A0D10; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); overflow: hidden; }
-.wave svg { display: block; width: 100%; height: clamp(86px, 24vw, 104px); }
-.wave .trace { fill: none; stroke: var(--fg-accent); stroke-width: 1.7; }
-.wave .trace--sweep { stroke-dasharray: 66 154; animation: fgSweepDash 4.6s linear infinite; }
-@keyframes fgSweepDash { to { stroke-dashoffset: -220; } }
-.big-ro { display: flex; align-items: flex-end; gap: 18px 22px; flex-wrap: wrap; }
-.big-ro__v {
-  font-family: var(--fg-font-num);
-  font-size: clamp(30px, 9vw, 40px);
-  font-weight: 500;
-  line-height: 1;
-  color: var(--fg-accent);
-  font-variant-numeric: tabular-nums;
-}
-.big-ro__v small { font-size: 13px; color: var(--fg-dim); }
-.big-ro__v--dash { color: var(--fg-muted); }
-.big-ro__l { font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 5px; }
-.softkeys { display: flex; gap: 6px; padding: 8px 2px 2px; }
-.softkey {
-  flex: 1;
-  border: 0;
-  font: inherit;
-  font-size: 10.5px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--fg-dim);
-  background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .01));
-  border-radius: 7px;
-  padding: 9px 6px;
-  cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07);
-}
-.softkey--on { color: #06171B; background: linear-gradient(180deg, var(--fg-accent), color-mix(in srgb, var(--fg-glow) 78%, #000)); }
-
 /* Полоса состояния/материалов внутри приборов */
 .fg-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)); gap: 10px; }
 .fg-tile { display: grid; justify-items: center; gap: 4px; min-width: 0; text-align: center; }
@@ -1269,7 +1234,6 @@ input.fg-input:focus {
   .echo .sweep-line,
   .ppi__sweep,
   .cross-svg .pulse,
-  .wave .trace--sweep,
   .gold-pulse {
     animation: none !important;
   }

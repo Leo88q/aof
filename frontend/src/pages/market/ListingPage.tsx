@@ -6,6 +6,8 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
+import { Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
+import { SonarPPI } from "../../ui/forge/devices";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { toolPlate, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
@@ -134,6 +136,51 @@ export function ListingPage() {
           <NoticeMsg text={txStatus} />
         </motion.div>
       )}
+
+      {/* К6 · эхолот рынка: лот — отметка на круговом индикаторе. Чем ближе к
+          центру, тем дешевле: расстояние считается по реальной цене лота
+          (priceLamports) относительно самого дорогого лота на прилавках. */}
+      {listings.length > 0 && (() => {
+        // lamportsToSol возвращает строку — считаем в числах
+        const prices = listings.map((l) => Number(lamportsToSol(l.priceLamports)));
+        const maxPrice = Math.max(...prices, 0.000001);
+        const sorted = [...prices].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        const blips = listings.slice(0, 24).map((l, i, arr) => {
+          const angle = (-90 + (i / Math.max(1, arr.length)) * 360) * (Math.PI / 180);
+          const r = 9 + 43 * Math.min(1, Number(lamportsToSol(l.priceLamports)) / maxPrice);
+          return { x: 60 + r * Math.cos(angle), y: 60 + r * Math.sin(angle), r: 2.2 };
+        });
+        return (
+          <Panel
+            tier="panel"
+            device="sonar"
+            className="mb-2"
+            id={<Sticker>ВИТРИНА</Sticker>}
+            meta="ЭХОЛОТ ЦЕН"
+            title="Развёртка прилавков"
+            sub="ближе к центру — дешевле"
+          >
+            <SonarPPI
+              blips={blips}
+              legend={
+                <>
+                  <span>Лотов: <b>{listings.length}</b></span>
+                  <span>Дешевле всего: <b>{sorted[0].toFixed(4)} ◎</b></span>
+                  <span>Медиана: <b>{median.toFixed(4)} ◎</b></span>
+                  <span>Дороже всего: <b>{sorted[sorted.length - 1].toFixed(4)} ◎</b></span>
+                </>
+              }
+            />
+            <div style={{ marginTop: 14 }}>
+              <Readouts>
+                <Readout label="Лотов" value={String(listings.length)} hint="на прилавках сейчас" />
+                <Readout label="Ваших" value={String(listings.filter((l) => address && l.seller === address).length)} hint="с вашей подписью" />
+              </Readouts>
+            </div>
+          </Panel>
+        );
+      })()}
 
       {listings.length === 0 && !loading && (
         <Card className="text-center py-8">
