@@ -942,6 +942,15 @@ jobs:
           npm run test:idempotency-db 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
+      - name: Integration test - append-only ledgers (temporary SQLite via migrate deploy)
+        # The real migration chain (triggers included) on a temp file: AuditLog,
+        # AuditRecord, WalletOperation, EconomySnapshot, TraderExecution refuse
+        # UPDATE/DELETE at the database level; other tables stay mutable.
+        run: |
+          set -uo pipefail
+          npm run test:append-only-db 2>&1 | tee -a /tmp/backend-build.log
+          exit "${PIPESTATUS[0]}"
+
       - name: Generated PostgreSQL schema/baseline is up to date
         run: npm run prisma:postgres:check
 
@@ -1057,6 +1066,14 @@ jobs:
         run: |
           set -uo pipefail
           npm run test:idempotency-db:pg 2>&1 | tee -a /tmp/backend-pg.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Integration test - append-only ledgers (PostgreSQL triggers from the generated baseline)
+        env:
+          APPEND_ONLY_TEST_DATABASE_URL: ${{ env.PG_URL }}
+        run: |
+          set -uo pipefail
+          npm run test:append-only-db:pg 2>&1 | tee -a /tmp/backend-pg.log
           exit "${PIPESTATUS[0]}"
 
       - name: Publish failure log
