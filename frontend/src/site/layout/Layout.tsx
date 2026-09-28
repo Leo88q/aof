@@ -1,8 +1,6 @@
-import { useEffect as __seoEffect } from 'react';
-import { useLocation as __seoLocation } from 'react-router-dom';
-import { pages as __seoPages, resourcesBySlug as __seoRes } from '../content/game';
-import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { pages as seoPages, resourcesBySlug as seoResources } from '../content/game';
 import { pages } from '../content/pages';
 import { ScrollFlask } from '../ui/Components';
 
@@ -12,14 +10,26 @@ const navGroups = [...new Set(pages.map(p => p.group))].map(title => ({
 }));
 
 export function SiteLayout() {
-  const __seoLoc = __seoLocation();
-  __seoEffect(() => {
-    const parts = __seoLoc.pathname.split('/').filter(Boolean);
+  const location = useLocation();
+  // Переход по ссылке с длинной страницы оставлял окно на прежнем месте: новая
+  // страница открывалась своей серединой или подвалом. Теперь маршрут меняется —
+  // окно возвращается наверх, а фокус уходит в содержимое (для чтения с экрана).
+  useEffect(() => {
+    if (window.location.hash) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.getElementById('site-main')?.focus?.({ preventScroll: true });
+  }, [location.pathname]);
+  useEffect(() => {
+    const parts = location.pathname.split('/').filter(Boolean);
     const id = parts[1] || 'home';
-    const res = parts[0] === 'site' && parts[1] === 'resources' ? __seoRes.get(parts[2]) : undefined;
-    const page = __seoPages.find((p) => p.id === id);
+    const res = parts[0] === 'site' && parts[1] === 'resources' ? seoResources.get(parts[2]) : undefined;
+    const page = seoPages.find((p) => p.id === id);
     const title = res ? res.name + ' · NeuroForge' : page ? page.title + ' · NeuroForge' : 'NeuroForge';
-    const desc = res ? res.lead : page ? page.lead : 'NeuroForge — AI development game on Solana. Grow neurons, train models, trade the future.';
+    const desc = res
+      ? res.lead
+      : page
+        ? page.lead
+        : 'NeuroForge — лаборатория-RPG на Solana: культивируй образцы, обучай модели, собирай инструменты и торгуй на рынке.';
     document.title = title;
     const setMeta = (attr: string, key: string, content: string) => {
       let el = document.querySelector<HTMLMetaElement>('meta[' + attr + '="' + key + '"]');
@@ -31,7 +41,7 @@ export function SiteLayout() {
     setMeta('property', 'og:description', desc);
     setMeta('property', 'og:type', 'website');
     setMeta('property', 'og:locale', 'ru_RU');
-  }, [__seoLoc.pathname]);
+  }, [location.pathname]);
   const [mobile, setMobile] = useState(false);
 
   return (
@@ -40,22 +50,14 @@ export function SiteLayout() {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="site-logo" to="/site/home">
-            <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
-              <defs>
-                <linearGradient id="nf-logo-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#00D4FF"/>
-                  <stop offset="100%" stopColor="#9B59FF"/>
-                </linearGradient>
-              </defs>
-              <circle cx="8" cy="8" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
-              <circle cx="8" cy="24" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
-              <circle cx="24" cy="8" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
-              <circle cx="24" cy="24" r="2.5" fill="url(#nf-logo-g)" opacity="0.9"/>
-              <circle cx="16" cy="16" r="3.5" fill="url(#nf-logo-g)"/>
-              <line x1="8" y1="8" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
-              <line x1="8" y1="24" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
-              <line x1="24" y1="8" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
-              <line x1="24" y1="24" x2="16" y2="16" stroke="url(#nf-logo-g)" strokeWidth="1" opacity="0.5"/>
+            {/* Знак — манометр лаборатории: корпус, шкала и стрелка. Прибор читается
+                как оборудование и не повторяет нейро-декор из ранних макетов. */}
+            <svg width="30" height="30" viewBox="0 0 32 32" role="img" aria-label="NeuroForge">
+              <circle cx="16" cy="16" r="12" fill="none" stroke="var(--sb-cyan)" strokeWidth="2" />
+              <circle cx="16" cy="16" r="8.5" fill="none" stroke="var(--sb-line)" strokeWidth="1" />
+              <path d="M16 4.5v3M16 24.5v3M4.5 16h3M24.5 16h3" stroke="var(--sb-cyan-2)" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M16 16l6.2-4.4" stroke="var(--sb-gold)" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="16" cy="16" r="1.8" fill="var(--sb-cyan-2)" />
             </svg>
             <span>NeuroForge<span className="site-logo-sub">Age of Intelligence</span></span>
           </Link>
@@ -99,7 +101,7 @@ export function SiteLayout() {
       <footer className="site-footer">
         <div className="site-footer-intro">
           <h2>Создавай модели. Торгуй интеллектом.</h2>
-          <p>NeuroForge — AI development game on Solana.</p>
+          <p>NeuroForge — лаборатория-RPG на Solana: образцы, модели, инструменты и рынок.</p>
         </div>
         <div className="site-footer-grid">
           {navGroups.map(g => (

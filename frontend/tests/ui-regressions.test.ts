@@ -16,6 +16,10 @@ import { execFileSync } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
+/** Код без комментариев: пояснения «почему так» не считаются содержимым экрана. */
+const code = (rel: string) => read(rel)
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 test("лаборатория не показывает выдуманный SOL-газ", () => {
   const dash = read("src/pages/farm/FarmDashboard.tsx");
@@ -621,4 +625,302 @@ test("выбор cookies не спрашивают второй раз", () => {
   assert.match(ui, /nf:privacy-change/, "панель обязана ловить собственное событие сохранения");
   assert.match(ui, /\{ask && !open &&/, "полоса выбора показывается только при отсутствии выбора");
   assert.match(ui, /Режим|mode === 'session'|mode === 'memory'/, "игроку нужно сказать, где остался его выбор");
+});
+
+test("новая страница и новый предмет открываются с верха", () => {
+  // Жалоба 2026-09-28: «при переключении страниц или нажатии на предмет
+  // переводит на новую страницу, но вниз её — это нужно исправить».
+  // Стек игры держит прокрутку в .page, сайт — в окне: сброс нужен в обоих.
+  const stack = read("src/nav/StackView.tsx");
+  assert.match(stack, /pageRef/, "у .page нет ссылки для сброса прокрутки");
+  assert.match(stack, /useEffect\([\s\S]{0,200}\[top\.key\]/, "сброс обязан срабатывать на смену страницы стека");
+  assert.match(stack, /scrollTo\(\{\s*top: 0[^)]*\}\)/, "прокрутка .page не возвращается наверх");
+
+  const layout = read("src/site/layout/Layout.tsx");
+  assert.match(layout, /useEffect\([\s\S]{0,320}\[location\.pathname\]/, "сброс прокрутки сайта не привязан к адресу");
+  assert.match(layout, /window\.scrollTo\(\{[^}]*top: 0/, "сайт не возвращает окно наверх при смене адреса");
+  assert.match(layout, /window\.location\.hash/, "переход по якорю обязан сохранять прокрутку к цели");
+  assert.match(layout, /site-main/, "после смены адреса фокус уходит в основную область");
+});
+
+test("каталог ресурсов не затенён страницей-однофамильцем, а механики ведут на живые страницы", async () => {
+  // Жалоба-дефект: /site/resources открывал текстовую страницу вместо каталога,
+  // а карточки ресурсов и механик ссылались на страницы, которых нет в меню.
+  const app = read("src/site/SiteApp.tsx");
+  const catalog = app.indexOf('<Route path="resources"');
+  const mapped = app.indexOf(".filter(p => p.id !== 'resources')");
+  assert.ok(catalog !== -1 && mapped !== -1 && catalog < mapped, "каталог обязан объявляться до перечня текстовых страниц");
+  assert.match(app, /p\.id !== 'resources'/, "страница-однофамилец 'resources' снова перекрывает каталог");
+
+  const { pages } = await import("../src/site/content/pages");
+  const { resourcesBySlug } = await import("../src/site/content/resources");
+  const { mechanicRoutes } = await import("../src/site/content/mechanics");
+  const ids = new Set(pages.map((p: { id: string }) => p.id));
+
+  for (const page of pages) {
+    for (const ref of page.relatedMechanics ?? []) {
+      assert.ok(mechanicRoutes[ref], `страница ${page.id} ссылается на механику ${ref}, у которой нет маршрута`);
+      assert.ok(ids.has(mechanicRoutes[ref]), `маршрут механики ${ref} ведёт на несуществующую страницу ${mechanicRoutes[ref]}`);
+    }
+  }
+  const used = new Set(Object.values(mechanicRoutes));
+  for (const id of used) assert.ok(ids.has(id), `маршрут механики ${id} отсутствует в дереве страниц`);
+  assert.equal(resourcesBySlug.size, 27, "каталог ресурсов изменился: проверь sitemap и связанные ссылки");
+});
+
+test("sitemap описывает только существующие маршруты", async () => {
+  const { pages } = await import("../src/site/content/pages");
+  const { resources } = await import("../src/site/content/resources");
+  const expected = new Set([
+    "/site",
+    ...pages.filter((p: { id: string }) => p.id !== "home").map((p: { id: string }) => `/site/${p.id}`),
+    "/site/resources",
+    ...resources.map((r: { slug: string }) => `/site/resources/${r.slug}`),
+  ]);
+
+  const xml = read("public/sitemap.xml");
+  const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace(/^http:\/\/localhost:3000/, ""));
+  const unknown = locs.filter((p) => !expected.has(p));
+  assert.deepEqual(unknown, [], `в sitemap есть маршруты, которых нет в дереве страниц:\n${unknown.join("\n")}`);
+  const missing = [...expected].filter((p) => !locs.includes(p));
+  assert.deepEqual(missing, [], `в sitemap не хватает маршрутов:\n${missing.join("\n")}`);
+  assert.match(xml, /localhost:3000/, "origin заменяется только на release-сборке: плейсхолдер обязан остаться");
+});
+
+test("в текстах для игрока нет служебных пометок и старой лексики", () => {
+  // Вычитка 2026-09-28: внутренние пометки аудита и слова эпохи картошки
+  // оставались в контенте, а игры «нейрослоп» требовалось убрать ещё раньше.
+  const dir = join(root, "src/site/content");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+  assert.ok(files.length >= 14, "контент сайта пропал из дерева");
+  const bad: string[] = [];
+  for (const file of files) {
+    const text = code(`src/site/content/${file}`);
+    for (const [name, pattern] of [
+      ["служебная пометка аудита", /\[(АУДИТ|AUDIT)\s[^\]]*\]/],
+      ["жаргон исполнения", /\b(escrow|on-chain(?!-verified)|он-чейн|canonical mint|каноническ\w+ mint)\b/i],
+      ["старая лексика", /\b(картошк\w*|жернов\w*|пшениц\w*|урожай\w*|полив\w*|грядк\w*)\b/i],
+    ] as const) {
+      const hit = text.match(pattern);
+      if (hit) bad.push(`${file}: ${name} — «${hit[0]}»`);
+    }
+  }
+  assert.deepEqual(bad, [], `в текстах для игрока остались следы:\n${bad.join("\n")}`);
+});
+
+test("смайл в сообщении — это плашка состояния, а не символ в тексте", () => {
+  // Всплывающие сообщения начинаются со значка ✅/❌/⏸️ или ресурсного значка —
+  // NoticeMsg подменяет его картинкой. Всё, что вне сообщений (заголовки, кнопки,
+  // подписи), значки рисовать не должно.
+  const notices = read("src/components/visual/NoticeMsg.tsx");
+  const registered = new Set<string>();
+  for (const block of [
+    notices.match(/SUCCESS = new Set\(\[([^\]]*)\]\)/)?.[1] ?? "",
+    notices.match(/ERROR = new Set\(\[([^\]]*)\]\)/)?.[1] ?? "",
+  ]) {
+    for (const m of block.matchAll(/"([^"]+)"/g)) registered.add(m[1]);
+  }
+  for (const m of notices.matchAll(/"([^"]+)":\s*"[A-Z_]+"/gu)) registered.add(m[1]);
+
+  /** Диапазоны вызовов flash/flashMsg/toast.show — там значок работает как плашка. */
+  const noticeRanges = (text: string) => {
+    const ranges: Array<[number, number]> = [];
+    for (const call of text.matchAll(/(?:flash|flashMsg|toast\.show)\s*\(/g)) {
+      let depth = 1;
+      let i = call.index + call[0].length;
+      for (; i < text.length && depth > 0; i++) {
+        if (text[i] === "(") depth++;
+        else if (text[i] === ")") depth--;
+      }
+      ranges.push([call.index, i]);
+    }
+    return ranges;
+  };
+
+  const dirs = ["src/pages", "src/components"];
+  const emoji = /[\u{1F300}-\u{1FAFF}\u{2705}\u{274C}\u{26A0}]/u;
+  const unregistered: string[] = [];
+  const inMarkup: string[] = [];
+  for (const dir of dirs) {
+    for (const file of readdirSync(join(root, dir), { recursive: true }) as string[]) {
+      if (!/\.(tsx|ts)$/.test(file)) continue;
+      const rel = `${dir}/${file}`;
+      if (rel.includes("src/pages/admin/") || rel.includes("NoticeMsg")) continue;
+      const text = read(rel);
+      const ranges = noticeRanges(text);
+      const inNotice = (index: number) => ranges.some(([from, to]) => index > from && index < to);
+      for (const m of text.matchAll(/["'`\s]([\u{1F300}-\u{1FAFF}\u{2705}\u{274C}\u{26A0}]\uFE0F?) /gu)) {
+        const index = (m.index ?? 0) + 1;
+        if (inNotice(index)) {
+          if (!registered.has(m[1])) unregistered.push(`${rel}: значок «${m[1]}» не зарегистрирован в NoticeMsg`);
+        } else {
+          inMarkup.push(`${rel}: ${m[1]} в тексте разметки`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(inMarkup, [], `в интерфейс вернулись смайлы вместо слов и приборных плашек:\n${inMarkup.join("\n")}`);
+  assert.deepEqual(unregistered, [], `сообщение подписано значком без плашки:\n${unregistered.join("\n")}`);
+});
+
+test("календарь эпох берёт погоду дня из сети, а не считает своей формулой", () => {
+  // Дефект 2026-09-28: страница «Эпохи» считала погоду сама — dayId * 0x9E3779B9
+  // с долями 20/30/40/10 — и расписание не совпадало с цепью ни в один день.
+  const page = code("src/pages/economy/SeasonCalendar.tsx");
+  assert.match(page, /fetchWeatherSnapshot/, "календарь обязан читать каноническое состояние дня");
+  assert.match(page, /weatherIndexForDay/, "сетка эпохи строится правилом сети, а не своей формулой");
+  assert.match(page, /Состояние дня недоступно/, "без данных сети календарь обязан честно сказать об этом");
+  assert.ok(!/0x9E3779B9|0x9e3779b9/.test(page), "в страницу вернулась собственная формула погоды");
+  assert.ok(!/Данные \+10%|Всё -15%/.test(page), "выдуманные эффекты вернулись в легенду");
+
+  // Формула дня живёт ровно в одном месте — lib/weather.ts (зеркало aof-core).
+  const files = readdirSync(join(root, "src"), { recursive: true }) as string[];
+  const owners = files
+    .filter((f) => /\.(ts|tsx)$/.test(f))
+    .filter((f) => {
+      const text = readFileSync(join(root, "src", f), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+      return /9[eE]3779[bB]/.test(text);
+    })
+    .map((f) => f.replace(/\\/g, "/"));
+  assert.deepEqual(owners, ["lib/weather.ts"], `формула дня расползлась по файлам: ${owners.join(", ")}`);
+});
+
+test("фляги не обещают эффектов, которых нет в сети", () => {
+  // Дефект 2026-09-28: каталог фляг обещал «+20% добыча на 1ч», «+100 газа»,
+  // «×2 скорость» и «+50% Forge». Применения фляг в aof-core нет вовсе.
+  const page = code("src/pages/market/FlaskMarketplace.tsx");
+  assert.ok(!/\+20%|\+50%|×2|на 1ч|газа/.test(page), "выдуманные эффекты фляг вернулись");
+  assert.ok(!/\{flask\.icon\}/.test(page), "иконка фляги снова печатается текстом");
+  assert.match(page, /ResourceGlyph/, "значок фляги рисуется приборной плашкой");
+  assert.match(page, /применение в сети не объявлено/, "игроку нужно сказать, почему каталог без эффектов");
+  assert.match(page, /Цены нет/, "цена фляги не выдумывается");
+});
+
+test("в книге рецептов нет служебных формулировок и выдуманных ресурсов", () => {
+  const text = read("src/site/content/recipes.ts");
+  for (const word of ["Редакционное описание", "Продуктовое описание", "провизи", "не подтверждён"]) {
+    assert.ok(!text.includes(word), `в описаниях рецептов вернулась служебная формулировка: ${word}`);
+  }
+  // Гостевой рецепт выпускает данные — их и называем, а не «провизию».
+  assert.match(text, /дают пять единиц данных/, "выход гостевого рецепта назван предметно");
+});
+
+test("книга рецептов сайта совпадает с таблицей сети", async () => {
+  // Дефект 2026-09-28: рецепты сайта были написаны «по мотивам» и расходились с
+  // aof-core (сепарация 5→3 вместо 6+1→3, фляги из кварца вместо гемов и данных).
+  // Сетевые рецепты сверяются с исходником Rust, редакционные помечены значком.
+  const { recipes } = await import("../src/site/content/recipes");
+  const rust = readFileSync(join(root, "..", "aof-core/src/instructions/craft_recipe.rs"), "utf8");
+
+  const MINT_TO_SITE: Record<string, string> = {
+    gem_blue: "quantumBit", gem_orange: "neuralChip", gem_white: "photonBit", gem_green: "bioChip",
+    stone_blue: "blueCore", stone_red: "redCore", stone_purple: "purpleCore",
+    sand_white: "clearQuartz", sand_pink: "roseQuartz", sand_yellow: "amberQuartz",
+    flask_blue: "cryoFluid", flask_yellow: "voltFluid", flask_green: "bioFluid",
+    flask_pink: "nanoFluid", flask_purple: "quantumFluid",
+    seeds: "neuron", wheat: "synapse", flour: "signal", bread: "model",
+    water: "power", coal: "compute",
+  };
+
+  // craft_recipe.rs: разбираем блоки «N => { ... }» и пары вход/выход.
+  const verified = recipes.filter((r: { verification?: string }) => r.verification === "on-chain-verified");
+  assert.ok(verified.length >= 7, "сверенных с сетью рецептов стало меньше");
+
+  const byOutput = new Map<string, { inputs: Array<[string, number]>; output: [string, number] }>();
+  for (const block of rust.split(/\n {8}\/\/ \d+ =/).slice(1)) {
+    const id = Number(block.match(/^\s*(\d+) =>/)?.[1]);
+    if (Number.isNaN(id)) continue;
+    const mintOf = (n: number) => block.match(new RegExp(`input_${n}_mint\\.key\\(\\) == (?:mm|cfg)\\.([a-z_]+)`))?.[1];
+    const amountOf = (n: number) => Number(block.match(new RegExp(`input_${n}_acc, (\\d+) \\* RESOURCE_UNIT`))?.[1]);
+    const outMint = block.match(/mint_out!\([^,]+, [^,]+, (\d+) \* RESOURCE_UNIT, ResourceKind::(\w+)\)/);
+    if (!mintOf(1) || !amountOf(1) || !outMint) continue;
+    const kindToSite: Record<string, string> = {
+      QuantumBit: "quantumBit", NeuralChip: "neuralChip", PhotonBit: "photonBit", BioChip: "bioChip",
+      CryoFluid: "cryoFluid", VoltFluid: "voltFluid", BioFluid: "bioFluid",
+      NanoFluid: "nanoFluid", QuantumFluid: "quantumFluid",
+    };
+    const inputs: Array<[string, number]> = [[MINT_TO_SITE[mintOf(1)] ?? mintOf(1)!, amountOf(1)]];
+    if (mintOf(2) && amountOf(2)) inputs.push([MINT_TO_SITE[mintOf(2)] ?? mintOf(2)!, amountOf(2)]);
+    byOutput.set(kindToSite[outMint[2]], { inputs, output: [kindToSite[outMint[2]], Number(outMint[1])] });
+  }
+
+  const mismatches: string[] = [];
+  for (const recipe of verified) {
+    const outId = recipe.outputs[0]?.resourceId;
+    const chain = byOutput.get(outId);
+    if (!chain) continue; // сепарация и обучение проверяются ниже по своим инструкциям
+    const siteInputs = [...recipe.inputs].map((i: { resourceId: string; amount: number }) => `${i.resourceId}×${i.amount}`).sort().join(", ");
+    const chainInputs = chain.inputs.map(([id, amount]) => `${id}×${amount}`).sort().join(", ");
+    if (siteInputs !== chainInputs) mismatches.push(`${recipe.name}: сайт ${siteInputs} ≠ сеть ${chainInputs}`);
+    if ((recipe.outputs[0]?.amount ?? 0) !== chain.output[1]) {
+      mismatches.push(`${recipe.name}: выход ${recipe.outputs[0]?.amount} ≠ ${chain.output[1]}`);
+    }
+  }
+  assert.deepEqual(mismatches, [], `книга рецептов разошлась с таблицей сети:\n${mismatches.join("\n")}`);
+
+  // Партии сепарации и обучения: малые значения из start_milling/start_baking.
+  const mill = readFileSync(join(root, "..", "aof-core/src/instructions/start_milling.rs"), "utf8");
+  const milleSmall = mill.match(/MILL_WHEAT_COST: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT/);
+  const millOut = mill.match(/MILL_FLOUR_OUT: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT/);
+  const millRecipe = recipes.find((r: { id: string }) => r.id === "mill_flour")!;
+  assert.equal(millRecipe.inputs[0].amount, Number(milleSmall?.[1]), "малая партия сепарации не совпала с сетью");
+  const millStone = mill.match(/MILL_STONE_COST: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT/);
+  assert.equal(millRecipe.inputs[1].amount, Number(millStone?.[1]), "сепарация: кремний не совпал с сетью");
+  assert.equal(millRecipe.outputs[0].amount, Number(millOut?.[1]), "выход сепарации не совпал с сетью");
+  assert.equal(millRecipe.energy, 2, "сепарация стоит 2 единицы энергии: столько списывает сеть");
+
+  const bake = readFileSync(join(root, "..", "aof-core/src/instructions/start_baking.rs"), "utf8");
+  const ovenFlour = bake.match(/OVEN_FLOUR_COST: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT/);
+  const ovenCoal = bake.match(/OVEN_COAL_COST: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT/);
+  const ovenBread = bake.match(/OVEN_BREAD_COAL: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT/);
+  const bakeRecipe = recipes.find((r: { id: string }) => r.id === "bake_bread")!;
+  assert.equal(bakeRecipe.inputs[0].amount, Number(ovenFlour?.[1]), "обучение модели: сигнал не совпал с сетью");
+  const ovenWater = bake.match(/OVEN_WATER_COST: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT/);
+  assert.equal(bakeRecipe.inputs[1].amount, Number(ovenWater?.[1]), "обучение модели: энергопоток не совпал с сетью");
+  assert.equal(bakeRecipe.inputs[2].amount, Number(ovenCoal?.[1]), "обучение модели: топливо не совпало с сетью");
+  assert.equal(bakeRecipe.outputs[0].amount, Number(ovenBread?.[1]), "обучение модели: выход не совпал с сетью");
+  assert.equal(bakeRecipe.energy, 2, "обучение стоит 2 единицы энергии: столько списывает сеть");
+});
+
+test("знак сайта — прибор, а не сеть узлов, и в палитре нет неона", () => {
+  // Решение владельца: нейро-декор (узлы, связи, свечение) в проекте не остаётся.
+  // Прежний знак рисовал четыре точки с линиями в градиенте #00D4FF → #9B59FF.
+  const favicon = read("public/favicon.svg");
+  assert.ok(!/<line\s/.test(favicon), "в знаке снова линии между узлами");
+  assert.match(favicon, /#5FC9DA/, "знак обязан быть в циане палитры A");
+  assert.match(favicon, /aria-label="NeuroForge"/, "у знака должна быть подпись для чтения с экрана");
+
+  const layout = read("src/site/layout/Layout.tsx");
+  assert.ok(!/nf-logo-g/.test(layout), "старый градиент знака вернулся в шапку");
+  assert.ok(!/#00D4FF|#9B59FF/.test(layout), "в шапке снова неоновые цвета прежнего макета");
+
+  const oldColors = /#00D4FF|#9B59FF|rgb\(255, 60, 172\)|rgb\(6, 6, 15\)|#06060F/;
+  const offenders: string[] = [];
+  for (const file of readdirSync(join(root, "src/site"), { recursive: true }) as string[]) {
+    if (!/\.(tsx?|css)$/.test(file)) continue;
+    if (oldColors.test(read(`src/site/${file}`))) offenders.push(file);
+  }
+  assert.deepEqual(offenders, [], `в сайт вернулись цвета прежней палитры:\n${offenders.join("\n")}`);
+});
+
+test("привилегии пропуска собираются из ответа сети, а не из макета", () => {
+  // Дефект 2026-09-28: карточка Premium обещала «XP-бустеры» и «умную покупку 24/7»,
+  // которых нет ни в /season/:user, ни в aof-core, и печатала имена полей аккаунта.
+  const page = code("src/pages/profile/SeasonPassPage.tsx");
+  assert.match(page, /useVipStatus/, "список привилегий обязан читаться из сети");
+  assert.match(page, /vipPrivileges/, "значения привилегий берутся из ответа сети");
+  assert.ok(!/XP-бустер|умная покупка/.test(page), "выдуманные привилегии вернулись в карточку");
+  assert.match(page, /PASS_FIELDS/, "поля прогресса эпохи подписываются словарём, а не ключами сети");
+  const labels = page.match(/PASS_FIELDS: Record<string, string> = \{([\s\S]*?)\};/)?.[1] ?? "";
+  for (const word of ["Эпоха", "Ступень", "Опыт", "Premium-ветка"]) {
+    assert.ok(labels.includes(word), `в словаре подписей нет «${word}»`);
+  }
+
+  // Сервис не должен обещать с пропуском механик, которых нет в цепи.
+  const backend = readFileSync(join(root, "..", "aof_backend/src/routes/vipStatus.ts"), "utf8");
+  assert.match(backend, /energyCapPlanned/, "расширенный запас энергии обязан быть помечен планом");
+  assert.match(backend, /energyRegenMinutesPlanned/, "ускоренный возврат энергии обязан быть помечен планом");
+  assert.ok(!/energyCap: isVip \? 30/.test(backend), "сервис снова выдаёт план за действующую привилегию");
 });

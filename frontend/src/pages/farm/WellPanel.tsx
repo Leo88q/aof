@@ -76,10 +76,10 @@ export function WellPanel() {
     try {
       const response = await api.chain.weatherCrank({ cranker: walletAddr });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "✅ Нагрузка сети обновлена" : `❌ ${result.error}`);
+      setMessage(result.success ? "Нагрузка сети обновлена" : `${result.error}`);
       if (result.success) await loadState();
     } catch (e: any) {
-      setMessage(`❌ ${e.message}`);
+      setMessage(`${e.message}`);
     } finally {
       setCranking(false);
     }
@@ -91,10 +91,10 @@ export function WellPanel() {
     try {
       const response = await api.chain.collectWellWater({ user: walletAddr, waterMint });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "✅ Станция обработана; баланс обновится после подтверждения" : `❌ ${result.error}`);
+      setMessage(result.success ? "Станция обработана; баланс обновится после подтверждения" : `${result.error}`);
       if (result.success) await loadState();
     } catch (e: any) {
-      setMessage(`❌ ${e.message}`);
+      setMessage(`${e.message}`);
     } finally {
       setCollecting(false);
     }

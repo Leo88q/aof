@@ -20,7 +20,9 @@
     "release:check": "node scripts/legal-release.mjs",
     "build:release": "npm run release:check && npm run build && node scripts/legal-release.mjs --emit-security && python3 ../scripts/security/check-public-output.py dist",
     "art:check": "node scripts/normalize-art-backgrounds.mjs --check",
-    "art:normalize": "node scripts/normalize-art-backgrounds.mjs --write"
+    "art:normalize": "node scripts/normalize-art-backgrounds.mjs --write",
+    "sitemap:build": "tsx scripts/build-sitemap.ts",
+    "icons:render": "node scripts/render-icons.mjs"
   },
   "dependencies": {
     "@fontsource/exo-2": "5.3.0",
@@ -52,6 +54,7 @@
     "jpeg-js": "0.4.4",
     "postcss": "^8.4.38",
     "postcss-value-parser": "^4.2.0",
+    "sharp": "0.35.5",
     "storybook": "^8.6.18",
     "stylelint": "^16.26.1",
     "tailwindcss": "^3.4.4",

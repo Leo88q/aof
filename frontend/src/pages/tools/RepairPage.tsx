@@ -89,17 +89,17 @@ export function RepairPage() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        flash(`✅ Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
+        flash(`Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
         setReceipt(
           <>Списано: {fmtNum((q?.silicon ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.circuit ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
         );
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(loadTools, 2500);
       } else {
-        flash(`❌ ${r.error}`);
+        flash(`${r.error}`);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

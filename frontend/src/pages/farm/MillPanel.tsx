@@ -81,7 +81,7 @@ export function MillPanel() {
         getMintAsync("SILICON"),
       ]);
       if (!wheatMint || !stoneMint) {
-        toast.show("❌ Ресурсы не найдены в реестре сети");
+        toast.show("Ресурсы не найдены в реестре сети", "error");
         return;
       }
       const resp = await api.chain.startMilling({
@@ -92,13 +92,13 @@ export function MillPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`✅ Переработка запущена: ${m.wheat} синапсов → ${m.flour} сигнала`);
+        toast.show(`Переработка запущена: ${m.wheat} синапсов → ${m.flour} сигнала`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Не удалось запустить сепарацию"}`);
+        toast.show(`${r.error || "Не удалось запустить сепарацию"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setMilling(false);
     }
@@ -109,20 +109,20 @@ export function MillPanel() {
     setMilling(true);
     try {
       const flourMint = await getMintAsync("SIGNAL");
-      if (!flourMint) { toast.show("❌ Ресурс SIGNAL не найден в сети"); return; }
+      if (!flourMint) { toast.show("Ресурс SIGNAL не найден в сети", "error"); return; }
       const resp = await api.chain.collectFlour({
         user: walletAddr,
         flourMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🥣 Собрано ${millState.flourReady} сигнала!`);
+        toast.show(`🥣 Собрано ${millState.flourReady} сигнала!`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Не удалось собрать результат"}`);
+        toast.show(`${r.error || "Не удалось собрать результат"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setMilling(false);
     }

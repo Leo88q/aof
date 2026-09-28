@@ -1,5 +1,5 @@
 import { functionalStorage } from "../../legal/consent";
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Section } from '../ui/Components';
 import {
@@ -81,6 +81,8 @@ const rarities = [
   { name: 'Transcendent', text: 'Метеоритное железо с медной инкрустацией. Тёплый на ощупь даже зимой.' },
 ];
 
+const PARTICLES: Record<string, number> = { drought: 0, sun: 0, rain: 32, festival: 0 };
+
 function WeatherDemo() {
   const [state, setState] = useState('sun');
   const names: Record<string, string> = { drought: 'Блэкаут', sun: 'Номинал', rain: 'Скачок', festival: 'Френзи' };
@@ -97,22 +99,24 @@ function WeatherDemo() {
       </fieldset>
       <div className="site-weather" aria-hidden="true">
         <svg viewBox="0 0 700 230" className="site-weather-scene">
-          <path d="M0 175Q180 80 360 170T700 130V230H0Z" fill="var(--aof-sage)" />
-          <path d="M220 120h150v90H220z" fill="var(--aof-oak)" />
-          <path d="M200 125l95-90 95 90z" fill="var(--aof-terracotta)" />
-          <path d="M280 145h32v65h-32z" fill="var(--aof-oak-dark)" />
-          <path d="M335 145h22v26h-22z" fill="var(--aof-golden)" />
+          <path d="M0 175Q180 80 360 170T700 130V230H0Z" fill="var(--sb-green)" />
+          <path d="M220 120h150v90H220z" fill="var(--sb-body)" />
+          <path d="M200 125l95-90 95 90z" fill="var(--sb-red)" />
+          <path d="M280 145h32v65h-32z" fill="var(--sb-body-2)" />
+          <path d="M335 145h22v26h-22z" fill="var(--sb-gold)" />
         </svg>
         {Object.keys(names).map((sid) => (
           <div key={sid} className={'site-weather-layer site-weather--' + sid} style={{ opacity: state === sid ? 1 : 0 }}>
-            {sid === 'rain' &&
-              Array.from({ length: 32 }, (_, i) => (
+            {/* Частицы рисуются для каждого состояния с осадками: раньше они были
+                только у «скачка», и переключение на грозу или снег давало пустую сцену. */}
+            {PARTICLES[sid] > 0 &&
+              Array.from({ length: PARTICLES[sid] }, (_, i) => (
                 <i key={i} style={{ left: ((i * 37) % 100) + '%', top: (-(i * 17) % 100) + '%', animationDelay: -(i * 0.19) + 's', animationDuration: 1 + (i % 2) * 0.3 + 's' }} />
               ))}
           </div>
         ))}
       </div>
-      <p role="status">Выбрано: {names[state]}</p>
+      <p role="status">Показано состояние: {names[state]} — выбор для примера, сеть публикует своё.</p>
     </div>
   );
 }
@@ -124,12 +128,12 @@ function SeasonWheelDemo() {
     <div className="site-season">
       <button type="button" className="site-season-button" onClick={() => setSeason((s) => (s + 1) % 4)} aria-label={'Эпоха: ' + names[season] + '. Сменить'}>
         <svg viewBox="0 0 100 100" aria-hidden="true">
-          <circle cx="50" cy="50" r="43" fill="var(--aof-oak)" stroke="var(--aof-copper)" strokeWidth="5" />
+          <circle cx="50" cy="50" r="43" fill="var(--sb-body)" stroke="var(--sb-cyan)" strokeWidth="5" />
           {[0, 1, 2, 3].map((i) => (
-            <path key={i} d="M50 12v25" transform={'rotate(' + i * 90 + ' 50 50)'} stroke="var(--aof-parchment)" strokeWidth="2" />
+            <path key={i} d="M50 12v25" transform={'rotate(' + i * 90 + ' 50 50)'} stroke="var(--sb-text)" strokeWidth="2" />
           ))}
           <g style={{ transform: 'rotate(' + season * 90 + 'deg)', transformOrigin: '50px 50px' }}>
-            <path d="M50 18l-8 30h16z" fill="var(--aof-golden)" />
+            <path d="M50 18l-8 30h16z" fill="var(--sb-gold)" />
           </g>
         </svg>
       </button>
@@ -262,7 +266,7 @@ export function ExtraSections({ id }: { id: string }) {
                     <span className="site-badge">
                       {r.verification === 'on-chain-verified'
                         ? 'Проверено сетью'
-                        : 'Редакционный пример · сетью не подтверждён'}
+                        : 'Редакционный пример · в сети не сверен'}
                     </span>
                     <h4>{r.name}</h4>
                     <ul className="site-recipe-io">
@@ -275,11 +279,11 @@ export function ExtraSections({ id }: { id: string }) {
                         : <li className="site-recipe-out"><span>Эффект без предмета</span></li>}
                     </ul>
                     <p className="site-recipe-meta">
-                      Энергия: {r.energy}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на MIND' : ''}{r.potatoCost ? ` · MIND ×${r.potatoCost}` : ''}
+                      Энергия: {r.energy > 0 ? r.energy : 'не тратится'}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на MIND' : ''}{r.potatoCost ? ` · MIND ×${r.potatoCost}` : ''}
                     </p>
                     <p>{r.description}</p>
                     {missingResources.length > 0 && (
-                      <p className="site-guide-warn">В каталоге сайта не найдено: {missingResources.join(', ')}. Сначала проверь live UI и on-chain состояние.</p>
+                      <p className="site-guide-warn">В каталоге сайта не нашлось: {missingResources.join(', ')}. Сверь состав в игре — там числа актуальные.</p>
                     )}
                     {r.narrative && <blockquote className="site-narrative">{r.narrative}</blockquote>}
                   </article>
@@ -423,7 +427,7 @@ export function ExtraSections({ id }: { id: string }) {
                 <ul>{t.whenToUse.map((w) => <li key={w.slice(0, 20)}>{w}</li>)}</ul>
                 <h4>Когда избегать</h4>
                 <ul className="site-guide-warn">{t.whenToAvoid.map((w) => <li key={w.slice(0, 20)}>{w}</li>)}</ul>
-                <p className="site-recipe-meta">Инструкции: {t.instructions.join(', ')}</p>
+                <p className="site-recipe-meta">Инструкции: {t.instructions.map((code) => <code key={code}>{code}</code>).reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
               </article>
             ))}
           </div>
@@ -497,7 +501,7 @@ export function ExtraSections({ id }: { id: string }) {
 
   if (id === 'rules') {
     return (
-      <Section title="Пять правил мастерской">
+      <Section title={`${rulesList.length} правил мастерской`}>
         <div className="site-accordion">
           {rulesList.map((r) => (
             <details key={r.id}>
@@ -545,7 +549,7 @@ export function ExtraSections({ id }: { id: string }) {
 
   if (id === 'faq') {
     return (
-      <Section title="Тридцать ответов">
+      <Section title={`${faqItems.length} ответов на частые вопросы`}>
         <div className="site-filters">
           <label>Поиск<input type="search" value={faqQuery} onChange={(e) => setFaqQuery(e.target.value)} placeholder="Вопрос или слово ответа" /></label>
           <label>Тема<select value={faqTag} onChange={(e) => setFaqTag(e.target.value)}>
@@ -569,7 +573,7 @@ export function ExtraSections({ id }: { id: string }) {
 
   if (id === 'glossary') {
     return (
-      <Section title="Шестьдесят терминов на одном столе">
+      <Section title={`${glossaryTerms.length} термина на одном столе`}>
         <label className="site-search-label">Найди термин<input type="search" value={glossQuery} onChange={(e) => setGlossQuery(e.target.value)} /></label>
         <p role="status">Найдено: {glossFiltered.length}</p>
         <dl className="site-glossary">
@@ -615,11 +619,11 @@ export function ExtraSections({ id }: { id: string }) {
           {trustTiers.map((t, i) => (
             <article key={t.name} className="site-card site-paper" style={{ textAlign: 'center' }}>
               <svg width="95" height="95" viewBox="0 0 100 100" role="img" aria-label={'Тир ' + (i + 1)}>
-                <circle cx="50" cy="50" r="43" fill="var(--aof-copper)" stroke="var(--aof-oak)" strokeWidth="4" />
+                <circle cx="50" cy="50" r="43" fill="var(--sb-cyan)" stroke="var(--sb-body)" strokeWidth="4" />
                 {Array.from({ length: i + 1 }, (_, n) => (
-                  <circle key={n} cx="50" cy="50" r={38 - n * 6} fill="none" stroke="var(--aof-oak-dark)" strokeWidth="1.5" />
+                  <circle key={n} cx="50" cy="50" r={38 - n * 6} fill="none" stroke="var(--sb-body-2)" strokeWidth="1.5" />
                 ))}
-                <text x="50" y="58" textAnchor="middle" fontSize="26" fill="var(--aof-forest)">{i + 1}</text>
+                <text x="50" y="58" textAnchor="middle" fontSize="26" fill="var(--sb-green)">{i + 1}</text>
               </svg>
               <h3>{t.name}</h3>
               <p>{t.text}</p>
@@ -771,33 +775,27 @@ const relatedMap: Record<string, string[]> = {
   home: ['guide', 'recipes', 'trade', 'potato'],
   start: ['guide', 'rules', 'energy'],
   guide: ['start', 'strategies', 'recipes'],
-  strategies: ['guide', 'community', 'trade'],
+  strategies: ['guide', 'quests', 'trade'],
   manifesto: ['lore', 'rules', 'investors'],
   world: ['farm', 'mine', 'market'],
   energy: ['farm', 'recipes', 'weather'],
   weather: ['farm', 'seasons', 'energy'],
   farm: ['recipes', 'weather', 'energy'],
-  craft: ['recipes', 'tools', 'fair'],
+  craft: ['recipes', 'tools', 'docs'],
   recipes: ['farm', 'craft', 'potato'],
-  tools: ['craft', 'rental', 'market'],
+  tools: ['craft', 'trade', 'market'],
   mine: ['trade', 'recipes', 'energy'],
-  fair: ['craft', 'packs', 'trust'],
   packs: ['lottery', 'trade', 'recipes'],
   lottery: ['packs', 'quests', 'trust'],
-  economy: ['trade', 'liquidity', 'investors'],
-  market: ['trade', 'liquidity', 'economy'],
-  trade: ['market', 'liquidity', 'rental'],
-  liquidity: ['market', 'economy', 'investors'],
-  rental: ['tools', 'market', 'trade'],
-  npc: ['market', 'potato', 'weather'],
+  economy: ['trade', 'market', 'investors'],
+  market: ['trade', 'economy', 'tools'],
+  trade: ['market', 'economy', 'tools'],
   potato: ['recipes', 'trade', 'rules'],
-  seasons: ['rebirth', 'quests', 'roadmap'],
-  rebirth: ['seasons', 'trust', 'lore'],
-  quests: ['guide', 'strategies', 'community'],
-  trust: ['community', 'rules', 'docs'],
-  community: ['trust', 'quests', 'strategies'],
+  seasons: ['quests', 'roadmap', 'trust'],
+  quests: ['guide', 'strategies', 'trust'],
+  trust: ['rules', 'quests', 'docs'],
   resources: ['recipes', 'trade', 'glossary'],
-  lore: ['manifesto', 'rebirth', 'seasons'],
+  lore: ['manifesto', 'seasons', 'rules'],
   rules: ['trust', 'potato', 'start'],
   faq: ['glossary', 'docs', 'guide'],
   glossary: ['faq', 'docs', 'recipes'],

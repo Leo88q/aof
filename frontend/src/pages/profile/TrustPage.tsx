@@ -33,7 +33,7 @@ const TIER_COLORS = ["", "#9AA7B4", "#8FB3DE", "#5FD3A8", "#5FC9DA", "#E0708A"];
 const COMPONENT_META: Record<string, { icon: string; label: string }> = {
   age:        { icon: UI_ICONS.trustAge, label: "Возраст аккаунта" },
   referral:   { icon: UI_ICONS.friends, label: "Рефералы" },
-  trader:     { icon: UI_ICONS.trustTrader, label: "Farm-Trader" },
+  trader:     { icon: UI_ICONS.trustTrader, label: "Авто-трейдер" },
   staking:    { icon: UI_ICONS.trustStaking, label: "Стейкинг" },
   rebirth:    { icon: UI_ICONS.rebirth, label: "Ребёрты" },
   guild:      { icon: UI_ICONS.trustGuild, label: "Гильдия" },

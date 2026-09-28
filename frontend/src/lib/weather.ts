@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { UI_ICONS } from "./visualAssets";
 
 /**
  * Погода — зеркало канонических правил цепи, один источник для всех панелей.
@@ -87,6 +88,45 @@ export function weatherIndexForDay(dayId: number): number {
   if (bucket <= 59) return 1; // nominal
   if (bucket <= 89) return 2; // surge
   return 3; // frenzy
+}
+
+/** Подписи и значки состояний — один источник для шапки, колодца и календаря эпох. */
+export const WEATHER_LABELS: Record<string, string> = {
+  sunny: "Номинал",
+  rain: "Скачок",
+  drought: "Блэкаут",
+  festival: "Френзи",
+  harvest_festival: "Френзи",
+};
+
+export const WEATHER_ICONS: Record<string, string> = {
+  sunny: UI_ICONS.weatherNominal,
+  rain: UI_ICONS.weatherSurge,
+  drought: UI_ICONS.weatherBlackout,
+  festival: UI_ICONS.weatherFrenzy,
+  harvest_festival: UI_ICONS.weatherFrenzy,
+};
+
+export const SEASON_LABELS: Record<string, string> = {
+  spring: "Инициализация",
+  summer: "Обучение",
+  autumn: "Дообучение",
+  winter: "Инференс",
+};
+
+export const SEASON_ICONS: Record<string, string> = {
+  spring: UI_ICONS.epochInit,
+  summer: UI_ICONS.epochTrain,
+  autumn: UI_ICONS.epochTune,
+  winter: UI_ICONS.epochInfer,
+};
+
+/** Римская нумерация эпохи: Эпоха I..IV — как в летописи сети. */
+export const SEASON_ROMAN = ["I", "II", "III", "IV"] as const;
+
+export function seasonTitle(seasonIndex: number): string {
+  const key = SEASONS[((seasonIndex % SEASONS.length) + SEASONS.length) % SEASONS.length];
+  return `Эпоха ${SEASON_ROMAN[seasonIndex % SEASON_ROMAN.length]} · ${SEASON_LABELS[key]}`;
 }
 
 export interface ForecastDay {

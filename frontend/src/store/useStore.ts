@@ -5,7 +5,9 @@ interface VipPrivileges {
   priceAlerts: { limit: number; fullOptions: boolean };
   skipAdsInQuests: boolean;
   energyCap: number;
+  energyCapPlanned?: number | null;
   energyRegenMinutes: number;
+  energyRegenMinutesPlanned?: number | null;
   feeDiscountPct: number;
 }
 
@@ -30,7 +32,10 @@ const defaultPrivileges: VipPrivileges = {
   priceAlerts: { limit: 1, fullOptions: false },
   skipAdsInQuests: false,
   energyCap: 20,
-  energyRegenMinutes: 10,
+  energyCapPlanned: null,
+  // Возврат энергии задаёт цепь: +1 за 30 минут (aof-core ENERGY_REGEN_SECONDS).
+  energyRegenMinutes: 30,
+  energyRegenMinutesPlanned: null,
   feeDiscountPct: 0,
 };
 

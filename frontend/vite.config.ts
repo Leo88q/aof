@@ -7,6 +7,13 @@ export default defineConfig({
   plugins: [react()],
   // Production browser code is public; never publish source maps.
   build: { sourcemap: false },
+  // Предпросмотр сборки ходит по тому же адресу, что и разработка: без явного
+  // хоста он слушает только localhost и в песочнице предпросмотра не виден.
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+    allowedHosts: true,
+  },
   server: {
     host: "0.0.0.0",
     port: 3000,

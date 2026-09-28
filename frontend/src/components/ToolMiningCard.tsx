@@ -66,13 +66,13 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         resp = await api.tools.collectMining({ user: address, mint: tool.mint });
       }
       const r = await handleTxResponse(resp);
-      flashMsg(r.success ? `✅ Done: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flashMsg(r.success ? `Готово: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(() => onChanged?.(), 2500);
       }
     } catch (e: any) {
-      flashMsg(`❌ ${e?.response?.data?.error || e.message}`);
+      flashMsg(`${e?.response?.data?.error || e.message}`);
     } finally {
       setBusy(false);
     }

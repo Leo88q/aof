@@ -8,20 +8,61 @@ import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { fmtNum, useTreasury, useFlash } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { useVipStatus } from "../../lib/useVipStatus";
 
 const SEASON_ID = 1;
 const PASS_PRICE_SOL = 0.15;
 
-const PREMIUM_PERKS = [
-  { icon: UI_ICONS.npcOracle, label: "Авто-трейдер", sub: "умная покупка/продажа 24/7" },
-  { icon: resourceIcon("power") || "", label: "Награды без рекламы", sub: "в заданиях и партнёрках" },
-  { icon: UI_ICONS.chartsUp, label: "XP-бустеры", sub: "ускорение трека эпохи" },
-  { icon: UI_ICONS.buffIdea, label: "Ценовые алерты без лимитов", sub: "free-тир: только 1 алерт" },
+/**
+ * Список привилегий — из ответа сети (/season/:user), а не из макета.
+ *
+ * Дефект 2026-09-28: карточка обещала «XP-бустеры» и «умную покупку 24/7»,
+ * которых нет ни в ответе сервиса, ни в инструкциях aof-core. Плюс прогресс
+ * печатал имена полей аккаунта как есть — теперь у каждого поля своя подпись.
+ */
+const PERK_ROWS: Array<{ key: string; icon: string; label: string; value: (p: any) => string | null }> = [
+  {
+    key: "farmTrader",
+    icon: UI_ICONS.npcOracle,
+    label: "Авто-трейдер",
+    value: (p) => (p?.farmTrader?.enabled
+      ? `До ${p.farmTrader.maxRules} правил и ${p.farmTrader.maxSpendPerDaySol} SOL в день`
+      : null),
+  },
+  {
+    key: "priceAlerts",
+    icon: UI_ICONS.buffIdea,
+    label: "Ценовые алерты",
+    value: (p) => (p?.priceAlerts?.limit ? `Лимит ${p.priceAlerts.limit} против одной бесплатной` : null),
+  },
+  {
+    key: "skipAdsInQuests",
+    icon: resourceIcon("power") || "",
+    label: "Награды без рекламных вставок",
+    value: (p) => (p?.skipAdsInQuests ? "В заданиях и партнёрских предложениях" : null),
+  },
+  {
+    key: "feeDiscountPct",
+    icon: UI_ICONS.chartsUp,
+    label: "Скидка на комиссии",
+    value: (p) => (p?.feeDiscountPct ? `${p.feeDiscountPct}% на торговые операции` : null),
+  },
 ];
+
+const PASS_FIELDS: Record<string, string> = {
+  seasonId: "Эпоха",
+  level: "Ступень",
+  xp: "Опыт",
+  premium: "Premium-ветка",
+  premiumTrack: "Premium-ветка",
+  claimedLevels: "Награды получены",
+  bump: "—",
+};
 
 export function SeasonPassPage() {
   const { address } = useWalletStore();
   const treasury = useTreasury();
+  const { vipPrivileges } = useVipStatus(SEASON_ID);
   const [pass, setPass] = useState<any>(null);
   const [txStatus, flash] = useFlash();
 
@@ -36,7 +77,7 @@ export function SeasonPassPage() {
 
   async function buy() {
     if (!address) return flash("❌ Подключите кошелёк — кнопка в шапке");
-    if (!treasury) return flash("❌ Treasury config unavailable");
+    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
     try {
       flash("Готовим покупку пасса…");
       const resp = await api.season.passPurchase({ user: address, seasonId: SEASON_ID, treasury });
@@ -44,7 +85,7 @@ export function SeasonPassPage() {
       flash(r.success ? `✅ Premium активирован: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
@@ -53,7 +94,8 @@ export function SeasonPassPage() {
   return (
     <div className="p-4 pt-2 pb-24 space-y-4">
       <p className="text-straw text-xs">
-        VIP-статус — это премиум-трек пасса эпохи: автоматизация торговли, награды без рекламы и бусты.
+        Premium-ветка пропуска эпохи открывает сервисы лаборатории: авто-трейдер, алерты без лимита
+        и награды без рекламных вставок. Список читается у сети, а не из макета.
       </p>
 
       {txStatus && (
@@ -77,17 +119,20 @@ export function SeasonPassPage() {
       <Card>
         <div className="text-parchment font-semibold text-sm mb-2">Что даёт Premium</div>
         <div className="space-y-2">
-          {PREMIUM_PERKS.map((p, i) => (
-            <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
-              <ResourceGlyph icon={p.icon} alt="" className="w-6 h-6" />
-              <div>
-                <p className="text-parchment text-sm font-medium">{p.label}</p>
-                <p className="text-straw text-xs">{p.sub}</p>
-              </div>
-            </motion.div>
-          ))}
+          {PERK_ROWS.map((perk, i) => {
+            const note = perk.value(vipPrivileges);
+            return (
+              <motion.div key={perk.key} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
+                <ResourceGlyph icon={perk.icon} alt="" className="w-6 h-6" />
+                <div>
+                  <p className="text-parchment text-sm font-medium">{perk.label}</p>
+                  <p className="text-straw text-xs">{note ?? "Открывается с пропуском"}</p>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </Card>
 
@@ -95,9 +140,9 @@ export function SeasonPassPage() {
         <Card>
           <div className="text-parchment font-semibold text-sm mb-2">Ваш прогресс эпохи</div>
           <div className="grid grid-cols-2 gap-2">
-            {Object.entries(pass).filter(([k]) => !["bump"].includes(k)).map(([k, v]) => (
+            {Object.entries(pass).filter(([k]) => PASS_FIELDS[k]).map(([k, v]) => (
               <div key={k} className="px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
-                <p className="text-straw text-xs">{k}</p>
+                <p className="text-straw text-xs">{PASS_FIELDS[k]}</p>
                 <p className="text-parchment text-sm font-medium break-all">
                   {typeof v === "boolean" ? (v ? "да" : "нет") : fmtNum(v)}
                 </p>
@@ -110,7 +155,7 @@ export function SeasonPassPage() {
       {!premium ? (
         <button onClick={buy} disabled={!address || !treasury}
           className="w-full py-3.5 rounded-2xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40">
-          Buy Premium за {PASS_PRICE_SOL} ◎
+          Активировать Premium за {PASS_PRICE_SOL} SOL
         </button>
       ) : (
         <p className="text-center text-straw text-xs">Premium активен до конца эпохи</p>

@@ -56,7 +56,7 @@ export function RentalPage() {
   }, [address]);
 
   async function rent(l: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     const minS = toNum(l.minDuration);
     const maxS = toNum(l.maxDuration);
     let durS = Math.round(parseFloat(hours[l.mint] || "0") * 3600);
@@ -67,28 +67,28 @@ export function RentalPage() {
       flash("Инструмент переходит в вашу лабораторию…");
       const resp = await api.rental.start({ renter: address, mint: l.mint, durationSeconds: String(durS) });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Аренда начата: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Аренда начата: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function revoke(l: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     try {
       flash("Снимаем с аренды…");
       const resp = await api.rental.revoke({ owner: address, mint: l.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Листинг аренды снят: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Листинг аренды снят: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function endRental(l: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     try {
       flash("Читаем соглашение…");
       const info: any = await api.query.rental(l.mint);
@@ -96,15 +96,15 @@ export function RentalPage() {
       if (!renter) return flash("❌ Активной аренды по этому инструменту нет");
       const resp = await api.rental.end({ caller: address, mint: l.mint, renterRefund: renter });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Аренда завершена: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Аренда завершена: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function createRental() {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     if (!selMint) return flash("❌ Выберите инструмент");
     const ownerSplitBps = Math.round(parseFloat(splitPct) * 100);
     const minS = Math.round(parseFloat(minH) * 3600);
@@ -120,14 +120,14 @@ export function RentalPage() {
         pricePerHourLamports: String(isFinite(priceLam) && priceLam > 0 ? priceLam : 0),
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Аренда открыта: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Аренда открыта: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         setFormOpen(false);
         setSelMint("");
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

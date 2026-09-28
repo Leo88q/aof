@@ -1,11 +1,11 @@
 {
   "name": "NeuroForge — Age of Intelligence",
   "short_name": "NeuroForge",
-  "description": "Grow neurons, train models, trade the future. AI development game on Solana blockchain.",
+  "description": "Лаборатория-RPG на Solana: культивируй образцы, обучай модели, собирай инструменты и торгуй на рынке.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#06060F",
-  "theme_color": "#06060F",
+  "background_color": "#0B0D11",
+  "theme_color": "#0B0D11",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -25,6 +25,9 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["games", "finance"],
-  "lang": "en"
+  "categories": [
+    "games",
+    "finance"
+  ],
+  "lang": "ru"
 }

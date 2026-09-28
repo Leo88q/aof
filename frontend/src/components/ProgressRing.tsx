@@ -41,7 +41,7 @@ export function ProgressRing({
         <div style={{ fontSize: 20, fontWeight: 800 }}>{label ?? `${Math.round(pct * 100)}%`}</div>
         {sub && (sub.startsWith("/")
           ? <img src={sub} alt="" draggable={false} style={{ width: 16, height: 16, objectFit: "contain", marginTop: 2 }} />
-          : <div style={{ fontSize: 11, color: "var(--straw)" }}>{sub}</div>)}
+          : <div style={{ fontSize: 11, color: "var(--fg-dim)" }}>{sub}</div>)}
       </div>
     </div>
   );

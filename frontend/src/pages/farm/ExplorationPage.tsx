@@ -49,7 +49,7 @@ export function ExplorationPage() {
 
   async function startExploration() {
     if (!address) return flash("❌ Подключите кошелёк");
-    if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
+    if (!bowMint) return flash("Квантовый передатчик не найден в инвентаре");
 
     setLoading(true);
     flash("Отправляем экспедицию в сеть…");
@@ -64,7 +64,7 @@ export function ExplorationPage() {
         ? "✅ Экспедиция завершена в сети. Обновите балансы."
         : "⏳ Оракул ещё не раскрыл результат — можно раскрыть самостоятельно.", 8000);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     } finally {
       setLoading(false);
     }
@@ -76,9 +76,9 @@ export function ExplorationPage() {
     try {
       const resp: any = await api.exploration.reveal({ user: address, explorationCommit: commitAddr });
       const r = await handleTxResponse(resp);
-      flash(r.success ? "✅ Результат раскрыт вашей транзакцией" : `❌ ${r.error}`);
+      flash(r.success ? "Результат раскрыт вашей транзакцией" : `${r.error}`);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     } finally {
       setLoading(false);
     }

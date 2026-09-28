@@ -80,7 +80,7 @@ export function OvenPanel() {
         getMintAsync("COMPUTE"),
       ]);
       if (!flourMint || !waterMint || !woodMint || !coalMint) {
-        toast.show("❌ Ресурсы не найдены в реестре сети");
+        toast.show("Ресурсы не найдены в реестре сети", "error");
         return;
       }
       const resp = await api.chain.startBaking({
@@ -91,13 +91,13 @@ export function OvenPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🔥 Тренировка запущена! ${m.flour} сигнала → ${m.bread} модели`);
+        toast.show(`✅ Обучение запущено: ${m.flour} сигнала → ${m.bread} модели`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Операция отклонена программой"}`);
+        toast.show(`${r.error || "Операция отклонена программой"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setBaking(false);
     }
@@ -108,20 +108,20 @@ export function OvenPanel() {
     setBaking(true);
     try {
       const breadMint = await getMintAsync("MODEL");
-      if (!breadMint) { toast.show("❌ Ресурс MODEL не найден в сети"); return; }
+      if (!breadMint) { toast.show("Ресурс MODEL не найден в сети", "error"); return; }
       const resp = await api.chain.collectBread({
         user: walletAddr,
         breadMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`);
+        toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`, "success");
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Операция отклонена программой"}`);
+        toast.show(`${r.error || "Операция отклонена программой"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setBaking(false);
     }

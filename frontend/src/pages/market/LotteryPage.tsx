@@ -77,10 +77,10 @@ export function LotteryPage() {
       flash("Создаём раунд…");
       const resp = await api.lottery.roundInit({ roundId });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Раунд ${roundId} создан: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Раунд ${roundId} создан: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(() => load(roundId), 2000);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
@@ -88,15 +88,15 @@ export function LotteryPage() {
   // Switchboard commit (operator, or anyone after the sales window) and a
   // permissionless reveal by the settler service.
   async function buyTicket() {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     try {
       flash("Покупаем билет…");
       const resp: any = await api.lottery.ticketBuy({ buyer: address, roundId });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Билет №${resp.ticketNumber} ваш: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Билет №${resp.ticketNumber} ваш: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(() => { load(roundId); }, 2000);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
@@ -108,7 +108,7 @@ export function LotteryPage() {
       const rc = await handleTxResponse(c);
       if (!rc.success) {
         setSpinning(false);
-        return flash(`❌ Commit: ${rc.error}`);
+        return flash(`Commit: ${rc.error}`);
       }
       flash("Барабан крутится: оракул раскрывает выигрышный билет…", 30000);
       for (let i = 0; i < 20; i++) {
@@ -120,22 +120,22 @@ export function LotteryPage() {
       load(roundId);
     } catch (e: any) {
       setSpinning(false);
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
   async function claim() {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     const n = claimNum.trim();
     if (!n || isNaN(Number(n))) return flash("❌ Укажите номер выигрышного билета");
     try {
       flash("Забираем приз…");
       const resp = await api.lottery.claim({ winner: address, roundId, ticketNumber: n });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Приз забран: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Приз забран: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(() => load(roundId), 2000);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`);
+      flash(`${humanizeVrfError(String(e?.message || e))}`);
     }
   }
 
@@ -217,9 +217,9 @@ export function LotteryPage() {
 
       {/* Покупка билета */}
       <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Buy билет</div>
+        <div className="text-parchment font-semibold text-sm mb-2">Купить билет</div>
         {round?.ticketPriceLamports !== undefined && (
-          <p className="text-straw text-xs mb-2">Price: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
+          <p className="text-straw text-xs mb-2">Цена билета: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
         )}
         <div className="flex items-center gap-2">
           <p className="flex-1 text-straw text-xs">Номер билета назначает сеть по порядку покупки.</p>

@@ -64,7 +64,7 @@ export function FriendsList() {
       {/* Поиск по нику */}
       <Card className="p-4 bg-soil-800 border border-straw/10">
         <h3 className="text-parchment font-semibold text-sm mb-3">
-          🔍 Найти игрока
+          Найти игрока
         </h3>
         <p className="text-straw text-xs mb-3">
           Введите ник или адрес кошелька

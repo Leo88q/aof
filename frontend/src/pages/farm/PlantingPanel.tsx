@@ -68,7 +68,7 @@ export function PlantingPanel() {
     try {
       const seedsMint = await getMintAsync("NEURON");
       if (!seedsMint) {
-        toast.show("❌ Ресурс NEURON не найден в реестре сети.");
+        toast.show("Ресурс NEURON не найден в реестре сети.", "error");
         return;
       }
       const resp = await api.chain.plantSeeds({
@@ -79,14 +79,14 @@ export function PlantingPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🌱 Посажено ${seedsAmount} семян на тайл ${selectedPlot + 1}!`);
+        toast.show(`🌱 Засеяно: ${seedsAmount} образцов в лунке ${selectedPlot + 1}!`, "success");
         setSelectedPlot(null);
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Не удалось засеять образец"}`);
+        toast.show(`${r.error || "Не удалось засеять образец"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setPlanting(false);
     }
@@ -98,11 +98,11 @@ export function PlantingPanel() {
     try {
       const wheatMint = await getMintAsync("SYNAPSE");
       if (!wheatMint) {
-        toast.show("❌ Ресурс SYNAPSE не найден в сети");
+        toast.show("Ресурс SYNAPSE не найден в сети", "error");
         return;
       }
       if (!reaper) {
-        toast.show("❌ Инструмент Reaper не найден в инвентаре");
+        toast.show("Станция засева не найдена в инвентаре");
         return;
       }
       const toolMint = reaper.mint;
@@ -115,13 +115,13 @@ export function PlantingPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🧠 Сбор завершён с кластера ${tileIndex + 1}!`);
+        toast.show(`🌱 Сбор завершён из лунки ${tileIndex + 1}!`, "success");
         setTimeout(loadTiles, 2000);
       } else {
-        toast.show(`❌ ${r.error || "Не удалось снять культуру"}`);
+        toast.show(`${r.error || "Не удалось снять культуру"}`, "error");
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Ошибка сети"}`);
+      toast.show(`${e.message || "Ошибка сети"}`, "error");
     } finally {
       setHarvesting(null);
     }
@@ -193,7 +193,7 @@ export function PlantingPanel() {
                   <button
                     onClick={(e) => { e.stopPropagation(); handleHarvest(tile.index); }}
                     disabled={harvesting === tile.index || !reaper}
-                    title={!reaper ? "Нужен инструмент Reaper" : undefined}
+                    title={!reaper ? "Нужна станция засева" : undefined}
                     className="mt-1 text-[10px] bg-gold-600 text-parchment px-2 py-0.5 rounded disabled:opacity-50"
                   >
                     {harvesting === tile.index ? "…" : "Снять"}

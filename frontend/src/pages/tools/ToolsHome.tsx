@@ -135,7 +135,7 @@ export function ToolsHome() {
           {!address && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-10 h-10 inline-block" />
-              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+              <div style={{ color: "var(--fg-dim)", marginTop: 8 }}>
                 Подключите кошелёк, чтобы увидеть инвентарь
               </div>
             </div>
@@ -143,7 +143,7 @@ export function ToolsHome() {
           {address && tools === null && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
-              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+              <div style={{ color: "var(--fg-dim)", marginTop: 8 }}>
                 {loading
                   ? "Читаем инструменты…"
                   : "Инструменты недоступны из сети — не удалось прочитать стойку"}
@@ -153,7 +153,7 @@ export function ToolsHome() {
           {address && tools !== null && tools.length === 0 && (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
               <ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-10 h-10 inline-block" />
-              <div style={{ color: "var(--straw)", marginTop: 8 }}>
+              <div style={{ color: "var(--fg-dim)", marginTop: 8 }}>
                 Инструментов пока нет — откройте первую капсулу дропа
               </div>
             </div>

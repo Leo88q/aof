@@ -103,7 +103,7 @@ export function PacksPage() {
       flash("✅ Оплачено. Оракул Switchboard раскрывает результат…", 8000);
       watch(resp.packCommit);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
+      flash(`${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(null);
     }
@@ -116,10 +116,10 @@ export function PacksPage() {
       const resp: any = await api.packs.reveal({ user: address, packCommit });
       const r = await handleTxResponse(resp);
       if (!r.success) throw new Error(r.error || "Транзакция не выполнена");
-      flash(resp.phase === "refundable" ? "✅ Возврат отправлен" : "✅ Результат раскрыт вашей транзакцией", 6000);
+      flash(resp.phase === "refundable" ? "Возврат отправлен" : "Результат раскрыт вашей транзакцией", 6000);
       watch(packCommit);
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
+      flash(`${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(null);
     }

@@ -1,46 +1,21 @@
 import { ProgressRing } from "../ProgressRing";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { fetchWeatherSnapshot, forecastFromDayId, weatherEffectLabel, type WeatherSnapshot, type ForecastDay } from "../../lib/weather";
+import {
+  SEASON_ICONS,
+  SEASON_LABELS,
+  WEATHER_ICONS,
+  WEATHER_LABELS,
+  fetchWeatherSnapshot,
+  forecastFromDayId,
+  weatherEffectLabel,
+  type ForecastDay,
+  type WeatherSnapshot,
+} from "../../lib/weather";
 import { Card } from "./Card";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../visual/ResourceGlyph";
 
-/**
- * On-chain weather states -> scene artwork. The art is named after the
- * economy effect (Nominal / Surge / Blackout / Frenzy), not after the
- * weather word, so the mapping follows WellPanel's rate table:
- * drought = Blackout (rate 0), sunny = Nominal, rain = Surge, festival = Frenzy.
- */
-const WEATHER_ICONS: Record<string, string> = {
-  sunny: UI_ICONS.weatherNominal,
-  rain: UI_ICONS.weatherSurge,
-  drought: UI_ICONS.weatherBlackout,
-  festival: UI_ICONS.weatherFrenzy,
-  harvest_festival: UI_ICONS.weatherFrenzy,
-};
-
-const SEASON_ICONS: Record<string, string> = {
-  spring: UI_ICONS.epochInit,
-  summer: UI_ICONS.epochTrain,
-  autumn: UI_ICONS.epochTune,
-  winter: UI_ICONS.epochInfer,
-};
-
-const WEATHER_LABELS: Record<string, string> = {
-  sunny: "Номинал",
-  rain: "Скачок",
-  drought: "Блэкаут",
-  festival: "Френзи",
-  harvest_festival: "Френзи",
-};
-
-const SEASON_LABELS: Record<string, string> = {
-  spring: "Инициализация",
-  summer: "Обучение",
-  autumn: "Дообучение",
-  winter: "Инференс",
-};
 
 
 export function WeatherWidget({ compact = false }: { compact?: boolean }) {

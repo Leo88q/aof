@@ -55,8 +55,13 @@ r.get("/:user", async (req, res) => {
           ? { limit: 999, fullOptions: true }
           : { limit: 1, fullOptions: false },
         skipAdsInQuests: isVip,
-        energyCap: isVip ? 30 : 20,
-        energyRegenMinutes: isVip ? 8 : 10,
+        // Запас и возврат энергии заданы цепью (ENERGY_CAP = 20, +1 за 30 минут)
+        // и от пропуска не зависят: расширенный запас остаётся планом, пока
+        // механики нет в aof-core. Отдаём факт и отдельно — план.
+        energyCap: 20,
+        energyCapPlanned: isVip ? 30 : null,
+        energyRegenMinutes: 30,
+        energyRegenMinutesPlanned: isVip ? 8 : null,
         feeDiscountPct: isVip ? 15 : 0,
       },
     });

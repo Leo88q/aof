@@ -61,11 +61,11 @@ export function DrumSpin() {
         if (s?.state === "settled") {
           if (poll.current) clearInterval(poll.current);
           setSpin({ state: "settled", prize: Number(s.prize), signature: s.signature });
-          flash(`🎉 Выигрыш: ${s.prize} MIND. Результат подтверждён в блокчейне.`, 8000);
+          flash(`Выигрыш: ${s.prize} MIND. Результат подтверждён в сети.`, 8000);
         } else if (s?.state === "refunded") {
           if (poll.current) clearInterval(poll.current);
           setSpin({ state: "refunded", amount: Number(s.amount) });
-          flash(`↩️ Оракул не ответил вовремя: ${s.amount} MIND возвращены.`, 8000);
+          flash(`Оракул не ответил вовремя: ${s.amount} MIND возвращены.`, 8000);
         }
       } catch {
         /* keep polling: the RPC may lag the confirmation */
@@ -84,7 +84,7 @@ export function DrumSpin() {
       flash("✅ Спин оплачен. Оракул Switchboard определяет приз…", 8000);
       watch();
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
+      flash(`${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(false);
     }
@@ -97,10 +97,10 @@ export function DrumSpin() {
       const resp: any = await api.drum.reveal({ user: address });
       const r = await handleTxResponse(resp);
       if (!r.success) throw new Error(r.error || "Действие не выполнено");
-      flash(resp.phase === "refundable" ? "✅ Возврат отправлен" : "✅ Приз раскрыт вашим подтверждением", 6000);
+      flash(resp.phase === "refundable" ? "Возврат отправлен" : "Приз раскрыт вашим подтверждением", 6000);
       watch(spin?.state === "pending" ? spin.startedAt : Date.now());
     } catch (e: any) {
-      flash(`❌ ${humanizeVrfError(String(e?.message || e))}`, 8000);
+      flash(`${humanizeVrfError(String(e?.message || e))}`, 8000);
     } finally {
       setBusy(false);
     }

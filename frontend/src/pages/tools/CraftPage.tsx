@@ -136,12 +136,12 @@ export function CraftPage() {
       const r = await handleTxResponse(resp);
       if (r.success && resp.mint) {
         setNewMint(resp.mint);
-        flash(`✅ Минт готов: ${shortAddr(resp.mint)}`);
+        flash(`Минт готов: ${shortAddr(resp.mint)}`);
       } else {
-        flash(`❌ ${r.error || "минт не вернулся"}`);
+        flash(`${r.error || "минт не вернулся"}`);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     } finally {
       setBusyPrep(false);
     }
@@ -155,7 +155,7 @@ export function CraftPage() {
     
     const requiredMints = ["wood", "stone", "food", "seeds", "water", "potato"];
     for (const res of requiredMints) {
-      if (!resMints[res]) return flash(`❌ В реестре ресурсов нет минта ${res.toUpperCase()}`);
+      if (!resMints[res]) return flash(`В реестре ресурсов нет минта ${res.toUpperCase()}`);
     }
     
     // Проверка баланса
@@ -163,7 +163,7 @@ export function CraftPage() {
       for (const res of requiredMints) {
         const needed = craftQuote[res] || 0;
         if (balances[res] < needed) {
-          return flash(`❌ Not enough ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
+          return flash(`❌ Не хватает ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
         }
       }
     }
@@ -185,7 +185,7 @@ export function CraftPage() {
         skrMint: resMints.skr,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Выкован ${RARITY_RU[targetRk]}: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Выкован ${RARITY_RU[targetRk]}: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         const q = craftQuote;
         if (q) {
@@ -197,7 +197,7 @@ export function CraftPage() {
         setTimeout(loadTools, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
@@ -334,7 +334,7 @@ export function CraftPage() {
                   </div>
                   {status !== "sufficient" && (
                     <p className="text-[10px] text-ember-400 mt-1">
-                      ⚠️ Not enough {RES_META[res].label}
+                      Не хватает {RES_META[res].label}
                     </p>
                   )}
                 </div>

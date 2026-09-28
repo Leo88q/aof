@@ -87,16 +87,16 @@ export function QuestsHome() {
     try {
       const resp = await api.quests.claim({ user: address, questId });
       if (resp.success) {
-        flash("🎉 Награда получена!");
+        flash("Награда получена — начислено в сети");
         setClaimedIds([...claimedIds, questId]);
         // Перезагружаем квесты
         const data = await api.quests.list(address);
         setQuests(data.quests || []);
       } else {
-        flash(`❌ ${resp.error}`);
+        flash(`${resp.error}`);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

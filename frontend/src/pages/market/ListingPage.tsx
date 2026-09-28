@@ -58,8 +58,8 @@ export function ListingPage() {
   }, [address]);
 
   async function buy(l: any) {
-    if (!address) return flash("❌ Connect your wallet first (кнопка вверху)");
-    if (!treasury) return flash("❌ Treasury config unavailable");
+    if (!address) return flash("Сначала подключите кошелёк — кнопка вверху");
+    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
     try {
       flash("Готовим покупку…");
       const intent: MarketplaceBuyIntent = Object.freeze({
@@ -70,48 +70,48 @@ export function ListingPage() {
       const { kind: _kind, ...request } = intent;
       const resp = await api.marketplace.buy(request);
       const r = await handleTxResponse(resp, intent);
-      flash(r.success ? `✅ Инструмент ваш: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Инструмент ваш: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function cancel(l: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     try {
       flash("Снимаем с продажи…");
       const resp = await api.marketplace.cancel({ seller: address, mint: l.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Лот снят: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Лот снят: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function createListing() {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     if (!selMint) return flash("❌ Выберите инструмент");
     try {
       const lamports = solToLamports(priceSol);
       flash("Выставляем на прилавок…");
       const resp = await api.marketplace.list({ seller: address, mint: selMint, priceLamports: String(lamports) });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Лот создан: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Лот создан: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         setFormOpen(false);
         setSelMint("");
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

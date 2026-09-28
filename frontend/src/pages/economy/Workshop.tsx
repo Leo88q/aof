@@ -116,9 +116,9 @@ export function Workshop() {
         outputMint,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Скрафчено: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Скрафчено: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
     } catch (e: any) {
-      flash(`❌ ${e?.response?.data?.error || e.message}`);
+      flash(`${e?.response?.data?.error || e.message}`);
     } finally {
       setBusy(false);
     }

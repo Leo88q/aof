@@ -61,7 +61,7 @@ export function AuctionPage() {
   }, [address]);
 
   async function bid(a: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     const lamports = Math.round(parseFloat(bids[a.mint] || "0") * 1e9);
     if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите сумму ставки в SOL");
     try {
@@ -70,16 +70,16 @@ export function AuctionPage() {
       flash("Ставим ставку…");
       const resp = await api.auction.bid({ bidder: address, mint: a.mint, amount: String(lamports), previousBidder: prev });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Ставка принята: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Ставка принята: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function settle(a: any) {
-    if (!address) return flash("❌ Connect your wallet first");
-    if (!treasury) return flash("❌ Treasury config unavailable");
+    if (!address) return flash("Сначала подключите кошелёк");
+    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
     const winner = a.highestBidder;
     if (!winner || winner === SYSTEM_KEY) return flash("❌ Ставок не было — завершать нечего");
     try {
@@ -91,15 +91,15 @@ export function AuctionPage() {
         caller: address, mint: a.mint, seller: a.seller, treasury, winnerToken,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Аукцион завершён: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Аукцион завершён: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function createAuction() {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     if (!selMint) return flash("❌ Выберите инструмент");
     const minBid = Math.round(parseFloat(minBidSol) * 1e9);
     const dur = Math.round(parseFloat(durationH) * 3600);
@@ -111,14 +111,14 @@ export function AuctionPage() {
         seller: address, mint: selMint, minBid: String(minBid), durationSeconds: String(dur),
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Аукцион создан: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Аукцион создан: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         setFormOpen(false);
         setSelMint("");
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

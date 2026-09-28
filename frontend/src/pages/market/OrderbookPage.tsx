@@ -57,7 +57,7 @@ export function OrderbookPage() {
     else setBook({ buy: [], sell: [] });
   }, [res, load]);
 
-  // Спрос (покупка) — семечки 🌱, предложение (продажа) — корзины 🧺 (предметный язык ТЗ §0)
+  // Спрос (покупка) — образцы, предложение (продажа) — партии: предметный язык без значков
   const bids = useMemo(
     () => [...book.buy].sort((a, b) => toNum(b.priceLamportsPerUnit) - toNum(a.priceLamportsPerUnit)),
     [book]
@@ -72,7 +72,7 @@ export function OrderbookPage() {
   }), [bids, asks]);
 
   async function place(side: "buy" | "sell") {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     if (!res.mint) return flash("❌ Ресурсы ещё не заведены в сети");
     const priceLam = Math.round(parseFloat(pricePerUnit) * 1e9);
     const amt = Math.round(parseFloat(amount) * 1e9);
@@ -86,35 +86,35 @@ export function OrderbookPage() {
       };
       const resp = side === "buy" ? await api.orderbook.placeBuy(body) : await api.orderbook.placeSell(body);
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Ордер размещён: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Ордер размещён: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         setFormOpen(null);
         setTimeout(() => load(res.mint), 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   async function cancel(o: any) {
-    if (!address) return flash("❌ Connect your wallet first");
+    if (!address) return flash("Сначала подключите кошелёк");
     try {
       flash("Отменяем ордер…");
       const resp = o.isBuy
         ? await api.orderbook.cancelBuy({ maker: address, mint: res.mint })
         : await api.orderbook.cancelSell({ maker: address, mint: res.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Ордер отменён: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Ордер отменён: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(() => load(res.mint), 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 
   // Permissionless-матчинг: если лучший спрос ≥ лучшего предложения — сводим
   async function match() {
-    if (!address) return flash("❌ Connect your wallet first");
-    if (!treasury) return flash("❌ Treasury config unavailable");
+    if (!address) return flash("Сначала подключите кошелёк");
+    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
     const bb = bids[0];
     const ba = asks[0];
     if (!bb || !ba) return flash("❌ Нет пары встречных ордеров");
@@ -127,10 +127,10 @@ export function OrderbookPage() {
         buyMaker: bb.maker, sellMaker: ba.maker, treasury,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Сведено: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Сведено: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) setTimeout(() => load(res.mint), 2500);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(`${e.message}`);
     }
   }
 

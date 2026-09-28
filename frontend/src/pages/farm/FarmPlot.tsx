@@ -89,13 +89,13 @@ export function FarmPlot() {
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `Готово: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
       if (r.success) {
         setSelected(null);
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`❌ ${e?.response?.data?.error || e.message}`);
+      flash(`${e?.response?.data?.error || e.message}`);
     } finally {
       setBusy(false);
     }

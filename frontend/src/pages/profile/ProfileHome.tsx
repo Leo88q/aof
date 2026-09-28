@@ -27,7 +27,7 @@ import { DailyRewardButton } from "../../components/DailyRewardButton";
 import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
 
 // Утилита: вычисление статуса "Ветеран/Поколение" на основе данных игрока
-function computeVeteranStatus(playerData: any): { title: string; generation: number; emoji: string; icon?: string } {
+function computeVeteranStatus(playerData: any): { title: string; generation: number; icon?: string } {
   // Поколение = количество ребёртов + 1
   const rebirths = playerData?.rebirthCount ?? playerData?.rebirths ?? 0;
   const generation = rebirths + 1;
@@ -37,32 +37,26 @@ function computeVeteranStatus(playerData: any): { title: string; generation: num
   const totalHarvests = playerData?.totalHarvests ?? 0;
   
   let title: string;
-  let emoji: string;
   let icon: string | undefined;
 
   if (generation >= 5 || totalDays >= 180) {
     title = "Легенда сети";
-    emoji = "👑";
     icon = UI_ICONS.rankLegend;
   } else if (generation >= 3 || totalDays >= 90) {
     title = "Ветеран сети";
-    emoji = "🎖️";
     icon = UI_ICONS.rankVeteran;
   } else if (generation >= 2 || totalDays >= 30) {
     title = "Опытный оператор";
-    emoji = "🌾";
     icon = UI_ICONS.rankExperienced;
   } else if (totalDays >= 7) {
     title = "Оператор";
-    emoji = "👨‍🌾";
     icon = UI_ICONS.rankOperator;
   } else {
     title = "Новичок";
-    emoji = "🌱";
     icon = UI_ICONS.rankNovice;
   }
 
-  return { title, generation, emoji, icon };
+  return { title, generation, icon };
 }
 
 // Утилита: вычисление значков (badges) на основе достижений
@@ -135,7 +129,8 @@ export function ProfileHome() {
             {veteranStatus?.icon ? (
               <img src={veteranStatus.icon} alt="" width={40} height={40} style={{ objectFit: "contain" }} />
             ) : (
-              <span style={{ fontSize: 26 }} aria-hidden="true">{veteranStatus?.emoji ?? "—"}</span>
+              /* Ранг показывается иконкой набора: смайл-подстановка убрана. */
+              <span className="fg-ro__value" aria-hidden="true">—</span>
             )}
           </div>
           <div className="min-w-0 flex-1">

@@ -75,13 +75,13 @@ export function InboxHome() {
         setClaimStatus("⏳ Награда отложена — попробуй заклеймить позже");
       } else {
         const r = await handleTxResponse(res);
-        setClaimStatus(r.success ? `✅ Награда получена: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+        setClaimStatus(r.success ? `Награда получена: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
         if (r.success) {
           setLetters((ls) => ls.map((l) => (l.id === letter.id ? { ...l, claimed: true } : l)));
         }
       }
     } catch (e: any) {
-      setClaimStatus(`❌ ${e.message}`);
+      setClaimStatus(`${e.message}`);
     }
   }
 
@@ -204,7 +204,7 @@ export function InboxHome() {
               )}
               {opened.claimed && (
                 <p className="w-full mt-4 py-3 rounded-2xl bg-soil-800 text-straw text-sm text-center">
-                  ✅ Награда получена
+                  Награда получена
                 </p>
               )}
             </motion.div>
