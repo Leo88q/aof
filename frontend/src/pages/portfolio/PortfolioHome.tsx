@@ -105,7 +105,7 @@ export function PortfolioHome() {
       <div className="p-4 pt-2 pb-24">
         <h1 className="text-2xl font-bold mb-4">Портфель</h1>
         <Card className="p-8 text-center">
-          <div className="text-parchment">Loading портфеля...</div>
+          <div className="text-parchment">Читаем портфель…</div>
         </Card>
       
       {/* VIP: Расширенная аналитика */}

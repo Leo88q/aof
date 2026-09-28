@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import { PublicKey } from "@solana/web3.js";
-import { createWalletAdapter } from "../lib/wallet";
 
 interface WalletState {
   address: string | null;
@@ -20,6 +18,9 @@ export const useWalletStore = create<WalletState>((set) => ({
   connect: async () => {
     set({ connecting: true });
     try {
+      // Лениво: lib/wallet тянет @solana/web3.js — в стартовый чанк он
+      // попадает только при реальном подключении игрока.
+      const { createWalletAdapter } = await import("../lib/wallet");
       const adapter = createWalletAdapter();
       if (!adapter.available) {
         throw new Error("Кошелёк не найден. Установите Phantom.");
@@ -38,6 +39,7 @@ export const useWalletStore = create<WalletState>((set) => ({
   },
 
   disconnect: async () => {
+    const { createWalletAdapter } = await import("../lib/wallet");
     const adapter = createWalletAdapter();
     await adapter.disconnect();
     set({ address: null, connected: false, walletName: "" });

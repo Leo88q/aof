@@ -101,7 +101,7 @@ export function SeasonCalendar() {
   if (loading) {
     return (
       <div className="p-8 text-center">
-        <div className="text-parchment">Loading календаря...</div>
+        <div className="text-parchment">Читаем календарь…</div>
       </div>
     );
   }

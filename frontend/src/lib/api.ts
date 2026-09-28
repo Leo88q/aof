@@ -1,4 +1,3 @@
-import { createWalletProof } from "./wallet";
 import { humanizeVrfError } from "./vrfErrors";
 import { humanizeApiError, isFailClosedCode } from "./availability";
 
@@ -159,6 +158,9 @@ async function post(path: string, body: Record<string, any> = {}): Promise<any> 
   if (proofRoute && !requestBody.walletProof) {
     const wallet = requestBody[proofRoute.field];
     if (typeof wallet === "string" && wallet.length > 0) {
+      // Динамический импорт: lib/wallet создаёт Connection(@solana/web3.js)
+      // на уровне модуля — шелл игры не должен тянуть его в первый чанк.
+      const { createWalletProof } = await import("./wallet");
       requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody, { method: "POST", target: path });
     }
   }
@@ -179,6 +181,7 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
   if (proofRoute && !requestBody.walletProof) {
     const wallet = requestBody[proofRoute.field];
     if (typeof wallet === "string" && wallet.length > 0) {
+      const { createWalletProof } = await import("./wallet");
       requestBody.walletProof = await createWalletProof(wallet, proofRoute.subject, requestBody, { method: "DELETE", target: path });
     }
   }

@@ -21,7 +21,8 @@ export function RepairPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [mints, setMints] = useState({ wood: "", stone: "" });
   const [amount, setAmount] = useState(1);
-  const [quote, setQuote] = useState<{ stone: number; wood: number } | null>(null);
+  // Ответ /repair-quote: {silicon, circuit, amount} (см. routes/tools.ts, [REBRAND] ex stone/wood).
+  const [quote, setQuote] = useState<{ silicon: number; circuit: number } | null>(null);
   const [receipt, setReceipt] = useState<React.ReactNode | null>(null);
   const [txStatus, flash] = useFlash();
   /**
@@ -65,7 +66,8 @@ export function RepairPage() {
   useEffect(() => {
     if (!tool || amt <= 0) { setQuote(null); return; }
     api.tools.repairQuote({ mint: tool.mint, amount: amt })
-      .then((q: any) => setQuote(q))
+      // Канон бэкенда — silicon/circuit; локальные имена не совпадали с ним (был NaN).
+      .then((q: any) => setQuote(q ? { silicon: Number(q.silicon) || 0, circuit: Number(q.circuit) || 0 } : null))
       .catch(() => setQuote(null));
   }, [tool?.mint, amt]);
 
@@ -78,16 +80,17 @@ export function RepairPage() {
     const q = quote;
     try {
       flash("Чиним…");
+      // POST /repair принимает {user, mint, amount}: адреса минтов программа
+      // читает сама из Config, caller-supplied адреса бэкенд не использует.
       const resp = await api.tools.repair({
         user: address, mint: tool.mint,
-        stoneMint: mints.stone, woodMint: mints.wood,
         amount: amt,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
         flash(`✅ Отремонтировано (+${amt}): ${r.signature?.slice(0, 10)}…`);
         setReceipt(
-          <>Списано: {fmtNum((q?.stone ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.wood ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
+          <>Списано: {fmtNum((q?.silicon ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("SILICON")} alt="" className="inline-block w-3.5 h-3.5" /> + {fmtNum((q?.circuit ?? 0) / D9)} <ResourceGlyph icon={resourceIcon("CIRCUIT")} alt="" className="inline-block w-3.5 h-3.5" /></>
         );
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setTimeout(loadTools, 2500);
@@ -202,11 +205,11 @@ export function RepairPage() {
                 {quote ? (
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div>
-                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.stone / D9)}</p>
+                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.silicon / D9)}</p>
                       <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("SILICON") || ""} alt="" className="w-3.5 h-3.5" /> Кремний</p>
                     </div>
                     <div>
-                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.wood / D9)}</p>
+                      <p className="text-parchment font-bold text-sm tabular-nums">{fmtNum(quote.circuit / D9)}</p>
                       <p className="text-straw text-[10px] inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-3.5 h-3.5" /> Схема</p>
                     </div>
                   </div>
