@@ -1,3 +1,4 @@
+import { functionalStorage } from "../../legal/consent";
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Section } from '../ui/Components';
@@ -173,14 +174,14 @@ const badgeDefs = [
 ];
 function readJournal(): { visits: string[]; badges: string[] } {
   try {
-    const raw = localStorage.getItem(JKEY);
+    const raw = functionalStorage.getItem(JKEY);
     if (!raw) return { visits: [], badges: [] };
     const v = JSON.parse(raw);
     return { visits: Array.isArray(v.visits) ? v.visits : [], badges: Array.isArray(v.badges) ? v.badges : [] };
   } catch { return { visits: [], badges: [] }; }
 }
 function writeJournal(j: { visits: string[]; badges: string[] }) {
-  try { localStorage.setItem(JKEY, JSON.stringify(j)); } catch { /* private mode */ }
+  try { functionalStorage.setItem(JKEY, JSON.stringify(j)); } catch { /* private mode */ }
 }
 function JournalBoard() {
   const [j, setJ] = useState(readJournal);
@@ -205,9 +206,14 @@ function JournalBoard() {
         return next;
       });
     };
+    const refreshPrivacy = () => setJ(readJournal());
+    window.addEventListener('nf:privacy-change', refreshPrivacy);
+    window.addEventListener('storage', refreshPrivacy);
     window.addEventListener('aof:visit', onVisit);
     window.addEventListener('aof:badge', onBadge);
     return () => {
+      window.removeEventListener('nf:privacy-change', refreshPrivacy);
+      window.removeEventListener('storage', refreshPrivacy);
       window.removeEventListener('aof:visit', onVisit);
       window.removeEventListener('aof:badge', onBadge);
     };

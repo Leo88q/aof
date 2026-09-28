@@ -1,5 +1,6 @@
 import { Toast } from "./components/ui/Toast";
 import React from "react";
+import { Link } from "react-router-dom";
 import { NavProvider } from "./nav/NavContext";
 import { TabPager } from "./nav/TabPager";
 import { TabBar } from "./nav/TabBar";
@@ -43,6 +44,9 @@ export default function App() {
       <NavProvider tabs={["farm", "tools", "economy", "market", "quests", "profile"]} roots={ROOTS}>
         <div className="app-shell">
           <SceneBackdrop />
+          <nav aria-label="Безопасность и документы" className="legal-area" style={{ position: "relative", zIndex: 5, padding: "8px 16px" }}>
+            <Link to="/legal/terms">Условия</Link> · <Link to="/legal/privacy">Конфиденциальность</Link> · <Link to="/legal/cookies">Cookies</Link>
+          </nav>
         <Toast />
           <TabPager />
           <TabBar />
