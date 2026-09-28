@@ -5,7 +5,7 @@ export function ProgressRing({
   max,
   size = 120,
   stroke = 12,
-  color = "#FFD700",
+  color = "#E0708A",
   label,
   sub,
 }: {

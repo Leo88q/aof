@@ -9,11 +9,11 @@ interface TrustRingProps {
 // Метафора роста модели: нейрон → сеть → сигнал → сингулярность
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 const tierMeta: Record<number, { icon: string; label: string; color: string }> = {
-  1: { icon: resourceIcon("NEURON") || "", label: "Нейрон", color: "#00E5A0" },
-  2: { icon: UI_ICONS.friends, label: "Сеть", color: "#00C488" },
-  3: { icon: resourceIcon("SIGNAL") || "", label: "Сигнал", color: "#FFD700" },
-  4: { icon: resourceIcon("MODEL") || "", label: "Модель", color: "#FFD700" },
-  5: { icon: UI_ICONS.rewardCore, label: "Сингулярность", color: "#9B59FF" },
+  1: { icon: resourceIcon("NEURON") || "", label: "Нейрон", color: "#5FD3A8" },
+  2: { icon: UI_ICONS.friends, label: "Сеть", color: "#5FD3A8" },
+  3: { icon: resourceIcon("SIGNAL") || "", label: "Сигнал", color: "#E0708A" },
+  4: { icon: resourceIcon("MODEL") || "", label: "Модель", color: "#E0708A" },
+  5: { icon: UI_ICONS.rewardCore, label: "Сингулярность", color: "#A99BEC" },
 };
 
 export function TrustRing({ score, tier, size = 120 }: TrustRingProps) {
@@ -32,7 +32,7 @@ export function TrustRing({ score, tier, size = 120 }: TrustRingProps) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#1A1A30"
+          stroke="#12161A"
           strokeWidth="6"
         />
         {/* Прогресс */}

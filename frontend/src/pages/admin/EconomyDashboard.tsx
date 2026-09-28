@@ -153,7 +153,7 @@ export function EconomyDashboard() {
                   max={20}
                   size={40}
                   stroke={4}
-                  color={latest.inflation24h > 10 ? "#FF3366" : latest.inflation24h > 5 ? "#00D4FF" : "#00E5A0"}
+                  color={latest.inflation24h > 10 ? "#E2685F" : latest.inflation24h > 5 ? "#5FC9DA" : "#5FD3A8"}
                   label={`${latest.inflation24h.toFixed(1)}%`}
                 />
               </div>

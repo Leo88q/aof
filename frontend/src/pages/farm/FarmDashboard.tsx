@@ -7,6 +7,7 @@ import { api } from "../../lib/api";
 import { fetchWeatherSnapshot } from "../../lib/weather";
 import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
+import { Key } from "../../ui/forge/kit";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { FarmPlot } from "./FarmPlot";
 import { WeatherWidget } from "../../components/ui/WeatherWidget";
@@ -23,8 +24,9 @@ import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
 import { resourceIcon, UI_ICONS, toolPlate } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
-import { LabResourcePanel, LabStateRow } from "../../components/farm/LabPanels";
+import { LabHero } from "../../components/farm/LabHero";
 import { buildingFor } from "../../lib/buildings";
+import { PlateGrid } from "../../ui/forge/devices";
 
 export function FarmDashboard() {
   const walletAddr = useWalletStr();
@@ -98,6 +100,18 @@ export function FarmDashboard() {
     );
   }
 
+  // К7 · микропланшет участка: 48 лунок-мест, занятые берутся из реального
+  // списка инструментов (/query/my-tools). Ничего не выдумываем: если список
+  // неизвестен, прибор не рисуется вовсе — экран скажет об этом словами.
+  const PLATE_COLS = 8;
+  const plateWells = (staked ?? []).slice(0, 48).map((t: any, i: number) => ({
+    r: Math.floor(i / PLATE_COLS),
+    c: i % PLATE_COLS,
+    state: (t?.isMining || t?.mining ? "g" : "q") as "g" | "q",
+    level: t?.isMining || t?.mining ? 1 : undefined,
+    title: buildingFor(t.toolType)?.name || t.toolType || "инструмент",
+  }));
+
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
     { key: "dashboard", label: "Обзор", icon: UI_ICONS.labOverview },
     { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
@@ -107,66 +121,28 @@ export function FarmDashboard() {
   ];
 
   return (
-    <div className="p-4 pt-6 pb-24">
+    <div className="px-4 pt-5">
       {/* Заголовок: сначала титул на всю ширину, затем ряд действий.
           Раньше титул, три кнопки и погодный чип делили одну строку и на 360–390px
           распирали её до 440px: чип уезжал за правый край экрана. */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <ResourceGlyph icon={UI_ICONS.menuLab} alt="" className="w-6 h-6 shrink-0" />
-          <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight text-center">
-            Нейро-лаборатория
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => push("farm", "drum", (<><NavHeader title="Квантовый барабан" tabKey="farm" /><DrumSpin /></>))}
-            className="w-10 h-10 shrink-0 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center hover:bg-soil-700 transition"
-            title="Квантовый барабан"
-            aria-label="Квантовый барабан"
-          >
-            <img src={UI_ICONS.drum} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
-          </button>
-          <button
-            onClick={() => push("farm", "lottery", (<><NavHeader title="Лотерея" tabKey="farm" /><LotteryPage /></>))}
-            className="w-10 h-10 shrink-0 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center hover:bg-soil-700 transition"
-            title="Лотерея"
-            aria-label="Лотерея"
-          >
-            <img src={UI_ICONS.lottery} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
-          </button>
-          <button
-            onClick={() => push("farm", "exploration", (<><NavHeader title="Экспедиция" tabKey="farm" /><ExplorationPage /></>))}
-            className="w-10 h-10 shrink-0 rounded-xl bg-soil-800 border border-straw/20 flex items-center justify-center hover:bg-soil-700 transition"
-            title="Экспедиция"
-            aria-label="Экспедиция"
-          >
-            <img src={UI_ICONS.expedition} alt="" width={22} height={22} style={{ objectFit: "contain", display: "block" }} />
-          </button>
-          <div className="ml-auto min-w-0 flex-1 flex justify-end">
-            <WeatherWidget compact />
-          </div>
-        </div>
-      </motion.div>
-
       {/* Подвкладки: на узких экранах переносятся в две строки, ничего не прячем */}
-      <div className="flex flex-wrap gap-1 bg-soil-800/50 p-1 rounded-lg mb-4">
+      <div className="sub-tabs mb-4">
         {subTabs.map((t) => (
           <button
             key={t.key}
+            type="button"
             onClick={() => setSubTab(t.key)}
-            className={`flex-1 basis-[30%] min-w-0 px-2 py-1.5 rounded-md text-[11px] font-bold transition ${
-              subTab === t.key
-                ? "bg-sprout-600 text-parchment"
-                : "text-straw hover:bg-soil-700"
-            }`}
+            className={"sub-tab-btn" + (subTab === t.key ? " active" : "")}
+            aria-current={subTab === t.key ? "page" : undefined}
           >
             {t.icon.startsWith("/") ? (
-              <img src={t.icon} alt="" className="inline-block w-4 h-4 object-contain align-text-bottom mr-1" />
+              <>
+                <img src={t.icon} alt="" className="sub-tab-icon" width={15} height={15} style={{ objectFit: "contain" }} />
+                {t.label}
+              </>
             ) : (
-              <span>{t.icon} </span>
+              t.label
             )}
-            <span className="align-text-bottom">{t.label}</span>
           </button>
         ))}
       </div>
@@ -176,51 +152,76 @@ export function FarmDashboard() {
         <>
           <ActiveBuffs />
 
-          <LabResourcePanel owner={walletAddr} refreshKey={refreshKey} />
-
-          <LabStateRow owner={walletAddr} refreshKey={refreshKey} energy={energy} weather={weather} />
+          <LabHero
+            owner={walletAddr}
+            refreshKey={refreshKey}
+            energy={energy}
+            weather={weather}
+            staked={staked}
+            toolsFailed={toolsFailed}
+            actions={
+              <>
+                <Key onClick={() => push("farm", "exploration", (<><NavHeader title="Экспедиция" tabKey="farm" /><ExplorationPage /></>))}>
+                  Экспедиция
+                </Key>
+                <Key onClick={() => push("farm", "drum", (<><NavHeader title="Квантовый барабан" tabKey="farm" /><DrumSpin /></>))}>
+                  Барабан
+                </Key>
+                <Key onClick={() => push("farm", "lottery", (<><NavHeader title="Лотерея" tabKey="farm" /><LotteryPage /></>))}>
+                  Лотерея
+                </Key>
+                <WeatherWidget compact />
+              </>
+            }
+          />
 
           <Card className="mb-4" onClick={() => push("farm", "farm", <FarmPlot />)}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-parchment">Твоя лаборатория →</h3>
+              <h3 className="text-sm font-semibold text-parchment">Участок →</h3>
               <span className="text-[11px] text-straw">
                 {staked === null
                   ? toolsFailed ? "построек: —" : "построек: …"
                   : staked.length > 0 ? `построек: ${staked.length}` : "построек нет"}
               </span>
             </div>
-            <div className="aspect-[16/9] bg-gradient-to-br from-wheat-800/60 via-soil-800 to-soil-850 rounded-2xl flex items-center justify-center relative overflow-hidden px-3">
-              {staked === null ? (
-                <p className="text-straw text-xs text-center px-4">
+            {staked === null ? (
+              <div className="fg-quiet text-center">
+                <p className="fg-note" style={{ margin: 0 }}>
                   {toolsFailed
                     ? "Не удалось прочитать инструменты из канонической сети — постройки неизвестны."
                     : "Читаем инструменты…"}
                 </p>
-              ) : staked.length > 0 ? (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {staked.slice(0, 6).map((t: any) => (
-                    <div key={t.mint || t.toolType} className="flex flex-col items-center gap-1 w-[68px]">
-                      <ResourceGlyph icon={buildingFor(t.toolType)?.icon} alt={buildingFor(t.toolType)?.name || ""} className="w-9 h-9" />
-                      <span className="text-[9.5px] leading-tight text-straw text-center line-clamp-2">
-                        {buildingFor(t.toolType)?.name || t.toolType}
-                      </span>
-                    </div>
-                  ))}
+              </div>
+            ) : staked.length > 0 ? (
+              /* К7 · микропланшет: каждая лунка — место в стойке. Лунка со
+                 свечением занята работающим инструментом, контурная — тем, что
+                 просто стоит в стойке. Пустые лунки участка — это места. */
+              <>
+                <PlateGrid
+                  rows={6}
+                  cols={8}
+                  wells={plateWells}
+                  onWell={(w) => push("farm", "farm", <FarmPlot />)}
+                />
+                <div className="plate-legend">
+                  <span><i className="lg-g" /> в работе</span>
+                  <span><i className="lg-q" /> в стойке</span>
+                  <span><i className="lg-empty" /> место свободно</span>
                 </div>
-              ) : (
-                <div className="text-center">
-                  <span className="flex items-center justify-center gap-2">
-                    <ResourceGlyph icon={buildingFor("plasma_cutter")?.icon} alt="" className="w-9 h-9" />
-                    <ResourceGlyph icon={buildingFor("silicon_extractor")?.icon} alt="" className="w-9 h-9" />
-                    <ResourceGlyph icon={buildingFor("data_harvester")?.icon} alt="" className="w-9 h-9" />
-                    <ResourceGlyph icon={buildingFor("quantum_transmitter")?.icon} alt="" className="w-9 h-9" />
-                  </span>
-                  <p className="text-straw text-xs mt-2">
-                    Поставь инструмент в стойку — на участке появится постройка
-                  </p>
-                </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="text-center">
+                <span className="flex items-center justify-center gap-2">
+                  <ResourceGlyph icon={buildingFor("plasma_cutter")?.icon} alt="" className="w-9 h-9" />
+                  <ResourceGlyph icon={buildingFor("silicon_extractor")?.icon} alt="" className="w-9 h-9" />
+                  <ResourceGlyph icon={buildingFor("data_harvester")?.icon} alt="" className="w-9 h-9" />
+                  <ResourceGlyph icon={buildingFor("quantum_transmitter")?.icon} alt="" className="w-9 h-9" />
+                </span>
+                <p className="text-straw text-xs mt-2">
+                  Поставь инструмент в стойку — на участке появится постройка
+                </p>
+              </div>
+            )}
           </Card>
 
           <div className="grid grid-cols-2 gap-2 mb-4">
@@ -239,7 +240,7 @@ export function FarmDashboard() {
           </div>
 
           <Card>
-            <h3 className="text-sm font-semibold text-parchment mb-3">События</h3>
+            <h3 className="text-sm font-semibold text-parchment mb-3">Сводка смены</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-3 text-sm">
                 <ResourceGlyph icon={resourceIcon("neuron") || ""} alt="" className="w-5 h-5" />

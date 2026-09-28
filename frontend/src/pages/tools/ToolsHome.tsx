@@ -11,6 +11,8 @@ import { CraftPage } from "./CraftPage";
 import { RepairPage } from "./RepairPage";
 import { CollectionPage } from "./CollectionPage";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
+import { MixerStrips } from "../../ui/forge/devices";
 
 export function ToolsHome() {
   const { push } = useNav();
@@ -65,6 +67,39 @@ export function ToolsHome() {
             onClick={() => go("collection", <CollectionPage />, "Коллекция")} />
         </div>
       </Section>
+
+      {address && tools !== null && tools.length > 0 && (
+        /* К5 · пульт: каждый канал — инструмент. Фейдер показывает остаток
+           прочности (0…20 из ToolMiningCard), M — работает, S — стоит в стойке.
+           Мёртвых каналов нет: список приходит из /query/my-tools. */
+        <div className="content-pad" style={{ marginBottom: 12 }}>
+          <Panel
+            tier="panel"
+            device="mix"
+            id={<Sticker>СТОЙКА · {tools.length}</Sticker>}
+            meta="ПУЛЬТ"
+            title="Пульт мастерской"
+            sub="прочность и режим каналов"
+          >
+            <MixerStrips
+              maxHours={20}
+              channels={tools.slice(0, 8).map((tool: any) => ({
+                key: tool.mint,
+                name: tool.toolType || "инструмент",
+                load: Number.isFinite(Number(tool.durability)) ? Number(tool.durability) / 20 : null,
+                hours: Number.isFinite(Number(tool.durability)) ? Number(tool.durability) : null,
+                active: !!(tool.isMining || tool.mining),
+              }))}
+            />
+            <div style={{ marginTop: 14 }}>
+              <Readouts>
+                <Readout label="В работе" value={String(tools.filter((t: any) => t.isMining || t.mining).length)} hint="каналы с включённым M" />
+                <Readout label="В стойке" value={String(tools.length)} hint="всего инструментов" />
+              </Readouts>
+            </div>
+          </Panel>
+        </div>
+      )}
 
       <Section label="Ваши инструменты">
         <div className="content-pad">

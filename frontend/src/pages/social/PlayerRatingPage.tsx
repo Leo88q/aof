@@ -73,7 +73,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
             max={5}
             size={120}
             stroke={10}
-            color={data.average >= 4 ? "#00E5A0" : data.average >= 3 ? "#00D4FF" : "#FF3366"}
+            color={data.average >= 4 ? "#5FD3A8" : data.average >= 3 ? "#5FC9DA" : "#E2685F"}
             label={data.average.toFixed(1)}
             sub={UI_ICONS.rewardStar}
           />

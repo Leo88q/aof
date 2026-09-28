@@ -159,7 +159,7 @@ export function QuestsHome() {
 
                     <LiquidBar
                       level={quest.pct}
-                      color={quest.claimable ? "#FFD700" : "#00E5A0"}
+                      color={quest.claimable ? "#E0708A" : "#5FD3A8"}
                     />
 
                     <div className="flex justify-between items-center mt-3">

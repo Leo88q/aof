@@ -84,12 +84,12 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
 
   const state =
     durabilityPct > 75
-      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#00E5A0" }
+      ? { icon: (resourceIcon("neuron") || ""), label: "Рост", color: "#5FD3A8" }
       : durabilityPct > 40
-      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#00D4FF" }
+      ? { icon: UI_ICONS.adminGear, label: "Норма", color: "#5FC9DA" }
       : durabilityPct > 15
-      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#FF3366" }
-      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#FF3366" };
+      ? { icon: (resourceIcon("silicon") || ""), label: "Износ", color: "#E2685F" }
+      : { icon: UI_ICONS.noticeError, label: "Сломан", color: "#E2685F" };
 
   // Прогресс экстрактора: оставшееся время от общего срока текущей добычи
   const totalSec = Math.max(1, toNum(tool.lastMinedHours) * 3600 || hours * 3600);
@@ -107,7 +107,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       <div className="flex items-start gap-3">
         <ArtPlate src={icon} alt={tool.toolType || "Инструмент"} size={84} />
         <div className="flex-1 min-w-0 pt-1">
-          <div className="text-parchment font-semibold text-sm yb-text-glow-violet">{tool.toolType || "Инструмент"}</div>
+          <div className="text-parchment font-semibold text-sm">{tool.toolType || "Инструмент"}</div>
           <div className="text-xs font-medium mt-0.5" style={{ color: meta.color }}>{meta.label}</div>
           <div className="text-straw text-xs mt-1 font-mono opacity-60">{tool.mint?.slice(0, 4)}…{tool.mint?.slice(-4)}</div>
           <div className="mt-2 text-right">

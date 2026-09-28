@@ -1,9 +1,9 @@
 export const RARITY_META: Record<string, { color: string; label: string }> = {
-  common: { color: "#8890B0", label: "Base" },
-  uncommon: { color: "#00E5A0", label: "Enhanced" },
-  rare: { color: "#00D4FF", label: "Quantum" },
-  epic: { color: "#FFD700", label: "Singularity" },
-  legendary: { color: "#9B59FF", label: "Transcendent" },
+  common: { color: "#9AA7B4", label: "Base" },
+  uncommon: { color: "#5FD3A8", label: "Enhanced" },
+  rare: { color: "#5FC9DA", label: "Quantum" },
+  epic: { color: "#E0708A", label: "Singularity" },
+  legendary: { color: "#A99BEC", label: "Transcendent" },
 };
 
 export const TOOL_ICON: Record<string, string> = {

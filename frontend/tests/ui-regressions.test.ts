@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readdirSync } from "node:fs";
 
 /**
  * Регрессии интерфейса, найденные в аудите лаборатории 2026-09-28.
@@ -18,7 +19,7 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 test("лаборатория не показывает выдуманный SOL-газ", () => {
   const dash = read("src/pages/farm/FarmDashboard.tsx");
   assert.ok(!/value="12\.4"/.test(dash), "хардкод 12.4 вернулся в StatChip");
-  const panels = read("src/components/farm/LabPanels.tsx");
+  const panels = read("src/components/farm/LabHero.tsx");
   assert.match(panels, /api\.query\s*\.\s*gastank/, "газ-бак должен читаться из /query/gastank");
   assert.match(panels, /balanceMicros/, "баланс газа берётся из on-chain поля balanceMicros");
   assert.ok(!/rewardDaily[\s\S]{0,120}Стрик/.test(dash), "мёртвый стрик вернулся в обзор");
@@ -27,7 +28,7 @@ test("лаборатория не показывает выдуманный SOL-
 test("обзор лаборатории не дублирует ресурсы: один источник списка", () => {
   const dash = read("src/pages/farm/FarmDashboard.tsx");
   assert.ok(!/ResourceBar/.test(dash), "ResourceBar снова подключён в обзор");
-  const panels = read("src/components/farm/LabPanels.tsx");
+  const panels = read("src/components/farm/LabHero.tsx");
   for (const key of ["DATA", "CIRCUIT", "SILICON", "POWER", "NEURON", "SYNAPSE", "SIGNAL", "MODEL"]) {
     assert.ok(panels.includes(`"${key}"`), `в панели ресурсов нет ${key}`);
   }
@@ -42,23 +43,32 @@ test("шапка лаборатории не распирает экран: по
 });
 
 test("подписи таб-бара не налезают друг на друга", () => {
-  const css = read("src/theme/manor.css");
-  assert.match(css, /\.tab-btn \{[^}]*min-width: 0/, "tab-btn должен ужиматься");
-  assert.match(css, /\.tab-btn \.tab-label \{[^}]*text-overflow: ellipsis/, "подпись таба должна обрезаться");
-  assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,120}\.tab-btn \.tab-label/, "нет адаптивного размера подписи");
+  const css = read("src/theme/forge.css");
+  assert.match(css, /\.fg-dock__tab \{[^}]*min-width: 0/, "вкладка должна ужиматься");
+  assert.match(css, /\.fg-dock__tab \.tab-label \{[^}]*text-overflow: ellipsis/, "подпись вкладки должна обрезаться");
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,120}\.fg-dock__tab \.tab-label/, "нет адаптивного размера подписи");
+  const bar = read("src/nav/TabBar.tsx");
+  assert.match(bar, /className=\{\"fg-dock__tab\"/, "таб-бар снова не на классе капсулы");
 });
 
 test("подтабы экономики переносятся, а не обрезаются", () => {
-  const css = read("src/theme/manor.css");
-  assert.match(css, /\.sub-tabs \{ flex-wrap: wrap/, "подтабы должны переноситься по строкам");
+  const css = read("src/theme/forge.css");
+  assert.match(css, /\.sub-tabs \{[^}]*flex-wrap: wrap/, "подтабы должны переноситься по строкам");
 });
 
-test("декоративный canvas не создаёт горизонтальный скролл", () => {
-  const css = read("src/theme/manor.css");
-  assert.match(css, /#mn-fx-canvas \{[^}]*width: 100%/, "canvas должен иметь CSS-размер");
-  assert.match(css, /html \{ overflow-x: clip; \}/, "html должен клипать горизонтальный оверфлоу");
-  const fx = read("src/lib/manorFx.ts");
-  assert.match(fx, /Math\.min\(devicePixelRatio \|\| 1, 2\)/, "DPR не ограничен");
+test("декоративные эффекты отключены и не создают горизонтальный скролл", () => {
+  const css = read("src/theme/forge.css");
+  assert.match(css, /html \{[^}]*overflow-x: clip;/, "html должен клипать горизонтальный оверфлоу");
+  // Частицы/звук manorFx удалены вместе с легаси-слоями: канвас не создаётся.
+  assert.throws(() => read("src/lib/manorFx.ts"), "src/lib/manorFx.ts должен отсутствовать");
+  const main = read("src/main.tsx");
+  assert.ok(!main.includes("initManorFx"), "инициализация частиц вернулась в точку входа");
+  assert.ok(!main.includes("mn-fx-canvas"), "канвас эффектов вернулся в точку входа");
+  // Единственный слой представления: старые темы не должны вернуться.
+  for (const dead of ["src/theme/globals.css", "src/theme/manor.css", "src/theme/plates.css", "src/theme/circuit.css"]) {
+    assert.throws(() => read(dead), `${dead} должен отсутствовать: слой один — forge.css`);
+  }
+  assert.match(main, /import "\.\/theme\/forge\.css"/, "точка входа обязана подключать forge.css");
 });
 
 test("сбой одного экрана не роняет весь шелл", () => {
@@ -151,8 +161,8 @@ test("503 не выглядит как настоящие данные", () => {
 
   // Балансы: прочерк/сообщение вместо нулей (ResourceBar удалён как мёртвый —
   // балансы показывают живые панели).
-  const lab = read("src/components/farm/LabPanels.tsx");
-  assert.match(lab, /unavailable \? "—"/, "панель лаборатории показывает нули при 503");
+  const lab = read("src/components/farm/LabHero.tsx");
+  assert.match(lab, /unavailable \? "—"/, "стойка образцов показывает нули при 503");
   const overview = read("src/pages/economy/ResourceOverview.tsx");
   assert.match(overview, /Балансы ресурсов недоступны из канонической сети/,
     "обзор ресурсов обязан честно сообщать о недоступности вместо нулей");
@@ -314,4 +324,36 @@ test("code-split по вкладкам закреплён: ленивые чан
   assert.match(bar, /prefetchTab\(t\.key\)/, "наведение/тап на таб запускает prefetch");
   const pager = read("src/nav/TabPager.tsx");
   assert.match(pager, /live\[k\]/, "пейджер монтирует только «живые» вкладки");
+});
+
+test("палитра «Морозное стекло» живёт в одном файле", () => {
+  const forge = read("src/theme/forge.css");
+  assert.match(forge, /--fg-glow: #5FC9DA/, "акцент палитры A должен быть объявлен в forge.css");
+  assert.match(forge, /--fg-void: #0B0D11/, "фон палитры A должен быть объявлен в forge.css");
+  // Комментарии в конфиге объясняют, что именно удалено, — проверяем стек, а не прозу.
+  const tw = read("tailwind.config.js").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/Rajdhani|Orbitron|Playfair/.test(tw), "удалённые шрифты вернулись в конфиг Tailwind");
+  assert.match(tw, /aof: \{[\s\S]*var\(--fg-/, "утилиты aof.* должны читать токены, а не свои значения");
+  const fonts = read("src/ui/fonts.ts");
+  assert.match(fonts, /@fontsource\/manrope/, "Manrope не подключён");
+  assert.match(fonts, /@fontsource\/exo-2/, "Exo 2 не подключён");
+  const fontImports = fonts.split("\n").filter((line) => line.trim().startsWith("import")).join("\n");
+  assert.ok(!/playfair|inter\//i.test(fontImports), "удалённые шрифты вернулись в fonts.ts");
+
+  // Старый неон не должен вернуться ни в разметку, ни в данные инструментов.
+  const legacy = /#00D4FF|#00E5A0|#9B59FF|#FFD700|#FF3366|#FF3CAC/i;
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (rel === "src/site") continue; // сайт переводится своим слоем, см. site.css
+        walk(rel);
+      } else if (/\.(ts|tsx)$/.test(entry.name) && legacy.test(read(rel))) {
+        offenders.push(rel);
+      }
+    }
+  };
+  walk("src");
+  assert.deepEqual(offenders, [], `легаси-неон вернулся: ${offenders.join(", ")}`);
 });

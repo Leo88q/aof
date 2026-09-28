@@ -8,12 +8,14 @@ import { fetchWeatherSnapshot } from "../../lib/weather";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
+import { WeatherRecorder } from "../../components/farm/WeatherRecorder";
+import { forecastFromDayId } from "../../lib/weather";
 
 const WEATHER_RATES = {
-  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#FF3366" },
-  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#FFD700" },
-  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#4F7BFF" },
-  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#9B59FF" },
+  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#E2685F" },
+  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#E0708A" },
+  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#8FB3DE" },
+  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#A99BEC" },
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;
@@ -30,6 +32,8 @@ function weatherKey(value: any): WeatherKey | null {
 export function WellPanel() {
   const walletAddr = useWalletStr();
   const [weather, setWeather] = useState<any>(null);
+  // Снимок канонической погоды: им питаются и ставка колодца, и барограф.
+  const [snapshot, setSnapshot] = useState<any>(null);
   const [well, setWell] = useState<any>(null);
   const [waterMint, setWaterMint] = useState("");
   const [collecting, setCollecting] = useState(false);
@@ -41,14 +45,15 @@ export function WellPanel() {
     // /weather/current и /query/weather-state читают один и тот же WeatherState PDA.
     // Берём первый: он же питает чип нагрузки в шапке, поэтому панель и шапка
     // больше не показывают разные состояния одного аккаунта.
-    const [snapshot, wellState, mint] = await Promise.all([
+    const [snap, wellState, mint] = await Promise.all([
       fetchWeatherSnapshot(),
       api.query.wellState(walletAddr).catch(() => null),
       getMintAsync("POWER"),
     ]);
     // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
     // чип нагрузки в шапке всегда показывают одно и то же состояние.
-    setWeather(snapshot ? { weather: snapshot.weatherIndex } : null);
+    setSnapshot(snap ?? null);
+    setWeather(snap ? { weather: snap.weatherIndex } : null);
     setWell(wellState);
     setWaterMint(mint);
   }
@@ -99,7 +104,18 @@ export function WellPanel() {
     return <Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
   }
 
+  const forecast = typeof snapshot?.dayId === "number" ? forecastFromDayId(snapshot.dayId, 6) : [];
+
   return (
+    <>
+    <WeatherRecorder
+      dayId={typeof snapshot?.dayId === "number" ? snapshot.dayId : null}
+      weatherType={snapshot?.type ?? null}
+      rate={typeof snapshot?.ratePerHour === "number" ? `${snapshot.ratePerHour} / час` : null}
+      forecast={forecast}
+      season={snapshot?.season ?? null}
+      dayOfSeason={typeof snapshot?.dayOfSeason === "number" ? snapshot.dayOfSeason : null}
+    />
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3>
@@ -144,5 +160,6 @@ export function WellPanel() {
       {message && <p className="text-straw text-xs text-center"><NoticeMsg text={message} /></p>}
       <p className="text-straw text-[10px] text-center">Расчёт не является локальным балансом: итоговую эмиссию определяет aof-core.</p>
     </Card>
+    </>
   );
 }

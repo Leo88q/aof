@@ -28,8 +28,8 @@ export function ContentPage({ id }: { id: string }) {
   return (
     <>
       <PageTitle eyebrow={hero ? 'NeuroForge — Age of Intelligence' : page.group} title={page.title} lead={page.lead}>
-        <div className="nf-grid-bg" aria-hidden="true" />
-        <div className="nf-particles" aria-hidden="true">{Array.from({ length: 16 }).map((_, i) => <span key={i} />)}</div>
+        {/* Сетка дорожек и частицы удалены вместе с легаси-слоем:
+            фон героя — мягкая засветка прибора, см. site-title::before */}
       </PageTitle>
       {hero && (
         <div className="site-hero-actions">

@@ -74,17 +74,17 @@ export function PortfolioHome() {
 
     const chart = createChart(chartRef.current, {
       height: 200,
-      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#8890B0" },
+      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#9AA7B4" },
       grid: {
         vertLines: { color: "rgba(61, 50, 38, 0.3)" },
         horzLines: { color: "rgba(61, 50, 38, 0.3)" },
       },
-      timeScale: { timeVisible: false, borderColor: "#1A1A30" },
-      rightPriceScale: { borderColor: "#1A1A30" },
+      timeScale: { timeVisible: false, borderColor: "#12161A" },
+      rightPriceScale: { borderColor: "#12161A" },
     });
 
     const series = chart.addAreaSeries({
-      lineColor: "#FFD700",
+      lineColor: "#E0708A",
       topColor: "rgba(232, 163, 61, 0.3)",
       bottomColor: "rgba(232, 163, 61, 0.02)",
       lineWidth: 2,
@@ -205,7 +205,7 @@ export function PortfolioHome() {
                     max={total}
                     size={32}
                     stroke={3}
-                    color="#FFD700"
+                    color="#E0708A"
                     label={`${Math.round(pct)}%`}
                   />
                   <span className="text-straw text-xs flex-1">Доля в портфеле</span>

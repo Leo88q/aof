@@ -190,7 +190,7 @@ export function RepairPage() {
               <div className="mt-4 h-3 rounded-full bg-soil-800 overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
-                  style={{ width: `${(durability / MAX_DURABILITY) * 100}%`, background: critical ? "#FF3366" : durability <= 10 ? "#FFD700" : "#00E5A0" }}
+                  style={{ width: `${(durability / MAX_DURABILITY) * 100}%`, background: critical ? "#E2685F" : durability <= 10 ? "#E0708A" : "#5FD3A8" }}
                   animate={{ opacity: critical ? [1, 0.45, 1] : [1, 0.8, 1] }}
                   transition={{ repeat: Infinity, duration: critical ? 0.6 : 1.6 }}
                 />
