@@ -5,7 +5,7 @@ import { marketProgram, connection } from "../provider";
 import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import bs58 from "bs58";
-import { fetchAll, fetchOne, memcmpFilter } from "../lib/decode";
+import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } from "../lib/decode";
 import { pk } from "../lib/tx";
 import { auctionPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,

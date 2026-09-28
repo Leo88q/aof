@@ -147,3 +147,14 @@
 - L498 `eq→neq`: `const walk = (v: unknown): unknown => typeof v === "string" ? (wallets.has(v) ? "<redacted-wallet>" : v) : Array.isArray(v) ? v.map(walk) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, walk(x)])) : v;` → `const walk = (v: unknown): unknown => typeof v === "string" ? (wallets.has(v) ? "<redacted-wallet>" : v) : Array.isArray(v) ? v.map(walk) : v && typeof v !== "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, walk(x)])) : v;`
 - L508 `int+1`: `source: { program: programs[0] ?? "", event: "ChainTx", eventIndex: -1 },` → `source: { program: programs[0] ?? "", event: "ChainTx", eventIndex: -2 },`
 
+
+## Follow-up (same day, after new tests)
+
+| target | before | after | what was added |
+|---|---:|---:|---|
+| `aof_backend/src/lib/vrfSettlement.ts` | 38.3 % | **99.2 %** (127/128, all mutants run) | `scripts/vrfSettlementSelfTest.ts`: discovery per mechanic, lottery filter, reveal + refund account wiring checked against the committed IDL for all six mechanics, player self-settlement (409/403/phase), status |
+| `aof_backend/src/security/walletProofCore.ts` | 75.0 % | **100 %** | nesting-depth guard, non-object bodies |
+| `aof_backend/src/security/purchaseBounds.ts` | 62.1 % | 75.9 % | deadline window with a realistic clock (remaining survivors are regex-internal) |
+| `frontend/src/lib/txGuard.ts` | 48.9 % | 76.7 % (90 of 337 sampled) | `tests/txGuard.test.ts`: fee/spend/rent ceilings at the boundary, compute-budget layouts, prep-mint and ATA policies field by field, block lists, CPI programs from simulation logs, allowlist always enforced, fee payer / lookup tables. Remaining survivors are in `estimateTokenOutflows`, which is unreachable because the instruction policy already rejects every SPL transfer |
+| `frontend/src/lib/coreInstructions.ts` (generated) | 2.2 % | n/a | table is now compared row by row with the IDL in `security.test.ts` (discriminator, accounts, signer/actor slots, authority-only invariant); `claim_season_reward` and `init_lottery_round` were missing from the authority-only set, `winner`/`referred` from the actor set — fixed in the generator |
+| `aof_backend/src/lib/readCache.ts` (new) | — | tested by `scripts/readCacheSelfTest.ts` | single-flight + TTL cache in front of `/query/*` |

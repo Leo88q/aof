@@ -153,6 +153,16 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   const committed = Buffer.concat([disc("DrumCommitted"), k(1).toBuffer(), k(2).toBuffer(), u64(99)]);
   assert.equal(drumOutcomeFromLogs(logs(committed), "sig3", parser), "committed");
   assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program ${pid} success`], "sig4", parser), null);
+  // [nf-mutate] an unrelated event ahead of the outcome must be skipped, not
+  // reported as a fresh commit; the first drum event decides.
+  const u32 = (n: number) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+  const unlocked = Buffer.concat([disc("AchievementUnlocked"), k(1).toBuffer(), u32(3)]);
+  const both = [
+    `Program ${pid} invoke [1]`, `Program data: ${unlocked.toString("base64")}`, `Program data: ${refunded.toString("base64")}`,
+    `Program data: ${committed.toString("base64")}`, `Program ${pid} success`,
+  ];
+  assert.deepEqual(drumOutcomeFromLogs(both, "sig5", parser), { state: "refunded", amount: 5, signature: "sig5" });
+  assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program data: ${unlocked.toString("base64")}`, `Program ${pid} success`], "sig6", parser), null);
 }
 
 // ---- oracle selection: only eligible oracles, live-healthy first, load spread

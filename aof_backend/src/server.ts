@@ -216,7 +216,8 @@ app.get("/ready", async (_req, res) => {
     run("rpc", () => connection.getSlot("processed")),
   ]);
   const ok = Object.values(checks).every((c) => c.ok);
-  res.status(ok ? 200 : 503).json({ ok, checks });
+  const { queryCacheStats, QUERY_CACHE_TTL_MS } = await import("./lib/decode");
+  res.status(ok ? 200 : 503).json({ ok, checks, queryCache: { ttlMs: QUERY_CACHE_TTL_MS, ...queryCacheStats() } });
 });
 // Validate the actual cluster before any signing worker can start. URL names
 // are not proof of network identity (a custom RPC can point at any cluster).

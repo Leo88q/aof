@@ -54,8 +54,15 @@
       "id": "vrf-settlement",
       "file": "src/lib/vrfSettlement.ts",
       "cwd": "aof_backend",
-      "cmd": "npm run -s test:vrf",
-      "why": "Commit/reveal settlement of every randomised mechanic."
+      "cmd": "npm run -s test:vrf-settlement && npm run -s test:vrf",
+      "why": "Commit/reveal/refund account wiring of every randomised mechanic (offline test vs IDL + devnet probe)."
+    },
+    {
+      "id": "read-cache",
+      "file": "src/lib/readCache.ts",
+      "cwd": "aof_backend",
+      "cmd": "npm run -s test:read-cache",
+      "why": "Single-flight/TTL cache in front of /query/* RPC reads (anti-amplification)."
     },
     {
       "id": "admin-auth",
@@ -79,6 +86,27 @@
       "cwd": "watchtower",
       "cmd": "npm run -s test:events && npm run -s test:decoder",
       "why": "Wallet hashing / scrubbing before anything leaves the exporter."
+    },
+    {
+      "id": "tx-guard",
+      "file": "src/lib/txGuard.ts",
+      "cwd": "frontend",
+      "cmd": "npm run -s test:security",
+      "why": "Client-side drain protection: instruction policy, SOL/token outflow ceilings, simulation gate."
+    },
+    {
+      "id": "tx-intent",
+      "file": "src/lib/transactionIntent.ts",
+      "cwd": "frontend",
+      "cmd": "npm run -s test:security",
+      "why": "Binds what the player approved (accounts, price, deadline) to what gets signed."
+    },
+    {
+      "id": "core-instructions",
+      "file": "src/lib/coreInstructions.ts",
+      "cwd": "frontend",
+      "cmd": "npm run -s test:security",
+      "why": "Which core instructions a wallet may ever sign."
     },
     {
       "id": "core-economics",

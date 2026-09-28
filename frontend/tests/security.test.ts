@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction, MessageV0, ComputeBudgetProgram } from "@solana/web3.js";
 import { createApproveInstruction, createSetAuthorityInstruction, AuthorityType, createInitializeMintInstruction, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
@@ -233,6 +234,45 @@ test("core instruction table covers the committed IDL", () => {
   }
   assert.equal(new Set(CORE_INSTRUCTIONS.map((s) => s.discriminator.join(","))).size, CORE_INSTRUCTIONS.length,
     "discriminators must be unique");
+});
+
+test("core instruction table is byte-for-byte the committed IDL, and every operator-signed instruction is authority-only", () => {
+  // [nf-mutate 2026-09-28] a +1 in any discriminator byte, a dropped signer
+  // index or a flipped authorityOnly flag survived the old coverage test.
+  // The table is generated from this IDL (scripts/gen-core-instruction-table.py);
+  // here the generated rows are re-derived from the IDL and compared.
+  const idl = JSON.parse(readFileSync(new URL("../../aof_backend/src/idl/aof_core.json", import.meta.url), "utf8"));
+  const ACTOR = new Set(["user", "buyer", "seller", "maker", "caller", "cranker", "payer", "bidder", "recipient", "renter", "owner", "creator", "fulfiller", "winner", "referred"]);
+  // Signer slots that name a role, never a player. `caller` of emergency_stop is
+  // the guardian/admin (constraint in aof-core), `new_authority` accepts a rotation.
+  const PRIVILEGED = new Set(["authority", "operator", "guardian", "admin", "migration_authority", "new_authority"]);
+  const ROLE_ONLY_EXCEPTIONS = new Set(["emergency_stop"]);
+  assert.equal(CORE_INSTRUCTIONS.length, idl.instructions.length, "one row per IDL instruction");
+  for (const ix of idl.instructions) {
+    const spec = specOf(ix.name);
+    assert.deepEqual([...spec.discriminator], ix.discriminator, `${ix.name}: discriminator`);
+    assert.deepEqual([...spec.accounts], ix.accounts.map((a: any) => a.name), `${ix.name}: account names/order`);
+    assert.deepEqual([...spec.signerIndexes], ix.accounts.map((a: any, i: number) => (a.signer ? i : -1)).filter((i: number) => i >= 0), `${ix.name}: signer slots`);
+    assert.deepEqual([...spec.actorIndexes], ix.accounts.map((a: any, i: number) => (ACTOR.has(a.name) ? i : -1)).filter((i: number) => i >= 0), `${ix.name}: actor slots`);
+    const signers = ix.accounts.filter((a: any) => a.signer).map((a: any) => a.name);
+    const onlyPrivileged = signers.length > 0 && signers.every((n: string) => PRIVILEGED.has(n));
+    if (onlyPrivileged) assert.equal(spec.authorityOnly, true, `${ix.name} is signed only by ${signers.join("+")} and must be authority-only`);
+    if (spec.authorityOnly && !ROLE_ONLY_EXCEPTIONS.has(ix.name)) {
+      assert.ok(signers.some((n: string) => PRIVILEGED.has(n)), `${ix.name} is marked authority-only but has no privileged signer`);
+    }
+    if (!spec.authorityOnly && signers.length > 0) {
+      assert.ok(signers.some((n: string) => ACTOR.has(n)), `${ix.name}: a player-signable instruction must have a player signer slot (got ${signers.join("+")})`);
+    }
+  }
+  // The two the generator used to miss: operator-signed, sent by the backend (routes/season.ts, routes/lottery.ts).
+  assert.equal(specOf("claim_season_reward").authorityOnly, true);
+  assert.equal(specOf("init_lottery_round").authorityOnly, true);
+  // A player wallet presented with either must be refused.
+  for (const name of ["claim_season_reward", "init_lottery_round"]) {
+    const spec = specOf(name);
+    const keys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
+    assert.throws(() => validateCoreInstructions([ixFor(name, keys)], user.publicKey), /Authority-only/, name);
+  }
 });
 
 // ---------------------------------------------------------------------------
