@@ -80,7 +80,9 @@ const CATEGORIES = [
 export function ResourceOverview() {
   const { address } = useWalletStore();
   const [balances, setBalances] = useState<Record<string, number> | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Стартуем с true: до первого ответа игрок видит «читаем», а не ложное
+  // «недоступно» и тем более не нули.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!address) return;
@@ -103,7 +105,11 @@ export function ResourceOverview() {
   if (!balances) {
     return (
       <div className="economy-empty">
-        <p className="text-amber-400">Балансы ресурсов недоступны из канонической сети</p>
+        <p className={loading ? "text-straw" : "text-amber-400"}>
+          {loading
+            ? "Читаем балансы из канонической сети…"
+            : "Балансы ресурсов недоступны из канонической сети"}
+        </p>
       </div>
     );
   }

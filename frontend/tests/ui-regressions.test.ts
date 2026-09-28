@@ -149,10 +149,15 @@ test("503 не выглядит как настоящие данные", () => {
     "api.ts должен помечать 503 до очеловечивания текста, иначе UI не отличит сбой сети от закрытой механики");
   assert.match(api, /humanizeApiError/, "сырые коды бэкенда снова попадут игроку");
 
-  // Балансы: прочерк вместо нулей.
-  const bar = read("src/components/ui/ResourceBar.tsx");
-  assert.match(bar, /unavailable \? "—"/, "шапка снова показывает нули при 503");
-  assert.match(bar, /DataUnavailableNotice id="resource_balances"/, "нет объяснения прочерка");
+  // Балансы: прочерк/сообщение вместо нулей (ResourceBar удалён как мёртвый —
+  // балансы показывают живые панели).
+  const lab = read("src/components/farm/LabPanels.tsx");
+  assert.match(lab, /unavailable \? "—"/, "панель лаборатории показывает нули при 503");
+  const overview = read("src/pages/economy/ResourceOverview.tsx");
+  assert.match(overview, /Балансы ресурсов недоступны из канонической сети/,
+    "обзор ресурсов обязан честно сообщать о недоступности вместо нулей");
+  assert.match(overview, /Читаем балансы из канонической сети/,
+    "до первого ответа игрок должен видеть загрузку, а не ложную недоступность");
 
   // Ежедневная награда: мёртвая кнопка «Завтра» не возвращается.
   const daily = read("src/components/DailyRewardButton.tsx");
