@@ -108,3 +108,129 @@ test("участок показывает постройки, а не сырые
     assert.ok(buildings.includes(t), `нет постройки для ${t}`);
   }
 });
+
+test("погода читается из одного канонического источника во всех панелях", () => {
+  const weather = read("src/lib/weather.ts");
+  // Формула дня — зеркало aof-core/src/state.rs::weather_for_day.
+  const rust = read("../aof-core/src/state.rs");
+  assert.match(rust, /weather_for_day/, "нет weather_for_day в ядре — обновить lib/weather.ts");
+  const rustMultiplier = rust.match(/wrapping_mul\(0x([0-9A-Fa-f_]+)\)/);
+  assert.ok(rustMultiplier, "не найден множитель хеша дня в Rust");
+  const hex = rustMultiplier![1].replace(/_/g, "").toLowerCase();
+  assert.equal(hex, "9e3779b97f4a7c15", "множитель weather_for_day изменился — обновить зеркало в UI");
+  assert.match(weather, /0x9e3779b97f4a7c15n/, "зеркало множителя пропало из lib/weather.ts");
+  // Пороги 10/50/30/10 из Rust должны совпадать с зеркалом.
+  const rustBands = rust.match(/0\.\.=9[\s\S]{0,80}10\.\.=59[\s\S]{0,80}60\.\.=89/);
+  assert.ok(rustBands, "полосы распределения погоды изменились");
+  assert.match(weather, /bucket <= 9\) return 0/, "полоса блэкаута не совпадает с цепью");
+  assert.match(weather, /bucket <= 59\) return 1/, "полоса номинала не совпадает с цепью");
+  assert.match(weather, /bucket <= 89\) return 2/, "полоса скачка не совпадает с цепью");
+
+  // Шапка, обзор и колодец обязаны ходить через общий загрузчик.
+  for (const file of [
+    "src/components/ui/WeatherWidget.tsx",
+    "src/pages/farm/FarmDashboard.tsx",
+    "src/pages/farm/WellPanel.tsx",
+  ]) {
+    assert.match(read(file), /fetchWeatherSnapshot/, `${file} снова читает погоду по-своему`);
+    assert.ok(!/api\.weather\.current\(\)/.test(read(file)), `${file} дублирует прямой вызов /weather/current`);
+  }
+  assert.ok(!/api\.weather\.forecast/.test(read("src/components/ui/WeatherWidget.tsx")),
+    "прогноз снова берётся из закрытого /weather/forecast");
+  assert.match(read("src/components/ui/WeatherWidget.tsx"), /forecastFromDayId/,
+    "прогноз должен считаться из расписания дня");
+});
+
+test("503 не выглядит как настоящие данные", () => {
+  const availability = read("src/lib/availability.tsx");
+  assert.match(availability, /isFailClosedCode/, "нет проверки fail-closed кодов");
+  const api = read("src/lib/api.ts");
+  assert.match(api, /error\.failClosed = isFailClosedCode\(raw\)/,
+    "api.ts должен помечать 503 до очеловечивания текста, иначе UI не отличит сбой сети от закрытой механики");
+  assert.match(api, /humanizeApiError/, "сырые коды бэкенда снова попадут игроку");
+
+  // Балансы: прочерк вместо нулей.
+  const bar = read("src/components/ui/ResourceBar.tsx");
+  assert.match(bar, /unavailable \? "—"/, "шапка снова показывает нули при 503");
+  assert.match(bar, /DataUnavailableNotice id="resource_balances"/, "нет объяснения прочерка");
+
+  // Ежедневная награда: мёртвая кнопка «Завтра» не возвращается.
+  const daily = read("src/components/DailyRewardButton.tsx");
+  assert.match(daily, /kind: "disabled"/, "состояние «механика закрыта» пропало");
+  assert.match(daily, /DataUnavailableNotice id="daily_rewards"/, "нет честного сообщения вместо кнопки");
+  assert.ok(!/nextReward\.potato\b(?!\s*\?\?)/.test(daily), "легаси-поле potato снова используется напрямую");
+});
+
+test("ремонт проверяется до отрисовки кнопки", () => {
+  const repair = read("src/pages/tools/RepairPage.tsx");
+  assert.match(repair, /repairState/, "нет состояния готовности ремонта");
+  assert.match(repair, /api\.query\.config\(\)/, "готовность должна проверяться по Config, как в /tools/repair");
+  assert.match(repair, /FeatureDisabledNotice id="tools_repair"/, "нет объяснения, почему ремонт закрыт");
+  assert.match(repair, /disabled=\{repairState !== "ready"/, "кнопка ремонта снова активна при закрытой механике");
+  assert.ok(!/Durability/.test(repair), "английское «Durability» вернулось в русский интерфейс");
+  const notice = read("src/components/ui/FeatureDisabledNotice.tsx");
+  assert.match(notice, /tools_repair/, "список закрытых механик разошёлся с бэкендом");
+  assert.match(read("../aof_backend/src/routes/tools.ts"), /REPAIR_RESOURCES_NOT_CONFIGURED/,
+    "код REPAIR_RESOURCES_NOT_CONFIGURED исчез из бэкенда — проверить список механик");
+});
+
+test("эмодзи не выводятся текстом: плашки вместо символов", () => {
+  const notice = read("src/components/visual/NoticeMsg.tsx");
+  for (const emoji of ["↩️", "⏸️", "🔥"]) {
+    assert.ok(notice.includes(emoji), `нет маппинга для ${emoji}`);
+  }
+  for (const file of [
+    "src/components/DrumSpin.tsx",
+    "src/components/animations/RewardBurst.tsx",
+    "src/pages/quests/QuestsHome.tsx",
+    "src/pages/tools/CraftPage.tsx",
+    "src/pages/market/OfferPage.tsx",
+  ]) {
+    assert.ok(!/>(?:✅|🎉|❌|🏷️|🤝|💬|⚠️)</.test(read(file)),
+      `${file} снова рисует эмодзи как иконку`);
+  }
+});
+
+test("барабан удачи называет ресурс канонически", () => {
+  const drum = read("src/components/DrumSpin.tsx");
+  assert.ok(!/MASCOT/.test(drum), "легаси-термин MASCOT вернулся в интерфейс");
+  assert.match(drum, /resourceIcon\("MIND"\)/, "выигрыш должен показываться в MIND");
+  assert.ok(!/🔻/.test(drum), "эмодзи-стрелка вернулась на барабан");
+  // ↩️ допустим только как префикс flash-сообщения — его разбирает NoticeMsg.
+  assert.ok(!/>\s*↩️/.test(drum), "↩️ снова рисуется как символ, а не плашкой");
+});
+
+test("UI узнаёт реальные fail-closed коды бэкенда", () => {
+  const availability = read("src/lib/availability.tsx");
+  const literal = availability.match(/const FAIL_CLOSED_PATTERN =\s*\/(.+?)\//s);
+  assert.ok(literal, "не найден FAIL_CLOSED_PATTERN");
+  const pattern = new RegExp(literal![1]);
+  // Коды взяты из aof_backend/src/routes/* как есть — с суффиксами _UNTIL_...
+  for (const code of [
+    "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_POTATO_REWARD_IS_DEPLOYED",
+    "QUEST_PROGRESS_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
+    "REPAIR_RESOURCES_NOT_CONFIGURED",
+    "MINING_DISABLED_ONCHAIN",
+    "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER",
+    "ENERGY_SPEND_MUST_USE_CANONICAL_GAME_INSTRUCTION",
+    "LEGACY_REWARD_REQUIRES_RECONCILIATION",
+    "HTTP 503",
+  ]) {
+    assert.ok(pattern.test(code), `код ${code} не распознан как fail-closed`);
+  }
+  for (const text of ["Failed to fetch", "SwitchboardAccountNotFound", "HTTP 500"]) {
+    assert.ok(!pattern.test(text), `обычная ошибка «${text}» принята за закрытую механику`);
+  }
+});
+
+test("пути api.ts совпадают с монтированием роутов бэкенда", () => {
+  const api = read("src/lib/api.ts");
+  // Клиент звал /season/vip-status/:user, а роут живёт на /season/:user —
+  // из-за этого VIP-статус молча не находился.
+  assert.match(api, /vipStatus: \(user: string\) => get\(`\/season\/\$\{user\}`\)/,
+    "снова разошлись с r.get('/:user') в aof_backend/src/routes/vipStatus.ts");
+  const vip = read("../aof_backend/src/routes/vipStatus.ts");
+  assert.match(vip, /r\.get\("\/:user"/, "бэкенд переименовал роут vipStatus — обновить api.ts");
+  const server = read("../aof_backend/src/server.ts");
+  assert.match(server, /app\.use\("\/season", vipStatus\)/, "vipStatus больше не смонтирован на /season");
+});

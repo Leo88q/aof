@@ -1,7 +1,7 @@
 import { ProgressRing } from "../ProgressRing";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { api } from "../../lib/api";
+import { fetchWeatherSnapshot, forecastFromDayId, weatherEffectLabel, type WeatherSnapshot, type ForecastDay } from "../../lib/weather";
 import { Card } from "./Card";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../visual/ResourceGlyph";
@@ -42,53 +42,26 @@ const SEASON_LABELS: Record<string, string> = {
   winter: "Инференс",
 };
 
-interface WeatherData {
-  date: string;
-  type: string;
-  effect: string;
-  season: string;
-  seasonIndex: number;
-  dayOfSeason: number;
-  daysUntilNextSeason: number;
-  dayId: number;
-}
-
-interface ForecastDay {
-  date: string;
-  type: string;
-  effect: string;
-  season: string;
-  dayOfSeason: number;
-}
 
 export function WeatherWidget({ compact = false }: { compact?: boolean }) {
-  const [current, setCurrent] = useState<WeatherData | null>(null);
+  const [current, setCurrent] = useState<WeatherSnapshot | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      api.weather.current().catch(() => null),
-      api.weather.forecast().catch(() => null),
-    ])
-      .then(([currentData, forecastData]) => {
-        if (currentData && typeof currentData === "object" && typeof currentData.type === "string") {
-          setCurrent(currentData);
-        } else {
-          setCurrent(null);
-        }
-        if (forecastData && Array.isArray(forecastData.forecast)) {
-          setForecast(forecastData.forecast.filter((d: any) => d && typeof d.type === "string"));
-        } else {
-          setForecast([]);
-        }
-        setLoading(false);
+    let alive = true;
+    fetchWeatherSnapshot()
+      .then((snapshot) => {
+        if (!alive) return;
+        setCurrent(snapshot);
+        // Прогноз — следствие расписания дня (см. lib/weather.ts), а не
+        // отдельный офчейн-источник: /weather/forecast закрыт на бэкенде.
+        setForecast(snapshot ? forecastFromDayId(snapshot.dayId, 3) : []);
       })
-      .catch(() => {
-        setCurrent(null);
-        setForecast([]);
-        setLoading(false);
-      });
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   if (loading) {
@@ -161,7 +134,7 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
             <div className="text-parchment font-semibold capitalize">
               {WEATHER_LABELS[current.type || ""] || current.type || "—"}
             </div>
-            <div className="text-straw text-xs">{current.effect || ""}</div>
+            <div className="text-straw text-xs">{weatherEffectLabel(current.effect)}</div>
           </div>
         </div>
         <div className="text-right">
@@ -189,7 +162,7 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
       {/* Прогноз на 3 дня */}
       {Array.isArray(forecast) && forecast.length > 0 && (
         <div className="border-t border-straw/10 pt-3">
-          <div className="text-xs text-straw mb-2">Прогноз на 3 дня:</div>
+          <div className="text-xs text-straw mb-2">Прогноз на 3 дня · расписание дня из цепи:</div>
           <div className="grid grid-cols-3 gap-2">
             {forecast.map((day, i) => (
               <motion.div
@@ -199,9 +172,9 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
                 transition={{ delay: i * 0.1 }}
                 className="text-center p-2 bg-soil-700/50 rounded-lg"
               >
-                <img src={(day?.type && WEATHER_ICONS[day.type]) || UI_ICONS.weatherNominal} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
+                <img src={WEATHER_ICONS[day.type] || UI_ICONS.weatherNominal} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
                 <div className="text-xs text-straw capitalize">
-                  {day?.type ? (WEATHER_LABELS[day.type] || day.type.replace("_", " ")) : "—"}
+                  {WEATHER_LABELS[day.type] || day.type}
                 </div>
                 <div className="text-xs text-straw/60 mt-1">
                   День {((day?.dayOfSeason ?? 0) + 1)}

@@ -12,6 +12,7 @@ import {
 import { loadMints } from "../../lib/mints";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 // Ресурсы — SPL 9 decimals: 1 единица = 1e9 базовых
 const fmtRes = (v: any) => (toNum(v) / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -177,7 +178,7 @@ export function OrderbookPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -273,7 +274,7 @@ export function OrderbookPage() {
               {formOpen === "buy" ? "Лимитный ордер на покупку" : "Лимитный ордер на продажу"}
             </div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-straw text-xs w-28">Price/ед., ◎</span>
+              <span className="text-straw text-xs w-28">Цена/ед., ◎</span>
               <input type="number" step="0.000001" min="0" value={pricePerUnit} onChange={(e) => setPricePerUnit(e.target.value)}
                 className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
             </div>

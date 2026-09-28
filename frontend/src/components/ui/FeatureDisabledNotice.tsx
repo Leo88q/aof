@@ -1,32 +1,50 @@
 /**
- * Single source of truth for mechanics that are fail-closed in this release.
+ * Единый список механик, закрытых в этом релизе.
  *
- * [F-06] Packs, forge, lottery, exploration, random reroll and the drum left
- * this list: they settle through the program-owned Switchboard On-Demand pool
- * (docs/VRF_SWITCHBOARD.md) and are live in every layer.
+ * [F-06] Паки, кузница, лотерея, экспедиции, реролл и барабан из списка вышли:
+ * они рассчитываются через пул Switchboard On-Demand, принадлежащий программе
+ * (docs/VRF_SWITCHBOARD.md), и живые во всех слоях.
  *
- * Each entry mirrors an on-chain guard (`require!(false, ...Disabled)`) and the
- * matching 503 error code in aof_backend/src/routes/*. The site content
- * (src/site/content/mechanics.ts) marks the same ids as status:'soon'.
- * Keep the three in sync; scripts/check-idl-drift.py does not cover this list,
- * so review it whenever a guard is added or removed.
+ * Каждая запись соответствует сторожевой проверке on-chain
+ * (`require!(false, ...Disabled)`) и коду 503 в aof_backend/src/routes/*.
+ * Контент сайта (src/site/content/mechanics.ts) помечает те же id как
+ * status:'soon'. Держать три места синхронными; scripts/check-idl-drift.py
+ * этот список не покрывает, поэтому его проверяют вручную при добавлении или
+ * снятии ограничения.
+ *
+ * Тексты для игрока (`reason`) — без путей API и внутренних имён; техническая
+ * причина лежит в `guard` отдельной приглушённой строкой.
  */
 export const DISABLED_MECHANICS = {
   hot_market: {
     title: "Событийный рынок временно недоступен",
-    reason: "hot_market_buy/sell возвращают TradingDisabled до атомарной передачи ToolData.",
+    reason:
+      "Обмен инструментов на событийном рынке пойдёт только после того, как передача инструмента станет атомарной на цепи. Сейчас покупатель и продавец не могут обменяться в одной транзакции без риска.",
+    guard: "hot_market_buy/sell → TradingDisabled; /hot-market/buy|sell → 503.",
   },
   collectors: {
     title: "Коллекции временно недоступны",
-    reason: "collector_stake возвращает CollectorNotConfigured до настройки канонических mint.",
+    reason:
+      "Стейкинг коллекций включим, когда в программе будут настроены канонические адреса коллекционных токенов. До этого награда за коллекцию не может быть начислена корректно.",
+    guard: "collector_stake → CollectorNotConfigured.",
   },
   rebirth: {
     title: "Rebirth временно недоступен",
-    reason: "do_rebirth возвращает FeatureDisabled до реализации атомарного полного сброса.",
+    reason:
+      "Полный сброс прогресса требует атомарной инструкции: либо сбрасывается всё, либо ничего. Пока такая инструкция не развёрнута, кнопка неактивна — прогресс сбросить невозможно.",
+    guard: "do_rebirth → FeatureDisabled; /rebirth/do → 503.",
   },
   session: {
     title: "Сессионные ключи временно недоступны",
-    reason: "session_create возвращает AtomicBindingRequired; API /session/* отвечает 503.",
+    reason:
+      "Ключи сессии требуют привязки к вашему кошельку на цепи. Пока привязка не развёрнута, игра подписывает каждое действие обычным подтверждением в кошельке.",
+    guard: "session_create → AtomicBindingRequired; /session/* → 503.",
+  },
+  tools_repair: {
+    title: "Ремонт инструментов временно недоступен",
+    reason:
+      "Ремонт списывает Кремний и Схему одной транзакцией вместе с восстановлением прочности. Пока в конфигурации программы не заданы адреса этих ресурсов, кнопка заблокирована: чинить инструмент всё равно не получится, а ресурсы не должны списываться зря.",
+    guard: "POST /tools/repair → 503 REPAIR_RESOURCES_NOT_CONFIGURED (Config без woodMint/stoneMint).",
   },
 } as const;
 
@@ -47,6 +65,7 @@ export function FeatureDisabledNotice({ id }: { id: DisabledMechanicId }) {
       <p className="font-semibold text-wheat-500">{m.title}</p>
       <p className="mt-1 text-straw">{m.reason}</p>
       <p className="mt-1 text-straw">Транзакции не отправляются и ресурсы не списываются, пока механика отключена.</p>
+      <p className="mt-2 text-[10px] text-straw/60">Технически: {m.guard}</p>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { ArtPlate } from "../../components/visual/ArtPlate";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { WeatherOverlay } from "../../components/farm/WeatherOverlay";
 import { toNum, useFlash } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const GRID = 8;
 
@@ -71,7 +72,7 @@ export function FarmPlot() {
 
   async function quick(action: "start" | "collect") {
     if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка контракта в тестовой сети");
-    if (!address) return flash("❌ Connect wallet");
+    if (!address) return flash("❌ Подключите кошелёк");
     if (!selected) return;
     setBusy(true);
     try {
@@ -80,7 +81,7 @@ export function FarmPlot() {
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `✅ Done: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
+      flash(r.success ? `✅ Готово: ${r.signature?.slice(0, 10)}…` : `❌ ${r.error}`);
       if (r.success) {
         setSelected(null);
         setTimeout(load, 2500);
@@ -102,7 +103,7 @@ export function FarmPlot() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment mb-3">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 

@@ -48,7 +48,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
     if ((kind === "start" || kind === "collect") && !MINING_ENABLED) {
       return flashMsg("⏸️ Добыча отключена до проверки on-chain в тестовой сети");
     }
-    if (!address) return flashMsg("❌ Connect wallet (кнопка вверху)");
+    if (!address) return flashMsg("❌ Подключите кошелёк — кнопка в шапке");
     setBusy(true);
     try {
       let resp: any;

@@ -8,6 +8,7 @@ import { api } from "../../lib/api";
 import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { DataUnavailableNotice, isFailClosedError } from "../../lib/availability";
 
 const tabs = [
   { id: "daily", icon: UI_ICONS.questsDaily, label: "Задания" },
@@ -21,11 +22,13 @@ export function QuestsHome() {
   const [activeTab, setActiveTab] = useState("daily");
   const [quests, setQuests] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
+  const [achievementsState, setAchievementsState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
   const [claimedIds, setClaimedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
 
-  // Loading квестов. Без кошелька запроса нет — иначе индикатор загрузки
-  // оставался на экране навсегда (вечный скелет вместо «подключите кошелёк»).
+  // Загрузка списка заданий. Без кошелька запроса нет — иначе индикатор
+  // загрузки оставался на экране навсегда (вечный скелет вместо «подключите кошелёк»).
   useEffect(() => {
     if (!address) {
       setQuests([]);
@@ -35,23 +38,38 @@ export function QuestsHome() {
     setLoading(true);
     api.quests
       .list(address)
-      .then((data: any) => setQuests(Array.isArray(data?.quests) ? data.quests : []))
-      .catch(() => setQuests([]))
+      .then((data: any) => {
+        setQuests(Array.isArray(data?.quests) ? data.quests : []);
+        setUnavailable(false);
+      })
+      .catch((e) => {
+        // Пустая доска — это «нет заданий»; 503 — «прогресс не индексируется».
+        setQuests([]);
+        setUnavailable(isFailClosedError(e));
+      })
       .finally(() => setLoading(false));
   }, [address]);
 
-  // Loading достижений
+  // Загрузка достижений: без флага состояния пустой список выглядел как
+  // вечный «Loading достижений...», хотя /quests/achievements отвечает 503.
   useEffect(() => {
     if (!address || activeTab !== "achievements") return;
+    setAchievementsState("loading");
     api.quests
       .achievements(address)
-      .then((data: any) => setAchievements(data.achievements || []))
-      .catch(() => {});
+      .then((data: any) => {
+        setAchievements(Array.isArray(data?.achievements) ? data.achievements : []);
+        setAchievementsState("ready");
+      })
+      .catch((e) => {
+        setAchievements([]);
+        setAchievementsState(isFailClosedError(e) ? "unavailable" : "ready");
+      });
   }, [address, activeTab]);
 
   // Клейм награды за квест
   async function claimQuest(questId: number) {
-    if (!address) return flash("❌ Connect wallet");
+    if (!address) return flash("❌ Подключите кошелёк");
     try {
       const resp = await api.quests.claim({ user: address, questId });
       if (resp.success) {
@@ -109,11 +127,15 @@ export function QuestsHome() {
       {activeTab === "daily" && (
         <div className="space-y-3">
           {quests.length === 0 ? (
-            <Card className="text-center py-8">
-              <p className="text-straw">
-                {address ? "Нет активных заданий" : "Подключите кошелёк, чтобы увидеть задания"}
-              </p>
-            </Card>
+            unavailable ? (
+              <DataUnavailableNotice id="quest_progress" />
+            ) : (
+              <Card className="text-center py-8">
+                <p className="text-straw">
+                  {address ? "Нет активных заданий" : "Подключите кошелёк, чтобы увидеть задания"}
+                </p>
+              </Card>
+            )
           ) : (
             quests.map((quest, i) => {
               const isClaimed = claimedIds.includes(quest.id);
@@ -151,7 +173,10 @@ export function QuestsHome() {
                           onClaim={() => claimQuest(quest.id)}
                         />
                       ) : isClaimed ? (
-                        <span className="text-sprout-500 text-xs">✅ Получено</span>
+                        <span className="text-sprout-500 text-xs inline-flex items-center gap-1.5">
+                          <img src={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 object-contain" />
+                          Получено
+                        </span>
                       ) : (
                         <span className="text-straw text-xs">В процессе</span>
                       )}
@@ -192,9 +217,17 @@ export function QuestsHome() {
       {/* Достижения */}
       {activeTab === "achievements" && (
         <div className="grid grid-cols-3 gap-3">
-          {achievements.length === 0 ? (
+          {achievementsState === "unavailable" ? (
+            <div className="col-span-3">
+              <DataUnavailableNotice id="quest_progress" />
+            </div>
+          ) : achievementsState === "loading" ? (
             <Card className="col-span-3 text-center py-8">
-              <p className="text-straw">Loading достижений...</p>
+              <p className="text-straw">Читаем достижения…</p>
+            </Card>
+          ) : achievements.length === 0 ? (
+            <Card className="col-span-3 text-center py-8">
+              <p className="text-straw">Достижений пока нет</p>
             </Card>
           ) : (
             achievements.map((ach) => (

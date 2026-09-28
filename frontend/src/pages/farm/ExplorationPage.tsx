@@ -8,6 +8,7 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { UI_ICONS, resourceIcon, toolPlate } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { humanizeVrfError } from "../../lib/vrfErrors";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const EXPLORATION_COST = { data: 75, circuit: 35, silicon: 35, dataset: 50 };
 
@@ -46,7 +47,7 @@ export function ExplorationPage() {
   }
 
   async function startExploration() {
-    if (!address) return flash("❌ Connect wallet");
+    if (!address) return flash("❌ Подключите кошелёк");
     if (!bowMint) return flash("❌ Инструмент Bow не найден в инвентаре");
 
     setLoading(true);
@@ -54,7 +55,7 @@ export function ExplorationPage() {
     try {
       const commitResponse: any = await api.exploration.startCommit({ user: address, toolMint: bowMint });
       const commit = await handleTxResponse(commitResponse);
-      if (!commit.success) throw new Error(commit.error || "Commit не выполнен");
+      if (!commit.success) throw new Error(commit.error || "Экспедиция не запущена");
       setCommitAddr(commitResponse.explorationCommit);
       flash("Экспедиция в пути: ждём раскрытия оракула…", 45_000);
       const state = await waitForSettlement(commitResponse.explorationCommit);
@@ -119,7 +120,7 @@ export function ExplorationPage() {
 
         {txStatus && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment mb-4">
-            {txStatus}
+            <NoticeMsg text={txStatus} />
           </motion.div>
         )}
 

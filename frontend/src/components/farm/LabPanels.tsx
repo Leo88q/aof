@@ -88,7 +88,7 @@ export function LabResourcePanel({ owner, refreshKey }: { owner: string | null; 
           <div key={it.key} className="min-w-0 text-center">
             <ResourceGlyph icon={resourceIcon(it.key)} alt={it.label} className="w-7 h-7 mx-auto" />
             <div className="mt-1 text-[11px] font-bold text-parchment tabular-nums truncate">
-              {!owner ? "—" : balances ? fmtNum(balances[it.key] ?? 0) : "…"}
+              {!owner || unavailable ? "—" : balances ? fmtNum(balances[it.key] ?? 0) : "…"}
             </div>
             <div className="text-[9.5px] leading-tight text-straw truncate" title={it.label}>
               {it.label}
@@ -176,7 +176,7 @@ export function LabStateRow({ owner, energy, weather }: LabStateProps) {
       icon: resourceIcon("POWER"),
       label: "Энергия",
       value: energyAmount !== null ? `${energyAmount}/${energyCap ?? 20}` : "—",
-      hint: energyAmount === null ? "появится после первого действия on-chain" : undefined,
+      hint: energyAmount === null ? "аккаунта энергии ещё нет в сети — создаётся первым действием" : undefined,
       progress: energyAmount !== null && energyCap ? (energyAmount / energyCap) * 100 : null,
     },
     {

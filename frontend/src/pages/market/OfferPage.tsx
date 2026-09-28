@@ -5,11 +5,12 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { ArtPlate } from "../../components/visual/ArtPlate";
-import { toolPlate } from "../../lib/visualAssets";
+import { toolPlate, UI_ICONS } from "../../lib/visualAssets";
 import {
   RARITY_LABEL, RARITY_COLOR, rarityKey,
   fmtSol, shortAddr, useTreasury, useFlash,
 } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 export function OfferPage() {
   const { address } = useWalletStore();
@@ -91,7 +92,10 @@ export function OfferPage() {
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment">🤝 Офферы</h1>
+        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2">
+          <img src={UI_ICONS.marketOffer} alt="" className="w-6 h-6 object-contain" />
+          Офферы
+        </h1>
       </div>
       <p className="text-straw text-xs">
         Переговоры о цене: покупатели предлагают свою цену за ваш инструмент — вы принимаете или ждёте лучшего.
@@ -100,7 +104,7 @@ export function OfferPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -130,7 +134,7 @@ export function OfferPage() {
             {loading && <p className="text-straw text-xs">Читаем офферы…</p>}
             {!loading && offers.length === 0 && (
               <div className="text-center py-4">
-                <div className="text-3xl mb-1">💬</div>
+                <img src={UI_ICONS.inbox} alt="" className="w-8 h-8 object-contain mx-auto mb-1" />
                 <p className="text-straw text-xs">Пока никто не предложил цену за этот инструмент</p>
               </div>
             )}
@@ -140,7 +144,7 @@ export function OfferPage() {
                 <motion.div key={o.pubkey || i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
                   className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-soil-800/70 border border-straw/10">
-                  <span className="text-xl">🤝</span>
+                  <img src={UI_ICONS.marketOffer} alt="" className="w-5 h-5 object-contain shrink-0" />
                   <div className="flex-1">
                     <p className="text-parchment text-sm">
                       <span className="text-straw">{shortAddr(o.buyer)}{mine ? " (вы)" : ""}</span> предложил
@@ -188,7 +192,7 @@ export function OfferPage() {
               </button>
             ))}
             <div className="flex items-center gap-2 pt-1">
-              <span className="text-straw text-xs w-24">Моя цена, ◎</span>
+              <span className="text-straw text-xs w-24">Ваша цена, ◎</span>
               <input type="number" step="0.001" min="0" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)}
                 className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
             </div>

@@ -1,5 +1,6 @@
 import { createWalletProof } from "./wallet";
 import { humanizeVrfError } from "./vrfErrors";
+import { humanizeApiError, isFailClosedCode } from "./availability";
 
 // Production uses the same-origin reverse-proxy path. A fully qualified URL
 // remains available for a separately hosted backend via VITE_API_URL.
@@ -129,7 +130,16 @@ async function parseApiResponse(res: Response): Promise<any> {
       (typeof data === "string" ? data : "") ||
       (errorText && !errorText.includes("<!DOCTYPE") && !errorText.includes("<html") ? errorText.slice(0, 200) : "") ||
       `HTTP ${res.status}`;
-    throw new Error(humanizeVrfError(String(message)));
+    // Сначала известные fail-closed коды бэкенда, затем VRF-ошибки, затем как есть.
+    // Сырой код сохраняем: по нему UI отличает «механика закрыта» от сбоя сети.
+    const raw = String(message);
+    const error = new Error(humanizeVrfError(humanizeApiError(raw))) as Error & {
+      code?: string;
+      failClosed?: boolean;
+    };
+    error.code = raw;
+    error.failClosed = isFailClosedCode(raw);
+    throw error;
   }
 
   if (data === null) {
@@ -430,7 +440,9 @@ export const api = {
     passPurchase: (v: any) => post("/season/pass/purchase", v),
     xpGrant: (v: any) => post("/season/xp/grant", v),
     rewardClaim: (v: any) => post("/season/reward/claim", v),
-    vipStatus: (user: string) => get(`/season/vip-status/${user}`),
+    // Роут vipStatus смонтирован на /season и слушает /:user — путь без
+    // «vip-status», иначе запрос уходил в 404 и VIP молча не находился.
+    vipStatus: (user: string) => get(`/season/${user}`),
   },
 
   // === Безопасность ===

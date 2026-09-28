@@ -4,6 +4,7 @@ import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 import { api } from "../../lib/api";
+import { fetchWeatherSnapshot } from "../../lib/weather";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
@@ -16,14 +17,6 @@ const WEATHER_RATES = {
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;
-
-/** Тип нагрузки из канонического роута -> значение WeatherState.weather (0..3). */
-const WEATHER_INDEX: Record<WeatherKey, number> = {
-  drought: 0,
-  sunny: 1,
-  rain: 2,
-  festival: 3,
-};
 
 function weatherKey(value: any): WeatherKey | null {
   const n = Number(value);
@@ -48,14 +41,14 @@ export function WellPanel() {
     // /weather/current и /query/weather-state читают один и тот же WeatherState PDA.
     // Берём первый: он же питает чип нагрузки в шапке, поэтому панель и шапка
     // больше не показывают разные состояния одного аккаунта.
-    const [current, weatherState, wellState, mint] = await Promise.all([
-      api.weather.current().catch(() => null),
-      api.query.weatherState().catch(() => null),
+    const [snapshot, wellState, mint] = await Promise.all([
+      fetchWeatherSnapshot(),
       api.query.wellState(walletAddr).catch(() => null),
       getMintAsync("POWER"),
     ]);
-    const fromType = current?.type ? WEATHER_INDEX[current.type as WeatherKey] : undefined;
-    setWeather(fromType !== undefined ? { weather: fromType } : weatherState);
+    // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
+    // чип нагрузки в шапке всегда показывают одно и то же состояние.
+    setWeather(snapshot ? { weather: snapshot.weatherIndex } : null);
     setWell(wellState);
     setWaterMint(mint);
   }
@@ -126,7 +119,7 @@ export function WellPanel() {
             <ResourceGlyph icon={w.icon} alt={w.label} className="w-14 h-14 mx-auto" />
             <div className="flex-1">
               <p className="text-straw text-xs">Нагрузка сети: <b style={{ color: w.color }}>{w.label}</b></p>
-              <p className="text-straw text-xs inline-flex items-center gap-1">Скорость: <b className="text-parchment">{w.rate}</b> <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-3.5 h-3.5" /> /час</p>
+              <p className="text-straw text-xs inline-flex items-center gap-1">Скорость: <b className="text-parchment">{w.rate}</b> <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-3.5 h-3.5" />/час</p>
             </div>
           </div>
 

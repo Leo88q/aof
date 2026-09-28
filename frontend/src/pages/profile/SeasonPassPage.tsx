@@ -7,6 +7,7 @@ import { Card } from "../../components/ui/Card";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { fmtNum, useTreasury, useFlash } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const SEASON_ID = 1;
 const PASS_PRICE_SOL = 0.15;
@@ -34,7 +35,7 @@ export function SeasonPassPage() {
   useEffect(() => { load(); }, [load]);
 
   async function buy() {
-    if (!address) return flash("❌ Connect wallet (кнопка вверху)");
+    if (!address) return flash("❌ Подключите кошелёк — кнопка в шапке");
     if (!treasury) return flash("❌ Treasury config unavailable");
     try {
       flash("Готовим покупку пасса…");
@@ -58,7 +59,7 @@ export function SeasonPassPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 

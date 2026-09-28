@@ -5,6 +5,7 @@ import { Card } from "./ui/Card";
 import { api } from "../lib/api";
 import { useWalletStr } from "../lib/useWalletStr";
 import {UI_ICONS, resourceIcon} from "../lib/visualAssets";
+import { DataUnavailableNotice, isFailClosedError } from "../lib/availability";
 
 interface DailyStatus {
   canClaim: boolean;
@@ -13,37 +14,49 @@ interface DailyStatus {
   daysSinceLast: number;
   nextReward: {
     day: number;
-    potato: number;
+    /** Канон реестра ресурсов — MIND; potato приходит из легаси-ответа бэкенда. */
+    mind?: number;
+    potato?: number;
     bonus: string;
   };
 }
 
+/** Статус награды: закрытая механика (503) отличается от сбоя сети. */
+type StatusState =
+  | { kind: "loading" }
+  | { kind: "ready"; status: DailyStatus }
+  | { kind: "disabled" }
+  | { kind: "error" };
+
 export function DailyRewardButton() {
   const user = useWalletStr();
-  const [status, setStatus] = useState<DailyStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<StatusState>({ kind: "loading" });
   const [claimed, setClaimed] = useState(false);
   const [claimedReward, setClaimedReward] = useState<any>(null);
   const [confetti, setConfetti] = useState(false);
 
   useEffect(() => {
     if (!user) {
-      setLoading(false);
+      setState({ kind: "error" });
       return;
     }
     loadStatus();
   }, [user]);
 
   async function loadStatus() {
+    setState({ kind: "loading" });
     try {
       const data = await api.daily.status(user);
-      setStatus(data);
+      setState({ kind: "ready", status: data });
     } catch (e) {
-      console.error("Daily status failed:", e);
-    } finally {
-      setLoading(false);
+      // 503 = механика закрыта на цепи; всё остальное = сеть/сервер.
+      setState({ kind: isFailClosedError(e) ? "disabled" : "error" });
     }
   }
+
+  const status = state.kind === "ready" ? state.status : null;
+  const loading = state.kind === "loading";
+  const rewardAmount = status?.nextReward ? status.nextReward.mind ?? status.nextReward.potato ?? 0 : 0;
 
   async function claim() {
     if (!user || claimed) return;
@@ -63,13 +76,45 @@ export function DailyRewardButton() {
         
         // Перезагружаем статус
         setTimeout(loadStatus, 1000);
+      } else {
+        setState({ kind: "disabled" });
       }
-    } catch (e: any) {
-      console.error("Claim failed:", e);
+    } catch (e) {
+      setState({ kind: isFailClosedError(e) ? "disabled" : "error" });
     }
   }
 
-  if (loading || !user) return null;
+  if (!user) return null;
+
+  if (loading) {
+    return (
+      <Card className="mb-4 bg-soil-850 border border-straw/10">
+        <div className="h-12 rounded-xl bg-soil-800/70 animate-pulse" aria-hidden="true" />
+      </Card>
+    );
+  }
+
+  // Нет статуса награды: показываем причину. Раньше здесь рисовалась серая
+  // кнопка «Завтра», из-за которой казалось, что награда уже получена.
+  if (state.kind !== "ready") {
+    return (
+      <div className="mb-4">
+        {state.kind === "disabled" ? (
+          <DataUnavailableNotice id="daily_rewards" />
+        ) : (
+          <Card className="mb-0 border border-amber-500/30 bg-soil-850">
+            <p className="text-amber-400 text-xs">Не удалось получить статус ежедневной награды.</p>
+            <button
+              onClick={loadStatus}
+              className="mt-2 px-3 py-1.5 rounded-xl border border-straw/30 text-parchment text-xs"
+            >
+              Повторить
+            </button>
+          </Card>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Card className="relative overflow-hidden mb-4 bg-gradient-to-br from-gold/10 via-soil-850 to-soil-900 border border-gold/30">
@@ -104,7 +149,11 @@ export function DailyRewardButton() {
                 }}
                 className="absolute text-2xl"
               >
-                {[UI_ICONS.rewardStar, UI_ICONS.rewardStar, UI_ICONS.rewardTrophy, resourceIcon("potato") || "", UI_ICONS.noticeSuccess][Math.floor(Math.random() * 5)] && <img src={[UI_ICONS.rewardStar, UI_ICONS.rewardTrophy, resourceIcon("potato") || "", UI_ICONS.noticeSuccess][Math.floor(Math.random() * 4)]} alt="" className="w-6 h-6 object-contain" />}
+                <img
+                  src={[UI_ICONS.rewardStar, UI_ICONS.rewardTrophy, resourceIcon("MIND") || UI_ICONS.rewardStar, UI_ICONS.noticeSuccess][Math.floor(Math.random() * 4)]}
+                  alt=""
+                  className="w-6 h-6 object-contain"
+                />
               </motion.div>
             ))}
           </motion.div>
@@ -138,7 +187,7 @@ export function DailyRewardButton() {
           
           {status?.nextReward && !claimed && (
             <p className="text-straw text-xs">
-              День {status.nextReward.day}: <span className="text-wheat-500 font-bold">+{status.nextReward.potato}</span> MIND
+              День {status.nextReward.day}: <span className="text-wheat-500 font-bold">+{rewardAmount}</span> MIND
               {status.nextReward.bonus && (
                 <span className="ml-1 text-gold">• {status.nextReward.bonus}</span>
               )}
@@ -146,8 +195,9 @@ export function DailyRewardButton() {
           )}
           
           {claimed && claimedReward && (
-            <p className="text-sprout-500 text-xs font-bold">
-              ✓ Получено: +{claimedReward.potato} MIND!
+            <p className="text-sprout-500 text-xs font-bold inline-flex items-center gap-1.5">
+              <img src={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 object-contain" />
+              Получено: +{claimedReward.mind ?? claimedReward.potato ?? 0} MIND
             </p>
           )}
         </div>
@@ -161,7 +211,13 @@ export function DailyRewardButton() {
               : "bg-soil-700 text-straw/50 cursor-not-allowed"
           }`}
         >
-          {claimed ? "✓" : status?.canClaim ? "Забрать" : "Завтра"}
+          {claimed ? (
+            <img src={UI_ICONS.noticeSuccess} alt="Получено" className="w-4 h-4 object-contain" />
+          ) : status?.canClaim ? (
+            "Забрать"
+          ) : (
+            "Завтра"
+          )}
         </button>
       </div>
 

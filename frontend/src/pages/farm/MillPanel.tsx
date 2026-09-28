@@ -95,10 +95,10 @@ export function MillPanel() {
         toast.show(`✅ Переработка запущена: ${m.wheat} синапсов → ${m.flour} сигнала`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Error запуска"}`);
+        toast.show(`❌ ${r.error || "Не удалось запустить переработку"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Error"}`);
+      toast.show(`❌ ${e.message || "Ошибка сети"}`);
     } finally {
       setMilling(false);
     }
@@ -119,10 +119,10 @@ export function MillPanel() {
         toast.show(`🥣 Собрано ${millState.flourReady} сигнала!`);
         await loadState();
       } else {
-        toast.show(`❌ ${r.error || "Error сбора"}`);
+        toast.show(`❌ ${r.error || "Не удалось собрать результат"}`);
       }
     } catch (e: any) {
-      toast.show(`❌ ${e.message || "Error"}`);
+      toast.show(`❌ ${e.message || "Ошибка сети"}`);
     } finally {
       setMilling(false);
     }

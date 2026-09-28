@@ -13,6 +13,7 @@ import {
   RARITY_LABEL, RARITY_COLOR, rarityKey,
   fmtSol, shortAddr, timeLeftStr, toNum, useNow, useTreasury, useFlash,
 } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const SYSTEM_KEY = "11111111111111111111111111111111";
 
@@ -135,7 +136,7 @@ export function AuctionPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 

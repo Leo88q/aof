@@ -11,6 +11,7 @@ import { fmtNum, shortAddr } from "../../lib/marketUtils";
 import { useWalletStore } from "../../store/walletStore";
 import { useFlash } from "../../lib/marketUtils";
 import { useNav } from "../../nav/NavContext";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const MAX_DURABILITY = 20;
 
@@ -70,7 +71,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 

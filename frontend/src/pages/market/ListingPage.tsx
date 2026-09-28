@@ -13,6 +13,7 @@ import {
   RARITY_LABEL, RARITY_COLOR, rarityKey,
   shortAddr, useTreasury, useFlash,
 } from "../../lib/marketUtils";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 export function ListingPage() {
   const { address } = useWalletStore();
@@ -115,9 +116,12 @@ export function ListingPage() {
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment">🏷️ Листинг</h1>
+        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2">
+          <img src={UI_ICONS.marketListing} alt="" className="w-6 h-6 object-contain" />
+          Листинг
+        </h1>
         <button onClick={load} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Refresh"}
+          {loading ? "…" : "Обновить"}
         </button>
       </div>
       <p className="text-straw text-xs">
@@ -127,7 +131,7 @@ export function ListingPage() {
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          {txStatus}
+          <NoticeMsg text={txStatus} />
         </motion.div>
       )}
 
@@ -207,7 +211,7 @@ export function ListingPage() {
               );
             })}
             <div className="flex items-center gap-2 pt-2">
-              <span className="text-straw text-xs w-20">Price, ◎</span>
+              <span className="text-straw text-xs w-20">Цена, ◎</span>
               <input type="number" step="0.001" min="0" value={priceSol} onChange={(e) => setPriceSol(e.target.value)}
                 className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
             </div>

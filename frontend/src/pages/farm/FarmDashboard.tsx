@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNav } from "../../nav/NavContext";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
+import { fetchWeatherSnapshot } from "../../lib/weather";
 import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
 import { useWalletStr } from "../../lib/useWalletStr";
@@ -56,7 +57,9 @@ export function FarmDashboard() {
         return;
       }
       const [weatherData, energyData, toolsData] = await Promise.all([
-        api.weather.current().catch(() => null),
+        // Один загрузчик для шапки, панели обзора и колодца: /weather/current,
+        // при недоступности — чтение того же WeatherState PDA через /query.
+        fetchWeatherSnapshot(),
         api.energy.balance(walletAddr).catch(() => null),
         api.query.myTools(walletAddr).catch(() => null),
       ]);
