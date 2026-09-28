@@ -61,8 +61,19 @@ async function main(): Promise<void> {
     EconomySnapshot: () => prisma.economySnapshot.create({ data: { potatoSupply: 1n, potatoBurned24h: 0n, potatoMinted24h: 0n, inflation24h: 0, activeCrafters24h: 0, activeTraders24h: 0, totalTxs24h: 0, failedTxs24h: 0, topHolders: "[]" } }),
     TraderExecution: () => prisma.traderExecution.create({ data: { user: stamp, ruleId: "r", action: "test" } }),
   };
+  // Prisma surfaces the trigger differently per provider: PostgreSQL keeps the
+  // RAISE text in the message, SQLite maps SQLITE_CONSTRAINT_TRIGGER to the
+  // known error P2004 ("A constraint failed on the database") whose message may
+  // not carry the trigger text. Either way it must be a database-side refusal,
+  // and the row checks below prove nothing was rewritten.
+  const seen = new Set<string>();
   const refused = async (label: string, op: () => Promise<unknown>) => {
-    await assert.rejects(op, (e: any) => /append-only/.test(String(e?.message)), `${label} must be refused by the database`);
+    await assert.rejects(op, (e: any) => {
+      const message = String(e?.message ?? "");
+      const code = String(e?.code ?? "");
+      seen.add(code || e?.constructor?.name || "unknown");
+      return /append-only/.test(message) || code === "P2004" || /constraint failed/i.test(message);
+    }, `${label} must be refused by the database`);
   };
 
   try {
@@ -95,7 +106,7 @@ async function main(): Promise<void> {
     await prisma.$disconnect();
     cleanup();
   }
-  console.log(`append-only integration test passed (${isPostgres ? "PostgreSQL" : "SQLite"}): ${LEDGERS.join(", ")} cannot be rewritten or deleted`);
+  console.log(`append-only integration test passed (${isPostgres ? "PostgreSQL" : "SQLite"}; refusals surfaced as ${[...seen].join(", ")}): ${LEDGERS.join(", ")} cannot be rewritten or deleted`);
 }
 
 main().catch((e) => {
