@@ -496,6 +496,12 @@ h1, h2, h3, .fg-title {
 /* Барограф: метеоприбор */
 .fg--baro { background: linear-gradient(180deg, #131619, #0E1113); }
 
+/* Аукцион на исходе: тёплый бортик вместо мигающей рамки (лампа «горит»
+   уже сообщает состояние, рамка только поддерживает) */
+.fg--hot {
+  box-shadow: var(--fg-shadow-panel), inset 0 0 0 1px color-mix(in srgb, var(--fg-err) 42%, transparent);
+}
+
 /* ---------- 5. ПРИМИТИВЫ НАБОРА ---------- */
 .fg-ro { display: flex; flex-wrap: wrap; gap: 16px 18px; }
 .fg-ro__cell { min-width: 76px; }

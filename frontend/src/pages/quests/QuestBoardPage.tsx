@@ -28,7 +28,7 @@ interface Quest {
 const DIFFICULTY_COLORS = {
   easy: "text-sprout-500",
   medium: "text-wheat-500",
-  hard: "text-red-400",
+  hard: "text-ember-400",
 };
 
 const DIFFICULTY_LABELS = {
@@ -122,7 +122,7 @@ export function QuestBoardPage() {
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex gap-3 text-xs">
                   <span className="text-wheat-500 inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("MIND")} alt="" className="w-4 h-4" /> {quest.reward.mind ?? quest.reward.potato ?? 0}</span>
-                  <span className="text-blue-400 inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-4 h-4" /> {quest.reward.xp} XP</span>
+                  <span className="text-water-400 inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-4 h-4" /> {quest.reward.xp} XP</span>
                   {quest.reward.item && (
                     <span className="text-gold inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.rewardDaily} alt="" className="w-4 h-4" /> {quest.reward.item}</span>
                   )}

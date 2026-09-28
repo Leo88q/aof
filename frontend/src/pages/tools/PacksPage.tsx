@@ -184,7 +184,7 @@ export function PacksPage() {
                   <p className="text-straw text-xs">{cfg ? `${fmtSol(cfg.priceLamports)} ◎` : "не настроена"}</p>
                 </div>
                 <button onClick={() => open(pack)} disabled={!cfg || !address || busy !== null}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white text-sm font-bold disabled:opacity-40">
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white text-sm font-bold disabled:opacity-40">
                   {busy === pack.id ? "…" : "Открыть"}
                 </button>
               </div>

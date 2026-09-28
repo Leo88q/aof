@@ -126,12 +126,12 @@ export function DataUnavailableNotice({
       role="status"
       data-testid={`data-unavailable-${id}`}
       className={
-        "rounded-xl border border-amber-500/30 bg-soil-800/70 px-3 py-2 text-parchment " +
+        "rounded-xl border border-gold-500/30 bg-soil-800/70 px-3 py-2 text-parchment " +
         (compact ? "text-[11px]" : "text-xs") +
         (className ? " " + className : "")
       }
     >
-      <p className="font-semibold text-amber-400">{entry.title}</p>
+      <p className="font-semibold text-gold-400">{entry.title}</p>
       <p className="mt-0.5 text-straw">{entry.reason}</p>
     </div>
   );

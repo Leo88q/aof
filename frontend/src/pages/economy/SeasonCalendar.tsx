@@ -5,10 +5,10 @@ import { UI_ICONS } from "../../lib/visualAssets";
 
 const DAYS_PER_SEASON = 42;
 const SEASONS = [
-  { name: "spring", icon: UI_ICONS.epochInit, color: "from-emerald-500/20 to-cyan-500/20", label: "Эпоха I · Инициализация" },
-  { name: "summer", icon: UI_ICONS.epochTrain, color: "from-amber-500/20 to-orange-500/20", label: "Эпоха II · Обучение" },
-  { name: "autumn", icon: UI_ICONS.epochTune, color: "from-yellow-500/20 to-amber-500/20", label: "Эпоха III · Дообучение" },
-  { name: "winter", icon: UI_ICONS.epochInfer, color: "from-blue-500/20 to-cyan-500/20", label: "Эпоха IV · Инференс" },
+  { name: "spring", icon: UI_ICONS.epochInit, color: "from-sprout-500/20 to-wheat-500/20", label: "Эпоха I · Инициализация" },
+  { name: "summer", icon: UI_ICONS.epochTrain, color: "from-gold-500/20 to-gold-500/20", label: "Эпоха II · Обучение" },
+  { name: "autumn", icon: UI_ICONS.epochTune, color: "from-gold-500/20 to-gold-500/20", label: "Эпоха III · Дообучение" },
+  { name: "winter", icon: UI_ICONS.epochInfer, color: "from-water-500/20 to-wheat-500/20", label: "Эпоха IV · Инференс" },
 ];
 
 const WEATHER_TYPES = [

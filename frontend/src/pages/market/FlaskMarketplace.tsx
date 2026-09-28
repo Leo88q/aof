@@ -18,7 +18,7 @@ export function FlaskMarketplace() {
         <p className="text-straw text-sm">
           Реальный orderbook и инструкции покупки/продажи флаконов не найдены в текущем market contract.
         </p>
-        <p className="text-amber-300 text-xs mt-2">
+        <p className="text-gold-300 text-xs mt-2">
           Демо-ордера удалены: цены, продавцы и заявки не должны выдаваться за данные блокчейна.
         </p>
       </Card>

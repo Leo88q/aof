@@ -207,11 +207,11 @@ export function TrustPage() {
 
       {/* Penalty множитель */}
       {data.penaltyMult < 1 && (
-        <Card className="bg-red-500/10 border-red-500/30">
+        <Card className="bg-ember-500/10 border-ember-500/30">
           <div className="flex items-center gap-3">
             <img src={UI_ICONS.noticeError} alt="" className="w-8 h-8 object-contain shrink-0" />
             <div>
-              <h3 className="text-red-400 font-semibold text-sm">Штраф активен</h3>
+              <h3 className="text-ember-400 font-semibold text-sm">Штраф активен</h3>
               <p className="text-straw text-xs">
                 Ваш скор умножается на ×{data.penaltyMult.toFixed(2)} из-за активных флагов
               </p>

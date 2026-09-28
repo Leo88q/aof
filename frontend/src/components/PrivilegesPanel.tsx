@@ -72,7 +72,7 @@ export function PrivilegesPanel({ compact = false }: { compact?: boolean }) {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-2xl bg-gradient-to-r from-purple-600/20 to-gold/20 border border-gold/30"
+          className="p-4 rounded-2xl bg-gradient-to-r from-nf-purple/20 to-gold/20 border border-gold/30"
         >
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-parchment font-bold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-5 h-5" /> Ваши привилегии</h3>

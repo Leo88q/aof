@@ -127,8 +127,8 @@ export function RepairPage() {
         <FeatureDisabledNotice id="tools_repair" />
       )}
       {repairState === "unknown" && (
-        <Card className="border border-amber-500/30 bg-soil-850">
-          <p className="text-amber-400 text-xs">Не удалось проверить готовность ремонта: реестр сети не читается. Кнопка ремонта пока заблокирована.</p>
+        <Card className="border border-gold-500/30 bg-soil-850">
+          <p className="text-gold-400 text-xs">Не удалось проверить готовность ремонта: реестр сети не читается. Кнопка ремонта пока заблокирована.</p>
         </Card>
       )}
 

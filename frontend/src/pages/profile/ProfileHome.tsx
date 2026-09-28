@@ -10,7 +10,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
-import { Card } from "../../components/ui/Card";
+import { ListRow } from "../../components/ListRow";
+import { Key, Keys, Note, Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
 import { TrustRing } from "../../components/ui/TrustRing";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { useWalletStr } from "../../lib/useWalletStr";
@@ -110,301 +111,199 @@ export function ProfileHome() {
   const veteranStatus = playerData ? computeVeteranStatus(playerData) : null;
   const badges = playerData ? computeBadges(playerData) : [];
 
+  const short = user ? `${user.slice(0, 4)}…${user.slice(-4)}` : null;
+
   return (
-    <div className="p-4 pt-6 pb-24">
-      {/* Кнопка кошелька */}
+    <div className="px-4 pt-5">
       <div className="flex justify-end mb-2">
         <WalletButton />
       </div>
 
-      <h1 className="text-2xl font-bold mb-4">Профиль</h1>
-
-      {/* Шапка: аватар + имя + титул + бейджи (на основе реальных данных) */}
-      <Card className="mb-4 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-wheat-600 to-soil-700 flex items-center justify-center text-3xl">
-          {veteranStatus?.icon ? (
-            <img src={veteranStatus.icon} alt="" className="w-12 h-12 object-contain" />
-          ) : (
-            veteranStatus?.emoji ?? "❔"
-          )}
-        </div>
-        <div className="flex-1">
-          <h2 className="text-parchment font-semibold">
-            {user ? `${user.slice(0, 4)}...${user.slice(-4)}` : "Гость"}
-          </h2>
-          {veteranStatus ? (
-            <p className="text-wheat-500 text-sm">
-              {veteranStatus.title} • Поколение {veteranStatus.generation}
-            </p>
-          ) : (
-            <p className="text-amber-400 text-sm">Статус игрока недоступен</p>
-          )}
-          <div className="flex gap-1 mt-2">
-            {playerData ? (badges.length > 0 ? (
-              badges.map((b, i) => (
-                <motion.span
-                  key={i}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="text-lg"
-                  title={b}
-                >
-                  <ResourceGlyph icon={b} alt="" className="w-5 h-5" />
-                </motion.span>
-              ))
+      {/* Личная карта оператора: адрес — настоящий, номера бейджей — только по факту */}
+      <Panel
+        tier="hero"
+        id={<Sticker bars>{short ?? "ГОСТЬ"}</Sticker>}
+        meta={user ? "ОПЕРАТОР" : "БЕЗ КОШЕЛЬКА"}
+        title={short ?? "Гость"}
+        sub={veteranStatus ? `${veteranStatus.title} · поколение ${veteranStatus.generation}` : "статус недоступен"}
+      >
+        <div className="flex items-center gap-4">
+          <div
+            className="nf-plate"
+            style={{ width: 62, height: 62, borderRadius: 999, background: "var(--fg-glass)" }}
+          >
+            {veteranStatus?.icon ? (
+              <img src={veteranStatus.icon} alt="" width={40} height={40} style={{ objectFit: "contain" }} />
             ) : (
-              <span className="text-straw text-xs">Пока нет достижений</span>
-            )) : (
-              <span className="text-straw text-xs">Достижения недоступны</span>
+              <span style={{ fontSize: 26 }} aria-hidden="true">{veteranStatus?.emoji ?? "—"}</span>
             )}
           </div>
-        </div>
-      </Card>
-
-      {/* Quests */}
-      <Card className="mb-4" onClick={() => push("profile", "quests", (
-        <>
-          <NavHeader title="Квесты Агента-куратора" icon={UI_ICONS.menuQuests} tabKey="profile" />
-          <QuestBoardPage />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-parchment font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.menuQuests} alt="" className="w-5 h-5" /> Квесты Странника Джо</h3>
-            <p className="text-straw/60 text-xs mt-1">Ежедневные задания с наградами</p>
+          <div className="min-w-0 flex-1">
+            <div className="fg-note" style={{ margin: 0 }}>
+              {playerData ? "Хранитель лаборатории" : "Данные оператора ещё не читаются из сети"}
+            </div>
+            <div className="fg-lamps" style={{ marginTop: 8 }}>
+              {playerData ? (
+                badges.length > 0 ? (
+                  badges.map((b, i) => (
+                    <motion.span key={i} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.1 }}>
+                      <ResourceGlyph icon={b} alt="" className="w-5 h-5" />
+                    </motion.span>
+                  ))
+                ) : (
+                  <span className="fg-gap">Знаков отличия пока нет</span>
+                )
+              ) : (
+                <span className="fg-gap">Знаки отличия недоступны</span>
+              )}
+            </div>
           </div>
-          <span className="text-2xl text-straw">→</span>
         </div>
-      </Card>
 
-      {/* Daily Reward */}
+        <div style={{ marginTop: 16 }}>
+          <Readouts>
+            <Readout
+              label="Доверие"
+              value={trust ? String(trust.score) : undefined}
+              dash={!trust}
+              hint={trust ? trust.tier : "архив сети не запущен"}
+            />
+            <Readout
+              label="Дней в сети"
+              value={playerData?.daysPlayed != null ? String(playerData.daysPlayed) : undefined}
+              dash={playerData?.daysPlayed == null}
+              hint="возраст аккаунта"
+            />
+            <Readout
+              label="Перерождений"
+              value={playerData?.rebirthCount != null ? String(playerData.rebirthCount) : undefined}
+              dash={playerData?.rebirthCount == null}
+              hint="полных сбросов"
+            />
+            <Readout
+              label="Заданий выполнено"
+              value={playerData?.questsCompleted != null ? String(playerData.questsCompleted) : undefined}
+              dash={playerData?.questsCompleted == null}
+              hint="за всё время"
+            />
+          </Readouts>
+        </div>
+      </Panel>
+
       <DailyRewardButton />
 
-      {/* Траст-индекс */}
-      <Card className="mb-4" onClick={() => push("profile", "trust", (
-        <>
-          <NavHeader title="Индекс доверия" tabKey="profile" />
-          <TrustPage />
-        </>
-      ))}>
-        {trust ? (
-          <div className="flex items-center gap-4">
-            <TrustRing score={trust.score} tier={trust.tier} />
-            <div className="flex-1">
-              <h3 className="text-parchment font-semibold text-sm mb-2">Индекс доверия</h3>
-              <div className="space-y-2 text-xs text-straw">
-                <p className="flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.challenges} alt="" className="w-4 h-4" /> Тир: <span className="text-wheat-500">{trust.tier}</span></p>
-                <p className="flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> Лимит сессии: <span className="text-parchment">недоступен</span></p>
-                <p className="flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Автоторговля: <span className="text-straw">недоступна до проверки индекса</span></p>
-              </div>
-            </div>
-            <span className="text-2xl text-straw">→</span>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-parchment font-semibold text-sm mb-1">Индекс доверия</h3>
-              <p className="text-amber-400 text-xs">Недоступен, пока архив сети не запущен</p>
-            </div>
-            <span className="text-2xl text-straw">→</span>
-          </div>
-        )}
-      </Card>
-
-      {/* === ПОРЯДОК: Пасс эпохи → Привилегии → Переобучение === */}
-
-      {/* Портфель */}
-      <Card className="mb-4" onClick={() => push("profile", "portfolio", (
-        <>
-          <NavHeader title="Портфель" tabKey="profile" />
-          <PortfolioHome />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-wheat-500 font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-5 h-5" /> Портфель</h3>
-            <p className="text-straw text-xs mt-1">Инструменты, ресурсы, листинги, ордера</p>
-          </div>
-          <span className="text-2xl">→</span>
+      {/* Один приборный список вместо тринадцати отдельных окон */}
+      <Panel
+        tier="panel"
+        className="mb-4"
+        id={<Sticker>РАЗДЕЛЫ</Sticker>}
+        meta="СТЕЛЛАЖ"
+        title="Разделы лаборатории"
+        sub="куда идти дальше"
+      >
+        <div className="list">
+          <ListRow
+            icon={UI_ICONS.menuQuests}
+            label="Задания куратора"
+            onClick={() => push("profile", "quests", (<><NavHeader title="Задания куратора" icon={UI_ICONS.menuQuests} tabKey="profile" /><QuestBoardPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.catalog}
+            label="Портфель"
+            onClick={() => push("profile", "portfolio", (<><NavHeader title="Портфель" tabKey="profile" /><PortfolioHome /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.privileges}
+            label="Индекс доверия"
+            value={trust ? trust.tier : "—"}
+            onClick={() => push("profile", "trust", (<><NavHeader title="Индекс доверия" tabKey="profile" /><TrustPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.achievements}
+            label="Рейтинг игроков"
+            onClick={() => push("profile", "leaderboard", (<><NavHeader title="Рейтинг игроков" icon={UI_ICONS.achievements} tabKey="profile" /><LeaderboardPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.questsDaily}
+            label="Мой рейтинг"
+            onClick={() => push("profile", "my-rating", (<><NavHeader title="Мой рейтинг" icon={UI_ICONS.questsDaily} tabKey="profile" /><PlayerRatingPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.seasonPass}
+            label="Пасс эпохи и VIP"
+            onClick={() => push("profile", "season", (<><NavHeader title="Пасс эпохи" tabKey="profile" /><SeasonPassPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.friends}
+            label="Друзья и соседи"
+            onClick={() => push("profile", "friends", (<><NavHeader title="Друзья" tabKey="profile" /><FriendsList /></>))}
+          />
         </div>
-      </Card>
+      </Panel>
 
-      {/* My Rating */}
-      <Card className="mb-4" onClick={() => push("profile", "my-rating", (
-        <>
-          <NavHeader title="Мой рейтинг" icon={UI_ICONS.questsDaily} tabKey="profile" />
-          <PlayerRatingPage />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-parchment font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.questsDaily} alt="" className="w-5 h-5" /> Мой рейтинг</h3>
-            <p className="text-straw/60 text-xs mt-1">Как меня оценивают другие</p>
-          </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
-      </Card>
-
-      {/* Social: Leaderboard */}
-      <Card className="mb-4" onClick={() => push("profile", "leaderboard", (
-        <>
-          <NavHeader title="Leaderboard" icon={UI_ICONS.achievements} tabKey="profile" />
-          <LeaderboardPage />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-parchment font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.achievements} alt="" className="w-5 h-5" /> Leaderboard</h3>
-            <p className="text-straw/60 text-xs mt-1">Топ игроков по рейтингу</p>
-          </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
-      </Card>
-
-      {/* Sandbox */}
-      <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "sandbox", (
-        <>
-          <NavHeader title="Sandbox" icon={UI_ICONS.flasks} tabKey="profile" />
-          <SandboxPage />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.flasks} alt="" className="w-5 h-5" /> Economy Sandbox</h3>
-            <p className="text-straw/60 text-xs mt-1">Симуляция экономики перед изменениями</p>
-          </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
-      </Card>
-
-      {/* NPC Dashboard */}
-      <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "npc", (
-        <>
-          <NavHeader title="NPC Торговец" icon={UI_ICONS.trainer} tabKey="profile" />
-          <NpcDashboard />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> NPC Торговец</h3>
-            <p className="text-straw/60 text-xs mt-1">Автономный агент на маркете</p>
-          </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
-      </Card>
-
-      {/* Admin: Audit Log (только для разработчиков) */}
-      <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "audit", (
-        <>
-          <NavHeader title="Audit Log" icon={UI_ICONS.trustAntibot} tabKey="profile" />
-          <AuditLogPage />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trustAntibot} alt="" className="w-5 h-5" /> Sentinel Audit Log</h3>
-            <p className="text-straw/60 text-xs mt-1">Все действия игроков (admin only)</p>
-          </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
-      </Card>
-
-      {/* Admin: Economy Dashboard */}
-      <Card className="mb-4 bg-soil-900/50 border-straw/10" onClick={() => push("profile", "economy", (
-        <>
-          <NavHeader title="Economy Monitor" icon={UI_ICONS.economyOverview} tabKey="profile" />
-          <EconomyDashboard />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-straw font-semibold flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.economyOverview} alt="" className="w-5 h-5" /> Economy Monitor</h3>
-            <p className="text-straw/60 text-xs mt-1">Мониторинг MIND-экономики (admin)</p>
-          </div>
-          <span className="text-2xl text-straw">→</span>
-        </div>
-      </Card>
-
-      {/* 1. Пасс эпохи / VIP */}
-      <Card className="mb-4" onClick={() => push("profile", "season", (
-        <>
-          <NavHeader title="Пасс эпохи" tabKey="profile" />
-          <SeasonPassPage />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
-              <img src={UI_ICONS.seasonPass} alt="" className="w-5 h-5 object-contain" />
-              Пасс эпохи / VIP
-            </h3>
-            <p className="text-straw text-xs mt-1">Premium: Farm-Trader, награды без рекламы, бусты</p>
-          </div>
-          <span className="text-2xl">→</span>
-        </div>
-      </Card>
-
-      {/* 2. Привилегии (перенесено из отдельной вкладки) */}
-      <Card className="mb-4">
-        <h3 className="text-parchment font-semibold text-sm mb-3 flex items-center gap-2">
-          <img src={UI_ICONS.privileges} alt="" className="w-5 h-5 object-contain" />
-          Привилегии
-        </h3>
+      {/* Привилегии */}
+      <Panel
+        tier="panel"
+        className="mb-4"
+        id={<Sticker>ДОСТУП</Sticker>}
+        meta="ПАНЕЛЬ"
+        title="Привилегии"
+        sub="что открыто оператору"
+      >
         <PrivilegesPanel compact={true} />
-        <button
-          onClick={() => push("profile", "privileges", (
-            <>
-              <NavHeader title="Все привилегии" tabKey="profile" />
-              <div className="p-4"><PrivilegesPanel /></div>
-            </>
-          ))}
-          className="w-full mt-3 py-2 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-400 text-xs font-semibold hover:bg-purple-600/30 transition"
-        >
-          Показать все привилегии →
-        </button>
-      </Card>
+        <Keys>
+          <Key onClick={() => push("profile", "privileges", (<><NavHeader title="Все привилегии" tabKey="profile" /><div className="p-4"><PrivilegesPanel /></div></>))}>
+            Показать все привилегии
+          </Key>
+        </Keys>
+      </Panel>
 
-
-
-      {/* Друзья и соседи */}
-      <Card className="mb-4" onClick={() => push("profile", "friends", (
-        <>
-          <NavHeader title="Друзья" tabKey="profile" />
-          <FriendsList />
-        </>
-      ))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-wheat-500 font-semibold flex items-center gap-2">
-              <img src={UI_ICONS.friends} alt="" className="w-5 h-5 object-contain" />
-              Друзья и соседи
-            </h3>
-            <p className="text-straw text-xs mt-1">Поиск по нику, список друзей, визиты в лаборатории</p>
-          </div>
-          <span className="text-2xl">→</span>
-        </div>
-      </Card>
-
-      {/* Перерождение (эндгейм) */}
-      <Card className="mb-4 bg-gradient-to-r from-gold/10 to-soil-850 border border-gold/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-gold font-semibold flex items-center gap-2">
-              <img src={UI_ICONS.rebirth} alt="" className="w-5 h-5 object-contain" />
-              Перерождение
-            </h3>
-            <p className="text-straw text-xs mt-1">Сброс прогресса за постоянный бонус +2%</p>
-          </div>
-          <span className="px-4 py-2 rounded-2xl bg-soil-800 text-straw text-sm">
-            Временно отключено
-          </span>
-        </div>
-      </Card>
-
-      {/* Причина — из единого справочника DISABLED_MECHANICS, чтобы текст
-          не расходился с описанием механики на других экранах. */}
+      {/* Перерождение: механика закрыта, причина — из единого справочника */}
+      <Panel
+        tier="panel"
+        className="mb-4"
+        id={<Sticker alt>ЭНДГЕЙМ</Sticker>}
+        meta="ОТКЛЮЧЕНО"
+        title="Перерождение"
+        sub="сброс прогресса за постоянный бонус +2%"
+      >
+        <Note quiet>Механика пока закрыта: кнопка не списывает и не сбрасывает ничего.</Note>
+        <Keys>
+          <Key disabled>Перерождение недоступно</Key>
+        </Keys>
+      </Panel>
       <FeatureDisabledNotice id="rebirth" />
+
+      {/* Служебные экраны для команды: тихий уровень, без рамок приборов */}
+      <Panel
+        tier="quiet"
+        className="mb-4"
+        id={<Sticker>СЛУЖЕБНОЕ</Sticker>}
+        meta="ДЛЯ КОМАНДЫ"
+      >
+        <div className="list">
+          <ListRow
+            icon={UI_ICONS.flasks}
+            label="Песочница экономики"
+            onClick={() => push("profile", "sandbox", (<><NavHeader title="Песочница экономики" icon={UI_ICONS.flasks} tabKey="profile" /><SandboxPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.trainer}
+            label="Торговый агент"
+            onClick={() => push("profile", "npc", (<><NavHeader title="Торговый агент" icon={UI_ICONS.trainer} tabKey="profile" /><NpcDashboard /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.trustAntibot}
+            label="Журнал действий"
+            onClick={() => push("profile", "audit", (<><NavHeader title="Журнал действий" icon={UI_ICONS.trustAntibot} tabKey="profile" /><AuditLogPage /></>))}
+          />
+          <ListRow
+            icon={UI_ICONS.economyOverview}
+            label="Монитор экономики"
+            onClick={() => push("profile", "economy", (<><NavHeader title="Монитор экономики" icon={UI_ICONS.economyOverview} tabKey="profile" /><EconomyDashboard /></>))}
+          />
+        </div>
+      </Panel>
     </div>
   );
 }

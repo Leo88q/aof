@@ -143,7 +143,7 @@ export function FriendFarmPage({ address }: FriendFarmPageProps) {
       {/* Помочь другу */}
       <Card>
         <h2 className="text-parchment font-semibold text-sm mb-2 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.friends} alt="" className="w-4 h-4" /> Помочь другу</h2>
-        <p className="text-amber-400 text-xs">
+        <p className="text-gold-400 text-xs">
           Социальные бонусы временно недоступны: соседские эффекты
           полива и ремонта ещё не развернуты.
         </p>

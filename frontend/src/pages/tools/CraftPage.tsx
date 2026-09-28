@@ -20,9 +20,9 @@ const RARITY_RU: Record<string, string> = {
 
 // [НОВОЕ] Метаданные всех 6 ресурсов
 const RES_META: Record<string, { icon: string; label: string; color: string }> = {
-  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-amber-400" },
+  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-gold-400" },
   stone: { icon: resourceIcon("stone") || "", label: "Кремний",   color: "text-stone-400" },
-  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-yellow-500" },
+  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-gold-500" },
   seeds: { icon: resourceIcon("seeds") || "", label: "Нейрон",   color: "text-sprout-500" },
   water: { icon: resourceIcon("water") || "", label: "Энергопоток",     color: "text-water-500" },
   potato: { icon: resourceIcon("potato") || "", label: "MIND",   color: "text-wheat-500" },
@@ -328,12 +328,12 @@ export function CraftPage() {
                       className={`h-full rounded-full ${
                         status === "sufficient" ? "bg-sprout-500" :
                         status === "partial" ? "bg-wheat-500" :
-                        "bg-red-500"
+                        "bg-ember-500"
                       }`}
                     />
                   </div>
                   {status !== "sufficient" && (
-                    <p className="text-[10px] text-red-400 mt-1">
+                    <p className="text-[10px] text-ember-400 mt-1">
                       ⚠️ Not enough {RES_META[res].label}
                     </p>
                   )}

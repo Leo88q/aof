@@ -79,7 +79,7 @@ export function FarmPlot() {
   });
 
   async function quick(action: "start" | "collect") {
-    if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка контракта в тестовой сети");
+    if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка правил сети");
     if (!address) return flash("❌ Подключите кошелёк");
     if (!selected) return;
     setBusy(true);
@@ -104,7 +104,7 @@ export function FarmPlot() {
   return (
     <div className="p-4 pt-6 pb-24">
       <div className="mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">Мой нейро-лаб</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">Мой участок</h1>
         <p className="text-straw text-[11px] mt-0.5">Инструменты в стойке становятся постройками на участке.</p>
       </div>
 

@@ -109,8 +109,8 @@ export function ExplorationPage() {
           <p className="text-straw text-xs">Успех и количество Схем/Кремния (CIRCUIT/SILICON) определяет оракул Switchboard по tier, зафиксированному при старте.</p>
         </div>
 
-        <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 mb-4">
-          <h3 className="text-purple-400 font-semibold text-sm mb-2">Требования:</h3>
+        <div className="bg-nf-purple/10 border border-nf-purple/30 rounded-xl p-4 mb-4">
+          <h3 className="text-nf-purple font-semibold text-sm mb-2">Требования:</h3>
           <ul className="space-y-1 text-xs text-straw">
             <li>✓ Инструмент: <span className="text-parchment">Квантовый передатчик</span></li>
             <li>✓ Ресурсы: Данные, Схема, Кремний, Датасет</li>
@@ -127,7 +127,7 @@ export function ExplorationPage() {
         <button
           onClick={startExploration}
           disabled={loading || !address || !bowMint}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
+          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform"
         >
           {loading ? "Отправляем..." : !bowMint ? "Нужен передатчик в инвентаре" : "Отправить в экспедицию"}
         </button>

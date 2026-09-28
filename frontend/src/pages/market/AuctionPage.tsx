@@ -5,7 +5,8 @@ import { getAssociatedTokenAddressSync } from "../../lib/associatedToken";
 import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { useWalletStore } from "../../store/walletStore";
-import { Card } from "../../components/ui/Card";
+import { Lamp, Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
+import { SonarPPI } from "../../ui/forge/devices";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { toolPlate, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
@@ -123,15 +124,64 @@ export function AuctionPage() {
 
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.auction} alt="" className="w-7 h-7" /> Аукцион</h1>
-        <button onClick={load} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Refresh"}
+      {/* К6 · сонар аукционов: отметка — лот, радиус — текущая ставка отн.
+          самой крупной. Свежие ставки горят лампами, выдуманных чисел нет. */}
+      <Panel
+        tier="panel"
+        device="sonar"
+        id={<Sticker>АУКЦИОН</Sticker>}
+        meta={loading ? "ЧИТАЕМ…" : `ЛОТОВ ${auctions.length}`}
+        title="Аукционный зал"
+        sub="кто больше — того и инструмент"
+      >
+        {auctions.length > 0 ? (() => {
+          const tops = auctions.map((a: any) => toNum(a.highestBid) || toNum(a.minBid));
+          const maxTop = Math.max(...tops, 0.000001);
+          const blips = auctions.slice(0, 24).map((a: any, i: number, arr: any[]) => {
+            const angle = (-90 + (i / Math.max(1, arr.length)) * 360) * (Math.PI / 180);
+            const r = 9 + 43 * Math.min(1, (toNum(a.highestBid) || toNum(a.minBid)) / maxTop);
+            return { x: 60 + r * Math.cos(angle), y: 60 + r * Math.sin(angle), r: 2.2 };
+          });
+          return (
+            <SonarPPI
+              blips={blips}
+              legend={
+                <>
+                  <span>Лотов: <b>{auctions.length}</b></span>
+                  <span>Со ставками: <b>{auctions.filter((a: any) => toNum(a.highestBid) > 0).length}</b></span>
+                  <span>Выше всех: <b>{fmtSol(maxTop)} ◎</b></span>
+                </>
+              }
+            />
+          );
+        })() : (
+          <p className="fg-note fg-note--quiet" style={{ margin: 0 }}>Зал пуст — ставок нет.</p>
+        )}
+        <div style={{ marginTop: 14 }}>
+          <Readouts>
+            <Readout label="Лотов" value={String(auctions.length)} hint="активных аукционов" />
+            <Readout
+              label="Со ставками"
+              value={String(auctions.filter((a: any) => toNum(a.highestBid) > 0).length)}
+              hint="есть текущий лидер"
+            />
+            <Readout
+              label="Горят"
+              value={String(auctions.filter((a: any) => {
+                const ends = toNum(a.endsAt) * 1000;
+                return ends > now && ends - now < 5 * 60 * 1000;
+              }).length)}
+              hint="меньше 5 минут до молотка"
+            />
+          </Readouts>
+        </div>
+      </Panel>
+
+      <div className="flex justify-end">
+        <button onClick={load} className="fg-key fg-key--tiny" type="button">
+          {loading ? "Читаем…" : "Обновить"}
         </button>
       </div>
-      <p className="text-straw text-xs">
-        Кто больше — того и инструмент. Последние 5 минут таймер «горит» — не проспи молоток.
-      </p>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -141,11 +191,11 @@ export function AuctionPage() {
       )}
 
       {auctions.length === 0 && !loading && (
-        <Card className="text-center py-8">
+        <Panel tier="panel" className="text-center py-8">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.auction} alt="" className="w-12 h-12 mx-auto" /></div>
           <p className="text-parchment text-sm">Активных аукционов нет</p>
           <p className="text-straw text-xs mt-1">Создайте первый — молоток ждёт</p>
-        </Card>
+        </Panel>
       )}
 
       <div className="grid grid-cols-1 gap-3">
@@ -158,7 +208,7 @@ export function AuctionPage() {
           return (
             <motion.div key={a.pubkey || a.mint} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}>
-              <Card className={`border ${lastFiveMin ? "border-wheat-500 animate-pulse" : "border-straw/10"}`}>
+              <Panel tier="panel" className={"mb-3" + (lastFiveMin ? " fg--hot" : "")}>
                 <div className="flex items-center gap-3">
                   <ArtPlate src={toolPlate(a.tool?.toolType, rk)} alt={a.tool?.toolType || "Инструмент"} size={56} />
                   <div className="flex-1 min-w-0">
@@ -178,8 +228,11 @@ export function AuctionPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className={`text-xs font-semibold ${ended ? "text-straw" : lastFiveMin ? "text-wheat-500" : "text-parchment"}`}>
-                      {ended ? "⏹ " : "⏳ "}{timeLeftStr(toNum(a.endsAt))}
+                    <Lamp tone={ended ? "wait" : lastFiveMin ? "err" : "ok"}>
+                      {ended ? "закрыт" : lastFiveMin ? "горит" : "идёт"}
+                    </Lamp>
+                    <div className="fg-num" style={{ marginTop: 4, fontSize: 12, color: "var(--fg-text)" }}>
+                      {timeLeftStr(toNum(a.endsAt))}
                     </div>
                   </div>
                 </div>
@@ -190,10 +243,10 @@ export function AuctionPage() {
                       type="number" step="0.001" min="0" placeholder="Ставка, ◎"
                       value={bids[a.mint] || ""}
                       onChange={(e) => setBids((s) => ({ ...s, [a.mint]: e.target.value }))}
-                      className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm"
+                      className="fg-input"
                     />
                     <button onClick={() => bid(a)}
-                      className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium">
+                      className="fg-key fg-key--primary fg-key--tiny">
                       Ставка
                     </button>
                   </div>
@@ -205,14 +258,14 @@ export function AuctionPage() {
                     Завершить и передать победителю
                   </button>
                 )}
-              </Card>
+              </Panel>
             </motion.div>
           );
         })}
       </div>
 
-      <Card>
-        <button className="w-full flex items-center justify-between" onClick={() => setFormOpen((v) => !v)}>
+      <Panel tier="panel">
+        <button type="button" className="w-full flex items-center justify-between" onClick={() => setFormOpen((v) => !v)}>
           <div className="text-left">
             <div className="text-parchment font-semibold text-sm">Создать аукцион</div>
             <div className="text-straw text-xs">Минимальная ставка + длительность</div>
@@ -241,20 +294,20 @@ export function AuctionPage() {
             <div className="flex items-center gap-2 pt-2">
               <span className="text-straw text-xs w-28">Мин. ставка, ◎</span>
               <input type="number" step="0.001" min="0" value={minBidSol} onChange={(e) => setMinBidSol(e.target.value)}
-                className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
+                className="fg-input" />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-straw text-xs w-28">Длительность, ч</span>
               <input type="number" step="1" min="1" value={durationH} onChange={(e) => setDurationH(e.target.value)}
-                className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
+                className="fg-input" />
             </div>
             <button onClick={createAuction} disabled={!selMint}
-              className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+              className="btn btn-primary">
               Создать аукцион
             </button>
           </motion.div>
         )}
-      </Card>
+      </Panel>
     </div>
   );
 }

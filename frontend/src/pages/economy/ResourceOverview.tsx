@@ -136,7 +136,7 @@ export function ResourceOverview() {
   if (!balances) {
     return (
       <div className="economy-empty">
-        <p className={loading ? "text-straw" : "text-amber-400"}>
+        <p className={loading ? "text-straw" : "text-gold-400"}>
           {loading
             ? "Читаем балансы из сети…"
             : "Балансы ресурсов недоступны из сети"}

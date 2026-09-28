@@ -123,9 +123,9 @@ export function WellPanel() {
       </div>
 
       {!weather || !w ? (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
+        <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-3 space-y-2">
           <p className="text-straw text-xs">WeatherState не найден. Без него программа не может рассчитать энергопоток.</p>
-          <button onClick={crankWeather} disabled={cranking} className="w-full py-2 rounded-lg bg-amber-600 text-parchment text-sm font-bold disabled:opacity-50">
+          <button onClick={crankWeather} disabled={cranking} className="w-full py-2 rounded-lg bg-gold-600 text-parchment text-sm font-bold disabled:opacity-50">
             {cranking ? "Обновляем…" : "Обновить нагрузку в сети"}
           </button>
         </div>
@@ -151,14 +151,14 @@ export function WellPanel() {
             {!well && <p className="text-straw text-[10px] mt-2">Станции ещё нет в сети. Первый вызов создаёт её и начинает накопление.</p>}
           </div>
 
-          <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
+          <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-water-600 to-wheat-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
             {collecting ? "Обрабатываем…" : !well ? "Создать сетевую станцию" : "Собрать энергопоток"}
           </button>
         </>
       )}
 
       {message && <p className="text-straw text-xs text-center"><NoticeMsg text={message} /></p>}
-      <p className="text-straw text-[10px] text-center">Расчёт не является локальным балансом: итоговую эмиссию определяет aof-core.</p>
+      <p className="text-straw text-[10px] text-center">Итог считает сама сеть: локальная оценка не показывается.</p>
     </Card>
     </>
   );
