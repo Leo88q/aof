@@ -92,7 +92,10 @@ mod tests {
         assert!(b.release(100 * POTATO_UNIT, POTATO_SPIN_PRICE).is_ok());
         assert_eq!(b.reserved_atoms, POTATO_MAX_PRIZE);
         assert_eq!(b.open_spins, 1);
-        assert!(matches!(b.release(40 * POTATO_UNIT, POTATO_SPIN_PRICE), Err(QuestError::PotatoBankInsolvent)));
+        // Only this spin remains: its known refund is 5, not the maximum
+        // 50. A vault with 40 can cover that refund, but a vault with 4 cannot.
+        assert!(b.can_settle(40 * POTATO_UNIT, POTATO_SPIN_PRICE));
+        assert!(matches!(b.release(4 * POTATO_UNIT, POTATO_SPIN_PRICE), Err(QuestError::PotatoBankInsolvent)));
         assert!(b.release(95 * POTATO_UNIT, POTATO_MAX_PRIZE).is_ok());
         assert_eq!(b.open_spins, 0);
         assert_eq!(b.reserved_atoms, 0);
