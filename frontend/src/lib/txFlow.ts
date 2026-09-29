@@ -1,3 +1,6 @@
+import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
+import { txResponseFeedback, txExceptionFeedback } from "./txResponseFeedback";
+import { getApiErrorLanguage } from "./apiErrorLanguage";
 import type { TransactionIntent } from "./transactionIntent";
 import { confirmSignature } from "./confirmation";
 import { connection } from "./wallet";
@@ -25,15 +28,17 @@ export async function handleTxResponse(response: any, intent?: TransactionIntent
   signature?: string;
   error?: string;
 }> {
-  if (!response || typeof response !== "object") return { success: false, error: "Invalid API response" };
-  if (intent && !response.tx) return { success: false, error: "Expected a wallet transaction matching the purchase intent" };
-  if (response.pending) return { success: false, signature: response.signature, error: response.reason || "Операция ожидает подтверждения" };
+  const language = getApiErrorLanguage();
+  const copy = walletRuntimeCopy[language];
+  if (!response || typeof response !== "object") return { success: false, error: copy.invalidResponse };
+  if (intent && !response.tx) return { success: false, error: copy.expectedTransaction };
+  if (response.pending) return { success: false, signature: response.signature, error: copy.pending };
   if (response.sig && !intent) {
     try {
       await confirmSignature(connection, response.sig);
       return { success: true, signature: response.sig };
     } catch (e: any) {
-      return { success: false, signature: response.sig, error: e.message };
+      return { success: false, signature: response.sig, error: txExceptionFeedback(e, language, copy.unconfirmedResponse) };
     }
   }
 
@@ -45,18 +50,18 @@ export async function handleTxResponse(response: any, intent?: TransactionIntent
       const signature = await signAndSendTx(response.tx, intent);
       return { success: true, signature };
     } catch (e: any) {
-      if (e.message === "NEED_WALLET") {
+      if (e?.message === "NEED_WALLET") {
         return {
           success: false,
-          error: "Подключите кошелёк (кнопка вверху экрана)",
+          error: copy.connectWallet,
         };
       }
-      return { success: false, error: e.message };
+      return { success: false, signature: typeof e?.signature === 'string' ? e.signature : undefined, error: txExceptionFeedback(e, language, copy.unconfirmedResponse) };
     }
   }
 
   if (response.error) {
-    return { success: false, error: response.error };
+    return { success: false, error: txResponseFeedback(response.error, language, copy.unconfirmedResponse) };
   }
 
   return { success: true };

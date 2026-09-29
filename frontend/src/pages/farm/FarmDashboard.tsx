@@ -1,4 +1,9 @@
 import { functionalStorage } from "../../legal/consent";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { labLabels } from "../../i18n/labLabels";
+import { farmOverviewCopy } from "../../i18n/farmOverviewCopy";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
+import { farmPlotCopy, buildingKeys } from "../../i18n/farmPlotCopy";
 import { ActiveBuffs } from "../../components/ActiveBuffs";
 import { useEffect, useState } from "react";
 import { useNav } from "../../nav/NavContext";
@@ -24,7 +29,6 @@ import { MillPanel } from "./MillPanel";
 import { PlantingPanel } from "./PlantingPanel";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { LabHero } from "../../components/farm/LabHero";
-import { buildingFor } from "../../lib/buildings";
 import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
 import { Note, Panel, Row, Rows, Sticker } from "../../ui/forge/kit";
 
@@ -36,6 +40,9 @@ function emptyPlateWells(rows: number, cols: number) {
 }
 
 export function FarmDashboard() {
+  const { language } = useLocale();
+  const labels = labLabels[language];
+  const overview = farmOverviewCopy[language];
   const walletAddr = useWalletStr();
   const { push } = useNav();
   const { user, setUser, weather, setWeather, energy, setEnergy } = useStore();
@@ -88,7 +95,7 @@ export function FarmDashboard() {
         setToolsFailed(false);
       }
     } catch (e) {
-      console.error("Не удалось загрузить данные:", e);
+      console.error("Failed to load farm data:", e);
       setStaked(null);
       setToolsFailed(true);
     } finally {
@@ -116,15 +123,17 @@ export function FarmDashboard() {
     c: i % PLATE_COLS,
     state: (t?.isMining || t?.mining ? "g" : "q") as "g" | "q",
     level: t?.isMining || t?.mining ? 1 : undefined,
-    title: buildingFor(t.toolType)?.name || t.toolType || "инструмент",
+    title: (t.toolType && buildingKeys[String(t.toolType).toLowerCase()]
+      ? farmPlotCopy[language].buildings[buildingKeys[String(t.toolType).toLowerCase()]]
+      : overview.toolName),
   }));
 
   const subTabs: { key: SubTab; label: string; icon: string }[] = [
-    { key: "dashboard", label: "Обзор", icon: UI_ICONS.labOverview },
-    { key: "well", label: "Сетевая станция", icon: UI_ICONS.gridStation },
-    { key: "plant", label: "Культивация", icon: UI_ICONS.plant },
-    { key: "mill", label: "Сепарация", icon: UI_ICONS.mill },
-    { key: "oven", label: "Обучение", icon: UI_ICONS.trainer },
+    { key: "dashboard", label: labels.overview, icon: UI_ICONS.labOverview },
+    { key: "well", label: labels.station, icon: UI_ICONS.gridStation },
+    { key: "plant", label: labels.cultivation, icon: UI_ICONS.plant },
+    { key: "mill", label: labels.separation, icon: UI_ICONS.mill },
+    { key: "oven", label: labels.training, icon: UI_ICONS.trainer },
   ];
 
   return (
@@ -168,14 +177,14 @@ export function FarmDashboard() {
             toolsFailed={toolsFailed}
             actions={
               <>
-                <Key onClick={() => push("farm", "exploration", (<><NavHeader title="Экспедиция" tabKey="farm" /><ExplorationPage /></>))}>
-                  Экспедиция
+                <Key onClick={() => push("farm", "exploration", (<><NavHeader headerId="exploration" tabKey="farm" /><ExplorationPage /></>))}>
+                  {labels.expedition}
                 </Key>
-                <Key onClick={() => push("farm", "drum", (<><NavHeader title="Квантовый барабан" tabKey="farm" /><DrumSpin /></>))}>
-                  Барабан
+                <Key onClick={() => push("farm", "drum", (<><NavHeader headerId="drum" tabKey="farm" /><DrumSpin /></>))}>
+                  {labels.drum}
                 </Key>
-                <Key onClick={() => push("farm", "lottery", (<><NavHeader title="Лотерея" tabKey="farm" /><LotteryPage /></>))}>
-                  Лотерея
+                <Key onClick={() => push("farm", "lottery", (<><NavHeader headerId="lottery" tabKey="farm" /><LotteryPage /></>))}>
+                  {labels.lottery}
                 </Key>
                 <WeatherWidget compact />
               </>
@@ -184,19 +193,19 @@ export function FarmDashboard() {
 
           <Card className="mb-4" onClick={() => push("farm", "farm", <FarmPlot />)}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-parchment">Участок →</h3>
+              <h3 className="text-sm font-semibold text-parchment">{overview.plot} →</h3>
               <span className="text-[11px] text-straw">
                 {staked === null
-                  ? toolsFailed ? "построек: —" : "построек: …"
-                  : staked.length > 0 ? `построек: ${staked.length}` : "построек нет"}
+                  ? `${overview.buildings}: ${toolsFailed ? '—' : '…'}`
+                  : staked.length > 0 ? `${overview.buildings}: ${staked.length}` : overview.noBuildings}
               </span>
             </div>
             {staked === null ? (
               <div className="fg-quiet text-center">
                 <p className="fg-note" style={{ margin: 0 }}>
                   {toolsFailed
-                    ? "Не удалось прочитать инструменты из сети — постройки неизвестны."
-                    : "Читаем инструменты…"}
+                    ? overview.unknownTools
+                    : overview.readingTools}
                 </p>
               </div>
             ) : staked.length > 0 ? (
@@ -211,9 +220,9 @@ export function FarmDashboard() {
                   onWell={(w) => push("farm", "farm", <FarmPlot />)}
                 />
                 <div className="plate-legend">
-                  <span><i className="lg-g" /> в работе</span>
-                  <span><i className="lg-q" /> в стойке</span>
-                  <span><i className="lg-empty" /> место свободно</span>
+                  <span><i className="lg-g" /> {overview.working}</span>
+                  <span><i className="lg-q" /> {overview.inRack}</span>
+                  <span><i className="lg-empty" /> {overview.empty}</span>
                 </div>
               </>
             ) : (
@@ -223,7 +232,7 @@ export function FarmDashboard() {
                 <PlateGrid rows={6} cols={8} wells={emptyPlateWells(6, 8)} />
                 <div className="text-center" style={{ marginTop: 10 }}>
                   <p className="text-straw text-xs">
-                    Поставь инструмент в стойку — лунка займёт своё место
+                    {overview.placeTool}
                   </p>
                 </div>
               </>
@@ -234,13 +243,13 @@ export function FarmDashboard() {
             <Card onClick={() => push("farm", "inbox", <InboxHome />)}>
               <div className="text-center py-1">
                 <img src={UI_ICONS.inbox} alt="" className="w-8 h-8 object-contain mx-auto" />
-                <p className="text-parchment text-sm font-semibold mt-1">Инбокс</p>
+                <p className="text-parchment text-sm font-semibold mt-1">{overview.inbox}</p>
               </div>
             </Card>
             <Card onClick={() => push("farm", "compendium", <CompendiumHome />)}>
               <div className="text-center py-1">
                 <img src={UI_ICONS.catalog} alt="" className="w-8 h-8 object-contain mx-auto" />
-                <p className="text-parchment text-sm font-semibold mt-1">Каталог</p>
+                <p className="text-parchment text-sm font-semibold mt-1">{overview.catalog}</p>
               </div>
             </Card>
           </div>
@@ -251,23 +260,22 @@ export function FarmDashboard() {
           <Panel
             tier="panel"
             device="sonar"
-            id={<Sticker alt>ЖУРНАЛ</Sticker>}
-            meta="ЛЕНТА НЕ ЗАПРАВЛЕНА"
-            title="Журнал смены"
-            sub="нагрузка и работа участка"
+            id={<Sticker alt>{overview.journalSticker}</Sticker>}
+            meta={overview.tapeEmpty}
+            title={overview.journalTitle}
+            sub={overview.journalSubtitle}
           >
             <EchoTrace marks={[]} depth={null} />
             <Rows>
               <Row
-                k="Нагрузка сети сегодня"
-                v={({ sunny: "Номинал", rain: "Скачок", drought: "Блэкаут", festival: "Френзи" } as Record<string, string>)[weather?.type || ""] || "—"}
+                k={overview.loadToday}
+                v={labHeroCopy[language].load[weather?.type === 'harvest_festival' ? 'festival' : weather?.type as keyof typeof labHeroCopy.ru.load] || '—'}
               />
-              <Row k="История добычи" v="—" note="архив не ведётся" />
-              <Row k="Динамика цен" v="—" note="только текущие прилавки" />
+              <Row k={overview.miningHistory} v="—" note={overview.noArchive} />
+              <Row k={overview.priceTrend} v="—" note={overview.currentOnly} />
             </Rows>
             <Note quiet>
-              Лента глубин пишется по архиву сети — пока его нет, прибор честно молчит вместо
-              выдуманного графика.
+              {overview.journalNote}
             </Note>
           </Panel>
         </>

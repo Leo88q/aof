@@ -21,7 +21,12 @@ r.use(adminByMethod);
 /** POST /admin/config/mining { enabled } — on-chain kill-switch (F-27). */
 r.post("/mining", async (req, res) => {
   try {
-    const enabled = Boolean(req.body.enabled);
+    // String "false" is truthy in JS; never interpret it as permission to
+    // enable mining. Require an explicit JSON boolean for the kill-switch.
+    if (typeof req.body?.enabled !== "boolean") {
+      return res.status(400).json({ error: "enabled must be a JSON boolean" });
+    }
+    const enabled = req.body.enabled;
     const [config] = configPda();
     const ix = await (program.methods as any)
       .setMiningEnabled(enabled)
@@ -40,7 +45,10 @@ r.get("/mining", async (_req, res) => {
   try {
     const [config] = configPda();
     const cfg: any = await (program.account as any)["config"].fetch(config);
-    res.json({ miningEnabled: Boolean(cfg.miningEnabled), paused: Boolean(cfg.paused) });
+    if (typeof cfg?.miningEnabled !== "boolean" || typeof cfg?.paused !== "boolean") {
+      return res.status(503).json({ error: "MINING_CONFIG_UNAVAILABLE" });
+    }
+    res.json({ miningEnabled: cfg.miningEnabled, paused: cfg.paused });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

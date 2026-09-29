@@ -1,168 +1,126 @@
 import { useEffect, useState } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { seasonCalendarCopy } from "../../i18n/seasonCalendarCopy";
+import { wellCopy } from "../../i18n/wellCopy";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
 import { Card } from "../../components/ui/Card";
 import {
-  DAYS_PER_SEASON,
-  SEASON_ICONS,
-  WEATHER_BY_INDEX,
-  WEATHER_ICONS,
-  WEATHER_LABELS,
-  fetchWeatherSnapshot,
-  seasonFromDayId,
-  seasonTitle,
-  weatherIndexForDay,
-  type WeatherSnapshot,
+  DAYS_PER_SEASON, SEASON_ICONS, SEASON_ROMAN, WEATHER_BY_INDEX, WEATHER_ICONS, fetchWeatherSnapshot, seasonFromDayId,
+  weatherIndexForDay, type WeatherSnapshot,
 } from "../../lib/weather";
 
-/**
- * Календарь эпох.
- *
- * Дефект 2026-09-28: страница считала погоду дней сама — по своему хешу
- * (`dayId * 0x9E3779B9` с долями 20/30/40/10), из-за чего расписание не
- * совпадало с цепью ни в один день, а эффекты («Данные +10%») были выдуманы.
- * Теперь состояние дня читается из канонического WeatherState PDA, а сетка
- * эпохи строится функцией `weatherIndexForDay` — тем же правилом, что и в
- * aof-core (`weather_for_day`, 10/50/30/10). Сеть не хранит отдельного
- * прогноза: погода любого дня — чистая функция его номера, и это сказано игроку.
- */
-
-interface DayCell {
-  dayId: number;
-  date: string;
-  weatherIndex: number;
-  isToday: boolean;
-}
-
+/** The grid is derived from the verified day ID and the network's deterministic
+ * weather function. Never anchor a fictional season to the browser clock. */
 export function SeasonCalendar() {
+  const { language } = useLocale();
+  const copy = seasonCalendarCopy[language];
+  const seasonNames = wellCopy[language].seasonNames;
+  const loadNames = labHeroCopy[language].load;
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [alive, setAlive] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    let mounted = true;
-    fetchWeatherSnapshot()
-      .then((data) => {
-        if (!mounted) return;
-        setSnapshot(data);
-      })
-      .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
-  }, [alive]);
+    let active = true;
+    setLoading(true);
+    fetchWeatherSnapshot().then((next) => {
+      if (active) {
+        // The current-state route can return a weather type without its day ID.
+        // Its snapshot then contains dayId 0; do not draw a guessed schedule.
+        const valid = next && Number.isSafeInteger(next.dayId) && next.dayId > 0
+          && Number.isFinite(new Date(next.dayId * 86400000).getTime())
+          && WEATHER_BY_INDEX[next.weatherIndex]?.type === next.type;
+        setSnapshot(valid ? next : null);
+      }
+    }).catch(() => { if (active) setSnapshot(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [refreshKey]);
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center">
-        <div className="text-parchment">Читаем состояние дня…</div>
-      </div>
-    );
-  }
-
-  if (!snapshot) {
-    return (
-      <Card className="p-6 bg-soil-800 border border-straw/10 space-y-3">
-        <h2 className="text-lg font-semibold text-parchment">Состояние дня недоступно</h2>
-        <p className="text-straw text-sm leading-relaxed">
-          Сеть не отдала аккаунт погоды. Календарь пуст намеренно: без данных сети
-          расписание не достраивается.
-        </p>
-        <button className="nf-key" type="button" onClick={() => { setLoading(true); setAlive((v) => !v); }}>
-          Прочитать ещё раз
-        </button>
-      </Card>
-    );
-  }
+  if (loading) return <div lang={language} role="status" className="economy-empty"><p className="text-straw">{copy.reading}</p></div>;
+  if (!snapshot) return (
+    <div lang={language} role="status" className="economy-empty">
+      <p className="text-gold-400">{copy.unavailable}</p>
+      <p className="text-straw text-sm max-w-lg leading-relaxed">{copy.unavailableReason}</p>
+      <button type="button" className="nf-key" onClick={() => setRefreshKey(n => n + 1)}>{copy.retry}</button>
+    </div>
+  );
 
   const season = seasonFromDayId(snapshot.dayId);
-  const todayIso = new Date(snapshot.dayId * 86_400_000).toISOString().slice(0, 10);
-  const epochStart = snapshot.dayId - season.dayOfSeason;
-  const days: DayCell[] = Array.from({ length: DAYS_PER_SEASON }, (_, i) => {
-    const dayId = epochStart + i;
-    return {
-      dayId,
-      date: new Date(dayId * 86_400_000).toISOString().slice(0, 10),
-      weatherIndex: weatherIndexForDay(dayId),
-      isToday: dayId === snapshot.dayId,
-    };
+  const firstDayId = snapshot.dayId - season.dayOfSeason;
+  const seasonName = seasonNames[season.season];
+  const days = Array.from({ length: DAYS_PER_SEASON }, (_, index) => {
+    const dayId = firstDayId + index;
+    const weatherIndex = weatherIndexForDay(dayId);
+    const weather = WEATHER_BY_INDEX[weatherIndex];
+    const date = new Date(dayId * 86400000);
+    return { dayId, day: index + 1, date, weather, today: dayId === snapshot.dayId };
   });
+  const current = WEATHER_BY_INDEX[snapshot.weatherIndex];
+  const rate = current.rate;
+  const nameFor = (type: keyof typeof loadNames) => loadNames[type];
 
+  const hourly = (value: number) => copy.rate.replace('{rate}', String(value));
   return (
-    <div className="space-y-6">
-      <Card className="p-6 bg-soil-800 border border-straw/10">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-parchment flex items-center gap-2">
-              {SEASON_ICONS[season.season] && (
-                <img src={SEASON_ICONS[season.season]} alt="" className="w-7 h-7 object-contain" />
-              )}
-              {seasonTitle(season.seasonIndex)}
+    <div lang={language} className="space-y-6 min-w-0">
+      <Card className="p-4 sm:p-6 bg-soil-800 border border-straw/10">
+        <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-parchment flex flex-wrap items-center gap-2 break-words">
+              <img src={SEASON_ICONS[season.season]} alt="" className="w-7 h-7 object-contain shrink-0" />
+              {copy.epoch} {SEASON_ROMAN[season.seasonIndex]} · {seasonName}
             </h2>
-            <p className="text-straw text-sm mt-1">
-              День {season.dayOfSeason + 1} из {DAYS_PER_SEASON} · до смены эпохи {season.daysUntilNextSeason} дн.
+            <p className="text-straw text-sm mt-1 break-words">
+              {copy.dayOfSeason.replace('{day}', String(season.dayOfSeason + 1)).replace('{total}', String(DAYS_PER_SEASON))}
+              {' · '}{copy.untilChange.replace('{days}', `${season.daysUntilNextSeason} ${copy.days}`)}
             </p>
           </div>
-          <div className="text-right text-xs text-straw">
-            <div>Сегодня</div>
-            <div className="text-parchment">{todayIso}</div>
+          <div className="text-sm text-straw">
+            <div>{copy.today}</div>
+            <div className="text-parchment">{new Date(snapshot.dayId * 86400000).toISOString().slice(0, 10)}</div>
           </div>
         </div>
       </Card>
 
       <Card className="p-4 bg-soil-800 border border-straw/10">
-        <h3 className="text-lg font-semibold text-parchment mb-3">Состояние станции сегодня</h3>
-        <div className="flex items-center gap-4">
-          <img
-            src={WEATHER_ICONS[snapshot.type]}
-            alt=""
-            className="w-12 h-12 object-contain"
-          />
-          <div>
-            <div className="text-parchment font-semibold">{WEATHER_LABELS[snapshot.type]}</div>
-            <div className="text-straw text-sm">
-              {WEATHER_BY_INDEX[snapshot.weatherIndex]?.rate ?? 0} единиц ресурса в час
-              {snapshot.source === "weather-state" ? " · чтение напрямую из аккаунта сети" : ""}
-            </div>
+        <h3 className="text-lg font-semibold text-parchment mb-3">{copy.stationToday}</h3>
+        <div className="flex items-center gap-4 min-w-0">
+          <img src={WEATHER_ICONS[snapshot.type]} alt="" className="w-12 h-12 object-contain shrink-0" />
+          <div className="min-w-0 break-words">
+            <div className="text-parchment font-semibold">{nameFor(snapshot.type)}</div>
+            <div className="text-straw text-sm">{hourly(rate)} · {copy.source}</div>
           </div>
         </div>
       </Card>
 
       <Card className="p-4 bg-soil-800 border border-straw/10">
-        <h3 className="text-lg font-semibold text-parchment mb-1">Эпоха целиком</h3>
-        <p className="text-straw text-xs mb-4 leading-relaxed">
-          Погода дня — следствие его номера, а не отдельный прогноз: доля блэкаута 10%,
-          номинала 50%, скачка 30%, френзи 10%. Так же считает сеть, поэтому строку завтрашнего
-          дня можно прочитать заранее.
-        </p>
-        <div className="grid grid-cols-7 gap-1.5">
-          {days.map((day) => (
-            <div
-              key={day.dayId}
-              className={
-                "nf-plate nf-plate--icon rounded-lg p-1.5 text-center" +
-                (day.isToday ? " outline outline-1 outline-wheat-300" : "")
-              }
-              title={`${day.date} · ${WEATHER_LABELS[WEATHER_BY_INDEX[day.weatherIndex].type]}`}
-            >
-              <img
-                src={WEATHER_ICONS[WEATHER_BY_INDEX[day.weatherIndex].type]}
-                alt=""
-                className="w-6 h-6 object-contain mx-auto"
-              />
-              <div className="text-[10px] text-straw mt-0.5">{day.weatherIndex >= 0 ? day.date.slice(8) : "—"}</div>
-            </div>
-          ))}
+        <h3 className="text-lg font-semibold text-parchment mb-1">{copy.fullSeason}</h3>
+        <p className="text-straw text-xs mb-4 leading-relaxed">{copy.schedule}</p>
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 min-w-0">
+          {days.map(d => {
+            const label = nameFor(d.weather.type);
+            return (
+              <div key={d.dayId}
+                className={'nf-plate nf-plate--icon rounded-lg p-0.5 sm:p-1.5 text-center min-w-0' + (d.today ? ' outline outline-1 outline-wheat-300' : '')}
+                title={`${d.date.toLocaleDateString(language, { day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${label}`}
+                aria-label={`${d.today ? copy.today + ': ' : ''}${copy.dayOfSeason.replace('{day}', String(d.day)).replace('{total}', String(DAYS_PER_SEASON))} · ${label}`}>
+                <img src={WEATHER_ICONS[d.weather.type]} alt="" className="w-5 h-5 sm:w-6 sm:h-6 object-contain mx-auto max-w-full" />
+                <div className="text-[10px] text-straw mt-0.5">{d.date.getUTCDate()}</div>
+              </div>
+            );
+          })}
         </div>
       </Card>
 
       <Card className="p-4 bg-soil-800 border border-straw/10">
-        <h3 className="text-lg font-semibold text-parchment mb-3">Состояния сети</h3>
+        <h3 className="text-lg font-semibold text-parchment mb-3">{copy.networkStates}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {Object.entries(WEATHER_BY_INDEX).map(([index, meta]) => (
-            <div key={index} className="flex items-center gap-3">
-              <img src={WEATHER_ICONS[meta.type]} alt="" className="w-8 h-8 object-contain" />
-              <div>
-                <div className="text-parchment text-sm font-semibold">{WEATHER_LABELS[meta.type]}</div>
-                <div className="text-straw text-xs">{meta.rate} единиц ресурса в час</div>
+            <div key={index} className="flex items-center gap-3 min-w-0">
+              <img src={WEATHER_ICONS[meta.type]} alt="" className="w-8 h-8 object-contain shrink-0" />
+              <div className="min-w-0 break-words">
+                <div className="text-parchment text-sm font-semibold">{nameFor(meta.type)}</div>
+                <div className="text-straw text-xs">{hourly(meta.rate)}</div>
               </div>
             </div>
           ))}

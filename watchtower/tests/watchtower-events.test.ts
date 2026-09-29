@@ -48,6 +48,33 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
 // Ignored events produce nothing; unknown events produce nothing (never guess).
 assert.equal(normalizeChainEvent(by("AuctionCreated"), SALT).length, 0);
 assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" }, SALT).length, 0);
+// V2 external Potato is never merged with MIND/resource events. Preserve the
+// actual SPL mint and atomic units, and never invent a jackpot liability amount
+// absent from the on-chain event.
+{
+  const base = { ...by("Staked"), eventType: "PotatoSpinCommitted", wallet: W.alice, mint: null,
+    data: { user: W.alice, mint: M.tool2, commit: M.tool1, price_atoms: "5000000000", seed_slot: "123" } };
+  const [created] = normalizeChainEvent(base, SALT);
+  assert.equal(created.type, "LiabilityCreated");
+  assert.equal(created.playerId, alice);
+  assert.equal(created.asset, M.tool2);
+  assert.notEqual(created.asset, M.potato); // historical fixture mint is MIND, not external Potato
+  assert.equal(created.currency, "POTATO_ATOMS");
+  assert.equal(created.amount, null);
+  assert.equal(created.attributes.priceAtoms, "5000000000");
+  assert.equal(created.attributes.liability, "potato_spin_v2");
+  const [settled] = normalizeChainEvent({ ...base, eventType: "PotatoSpinRevealed",
+    data: { ...base.data, prize_atoms: "50000000000" } }, SALT);
+  assert.equal(settled.type, "LiabilitySettled");
+  assert.equal(settled.amount, "50000000000");
+  assert.equal(settled.attributes.outcome, "settled");
+  const [refunded] = normalizeChainEvent({ ...base, eventType: "PotatoSpinRefunded",
+    data: { ...base.data, amount_atoms: "5000000000" } }, SALT);
+  assert.equal(refunded.amount, "5000000000");
+  assert.equal(refunded.attributes.outcome, "refund");
+  assert.deepEqual(validateEvents([created, settled, refunded]), []);
+  assert.ok(!JSON.stringify([created, settled, refunded]).includes(W.alice));
+}
 // Raw wallets never appear anywhere in the output.
 {
   const all = EVENTS.flatMap((e) => normalizeChainEvent(e, SALT, { treasury: W.treasury }));

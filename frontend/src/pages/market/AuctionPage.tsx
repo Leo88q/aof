@@ -4,28 +4,54 @@ import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "../../lib/associatedToken";
 import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
+import { actionErrorFeedback } from "../../lib/txResponseFeedback";
+import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { useWalletStore } from "../../store/walletStore";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { auctionCopy } from "../../i18n/auctionCopy";
+import { toolName, toolsCopy } from "../../i18n/toolsCopy";
+import { TOOL_RARITIES, type ToolRarity } from "../../lib/visualAssets";
 import { Lamp, Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
 import { SonarPPI } from "../../ui/forge/devices";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { toolPlate, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import {
-  RARITY_LABEL, RARITY_COLOR, rarityKey,
-  fmtSol, shortAddr, timeLeftStr, toNum, useNow, useTreasury, useFlash,
+  RARITY_COLOR, rarityKey,
+  fmtSol, shortAddr, toNum, useNow, useTreasury, useFlash,
 } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const SYSTEM_KEY = "11111111111111111111111111111111";
 
 export function AuctionPage() {
+  const { language } = useLocale();
+  const copy = auctionCopy[language];
+  const rarityLabel = (rarity: string) => {
+    const index = TOOL_RARITIES.indexOf(rarity as ToolRarity);
+    return index < 0 ? toolsCopy[language].card.unknownRarity : toolsCopy[language].collectionPage.rarities[index];
+  };
+  const timeRemaining = (untilSec: number) => {
+    const seconds = Math.max(0, Math.floor(untilSec - now / 1000));
+    if (!seconds) return copy.finished;
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (days) return `${days}${copy.day} ${hours}${copy.hour}`;
+    if (hours) return `${hours}${copy.hour} ${minutes}${copy.minute}`;
+    return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+  };
   const { address } = useWalletStore();
   const treasury = useTreasury();
   const now = useNow(1000);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [myTools, setMyTools] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [txStatus, flash] = useFlash();
+  const [txStatus, flash] = useFlash(language);
+  const [statusLanguage, setStatusLanguage] = useState(language);
+  const notify = (message: string) => { setStatusLanguage(language); flash(message); };
+  const responseNotice = (message: string, signature?: string) =>
+    signature ? `${message}: ${signature.slice(0, 10)}…` : message;
   const [bids, setBids] = useState<Record<string, string>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [selMint, setSelMint] = useState("");
@@ -61,64 +87,64 @@ export function AuctionPage() {
   }, [address]);
 
   async function bid(a: any) {
-    if (!address) return flash("Сначала подключите кошелёк");
+    if (!address) return notify(copy.connect);
     const lamports = Math.round(parseFloat(bids[a.mint] || "0") * 1e9);
-    if (!isFinite(lamports) || lamports <= 0) return flash("❌ Укажите сумму ставки в SOL");
+    if (!isFinite(lamports) || lamports <= 0) return notify(copy.invalidBid);
     try {
       // Возврат предыдущей ставки: предыдущий bidder, а если ставок ещё не было — продавец
       const prev = a.highestBidder && a.highestBidder !== SYSTEM_KEY ? a.highestBidder : a.seller;
-      flash("Ставим ставку…");
+      notify(copy.placingBid);
       const resp = await api.auction.bid({ bidder: address, mint: a.mint, amount: String(lamports), previousBidder: prev });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `Ставка принята: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
+      notify(r.success ? responseNotice(copy.bidResponse, r.signature) : (r.error || walletRuntimeCopy[language].unconfirmedResponse));
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`${e.message}`);
+      notify(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse));
     }
   }
 
   async function settle(a: any) {
-    if (!address) return flash("Сначала подключите кошелёк");
-    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
+    if (!address) return notify(copy.connect);
+    if (!treasury) return notify(copy.treasuryUnavailable);
     const winner = a.highestBidder;
-    if (!winner || winner === SYSTEM_KEY) return flash("❌ Ставок не было — завершать нечего");
+    if (!winner || winner === SYSTEM_KEY) return notify(copy.noBidsSettle);
     try {
       const winnerToken = getAssociatedTokenAddressSync(
         new PublicKey(a.mint), new PublicKey(winner), true
       ).toBase58();
-      flash("Завершаем аукцион…");
+      notify(copy.settling);
       const resp = await api.auction.settle({
         caller: address, mint: a.mint, seller: a.seller, treasury, winnerToken,
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `Аукцион завершён: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
+      notify(r.success ? responseNotice(copy.settleResponse, r.signature) : (r.error || walletRuntimeCopy[language].unconfirmedResponse));
       if (r.success) setTimeout(load, 2500);
     } catch (e: any) {
-      flash(`${e.message}`);
+      notify(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse));
     }
   }
 
   async function createAuction() {
-    if (!address) return flash("Сначала подключите кошелёк");
-    if (!selMint) return flash("❌ Выберите инструмент");
+    if (!address) return notify(copy.connect);
+    if (!selMint) return notify(copy.selectTool);
     const minBid = Math.round(parseFloat(minBidSol) * 1e9);
     const dur = Math.round(parseFloat(durationH) * 3600);
-    if (!isFinite(minBid) || minBid <= 0) return flash("❌ Укажите минимальную ставку");
-    if (!isFinite(dur) || dur <= 0) return flash("❌ Укажите длительность");
+    if (!isFinite(minBid) || minBid <= 0) return notify(copy.invalidMinBid);
+    if (!isFinite(dur) || dur <= 0) return notify(copy.invalidDuration);
     try {
-      flash("Создаём аукцион…");
+      notify(copy.creating);
       const resp = await api.auction.create({
         seller: address, mint: selMint, minBid: String(minBid), durationSeconds: String(dur),
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `Аукцион создан: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
+      notify(r.success ? responseNotice(copy.createResponse, r.signature) : (r.error || walletRuntimeCopy[language].unconfirmedResponse));
       if (r.success) {
         setFormOpen(false);
         setSelMint("");
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`${e.message}`);
+      notify(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse));
     }
   }
 
@@ -129,10 +155,10 @@ export function AuctionPage() {
       <Panel
         tier="panel"
         device="sonar"
-        id={<Sticker>АУКЦИОН</Sticker>}
-        meta={loading ? "ЧИТАЕМ…" : `ЛОТОВ ${auctions.length}`}
-        title="Аукционный зал"
-        sub="кто больше — того и инструмент"
+        id={<Sticker>{copy.sticker}</Sticker>}
+        meta={loading ? copy.reading : `${copy.lotCount} ${auctions.length}`}
+        title={copy.hall}
+        sub={copy.subtitle}
       >
         {auctions.length > 0 ? (() => {
           const tops = auctions.map((a: any) => toNum(a.highestBid) || toNum(a.minBid));
@@ -144,34 +170,35 @@ export function AuctionPage() {
           });
           return (
             <SonarPPI
+              ariaLabel={copy.hall}
               blips={blips}
               legend={
                 <>
-                  <span>Лотов: <b>{auctions.length}</b></span>
-                  <span>Со ставками: <b>{auctions.filter((a: any) => toNum(a.highestBid) > 0).length}</b></span>
-                  <span>Выше всех: <b>{fmtSol(maxTop)} ◎</b></span>
+                  <span>{copy.lots}: <b>{auctions.length}</b></span>
+                  <span>{copy.withBids}: <b>{auctions.filter((a: any) => toNum(a.highestBid) > 0).length}</b></span>
+                  <span>{copy.highest}: <b>{fmtSol(maxTop, language)} ◎</b></span>
                 </>
               }
             />
           );
         })() : (
-          <p className="fg-note fg-note--quiet" style={{ margin: 0 }}>Зал пуст — ставок нет.</p>
+          <p className="fg-note fg-note--quiet" style={{ margin: 0 }}>{copy.emptySonar}</p>
         )}
         <div style={{ marginTop: 14 }}>
           <Readouts>
-            <Readout label="Лотов" value={String(auctions.length)} hint="активных аукционов" />
+            <Readout label={copy.lots} value={String(auctions.length)} hint={copy.activeHint} />
             <Readout
-              label="Со ставками"
+              label={copy.withBids}
               value={String(auctions.filter((a: any) => toNum(a.highestBid) > 0).length)}
-              hint="есть текущий лидер"
+              hint={copy.leaderHint}
             />
             <Readout
-              label="Горят"
+              label={copy.endingSoon}
               value={String(auctions.filter((a: any) => {
                 const ends = toNum(a.endsAt) * 1000;
                 return ends > now && ends - now < 5 * 60 * 1000;
               }).length)}
-              hint="меньше 5 минут до молотка"
+              hint={copy.endingSoonHint}
             />
           </Readouts>
         </div>
@@ -179,11 +206,11 @@ export function AuctionPage() {
 
       <div className="flex justify-end">
         <button onClick={load} className="fg-key fg-key--tiny" type="button">
-          {loading ? "Читаем…" : "Обновить"}
+          {loading ? copy.reading : copy.refresh}
         </button>
       </div>
 
-      {txStatus && (
+      {txStatus && statusLanguage === language && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
           <NoticeMsg text={txStatus} />
@@ -193,8 +220,8 @@ export function AuctionPage() {
       {auctions.length === 0 && !loading && (
         <Panel tier="panel" className="text-center py-8">
           <div className="mb-2"><ResourceGlyph icon={UI_ICONS.auction} alt="" className="w-12 h-12 mx-auto" /></div>
-          <p className="text-parchment text-sm">Активных аукционов нет</p>
-          <p className="text-straw text-xs mt-1">Создайте первый — молоток ждёт</p>
+          <p className="text-parchment text-sm">{copy.noAuctions}</p>
+          <p className="text-straw text-xs mt-1">{copy.emptyHint}</p>
         </Panel>
       )}
 
@@ -209,53 +236,53 @@ export function AuctionPage() {
             <motion.div key={a.pubkey || a.mint} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}>
               <Panel tier="panel" className={"mb-3" + (lastFiveMin ? " fg--hot" : "")}>
-                <div className="flex items-center gap-3">
-                  <ArtPlate src={toolPlate(a.tool?.toolType, rk)} alt={a.tool?.toolType || "Инструмент"} size={56} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <ArtPlate src={toolPlate(a.tool?.toolType, rk)} alt={toolName(language, a.tool?.toolType)} size={56} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-parchment font-semibold text-sm">{a.tool?.toolType || "Инструмент"}</span>
-                      <span className={`text-xs ${RARITY_COLOR[rk] || "text-straw"}`}>{RARITY_LABEL[rk] || rk}</span>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-parchment font-semibold text-sm">{toolName(language, a.tool?.toolType)}</span>
+                      <span className={`text-xs ${RARITY_COLOR[rk] || "text-straw"}`}>{rarityLabel(rk)}</span>
                     </div>
                     <p className="text-straw text-xs mt-0.5">
-                      {shortAddr(a.mint)} · продавец {shortAddr(a.seller)}
+                      {shortAddr(a.mint)} · {copy.seller} {shortAddr(a.seller)}
                     </p>
                     <p className="text-xs mt-1">
                       {topBid > 0 ? (
-                        <span className="text-wheat-500 font-bold">Ставка: {fmtSol(topBid)} ◎</span>
+                        <span className="text-wheat-500 font-bold">{copy.bidAmount}: {fmtSol(topBid, language)} ◎</span>
                       ) : (
-                        <span className="text-straw">Ставок ещё нет · мин. {fmtSol(a.minBid)} ◎</span>
+                        <span className="text-straw">{copy.noBids} · {copy.minimum} {fmtSol(a.minBid, language)} ◎</span>
                       )}
                     </p>
                   </div>
                   <div className="text-right">
                     <Lamp tone={ended ? "wait" : lastFiveMin ? "err" : "ok"}>
-                      {ended ? "закрыт" : lastFiveMin ? "горит" : "идёт"}
+                      {ended ? copy.closed : lastFiveMin ? copy.urgent : copy.live}
                     </Lamp>
                     <div className="fg-num" style={{ marginTop: 4, fontSize: 12, color: "var(--fg-text)" }}>
-                      {timeLeftStr(toNum(a.endsAt))}
+                      {timeRemaining(toNum(a.endsAt))}
                     </div>
                   </div>
                 </div>
 
                 {!ended && (
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
                     <input
-                      type="number" step="0.001" min="0" placeholder="Ставка, ◎"
+                      type="number" step="0.001" min="0" placeholder={copy.bidPlaceholder} aria-label={copy.bidPlaceholder}
                       value={bids[a.mint] || ""}
                       onChange={(e) => setBids((s) => ({ ...s, [a.mint]: e.target.value }))}
-                      className="fg-input"
+                      className="fg-input min-w-0 flex-1"
                     />
                     <button onClick={() => bid(a)}
-                      className="fg-key fg-key--primary fg-key--tiny">
-                      Ставка
+                      className="fg-key fg-key--primary fg-key--tiny whitespace-normal break-words">
+                      {copy.bidAction}
                     </button>
                   </div>
                 )}
 
                 {ended && (
                   <button onClick={() => settle(a)}
-                    className="mt-3 w-full py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold">
-                    Завершить и передать победителю
+                    className="mt-3 w-full py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold break-words">
+                    {copy.settle}
                   </button>
                 )}
               </Panel>
@@ -265,45 +292,45 @@ export function AuctionPage() {
       </div>
 
       <Panel tier="panel">
-        <button type="button" className="w-full flex items-center justify-between" onClick={() => setFormOpen((v) => !v)}>
+        <button type="button" className="w-full flex items-center justify-between gap-2 text-left break-words" aria-expanded={formOpen} onClick={() => setFormOpen((v) => !v)}>
           <div className="text-left">
-            <div className="text-parchment font-semibold text-sm">Создать аукцион</div>
-            <div className="text-straw text-xs">Минимальная ставка + длительность</div>
+            <div className="text-parchment font-semibold text-sm">{copy.create}</div>
+            <div className="text-straw text-xs">{copy.formHint}</div>
           </div>
           <span className="text-straw">{formOpen ? "−" : "+"}</span>
         </button>
         {formOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 space-y-2">
-            {!address && <p className="text-straw text-xs">Подключите кошелёк, чтобы увидеть свои инструменты</p>}
+            {!address && <p className="text-straw text-xs">{copy.connectTools}</p>}
             {address && myTools.length === 0 && (
-              <p className="text-straw text-xs">Нет свободных инструментов (все в стейке/майнинге или отсутствуют)</p>
+              <p className="text-straw text-xs">{copy.noTools}</p>
             )}
             {myTools.map((t) => {
               const rk = rarityKey(t.rarity);
               return (
                 <button key={t.mint} onClick={() => setSelMint(t.mint)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left ${selMint === t.mint ? "border-wheat-500 bg-wheat-500/10" : "border-straw/15 bg-soil-800/60"}`}>
-                  <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={36} />
-                  <span className="flex-1 text-sm text-parchment">
-                    {t.toolType} <span className={`text-xs ${RARITY_COLOR[rk]}`}>({RARITY_LABEL[rk]})</span>
+                  <ArtPlate src={toolPlate(t.toolType, rk)} alt={toolName(language, t.toolType)} size={36} />
+                  <span className="flex-1 min-w-0 text-sm text-parchment break-words">
+                    {toolName(language, t.toolType)} <span className={`text-xs ${RARITY_COLOR[rk]}`}>({rarityLabel(rk)})</span>
                   </span>
                   {selMint === t.mint && <span className="text-wheat-500">✓</span>}
                 </button>
               );
             })}
             <div className="flex items-center gap-2 pt-2">
-              <span className="text-straw text-xs w-28">Мин. ставка, ◎</span>
-              <input type="number" step="0.001" min="0" value={minBidSol} onChange={(e) => setMinBidSol(e.target.value)}
-                className="fg-input" />
+              <label htmlFor="auction-min-bid" className="text-straw text-xs min-w-0 w-28 shrink-0 break-words">{copy.minBid}</label>
+              <input id="auction-min-bid" type="number" step="0.001" min="0" value={minBidSol} onChange={(e) => setMinBidSol(e.target.value)}
+                className="fg-input min-w-0 flex-1" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-straw text-xs w-28">Длительность, ч</span>
-              <input type="number" step="1" min="1" value={durationH} onChange={(e) => setDurationH(e.target.value)}
-                className="fg-input" />
+              <label htmlFor="auction-duration" className="text-straw text-xs min-w-0 w-28 shrink-0 break-words">{copy.durationHours}</label>
+              <input id="auction-duration" type="number" step="1" min="1" value={durationH} onChange={(e) => setDurationH(e.target.value)}
+                className="fg-input min-w-0 flex-1" />
             </div>
             <button onClick={createAuction} disabled={!selMint}
-              className="btn btn-primary">
-              Создать аукцион
+              className="btn btn-primary whitespace-normal break-words">
+              {copy.create}
             </button>
           </motion.div>
         )}

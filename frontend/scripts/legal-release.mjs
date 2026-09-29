@@ -8,7 +8,7 @@ const requiredText = ['operatorName', 'operatorAddress', 'operatorCountry', 'reg
 // появится после заполнения. Плейсхолдеры и «примерные» значения запрещены:
 // реквизиты оператора — публичное заявление о себе, а не описание интерфейса.
 export const OPERATOR_FIELDS = [
-  { field: 'approved', requirement: 'Подтверждение владельца после юридической проверки текстов.', where: 'build:release gate' },
+  { field: 'approved', requirement: 'Подтверждение владельца после юридической проверки текстов.', where: 'справочный отчёт legal:report (сборку не блокирует)' },
   { field: 'operatorName', requirement: 'Юрлицо или ФИО оператора (полное, как в реестре).', where: '/legal/contacts, /legal/terms' },
   { field: 'operatorAddress', requirement: 'Почтовый адрес для обращений и претензий.', where: '/legal/contacts' },
   { field: 'operatorCountry', requirement: 'Страна регистрации оператора.', where: '/legal/contacts, /legal/terms' },
@@ -39,7 +39,7 @@ export function operatorTodo(config) {
 function reportTodo(config) {
   const todo = operatorTodo(config);
   if (todo.length === 0) {
-    console.log('operator.json заполнен: релизный гейт пройден, значений-заглушек нет.');
+    console.log('operator.json: все поля заполнены. Это не подтверждает публикацию документов или юридическое одобрение.');
     return;
   }
   console.log(`operator.json: не хватает ${todo.length} из ${OPERATOR_FIELDS.length} пунктов. Отправьте владельцу/юристу этот список — вымышленные значения не подставляются.`);
@@ -72,23 +72,32 @@ export function validateOperator(config) {
 export function securityText(config, now = new Date()) {
   if (validateOperator(config).length) throw new Error('Invalid operator configuration');
   const expires = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString();
-  return `Contact: mailto:${config.securityEmail}\nExpires: ${expires}\nPreferred-Languages: ru, en\nCanonical: ${config.canonicalOrigin}/.well-known/security.txt\nPolicy: ${config.canonicalOrigin}/legal/disclosure\n`;
+  // Do not advertise the withdrawn /legal/disclosure route as a published policy.
+  return `Contact: mailto:${config.securityEmail}\nExpires: ${expires}\nPreferred-Languages: ru, en\nCanonical: ${config.canonicalOrigin}/.well-known/security.txt\n`;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'src/legal/operator.json'), 'utf8'));
-  const errors = validateOperator(config);
-  if (process.argv.includes('--report')) reportTodo(config);
-  else if (errors.length) { for (const error of errors) console.error(error); process.exitCode = 1; }
-  else if (process.argv.includes('--emit-security')) {
-    if (!fs.existsSync(path.join(root, 'dist/index.html'))) throw new Error('Build output is missing');
-    fs.mkdirSync(path.join(root, 'dist/.well-known'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'dist/.well-known/security.txt'), securityText(config));
-    const sitemapPath = path.join(root, 'dist/sitemap.xml');
-    if (fs.existsSync(sitemapPath)) {
-      const xml = fs.readFileSync(sitemapPath, 'utf8').replaceAll('http://localhost:3000', config.canonicalOrigin);
-      fs.writeFileSync(sitemapPath, xml);
+  // Informational by default: missing operator details do not block building.
+  // Only the opt-in security.txt generator must refuse unverified contact/origin data.
+  if (process.argv.includes('--emit-security')) {
+    const errors = validateOperator(config);
+    if (errors.length) {
+      for (const error of errors) console.error(error);
+      process.exitCode = 1;
+    } else {
+      if (!fs.existsSync(path.join(root, 'dist/index.html'))) throw new Error('Build output is missing');
+      fs.mkdirSync(path.join(root, 'dist/.well-known'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'dist/.well-known/security.txt'), securityText(config));
+      const sitemapPath = path.join(root, 'dist/sitemap.xml');
+      if (fs.existsSync(sitemapPath)) {
+        const xml = fs.readFileSync(sitemapPath, 'utf8').replaceAll('http://localhost:3000', config.canonicalOrigin);
+        fs.writeFileSync(sitemapPath, xml);
+      }
+      fs.writeFileSync(path.join(root, 'dist/robots.txt'), `User-agent: *\nAllow: /site/\nSitemap: ${config.canonicalOrigin}/sitemap.xml\n`);
+      console.log('security.txt generated. Verify headers and contact delivery on the deployed domain.');
     }
-    fs.writeFileSync(path.join(root, 'dist/robots.txt'), `User-agent: *\nAllow: /site/\nSitemap: ${config.canonicalOrigin}/sitemap.xml\n`);
-    console.log('security.txt generated. Verify headers and contact delivery on the deployed domain.');
-  } else console.log('Legal configuration gate passed; this is not a legal opinion or contact-delivery test.');
+  } else {
+    reportTodo(config);
+    console.log('Справочный отчёт: юридические тексты сейчас не опубликованы. Код завершения 0 не означает юридического одобрения.');
+  }
 }

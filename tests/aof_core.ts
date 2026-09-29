@@ -166,7 +166,7 @@ describe("aof-core: security & core flows", () => {
     };
   };
 
-  async function mintTool(to: PublicKey, toolType = "axe") {
+  async function mintTool(to: PublicKey, toolType = "plasma_cutter") {
     const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
     const tokenAccount = await ensureAta(mint, to);
     await program.methods.mintTool(toolType, { common: {} }).accounts({
@@ -533,35 +533,53 @@ describe("aof-core: security & core flows", () => {
     const sm = (h: number) => program.methods.startMining(h).accounts({
       config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
       player: playerPda(user.publicKey), systemProgram: SystemProgram.programId }).signers([user]).rpc();
-    await expectError(sm(9), "HoursExceedRarityCap");
-    await sm(2);
-    const pl = await program.account.player.fetch(playerPda(user.publicKey));
-    expect(pl.villagersAvailable).to.equal(5);
+    // New deployments default to a closed mining switch. Explicit activation
+    // is required even for the local-validator pilot.
+    expect((await program.account.config.fetch(configPda)).miningEnabled).to.equal(false);
+    await expectError(sm(2), "MiningDisabled");
+    await program.methods.setMiningEnabled(true).accounts({ config: configPda, authority }).rpc();
+    try {
+      await expectError(sm(9), "HoursExceedRarityCap");
+      await sm(2);
+      const pl = await program.account.player.fetch(playerPda(user.publicKey));
+      expect(pl.villagersAvailable).to.equal(5);
 
-    // The collect path must validate completion before minting or clearing
-    // mining state. This is the pre-completion half of the atomic settlement
-    // regression; a full payout assertion requires advancing validator time.
-    const payoutToken = await ensureAta(woodMint, user.publicKey);
-    await expectError(program.methods.collectMining().accounts({
-      config: configPda,
-      user: user.publicKey,
-      tool: toolPda(mint),
-      mint,
-      player: playerPda(user.publicKey),
-      materialMints: materialMintsPda,
-      auth: authPda,
-      payoutMint: woodMint,
-      payoutToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    }).signers([user]).rpc(), "MiningNotComplete");
-    const stillMining = await program.account.toolData.fetch(toolPda(mint));
-    expect(stillMining.isMining).to.equal(true);
+      // The collect path must validate completion before minting or clearing
+      // mining state. This is the pre-completion half of the atomic settlement
+      // regression; a full payout assertion requires advancing validator time.
+      const payoutToken = await ensureAta(woodMint, user.publicKey);
+      await expectError(program.methods.collectMining().accounts({
+        config: configPda,
+        user: user.publicKey,
+        tool: toolPda(mint),
+        mint,
+        player: playerPda(user.publicKey),
+        materialMints: materialMintsPda,
+        auth: authPda,
+        payoutMint: woodMint,
+        payoutToken,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([user]).rpc(), "MiningNotComplete");
+      const stillMining = await program.account.toolData.fetch(toolPda(mint));
+      expect(stillMining.isMining).to.equal(true);
+      // Turning the switch off also blocks collection of an existing session;
+      // no state can be silently cleared without its atomic payout.
+      await program.methods.setMiningEnabled(false).accounts({ config: configPda, authority }).rpc();
+      await expectError(program.methods.collectMining().accounts({
+        config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
+        player: playerPda(user.publicKey), materialMints: materialMintsPda,
+        auth: authPda, payoutMint: woodMint, payoutToken, tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([user]).rpc(), "MiningDisabled");
+      expect((await program.account.toolData.fetch(toolPda(mint))).isMining).to.equal(true);
+    } finally {
+      await program.methods.setMiningEnabled(false).accounts({ config: configPda, authority }).rpc();
+    }
   });
 
   it("harvest wheat: rental operator is accepted and owner is rejected", async () => {
     const owner = Keypair.generate(); await airdrop(owner);
     const renter = Keypair.generate(); await airdrop(renter);
-    const { mint, tokenAccount } = await mintTool(owner.publicKey, "Reaper");
+    const { mint, tokenAccount } = await mintTool(owner.publicKey, "Neural_Seeder");
     const ownerSeeds = await ensureAta(seedsMint, owner.publicKey);
     const ownerSeedsTreasury = await ensureAta(seedsMint, authority);
     await program.methods.mintResource({ seeds: {} }, new BN(10_000_000_000)).accounts({
@@ -781,7 +799,7 @@ describe("aof-core: security & core flows", () => {
   it("VRF forge commit: an empty Switchboard pool fails the commit and burns nothing", async () => {
     const user = Keypair.generate(); await airdrop(user);
     // [AUDIT F-17] mint_tool only accepts canonical tool kinds.
-    const { mint: toolMint } = await mintTool(user.publicKey, "pick");
+    const { mint: toolMint } = await mintTool(user.publicKey, "silicon_extractor");
     const userWood = await giveResource("wood", woodMint, user.publicKey, 1000);
     const userStone = await giveResource("stone", stoneMint, user.publicKey, 1000);
     const woodBefore = await balance(userWood);
@@ -916,10 +934,10 @@ describe("aof-core: security & core flows", () => {
         toolData: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
       };
       await expectError(
-        program.methods.mintTool("axe", { common: {} }).accounts(accounts).rpc(),
+        program.methods.mintTool("plasma_cutter", { common: {} }).accounts(accounts).rpc(),
         "Unauthorized",
       );
-      await program.methods.mintTool("axe", { common: {} })
+      await program.methods.mintTool("plasma_cutter", { common: {} })
         .accounts({ ...accounts, recipient: to.publicKey }).rpc();
       const td = await program.account.toolData.fetch(toolPda(mint));
       expect(td.owner.toBase58()).to.equal(to.publicKey.toBase58());
@@ -1152,7 +1170,11 @@ describe("aof-core: security & core flows", () => {
       await program.methods.setMiningEnabled(false).accounts({ config: configPda, authority }).rpc();
       await expectError(sm(), "MiningDisabled");
       await program.methods.setMiningEnabled(true).accounts({ config: configPda, authority }).rpc();
-      await sm();
+      try {
+        await sm();
+      } finally {
+        await program.methods.setMiningEnabled(false).accounts({ config: configPda, authority }).rpc();
+      }
     });
 
     it("F-29: a craft order must ask for at least one resource", async () => {

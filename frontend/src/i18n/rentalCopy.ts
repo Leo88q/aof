@@ -1,0 +1,121 @@
+import type { Language } from './translations';
+
+type Copy = {
+  title: string; refresh: string; intro: string; noRentals: string; noRentalsHint: string;
+  owner: string; you: string; ownerShare: string; term: string; hour: string; perHour: string;
+  finish: string; remove: string; duration: string; rent: string; listTitle: string; listHint: string;
+  connectTools: string; noTools: string; share: string; price: string; min: string; max: string; list: string;
+  connect: string; durationRequired: string; selectTool: string; shareInvalid: string; termInvalid: string;
+  preparingRent: string; rented: string; preparingRemove: string; removed: string;
+  readingAgreement: string; agreementUnknown: string; ended: string; preparingList: string; listed: string;
+  failed: string; checkWallet: string;
+};
+
+/** UI language only; rental contracts and settlement still require a separate audit. */
+export const rentalCopy: Record<Language, Copy> = {
+  ru: {
+    title: 'Аренда', refresh: 'Обновить', intro: 'Условия аренды задаются владельцем. Перед подписью проверьте срок, цену, долю и адреса в кошельке; карточка не подтверждает доход или доступность добычи.',
+    noRentals: 'Объявления об аренде не отображаются', noRentalsHint: 'Список может быть пустым или сеть не ответила. Проверьте данные перед действием.',
+    owner: 'Владелец', you: 'вы', ownerShare: 'Доля владельца', term: 'Срок', hour: 'ч', perHour: 'за час',
+    finish: 'Завершить аренду', remove: 'Снять объявление', duration: 'Срок, ч', rent: 'Арендовать',
+    listTitle: 'Сдать инструмент в аренду', listHint: 'Укажите долю, срок и цену часа; фактические условия проверьте в кошельке.',
+    connectTools: 'Подключите кошелёк для просмотра инструментов.', noTools: 'Свободные инструменты не отображаются; проверьте инвентарь и сеть.',
+    share: 'Доля владельца, %', price: 'Цена за час, SOL', min: 'Мин. срок, ч', max: 'Макс. срок, ч', list: 'Открыть аренду',
+    connect: 'Сначала подключите кошелёк.', durationRequired: 'Укажите срок аренды в часах.', selectTool: 'Выберите инструмент.',
+    shareInvalid: 'Доля владельца должна быть от 0 до 100%.', termInvalid: 'Проверьте сроки: минимум должен быть положительным и не больше максимума.',
+    preparingRent: 'Готовим начало аренды…', rented: 'Начало аренды подтверждено', preparingRemove: 'Готовим снятие объявления…', removed: 'Снятие подтверждено',
+    readingAgreement: 'Читаем соглашение…', agreementUnknown: 'Активное соглашение не подтверждено; проверьте сеть.', ended: 'Завершение подтверждено',
+    preparingList: 'Готовим объявление…', listed: 'Размещение подтверждено', failed: 'Действие не выполнено',
+    checkWallet: 'Если исход неясен, проверьте кошелёк и состояние аренды, прежде чем повторять действие.',
+  },
+  en: {
+    title: 'Rentals', refresh: 'Refresh', intro: 'The owner sets the rental terms. Check the duration, price, share and addresses in your wallet before signing; this card does not confirm income or mining availability.',
+    noRentals: 'No rental listings are shown', noRentalsHint: 'The list may be empty, or the network may not have answered. Check the data before acting.',
+    owner: 'Owner', you: 'you', ownerShare: 'Owner’s share', term: 'Duration', hour: 'h', perHour: 'per hour',
+    finish: 'End rental', remove: 'Remove listing', duration: 'Duration, h', rent: 'Rent',
+    listTitle: 'List a tool for rent', listHint: 'Set the share, term and hourly price; verify the actual terms in your wallet.',
+    connectTools: 'Connect your wallet to view your tools.', noTools: 'No available tools are shown; check inventory and the network.',
+    share: 'Owner’s share, %', price: 'Hourly price, SOL', min: 'Min. duration, h', max: 'Max. duration, h', list: 'List for rent',
+    connect: 'Connect your wallet first.', durationRequired: 'Enter a rental duration in hours.', selectTool: 'Choose a tool.',
+    shareInvalid: 'The owner’s share must be between 0 and 100%.', termInvalid: 'Check the durations: the minimum must be positive and no greater than the maximum.',
+    preparingRent: 'Preparing rental…', rented: 'Rental start confirmed', preparingRemove: 'Preparing to remove the listing…', removed: 'Removal confirmed',
+    readingAgreement: 'Reading the agreement…', agreementUnknown: 'No active agreement has been confirmed; check the network.', ended: 'Rental end confirmed',
+    preparingList: 'Preparing listing…', listed: 'Listing confirmed', failed: 'Action failed',
+    checkWallet: 'If the outcome is unclear, check your wallet and rental status before trying again.',
+  },
+  pt: {
+    title: 'Aluguel', refresh: 'Atualizar', intro: 'O proprietário define as condições. Confira prazo, preço, divisão e endereços na carteira antes de assinar; esta ficha não confirma renda nem disponibilidade de mineração.',
+    noRentals: 'Nenhum anúncio de aluguel aparece', noRentalsHint: 'A lista pode estar vazia ou a rede pode não ter respondido. Confira os dados antes de agir.',
+    owner: 'Proprietário', you: 'você', ownerShare: 'Parte do proprietário', term: 'Prazo', hour: 'h', perHour: 'por hora',
+    finish: 'Encerrar aluguel', remove: 'Retirar anúncio', duration: 'Prazo, h', rent: 'Alugar',
+    listTitle: 'Alugar uma ferramenta', listHint: 'Defina divisão, prazo e preço por hora; confira as condições reais na carteira.',
+    connectTools: 'Conecte a carteira para ver suas ferramentas.', noTools: 'Nenhuma ferramenta disponível aparece; confira o inventário e a rede.',
+    share: 'Parte do proprietário, %', price: 'Preço por hora, SOL', min: 'Prazo mín., h', max: 'Prazo máx., h', list: 'Anunciar aluguel',
+    connect: 'Conecte a carteira primeiro.', durationRequired: 'Informe o prazo de aluguel em horas.', selectTool: 'Escolha uma ferramenta.',
+    shareInvalid: 'A parte do proprietário deve ficar entre 0 e 100%.', termInvalid: 'Confira os prazos: o mínimo deve ser positivo e não maior que o máximo.',
+    preparingRent: 'Preparando aluguel…', rented: 'Início do aluguel confirmado', preparingRemove: 'Preparando retirada do anúncio…', removed: 'Retirada confirmada',
+    readingAgreement: 'Consultando o contrato…', agreementUnknown: 'Nenhum contrato ativo foi confirmado; confira a rede.', ended: 'Fim do aluguel confirmado',
+    preparingList: 'Preparando anúncio…', listed: 'Anúncio confirmado', failed: 'A ação falhou',
+    checkWallet: 'Se o resultado não estiver claro, confira a carteira e o estado do aluguel antes de tentar de novo.',
+  },
+  es: {
+    title: 'Alquiler', refresh: 'Actualizar', intro: 'El propietario establece las condiciones. Revisa plazo, precio, reparto y direcciones en tu cartera antes de firmar; esta ficha no confirma ingresos ni minería disponible.',
+    noRentals: 'No se muestran anuncios de alquiler', noRentalsHint: 'La lista puede estar vacía o la red puede no haber respondido. Comprueba los datos antes de actuar.',
+    owner: 'Propietario', you: 'tú', ownerShare: 'Parte del propietario', term: 'Plazo', hour: 'h', perHour: 'por hora',
+    finish: 'Finalizar alquiler', remove: 'Retirar anuncio', duration: 'Plazo, h', rent: 'Alquilar',
+    listTitle: 'Alquilar una herramienta', listHint: 'Indica reparto, plazo y precio por hora; comprueba las condiciones reales en tu cartera.',
+    connectTools: 'Conecta la cartera para ver tus herramientas.', noTools: 'No se muestran herramientas disponibles; revisa el inventario y la red.',
+    share: 'Parte del propietario, %', price: 'Precio por hora, SOL', min: 'Plazo mín., h', max: 'Plazo máx., h', list: 'Anunciar alquiler',
+    connect: 'Conecta tu cartera primero.', durationRequired: 'Indica el plazo de alquiler en horas.', selectTool: 'Elige una herramienta.',
+    shareInvalid: 'La parte del propietario debe estar entre el 0 y el 100%.', termInvalid: 'Revisa los plazos: el mínimo debe ser positivo y no superar al máximo.',
+    preparingRent: 'Preparando el alquiler…', rented: 'Inicio del alquiler confirmado', preparingRemove: 'Preparando la retirada del anuncio…', removed: 'Retirada confirmada',
+    readingAgreement: 'Consultando el acuerdo…', agreementUnknown: 'No se ha confirmado un acuerdo activo; comprueba la red.', ended: 'Fin del alquiler confirmado',
+    preparingList: 'Preparando anuncio…', listed: 'Anuncio confirmado', failed: 'No se pudo completar la acción',
+    checkWallet: 'Si el resultado no está claro, revisa la cartera y el estado del alquiler antes de intentarlo de nuevo.',
+  },
+  vi: {
+    title: 'Cho thuê', refresh: 'Làm mới', intro: 'Chủ sở hữu đặt điều kiện thuê. Hãy kiểm tra thời hạn, giá, phần chia và địa chỉ trong ví trước khi ký; thẻ này không xác nhận thu nhập hay khả năng khai thác.',
+    noRentals: 'Không thấy tin cho thuê', noRentalsHint: 'Danh sách có thể trống hoặc mạng chưa phản hồi. Kiểm tra dữ liệu trước khi hành động.',
+    owner: 'Chủ sở hữu', you: 'bạn', ownerShare: 'Phần của chủ', term: 'Thời hạn', hour: 'giờ', perHour: 'mỗi giờ',
+    finish: 'Kết thúc thuê', remove: 'Gỡ tin', duration: 'Thời hạn, giờ', rent: 'Thuê',
+    listTitle: 'Cho thuê công cụ', listHint: 'Đặt phần chia, thời hạn và giá mỗi giờ; xác minh điều kiện thực tế trong ví.',
+    connectTools: 'Kết nối ví để xem công cụ của bạn.', noTools: 'Không thấy công cụ khả dụng; hãy kiểm tra kho và mạng.',
+    share: 'Phần của chủ, %', price: 'Giá mỗi giờ, SOL', min: 'Tối thiểu, giờ', max: 'Tối đa, giờ', list: 'Đăng cho thuê',
+    connect: 'Hãy kết nối ví trước.', durationRequired: 'Nhập thời hạn thuê tính bằng giờ.', selectTool: 'Chọn công cụ.',
+    shareInvalid: 'Phần của chủ phải nằm trong khoảng 0–100%.', termInvalid: 'Kiểm tra thời hạn: mức tối thiểu phải dương và không vượt mức tối đa.',
+    preparingRent: 'Đang chuẩn bị thuê…', rented: 'Đã xác nhận bắt đầu thuê', preparingRemove: 'Đang chuẩn bị gỡ tin…', removed: 'Đã xác nhận gỡ tin',
+    readingAgreement: 'Đang đọc hợp đồng…', agreementUnknown: 'Chưa xác nhận được hợp đồng đang hoạt động; hãy kiểm tra mạng.', ended: 'Đã xác nhận kết thúc thuê',
+    preparingList: 'Đang chuẩn bị tin rao…', listed: 'Đã xác nhận đăng tin', failed: 'Thao tác thất bại',
+    checkWallet: 'Nếu chưa rõ kết quả, hãy kiểm tra ví và trạng thái thuê trước khi thử lại.',
+  },
+  id: {
+    title: 'Sewa', refresh: 'Muat ulang', intro: 'Pemilik menentukan syarat sewa. Periksa durasi, harga, bagian hasil, dan alamat di dompet sebelum menandatangani; kartu ini tidak menjamin pendapatan atau penambangan aktif.',
+    noRentals: 'Tidak ada lapak sewa yang tampil', noRentalsHint: 'Daftarnya mungkin kosong atau jaringan tidak merespons. Periksa data sebelum bertindak.',
+    owner: 'Pemilik', you: 'kamu', ownerShare: 'Bagian pemilik', term: 'Durasi', hour: 'jam', perHour: 'per jam',
+    finish: 'Akhiri sewa', remove: 'Hapus lapak', duration: 'Durasi, jam', rent: 'Sewa',
+    listTitle: 'Sewakan peralatan', listHint: 'Tentukan bagian hasil, durasi, dan tarif per jam; verifikasi syarat sebenarnya di dompet.',
+    connectTools: 'Hubungkan dompet untuk melihat peralatanmu.', noTools: 'Tidak ada peralatan tersedia yang tampil; periksa inventaris dan jaringan.',
+    share: 'Bagian pemilik, %', price: 'Tarif per jam, SOL', min: 'Durasi min., jam', max: 'Durasi maks., jam', list: 'Pasang sewa',
+    connect: 'Hubungkan dompet terlebih dahulu.', durationRequired: 'Masukkan durasi sewa dalam jam.', selectTool: 'Pilih peralatan.',
+    shareInvalid: 'Bagian pemilik harus antara 0 dan 100%.', termInvalid: 'Periksa durasi: batas minimum harus positif dan tidak boleh melebihi maksimum.',
+    preparingRent: 'Menyiapkan sewa…', rented: 'Awal sewa dikonfirmasi', preparingRemove: 'Menyiapkan penghapusan lapak…', removed: 'Penghapusan dikonfirmasi',
+    readingAgreement: 'Membaca perjanjian…', agreementUnknown: 'Belum ada perjanjian aktif yang terkonfirmasi; periksa jaringan.', ended: 'Akhir sewa dikonfirmasi',
+    preparingList: 'Menyiapkan lapak…', listed: 'Lapak dikonfirmasi', failed: 'Tindakan gagal',
+    checkWallet: 'Jika hasilnya belum jelas, periksa dompet dan status sewa sebelum mencoba lagi.',
+  },
+  fil: {
+    title: 'Paupahan', refresh: 'I-refresh', intro: 'Itinatakda ng may-ari ang mga kondisyon ng upa. Suriin ang tagal, presyo, hatian at address sa wallet bago lumagda; hindi ginagarantiyahan ng kard na ito ang kita o pagmimina.',
+    noRentals: 'Walang nakikitang paupahan', noRentalsHint: 'Maaaring walang laman ang talaan o hindi sumagot ang network. Suriin ang datos bago kumilos.',
+    owner: 'May-ari', you: 'ikaw', ownerShare: 'Bahagi ng may-ari', term: 'Tagal', hour: 'oras', perHour: 'kada oras',
+    finish: 'Tapusin ang upa', remove: 'Alisin ang listahan', duration: 'Tagal, oras', rent: 'Umupa',
+    listTitle: 'Ipaupa ang kagamitan', listHint: 'Itakda ang hatian, tagal, at presyo bawat oras; tiyakin ang tunay na kondisyon sa wallet.',
+    connectTools: 'Ikonekta ang wallet upang makita ang iyong kagamitan.', noTools: 'Walang nakikitang kagamitang puwedeng ipaupa; suriin ang imbentaryo at network.',
+    share: 'Bahagi ng may-ari, %', price: 'Presyo bawat oras, SOL', min: 'Min. tagal, oras', max: 'Max. tagal, oras', list: 'Ilista para ipaupa',
+    connect: 'Ikonekta muna ang wallet.', durationRequired: 'Maglagay ng tagal ng upa sa oras.', selectTool: 'Pumili ng kagamitan.',
+    shareInvalid: 'Dapat nasa 0–100% ang bahagi ng may-ari.', termInvalid: 'Suriin ang tagal: dapat positibo ang minimum at hindi hihigit sa maximum.',
+    preparingRent: 'Inihahanda ang upa…', rented: 'Nakumpirma ang simula ng upa', preparingRemove: 'Inihahanda ang pag-alis ng listahan…', removed: 'Nakumpirma ang pag-alis',
+    readingAgreement: 'Binabasa ang kasunduan…', agreementUnknown: 'Wala pang nakumpirmang aktibong kasunduan; suriin ang network.', ended: 'Nakumpirma ang pagtatapos ng upa',
+    preparingList: 'Inihahanda ang listahan…', listed: 'Nakumpirma ang listahan', failed: 'Hindi nagawa ang aksiyon',
+    checkWallet: 'Kung hindi tiyak ang resulta, suriin ang wallet at katayuan ng upa bago subukan muli.',
+  },
+};

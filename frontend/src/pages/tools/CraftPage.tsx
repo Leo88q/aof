@@ -1,220 +1,240 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { craftCopy } from "../../i18n/craftCopy";
+import { homeResourceNames } from "../../i18n/homeDetail";
+import { toolName, toolsCopy } from "../../i18n/toolsCopy";
 import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
+import { actionErrorFeedback } from "../../lib/txResponseFeedback";
+import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
-import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
+import { CRAFT_RESOURCES, readCraftBalances, readCraftMints, readCraftQuote, type CraftAmounts, type CraftMints } from "../../lib/craftReadings";
+import { resourceIcon, UI_ICONS, toolPlate, TOOL_RARITIES } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
-import { toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
-import { fmtNum, shortAddr, useFlash } from "../../lib/marketUtils";
-import { AnimatedCounter } from "../../components/ui/AnimatedCounter";
+import { shortAddr, useFlash } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
-const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
-const RARITY_RU: Record<string, string> = {
-  common: "Базовый", uncommon: "Усиленный", rare: "Квантовый", epic: "Сингулярность", legendary: "Трансцендентный",
-};
-
-// [НОВОЕ] Метаданные всех 6 ресурсов
-const RES_META: Record<string, { icon: string; label: string; color: string }> = {
-  wood: { icon: resourceIcon("wood") || "", label: "Схема",   color: "text-gold-400" },
-  stone: { icon: resourceIcon("stone") || "", label: "Кремний",   color: "text-stone-400" },
-  food: { icon: resourceIcon("food") || "", label: "Данные",      color: "text-gold-500" },
-  seeds: { icon: resourceIcon("seeds") || "", label: "Нейрон",   color: "text-sprout-500" },
-  water: { icon: resourceIcon("water") || "", label: "Энергопоток",     color: "text-water-500" },
-  potato: { icon: resourceIcon("potato") || "", label: "MIND",   color: "text-wheat-500" },
-};
-
 export function CraftPage() {
+  const { language } = useLocale();
+  const copy = craftCopy[language];
   const { address } = useWalletStore();
-  const [tools, setTools] = useState<any[]>([]);
+  const walletRef = useRef(address);
+  walletRef.current = address;
+  const running = useRef(false);
+  // Null means no confirmed read; [] means the inventory is genuinely empty.
+  const [tools, setTools] = useState<any[] | null>(null);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const toolsRequest = useRef(0);
   const [selMint, setSelMint] = useState("");
   const [newMint, setNewMint] = useState("");
-  const [econ, setEcon] = useState<any>(null);
-  const [resMints, setResMints] = useState<Record<string, string>>({
-    wood: "", stone: "", food: "", seeds: "", water: "", potato: "", skr: ""
-  });
-  const [balances, setBalances] = useState<Record<string, number>>({
-    wood: 0, stone: 0, food: 0, seeds: 0, water: 0, potato: 0, skr: 0
-  });
-  const [craftQuote, setCraftQuote] = useState<any>(null);
-  const [craftReceipt, setCraftReceipt] = useState<string | null>(null);
+  const [mintFor, setMintFor] = useState<string | null>(null);
+  const [resMints, setResMints] = useState<CraftMints | null>(null);
+  const [mintsStatus, setMintsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [balances, setBalances] = useState<CraftAmounts | null>(null);
+  const [balanceFor, setBalanceFor] = useState<string | null>(null);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const balanceRequest = useRef(0);
+  const [craftQuote, setCraftQuote] = useState<{ rarity: string; costs: CraftAmounts } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [craftReceipt, setCraftReceipt] = useState<{ address: string; costs: CraftAmounts } | null>(null);
   const [busyPrep, setBusyPrep] = useState(false);
-  const [txStatus, flash] = useFlash();
+  const [busyCraft, setBusyCraft] = useState(false);
+  const [txStatus, flash] = useFlash(language);
 
-  const loadTools = () => {
-    if (!address) return;
-    api.query.myTools(address)
-      .then((r: any) => {
-        const a: any[] = Array.isArray(r) ? r : r?.tools || [];
-        setTools(a.filter((t) => !t.staked && !t.isMining));
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => { loadTools(); }, [address]);
-
-  // Legacy resources live in Config; the bread-chain resources live in the
-  // canonical MaterialMints account. Do not read missing mints from a local
-  // placeholder map.
+  const loadTools = useCallback(async () => {
+    const request = ++toolsRequest.current;
+    if (!address) { setTools(null); setLoadedFor(null); setToolsLoading(false); return; }
+    setToolsLoading(true);
+    try {
+      const r: any = await api.query.myTools(address);
+      const items: any[] = Array.isArray(r) ? r : r?.tools;
+      if (!Array.isArray(items)) throw new Error("Invalid tools response");
+      if (request !== toolsRequest.current) return;
+      const available = items.filter((t) => !t.staked && !t.isMining);
+      setTools(available);
+      setLoadedFor(address);
+      setSelMint(s => available.some(t => t.mint === s) ? s : "");
+    } catch {
+      if (request === toolsRequest.current) { setTools(null); setLoadedFor(null); }
+    } finally {
+      if (request === toolsRequest.current) setToolsLoading(false);
+    }
+  }, [address]);
   useEffect(() => {
-    Promise.all([api.query.config(), api.query.materialMints()])
-      .then(([c, material]) => {
-        const mints = material?.mints || {};
-        setResMints({
-          wood: c?.woodMint || mints.WOOD || "",
-          stone: c?.stoneMint || mints.STONE || "",
-          food: c?.foodMint || mints.FOOD || "",
-          seeds: mints.SEEDS || "",
-          water: mints.WATER || "",
-          potato: c?.potatoMint || mints.POTATO || "",
-          skr: "",
-        });
+    loadTools();
+    return () => { toolsRequest.current++; };
+  }, [loadTools]);
+
+  // /query/material-mints validates Config, MaterialMints and every SPL mint
+  // against the chain before returning HTTP 200. Use its canonical uppercase
+  // names; the old local WOOD/STONE/FOOD map was always empty on this API.
+  useEffect(() => {
+    let active = true;
+    api.query.materialMints()
+      .then((r: unknown) => {
+        if (!active) return;
+        const parsed = readCraftMints(r);
+        setResMints(parsed);
+        setMintsStatus(parsed ? "ready" : "error");
       })
-      .catch(() => setResMints({ wood: "", stone: "", food: "", seeds: "", water: "", potato: "", skr: "" }));
-    api.query.craftEconomy().then((e: any) => setEcon(e)).catch(() => setEcon(null));
+      .catch(() => { if (active) { setResMints(null); setMintsStatus("error"); } });
+    return () => { active = false; };
   }, []);
 
-  // Загружаем балансы ресурсов пользователя
-  useEffect(() => {
-    if (!address || !resMints.wood) return;
-    const resources = ["wood", "stone", "food", "seeds", "water", "potato", "skr"];
-    const fetchBalances = async () => {
-      const newBal: Record<string, number> = { wood: 0, stone: 0, food: 0, seeds: 0, water: 0, potato: 0 };
-      // [ФИКС] Используем api.balances (возвращает все балансы пользователя)
-      try {
-        const allBalances: any = await api.query.balances(address);
-        for (const res of resources) {
-          const mint = resMints[res];
-          if (!mint || !allBalances) continue;
-          let val = 0;
-          if (Array.isArray(allBalances)) {
-            const entry = allBalances.find((b: any) => String(b.mint || b.mintAddress || b.address || "").toLowerCase() === mint.toLowerCase());
-            val = Number(entry?.balance ?? entry?.amount ?? 0);
-          } else if (typeof allBalances === "object") {
-            const key = Object.keys(allBalances).find((k) => k.toLowerCase() === mint.toLowerCase());
-            if (key) {
-              const v: any = allBalances[key];
-              val = Number(typeof v === "object" ? (v.balance ?? v.amount ?? 0) : v);
-            } else if (allBalances[res] != null) {
-              const v: any = allBalances[res];
-              val = Number(typeof v === "object" ? (v.balance ?? v.amount ?? 0) : v);
-            }
-          }
-          newBal[res] = val;
-        }
-      } catch (e) {
-        console.warn("Failed to fetch balances:", e);
-      }
-      setBalances(newBal);
-    };
-    fetchBalances();
+  const loadBalances = useCallback(async () => {
+    const request = ++balanceRequest.current;
+    if (!address || !resMints) { setBalances(null); setBalanceFor(null); setBalancesLoading(false); return; }
+    setBalancesLoading(true);
+    setBalances(null);
+    try {
+      const raw: unknown = await api.query.balances(address);
+      const values = readCraftBalances(raw);
+      if (walletRef.current !== address || request !== balanceRequest.current) return;
+      setBalances(values);
+      setBalanceFor(address);
+    } catch {
+      if (walletRef.current === address && request === balanceRequest.current) { setBalances(null); setBalanceFor(address); }
+    } finally {
+      if (walletRef.current === address && request === balanceRequest.current) setBalancesLoading(false);
+    }
   }, [address, resMints]);
-
-  const src = tools.find((t) => t.mint === selMint);
-  const srcRk = src ? rarityKey(src.rarity) : "";
-  const srcIdx = RARITY_ORDER.indexOf(srcRk);
-  const targetRk = srcIdx >= 0 && srcIdx < 4 ? RARITY_ORDER[srcIdx + 1] : "";
-
-  // живой калькулятор стоимости улучшения (6 ресурсов)
   useEffect(() => {
-    if (!targetRk) { setCraftQuote(null); return; }
+    loadBalances();
+    return () => { balanceRequest.current++; };
+  }, [loadBalances]);
+
+  const knownTools = address && loadedFor === address && !toolsLoading ? tools : null;
+  const src = (knownTools ?? []).find((t) => t.mint === selMint);
+  const srcRk = src ? rarityKey(src.rarity) : "";
+  const srcIdx = TOOL_RARITIES.findIndex((rarity) => rarity === srcRk);
+  const targetRk = srcIdx >= 0 && srcIdx < TOOL_RARITIES.length - 1 ? TOOL_RARITIES[srcIdx + 1] : null;
+  const rarityLabel = (rk: string) => {
+    const i = TOOL_RARITIES.findIndex((rarity) => rarity === rk);
+    return i < 0 ? toolsCopy[language].card.unknownRarity : toolsCopy[language].collectionPage.rarities[i];
+  };
+  const activeBalances = address && balanceFor === address && !balancesLoading ? balances : null;
+  const preparedMint = address && mintFor === address ? newMint : "";
+
+  // The quote response contains {circuit,silicon,data,neuron,power,mind},
+  // not the deprecated {wood,stone,food,seeds,water,potato} field names.
+  useEffect(() => {
+    let active = true;
+    if (!targetRk) { setCraftQuote(null); setQuoteLoading(false); return; }
+    setCraftQuote(null);
+    setQuoteLoading(true);
     api.tools.craftQuote({ rarity: targetRk })
-      .then((q: any) => setCraftQuote(q))
-      .catch(() => setCraftQuote(null));
+      .then((raw: unknown) => {
+        if (!active) return;
+        const costs = readCraftQuote(raw);
+        setCraftQuote(costs ? { rarity: targetRk, costs } : null);
+      })
+      .catch(() => { if (active) setCraftQuote(null); })
+      .finally(() => { if (active) setQuoteLoading(false); });
+    return () => { active = false; };
   }, [targetRk]);
+  const quoteForTarget = craftQuote?.rarity === targetRk && !quoteLoading ? craftQuote.costs : null;
+  const sufficient = !!quoteForTarget && !!activeBalances && CRAFT_RESOURCES.every(({ key }) => activeBalances[key] >= quoteForTarget[key]);
+  const canPrepare = !!address && !!src && !!targetRk && !!resMints && sufficient && !busyPrep && !busyCraft;
+  const format = (n: number) => n.toLocaleString(language, { maximumFractionDigits: 9 });
+  const resourceName = (key: keyof CraftAmounts) => homeResourceNames[language][key];
 
   async function prepMint() {
-    if (!address) return flash("❌ Подключите кошелёк — кнопка в шапке");
+    if (running.current || !canPrepare || !address) return;
+    running.current = true;
     setBusyPrep(true);
-    flash("Готовим новый минт (инструмент будет создан на нём)…", 8000);
+    flash(copy.preparing, 8000);
     try {
-      const resp = await api.tools.prepMint({ owner: address });
+      const resp: any = await api.tools.prepMint({ owner: address });
       const r = await handleTxResponse(resp);
-      if (r.success && resp.mint) {
+      if (walletRef.current !== address) return;
+      if (r.success && typeof resp.mint === "string" && resp.mint) {
         setNewMint(resp.mint);
-        flash(`Минт готов: ${shortAddr(resp.mint)}`);
+        setMintFor(address);
+        flash(`${copy.mintPrepared}: ${shortAddr(resp.mint)}`);
       } else {
-        flash(`${r.error || "минт не вернулся"}`);
+        flash(r.error || copy.mintMissing);
       }
     } catch (e: any) {
-      flash(`${e.message}`);
+      if (walletRef.current === address) flash(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse));
     } finally {
+      running.current = false;
       setBusyPrep(false);
     }
   }
 
   async function doCraft() {
-    if (!address) return flash("❌ Подключите кошелёк");
-    if (!src) return flash("❌ Выберите инструмент для переплавки");
-    if (!targetRk) return flash("❌ Это уже максимальная редкость");
-    if (!newMint) return flash("❌ Сначала подготовьте новый минт (шаг 1)");
-    
-    const requiredMints = ["wood", "stone", "food", "seeds", "water", "potato"];
-    for (const res of requiredMints) {
-      if (!resMints[res]) return flash(`В реестре ресурсов нет минта ${res.toUpperCase()}`);
-    }
-    
-    // Проверка баланса
-    if (craftQuote) {
-      for (const res of requiredMints) {
-        const needed = craftQuote[res] || 0;
-        if (balances[res] < needed) {
-          return flash(`❌ Не хватает ${RES_META[res].label}: нужно ${fmtNum(needed)}, есть ${fmtNum(balances[res])}`);
-        }
-      }
-    }
-
+    if (running.current || !address || !src || !targetRk || !preparedMint || !resMints || !quoteForTarget || !activeBalances || !sufficient) return;
+    running.current = true;
+    setBusyCraft(true);
+    const costs = quoteForTarget;
     try {
-      flash("Куём…");
+      // Costs follow the global minted count. Re-check the canonical quote
+      // and this wallet's balances immediately before asking for a signature.
+      const [freshQuoteRaw, freshBalancesRaw] = await Promise.all([
+        api.tools.craftQuote({ rarity: targetRk }), api.query.balances(address),
+      ]);
+      if (walletRef.current !== address) return;
+      const latest = readCraftQuote(freshQuoteRaw);
+      const latestBalances = readCraftBalances(freshBalancesRaw);
+      if (!latest) { setCraftQuote(null); flash(copy.quoteUnavailable); return; }
+      if (!latestBalances) { setBalances(null); setBalanceFor(address); flash(copy.balancesUnavailable); return; }
+      if (CRAFT_RESOURCES.some(({ key }) => latest[key] !== costs[key])) {
+        setCraftQuote({ rarity: targetRk, costs: latest });
+        setBalances(latestBalances);
+        setBalanceFor(address);
+        flash(copy.quoteChanged);
+        return;
+      }
+      if (CRAFT_RESOURCES.some(({ key }) => latestBalances[key] < latest[key])) {
+        setBalances(latestBalances);
+        setBalanceFor(address);
+        flash(copy.insufficient.replace('{resource}', CRAFT_RESOURCES.filter(({ key }) => latestBalances[key] < latest[key]).map(({ key }) => resourceName(key)).join(', ')));
+        return;
+      }
+      flash(copy.forging);
       const resp = await api.tools.craft({
         user: address,
         prevMint: src.mint,
-        newMint,
+        newMint: preparedMint,
         toolType: src.toolType,
         rarity: targetRk,
-        woodMint: resMints.wood,
-        stoneMint: resMints.stone,
-        foodMint: resMints.food,
-        seedsMint: resMints.seeds,
-        waterMint: resMints.water,
-        potatoMint: resMints.potato,
-        skrMint: resMints.skr,
+        woodMint: resMints.circuit,
+        stoneMint: resMints.silicon,
+        foodMint: resMints.data,
+        seedsMint: resMints.neuron,
+        waterMint: resMints.power,
+        potatoMint: resMints.mind,
+        // SKR is not configured; the backend binds the compatibility slot to FOOD.
       });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `Выкован ${RARITY_RU[targetRk]}: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
+      if (walletRef.current !== address) return;
       if (r.success) {
-        const q = craftQuote;
-        if (q) {
-          setCraftReceipt(`Списано: схема ${fmtNum(q.wood)} + кремний ${fmtNum(q.stone)} + данные ${fmtNum(q.food)} + нейрон ${fmtNum(q.seeds)} + энергопоток ${fmtNum(q.water)} + MIND ${fmtNum(q.potato)}`);
-        }
+        flash(`${copy.forged} · ${rarityLabel(targetRk)}${r.signature ? `: ${r.signature.slice(0, 10)}…` : ''}`);
+        setCraftReceipt({ address, costs });
         window.dispatchEvent(new CustomEvent("aof:refresh"));
         setNewMint("");
         setSelMint("");
+        loadBalances();
         setTimeout(loadTools, 2500);
+      } else {
+        flash(r.error || copy.failed);
       }
     } catch (e: any) {
-      flash(`${e.message}`);
+      if (walletRef.current === address) flash(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse));
+    } finally {
+      running.current = false;
+      setBusyCraft(false);
     }
   }
 
-  // Проверка достаточности баланса
-  function getBalanceStatus(res: string, needed: number) {
-    const have = balances[res] || 0;
-    if (have >= needed) return "sufficient";
-    if (have > 0) return "partial";
-    return "empty";
-  }
-
   return (
-    <div className="p-4 pt-2 pb-24 space-y-4">
-      <p className="text-straw text-xs">
-        Путь кузнеца: сжигаешь инструмент — куёшь следующий тир. Расход 6 ресурсов растёт с каждой ковкой.
-      </p>
-
+    <div lang={language} className="p-4 pt-2 pb-24 space-y-4 min-w-0">
+      <p className="text-straw text-xs">{copy.intro}</p>
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
@@ -222,36 +242,33 @@ export function CraftPage() {
         </motion.div>
       )}
 
-      {/* ШАГ 1: Выбор исходного инструмента */}
       <Card>
-        <h3 className="text-parchment font-semibold mb-3">1. Выбери инструмент для переплавки</h3>
-        {tools.length === 0 ? (
-          <p className="text-straw text-xs text-center py-4">Нет доступных инструментов для улучшения</p>
+        <h3 className="text-parchment font-semibold mb-3">{copy.select}</h3>
+        {!address || knownTools === null || knownTools.length === 0 ? (
+          <p role="status" className="text-straw text-xs text-center py-4">
+            {!address ? copy.connect : knownTools === null
+              ? toolsLoading || loadedFor !== address && tools !== null ? copy.toolsLoading : copy.toolsUnavailable
+              : copy.noTools}
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {tools.map((t) => {
+            {knownTools.map((t) => {
               const rk = rarityKey(t.rarity);
-              const isMax = rk === "legendary";
+              const i = TOOL_RARITIES.findIndex((rarity) => rarity === rk);
+              const isMax = i < 0 || i === TOOL_RARITIES.length - 1;
               const isSelected = t.mint === selMint;
               return (
-                <button
-                  key={t.mint}
-                  onClick={() => setSelMint(t.mint)}
-                  disabled={isMax}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
-                    isSelected ? "border-gold bg-gold/10" : "border-straw/10 bg-soil-800/60"
-                  } ${isMax ? "opacity-50 cursor-not-allowed" : "active:scale-95"}`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <ArtPlate src={toolPlate(t.toolType, rk)} alt={t.toolType || "Инструмент"} size={40} />
-                    <div className="flex-1">
-                      <p className="text-parchment text-xs font-medium capitalize">{t.toolType}</p>
-                      <p className="text-[10px]" style={{ color: RARITY_META[rk]?.color }}>
-                        {RARITY_RU[rk]}
-                      </p>
+                <button key={t.mint} type="button" onClick={() => { setSelMint(t.mint); setCraftReceipt(null); }}
+                  disabled={isMax || busyPrep || busyCraft}
+                  className={`p-3 rounded-xl border-2 text-left min-w-0 transition-all ${isSelected ? "border-gold bg-gold/10" : "border-straw/10 bg-soil-800/60"} ${isMax ? "opacity-50 cursor-not-allowed" : "active:scale-95"}`}>
+                  <div className="flex items-center gap-2 mb-1 min-w-0">
+                    <ArtPlate src={toolPlate(t.toolType, rk)} alt="" size={40} />
+                    <div className="flex-1 min-w-0 break-words">
+                      <p className="text-parchment text-xs font-medium">{toolName(language, t.toolType)}</p>
+                      <p className="text-[10px]" style={{ color: RARITY_META[rk]?.color }}>{rarityLabel(rk)}</p>
                     </div>
                   </div>
-                  {isMax && <p className="text-[10px] text-straw">Макс. редкость</p>}
+                  {isMax && <p className="text-[10px] text-straw">{i < 0 ? copy.unknownRarity : copy.maxRarity}</p>}
                 </button>
               );
             })}
@@ -259,119 +276,78 @@ export function CraftPage() {
         )}
       </Card>
 
-      {/* ШАГ 2: Подготовка нового минта */}
-      {src && (
+      {src && targetRk && (
         <Card>
-          <h3 className="text-parchment font-semibold mb-3">
-            2. Подготовка нового минта для{" "}
-            <span style={{ color: RARITY_META[rarityKey(targetRk)]?.color }}>
-              {RARITY_RU[targetRk]}
-            </span>
+          <h3 className="text-parchment font-semibold mb-3 break-words">
+            {copy.prepareFor.replace('{rarity}', rarityLabel(targetRk))}
           </h3>
-          {newMint ? (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-sprout-500/10 border border-sprout-500/30">
+          {preparedMint ? (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-sprout-500/10 border border-sprout-500/30 min-w-0">
               <img src={UI_ICONS.noticeSuccess} alt="" className="w-6 h-6 object-contain shrink-0" />
-              <div className="flex-1">
-                <p className="text-parchment text-xs font-medium">Минт готов</p>
-                <p className="text-straw text-[10px]">{shortAddr(newMint)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-parchment text-xs font-medium">{copy.mintReady}</p>
+                <p className="text-straw text-[10px]">{shortAddr(preparedMint)}</p>
               </div>
-              <button onClick={() => setNewMint("")} className="text-xs text-straw hover:text-parchment">
-                ↺
-              </button>
+              <button type="button" onClick={() => setNewMint("")} disabled={busyCraft} aria-label={copy.clearMint} title={copy.clearMint}
+                className="text-xs text-straw hover:text-parchment disabled:opacity-40">↺</button>
             </div>
           ) : (
-            <button
-              onClick={prepMint}
-              disabled={busyPrep}
-              className="w-full py-3 rounded-2xl bg-wheat-600 text-soil-950 font-semibold active:scale-95 transition-transform disabled:opacity-50"
-            >
-              {busyPrep ? "Готовим..." : "Подготовить новый минт"}
+            <button type="button" onClick={prepMint} disabled={!canPrepare}
+              className="w-full py-3 rounded-2xl bg-wheat-600 text-soil-950 font-semibold active:scale-95 transition-transform disabled:opacity-50">
+              {busyPrep ? copy.preparing : copy.prepare}
             </button>
           )}
+          {!resMints && <p role="status" className="text-straw text-xs mt-2">{mintsStatus === "loading" ? copy.mintsLoading : copy.mintsUnavailable}</p>}
+          {resMints && !activeBalances && <p role="status" className="text-straw text-xs mt-2">{balancesLoading || balanceFor !== address ? copy.balancesLoading : copy.balancesUnavailable}</p>}
+          {!quoteForTarget && <p role="status" className="text-straw text-xs mt-2">{quoteLoading ? copy.quoteLoading : copy.quoteUnavailable}</p>}
+          {quoteForTarget && activeBalances && !sufficient && <p className="text-straw text-xs mt-2">{copy.insufficient.replace('{resource}', CRAFT_RESOURCES.filter(({key}) => activeBalances[key] < quoteForTarget[key]).map(({key}) => resourceName(key)).join(', '))}</p>}
         </Card>
       )}
 
-      {/* ШАГ 3: Стоимость крафта (6 ресурсов) */}
-      {craftQuote && src && newMint && (
+      {src && targetRk && preparedMint && (
         <Card>
-          <h3 className="text-parchment font-semibold mb-3">3. Стоимость улучшения</h3>
-          <div className="space-y-2">
-            {(["wood", "stone", "food", "seeds", "water", "potato"] as const).map((res) => {
-              const needed = craftQuote[res] || 0;
-              if (needed === 0) return null;
-              const status = getBalanceStatus(res, needed);
-              const have = balances[res] || 0;
-              const pct = needed > 0 ? Math.min(100, (have / needed) * 100) : 0;
-              return (
-                <div key={res} className="p-3 rounded-xl bg-soil-800/60 border border-straw/10">
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{RES_META[res].icon}</span>
-                      <span className={`text-xs font-medium ${RES_META[res].color}`}>
-                        {RES_META[res].label}
-                      </span>
+          <h3 className="text-parchment font-semibold mb-3">{copy.price}</h3>
+          {quoteForTarget ? (
+            <div className="space-y-2">
+              {CRAFT_RESOURCES.map(({ key }) => {
+                const needed = quoteForTarget[key];
+                const have = activeBalances?.[key] ?? null;
+                const pct = have === null ? 0 : needed > 0 ? Math.min(100, (have / needed) * 100) : 100;
+                return (
+                  <div key={key} className="p-3 rounded-xl bg-soil-800/60 border border-straw/10">
+                    <div className="flex flex-wrap justify-between items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ResourceGlyph icon={resourceIcon(key.toUpperCase()) || ""} alt="" className="w-5 h-5 shrink-0" />
+                        <span className="text-xs font-medium text-parchment break-words">{resourceName(key)}</span>
+                      </div>
+                      <div className="text-right text-xs text-parchment tabular-nums">{copy.required}: {format(needed)} / {copy.available}: {have === null ? '—' : format(have)}</div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-parchment text-xs font-bold">
-                        {fmtNum(needed)}
-                      </span>
-                      <span className="text-straw text-[10px] ml-1">
-                        / {fmtNum(have)}
-                      </span>
+                    <div className="h-1.5 bg-soil-700 rounded-full overflow-hidden">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }}
+                        className={`h-full rounded-full ${have === null || have < needed ? "bg-ember-500" : "bg-sprout-500"}`} />
                     </div>
                   </div>
-                  <div className="h-1.5 bg-soil-700 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.5 }}
-                      className={`h-full rounded-full ${
-                        status === "sufficient" ? "bg-sprout-500" :
-                        status === "partial" ? "bg-wheat-500" :
-                        "bg-ember-500"
-                      }`}
-                    />
-                  </div>
-                  {status !== "sufficient" && (
-                    <p className="text-[10px] text-ember-400 mt-1">
-                      Не хватает {RES_META[res].label}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : <p role="status" className="text-straw text-xs">{quoteLoading ? copy.quoteLoading : copy.quoteUnavailable}</p>}
 
-          {/* SKR discount is intentionally not displayed as active: no
-              canonical SKR mint is configured on-chain, so craft charges the
-              full POTATO amount. */}
-          <div className="p-3 rounded-xl bg-soil-800/60 border border-straw/10">
-            <p className="text-straw text-[10px]">
-              SKR-скидка отключена: ресурс SKR ещё не прописан в сети.
-              Синтез списывает полную стоимость MIND.
-            </p>
+          <div className="p-3 rounded-xl bg-soil-800/60 border border-straw/10 mt-3">
+            <p className="text-straw text-[10px]">{copy.skrNote}</p>
           </div>
-          
-          {/* Кнопка крафта */}
-          <button
-            onClick={doCraft}
-            disabled={!newMint || craftQuote && ["wood","stone","food","seeds","water","potato"].some(r => (balances[r]||0) < (craftQuote[r]||0))}
-            className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-gold to-wheat-600 text-soil-950 font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Выковать {RARITY_RU[targetRk]}
+          <button type="button" onClick={doCraft} disabled={!preparedMint || !resMints || !quoteForTarget || !activeBalances || !sufficient || busyCraft || busyPrep}
+            className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-gold to-wheat-600 text-soil-950 font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
+            {copy.forge.replace('{rarity}', rarityLabel(targetRk))}
           </button>
-
-          {craftReceipt && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-3 p-3 rounded-xl bg-sprout-500/10 border border-sprout-500/30 text-xs text-parchment"
-            >
-              <p className="font-semibold mb-1 inline-flex items-center gap-1.5"><img src={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 object-contain" /> Последний крафт:</p>
-              <p className="text-straw">{craftReceipt}</p>
-            </motion.div>
-          )}
         </Card>
+      )}
+
+      {craftReceipt?.address === address && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="p-3 rounded-xl bg-sprout-500/10 border border-sprout-500/30 text-xs text-parchment">
+          <p className="font-semibold mb-1 inline-flex items-center gap-1.5"><img src={UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 object-contain" /> {copy.lastQuote}</p>
+          <p className="text-straw">{CRAFT_RESOURCES.map(({ key }) => `${resourceName(key)} ${format(craftReceipt.costs[key])}`).join(' · ')}</p>
+        </motion.div>
       )}
     </div>
   );

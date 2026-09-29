@@ -269,7 +269,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   });
 
   // ========== SEASON ==========
-  it("season: premium pass paid once, XP only from the operator, one reward per level within the XP", async () => {
+  it("season: paid pass fails without charge; operator XP and free rewards still work", async () => {
     const seasonId = Math.floor(Date.now() / 1000) >>> 0; // u32, unique per run
     const sid = Buffer.alloc(4); sid.writeUInt32LE(seasonId);
     const season = pda([B("season"), sid]);
@@ -281,11 +281,9 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       config: configPda, user: user.publicKey, treasury: authority, season, seasonPass, systemProgram: SystemProgram.programId,
     }).signers([user]).rpc();
     const before = await lamports(user.publicKey);
-    await purchase();
-    const passRent = (await provider.connection.getAccountInfo(seasonPass))!.lamports;
-    expect(before - await lamports(user.publicKey)).to.equal(150_000_000 + passRent); // SEASON_PASS_PREMIUM_PRICE_LAMPORTS
-    expect((await program.account.seasonPass.fetch(seasonPass)).premium).to.equal(true);
-    await expectError(purchase(), "SeasonPassAlreadyPremium");
+    await expectError(purchase(), "SeasonPremiumRequired");
+    expect(await lamports(user.publicKey)).to.equal(before);
+    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null); // init_if_needed rolled back
 
     const grant = (signer: Keypair | null, amount: number) => {
       const call = program.methods.grantSeasonXp(amount).accounts({
@@ -298,6 +296,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     await expectError(grant(stranger, 1_000_000), "Unauthorized");
     await grant(null, 1_500);
     expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(1_500);
+    expect((await program.account.seasonPass.fetch(seasonPass)).premium).to.equal(false);
 
     const userWood = await ensureAta(woodMint, user.publicKey);
     const claim = (level: number, premiumTrack: boolean) => program.methods.claimSeasonReward(level, premiumTrack).accounts({
@@ -305,7 +304,9 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       tokenProgram: TOKEN_PROGRAM_ID,
     }).rpc();
     const woodBefore = await balance(userWood);
-    await claim(1, true);
+    await expectError(claim(1, true), "SeasonPremiumRequired");
+    expect((await balance(userWood)).toString()).to.equal(woodBefore.toString());
+    await claim(1, false);
     expect((await balance(userWood)).sub(woodBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
     await expectError(claim(1, false), "SeasonRewardAlreadyClaimed");
     await expectError(claim(2, false), "SeasonInsufficientXp"); // 1 500 XP < 2 000
@@ -502,12 +503,17 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const seller = Keypair.generate(); await airdrop(seller);
     const buyer = Keypair.generate(); await airdrop(buyer);
     const stranger = Keypair.generate(); await airdrop(stranger);
-    // [AUDIT F-17] rebrand names are canonical, legacy names map onto them, unknown kinds are rejected.
+    // Only the five canonical tool ids can be minted. No legacy NFT accounts
+    // exist on the target network, so old tool names are deliberately rejected.
     const { mint, tokenAccount: sellerToken } = await mintTool(seller.publicKey, "plasma_cutter");
     expect((await program.account.toolData.fetch(toolPda(mint))).toolType).to.equal("plasma_cutter");
-    const legacy = await mintTool(seller.publicKey, "axe");
-    expect((await program.account.toolData.fetch(toolPda(legacy.mint))).toolType).to.equal("plasma_cutter");
-    await expectError(mintTool(seller.publicKey, "chainsaw"), "InvalidToolType");
+    for (const kind of ["silicon_extractor", "Data_Harvester", "quantum_transmitter", "neural_seeder"]) {
+      const created = await mintTool(seller.publicKey, kind);
+      expect((await program.account.toolData.fetch(toolPda(created.mint))).toolType).to.equal(kind.toLowerCase());
+    }
+    for (const old of ["axe", "pick", "spear", "bow", "reaper", "chainsaw"]) {
+      await expectError(mintTool(seller.publicKey, old), "InvalidToolType");
+    }
 
     const listing = pda([B("listing"), mint.toBuffer()]);
     const listingVault = getAssociatedTokenAddressSync(mint, listing, true);

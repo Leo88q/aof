@@ -1,49 +1,53 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocale, LanguageSwitcher } from "../../i18n/LocaleProvider";
+import { onboardingCopy } from "../../i18n/onboardingCopy";
+import { gameNotices } from "../../i18n/gameNotices";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
-
-const steps = [
-  { id: 0, npc: "Архивариус", avatar: UI_ICONS.npcOracle, text: "Здравствуй, оператор! Я — Архивариус, хранитель этой нейро-лаборатории. Системы проспали, но ядро помнит всё.", action: "Начать" },
-  { id: 1, npc: "Архивариус", avatar: UI_ICONS.npcOracle, text: "Для начала — добудь компоненты. Без DATA далеко не уедешь.", action: "Добыть ресурсы" },
-  { id: 2, npc: "Архивариус", avatar: UI_ICONS.npcOracle, text: "Инструменты — это всё. Без плазменного резчика кремния не взять, без дата-харвестера — данных.", action: "Получить инструмент" },
-  { id: 3, npc: "Архивариус", avatar: UI_ICONS.npcOracle, text: "Рынок живой — цены дышат. Хочешь купить дешевле — жди, пока нагрузка сети упадёт.", action: "Осмотреть рынок" },
-  { id: 4, npc: "Архивариус", avatar: UI_ICONS.npcOracle, text: "Вперёд. Модель твоя — обучай её с умом. А я присмотрю.", action: "Начать игру" },
-];
 
 interface Props { onComplete: () => void; }
 
 export function OnboardingWizard({ onComplete }: Props) {
+  const { language } = useLocale();
+  const copy = onboardingCopy[language];
   const [currentStep, setCurrentStep] = useState(0);
-  const step = steps[currentStep];
+  const step = copy.steps[currentStep];
 
   function next() {
-    if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1);
+    if (currentStep < copy.steps.length - 1) setCurrentStep(currentStep + 1);
     else onComplete();
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-soil-950 z-[100] flex flex-col items-center justify-center p-6">
-      <div className="flex gap-2 mb-8">
-        {steps.map((s, i) => (
-          <div key={s.id} className={`h-1.5 rounded-full transition-all ${i <= currentStep ? "w-8 bg-wheat-500" : "w-4 bg-soil-700"}`} />
-        ))}
-      </div>
+    <motion.div lang={language} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-soil-950 z-[100] flex flex-col items-center overflow-y-auto px-4 pb-6 pt-20">
+      {/* The first-run overlay covers the game's header, so it must expose its
+          own language control. The choice stays shared with the entire app. */}
+      <div className="absolute right-4 top-4"><LanguageSwitcher compact /></div>
+      <div className="my-auto flex w-full max-w-sm flex-col items-center">
+        <span className="sr-only" aria-live="polite">{copy.progress(currentStep + 1, copy.steps.length)}</span>
+        <div className="flex gap-2 mb-8" aria-hidden="true">
+          {copy.steps.map((_, i) => (
+            <div key={i} className={`h-1.5 rounded-full transition-all ${i <= currentStep ? "w-8 bg-wheat-500" : "w-4 bg-soil-700"}`} />
+          ))}
+        </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div key={currentStep} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="text-center max-w-sm">
-          <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-7xl mb-6">
-            <ResourceGlyph icon={step.avatar} alt="" className="w-10 h-10" />
+        <AnimatePresence mode="wait">
+          <motion.div key={currentStep} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="text-center w-full" aria-live="polite">
+            <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="mb-6 flex justify-center">
+              <ResourceGlyph icon={UI_ICONS.npcOracle} alt="" className="w-10 h-10" />
+            </motion.div>
+            <h2 className="text-wheat-500 font-semibold mb-3">{copy.speaker}</h2>
+            <p className="text-parchment text-lg leading-relaxed [overflow-wrap:anywhere]">{step.text}</p>
           </motion.div>
-          <h2 className="text-wheat-500 font-semibold mb-3">{step.npc}</h2>
-          <p className="text-parchment text-lg leading-relaxed">{step.text}</p>
-        </motion.div>
-      </AnimatePresence>
+        </AnimatePresence>
 
-      <button onClick={next} className="mt-12 px-8 py-4 rounded-3xl bg-wheat-600 text-soil-950 font-bold text-lg active:scale-95 transition-transform shadow-glow">
-        {step.action}
-      </button>
-      <button onClick={onComplete} className="mt-4 text-straw text-sm">Пропустить</button>
+        <button type="button" onClick={next} className="mt-10 max-w-full px-8 py-4 rounded-3xl bg-wheat-600 text-soil-950 font-bold text-lg active:scale-95 transition-transform shadow-glow [overflow-wrap:anywhere]">
+          {step.action}
+        </button>
+        <button type="button" onClick={onComplete} className="mt-4 text-straw text-sm">{copy.skip}</button>
+        {gameNotices[language] && <p className="mt-6 max-w-sm text-center text-xs text-straw [overflow-wrap:anywhere]">{gameNotices[language]}</p>}
+      </div>
     </motion.div>
   );
 }

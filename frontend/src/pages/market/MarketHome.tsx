@@ -1,4 +1,6 @@
 import { ReactNode } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { tradeNavigationCopy } from "../../i18n/tradeNavigationCopy";
 import { useNav } from "../../nav/NavContext";
 import { NavHeader } from "../../components/NavHeader";
 import { motion } from "framer-motion";
@@ -11,72 +13,83 @@ import { RentalPage } from "./RentalPage";
 import { OrderbookPage } from "./OrderbookPage";
 import { FlaskMarketplace } from "./FlaskMarketplace";
 import { UI_ICONS } from "../../lib/visualAssets";
-import { DISABLED_MECHANICS, isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
+import { isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { Note, Panel, Sticker } from "../../ui/forge/kit";
 import { SonarPPI } from "../../ui/forge/devices";
 
+type MarketDetailId = 'listing' | 'auction' | 'offer' | 'rental' | 'orderbook' | 'flasks' | 'hot';
+
+// Navigation stores the screen as a React element. Read the current locale
+// inside that element so an open nested header changes with the selector.
+function MarketDetailScreen({ id, children }: { id: MarketDetailId; children: ReactNode }) {
+  const { language } = useLocale();
+  const market = tradeNavigationCopy[language].market;
+  const title = id === 'hot' ? (isMechanicDisabled('hot_market') ? market.hotClosed : market.hotOpen) : market[id];
+  return <>
+    <NavHeader title={title} tabKey="market" />
+    {children}
+  </>;
+}
+
 const SECTIONS = [
-  { id: "listing", icon: UI_ICONS.marketListing, label: "Листинг", sub: "Фикс. цена", el: <ListingPage /> },
-  { id: "auction", icon: UI_ICONS.marketAuction, label: "Аукцион", sub: "Кто больше", el: <AuctionPage /> },
-  { id: "offer", icon: UI_ICONS.marketOffer, label: "Офферы", sub: "Торг о цене", el: <OfferPage /> },
-  { id: "rental", icon: UI_ICONS.marketRental, label: "Аренда", sub: "Доля с добычи", el: <RentalPage /> },
-  { id: "orderbook", icon: UI_ICONS.marketOrderbook, label: "Ордербук", sub: "Стакан по ресурсам", el: <OrderbookPage /> },
-  { id: "flasks", icon: UI_ICONS.flasks, label: "Флюиды", sub: "Торговля флаконами", el: <FlaskMarketplace /> },
-];
+  { id: "listing", icon: UI_ICONS.marketListing, el: <ListingPage /> },
+  { id: "auction", icon: UI_ICONS.marketAuction, el: <AuctionPage /> },
+  { id: "offer", icon: UI_ICONS.marketOffer, el: <OfferPage /> },
+  { id: "rental", icon: UI_ICONS.marketRental, el: <RentalPage /> },
+  { id: "orderbook", icon: UI_ICONS.marketOrderbook, el: <OrderbookPage /> },
+  { id: "flasks", icon: UI_ICONS.flasks, el: <FlaskMarketplace /> },
+] as const;
 
 export function MarketHome() {
+  const { language } = useLocale();
+  const copy = tradeNavigationCopy[language].market;
   const { push } = useNav();
 
   // [ФИКС] Каждая подстраница получает шапку с кнопкой «Назад»
-  const go = (id: string, el: ReactNode, title: string) =>
-    push("market", id, (
-      <>
-        <NavHeader title={title} tabKey="market" />
-        {el}
-      </>
-    ));
+  const go = (id: MarketDetailId, el: ReactNode) =>
+    push("market", id, <MarketDetailScreen id={id}>{el}</MarketDetailScreen>);
 
   return (
-    <div className="p-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold mb-1 text-parchment">Рынок</h1>
-      <p className="text-straw text-xs mb-4">Семь торговых площадок — от листингов до квантового розыгрыша</p>
+    <div lang={language} className="p-4 pt-6 pb-24 min-w-0">
+      <h1 className="text-2xl font-bold mb-1 text-parchment">{copy.title}</h1>
+      <p className="text-straw text-xs mb-4">{copy.intro}</p>
 
-      {/* К6 · эхолот рынка: без данных развёртка пустая и подписана, чтобы
-          приборов не приходилось искать по суб-вкладкам. */}
+      {/* The sonar is decorative until this screen loads listings. */}
       <div className="mb-3">
         <Panel
           tier="panel"
           device="sonar"
-          id={<Sticker>ПРИЛАВКИ</Sticker>}
-          meta="НЕТ ДАННЫХ"
-          title="Эхолот цен"
-          sub="ближе к центру — дешевле"
+          id={<Sticker>{copy.sticker}</Sticker>}
+          meta={copy.notLoaded}
+          title={copy.sonar}
+          sub={copy.sonarSub}
         >
           <SonarPPI
+            ariaLabel={copy.sonar}
             blips={[]}
             legend={
               <>
-                <span>Витрина: <b>—</b></span>
-                <span>Медиана: <b>—</b></span>
+                <span>{copy.listings}: <b>—</b></span>
+                <span>{copy.median}: <b>—</b></span>
               </>
             }
           />
-          <Note quiet>Прилавки не читаются: сеть не ответила. Развёртка оживёт, когда листинги придут.</Note>
+          <Note quiet>{copy.sonarHint}</Note>
         </Panel>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         {SECTIONS.map((s, i) => (
-          <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          <motion.div key={s.id} className="min-w-0" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}>
-            <Card onClick={() => go(s.id, s.el, s.label)} className="flex flex-col items-center py-6">
+            <Card onClick={() => go(s.id, s.el)} className="flex flex-col items-center py-6 min-w-0 text-center">
               {s.icon.startsWith("/") ? (
                 <img src={s.icon} alt="" className="w-10 h-10 object-contain mb-2" />
               ) : (
                 <span className="text-3xl mb-2">{s.icon}</span>
               )}
-              <span className="text-sm font-medium text-parchment">{s.label}</span>
-              <span className="text-xs text-straw mt-0.5">{s.sub}</span>
+              <span className="text-sm font-medium text-parchment w-full break-words">{copy[s.id]}</span>
+              <span className="text-xs text-straw mt-0.5 w-full break-words">{copy[`${s.id}Sub`]}</span>
             </Card>
           </motion.div>
         ))}
@@ -89,7 +102,7 @@ export function MarketHome() {
         return (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="mt-6">
             <Card
-              onClick={() => go("hot", <HotMarket />, "Хот-маркет")}
+              onClick={() => go("hot", <HotMarket />)}
               className={
                 hotDisabled
                   ? "bg-soil-850 border border-straw/15"
@@ -98,14 +111,14 @@ export function MarketHome() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className={`font-semibold flex items-center gap-2 ${hotDisabled ? "text-straw" : "text-wheat-500"}`}>
+                  <h3 className={`font-semibold flex items-start gap-2 ${hotDisabled ? "text-straw" : "text-wheat-500"}`}>
                     <img src={UI_ICONS.marketHot} alt="" className="w-5 h-5 object-contain shrink-0" />
-                    <span className="truncate">
-                      {hotDisabled ? "Хот-маркет пока недоступен" : "Хот-маркет открыт"}
+                    <span className="min-w-0 break-words">
+                      {hotDisabled ? copy.hotClosed : copy.hotOpen}
                     </span>
                   </h3>
                   <p className="text-straw text-xs mt-1">
-                    {hotDisabled ? DISABLED_MECHANICS.hot_market.reason : "Цены живут прямо сейчас — успей купить"}
+                    {hotDisabled ? copy.hotReason : copy.hotIntro}
                   </p>
                 </div>
                 <span className="text-2xl shrink-0">→</span>

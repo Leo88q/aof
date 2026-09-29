@@ -1,8 +1,7 @@
 /**
- * [F-06] Drum of Luck prize table shown to players. Mirrors DRUM_PRIZES and
- * DRUM_SPIN_COST_MASCOT in programs/aof-quests/src/instructions/drum/*.rs;
- * tests/readiness/rng-economy.test.cjs fails if the two ever differ, so the
- * odds on screen are always the odds the program pays.
+ * Historical raw-atomic-unit quest drum table, NOT an enabled Potato offer.
+ * Kept for source-to-program regression tests and old-spin settlement only.
+ * Do not show these values as whole external Potato without verified decimals.
  */
 export const DRUM_SPIN_COST = 5;
 
@@ -14,5 +13,5 @@ export const DRUM_PRIZES: ReadonlyArray<{ readonly weightBps: number; readonly a
   { weightBps: 100, amount: 50 },
 ];
 
-/** Expected prize per spin in mascots (4.75 → 95% return to player). */
+/** Historical expected payout: 4.75 raw atomic units, not whole Potato. */
 export const DRUM_EXPECTED_PRIZE = DRUM_PRIZES.reduce((sum, p) => sum + (p.weightBps * p.amount) / 10_000, 0);

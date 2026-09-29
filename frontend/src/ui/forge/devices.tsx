@@ -1,4 +1,6 @@
 import { ReactNode } from "react";
+import { useInstrumentLanguage } from "../../i18n/LocaleProvider";
+import { forgeDeviceCopy } from "../../i18n/forgeDeviceCopy";
 
 /**
  * Восемь аппаратов набора (Этап 2, 2026-09-28). Каждый — из своей отрасли,
@@ -69,13 +71,14 @@ export function CryoRack({
   );
 }
 
-export function Dewar({ level, label = "ЖИДК. N₂" }: { level: number | null; label?: string }) {
+export function Dewar({ level, label }: { level: number | null; label?: string }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
   return (
     <div className="dewar">
       <div className="dewar__glass">
         {level !== null ? <div className="dewar__ln2" style={{ height: `${Math.round(level * 100)}%` }} /> : null}
       </div>
-      <small>{label}</small>
+      <small>{label ?? copy.dewar}</small>
       <small className="fg-num" style={{ color: "var(--fg-text)", fontSize: 12 }}>
         {level === null ? "—" : `${Math.round(level * 100)} %`}
       </small>
@@ -100,11 +103,15 @@ export function MixerStrips({
   channels,
   maxHours = 12,
   onChannel,
+  labels,
 }: {
   channels: Channel[];
   maxHours?: number;
   onChannel?: (key: string) => void;
+  labels?: { active: string; racked: string };
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
+  const channelLabels = labels ?? { active: copy.working, racked: copy.onRack };
   return (
     <div className="strips">
       {channels.map((c) => {
@@ -141,11 +148,12 @@ export function MixerStrips({
                 className={"mini" + (c.active ? " mini--on" : "")}
                 onClick={onChannel ? () => onChannel(c.key) : undefined}
                 aria-pressed={!!c.active}
-                title="в работе"
+                aria-label={channelLabels.active}
+                title={channelLabels.active}
               >
                 M
               </button>
-              <button type="button" className="mini" title="в стойке">
+              <button type="button" className="mini" aria-label={channelLabels.racked} title={channelLabels.racked}>
                 S
               </button>
             </span>
@@ -181,6 +189,7 @@ export function EchoTrace({
   /** Текущая глубина 0…1 или null, если эхолот молчит. */
   depth: number | null;
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
   const W = 420;
   const H = 118;
   const y = (d: number) => 8 + d * (H - 30);
@@ -191,14 +200,14 @@ export function EchoTrace({
         ` C 210 ${y(depth) - 2}, 250 ${y(depth) + 8}, 310 ${y(depth) + 4}` +
         ` C 360 ${y(depth) + 1}, 390 ${y(depth) - 6}, ${W} ${y(depth) - 8}`;
   return (
-    <svg className="echo" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Лента глубины: добыча во времени">
+    <svg className="echo" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={copy.depthTrace}>
       <g className="grid">
         <line x1="0" y1={y(0)} x2={W} y2={y(0)} />
         <line x1="0" y1={y(0.33)} x2={W} y2={y(0.33)} />
         <line x1="0" y1={y(0.66)} x2={W} y2={y(0.66)} />
         <line x1="0" y1={y(1)} x2={W} y2={y(1)} />
       </g>
-      <text className="gridlabel" x="6" y={y(0) - 3}>0 м</text>
+      <text className="gridlabel" x="6" y={y(0) - 3}>{copy.depthZero}</text>
       <text className="gridlabel" x="6" y={y(0.5) - 3}>40</text>
       <text className="gridlabel" x="6" y={y(1) - 3}>80</text>
       <path className="bottom" d={`${bottom} L${W} ${H} L0 ${H} Z`} />
@@ -216,13 +225,16 @@ export function EchoTrace({
 export function SonarPPI({
   blips,
   legend,
+  ariaLabel,
 }: {
   blips: { x: number; y: number; r?: number }[];
   legend: ReactNode;
+  ariaLabel?: string;
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
   return (
     <div className="ppi-wrap">
-      <svg className="ppi" viewBox="0 0 120 120" role="img" aria-label="Круговой индикатор">
+      <svg className="ppi" viewBox="0 0 120 120" role="img" aria-label={ariaLabel ?? copy.sonar}>
         <defs>
           <radialGradient id="fg-sweepg">
             <stop offset="0%" stopColor="rgba(143,227,240,.42)" />
@@ -315,6 +327,7 @@ export function PlateReader({
   boxes: { label: string; value: ReactNode; dash?: boolean; tone?: "err" }[];
   onRead?: () => void;
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
   return (
     <div className="reader">
       {boxes.map((b) => (
@@ -330,7 +343,7 @@ export function PlateReader({
       ))}
       {onRead ? (
         <button type="button" className="fg-key fg-key--primary" onClick={onRead}>
-          Считать
+          {copy.read}
         </button>
       ) : null}
     </div>
@@ -340,14 +353,14 @@ export function PlateReader({
 /* ─────────────── Гель-электрофорез ─────────────── */
 
 export type GelBand = { at: number; kind?: "fresh" | "weak" | "ref" };
-export type GelLane = { key: string; name: string; bands: GelBand[] };
+export type GelLane = { key: string; name: string; title?: string; bands: GelBand[] };
 
 export function GelLanes({ lanes }: { lanes: GelLane[] }) {
   return (
     <div className="gel-bed">
       <div className="lanes">
         {lanes.map((l) => (
-          <div className="lane" key={l.key}>
+          <div className="lane" key={l.key} title={l.title ?? l.name} aria-label={l.title ?? l.name}>
             <span className="lane__well" />
             {l.bands.map((b, i) => (
               <span
@@ -375,11 +388,14 @@ export function CrossPanel({
   top,
   bottom,
   links,
+  ariaLabel,
 }: {
   top: CrossPort[];
   bottom: CrossPort[];
   links: CrossLink[];
+  ariaLabel?: string;
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
   const W = 420;
   const topY = 12;
   const botY = 132;
@@ -392,7 +408,7 @@ export function CrossPanel({
     return { ...l, d };
   });
   return (
-    <svg className="cross-svg" viewBox={`0 0 ${W} 168`} role="img" aria-label="Кросс-панель">
+    <svg className="cross-svg" viewBox={`0 0 ${W} 168`} role="img" aria-label={ariaLabel ?? copy.crossPanel}>
       {top.map((p, i) => {
         const x = px(i, top.length) - 17;
         return (
@@ -425,7 +441,9 @@ export function CrossPanel({
             <rect className="port" x={x} y={botY} width="34" height="16" rx="3" />
             <circle className="port__hole" cx={x + 10} cy={botY + 8} r="2.4" />
             <circle className="port__hole" cx={x + 24} cy={botY + 8} r="2.4" />
-            <text className="port__num" x={x} y={botY + 28}>{p.label}</text>
+            <text className="port__num" x={i === 0 ? 2 : i === bottom.length - 1 ? W - 2 : x + 17}
+              textAnchor={i === 0 ? "start" : i === bottom.length - 1 ? "end" : "middle"}
+              y={botY + 28}>{p.label}</text>
           </g>
         );
       })}
@@ -444,6 +462,7 @@ export function PunchedCard({
   footLeft,
   footMid,
   footRight,
+  unknown = false,
 }: {
   title: string;
   steps: StepState[];
@@ -451,7 +470,10 @@ export function PunchedCard({
   footLeft?: string;
   footMid?: string;
   footRight?: string;
+  /** Show placeholders instead of a synthetic 0/N when canonical progress is unreadable. */
+  unknown?: boolean;
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
   const holes: ReactNode[] = [];
   for (let r = 0; r < rows; r += 1) {
     for (let c = 0; c < steps.length; c += 1) {
@@ -473,14 +495,14 @@ export function PunchedCard({
         <div className="pcard__head">
           <span>{title}</span>
           <span>
-            {done}/{steps.length}
+            {unknown ? '— / —' : `${done}/${steps.length}`}
           </span>
         </div>
         <div className="holes">{holes}</div>
         <div className="pcard__foot">
-          <span>{footLeft ?? `ПРОБИТО ${done}`}</span>
+          <span>{unknown ? '—' : footLeft ?? `${copy.punched} ${done}`}</span>
           <span>{footMid ?? ""}</span>
-          <span>{footRight ?? `ОСТАЛОСЬ ${steps.length - done}`}</span>
+          <span>{unknown ? '—' : footRight ?? `${copy.remaining} ${steps.length - done}`}</span>
         </div>
       </div>
     </div>
@@ -492,13 +514,17 @@ export function PunchedCard({
 export function DrumChart({
   points,
   dayLabels,
-  scaleLabels = ["ФРЕНЗИ", "НОМИНАЛ", "БЛЭКАУТ"],
+  scaleLabels,
+  ariaLabel,
 }: {
   /** Значения 0…1 по точкам ленты. Пустой массив — пера нет. */
   points: number[];
   dayLabels: string[];
   scaleLabels?: [string, string, string] | string[];
+  ariaLabel?: string;
 }) {
+  const copy = forgeDeviceCopy[useInstrumentLanguage()];
+  const scale = scaleLabels ?? copy.loadScale;
   const W = 420;
   const H = 112;
   const y = (v: number) => 8 + v * (H - 26);
@@ -515,7 +541,7 @@ export function DrumChart({
   return (
     <div className="drum">
       <div className="chart">
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Лента нагрузки сети">
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel ?? copy.loadChart}>
           <g className="hgrid">
             {[0.1, 0.4, 0.7, 1].map((v) => (
               <line key={v} x1="0" y1={y(v)} x2={W} y2={y(v)} />
@@ -526,9 +552,9 @@ export function DrumChart({
               <line key={i} x1={(i + 1) * (W / (dayLabels.length + 1))} y1="0" x2={(i + 1) * (W / (dayLabels.length + 1))} y2={H} />
             ))}
           </g>
-          <text x="4" y="12">{scaleLabels[0]}</text>
-          <text x="4" y={y(0.55)}>{scaleLabels[1]}</text>
-          <text x="4" y={y(1)}>{scaleLabels[2]}</text>
+          <text x="4" y="12">{scale[0]}</text>
+          <text x="4" y={y(0.55)}>{scale[1]}</text>
+          <text x="4" y={y(1)}>{scale[2]}</text>
           {dayLabels.map((d, i) => (
             <text key={d} x={16 + i * (W / (dayLabels.length + 1))} y={H - 4}>
               {d}

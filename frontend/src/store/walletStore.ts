@@ -1,3 +1,5 @@
+import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
+import { getApiErrorLanguage } from "../lib/apiErrorLanguage";
 import { create } from "zustand";
 
 interface WalletState {
@@ -23,7 +25,7 @@ export const useWalletStore = create<WalletState>((set) => ({
       const { createWalletAdapter } = await import("../lib/wallet");
       const adapter = createWalletAdapter();
       if (!adapter.available) {
-        throw new Error("Кошелёк не найден. Установите Phantom.");
+        throw new Error(walletRuntimeCopy[getApiErrorLanguage()].notFoundShort);
       }
       const pubkey = await adapter.connect();
       set({

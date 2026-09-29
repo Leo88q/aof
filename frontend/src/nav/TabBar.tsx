@@ -1,14 +1,16 @@
 import { useNav } from "./NavContext";
+import { useLocale } from "../i18n/LocaleProvider";
+import { gameTabs, type GameTab } from "../i18n/gameLabels";
 import { UI_ICONS } from "../lib/visualAssets";
 import { prefetchTab } from "./tabChunks";
 
 const TABS = [
-  { key: "farm", label: "Лаборатория", icon: UI_ICONS.menuLab },
-  { key: "tools", label: "Мастерская", icon: UI_ICONS.menuWorkshop },
-  { key: "economy", label: "Экономика", icon: UI_ICONS.menuEconomy },
-  { key: "market", label: "Рынок", icon: UI_ICONS.menuMarket },
-  { key: "quests", label: "Задания", icon: UI_ICONS.menuQuests },
-  { key: "profile", label: "Профиль", icon: UI_ICONS.menuProfile },
+  { key: "farm", icon: UI_ICONS.menuLab },
+  { key: "tools", icon: UI_ICONS.menuWorkshop },
+  { key: "economy", icon: UI_ICONS.menuEconomy },
+  { key: "market", icon: UI_ICONS.menuMarket },
+  { key: "quests", icon: UI_ICONS.menuQuests },
+  { key: "profile", icon: UI_ICONS.menuProfile },
 ];
 
 /**
@@ -18,11 +20,13 @@ const TABS = [
  */
 export function TabBar() {
   const { tab, setTab } = useNav();
+  const { language, t } = useLocale();
   return (
-    <nav className="fg-dockwrap" aria-label="Основная навигация">
+    <nav className="fg-dockwrap" lang={language} aria-label={t('nav')}>
       <div className="fg-dock">
         {TABS.map((t) => {
           const isActive = tab === t.key;
+          const label = gameTabs[language][t.key as GameTab];
           return (
             <button
               key={t.key}
@@ -34,9 +38,11 @@ export function TabBar() {
               onTouchStart={() => prefetchTab(t.key)}
               onFocus={() => prefetchTab(t.key)}
               aria-current={isActive ? "page" : undefined}
+              aria-label={label.full}
             >
               <img src={t.icon} alt="" width={16} height={16} />
-              <span className="tab-label">{t.label}</span>
+              <span className="tab-label tab-label--full" aria-hidden="true">{label.full}</span>
+              <span className="tab-label tab-label--short" aria-hidden="true">{label.short}</span>
             </button>
           );
         })}
@@ -46,6 +52,3 @@ export function TabBar() {
 }
 
 export const TAB_KEYS = TABS.map((t) => t.key);
-export const TAB_LABELS: Record<string, string> = Object.fromEntries(
-  TABS.map((t) => [t.key, t.label])
-);

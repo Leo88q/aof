@@ -20,6 +20,7 @@ import { authorityOnly, coSign, pk } from "../lib/tx";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
 import { miningEnabledOnChain } from "../lib/configState";
+import { miningRewardMint } from "../lib/toolResourceMint";
 import { Keypair, Transaction } from "@solana/web3.js";
 import { MINT_SIZE, createInitializeMintInstruction, createAssociatedTokenAccountIdempotentInstruction } from "@solana/spl-token";
 import { connection } from "../provider";
@@ -416,21 +417,15 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
     if (!toolData || !cfg || !materials) {
       return res.status(503).json({ error: "MINING_NOT_CONFIGURED_ON_CHAIN" });
     }
-    const toolType = String(toolData.toolType || "").toLowerCase();
-    const resourceMint = toolType === "axe"
-      ? cfg.woodMint
-      : toolType === "pick"
-      ? cfg.stoneMint
-      : toolType === "bow"
-      ? materials.meat
-      : toolType === "reaper"
-      ? materials.seeds
-      : null;
+    const resourceMint = miningRewardMint(toolData.toolType, cfg, materials);
     if (!resourceMint) {
       return res.status(503).json({ error: "MINING_TOOL_REWARD_NOT_CONFIGURED" });
     }
 
     const payoutMint = resourceMint instanceof PublicKey ? resourceMint : new PublicKey(resourceMint);
+    if (payoutMint.equals(PublicKey.default)) {
+      return res.status(503).json({ error: "MINING_TOOL_REWARD_NOT_CONFIGURED" });
+    }
     const payoutToken = getAssociatedTokenAddressSync(payoutMint, user);
     const ix = await (program.methods as any)
       .collectMining()

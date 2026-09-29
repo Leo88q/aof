@@ -42,7 +42,25 @@ assert.equal((rental.match(/let current_owner = ctx\.accounts\.tool\.owner;/g) ?
 // API 503 responses alone are not a security boundary.
 assert.match(rebirth, /require!\(false, .*FeatureDisabled/, "rebirth must fail closed on-chain");
 
-// [F-06] Randomness mechanics are live only through the program-owned
+// The historical raw-atom drum and the proposed whole-Potato V2 both remain
+// closed for NEW payments. Neither the presence of VRF paths nor a bank pause
+// switch is sufficient to open sales; paid refunds/reveals still use vrf.rs.
+const v2Spin = read("programs/aof-quests/src/instructions/drum/potato_spin.rs");
+assert.match(questsDrum, /require!\(false, QuestError::Paused\)/, "legacy drum must stay disabled");
+assert.match(v2Spin, /require!\(false, QuestError::FeatureDisabled\)/, "V2 paid spin must stay disabled");
+assert.match(read("aof_backend/src/routes/drum.ts"), /r\.post\("\/commit"[^\n]*\n\s*res\.status\(503\)/,
+  "the backend must reject new drum payments");
+for (const [name, source] of [
+  ["legacy drum", questsDrum + read("programs/aof-quests/src/instructions/drum/drum_reveal.rs")
+    + read("programs/aof-quests/src/instructions/drum/drum_expire.rs")],
+  ["Potato V2", v2Spin],
+] as const) {
+  assert.doesNotMatch(source, /hash_secret|get_slot_hash|slot_hashes/, `${name} must use Switchboard`);
+  for (const fn of ["vrf::commit(", "vrf::reveal(", "vrf::release_for_refund("])
+    assert.ok(source.includes(fn), `${name} needs ${fn} for already-paid spins`);
+}
+
+// [F-06] Other randomness mechanics are live only through the program-owned
 // Switchboard pool: commit via vrf::commit, permissionless reveal via
 // vrf::reveal, refund only after the window via vrf::release_for_refund.
 for (const [name, source, steps] of [
@@ -52,8 +70,6 @@ for (const [name, source, steps] of [
   ["exploration", exploration, 3],
   ["forge", forge, 3],
   ["lottery", lottery, 3],
-  ["drum", questsDrum + read("programs/aof-quests/src/instructions/drum/drum_reveal.rs")
-    + read("programs/aof-quests/src/instructions/drum/drum_expire.rs"), 3],
 ] as const) {
   assert.doesNotMatch(source, /require!\(false/, `${name} is still hard-disabled`);
   assert.doesNotMatch(source, /hash_secret|get_slot_hash|slot_hashes/, `${name} still uses the legacy commit-reveal`);
@@ -78,15 +94,12 @@ assert.equal(auctionBidIx.accounts.find((a: any) => a.name === "previous_bidder"
 assert.match(section(core, "pub struct AuctionBidCtx", "pub struct AuctionSettleCtx"),
   /#\[account\(mut, address = auction\.current_bidder\)\]\s*pub previous_bidder/);
 
-// Disabled mechanics must be reflected identically in every layer:
-//   on-chain guard  ->  backend 503  ->  site content status:'soon'  ->  app notice.
+// Disabled mechanics must have on-chain and API guards. The editorial site
+// now has localized guides and stable routes, NOT a live/soon status table;
+// never infer sale readiness from the presence of an editorial link.
 const siteMechanics = read("frontend/src/site/content/mechanics.ts");
+assert.match(siteMechanics, /does not imply that any instruction is enabled on-chain/);
 const appNotice = read("frontend/src/components/ui/FeatureDisabledNotice.tsx");
-const siteStatus = (id: string) => {
-  const m = siteMechanics.match(new RegExp(`\\{id:'${id}',name:'[^']*',status:'(live|soon)'`));
-  assert.ok(m, `site mechanic ${id} missing from mechanics.ts`);
-  return m![1];
-};
 const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
 const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
   { id: "hot_market", route: "hotMarket.ts", code: /HOT_MARKET_DISABLED/, guard: ["programs/aof-market/src/lib.rs", /err!\(MarketError::TradingDisabled\)/] },
@@ -96,19 +109,17 @@ const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [s
 for (const layer of disabledLayers) {
   assert.match(read(layer.guard[0]), layer.guard[1], `${layer.id}: on-chain guard missing`);
   assert.match(backendRoute(layer.route), layer.code, `${layer.id}: backend route is not fail-closed`);
-  assert.equal(siteStatus(layer.id), "soon", `${layer.id}: site content must be status:'soon' while the on-chain guard exists`);
 }
 for (const id of ["hot_market", "collectors", "rebirth", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
-// [F-06] Live VRF mechanics are enabled identically in every layer:
-//   on-chain vrf.rs  ->  backend route builds a pool commit  ->  site status:'live'  ->  no app notice.
+// [F-06] Other VRF mechanics have pool commit builders, not just editorial links:
+//   on-chain vrf.rs  ->  backend route builds a pool commit  ->  no app notice.
 const liveVrf: Array<{ id: string; route: string; builder: RegExp }> = [
   { id: "packs", route: "packs.ts", builder: /packOpenCommit/ },
   { id: "forge", route: "forge.ts", builder: /forgeAttemptCommit/ },
   { id: "lottery", route: "lottery.ts", builder: /commitLotteryDraw/ },
   { id: "exploration", route: "exploration.ts", builder: /startExplorationCommit/ },
-  { id: "drum", route: "drum.ts", builder: /drumCommit/ },
 ];
 for (const layer of liveVrf) {
   const route = backendRoute(layer.route);
@@ -118,7 +129,6 @@ for (const layer of liveVrf) {
   const live = route.replace(/\/\*[\s\S]*?\*\//g, "");
   assert.doesNotMatch(live, /(PACK|FORGE|LOTTERY|EXPLORATION|DRUM|REROLL)[A-Z_]*_DISABLED/, `${layer.id}: route still answers a disabled code`);
   assert.doesNotMatch(live, /newCommit\(|peekSecret\(/, `${layer.id}: legacy server secret`);
-  assert.equal(siteStatus(layer.id), "live", `${layer.id}: site content must be status:'live'`);
   assert.doesNotMatch(appNotice, new RegExp(`^  ${layer.id}: \\{`, "m"), `${layer.id}: still listed in DISABLED_MECHANICS`);
 }
 assert.match(backendRoute("reroll.ts"), /reservePoolSlot\(/);

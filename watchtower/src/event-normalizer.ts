@@ -98,9 +98,9 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
   TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
   LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted",
-    "DrumCommitted"],
+    "DrumCommitted", "PotatoSpinCommitted"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched",
-    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded"],
+    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded", "PotatoSpinRevealed", "PotatoSpinRefunded"],
   ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
@@ -291,6 +291,22 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     case "DrumRefunded":
       emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE",
         attributes: { liability: "drum_spin", outcome: "refund", commit: str(d.user) } });
+      break;
+    // V2 is a distinct external SPL mint. Never label its atomic amounts as
+    // legacy MIND/RESOURCE or coalesce the two PDA/discriminator families.
+    // The committed event exposes the price, NOT the entire reserved liability;
+    // do not fabricate a 50-token amount in the event stream.
+    case "PotatoSpinCommitted":
+      emit("LiabilityCreated", { playerId: pid(d.user), asset: str(d.mint), currency: "POTATO_ATOMS",
+        attributes: { liability: "potato_spin_v2", commit: str(d.commit), priceAtoms: str(d.price_atoms), seedSlot: str(d.seed_slot) } });
+      break;
+    case "PotatoSpinRevealed":
+      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.prize_atoms), currency: "POTATO_ATOMS",
+        attributes: { liability: "potato_spin_v2", outcome: "settled", commit: str(d.commit), seedSlot: str(d.seed_slot) } });
+      break;
+    case "PotatoSpinRefunded":
+      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.amount_atoms), currency: "POTATO_ATOMS",
+        attributes: { liability: "potato_spin_v2", outcome: "refund", commit: str(d.commit) } });
       break;
     case "VrfSlotAdded":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "add", index: str(d.index), vrfSlot: str(d.vrfSlot) } });

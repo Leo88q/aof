@@ -56,7 +56,7 @@ export async function loadMints(): Promise<Partial<Record<ResourceId, string>>> 
         console.log(`Loaded ${Object.keys(data.mints).length} canonical mints from chain`);
         return data.mints;
       }
-      console.warn("⚠️ Canonical resource registry is incomplete or invalid. Игровые операции недоступны.");
+      console.warn("⚠️ Canonical resource registry is incomplete or invalid. Game operations are unavailable.");
       return {};
     } catch (e) {
       console.error("❌ Failed to load mints:", e);
@@ -77,7 +77,7 @@ export async function getMintAsync(resourceId: ResourceId): Promise<string> {
   const mints = await loadMints();
   const mint = mints[resourceId];
   if (!mint) {
-    console.warn(`⚠️ Mint ${resourceId} не найден. Контракт не инициализирован.`);
+    console.warn(`⚠️ Mint ${resourceId} not found. The contract is not initialized.`);
   }
   return mint || "";
 }
@@ -95,7 +95,7 @@ export const RESOURCE_MINTS = new Proxy({} as Record<ResourceId, string>, {
   get: (_, prop: string) => {
     const value = mintCache?.[prop as ResourceId];
     if (!value) {
-      console.warn(`⚠️ Mint для ${prop} не загружен. Вызовите loadMints() или используйте getMintAsync()`);
+      console.warn(`⚠️ Mint for ${prop} is not loaded. Call loadMints() or use getMintAsync()`);
       return "";
     }
     return value;

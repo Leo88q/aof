@@ -1,18 +1,29 @@
-/**
- * [F-06] Player-facing text for the Switchboard settlement errors returned by
- * the API (503 codes from lib/vrf.ts) and by the programs (AofError names).
- */
-const MESSAGES: ReadonlyArray<readonly [RegExp, string]> = [
-  [/VRF_POOL_EXHAUSTED|VrfSlotBusy/, "Все каналы оракула сейчас заняты. Повторите через несколько секунд."],
-  [/VRF_POOL_EMPTY/, "Механика ещё не запущена: пул оракула пуст."],
-  [/VRF_ORACLE_UNAVAILABLE/, "Оракулы Switchboard сейчас недоступны. Повторите через минуту, средства не списаны."],
-  [/VRF_SETTLEMENT_DEGRADED/, "Оракул временно не успевает раскрывать результаты, поэтому новые открытия приостановлены. Уже оплаченные будут раскрыты или возвращены."],
-  [/PRICE_ABOVE_MAXIMUM|PriceAboveMaximum/, "Цена изменилась. Обновите страницу и подтвердите новую цену."],
-  [/RevealWindowClosed/, "Окно раскрытия закрыто, теперь доступен возврат."],
-  [/LotterySalesClosed/, "Продажи этого раунда закрыты: идёт розыгрыш."],
-];
+import type { Language } from '../i18n/translations';
+import { legacyVrfRussian, vrfCopy } from '../i18n/vrfCopy';
 
-export function humanizeVrfError(message: string): string {
-  for (const [pattern, text] of MESSAGES) if (pattern.test(message)) return text;
+/** [F-06] Stable API/program errors. Keep the pattern order aligned with
+ * vrfCopy; recognizing a known error does not prove payment settlement. */
+const PATTERNS = [
+  /VRF_POOL_EXHAUSTED|VrfSlotBusy/,
+  /VRF_POOL_EMPTY/,
+  /VRF_ORACLE_UNAVAILABLE/,
+  /VRF_SETTLEMENT_DEGRADED/,
+  /PRICE_ABOVE_MAXIMUM|PriceAboveMaximum/,
+  /RevealWindowClosed/,
+  /LotterySalesClosed/,
+] as const;
+
+/** Let the second stage of the API error pipeline translate these codes rather
+ * than consume them in the generic fail-closed-code fallback. */
+export function isKnownVrfCode(code: string): boolean {
+  return /^VRF_[A-Z_]+$/.test(code) && PATTERNS.some(pattern => pattern.test(code));
+}
+
+export function humanizeVrfError(message: string, language: Language = 'ru'): string {
+  for (const [index, pattern] of PATTERNS.entries()) {
+    if (pattern.test(message) || message === vrfCopy.ru[index] || message === legacyVrfRussian[index]) {
+      return vrfCopy[language][index];
+    }
+  }
   return message;
 }

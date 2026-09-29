@@ -209,7 +209,7 @@ test('#2 #16 every unchecked account is documented and bound to something', () =
   // queue; Switchboard itself checks queue membership and records it on the
   // randomness account, where every reveal context then binds it.
   const SWITCHBOARD_COMMIT_ORACLE = new Set(['PackOpenCommit', 'RerollRandomCommit', 'StartExplorationCommit',
-    'ForgeAttemptCommit', 'CommitLotteryDraw', 'DrumCommitCtx']);
+    'ForgeAttemptCommit', 'CommitLotteryDraw', 'DrumCommitCtx', 'PotatoSpinCommit']);
   let unchecked = 0;
   for (const [program, { structs }] of Object.entries(sources)) {
     for (const [name, fields] of structs) {
@@ -374,7 +374,6 @@ test('#8 #10 #17 F-06 randomness settles only through the program-owned Switchbo
     ['aof-core/src/instructions/lottery.rs', 'commit_draw_handler', 'commit'],
     ['aof-core/src/instructions/lottery.rs', 'draw_handler', 'reveal'],
     ['aof-core/src/instructions/lottery.rs', 'expire_draw_handler', 'release_for_refund'],
-    ['programs/aof-quests/src/instructions/drum/drum_commit.rs', 'handler', 'commit'],
     ['programs/aof-quests/src/instructions/drum/drum_reveal.rs', 'handler', 'reveal'],
     ['programs/aof-quests/src/instructions/drum/drum_expire.rs', 'handler', 'release_for_refund'],
   ];
@@ -384,6 +383,10 @@ test('#8 #10 #17 F-06 randomness settles only through the program-owned Switchbo
     assert.doesNotMatch(body, /slot_hashes|hash_secret|derive_entropy|secret/, `${file}::${fn}: legacy commit-reveal`);
     assert.doesNotMatch(body, /require!\(\s*false/, `${file}::${fn} is still hard-disabled`);
   }
+  // New Potato payments are intentionally blocked until a decimals-aware
+  // contract is deployed. Existing reveal/refund still use Switchboard.
+  assert.match(fnBody(read('programs/aof-quests/src/instructions/drum/drum_commit.rs'), 'handler'),
+    /require!\(false, QuestError::Paused\)/);
   // Legacy helpers are gone, so nothing can be wired back to them.
   assert.doesNotMatch(stripComments(core('randomness.rs')), /fn (hash_secret|get_slot_hash|derive_entropy)/);
   // Rebirth is not a randomness mechanic and stays disabled on its own.

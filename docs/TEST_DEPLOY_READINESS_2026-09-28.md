@@ -30,11 +30,11 @@
 развёрнутого `aof_backend` и RPC: их поднимают вместе со стендом (`VITE_API_URL`,
 `VITE_RPC_URL`, `VITE_DEV_BACKEND_URL`).
 
-## Что мешает выпустить релизную сборку
+## Историческая проверка на 2026-09-28 (статус изменён)
 
-`npm run release:check` (он же — шаг `npm run build:release`) намеренно отказывает, пока
-не заполнены данные оператора. Сейчас перечислено 14 полей — все они данные владельца,
-а не код:
+`npm run release:check` теперь выдаёт только справочный отчёт и не останавливает
+`npm run build:release`. Поля ниже остаются незаполненными; успешная техническая сборка
+не заменяет утверждённые документы или решение владельца о запуске:
 
 - `operatorName`, `operatorAddress`, `operatorCountry`, `registrationDetails`;
 - `governingLaw`, `retentionPolicy`, `transferSafeguards`, `privacyRepresentative`;

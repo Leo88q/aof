@@ -109,7 +109,7 @@ pub const SUPPLY_CAP_UNLIMITED: u64 = u64::MAX;
 // [AUDIT F-08] Кривая ремонта пересчитана.
 //
 // Было: yield растёт 10 -> 18 (x1.8), а ремонт 3 -> 70 WOOD (x23.3) и
-// 2 -> 45 STONE (x22.5). Портфель 3 axe + 3 pick по 20 ч/сутки убыточен
+// 2 -> 45 STONE (x22.5). Портфель 3 plasma cutters + 3 silicon extractors по 20 ч/сутки убыточен
 // по обоим ресурсам уже с Rare (-900/-300), а с Uncommon — по WOOD.
 // Условие безубыточности портфеля: `yield_per_hour > 2 * repair_per_unit`
 // (3 добывающих инструмента кормят ремонт всех 6).
@@ -200,8 +200,8 @@ pub const PACK_BIG_PRICE_LAMPORTS: u64 = 1_000_000_000;    // 1.0 SOL
 pub const PACK_SMALL_ODDS_BPS: [u16; 5] = [6_000, 3_200, 700, 100, 0];
 pub const PACK_MEDIUM_ODDS_BPS: [u16; 5] = [5_000, 3_500, 1_000, 500, 0];
 pub const PACK_BIG_ODDS_BPS: [u16; 5] = [3_500, 4_000, 1_500, 1_000, 0];
-// [ФАКТ]: из паков выпадают только Axe/Pick/Spear (3 типа, без Bow).
-pub const PACK_TOOL_TYPES: [&str; 3] = ["plasma_cutter", "silicon_extractor", "data_harvester"]; // [REBRAND] ex axe/pick/spear
+// Capsules issue the first three canonical tool types; transmitter/seeder are obtained elsewhere.
+pub const PACK_TOOL_TYPES: [&str; 3] = ["plasma_cutter", "silicon_extractor", "data_harvester"];
 
 // ----- Reroll (честный, RNG) — своя таблица шансов, настраиваемая отдельно -----
 pub const REROLL_ODDS_BPS_DEFAULT: [u16; 5] = [5_500, 3_000, 1_100, 400, 0];
@@ -477,8 +477,8 @@ mod economy_tests {
         (BASE_RATE_MINING as i128) * (RESOURCE_UNIT as i128) * (r.yield_bps() as i128) / 10_000
     }
 
-    /// Net ATOMIC units per hour for a 3 axe + 3 pick portfolio that repairs to
-    /// full: only the axes bring WOOD in, but all six tools consume it.
+    /// Net ATOMIC units per hour for a portfolio of 3 plasma cutters and
+    /// 3 silicon extractors: only the cutters produce Circuit, while all six consume it.
     fn net_per_hour(r: Rarity) -> (i128, i128) {
         let y = yield_atomic_per_hour(r);
         let wood = AXES * y - TOOLS * (r.repair_wood_cost_per_unit() as i128);

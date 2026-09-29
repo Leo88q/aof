@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { runSimulation } from "../lib/economySimulator";
 import { runSimulationV2 } from "../lib/economySimulatorV2";
-import { runSimulationV3 } from "../lib/economySimulatorV3";
 import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
@@ -97,32 +96,11 @@ r.post("/run-v2", requireAdmin, async (req, res) => {
 
 
 
-/**
- * POST /sandbox/run-v3
- * ПОЛНАЯ симуляция: 26 ресурсов + инструменты до легендарки + миссии + танки
- */
-r.post("/run-v3", requireAdmin, async (req, res) => {
-  try {
-    const agents = Math.min(Number(req.body.agents) || 1000, 2000);
-    const days = Math.min(Number(req.body.days) || 300, 365);
-    const dailyMint = Math.min(Number(req.body.dailyMint) || 50000, 500000);
-    
-    console.log(`🧪 [Sandbox V3] ${agents} agents × ${days} days, mint=${dailyMint}`);
-    
-    const started = Date.now();
-    const result = runSimulationV3(agents, days, dailyMint);
-    const elapsed = ((Date.now() - started) / 1000).toFixed(1);
-    
-    console.log(`🧪 [Sandbox V3] Done in ${elapsed}s`);
-    
-    res.json({
-      success: true,
-      simulation: result,
-      elapsedSeconds: Number(elapsed),
-    });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message, stack: e.stack });
-  }
+// The historical V3 model used unrelated pre-NeuroForge items and a
+// fabricated daily Potato mint. It must not be offered as a current economy
+// forecast or an enabled tool catalog.
+r.post("/run-v3", requireAdmin, (_req, res) => {
+  res.status(503).json({ error: "Legacy V3 model retired; not a canonical economy forecast" });
 });
 
 export default r;

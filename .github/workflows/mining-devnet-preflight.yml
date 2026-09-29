@@ -1,0 +1,61 @@
+name: Read-only mining devnet preflight (not a release)
+on:
+  workflow_dispatch:
+    inputs:
+      potato_mint:
+        description: 'Optional PUBLIC devnet Potato mint address (never a keypair)'
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: aof_backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: aof_backend/package-lock.json
+      - name: Install backend dependencies without package scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Offline guard and wrong-cluster tests
+        run: |
+          npm run test:tool-mining
+          npm run test:mining-flag
+          npm run test:mining-preflight
+          npm run test:potato-inspect
+          npm run test:potato-economics
+      - name: Inspect public devnet with no signer
+        env:
+          # No keypair or transaction is used. The report contains public
+          # addresses and is BLOCKED until the registry and RPC are verified.
+          MINING_PREFLIGHT_REPORT: ${{ runner.temp }}/mining-devnet-preflight.json
+        run: npm run preflight:mining-devnet
+      - name: Inspect optional public Potato mint (not a payment gate)
+        if: ${{ always() && inputs.potato_mint != '' }}
+        env:
+          POTATO_DEVNET_MINT: ${{ inputs.potato_mint }}
+        run: npm run inspect:potato-devnet
+      - name: Add public report to run summary
+        if: always()
+        env:
+          REPORT: ${{ runner.temp }}/mining-devnet-preflight.json
+        run: |
+          if [ -f "$REPORT" ]; then
+            echo '### Read-only devnet inspection — NOT bytecode or transaction verification' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mining-devnet-readonly-report
+          path: ${{ runner.temp }}/mining-devnet-preflight.json
+          if-no-files-found: warn

@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { wellCopy } from "../../i18n/wellCopy";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
 import { Card } from "../../components/ui/Card";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
@@ -8,14 +11,16 @@ import { fetchWeatherSnapshot } from "../../lib/weather";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { getMintAsync } from "../../lib/mints";
 import { handleTxResponse } from "../../lib/txFlow";
+import { actionErrorFeedback } from "../../lib/txResponseFeedback";
+import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { WeatherRecorder } from "../../components/farm/WeatherRecorder";
 import { forecastFromDayId } from "../../lib/weather";
 
 const WEATHER_RATES = {
-  drought: { label: "Блэкаут", icon: UI_ICONS.weatherBlackout, rate: 0, color: "#E2685F" },
-  sunny: { label: "Номинал", icon: UI_ICONS.weatherNominal, rate: 5, color: "#E0708A" },
-  rain: { label: "Скачок", icon: UI_ICONS.weatherSurge, rate: 15, color: "#8FB3DE" },
-  festival: { label: "Френзи", icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#A99BEC" },
+  drought: { icon: UI_ICONS.weatherBlackout, rate: 0, color: "#E2685F" },
+  sunny: { icon: UI_ICONS.weatherNominal, rate: 5, color: "#E0708A" },
+  rain: { icon: UI_ICONS.weatherSurge, rate: 15, color: "#8FB3DE" },
+  festival: { icon: UI_ICONS.weatherFrenzy, rate: 20, color: "#A99BEC" },
 } as const;
 
 type WeatherKey = keyof typeof WEATHER_RATES;
@@ -30,6 +35,9 @@ function weatherKey(value: any): WeatherKey | null {
 }
 
 export function WellPanel() {
+  const { language } = useLocale();
+  const copy = wellCopy[language];
+  const conditions = labHeroCopy[language].load;
   const walletAddr = useWalletStr();
   const [weather, setWeather] = useState<any>(null);
   // Снимок канонической погоды: им питаются и ставка колодца, и барограф.
@@ -38,7 +46,7 @@ export function WellPanel() {
   const [waterMint, setWaterMint] = useState("");
   const [collecting, setCollecting] = useState(false);
   const [cranking, setCranking] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ language: typeof language; text: string } | null>(null);
 
   async function loadState() {
     if (!walletAddr) return;
@@ -76,10 +84,10 @@ export function WellPanel() {
     try {
       const response = await api.chain.weatherCrank({ cranker: walletAddr });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "Нагрузка сети обновлена" : `${result.error}`);
+      setMessage({ language, text: result.success ? copy.loadUpdated : (result.error || copy.failed) });
       if (result.success) await loadState();
     } catch (e: any) {
-      setMessage(`${e.message}`);
+      setMessage({ language, text: actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse) });
     } finally {
       setCranking(false);
     }
@@ -91,75 +99,74 @@ export function WellPanel() {
     try {
       const response = await api.chain.collectWellWater({ user: walletAddr, waterMint });
       const result = await handleTxResponse(response);
-      setMessage(result.success ? "Станция обработана; баланс обновится после подтверждения" : `${result.error}`);
+      setMessage({ language, text: result.success ? copy.collectionSubmitted : (result.error || copy.failed) });
       if (result.success) await loadState();
     } catch (e: any) {
-      setMessage(`${e.message}`);
+      setMessage({ language, text: actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse) });
     } finally {
       setCollecting(false);
     }
   }
 
   if (!walletAddr) {
-    return <Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3><p className="text-straw text-sm text-center py-4">Подключите кошелёк</p></Card>;
+    return <div lang={language}><Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> {copy.station}</h3><p className="text-straw text-sm text-center py-4">{copy.connectWallet}</p></Card></div>;
   }
 
   const forecast = typeof snapshot?.dayId === "number" ? forecastFromDayId(snapshot.dayId, 6) : [];
 
   return (
-    <>
+    <div lang={language}>
     <WeatherRecorder
       dayId={typeof snapshot?.dayId === "number" ? snapshot.dayId : null}
       weatherType={snapshot?.type ?? null}
-      rate={typeof snapshot?.ratePerHour === "number" ? `${snapshot.ratePerHour} / час` : null}
+      rate={typeof snapshot?.ratePerHour === "number" ? `${snapshot.ratePerHour} ${copy.perHour}` : null}
       forecast={forecast}
       season={snapshot?.season ?? null}
       dayOfSeason={typeof snapshot?.dayOfSeason === "number" ? snapshot.dayOfSeason : null}
     />
     <Card className="p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> Сетевая станция</h3>
-        <span className="text-xs text-straw">Источник: сеть</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> {copy.station}</h3>
+        <span className="text-xs text-straw">{copy.sourceNetwork}</span>
       </div>
 
       {!weather || !w ? (
         <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-3 space-y-2">
-          <p className="text-straw text-xs">WeatherState не найден. Без него программа не может рассчитать энергопоток.</p>
+          <p className="text-straw text-xs">{copy.missingState}</p>
           <button onClick={crankWeather} disabled={cranking} className="w-full py-2 rounded-lg bg-gold-600 text-parchment text-sm font-bold disabled:opacity-50">
-            {cranking ? "Обновляем…" : "Обновить нагрузку в сети"}
+            {cranking ? copy.refreshing : copy.refresh}
           </button>
         </div>
       ) : (
         <>
           <div className="flex items-center gap-3">
-            <ResourceGlyph icon={w.icon} alt={w.label} className="w-14 h-14 mx-auto" />
+            <ResourceGlyph icon={w.icon} alt={conditions[key!]} className="w-14 h-14 mx-auto" />
             <div className="flex-1">
-              <p className="text-straw text-xs">Нагрузка сети: <b style={{ color: w.color }}>{w.label}</b></p>
-              <p className="text-straw text-xs inline-flex items-center gap-1">Скорость: <b className="text-parchment">{w.rate}</b> <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-3.5 h-3.5" />/час</p>
+              <p className="text-straw text-xs">{copy.load}: <b style={{ color: w.color }}>{conditions[key!]}</b></p>
+              <p className="text-straw text-xs inline-flex items-center gap-1">{copy.rate}: <b className="text-parchment">{w.rate}</b> <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-3.5 h-3.5" />{copy.perHour}</p>
             </div>
           </div>
 
           <div className="bg-soil-800/50 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-straw text-xs">Накопление</span>
-              <span className="text-parchment font-bold text-sm">Определяется программой</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span className="text-straw text-xs">{copy.accumulation}</span>
+              <span className="text-parchment font-bold text-sm">{copy.onChain}</span>
             </div>
             <p className="text-straw text-[10px] mt-2">
-              Итоговый энергопоток считает сама сеть по времени и нагрузке;
-              локальная оценка не показывается.
+              {copy.networkCalculation}
             </p>
-            {!well && <p className="text-straw text-[10px] mt-2">Станции ещё нет в сети. Первый вызов создаёт её и начинает накопление.</p>}
+            {!well && <p className="text-straw text-[10px] mt-2">{copy.noStation}</p>}
           </div>
 
           <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-water-600 to-wheat-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
-            {collecting ? "Обрабатываем…" : !well ? "Создать сетевую станцию" : "Собрать энергопоток"}
+            {collecting ? copy.processing : !well ? copy.create : copy.collect}
           </button>
         </>
       )}
 
-      {message && <p className="text-straw text-xs text-center"><NoticeMsg text={message} /></p>}
-      <p className="text-straw text-[10px] text-center">Итог считает сама сеть: локальная оценка не показывается.</p>
+      {message?.language === language && <p className="text-straw text-xs text-center"><NoticeMsg text={message.text} /></p>}
+      <p className="text-straw text-[10px] text-center">{copy.noLocalEstimate}</p>
     </Card>
-    </>
+    </div>
   );
 }

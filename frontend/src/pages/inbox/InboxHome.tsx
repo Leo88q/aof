@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
-import { handleTxResponse } from "../../lib/txFlow";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { inboxReadCopy, inboxUiCopy } from "../../i18n/inboxReadCopy";
+import { farmOverviewCopy } from "../../i18n/farmOverviewCopy";
 import { Card } from "../../components/ui/Card";
 import { NavHeader } from "../../components/NavHeader";
 import { useWalletStr } from "../../lib/useWalletStr";
@@ -21,7 +23,8 @@ function normalizeLetter(item: any, i: number) {
     reward: hasReward ? `${item.rewardAmount ?? ""} ${item.rewardType}` : null,
     rewardType: item.rewardType,
     read: Boolean(item.read),
-    claimed: Boolean(item.claimed),
+    // A reserved/quarantined claim is not a confirmed reward.
+    claimed: item.claimed === true && item.claimState === 'confirmed',
     hasReward,
     createdAt: item.createdAt,
   };
@@ -29,100 +32,130 @@ function normalizeLetter(item: any, i: number) {
 
 export function InboxHome() {
   const user = useWalletStr();
+  const { language } = useLocale();
+  const readCopy = inboxReadCopy[language];
+  const copy = inboxUiCopy[language];
+  const ownerRef = useRef(user);
+  ownerRef.current = user;
   const [letters, setLetters] = useState<any[]>([]);
   const [opened, setOpened] = useState<any>(null);
-  const [claimStatus, setClaimStatus] = useState<string | null>(null);
+  const [claimStatus, setClaimStatus] = useState<'preparing' | 'pending' | 'confirmed' | 'unknown' | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [readState, setReadState] = useState<{ owner: string; kind: 'loading' | 'ready' | 'error' } | null>(null);
+  const [retry, setRetry] = useState(0);
 
-  const load = () => {
-    if (!user) { setLetters([]); return; }
+  useEffect(() => {
+    let active = true;
+    setLetters([]);
+    setOpened(null);
+    setClaimStatus(null);
+    if (!user) { setReadState(null); return () => { active = false; }; }
+    setReadState({ owner: user, kind: 'loading' });
     api.inbox.list(user)
-      .then((items: any) => {
-        const arr = Array.isArray(items) ? items : items?.items || [];
-        setLetters(arr.map(normalizeLetter));
+      .then((data: unknown) => {
+        if (!active) return;
+        if (!data || typeof data !== 'object' || !('items' in data) || !Array.isArray(data.items)) {
+          throw new Error('Incomplete inbox response');
+        }
+        setLetters(data.items.map(normalizeLetter));
+        setReadState({ owner: user, kind: 'ready' });
       })
-      .catch(() => setLetters([]));
-  };
+      .catch(() => { if (active) { setLetters([]); setReadState({ owner: user, kind: 'error' }); } });
+    return () => { active = false; };
+  }, [user, retry]);
 
-  useEffect(() => { load(); }, [user]);
+  const state = !user ? 'disconnected' : readState?.owner === user ? readState.kind : 'loading';
 
   function openLetter(letter: any) {
     setOpened(letter);
-    setLetters((ls) => ls.map((l) => (l.id === letter.id ? { ...l, read: true } : l)));
-    if (letter.dbId) api.inbox.read({ id: letter.dbId, user }).catch(() => {});
+    if (letter.dbId && user) api.inbox.read({ id: letter.dbId, user })
+      .then((data: any) => {
+        const item = data?.item;
+        if (ownerRef.current === user && item?.id === letter.dbId && item?.user === user && item?.read === true) {
+          setLetters((ls) => ls.map((l) => l.id === letter.id ? { ...l, read: true } : l));
+        }
+      }).catch(() => { /* The message remains unread if confirmation fails. */ });
   }
 
   async function claimReward(letter: any) {
-    if (!letter?.dbId || !user) return;
+    if (!letter?.dbId || !user || claimBusy) return;
+    setClaimBusy(true);
+    setClaimStatus('preparing');
     try {
-      setClaimStatus("Готовим клейм награды…");
-      let mints: any = undefined;
-      try {
-        const [cfgRaw, registry] = await Promise.all([
-          api.query.config(),
-          api.query.materialMints(),
-        ]);
-        const cfg = cfgRaw?.config || cfgRaw;
-        const byType: Record<string, string | undefined> = {
-          FOOD: cfg?.foodMint, WOOD: cfg?.woodMint, STONE: cfg?.stoneMint,
-          POTATO: cfg?.potatoMint,
-          ...(registry?.mints || {}),
-        };
-        const rewardMint = byType[letter.rewardType];
-        if (rewardMint) mints = { rewardMint };
-      } catch {}
-      const res: any = await api.inbox.claim({ id: letter.dbId, user, mints });
+      // The server reads canonical mints and confirms authority-only issuance;
+      // no wallet transaction is returned to the player to sign here.
+      const res: any = await api.inbox.claim({ id: letter.dbId, user });
+      if (ownerRef.current !== user) return;
       if (res?.pending) {
-        setClaimStatus("⏳ Награда отложена — попробуй заклеймить позже");
+        setClaimStatus('pending');
+      } else if (res?.item?.id === letter.dbId && res.item.user === user &&
+                 res.item.claimed === true && res.item.claimState === 'confirmed' &&
+                 ((typeof res.onchainSig === 'string' && res.onchainSig.length > 0) ||
+                  (typeof res.recoveredFromReceipt === 'string' && res.recoveredFromReceipt.length > 0))) {
+        setClaimStatus('confirmed');
+        setLetters(ls => ls.map(l => l.id === letter.id ? { ...l, claimed: true, read: true } : l));
+        setOpened((current: any) => current?.id === letter.id ? { ...current, claimed: true } : current);
       } else {
-        const r = await handleTxResponse(res);
-        setClaimStatus(r.success ? `Награда получена: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-        if (r.success) {
-          setLetters((ls) => ls.map((l) => (l.id === letter.id ? { ...l, claimed: true } : l)));
-        }
+        setClaimStatus('unknown');
       }
-    } catch (e: any) {
-      setClaimStatus(`${e.message}`);
+    } catch {
+      if (ownerRef.current === user) setClaimStatus('unknown');
+    } finally {
+      setClaimBusy(false);
     }
   }
 
   const unread = letters.filter((l) => !l.read).length;
+  const format = (n: number) => n.toLocaleString(language);
+
+  if (state !== 'ready') return (
+    <div lang={language} className="p-4 pt-2 pb-24 min-w-0">
+      <NavHeader title={farmOverviewCopy[language].inbox} tabKey="farm" />
+      <p role={state === 'error' ? 'alert' : 'status'} className="text-straw text-sm mt-4 break-words">
+        {state === 'disconnected' ? readCopy.connect : state === 'loading' ? readCopy.loading : readCopy.unavailable}
+      </p>
+      {state === 'error' && <button type="button" onClick={() => setRetry(n => n + 1)}
+        className="mt-3 rounded-xl bg-soil-700 px-4 py-2 text-parchment text-sm">{readCopy.retry}</button>}
+    </div>
+  );
 
   return (
-    <div className="p-4 pt-2 pb-24">
-      <NavHeader title="Сообщения" tabKey="farm" />
+    <div lang={language} className="p-4 pt-2 pb-24 min-w-0">
+      <NavHeader title={farmOverviewCopy[language].inbox} tabKey="farm" />
 
       <div className="flex justify-center items-center mb-4 mt-2">
         {unread > 0 && (
-          <span className="text-xs px-2.5 py-1 rounded-full bg-wheat-600 text-white font-bold">
-            {unread} непрочит.
+          <span className="max-w-full break-words text-xs px-2.5 py-1 rounded-full bg-wheat-600 text-white font-bold">
+            {copy.unreadCount(format(unread))}
           </span>
         )}
       </div>
 
-      <p className="text-straw text-xs mb-4">
-        Компенсации, награды за задания, события — всё, что игра хочет тебе сказать.
+      <p className="text-straw text-xs mb-4 break-words">
+        {copy.intro}
       </p>
 
       {/* К9 · кросс-панель АТС: каждый порт сверху — письмо, снизу — состояние.
           Патч-корд показывает, куда письмо подключено: ждёт выдачи, ждёт
-          прочтения или уже получено. Список — реальный /inbox/:user, порядок
+          прочтения или уже получено. Список — реальный /inbox/list, порядок
           писем не переставляется, номера портов честные. */}
       <Panel
         tier="panel"
         device="cross"
         className="mb-4"
-        id={<Sticker>ЯЩИК</Sticker>}
-        meta={`ПОРТОВ ${letters.length}`}
-        title="Кросс-панель ящика"
-        sub="порт — письмо"
+        id={<Sticker>{copy.sticker}</Sticker>}
+        meta={copy.ports(format(letters.length))}
+        title={copy.panelTitle}
+        sub={copy.panelSub}
       >
         {letters.length > 0 ? (
           <CrossPanel
+            ariaLabel={copy.panelTitle}
             top={letters.slice(0, 6).map((l) => ({ label: l.sender, lamp: l.read ? "idle" : "ok" }))}
             bottom={[
-              { label: "ЖДЁТ ВЫДАЧИ" },
-              { label: "ПРОЧИТАНО" },
-              { label: "НОВОЕ" },
+              { label: copy.waiting },
+              { label: copy.read },
+              { label: copy.fresh },
             ]}
             links={letters.slice(0, 6).map((l, i): CrossLink => ({
               from: i,
@@ -132,13 +165,13 @@ export function InboxHome() {
             }))}
           />
         ) : (
-          <Note quiet>Ящик пуст — кордов нет.</Note>
+          <Note quiet>{copy.empty}</Note>
         )}
         <div style={{ marginTop: 14 }}>
           <Readouts>
-            <Readout label="Писем" value={String(letters.length)} hint="в ящике" />
-            <Readout label="Непрочитанных" value={String(unread)} hint="горят лампы" />
-            <Readout label="С наградой" value={String(letters.filter((l) => l.hasReward).length)} hint="ждут получения" />
+            <Readout label={copy.letters} value={format(letters.length)} hint={copy.inBox} />
+            <Readout label={copy.unread} value={format(unread)} hint={copy.lamps} />
+            <Readout label={copy.rewardLetters} value={format(letters.filter((l) => l.hasReward).length)} hint={copy.includeReward} />
           </Readouts>
         </div>
       </Panel>
@@ -173,38 +206,40 @@ export function InboxHome() {
             className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
             onClick={() => setOpened(null)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-soil-850 rounded-3xl p-6 max-w-md w-full border border-wheat-600/30 shadow-2xl"
+              className="bg-soil-850 rounded-3xl p-4 sm:p-6 max-w-md w-full min-w-0 max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain border border-wheat-600/30 shadow-2xl"
               onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <img src={opened.hasReward ? UI_ICONS.inboxReward : UI_ICONS.inbox} alt="" className="w-10 h-10 object-contain" />
-                <button onClick={() => setOpened(null)} className="w-8 h-8 rounded-full bg-soil-800 flex items-center justify-center text-straw">✕</button>
+                <button onClick={() => setOpened(null)} type="button" aria-label={copy.close} className="w-8 h-8 rounded-full bg-soil-800 flex items-center justify-center text-straw">✕</button>
               </div>
 
-              <p className="text-straw text-xs">{opened.sender}</p>
-              <h3 className="text-parchment font-bold text-lg mt-1">{opened.subject}</h3>
-              <p className="text-parchment text-sm mt-3 leading-relaxed">{opened.body}</p>
+              <p className="text-straw text-xs break-words">{opened.sender}</p>
+              <h3 className="text-parchment font-bold text-lg mt-1 break-words">{opened.subject}</h3>
+              <p className="text-parchment text-sm mt-3 leading-relaxed whitespace-pre-wrap break-words">{opened.body}</p>
+              <p className="text-straw text-xs mt-2 break-words">{copy.original}</p>
 
               {opened.hasReward && (
                 <div className="mt-4 p-3 rounded-xl bg-gold/10 border border-gold/30">
-                  <p className="text-straw text-xs">Награда</p>
-                  <p className="text-gold font-bold text-lg flex items-center gap-2">
+                  <p className="text-straw text-xs">{copy.reward}</p>
+                  <p className="text-gold font-bold text-lg flex flex-wrap items-center gap-2 break-words min-w-0">
                     <img src={UI_ICONS.inboxReward} alt="" className="w-5 h-5 object-contain" />
                     {opened.reward}
                   </p>
                 </div>
               )}
 
-              {claimStatus && <p className="text-xs text-parchment mt-3 text-center">{claimStatus}</p>}
+              {claimStatus && <p role="status" className="text-xs text-parchment mt-3 text-center break-words">{readCopy[claimStatus]}</p>}
 
               {opened.hasReward && !opened.claimed && (
                 <button onClick={() => claimReward(opened)}
-                  className="w-full mt-4 py-3 rounded-2xl bg-gold text-soil-950 font-bold text-sm active:scale-95 transition-transform">
-                  Забрать награду
+                  disabled={claimBusy}
+                  className="w-full mt-4 py-3 px-2 rounded-2xl whitespace-normal break-words disabled:opacity-50 bg-gold text-soil-950 font-bold text-sm active:scale-95 transition-transform">
+                  {copy.claim}
                 </button>
               )}
               {opened.claimed && (
-                <p className="w-full mt-4 py-3 rounded-2xl bg-soil-800 text-straw text-sm text-center">
-                  Награда получена
+                <p className="w-full mt-4 py-3 px-2 rounded-2xl bg-soil-800 text-straw text-sm text-center break-words">
+                  {copy.claimed}
                 </p>
               )}
             </motion.div>

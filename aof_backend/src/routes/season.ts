@@ -5,7 +5,7 @@ import { SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { program } from "../provider";
 import { authPda, configPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
+import { authorityOnly, pk } from "../lib/tx";
 import { requireAdmin } from "../middleware/adminAuth";
 import { requireNoFraudHold } from "../security/fraudHold";
 
@@ -35,32 +35,11 @@ r.post("/init", requireAdmin, async (req, res) => {
   }
 });
 
-r.post("/pass/purchase", async (req, res) => {
-  try {
-    const user = pk(req.body.user);
-    const seasonId = Number(req.body.seasonId);
-    const treasury = pk(req.body.treasury);
-    const [config] = configPda();
-    const [season] = seasonPda(seasonId);
-    const [seasonPass] = seasonPassPda(user, seasonId);
-
-    const ix = await (program.methods as any)
-      .purchaseSeasonPass()
-      .accounts({
-        config,
-        user,
-        treasury,
-        season,
-        seasonPass,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-
-    const tx = await coSign([ix], user);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// Paid purchases remain closed until BOTH tracks, deterministic XP and
+// enforceable VIP benefits pass the devnet acceptance tests. Historical passes
+// can still be read and rewards claimed via the existing routes.
+r.post("/pass/purchase", (_req, res) => {
+  res.status(503).json({ error: "SEASON_PASS_PAID_TRACK_NOT_READY" });
 });
 
 r.post("/xp/grant", requireAdmin, async (req, res) => {

@@ -3,6 +3,8 @@
  * Защита от drain-атак и подозрительной активности
  */
 
+import { txGuardCopy } from "../i18n/txGuardCopy";
+import { getApiErrorLanguage } from "./apiErrorLanguage";
 import { TransactionIntent, expectedSigners, validateTransactionIntent } from "./transactionIntent";
 import { Connection, Transaction, PublicKey, VersionedTransaction } from "@solana/web3.js";
 
@@ -95,6 +97,7 @@ export async function guardTransaction(
 ): Promise<GuardResult> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const warnings: string[] = [];
+  const copy = txGuardCopy[getApiErrorLanguage()];
   let risk: RiskLevel = "LOW";
 
   try {
@@ -139,8 +142,8 @@ export async function guardTransaction(
       return {
         safe: false,
         risk: "HIGH",
-        reason: "Плательщик транзакции не совпадает с подключённым кошельком",
-        warnings: ["Неожиданный fee payer"],
+        reason: copy.payer,
+        warnings: [copy.payerWarning],
         details: { programsInvoked },
       };
     }
@@ -151,8 +154,8 @@ export async function guardTransaction(
         return {
           safe: false,
           risk: "HIGH",
-          reason: `🚨 Обнаружена заблокированная программа: ${program.slice(0, 8)}...`,
-          warnings: ["Попытка взаимодействия с подозрительной программой"],
+          reason: `${copy.blockedProgram} ${program.slice(0, 8)}...`,
+          warnings: [copy.suspiciousProgram],
           details: { programsInvoked },
         };
       }
@@ -166,8 +169,8 @@ export async function guardTransaction(
       return {
         safe: false,
         risk: "HIGH",
-        reason: `🚨 Обнаружен заблокированный адрес: ${blockedAddress.slice(0, 8)}...`,
-        warnings: ["Транзакция содержит заблокированный аккаунт"],
+        reason: `${copy.blockedAddress} ${blockedAddress.slice(0, 8)}...`,
+        warnings: [copy.blockedAddressWarning],
         details: { lamportsSpent, tokenOutflows, programsInvoked },
       };
     }
@@ -177,7 +180,7 @@ export async function guardTransaction(
     if (cfg.maxLamportsSpent !== undefined && lamportsSpent > cfg.maxLamportsSpent) {
       risk = "HIGH";
       warnings.push(
-        `⚠️ Высокая стоимость: ${(lamportsSpent / 1e9).toFixed(6)} SOL (лимит ${(cfg.maxLamportsSpent / 1e9).toFixed(6)})`
+        copy.highCost((lamportsSpent / 1e9).toFixed(6), (cfg.maxLamportsSpent / 1e9).toFixed(6))
       );
     }
 
@@ -188,11 +191,11 @@ export async function guardTransaction(
       const limit = cfg.maxTokenOutflows?.[mint];
       if (limit === undefined) {
         risk = "HIGH";
-        warnings.push(`⚠️ Исходящий SPL-токен без настроенного лимита: ${mint.slice(0, 8)}...`);
+        warnings.push(`${copy.tokenNoLimit} ${mint.slice(0, 8)}...`);
       } else if (amount > limit) {
         risk = "HIGH";
         warnings.push(
-          `⚠️ Большое списание токена ${mint.slice(0, 8)}...: ${amount} (лимит ${limit})`
+          copy.highTokenSpend(`${mint.slice(0, 8)}...`, amount, limit)
         );
       }
     }
@@ -208,7 +211,7 @@ export async function guardTransaction(
       if (unknownPrograms.length > 0) {
         risk = "HIGH";
         warnings.push(
-          `⚠️ Неизвестные программы: ${unknownPrograms.map((p) => p.slice(0, 8)).join(", ")}`
+          `${copy.unknownPrograms} ${unknownPrograms.map((p) => p.slice(0, 8)).join(", ")}`
         );
       }
     }
@@ -229,12 +232,14 @@ export async function guardTransaction(
         programsInvoked,
       },
     };
-  } catch (e: any) {
+  } catch (e: unknown) {
+    // Preserve the fee-specific stop without exposing raw RPC/program errors.
+    const feeError = e instanceof Error && e.message === "Network fee unavailable or exceeds wallet fee limit";
     return {
       safe: false,
       risk: "HIGH",
-      reason: `Не удалось проверить транзакцию: ${e.message}`,
-      warnings: ["Error симуляции"],
+      reason: feeError ? copy.feeFailed : copy.checkFailed,
+      warnings: [copy.simulationError],
     };
   }
 }

@@ -18,6 +18,10 @@ pub fn init_season_handler(ctx: Context<InitSeason>, season_id: u32) -> Result<(
 }
 
 pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
+    // Paid track has no separately claimable rewards or enforced VIP benefits
+    // yet. Prevent direct-RPC payments as well as blocking the backend route.
+    // Remove only after the 42-day/0.15 SOL devnet acceptance gate is passed.
+    require!(false, AofError::SeasonPremiumRequired);
     // [SECURITY_CHECKLIST_REVIEW] A pass used to be sold for any season id at any
     // time (including seasons that had ended) and a second purchase silently
     // charged 0.15 SOL again for a flag that was already set.

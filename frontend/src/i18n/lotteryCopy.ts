@@ -1,0 +1,85 @@
+import type { Language } from './translations';
+
+type Copy = {
+  title: string; intro: string; round: string; refresh: string; invalidRound: string;
+  roundLoading: string; roundError: string; roundMissing: string; roundStatus: string;
+  sold: string; pool: string; drawPending: string; drawn: string; awaitingDraw: string;
+  winning: string; claimed: string; unclaimed: string; created: string; yes: string; no: string;
+  tickets: string; connect: string; ticketsLoading: string; ticketsError: string; noTickets: string;
+  ticket: (number: string) => string; purchaseTitle: string; purchasePaused: string;
+  claim: string; refund: string; claimHelp: string; refundHelp: string; refundWaiting: string;
+  working: string; pending: string; successCheck: string; uncertain: string; failed: string;
+};
+/** A read-only round view plus guarded actions on existing owned tickets. */
+export const lotteryCopy: Record<Language, Copy> = {
+  ru: {
+    title: 'Лотерея', intro: 'Раунд и билеты читаются из сети. Анимация не доказывает розыгрыш или выплату; подтверждённое состояние смотри в кошельке и в записи раунда.',
+    round: 'Раунд', refresh: 'Обновить', invalidRound: 'Укажи целый номер раунда от нуля.', roundLoading: 'Читаем раунд из сети…', roundError: 'Не удалось проверить раунд. Это не означает, что его нет.', roundMissing: 'Раунд не найден в сети.', roundStatus: 'Состояние раунда',
+    sold: 'Продано билетов', pool: 'Средства в раунде', drawPending: 'Розыгрыш ожидает раскрытия в сети.', drawn: 'Розыгрыш подтверждён в сети.', awaitingDraw: 'Розыгрыш ещё не подтверждён.',
+    winning: 'Выигрышный билет', claimed: 'Приз отмечен как полученный в сети.', unclaimed: 'Приз ещё не отмечен как полученный.', created: 'Раунд создан', yes: 'Да', no: 'Нет',
+    tickets: 'Билеты этого кошелька', connect: 'Подключи кошелёк, чтобы проверить свои билеты.', ticketsLoading: 'Проверяем билеты в сети…', ticketsError: 'Не удалось проверить билеты. Пустой список не подтверждён.', noTickets: 'У этого кошелька нет билетов в данном раунде.',
+    ticket: number => `Билет №${number}`, purchaseTitle: 'Новые билеты', purchasePaused: 'Покупка приостановлена: инструкция сети не ограничивает цену, показанную перед подписью. Не плати до появления защищённой операции.',
+    claim: 'Запросить приз', refund: 'Запросить возврат', claimHelp: 'Получить приз может только владелец выигрышного билета после розыгрыша. Проверяй поступление средств по сети.', refundHelp: 'Для неразыгранного раунда возврат возможен после срока ожидания, когда нет незавершённого розыгрыша. Проверяй поступление средств по сети.', refundWaiting: 'Срок возврата ещё не наступил или розыгрыш не завершён.',
+    working: 'Подготавливаем действие для кошелька…', pending: 'Транзакция отправлена, подтверждение неизвестно. Проверь кошелёк и сеть перед повтором.', successCheck: 'Транзакция подтверждена; перепроверяем состояние в сети…', uncertain: 'Нельзя подтвердить итог по сети. Проверь кошелёк и раунд перед повтором.', failed: 'Действие не подтверждено. Проверь кошелёк и состояние раунда.',
+  },
+  en: {
+    title: 'Lottery', intro: 'Rounds and tickets are read from the network. An animation cannot prove a draw or payout; check your wallet and the round record for confirmed status.',
+    round: 'Round', refresh: 'Refresh', invalidRound: 'Enter a non-negative whole-number round ID.', roundLoading: 'Reading the round on-chain…', roundError: 'Could not verify the round. This does not mean it does not exist.', roundMissing: 'No round found on-chain.', roundStatus: 'Round status',
+    sold: 'Tickets sold', pool: 'Funds in round', drawPending: 'The draw awaits an on-chain reveal.', drawn: 'The draw is confirmed on-chain.', awaitingDraw: 'No draw has been confirmed yet.',
+    winning: 'Winning ticket', claimed: 'The prize is marked as claimed on-chain.', unclaimed: 'The prize is not yet marked as claimed.', created: 'Round created', yes: 'Yes', no: 'No',
+    tickets: 'Tickets for this wallet', connect: 'Connect a wallet to check your tickets.', ticketsLoading: 'Checking tickets on-chain…', ticketsError: 'Could not verify tickets. An empty list is not confirmed.', noTickets: 'This wallet has no tickets in this round.',
+    ticket: number => `Ticket #${number}`, purchaseTitle: 'New tickets', purchasePaused: 'Purchases are paused: the on-chain instruction cannot cap the price shown before signing. Do not pay until a bounded purchase is available.',
+    claim: 'Request prize', refund: 'Request refund', claimHelp: 'Only the winning ticket owner may claim after the draw. Verify the funds in your wallet and on-chain.', refundHelp: 'An undrawn round may refund tickets after the timeout if no draw is in progress. Verify any returned funds on-chain.', refundWaiting: 'The refund window has not opened, or a draw is in progress.',
+    working: 'Preparing the wallet action…', pending: 'Transaction submitted, confirmation unknown. Check your wallet and the network before retrying.', successCheck: 'Transaction confirmed; rechecking the network…', uncertain: 'Could not verify the result on-chain. Check your wallet and round before retrying.', failed: 'Action not confirmed. Check your wallet and round status.',
+  },
+  pt: {
+    title: 'Loteria', intro: 'Rodadas e bilhetes são consultados na rede. Uma animação não comprova sorteio nem pagamento; confirme o estado na carteira e no registro da rodada.',
+    round: 'Rodada', refresh: 'Atualizar', invalidRound: 'Informe um número inteiro de rodada a partir de zero.', roundLoading: 'Consultando a rodada na rede…', roundError: 'Não foi possível confirmar a rodada. Isso não significa que ela não exista.', roundMissing: 'Rodada não encontrada na rede.', roundStatus: 'Estado da rodada',
+    sold: 'Bilhetes vendidos', pool: 'Fundos da rodada', drawPending: 'O sorteio aguarda revelação na rede.', drawn: 'O sorteio está confirmado na rede.', awaitingDraw: 'Ainda não há sorteio confirmado.',
+    winning: 'Bilhete vencedor', claimed: 'O prêmio consta como recebido na rede.', unclaimed: 'O prêmio ainda não consta como recebido.', created: 'Rodada criada', yes: 'Sim', no: 'Não',
+    tickets: 'Bilhetes desta carteira', connect: 'Conecte a carteira para conferir os bilhetes.', ticketsLoading: 'Conferindo bilhetes na rede…', ticketsError: 'Não foi possível conferir os bilhetes. A lista vazia não está confirmada.', noTickets: 'Esta carteira não tem bilhetes nesta rodada.',
+    ticket: number => `Bilhete nº ${number}`, purchaseTitle: 'Novos bilhetes', purchasePaused: 'Compras suspensas: a instrução na rede não limita o preço exibido antes da assinatura. Não pague até existir uma compra com limite verificado.',
+    claim: 'Solicitar prêmio', refund: 'Solicitar reembolso', claimHelp: 'Só o dono do bilhete vencedor pode receber após o sorteio. Confirme o crédito na carteira e na rede.', refundHelp: 'Uma rodada sem sorteio pode reembolsar após o prazo, se não houver sorteio em andamento. Confirme o retorno na rede.', refundWaiting: 'O prazo de reembolso não começou ou há um sorteio em andamento.',
+    working: 'Preparando a ação na carteira…', pending: 'Transação enviada, confirmação desconhecida. Verifique a carteira e a rede antes de repetir.', successCheck: 'Transação confirmada; conferindo o estado na rede…', uncertain: 'Não foi possível confirmar o resultado na rede. Verifique a carteira e a rodada antes de repetir.', failed: 'Ação não confirmada. Verifique a carteira e a rodada.',
+  },
+  es: {
+    title: 'Lotería', intro: 'Las rondas y los billetes se consultan en la cadena. Una animación no demuestra un sorteo ni un pago: comprueba el estado en tu cartera y en el registro de la ronda.',
+    round: 'Ronda', refresh: 'Actualizar', invalidRound: 'Introduce un número de ronda entero a partir de cero.', roundLoading: 'Consultando la ronda en la cadena…', roundError: 'No se pudo verificar la ronda. Eso no significa que no exista.', roundMissing: 'No se encontró la ronda en la cadena.', roundStatus: 'Estado de la ronda',
+    sold: 'Billetes vendidos', pool: 'Fondos de la ronda', drawPending: 'El sorteo espera la revelación en la cadena.', drawn: 'El sorteo está confirmado en la cadena.', awaitingDraw: 'Todavía no hay sorteo confirmado.',
+    winning: 'Billete ganador', claimed: 'El premio figura como cobrado en la cadena.', unclaimed: 'El premio aún no figura como cobrado.', created: 'Ronda creada', yes: 'Sí', no: 'No',
+    tickets: 'Billetes de esta cartera', connect: 'Conecta una cartera para comprobar tus billetes.', ticketsLoading: 'Comprobando los billetes en la cadena…', ticketsError: 'No se pudieron verificar los billetes. No se ha confirmado que la lista esté vacía.', noTickets: 'Esta cartera no tiene billetes en esta ronda.',
+    ticket: number => `Billete n.º ${number}`, purchaseTitle: 'Billetes nuevos', purchasePaused: 'Compras suspendidas: la instrucción de la cadena no limita el precio mostrado antes de firmar. No pagues hasta que exista una compra con un límite verificable.',
+    claim: 'Solicitar premio', refund: 'Solicitar devolución', claimHelp: 'Solo el dueño del billete ganador puede cobrar después del sorteo. Comprueba los fondos en la cartera y la cadena.', refundHelp: 'Una ronda sin sorteo puede devolver billetes tras el plazo si no hay sorteo en curso. Comprueba los fondos devueltos en la cadena.', refundWaiting: 'Aún no se abrió el plazo de devolución o hay un sorteo en curso.',
+    working: 'Preparando la acción en la cartera…', pending: 'Transacción enviada; no se conoce la confirmación. Comprueba la cartera y la red antes de repetir.', successCheck: 'Transacción confirmada; comprobando el estado en la cadena…', uncertain: 'No se pudo verificar el resultado en la cadena. Comprueba tu cartera y la ronda antes de repetir.', failed: 'No se confirmó la acción. Comprueba la cartera y la ronda.',
+  },
+  vi: {
+    title: 'Xổ số', intro: 'Lượt xổ số và vé được đọc từ mạng lưới. Hình động không chứng minh việc bốc thăm hay thanh toán; hãy kiểm tra trạng thái trong ví và bản ghi trên chuỗi.',
+    round: 'Lượt', refresh: 'Làm mới', invalidRound: 'Nhập số lượt nguyên không âm.', roundLoading: 'Đang đọc lượt trên chuỗi…', roundError: 'Không thể xác minh lượt. Điều đó không có nghĩa là lượt không tồn tại.', roundMissing: 'Không tìm thấy lượt trên chuỗi.', roundStatus: 'Trạng thái lượt',
+    sold: 'Vé đã bán', pool: 'Quỹ của lượt', drawPending: 'Lượt bốc thăm đang chờ công bố trên chuỗi.', drawn: 'Đã xác nhận bốc thăm trên chuỗi.', awaitingDraw: 'Chưa xác nhận bốc thăm.',
+    winning: 'Vé trúng', claimed: 'Phần thưởng đã được ghi nhận là đã nhận trên chuỗi.', unclaimed: 'Phần thưởng chưa được ghi nhận là đã nhận.', created: 'Lượt được tạo', yes: 'Có', no: 'Không',
+    tickets: 'Vé của ví này', connect: 'Kết nối ví để kiểm tra vé.', ticketsLoading: 'Đang kiểm tra vé trên chuỗi…', ticketsError: 'Không thể xác minh vé. Chưa thể kết luận danh sách trống.', noTickets: 'Ví này không có vé trong lượt này.',
+    ticket: number => `Vé số ${number}`, purchaseTitle: 'Vé mới', purchasePaused: 'Tạm dừng mua: lệnh trên chuỗi không giới hạn giá hiển thị trước khi ký. Đừng thanh toán cho đến khi có lệnh mua giới hạn giá được kiểm chứng.',
+    claim: 'Yêu cầu nhận thưởng', refund: 'Yêu cầu hoàn tiền', claimHelp: 'Chỉ chủ vé trúng mới được nhận sau khi bốc thăm. Hãy xác minh số dư trong ví và trên chuỗi.', refundHelp: 'Lượt chưa bốc thăm có thể hoàn vé sau thời hạn nếu không có đợt bốc thăm nào đang tiến hành. Hãy kiểm tra tiền về trên chuỗi.', refundWaiting: 'Chưa đến thời hạn hoàn tiền hoặc đợt bốc thăm đang diễn ra.',
+    working: 'Đang chuẩn bị thao tác trong ví…', pending: 'Đã gửi giao dịch nhưng chưa rõ xác nhận. Hãy kiểm tra ví và mạng trước khi thử lại.', successCheck: 'Giao dịch đã xác nhận; đang kiểm tra lại trên chuỗi…', uncertain: 'Không thể xác minh kết quả trên chuỗi. Hãy kiểm tra ví và lượt trước khi thử lại.', failed: 'Chưa xác nhận thao tác. Hãy kiểm tra ví và lượt.',
+  },
+  id: {
+    title: 'Undian', intro: 'Putaran dan tiket dibaca dari blockchain. Animasi bukan bukti undian atau pembayaran; periksa status terkonfirmasi dalam dompet dan catatan putaran.',
+    round: 'Putaran', refresh: 'Muat ulang', invalidRound: 'Masukkan nomor putaran berupa bilangan bulat non-negatif.', roundLoading: 'Membaca putaran di blockchain…', roundError: 'Putaran tidak dapat diverifikasi. Ini bukan berarti putaran tidak ada.', roundMissing: 'Putaran tidak ditemukan di blockchain.', roundStatus: 'Status putaran',
+    sold: 'Tiket terjual', pool: 'Dana dalam putaran', drawPending: 'Undian menunggu pengungkapan di blockchain.', drawn: 'Undian terkonfirmasi di blockchain.', awaitingDraw: 'Undian belum terkonfirmasi.',
+    winning: 'Tiket pemenang', claimed: 'Hadiah tercatat sudah diambil di blockchain.', unclaimed: 'Hadiah belum tercatat diambil.', created: 'Putaran dibuat', yes: 'Ya', no: 'Tidak',
+    tickets: 'Tiket dompet ini', connect: 'Hubungkan dompet untuk memeriksa tiketmu.', ticketsLoading: 'Memeriksa tiket di blockchain…', ticketsError: 'Tiket tidak dapat diverifikasi. Daftar kosong belum terkonfirmasi.', noTickets: 'Dompet ini tidak memiliki tiket pada putaran ini.',
+    ticket: number => `Tiket no. ${number}`, purchaseTitle: 'Tiket baru', purchasePaused: 'Pembelian dihentikan: instruksi di blockchain tidak membatasi harga yang ditampilkan sebelum menandatangani. Jangan membayar hingga ada pembelian dengan batas harga yang terverifikasi.',
+    claim: 'Ajukan klaim hadiah', refund: 'Ajukan pengembalian dana', claimHelp: 'Hanya pemilik tiket pemenang yang dapat mengklaim setelah undian. Periksa dana di dompet dan blockchain.', refundHelp: 'Putaran yang belum diundi dapat mengembalikan tiket setelah tenggat, jika tidak ada undian berlangsung. Periksa dana masuk di blockchain.', refundWaiting: 'Jendela pengembalian belum dibuka atau undian sedang berlangsung.',
+    working: 'Menyiapkan tindakan dompet…', pending: 'Transaksi dikirim, konfirmasi belum diketahui. Periksa dompet dan jaringan sebelum mencoba lagi.', successCheck: 'Transaksi terkonfirmasi; memeriksa kembali blockchain…', uncertain: 'Hasil belum dapat diverifikasi di blockchain. Periksa dompet dan putaran sebelum mengulangi.', failed: 'Tindakan belum terkonfirmasi. Periksa dompet dan status putaran.',
+  },
+  fil: {
+    title: 'Bunutan', intro: 'Binabasa sa blockchain ang round at mga tiket. Hindi patunay ng bunutan o bayad ang animation; tingnan ang kumpirmadong status sa wallet at tala ng round.',
+    round: 'Yugto', refresh: 'I-refresh', invalidRound: 'Maglagay ng buong bilang ng round mula sa sero.', roundLoading: 'Sinusuri ang round sa blockchain…', roundError: 'Hindi ma-verify ang round. Hindi ito nangangahulugang wala ito.', roundMissing: 'Walang nakitang round sa blockchain.', roundStatus: 'Status ng round',
+    sold: 'Naibentang tiket', pool: 'Pondo sa round', drawPending: 'Naghihintay ng paghayag sa blockchain ang bunutan.', drawn: 'Kumpirmado sa blockchain ang bunutan.', awaitingDraw: 'Wala pang kumpirmadong bunutan.',
+    winning: 'Nananalong tiket', claimed: 'Nakatala sa blockchain na nakuha na ang premyo.', unclaimed: 'Hindi pa nakatala na nakuha ang premyo.', created: 'Nilikha ang round', yes: 'Oo', no: 'Hindi',
+    tickets: 'Mga tiket ng wallet na ito', connect: 'Ikonekta ang wallet para masuri ang mga tiket mo.', ticketsLoading: 'Sinusuri ang mga tiket sa blockchain…', ticketsError: 'Hindi ma-verify ang mga tiket. Hindi pa kumpirmadong walang laman ang listahan.', noTickets: 'Walang tiket ang wallet na ito sa round na ito.',
+    ticket: number => `Tiket blg. ${number}`, purchaseTitle: 'Mga bagong tiket', purchasePaused: 'Pansamantalang sarado ang pagbili: hindi nalilimitahan ng on-chain na instruksiyon ang presyong ipinakita bago pumirma. Huwag magbayad hanggang may nabe-verify na limitasyon sa presyo.',
+    claim: 'Hingin ang premyo', refund: 'Hingin ang refund', claimHelp: 'May-ari lamang ng nanalong tiket ang maaaring kumuha matapos ang bunutan. Tingnan ang pondo sa wallet at blockchain.', refundHelp: 'Maaaring ibalik ang tiket ng round na hindi nabunot matapos ang takdang panahon kung walang kasalukuyang bunutan. Tingnan ang ibinalik na pondo sa blockchain.', refundWaiting: 'Hindi pa bukas ang panahon ng refund o may bunutang nagpapatuloy.',
+    working: 'Inihahanda ang aksiyon sa wallet…', pending: 'Naipadala ang transaksyon ngunit hindi pa tiyak ang kumpirmasyon. Suriin ang wallet at network bago umulit.', successCheck: 'Kumpirmado ang transaksyon; sinusuri muli ang blockchain…', uncertain: 'Hindi ma-verify ang resulta sa blockchain. Tingnan ang wallet at round bago umulit.', failed: 'Hindi nakumpirma ang aksiyon. Tingnan ang wallet at round.',
+  },
+};

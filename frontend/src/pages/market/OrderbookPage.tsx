@@ -1,299 +1,177 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { api } from "../../lib/api";
-import { PlayerRating } from "../../components/PlayerRating";
-import { handleTxResponse } from "../../lib/txFlow";
-import { useWalletStore } from "../../store/walletStore";
-import { Card } from "../../components/ui/Card";
-import { DepthChart } from "../../components/charts/DepthChart";
-import {
-  ALL_TRADE_RESOURCES, fmtSol, shortAddr, toNum, useTreasury, useFlash,
-} from "../../lib/marketUtils";
-import { loadMints } from "../../lib/mints";
-import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
-import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
-import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api } from '../../lib/api';
+import { handleTxResponse } from '../../lib/txFlow';
+import { useWalletStore } from '../../store/walletStore';
+import { useLocale } from '../../i18n/LocaleProvider';
+import { orderbookCopy } from '../../i18n/orderbookCopy';
+import { homeResourceNames, type ResourceId } from '../../i18n/homeDetail';
+import { Card } from '../../components/ui/Card';
+import { DepthChart } from '../../components/charts/DepthChart';
+import { ALL_TRADE_RESOURCES, shortAddr, type TradeResource } from '../../lib/marketUtils';
+import { loadMints } from '../../lib/mints';
+import { readOrderbook, comparePrice, formatResourceUnits, priceSolPerResource, type Orderbook, type ResourceOrder } from '../../lib/orderbookReadings';
+import { ResourceGlyph } from '../../components/visual/ResourceGlyph';
+import { UI_ICONS } from '../../lib/visualAssets';
 
-// Ресурсы — SPL 9 decimals: 1 единица = 1e9 базовых
-const fmtRes = (v: any) => (toNum(v) / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+// Contract price is lamports PER ATOMIC token, while the previous form claimed
+// SOL per whole resource. At 9 decimals, the previous UI could deposit 10^9
+// times the indicated total. Do not re-enable placement/matching without a
+// contract-level price migration AND a wallet-bound transaction intent.
+const nameId = (key: string): ResourceId =>
+  key.toLowerCase().replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()) as ResourceId;
 
 export function OrderbookPage() {
+  const { language } = useLocale();
+  const copy = orderbookCopy[language];
+  const names = homeResourceNames[language];
   const { address } = useWalletStore();
-  const treasury = useTreasury();
-  const [res, setRes] = useState(ALL_TRADE_RESOURCES[0]);
-  const [resources, setResources] = useState(ALL_TRADE_RESOURCES.filter((r) => r.mint));
-  const [book, setBook] = useState<{ buy: any[]; sell: any[] }>({ buy: [], sell: [] });
-  const [loading, setLoading] = useState(false);
-  const [txStatus, flash] = useFlash();
-  const [formOpen, setFormOpen] = useState<null | "buy" | "sell">(null);
-  const [pricePerUnit, setPricePerUnit] = useState("0.0001");
-  const [amount, setAmount] = useState("100");
+  const walletRef = useRef(address);
+  walletRef.current = address;
+  const [registry, setRegistry] = useState<TradeResource[] | null>(null);
+  const [selectedKey, setSelectedKey] = useState('DATA');
+  const [book, setBook] = useState<Orderbook | null>(null);
+  const [bookState, setBookState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [notice, setNotice] = useState<'cancelling' | 'cancelled' | 'uncertain' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const request = useRef(0);
+  const resources = registry || [];
+  const resource = resources.find(item => item.key === selectedKey) || resources[0];
+  const resourceRef = useRef(resource?.mint);
+  resourceRef.current = resource?.mint;
 
-  const load = useCallback(async (mint: string) => {
-    setLoading(true);
+  useEffect(() => {
+    let active = true;
+    loadMints().then(mints => {
+      if (!active) return;
+      setRegistry(ALL_TRADE_RESOURCES
+        .map(item => ({ ...item, mint: mints[item.key as keyof typeof mints] || '' }))
+        .filter(item => item.mint));
+    }).catch(() => { if (active) setRegistry([]); });
+    return () => { active = false; };
+  }, []);
+
+  const load = useCallback(async (selected: TradeResource) => {
+    const id = ++request.current;
+    setBook(null);
+    setBookState('loading');
     try {
-      const b: any = await api.query.orderbook(mint);
-      setBook({ buy: b?.buy || [], sell: b?.sell || [] });
-    } catch (e) {
-      console.error("orderbook:", e);
-      setBook({ buy: [], sell: [] });
-    } finally {
-      setLoading(false);
+      const result = readOrderbook(await api.query.orderbook(selected.mint), selected.mint, selected.kind);
+      if (id !== request.current) return;
+      if (!result) throw new Error('Incomplete orderbook response');
+      setBook(result);
+      setBookState('ready');
+    } catch {
+      if (id === request.current) { setBook(null); setBookState('error'); }
     }
   }, []);
 
   useEffect(() => {
-    loadMints().then((mints) => {
-      const loaded = ALL_TRADE_RESOURCES
-        .map((resource) => ({ ...resource, mint: mints[resource.key as keyof typeof mints] || "" }))
-        .filter((resource) => resource.mint);
-      setResources(loaded);
-      if (loaded.length > 0) setRes((current) => loaded.find((r) => r.key === current.key) || loaded[0]);
-    });
-  }, []);
+    if (resource) load(resource);
+    else { request.current++; setBook(null); setBookState('error'); }
+    return () => { request.current++; };
+  }, [resource?.key, resource?.mint, load]);
 
-  useEffect(() => {
-    if (res.mint) load(res.mint);
-    else setBook({ buy: [], sell: [] });
-  }, [res, load]);
+  // Switching wallets must not leave an old account's cancellation confirmation visible.
+  useEffect(() => { setNotice(null); }, [address]);
 
-  // Спрос (покупка) — образцы, предложение (продажа) — партии: предметный язык без значков
-  const bids = useMemo(
-    () => [...book.buy].sort((a, b) => toNum(b.priceLamportsPerUnit) - toNum(a.priceLamportsPerUnit)),
-    [book]
-  );
-  const asks = useMemo(
-    () => [...book.sell].sort((a, b) => toNum(a.priceLamportsPerUnit) - toNum(b.priceLamportsPerUnit)),
-    [book]
-  );
-  const depth = useMemo(() => ({
-    bids: bids.map((o) => ({ price: toNum(o.priceLamportsPerUnit) / 1e9, amount: toNum(o.amountRemaining) / 1e9 })),
-    asks: asks.map((o) => ({ price: toNum(o.priceLamportsPerUnit) / 1e9, amount: toNum(o.amountRemaining) / 1e9 })),
-  }), [bids, asks]);
+  const bids = useMemo(() => [...(book?.buy || [])].sort((a, b) => comparePrice(b, a)), [book]);
+  const asks = useMemo(() => [...(book?.sell || [])].sort(comparePrice), [book]);
+  const ownedExhausted = book?.exhausted.filter(o => !!address && o.maker === address) || [];
+  const price = (o: ResourceOrder) => `${priceSolPerResource(o.priceLamportsPerUnit, language)} SOL`;
+  const displayName = (item: TradeResource) => names[nameId(item.key)] || item.key;
 
-  async function place(side: "buy" | "sell") {
-    if (!address) return flash("Сначала подключите кошелёк");
-    if (!res.mint) return flash("❌ Ресурсы ещё не заведены в сети");
-    const priceLam = Math.round(parseFloat(pricePerUnit) * 1e9);
-    const amt = Math.round(parseFloat(amount) * 1e9);
-    if (!isFinite(priceLam) || priceLam <= 0) return flash("❌ Укажите цену за единицу в SOL");
-    if (!isFinite(amt) || amt <= 0) return flash("❌ Укажите количество единиц");
+  async function cancel(order: ResourceOrder) {
+    if (!address || !resource || !book || bookState !== 'ready' || busyRef.current || order.maker !== address) return;
+    busyRef.current = true;
+    setBusy(true);
+    setNotice('cancelling');
     try {
-      flash(side === "buy" ? "Размещаем покупку…" : "Размещаем продажу…");
-      const body = {
-        maker: address, mint: res.mint, kind: res.kind,
-        priceLamportsPerUnit: String(priceLam), amount: String(amt),
-      };
-      const resp = side === "buy" ? await api.orderbook.placeBuy(body) : await api.orderbook.placeSell(body);
-      const r = await handleTxResponse(resp);
-      flash(r.success ? `Ордер размещён: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-      if (r.success) {
-        setFormOpen(null);
-        setTimeout(() => load(res.mint), 2500);
+      // Never act on a stale row: the PDA must still be the same owned order.
+      const fresh = readOrderbook(await api.query.orderbook(resource.mint), resource.mint, resource.kind);
+      if (walletRef.current !== address || resourceRef.current !== resource.mint) return;
+      const rows = fresh && [...fresh.buy, ...fresh.sell, ...fresh.exhausted];
+      if (!rows?.some(o => o.pubkey === order.pubkey && o.maker === address && o.isBuy === order.isBuy)) {
+        setBook(null); setBookState('error'); setNotice('uncertain'); return;
       }
-    } catch (e: any) {
-      flash(`${e.message}`);
-    }
+      const response: any = order.isBuy
+        ? await api.orderbook.cancelBuy({ maker: address, mint: resource.mint })
+        : await api.orderbook.cancelSell({ maker: address, mint: resource.mint });
+      if (walletRef.current !== address || resourceRef.current !== resource.mint) return;
+      if (typeof response?.tx !== 'string') throw new Error('Missing cancellation transaction');
+      const result = await handleTxResponse(response);
+      if (walletRef.current !== address || resourceRef.current !== resource.mint) return;
+      if (!result.success) throw new Error(result.error || 'Cancellation not confirmed');
+      setNotice('cancelled');
+      await load(resource);
+    } catch {
+      if (walletRef.current === address && resourceRef.current === resource.mint) {
+        setNotice('uncertain');
+        setBook(null);
+        setBookState('error');
+      }
+    } finally { busyRef.current = false; setBusy(false); }
   }
 
-  async function cancel(o: any) {
-    if (!address) return flash("Сначала подключите кошелёк");
-    try {
-      flash("Отменяем ордер…");
-      const resp = o.isBuy
-        ? await api.orderbook.cancelBuy({ maker: address, mint: res.mint })
-        : await api.orderbook.cancelSell({ maker: address, mint: res.mint });
-      const r = await handleTxResponse(resp);
-      flash(r.success ? `Ордер отменён: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-      if (r.success) setTimeout(() => load(res.mint), 2500);
-    } catch (e: any) {
-      flash(`${e.message}`);
-    }
-  }
+  const row = (order: ResourceOrder) => {
+    const mine = !!address && order.maker === address;
+    return <div key={order.pubkey} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2 rounded-lg bg-soil-800/60 text-xs min-w-0">
+      <span className="text-straw break-all">{shortAddr(order.maker)}{mine ? ` (${copy.you})` : ''}</span>
+      <span className="text-straw">{order.isBuy ? copy.bids : copy.asks}</span>
+      <span className="text-parchment ml-auto break-all">{formatResourceUnits(order.amountRemaining)} {copy.amountUnit}</span>
+      <span className="text-wheat-500 font-semibold break-all">{price(order)}</span>
+      {mine && <button type="button" onClick={() => cancel(order)} disabled={busy || bookState !== 'ready'}
+        className="text-parchment underline underline-offset-2 disabled:opacity-40 break-words">{copy.cancel}</button>}
+    </div>;
+  };
 
-  // Permissionless-матчинг: если лучший спрос ≥ лучшего предложения — сводим
-  async function match() {
-    if (!address) return flash("Сначала подключите кошелёк");
-    if (!treasury) return flash("Адрес казны не настроен: действие недоступно");
-    const bb = bids[0];
-    const ba = asks[0];
-    if (!bb || !ba) return flash("❌ Нет пары встречных ордеров");
-    if (toNum(bb.priceLamportsPerUnit) < toNum(ba.priceLamportsPerUnit))
-      return flash("❌ Цены не пересекаются — сведения нет");
-    try {
-      flash("Сводим ордера…");
-      const resp = await api.orderbook.match({
-        caller: address, mint: res.mint,
-        buyMaker: bb.maker, sellMaker: ba.maker, treasury,
-      });
-      const r = await handleTxResponse(resp);
-      flash(r.success ? `Сведено: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-      if (r.success) setTimeout(() => load(res.mint), 2500);
-    } catch (e: any) {
-      flash(`${e.message}`);
-    }
-  }
-
-  const bestBid = bids[0];
-  const bestAsk = asks[0];
-  const crossable = bestBid && bestAsk && toNum(bestBid.priceLamportsPerUnit) >= toNum(bestAsk.priceLamportsPerUnit);
-
-  return (
-    <div className="p-4 pt-6 pb-24 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketOrderbook} alt="" className="w-7 h-7" /> Ордербук</h1>
-        <button onClick={() => load(res.mint)} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Refresh"}
-        </button>
-      </div>
-      <p className="text-straw text-xs">
-        Биржа ресурсов: лимитные ордера на базовые ресурсы, ядра, биты, кварц и флюиды.
-        Биды — хотят купить, оферы — продают компоненты.
-      </p>
-
-      {/* Dropdown для выбора ресурса */}
-      <div className="mb-4">
-        <label className="block text-straw text-xs mb-2">Выберите ресурс для торговли:</label>
-        <select
-          value={res.key}
-          onChange={(e) => {
-            const selected = ALL_TRADE_RESOURCES.find(r => r.key === e.target.value);
-            if (selected) setRes(selected);
-          }}
-          className="w-full bg-soil-800 text-parchment text-sm rounded-xl border border-straw/20 px-4 py-3 focus:border-wheat-500 focus:outline-none transition"
-        >
-          {resources.map((r) => (
-            <option key={r.key} value={r.key}>
-              <ResourceGlyph icon={r.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {r.label}
-            </option>
-          ))}
-        </select>
-        <div className="mt-2 text-xs text-straw">
-          {resources.length === 0
-            ? "Ресурсы не заведены в сети — торговля отключена."
-            : <>Выбрано: <span className="text-parchment font-bold"><ResourceGlyph icon={res.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {res.label}</span></>}
-        </div>
-      </div>
-
-      {txStatus && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          <NoticeMsg text={txStatus} />
-        </motion.div>
-      )}
-
-      {/* Спред и матчинг */}
-      <Card>
-        <div className="flex items-center justify-between text-sm">
-          <div>
-            <p className="text-straw text-xs">Покупка (лучшая)</p>
-            <p className="text-sprout-500 font-bold">{bestBid ? `${fmtSol(bestBid.priceLamportsPerUnit)} ◎` : "—"}</p>
+  return <div className="p-4 pt-6 pb-24 space-y-4 min-w-0">
+    <header className="flex items-center justify-between gap-2 min-w-0">
+      <h1 className="text-2xl font-bold text-parchment flex items-center gap-2 min-w-0 break-words"><ResourceGlyph icon={UI_ICONS.marketOrderbook} alt="" className="w-7 h-7 shrink-0" />{copy.title}</h1>
+      <button type="button" disabled={!resource || bookState === 'loading'} onClick={() => resource && load(resource)}
+        className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20 whitespace-normal break-words disabled:opacity-40">{copy.refresh}</button>
+    </header>
+    <p className="text-straw text-xs break-words">{copy.intro}</p>
+    <Card className="border border-wheat-600/40">
+      <p className="text-wheat-500 text-sm font-semibold break-words">{copy.paused}</p>
+      <p className="text-straw text-xs mt-2 break-words">{copy.unitWarning}</p>
+    </Card>
+    <label className="block min-w-0 text-straw text-xs">
+      {copy.select}
+      <select value={resource?.key || ''} disabled={!resource} onChange={e => setSelectedKey(e.target.value)}
+        className="block w-full mt-2 bg-soil-800 text-parchment text-sm rounded-xl border border-straw/20 px-4 py-3 focus:border-wheat-500 focus:outline-none min-w-0">
+        {resources.map(item => <option key={item.key} value={item.key}>{displayName(item)}</option>)}
+      </select>
+    </label>
+    {resource && <p className="text-xs text-straw break-words">{copy.selected}: {displayName(resource)}</p>}
+    {!address && <p className="text-straw text-xs break-words">{copy.noWallet}</p>}
+    {notice && <p role="status" className="text-parchment text-xs break-words">{copy[notice]}</p>}
+    {!registry ? <p role="status" className="text-straw text-xs">{copy.loading}</p> : registry.length === 0 ?
+      <p role="status" className="text-straw text-xs break-words">{copy.registryUnavailable}</p> :
+      bookState !== 'ready' || !book ? <p role="status" className="text-straw text-xs break-words">{bookState === 'loading' ? copy.loading : copy.unavailable}</p> : <>
+        <Card>
+          <div className="flex flex-wrap justify-between gap-3 text-sm min-w-0">
+            <div className="min-w-0"><p className="text-straw text-xs">{copy.bestBid}</p><p className="text-sprout-500 font-bold break-all">{bids[0] ? price(bids[0]) : '—'}</p></div>
+            <div className="min-w-0 text-right"><p className="text-straw text-xs">{copy.bestAsk}</p><p className="text-wheat-500 font-bold break-all">{asks[0] ? price(asks[0]) : '—'}</p></div>
           </div>
-          <div className="text-center">
-            <p className="text-straw text-xs"><ResourceGlyph icon={res.icon} alt="" className="inline-block w-4 h-4 align-text-bottom" /> {res.label}</p>
-            {crossable ? (
-              <button onClick={match} className="mt-1 text-xs px-3 py-1.5 rounded-lg bg-wheat-600 text-white font-semibold animate-pulse">
-                <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.matchZap} alt="" className="w-4 h-4" /> Свести</span>
-              </button>
-            ) : (
-              <p className="text-straw text-xs mt-1">нет сведения</p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-straw text-xs">Продажа (лучшая)</p>
-            <p className="text-wheat-500 font-bold">{bestAsk ? `${fmtSol(bestAsk.priceLamportsPerUnit)} ◎` : "—"}</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Глубина рынка */}
-      <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Глубина рынка</div>
-        {bids.length === 0 && asks.length === 0 ? (
-          <p className="text-straw text-xs text-center py-4">Стакан пуст — разместите первый ордер</p>
-        ) : (
-          <DepthChart bids={depth.bids} asks={depth.asks} />
-        )}
-      </Card>
-
-      {/* Стакан */}
-      <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Заявки</div>
-        <div className="space-y-1">
-          {[...asks].reverse().map((o, i) => {
-            const mine = address && o.maker === address;
-            return (
-              <div key={o.pubkey || i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-wheat-600/10 text-xs">
-                <ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" />
-                <span className="text-straw">{shortAddr(o.maker)}{mine ? " (вы)" : ""}</span>
-                <span className="flex-1" />
-                <span className="text-parchment">{fmtRes(o.amountRemaining)} ед.</span>
-                <span className="text-wheat-500 font-semibold w-24 text-right">{fmtSol(o.priceLamportsPerUnit)} ◎</span>
-                {mine && <button onClick={() => cancel(o)} className="text-straw px-1">✕</button>}
-              </div>
-            );
-          })}
-          {asks.length > 0 && bids.length > 0 && (
-            <div className="text-center text-straw text-xs py-1">— спред —</div>
-          )}
-          {bids.map((o, i) => {
-            const mine = address && o.maker === address;
-            return (
-              <div key={o.pubkey || i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-sprout-500/10 text-xs">
-                <ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-4 h-4" />
-                <span className="text-straw">{shortAddr(o.maker)}{mine ? " (вы)" : ""}</span>
-                <span className="flex-1" />
-                <span className="text-parchment">{fmtRes(o.amountRemaining)} ед.</span>
-                <span className="text-sprout-500 font-semibold w-24 text-right">{fmtSol(o.priceLamportsPerUnit)} ◎</span>
-                {mine && <button onClick={() => cancel(o)} className="text-straw px-1">✕</button>}
-              </div>
-            );
-          })}
-          {asks.length === 0 && bids.length === 0 && (
-            <p className="text-straw text-xs text-center py-4">Заявок пока нет</p>
-          )}
-        </div>
-      </Card>
-
-      {/* Формы размещения */}
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => setFormOpen(formOpen === "buy" ? null : "buy")}
-          className={`py-2.5 rounded-xl text-sm font-semibold border ${formOpen === "buy" ? "bg-sprout-500 text-white border-sprout-500" : "bg-soil-800 text-sprout-500 border-sprout-500/30"}`}>
-          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("NEURON") || ""} alt="" className="w-4 h-4" /> Buy {res.label}</span>
-        </button>
-        <button onClick={() => setFormOpen(formOpen === "sell" ? null : "sell")}
-          className={`py-2.5 rounded-xl text-sm font-semibold border ${formOpen === "sell" ? "bg-wheat-600 text-white border-wheat-600" : "bg-soil-800 text-wheat-500 border-wheat-600/30"}`}>
-          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" /> Sell {res.label}</span>
-        </button>
-      </div>
-
-      {formOpen && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <Card>
-            <div className="text-parchment font-semibold text-sm mb-2">
-              {formOpen === "buy" ? "Лимитный ордер на покупку" : "Лимитный ордер на продажу"}
-            </div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-straw text-xs w-28">Цена/ед., ◎</span>
-              <input type="number" step="0.000001" min="0" value={pricePerUnit} onChange={(e) => setPricePerUnit(e.target.value)}
-                className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
-            </div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-straw text-xs w-28">Кол-во, ед.</span>
-              <input type="number" step="1" min="0" value={amount} onChange={(e) => setAmount(e.target.value)}
-                className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
-            </div>
-            {formOpen === "sell" && (
-              <p className="text-straw text-xs mb-2">При размещении токены блокируются в хранилище ордера.</p>
-            )}
-            <button onClick={() => place(formOpen)}
-              className={`w-full py-2.5 rounded-xl text-white font-semibold text-sm ${formOpen === "buy" ? "bg-sprout-500" : "bg-wheat-600"}`}>
-              Разместить ордер
-            </button>
-          </Card>
-        </motion.div>
-      )}
-
-    </div>
-  );
+          <p className="text-straw text-xs mt-2">{copy.priceUnit}</p>
+        </Card>
+        <Card>
+          <h2 className="text-parchment font-semibold text-sm mb-2">{copy.depth}</h2>
+          {bids.length || asks.length ? <DepthChart bids={bids.map(o => ({ price: o.priceLamportsPerUnit, amount: o.amountRemaining }))}
+            asks={asks.map(o => ({ price: o.priceLamportsPerUnit, amount: o.amountRemaining }))} language={language} /> :
+            <p className="text-straw text-xs py-3">{copy.empty}</p>}
+        </Card>
+        <Card>
+          <h2 className="text-parchment font-semibold text-sm mb-2">{copy.orders}</h2>
+          {bids.length || asks.length ? <div className="space-y-1">{asks.map(row)}{bids.map(row)}</div> :
+            <p className="text-straw text-xs py-3">{copy.empty}</p>}
+        </Card>
+        {ownedExhausted.length > 0 && <Card>
+          <h2 className="text-parchment font-semibold text-sm mb-2">{copy.exhausted}</h2>
+          <p className="text-straw text-xs mb-3 break-words">{copy.exhaustedInfo}</p>
+          <div className="space-y-1">{ownedExhausted.map(row)}</div>
+        </Card>}
+      </>}
+  </div>;
 }

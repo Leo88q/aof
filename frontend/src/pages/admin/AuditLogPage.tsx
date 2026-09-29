@@ -4,6 +4,8 @@ import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { adminAuditCopy } from "../../i18n/adminAuditCopy";
 
 interface AuditLogEntry {
   id: string;
@@ -19,8 +21,11 @@ interface AuditLogEntry {
 }
 
 export function AuditLogPage() {
+  const { language } = useLocale();
+  const text = adminAuditCopy[language];
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [readFailed, setReadFailed] = useState(false);
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -32,8 +37,11 @@ export function AuditLogPage() {
   async function loadLogs() {
     try {
       const data = await api.admin.auditLogs(100);
-      setLogs(data || []);
+      if (!Array.isArray(data)) throw new Error("Invalid audit response");
+      setLogs(data);
+      setReadFailed(false);
     } catch (e) {
+      setReadFailed(true);
       console.error("Failed to load audit logs:", e);
     } finally {
       setLoading(false);
@@ -47,25 +55,37 @@ export function AuditLogPage() {
 
   if (loading) {
     return (
-      <div className="p-4">
+      <div className="p-4" lang={language}>
         <Card>
-          <p className="text-straw text-center">Читаем журнал…</p>
+          <p className="text-straw text-center">{text.loading}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (readFailed) {
+    return (
+      <div className="p-4" lang={language}>
+        <Card>
+          <p role="alert" className="text-straw text-center">{text.failed}</p>
+          <button type="button" onClick={loadLogs} className="mt-3 px-3 py-2 bg-soil-700 text-parchment rounded">{text.retry}</button>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pb-24">
+    <div className="p-4 pb-24" lang={language}>
       <Card className="mb-4">
         <h2 className="text-parchment font-bold text-lg mb-2 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.sentinel} alt="" className="w-6 h-6" /> Sentinel Audit Log</h2>
         <p className="text-straw text-sm mb-4">
-          Автоматическое логирование всех действий игроков для расследования споров
+          {text.scope}
         </p>
         
         <input
           type="text"
-          placeholder="Фильтр по user или action..."
+          placeholder={text.filter}
+          aria-label={text.filter}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="w-full p-2 bg-soil-800 border border-straw/20 rounded text-parchment text-sm"
@@ -76,10 +96,10 @@ export function AuditLogPage() {
             onClick={loadLogs}
             className="px-3 py-1 bg-soil-700 text-parchment text-xs rounded hover:bg-soil-600 transition"
           >
-            🔄 Обновить
+            {text.refresh}
           </button>
           <span className="text-straw text-xs flex items-center">
-            Записей: {filteredLogs.length}
+            {text.records} {filteredLogs.length}
           </span>
         </div>
       </Card>
@@ -99,27 +119,27 @@ export function AuditLogPage() {
             >
               <Card className="p-3">
                 <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className={`text-xs px-2 py-0.5 rounded font-bold ${
-                        isSuccess 
-                          ? "bg-sprout-500/20 text-sprout-500" 
-                          : "bg-ember-500/20 text-ember-500"
+                        isSuccess
+                          ? "bg-sprout-500/20 text-sprout-500"
+                          : log.result === "fail" ? "bg-ember-500/20 text-ember-500" : "bg-soil-700 text-straw"
                       }`}>
-                        {log.result?.toUpperCase() || "UNKNOWN"}
+                        {log.result === "success" ? text.success : log.result === "fail" ? text.failure : text.unknown}
                       </span>
-                      <span className="text-wheat-500 font-bold text-sm">{log.action}</span>
+                      <span className="text-wheat-500 font-bold text-sm [overflow-wrap:anywhere]">{log.action}</span>
                     </div>
                     <p className="text-straw text-xs">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {new Date(log.timestamp).toLocaleString(language)}
                     </p>
                   </div>
                 </div>
                 
                 <div className="space-y-1 text-xs">
                   <div>
-                    <span className="text-straw">User:</span>{" "}
-                    <span className="text-parchment font-mono">
+                    <span className="text-straw">{text.user}</span>{" "}
+                    <span className="text-parchment font-mono [overflow-wrap:anywhere]">
                       {log.user.slice(0, 8)}...{log.user.slice(-8)}
                     </span>
                   </div>
@@ -140,14 +160,14 @@ export function AuditLogPage() {
                   
                   {meta.method && (
                     <div>
-                      <span className="text-straw">Method:</span>{" "}
+                      <span className="text-straw">{text.method}</span>{" "}
                       <span className="text-parchment">{meta.method} {meta.path}</span>
                     </div>
                   )}
 
                   {meta.statusCode && (
                     <div>
-                      <span className="text-straw">Status:</span>{" "}
+                      <span className="text-straw">{text.status}</span>{" "}
                       <span className={`font-mono ${
                         meta.statusCode >= 400 ? "text-ember-400" : "text-sprout-500"
                       }`}>
@@ -158,8 +178,8 @@ export function AuditLogPage() {
                   
                   {meta.body && Object.keys(meta.body).length > 0 && (
                     <details className="mt-2">
-                      <summary className="text-straw cursor-pointer hover:text-parchment">
-                        Request Body ({Object.keys(meta.body).length} fields)
+                      <summary className="text-straw cursor-pointer hover:text-parchment [overflow-wrap:anywhere]">
+                        {text.requestBody(Object.keys(meta.body).length)}
                       </summary>
                       <pre className="text-[10px] bg-soil-900 p-2 rounded mt-1 overflow-x-auto max-h-40">
                         {JSON.stringify(meta.body, null, 2)}
@@ -175,7 +195,7 @@ export function AuditLogPage() {
 
       {filteredLogs.length === 0 && (
         <Card>
-          <p className="text-straw text-center py-8">Нет записей</p>
+          <p className="text-straw text-center py-8">{filter ? text.noMatches : text.noRecords}</p>
         </Card>
       )}
     </div>

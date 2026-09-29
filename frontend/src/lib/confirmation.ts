@@ -1,3 +1,6 @@
+import { LocalTxFeedbackError } from "./txResponseFeedback";
+import { getApiErrorLanguage } from "./apiErrorLanguage";
+import { transactionValidationCopy } from "../i18n/transactionValidationCopy";
 import type { Connection } from "@solana/web3.js";
 
 /** A wallet returning a signature means submission, not successful execution.
@@ -8,12 +11,13 @@ export async function confirmSignature(
   wait: () => Promise<void> = () => new Promise((resolve) => setTimeout(resolve, 1000)),
   attempts = 60,
 ): Promise<void> {
-  if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) throw new Error("Invalid transaction signature");
+  const copy = transactionValidationCopy[getApiErrorLanguage()];
+  if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) throw new LocalTxFeedbackError(copy.invalidSignature);
   for (let i = 0; i < attempts; i++) {
     const status = (await rpc.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0];
-    if (status?.err) throw new Error(`Транзакция не исполнена: ${signature}`);
+    if (status?.err) throw new LocalTxFeedbackError(`${copy.executionFailed}: ${signature}`);
     if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") return;
     await wait();
   }
-  throw new Error(`Статус неизвестен. Не повторяйте оплату до проверки транзакции: ${signature}`);
+  throw new LocalTxFeedbackError(`${copy.confirmationUnknown}: ${signature}`);
 }

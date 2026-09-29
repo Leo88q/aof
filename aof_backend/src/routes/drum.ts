@@ -1,48 +1,23 @@
 import { Router } from "express";
 import { EventParser } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
 import { questsProgram, connection } from "../provider";
-import { drumCommitPda, questConfigPda } from "../lib/pda";
-import { coSign, pk } from "../lib/tx";
-import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
-import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { drumCommitPda } from "../lib/pda";
+import { pk } from "../lib/tx";
+import { requireWalletLimits } from "../middleware/security";
 import { commitStatus, drumOutcomeFromLogs, DrumOutcome, selfSettleTransaction } from "../lib/vrfSettlement";
 
 /**
- * [F-06] Drum of Luck on the aof-quests randomness pool. The spin costs 5
- * mascots (to the treasury at commit); the prize is fixed by Switchboard and
- * paid by the permissionless reveal; an unrevealed spin is refunded.
+ * Quest drum: new payments are blocked. Existing commitments remain
+ * settleable/refundable through the permissionless reveal instruction.
  */
 const r = Router();
 
-r.post("/commit", requireCircuitOpen, requireWalletLimits("drum_commit"), async (req, res) => {
-  try {
-    const user = pk(req.body.user);
-    const [drumCommit] = drumCommitPda(user);
-    const [questConfig] = questConfigPda();
-    const config: any = await (questsProgram.account as any).questConfig.fetch(questConfig);
-    const slot = await reservePoolSlot(questsProgram, connection);
-    const vrf = await vrfCommitAccounts(questsProgram, connection, slot);
-
-    const ix = await (questsProgram.methods as any)
-      .drumCommit()
-      .accounts({
-        drumCommit,
-        questConfig,
-        user,
-        treasuryMascot: config.treasuryMascot,
-        userMascot: getAssociatedTokenAddressSync(config.mascotMint, user),
-        ...vrf,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const tx = await coSign([ix], user);
-    res.json({ tx, drumCommit: drumCommit.toBase58() });
-  } catch (e: any) {
-    res.status(e.status || 400).json({ error: e.message });
-  }
+// Potato is a future external SPL mint, NOT the internal MIND mint. The
+// deployed quest program uses raw atomic amounts. Do not accept a new payment
+// until a decimals-aware, audited deployment and fully funded treasury exist.
+r.post("/commit", (_req, res) => {
+  res.status(503).json({ error: "Potato spin payments are not configured; pending spins can still be revealed or refunded." });
 });
 
 /** Outcome of the player's latest spin (newest transaction of the commit PDA first). */
@@ -74,7 +49,7 @@ r.get("/status/:user", async (req, res) => {
 });
 
 /** Transaction for the player to settle (or after the window refund) their spin. */
-r.post("/reveal", requireCircuitOpen, requireWalletLimits("drum_reveal"), async (req, res) => {
+r.post("/reveal", requireWalletLimits("drum_reveal"), async (req, res) => {
   try {
     const user = pk(req.body.user);
     res.json(await selfSettleTransaction("drum", drumCommitPda(user)[0], user));

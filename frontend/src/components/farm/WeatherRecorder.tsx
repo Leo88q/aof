@@ -1,4 +1,7 @@
 import { Panel, Readout, Readouts, Lamp, Lamps, Sticker } from "../../ui/forge/kit";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { wellCopy } from "../../i18n/wellCopy";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
 import { DrumChart } from "../../ui/forge/devices";
 
 /**
@@ -11,11 +14,9 @@ import { DrumChart } from "../../ui/forge/devices";
  * показывает дни вперёд по расписанию сети, а не «примерные» значения.
  */
 
-const LOAD_BY_TYPE: Record<string, { label: string; level: number; rate: string }> = {
-  drought: { label: "Блэкаут", level: 0.02, rate: "0 / час" },
-  sunny: { label: "Номинал", level: 0.32, rate: "5 / час" },
-  rain: { label: "Скачок", level: 0.68, rate: "15 / час" },
-  festival: { label: "Френзи", level: 0.95, rate: "20 / час" },
+const LOAD_BY_TYPE: Record<string, { level: number }> = {
+  drought: { level: 0.02 }, sunny: { level: 0.32 },
+  rain: { level: 0.68 }, festival: { level: 0.95 },
 };
 
 export function WeatherRecorder({
@@ -34,6 +35,11 @@ export function WeatherRecorder({
   season?: string | null;
   dayOfSeason?: number | null;
 }) {
+  const { language } = useLocale();
+  const copy = wellCopy[language];
+  const conditions = labHeroCopy[language].load;
+  const label = (type: string) => conditions[type as keyof typeof conditions] ?? '—';
+  const seasonName = season && copy.seasonNames[season as keyof typeof copy.seasonNames];
   const known = forecast.filter((d) => LOAD_BY_TYPE[d.type]);
   const points = known.map((d) => LOAD_BY_TYPE[d.type].level);
   const labels = known.map((d) => String(d.dayOfSeason));
@@ -44,17 +50,17 @@ export function WeatherRecorder({
       tier="panel"
       device="baro"
       className="mb-4"
-      id={<Sticker alt>НАГРУЗКА СЕТИ</Sticker>}
-      meta={dayId === null ? "ЛЕНТА НЕ ЗАПРАВЛЕНА" : `ДЕНЬ ${dayId}`}
-      title="Барограф нагрузки"
-      sub={season ? `сезон: ${season}` : "сезон неизвестен"}
+      id={<Sticker alt>{copy.recorder}</Sticker>}
+      meta={dayId === null ? copy.noTape : `${copy.day} ${dayId}`}
+      title={copy.barograph}
+      sub={seasonName ? `${copy.season}: ${seasonName}` : copy.unknownSeason}
     >
       <Lamps>
         <Lamp tone={current ? (current.level > 0.5 ? "ok" : "wait") : "wait"}>
-          {current ? current.label : "нет связи с сетью"}
+          {current ? label(weatherType!) : copy.noConnection}
         </Lamp>
         <Lamp tone={forecast.length ? "ok" : "wait"}>
-          {forecast.length ? `лента на ${forecast.length} дн.` : "прогноза нет"}
+          {forecast.length ? `${copy.tapeFor} ${forecast.length} ${copy.days}` : copy.noForecast}
         </Lamp>
       </Lamps>
 
@@ -62,15 +68,16 @@ export function WeatherRecorder({
         <DrumChart
           points={points}
           dayLabels={labels}
-          scaleLabels={["БЛЭКАУТ", "НОМИНАЛ", "ФРЕНЗИ"]}
+          ariaLabel={copy.barograph}
+          scaleLabels={(['drought', 'sunny', 'festival'] as const).map(type => label(type).toLocaleUpperCase(language))}
         />
       </div>
 
       <div style={{ marginTop: 14 }}>
         <Readouts>
-          <Readout label="Сегодня" value={current ? current.label : undefined} dash={!current} hint={`день сезона: ${dayOfSeason ?? "—"}`} />
-          <Readout label="Поток" value={rate ?? undefined} dash={!rate} hint="энергопоток в час" />
-          <Readout label="Перо" value={current ? `${Math.round(current.level * 100)}` : undefined} unit="%" dash={!current} hint="высота записи" />
+          <Readout label={copy.today} value={current ? label(weatherType!) : undefined} dash={!current} hint={`${copy.seasonDay}: ${dayOfSeason ?? "—"}`} />
+          <Readout label={copy.flow} value={rate ?? undefined} dash={!rate} hint={copy.flowHint} />
+          <Readout label={copy.pen} value={current ? `${Math.round(current.level * 100)}` : undefined} unit="%" dash={!current} hint={copy.penHint} />
         </Readouts>
       </div>
     </Panel>

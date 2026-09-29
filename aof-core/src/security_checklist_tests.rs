@@ -1407,19 +1407,22 @@ fn season_pass_purchase(start_time: i64, already_premium: bool) -> (Result<()>, 
     (result, cpi_calls(), accounts.season_pass.premium)
 }
 
-/// A pass is charged once, and only while its season runs.
+/// No season pass purchase may transfer SOL until its distinct paid rewards
+/// and VIP entitlement have been validated on devnet. The old window/double-
+/// charge behavior must be retested before removing the unconditional guard.
 #[test]
-fn season_pass_is_sold_once_and_only_during_its_season() {
-    let (ok, cpis, premium) = season_pass_purchase(NOW_TS - 86_400, false);
-    assert!(ok.is_ok(), "{ok:?}");
-    assert_eq!((cpis, premium), (1, true), "one payment, flag set");
-
-    let (again, cpis, _) = season_pass_purchase(NOW_TS - 86_400, true);
-    rejected(again, "SeasonPassAlreadyPremium");
-    assert_eq!(cpis, 0, "no second charge");
-
-    rejected(season_pass_purchase(NOW_TS + 60, false).0, "SeasonNotStarted");
-    rejected(season_pass_purchase(NOW_TS - SEASON_LENGTH_SECONDS, false).0, "SeasonEnded");
+fn season_pass_stays_fail_closed_without_charging_or_changing_entitlement() {
+    for (start, already_premium) in [
+        (NOW_TS - 86_400, false),
+        (NOW_TS - 86_400, true),
+        (NOW_TS + 60, false),
+        (NOW_TS - SEASON_LENGTH_SECONDS, false),
+    ] {
+        let (result, cpis, premium) = season_pass_purchase(start, already_premium);
+        rejected(result, "SeasonPremiumRequired");
+        assert_eq!(cpis, 0, "no SOL transfer on any window or duplicate");
+        assert_eq!(premium, already_premium, "no entitlement change on error");
+    }
 }
 
 fn accrual(last: i64, now: i64) -> u64 {

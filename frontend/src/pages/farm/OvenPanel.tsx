@@ -1,18 +1,23 @@
 import { useToast } from "../../components/ui/Toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { labProcessCopy } from "../../i18n/labProcessCopy";
+import { homeResourceNames } from "../../i18n/homeDetail";
 import { Card } from "../../components/ui/Card";
 import { api } from "../../lib/api";
 import { useWalletStr } from "../../lib/useWalletStr";
 import { handleTxResponse } from "../../lib/txFlow";
+import { actionErrorFeedback } from "../../lib/txResponseFeedback";
+import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { getMintAsync } from "../../lib/mints";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 // Must match aof-core/src/instructions/start_baking.rs and constants.rs.
 const OVEN_SIZES = {
-  small:  { label: "Малая",  batchSize: 1, flour: 4,  water: 3, wood: 5,  coal: 2,  bread: 2,  time: 7200,  icon: UI_ICONS.trainer, sizeCls: "w-4 h-4" },
-  medium: { label: "Средняя", batchSize: 2, flour: 12, water: 8, wood: 12, coal: 5,  bread: 7,  time: 18000, icon: UI_ICONS.trainer, sizeCls: "w-5 h-5" },
-  large:  { label: "Большая", batchSize: 3, flour: 28, water: 18, wood: 25, coal: 10, bread: 18, time: 36000, icon: UI_ICONS.trainer, sizeCls: "w-6 h-6" },
+  small:  { batchSize: 1, flour: 4,  water: 3, wood: 5,  coal: 2,  bread: 2,  breadCoal: 3,  time: 7200,  icon: UI_ICONS.trainer, sizeCls: "w-4 h-4" },
+  medium: { batchSize: 2, flour: 12, water: 8, wood: 12, coal: 5,  bread: 7,  breadCoal: 9,  time: 18000, icon: UI_ICONS.trainer, sizeCls: "w-5 h-5" },
+  large:  { batchSize: 3, flour: 28, water: 18, wood: 25, coal: 10, bread: 18, breadCoal: 22, time: 36000, icon: UI_ICONS.trainer, sizeCls: "w-6 h-6" },
 };
 
 const FUEL_KIND = { wood: 0, coal: 1 };
@@ -24,53 +29,71 @@ interface OvenState {
 }
 
 export function OvenPanel() {
+  const { language } = useLocale();
+  const copy = labProcessCopy[language];
+  const resources = homeResourceNames[language];
   const toast = useToast();
   const walletAddr = useWalletStr();
   const [size, setSize] = useState<keyof typeof OVEN_SIZES>("small");
+  const [fuel, setFuel] = useState<'wood' | 'coal'>('wood');
   const [baking, setBaking] = useState(false);
   const [ovenState, setOvenState] = useState<OvenState | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [readStatus, setReadStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const requestSeq = useRef(0);
+  const inFlight = useRef<string | null>(null);
+
+  const loadState = useCallback(async () => {
+    if (!walletAddr || inFlight.current === walletAddr) return;
+    inFlight.current = walletAddr;
+    const request = ++requestSeq.current;
+    try {
+      const state: any = await api.query.ovenState(walletAddr);
+      if (request !== requestSeq.current) return;
+      if (!state?.inProgress) {
+        setOvenState(null);
+        setTimeLeft(0);
+      } else {
+        const readyAt = Number(state.readyAt) * 1000;
+        const result = Number(state.outputBread);
+        if (!Number.isFinite(readyAt) || readyAt <= 0 || !Number.isFinite(result) || result < 0) {
+          throw new Error('Invalid on-chain process state');
+        }
+        setOvenState({ active: true, readyAt, breadReady: result });
+        setTimeLeft(Math.max(0, Math.floor((readyAt - Date.now()) / 1000)));
+      }
+      setReadStatus('ready');
+    } catch {
+      if (request !== requestSeq.current) return;
+      // An RPC failure is not an empty training bench.
+      setOvenState(null);
+      setReadStatus('unavailable');
+    } finally {
+      if (request === requestSeq.current) inFlight.current = null;
+    }
+  }, [walletAddr]);
+
+  useEffect(() => {
+    setOvenState(null);
+    setReadStatus('loading');
+    if (walletAddr) loadState();
+    const interval = walletAddr ? setInterval(loadState, 5000) : null;
+    return () => { requestSeq.current += 1; inFlight.current = null; if (interval) clearInterval(interval); };
+  }, [walletAddr, loadState]);
 
   useEffect(() => {
     if (!ovenState?.active || !ovenState.readyAt) return;
     const interval = setInterval(() => {
-      const left = Math.max(0, Math.floor((ovenState.readyAt - Date.now()) / 1000));
-      setTimeLeft(left);
-      if (left === 0) {
-        // Готова!
-      }
+      setTimeLeft(Math.max(0, Math.floor((ovenState.readyAt - Date.now()) / 1000)));
     }, 1000);
     return () => clearInterval(interval);
   }, [ovenState]);
 
-  async function loadState() {
-    if (!walletAddr) return;
-    try {
-      const state: any = await api.query.ovenState(walletAddr);
-      if (!state?.inProgress) {
-        setOvenState(null);
-        setTimeLeft(0);
-        return;
-      }
-      const readyAt = Number(state.readyAt || 0) * 1000;
-      setOvenState({ active: true, readyAt, breadReady: Number(state.outputBread || 0) });
-      setTimeLeft(Math.max(0, Math.floor((readyAt - Date.now()) / 1000)));
-    } catch {
-      setOvenState(null);
-      setTimeLeft(0);
-    }
-  }
-
-  useEffect(() => {
-    loadState();
-    const interval = setInterval(loadState, 5000);
-    return () => clearInterval(interval);
-  }, [walletAddr]);
-
   async function startBaking() {
     if (!walletAddr) return;
     const m = OVEN_SIZES[size];
-    const fuelKind = m.wood > 0 ? FUEL_KIND.wood : FUEL_KIND.coal;
+    const fuelKind = FUEL_KIND[fuel];
+    const resultAmount = fuel === 'wood' ? m.bread : m.breadCoal;
     setBaking(true);
     try {
       const [flourMint, waterMint, woodMint, coalMint] = await Promise.all([
@@ -80,7 +103,7 @@ export function OvenPanel() {
         getMintAsync("COMPUTE"),
       ]);
       if (!flourMint || !waterMint || !woodMint || !coalMint) {
-        toast.show("Ресурсы не найдены в реестре сети", "error");
+        toast.show(copy.missingMints, "error", language);
         return;
       }
       const resp = await api.chain.startBaking({
@@ -91,13 +114,13 @@ export function OvenPanel() {
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`✅ Обучение запущено: ${m.flour} сигнала → ${m.bread} модели`, "success");
+        toast.show(`✅ ${copy.oven.started(m.flour, resultAmount)}`, "success", language);
         await loadState();
       } else {
-        toast.show(`${r.error || "Операция отклонена программой"}`, "error");
+        toast.show(`${r.error || copy.failed}`, "error", language);
       }
     } catch (e: any) {
-      toast.show(`${e.message || "Ошибка сети"}`, "error");
+      toast.show(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse), "error", language);
     } finally {
       setBaking(false);
     }
@@ -108,113 +131,100 @@ export function OvenPanel() {
     setBaking(true);
     try {
       const breadMint = await getMintAsync("MODEL");
-      if (!breadMint) { toast.show("Ресурс MODEL не найден в сети", "error"); return; }
+      if (!breadMint) { toast.show(copy.missingResultMint, "error", language); return; }
       const resp = await api.chain.collectBread({
         user: walletAddr,
         breadMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🍞 Собрано ${ovenState.breadReady} модели!`, "success");
+        toast.show(`🍞 ${copy.oven.collected(ovenState.breadReady)}`, "success", language);
         await loadState();
       } else {
-        toast.show(`${r.error || "Операция отклонена программой"}`, "error");
+        toast.show(`${r.error || copy.failed}`, "error", language);
       }
     } catch (e: any) {
-      toast.show(`${e.message || "Ошибка сети"}`, "error");
+      toast.show(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse), "error", language);
     } finally {
       setBaking(false);
     }
   }
 
   const m = OVEN_SIZES[size];
-  const isReady = timeLeft === 0 && ovenState?.active;
+  const isReady = readStatus === 'ready' && timeLeft === 0 && ovenState?.active;
+  const resultAmount = fuel === 'wood' ? m.bread : m.breadCoal;
 
   const formatTime = (sec: number) => {
     const mm = Math.floor(sec / 60);
     const ss = sec % 60;
-    return `${mm}:${ss.toString().padStart(2, "0")}`;
+    const hh = Math.floor(mm / 60);
+    return hh > 0 ? `${hh}:${(mm % 60).toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}` : `${mm}:${ss.toString().padStart(2, "0")}`;
   };
 
   if (!walletAddr) {
-    return (
-      <Card className="p-4">
-        <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> Тренировка</h3>
-        <p className="text-straw text-sm text-center py-4">Подключите кошелёк</p>
-      </Card>
-    );
+    return <div lang={language}><Card className="p-4">
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> {copy.oven.title}</h3>
+      <p className="text-straw text-sm text-center py-4">{copy.connectWallet}</p>
+    </Card></div>;
   }
 
   return (
-    <Card className="p-4 space-y-3">
-      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> Тренировка</h3>
-
-      {!ovenState && (
+    <div lang={language}><Card className="p-4 space-y-3">
+      <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-5 h-5" /> {copy.oven.title}</h3>
+      {readStatus === 'loading' && <p role="status" className="text-straw text-sm text-center py-4">{copy.loading}</p>}
+      {readStatus === 'unavailable' && <p role="alert" className="text-straw text-sm text-center py-4">{copy.unavailable}</p>}
+      {readStatus === 'ready' && !ovenState && (
         <>
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(OVEN_SIZES) as Array<keyof typeof OVEN_SIZES>).map((key) => (
-              <button
-                key={key}
-                onClick={() => setSize(key)}
-                className={`p-2 rounded-lg text-center transition ${
-                  size === key
-                    ? "bg-ember-600/30 border-2 border-ember-500"
-                    : "bg-soil-700/50 border border-straw/20 hover:border-ember-500"
-                }`}
-              >
-                <ResourceGlyph icon={OVEN_SIZES[key].icon} alt="" className={(OVEN_SIZES[key] as any).sizeCls ?? "w-5 h-5"} />
-                <div className="text-[10px] text-parchment font-bold">{OVEN_SIZES[key].label}</div>
+              <button type="button" key={key} aria-pressed={size === key} onClick={() => setSize(key)}
+                className={`min-w-0 p-2 rounded-lg text-center transition [overflow-wrap:anywhere] ${size === key
+                  ? "bg-ember-600/30 border-2 border-ember-500" : "bg-soil-700/50 border border-straw/20 hover:border-ember-500"}`}>
+                <ResourceGlyph icon={OVEN_SIZES[key].icon} alt="" className={OVEN_SIZES[key].sizeCls} />
+                <div className="text-[10px] text-parchment font-bold">{copy.sizes[key]}</div>
               </button>
             ))}
           </div>
-
+          <fieldset className="flex flex-wrap gap-2 text-xs text-straw">
+            <legend className="mb-1">{copy.oven.fuel}</legend>
+            {(['wood', 'coal'] as const).map(option => (
+              <label key={option} className="inline-flex items-center gap-1 rounded-lg bg-soil-800 px-2 py-1.5 [overflow-wrap:anywhere]">
+                <input type="radio" name="training-fuel" checked={fuel === option} onChange={() => setFuel(option)} />
+                {resources[option === 'wood' ? 'circuit' : 'compute']}
+              </label>
+            ))}
+          </fieldset>
           <div className="bg-soil-800/50 rounded-lg p-3 space-y-1 text-xs">
-            <div className="flex justify-between items-center"><span className="text-straw">Сигнал:</span><span className="text-parchment inline-flex items-center gap-1">{m.flour} <ResourceGlyph icon={resourceIcon("SIGNAL") || ""} alt="" className="w-4 h-4" /></span></div>
-            <div className="flex justify-between items-center"><span className="text-straw">Энергопоток:</span><span className="text-parchment inline-flex items-center gap-1">{m.water} <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-4 h-4" /></span></div>
-            {m.wood > 0 && <div className="flex justify-between items-center"><span className="text-straw">Схемы:</span><span className="text-parchment inline-flex items-center gap-1">{m.wood} <ResourceGlyph icon={resourceIcon("CIRCUIT") || ""} alt="" className="w-4 h-4" /></span></div>}
-            {m.coal > 0 && <div className="flex justify-between items-center"><span className="text-straw">Вычисления:</span><span className="text-parchment inline-flex items-center gap-1">{m.coal} <ResourceGlyph icon={resourceIcon("COMPUTE") || ""} alt="" className="w-4 h-4" /></span></div>}
-            <div className="flex justify-between items-center"><span className="text-straw">На выходе:</span><span className="text-gold-400 font-bold inline-flex items-center gap-1">{m.bread} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /></span></div>
-            <div className="flex justify-between"><span className="text-straw">Время:</span><span className="text-parchment">{formatTime(m.time)}</span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources.signal}:</span><span className="text-parchment inline-flex items-center gap-1">{m.flour} <ResourceGlyph icon={resourceIcon("SIGNAL") || ""} alt="" className="w-4 h-4" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources.power}:</span><span className="text-parchment inline-flex items-center gap-1">{m.water} <ResourceGlyph icon={resourceIcon("POWER") || ""} alt="" className="w-4 h-4" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources[fuel === 'wood' ? 'circuit' : 'compute']}:</span><span className="text-parchment inline-flex items-center gap-1">{fuel === 'wood' ? m.wood : m.coal} <ResourceGlyph icon={resourceIcon(fuel === 'wood' ? "CIRCUIT" : "COMPUTE") || ""} alt="" className="w-4 h-4" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.output}:</span><span className="text-gold-400 font-bold inline-flex items-center gap-1">{resultAmount} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.energy}:</span><span className="text-parchment">2</span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.duration}:</span><span className="text-parchment">{copy.hours(m.time / 3600)}</span></div>
           </div>
-
-          <button
-            onClick={startBaking}
-            disabled={baking}
-            className="w-full py-2 rounded-lg bg-gradient-to-r from-ember-600 to-gold-600 text-parchment font-bold text-sm disabled:opacity-50"
-          >
-            {baking ? <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Запуск...</span> : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-4 h-4" /> Запустить тренировку</span>}
+          <button type="button" onClick={startBaking} disabled={baking}
+            className="w-full py-2 rounded-lg bg-gradient-to-r from-ember-600 to-gold-600 text-parchment font-bold text-sm disabled:opacity-50 [overflow-wrap:anywhere]">
+            {baking ? copy.oven.starting : copy.oven.start}
           </button>
         </>
       )}
-
-      {ovenState && (
+      {readStatus === 'ready' && ovenState && (
         <div className="bg-soil-800/50 rounded-lg p-4 space-y-3">
           <div className="text-center">
             <ResourceGlyph icon={UI_ICONS.trainer} alt="" className="w-10 h-10 mx-auto animate-pulse" />
-            {timeLeft > 0 ? (
-              <>
-                <p className="text-parchment font-bold">Модель обучается…</p>
-                <p className="text-ember-400 text-2xl font-bold">{formatTime(timeLeft)}</p>
-              </>
-            ) : (
-              <>
-                <p className="text-parchment font-bold">Модель обучена</p>
-                <p className="text-gold-400 text-2xl font-bold inline-flex items-center gap-2 justify-center">{ovenState.breadReady} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-6 h-6" /></p>
-              </>
-            )}
+            {timeLeft > 0 ? <>
+              <p className="text-parchment font-bold">{copy.oven.running}</p>
+              <p className="text-ember-400 text-2xl font-bold">{formatTime(timeLeft)}</p>
+            </> : <>
+              <p className="text-parchment font-bold">{copy.oven.ready}</p>
+              <p className="text-gold-400 text-2xl font-bold inline-flex items-center gap-2 justify-center">{ovenState.breadReady} <ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-6 h-6" /></p>
+            </>}
           </div>
-
-          {isReady && (
-            <button
-              onClick={collectBread}
-              disabled={baking}
-              className="btn btn-primary"
-            >
-              {baking ? "..." : <span className="inline-flex items-center gap-1.5"><ResourceGlyph icon={resourceIcon("MODEL") || ""} alt="" className="w-4 h-4" /> Собрать модель</span>}
-            </button>
-          )}
+          {isReady && <button type="button" onClick={collectBread} disabled={baking} className="btn btn-primary">
+            {baking ? copy.oven.starting : copy.oven.collect}
+          </button>}
         </div>
       )}
-    </Card>
+    </Card></div>
   );
 }

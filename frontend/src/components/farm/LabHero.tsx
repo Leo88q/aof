@@ -1,4 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
+import { homeResourceNames, type ResourceId } from "../../i18n/homeDetail";
 import { api } from "../../lib/api";
 import { fmtNum } from "../../lib/marketUtils";
 import { resourceIcon } from "../../lib/visualAssets";
@@ -28,23 +31,15 @@ import { CryoRack, Dewar, type Straw } from "../../ui/forge/devices";
 
 /** Набор производства лаборатории: базовые ресурсы + модельная цепочка. */
 const LAB_RESOURCES = [
-  { key: "DATA", label: "Данные" },
-  { key: "CIRCUIT", label: "Схема" },
-  { key: "SILICON", label: "Кремний" },
-  { key: "POWER", label: "Энергопоток" },
-  { key: "NEURON", label: "Нейрон" },
-  { key: "SYNAPSE", label: "Синапс" },
-  { key: "SIGNAL", label: "Сигнал" },
-  { key: "MODEL", label: "Модель" },
+  { key: "DATA" },
+  { key: "CIRCUIT" },
+  { key: "SILICON" },
+  { key: "POWER" },
+  { key: "NEURON" },
+  { key: "SYNAPSE" },
+  { key: "SIGNAL" },
+  { key: "MODEL" },
 ] as const;
-
-const LOAD_LABELS: Record<string, string> = {
-  sunny: "Номинал",
-  rain: "Скачок",
-  drought: "Блэкаут",
-  festival: "Френзи",
-  harvest_festival: "Френзи",
-};
 
 /** SOL-микросы газ-бака (1e6 за 1 SOL) → читаемый ◎. */
 export function microsToSol(micros: any): number {
@@ -79,6 +74,8 @@ export function LabHero({
   toolsFailed: boolean;
   actions?: ReactNode;
 }) {
+  const { language } = useLocale();
+  const copy = labHeroCopy[language];
   const [balances, setBalances] = useState<Record<string, number> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [gasMicros, setGasMicros] = useState<number | null>(null);
@@ -122,7 +119,9 @@ export function LabHero({
 
   const energyAmount = typeof energy?.amount === "number" ? energy.amount : null;
   const energyCap = typeof energy?.cap === "number" && energy.cap > 0 ? energy.cap : null;
-  const load = typeof weather?.type === "string" ? LOAD_LABELS[weather.type] || null : null;
+  const weatherType = weather?.type === 'harvest_festival' ? 'festival' : weather?.type;
+  const load = typeof weatherType === 'string'
+    ? copy.load[weatherType as keyof typeof copy.load] ?? null : null;
 
   // Уровень соломинки — доля от самого полного образца в стойке. Если балансов
   // нет, соломинки сухие: прибор не рисует выдуманные уровни.
@@ -133,8 +132,8 @@ export function LabHero({
     const raw = balances ? Number(balances[r.key] ?? 0) : null;
     return {
       key: r.key,
-      name: r.label,
-      value: !owner ? "—" : unavailable ? "—" : balances ? fmtNum(raw ?? 0) : "…",
+      name: homeResourceNames[language][r.key.toLowerCase() as ResourceId],
+      value: !owner ? "—" : unavailable ? "—" : balances ? fmtNum(raw ?? 0, language) : "…",
       level: raw === null ? null : top ? raw / top : 0,
       reward: r.key === "MODEL" || r.key === "NEURON",
     };
@@ -149,19 +148,19 @@ export function LabHero({
     <Panel
       tier="hero"
       device="cryo"
-      ariaLabel="Твоя лаборатория"
-      id={<Sticker bars>ЛАБОРАТОРИЯ</Sticker>}
-      meta={owner ? "КРИОБАНК ОБРАЗЦОВ" : "КОШЕЛЁК НЕ ПОДКЛЮЧЁН"}
-      title="Твоя лаборатория"
-      sub="стойка A · глубокий холод"
+      ariaLabel={copy.title}
+      id={<Sticker bars>{copy.sticker}</Sticker>}
+      meta={owner ? copy.connectedMeta : copy.disconnectedMeta}
+      title={copy.title}
+      sub={copy.subtitle}
       className="mb-4"
     >
       <Lamps>
         <Lamp tone={!owner ? "wait" : unavailable ? "err" : "ok"}>
-          {!owner ? "кошелёк не подключён" : unavailable ? "связь с сетью потеряна" : "связь с сетью"}
+          {!owner ? copy.disconnected : unavailable ? copy.networkLost : copy.connected}
         </Lamp>
         <Lamp tone={energyAmount !== null ? "ok" : "wait"}>
-          {energyAmount !== null ? "сосуд под давлением" : "энергии в сети нет"}
+          {energyAmount !== null ? copy.pressure : copy.noEnergy}
         </Lamp>
       </Lamps>
 
@@ -169,13 +168,13 @@ export function LabHero({
         <Dewar level={energyShare} />
         <div>
           <CryoRack
-            title="Стойка A · базовые"
-            meta={top ? "норма" : "нет данных"}
+            title={copy.rackA}
+            meta={top ? copy.normal : copy.noData}
             slots={base}
           />
           <CryoRack
-            title="Стойка B · модельная цепочка"
-            meta={top ? "контроль" : "нет данных"}
+            title={copy.rackB}
+            meta={top ? copy.monitoring : copy.noData}
             slots={chain}
           />
         </div>
@@ -184,37 +183,37 @@ export function LabHero({
       <div style={{ marginTop: 16 }}>
         <Readouts>
           <Readout
-            label="Энергия"
+            label={copy.energy}
             value={energyAmount !== null ? String(energyAmount) : undefined}
             unit={energyCap ? `/${energyCap}` : undefined}
             dash={energyAmount === null}
             hint={
               energyAmount === null
-                ? "аккаунта энергии ещё нет в сети"
+                ? copy.energyMissing
                 : undefined
             }
           />
-          <Readout label="Газ" value={gas ? `◎ ${gas}` : undefined} dash={gas === null} hint={gas === null ? "газ-бак ещё не создан" : undefined} />
+          <Readout label={copy.gas} value={gas ? `◎ ${gas}` : undefined} dash={gas === null} hint={gas === null ? copy.gasMissing : undefined} />
           <Readout
-            label="Стойка"
+            label={copy.rack}
             value={staked !== null ? String(staked.length) : toolsFailed ? undefined : "…"}
             dash={staked === null && toolsFailed}
-            hint={toolsFailed ? "инструменты недоступны из сети" : staked === null ? "читаем инструменты" : "инструментов в стойке"}
+            hint={toolsFailed ? copy.toolsUnavailable : staked === null ? copy.readingTools : copy.toolsInRack}
           />
           <Readout
-            label="Нагрузка сети"
+            label={copy.networkLoad}
             value={load ?? undefined}
             dash={!load}
-            hint={!load ? "нет WeatherState" : "множитель энергопотока"}
+            hint={!load ? copy.weatherMissing : copy.powerMultiplier}
           />
         </Readouts>
       </div>
 
       {actions ? <div className="fg-keys">{actions}</div> : null}
 
-      {!owner && <Note quiet>Подключи кошелёк — покажем балансы из сети.</Note>}
+      {!owner && <Note quiet>{copy.connectWallet}</Note>}
       {owner && unavailable && (
-        <Note quiet>Балансы недоступны из сети. Повтори обновление позже.</Note>
+        <Note quiet>{copy.balancesUnavailable}</Note>
       )}
     </Panel>
   );

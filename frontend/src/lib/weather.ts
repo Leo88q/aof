@@ -1,5 +1,9 @@
 import { api } from "./api";
 import { UI_ICONS } from "./visualAssets";
+import { labHeroCopy } from "../i18n/labHeroCopy";
+import { weatherCopy } from "../i18n/weatherCopy";
+import { wellCopy } from "../i18n/wellCopy";
+import type { Language } from "../i18n/translations";
 
 /**
  * Погода — зеркало канонических правил цепи, один источник для всех панелей.
@@ -30,20 +34,15 @@ export const WEATHER_BY_INDEX: Record<number, { type: WeatherKey; effect: string
   3: { type: "festival", effect: "well_water_rate_20_per_hour", rate: 20 },
 };
 
-/** Человеческая подпись к коду эффекта: в UI не должно быть raw-строк сети. */
-const EFFECT_LABELS: Record<string, string> = {
-  well_water_rate_zero: "Станция не качает: 0/час",
-  well_water_rate_5_per_hour: "Станция качает 5/час",
-  well_water_rate_15_per_hour: "Станция качает 15/час",
-  well_water_rate_20_per_hour: "Станция качает 20/час",
-};
+/** Only effects with an on-chain-defined rate get a human-readable label.
+ * This map comes from the same rate table used by the actual weather loader. */
+const EFFECT_RATES = new Map(Object.values(WEATHER_BY_INDEX).map(({ effect, rate }) => [effect, rate]));
 
-export function weatherEffectLabel(effect?: string | null): string {
-  if (!effect) return "";
-  const known = EFFECT_LABELS[effect];
-  if (known) return known;
-  // Незнакомый код: не показываем сырой snake_case, но и не выдумываем смысл.
-  return effect.replace(/_/g, " ");
+export function weatherEffectLabel(effect?: string | null, language: Language = 'ru'): string {
+  const rate = effect ? EFFECT_RATES.get(effect) : undefined;
+  if (rate === undefined) return ''; // Unknown effects are not invented or shown as snake_case.
+  const copy = weatherCopy[language];
+  return rate === 0 ? copy.stationIdle : `${copy.stationRate} ${rate}${copy.perHour}`;
 }
 
 function toInt(value: unknown): number | null {
@@ -92,11 +91,8 @@ export function weatherIndexForDay(dayId: number): number {
 
 /** Подписи и значки состояний — один источник для шапки, колодца и календаря эпох. */
 export const WEATHER_LABELS: Record<string, string> = {
-  sunny: "Номинал",
-  rain: "Скачок",
-  drought: "Блэкаут",
-  festival: "Френзи",
-  harvest_festival: "Френзи",
+  ...labHeroCopy.ru.load,
+  harvest_festival: labHeroCopy.ru.load.festival,
 };
 
 export const WEATHER_ICONS: Record<string, string> = {
@@ -107,12 +103,7 @@ export const WEATHER_ICONS: Record<string, string> = {
   harvest_festival: UI_ICONS.weatherFrenzy,
 };
 
-export const SEASON_LABELS: Record<string, string> = {
-  spring: "Инициализация",
-  summer: "Обучение",
-  autumn: "Дообучение",
-  winter: "Инференс",
-};
+export const SEASON_LABELS: Record<string, string> = wellCopy.ru.seasonNames;
 
 export const SEASON_ICONS: Record<string, string> = {
   spring: UI_ICONS.epochInit,
@@ -124,9 +115,10 @@ export const SEASON_ICONS: Record<string, string> = {
 /** Римская нумерация эпохи: Эпоха I..IV — как в летописи сети. */
 export const SEASON_ROMAN = ["I", "II", "III", "IV"] as const;
 
-export function seasonTitle(seasonIndex: number): string {
-  const key = SEASONS[((seasonIndex % SEASONS.length) + SEASONS.length) % SEASONS.length];
-  return `Эпоха ${SEASON_ROMAN[seasonIndex % SEASON_ROMAN.length]} · ${SEASON_LABELS[key]}`;
+export function seasonTitle(seasonIndex: number, language: Language = 'ru'): string {
+  const index = ((seasonIndex % SEASONS.length) + SEASONS.length) % SEASONS.length;
+  const key = SEASONS[index];
+  return `${weatherCopy[language].epoch} ${SEASON_ROMAN[index]} · ${wellCopy[language].seasonNames[key]}`;
 }
 
 export interface ForecastDay {

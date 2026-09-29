@@ -6,13 +6,13 @@ const r = Router();
 // Сезонные "лови сейчас" списки (из ТЗ: "обновляемый список 'лови сейчас'")
 const SEASONAL_TARGETS: Record<number, { toolType: string; rarity: string }[]> = {
   1: [
-    { toolType: "axe", rarity: "epic" },
-    { toolType: "pick", rarity: "legendary" },
+    { toolType: "plasma_cutter", rarity: "epic" },
+    { toolType: "silicon_extractor", rarity: "legendary" },
   ],
   2: [
-    { toolType: "spear", rarity: "epic" },
-    { toolType: "bow", rarity: "legendary" },
-    { toolType: "reaper", rarity: "rare" },
+    { toolType: "data_harvester", rarity: "epic" },
+    { toolType: "quantum_transmitter", rarity: "legendary" },
+    { toolType: "neural_seeder", rarity: "rare" },
   ],
 };
 
@@ -28,7 +28,7 @@ r.get("/:user", async (req, res) => {
     const seasonalProgress = targets.map((target) => ({
       ...target,
       caught: entries.some(
-        (e) => e.toolType === target.toolType && e.rarity === target.rarity
+        (e: { toolType: string; rarity: string }) => e.toolType === target.toolType && e.rarity === target.rarity
       ),
     }));
 

@@ -1,270 +1,199 @@
-import { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { api } from "../../lib/api";
-import { handleTxResponse } from "../../lib/txFlow";
-import { useWalletStore } from "../../store/walletStore";
-import { Card } from "../../components/ui/Card";
-import { fmtNum, fmtSol, toNum, useTreasury, useFlash } from "../../lib/marketUtils";
-import { UI_ICONS } from "../../lib/visualAssets";
-import { humanizeVrfError } from "../../lib/vrfErrors";
-import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { useEffect, useRef, useState } from 'react';
+import { api } from '../../lib/api';
+import { handleTxResponse } from '../../lib/txFlow';
+import { useWalletStore } from '../../store/walletStore';
+import { useLocale } from '../../i18n/LocaleProvider';
+import { lotteryCopy } from '../../i18n/lotteryCopy';
+import { Card } from '../../components/ui/Card';
+import { UI_ICONS } from '../../lib/visualAssets';
+import { lamportsToSol } from '../../lib/amounts';
+import { canRefundLotteryTicket, lotteryU64, readLotteryRound, readLotteryTickets,
+  type LotteryRound, type LotteryTicket } from '../../lib/lotteryReadings';
 
-const FIELD_LABELS: Record<string, string> = {
-  roundId: "Раунд",
-  ticketPriceLamports: "Цена билета",
-  ticketsSold: "Билетов продано",
-  prizePoolLamports: "Призовой фонд",
-  winnerTicket: "Выигрышный билет",
-  commitHash: "Комит (sha256)",
-  drawn: "Розыгрыш прошёл",
-  committed: "Комит сделан",
-  phase: "Фаза",
-  startTs: "Начало",
-  endTs: "Окончание",
-};
-
-function fmtField(key: string, v: any): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "boolean") return v ? "да" : "нет";
-  if (/lamports|price|prize|pool/i.test(key)) return fmtSol(v) + " ◎";
-  if (/ts$|time/i.test(key)) {
-    const n = toNum(v);
-    return n > 0 ? new Date(n * 1000).toLocaleString("ru-RU") : String(v);
-  }
-  const n = Number(v?.toString?.() ?? NaN);
-  if (isFinite(n)) return fmtNum(n);
-  const s = String(v);
-  return s.length > 20 ? s.slice(0, 8) + "…" : s;
-}
-
+/** Public game view: no admin create/draw controls and no unbounded ticket purchase.
+ * Existing owners can still claim or refund, with a wallet-bound ticket intent.
+ * A failed read is never rendered as an empty round or ticket list. */
 export function LotteryPage() {
+  const { language } = useLocale();
+  const c = lotteryCopy[language];
   const { address } = useWalletStore();
-  const treasury = useTreasury();
-  const [roundId, setRoundId] = useState("1");
-  const [round, setRound] = useState<any>(null);
-  const [roundErr, setRoundErr] = useState<string | null>(null);
-  const [myTickets, setMyTickets] = useState<any[]>([]);
-  const [claimNum, setClaimNum] = useState("");
-  const [spinning, setSpinning] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [txStatus, flash] = useFlash();
-
-  const load = useCallback(async (rid: string) => {
-    setLoading(true);
-    setRoundErr(null);
-    try {
-      const r: any = await api.query.lotteryRound(rid);
-      setRound(r);
-    } catch (e: any) {
-      setRound(null);
-      setRoundErr(e?.message || "Раунд не найден");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(roundId); }, [roundId, load]);
+  const walletRef = useRef(address);
+  walletRef.current = address;
+  const [roundId, setRoundId] = useState('1');
+  const selectedId = lotteryU64(roundId, true) ? roundId : null;
+  const selectionRef = useRef(selectedId);
+  selectionRef.current = selectedId;
+  const [round, setRound] = useState<LotteryRound | null>(null);
+  const [roundState, setRoundState] = useState<'loading' | 'ready' | 'missing' | 'error' | 'invalid'>('loading');
+  const [tickets, setTickets] = useState<LotteryTicket[] | null>(null);
+  const [ticketOwner, setTicketOwner] = useState<string | null>(null);
+  const [ticketRound, setTicketRound] = useState<string | null>(null);
+  const [ticketState, setTicketState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [refresh, setRefresh] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [pending, setPending] = useState<{ action: 'claim' | 'refund'; ticket: string } | null>(null);
+  const [notice, setNotice] = useState<null | 'working' | 'pending' | 'successCheck' | 'uncertain' | 'failed'>(null);
+  const roundRequest = useRef(0);
+  const ticketRequest = useRef(0);
+  const now = Date.now();
 
   useEffect(() => {
-    if (!address) { setMyTickets([]); return; }
-    api.query.myTickets(roundId, address)
-      .then((r: any) => setMyTickets(Array.isArray(r) ? r : r?.tickets || []))
-      .catch(() => setMyTickets([]));
-  }, [roundId, address]);
+    const request = ++roundRequest.current;
+    setRound(null);
+    if (!selectedId) { setRoundState('invalid'); return; }
+    setRoundState('loading');
+    api.query.lotteryRound(selectedId).then((raw: unknown) => {
+      if (request !== roundRequest.current) return;
+      if (raw === null) { setRoundState('missing'); return; }
+      const snapshot = readLotteryRound(raw, selectedId);
+      if (!snapshot) { setRoundState('error'); return; }
+      setRound(snapshot);
+      setRoundState('ready');
+    }).catch(() => { if (request === roundRequest.current) setRoundState('error'); });
+    return () => { roundRequest.current++; };
+  }, [selectedId, refresh]);
 
-  async function initRound() {
-    try {
-      flash("Создаём раунд…");
-      const resp = await api.lottery.roundInit({ roundId });
-      const r = await handleTxResponse(resp);
-      flash(r.success ? `Раунд ${roundId} создан: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-      if (r.success) setTimeout(() => load(roundId), 2000);
-    } catch (e: any) {
-      flash(`${humanizeVrfError(String(e?.message || e))}`);
+  useEffect(() => {
+    const request = ++ticketRequest.current;
+    setTickets(null);
+    setTicketOwner(null);
+    setTicketRound(null);
+    if (!round || roundState !== 'ready' || !address) { setTicketState('idle'); return; }
+    const owner = address;
+    setTicketState('loading');
+    api.query.myTickets(round.roundId, owner).then((raw: unknown) => {
+      if (request !== ticketRequest.current || walletRef.current !== owner) return;
+      const owned = readLotteryTickets(raw, round, owner);
+      if (!owned) { setTicketState('error'); return; }
+      setTickets(owned);
+      setTicketOwner(owner);
+      setTicketRound(round.roundId);
+      setTicketState('ready');
+    }).catch(() => { if (request === ticketRequest.current && walletRef.current === owner) setTicketState('error'); });
+    return () => { ticketRequest.current++; };
+  }, [round, roundState, address]);
+
+  const activeRound = round?.roundId === selectedId ? round : null;
+  const activeTickets = ticketOwner === address && ticketRound === selectedId && activeRound ? tickets : null;
+  useEffect(() => { setPending(null); setNotice(null); }, [selectedId, address]);
+  useEffect(() => {
+    if (pending?.action === 'claim' && roundState === 'ready' && activeRound?.claimed ||
+        pending?.action === 'refund' && ticketState === 'ready' && activeTickets && !activeTickets.some(t => t.ticketNumber === pending.ticket)) {
+      setPending(null);
     }
-  }
+  }, [activeRound, roundState, activeTickets, ticketState, pending]);
 
-  // [F-06] Tickets escrow the full price on the round; the draw is a
-  // Switchboard commit (operator, or anyone after the sales window) and a
-  // permissionless reveal by the settler service.
-  async function buyTicket() {
-    if (!address) return flash("Сначала подключите кошелёк");
-    try {
-      flash("Покупаем билет…");
-      const resp: any = await api.lottery.ticketBuy({ buyer: address, roundId });
-      const r = await handleTxResponse(resp);
-      flash(r.success ? `Билет №${resp.ticketNumber} ваш: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-      if (r.success) setTimeout(() => { load(roundId); }, 2000);
-    } catch (e: any) {
-      flash(`${humanizeVrfError(String(e?.message || e))}`);
-    }
-  }
+  const refreshNow = () => { setNotice(pending ? 'pending' : null); setRefresh(n => n + 1); };
+  const canClaim = (ticket: LotteryTicket) => !!activeRound?.drawn && !activeRound.claimed &&
+    activeRound.winningTicket === ticket.ticketNumber;
+  const canRefund = !!activeRound && canRefundLotteryTicket(activeRound, now);
 
-  async function draw() {
+  async function act(action: 'claim' | 'refund', ticket: LotteryTicket) {
+    const owner = address, id = selectedId;
+    if (!owner || !id || busyRef.current || pending || !activeRound || roundState !== 'ready' ||
+        ticketState !== 'ready' || !activeTickets?.some(t => t.pubkey === ticket.pubkey) ||
+        !(action === 'claim' ? canClaim(ticket) : canRefund)) return;
+    busyRef.current = true;
+    setBusy(true);
+    setNotice('working');
     try {
-      setSpinning(true);
-      flash("Продажи закрыты: розыгрыш зафиксирован в Switchboard…", 8000);
-      const c = await api.lottery.drawCommit({ roundId });
-      const rc = await handleTxResponse(c);
-      if (!rc.success) {
-        setSpinning(false);
-        return flash(`Commit: ${rc.error}`);
+      // Re-read both on-chain sources immediately before asking the wallet.
+      const fresh = readLotteryRound(await api.query.lotteryRound(id), id);
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      const owned = fresh && readLotteryTickets(await api.query.myTickets(id, owner), fresh, owner);
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      if (!fresh || !owned?.some(t => t.pubkey === ticket.pubkey && t.ticketNumber === ticket.ticketNumber) ||
+          !(action === 'claim' ? fresh.drawn && !fresh.claimed && fresh.winningTicket === ticket.ticketNumber
+            : canRefundLotteryTicket(fresh))) {
+        setNotice('uncertain');
+        setRefresh(n => n + 1);
+        return;
       }
-      flash("Барабан крутится: оракул раскрывает выигрышный билет…", 30000);
-      for (let i = 0; i < 20; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
-        const round: any = await api.lottery.round(roundId).catch(() => null);
-        if (round?.drawn) break;
-      }
-      setSpinning(false);
-      load(roundId);
-    } catch (e: any) {
-      setSpinning(false);
-      flash(`${humanizeVrfError(String(e?.message || e))}`);
+      const response = action === 'claim'
+        ? await api.lottery.claim({ winner: owner, roundId: id, ticketNumber: ticket.ticketNumber })
+        : await api.lottery.ticketRefund({ payer: owner, roundId: id, ticketNumber: ticket.ticketNumber });
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      const result = await handleTxResponse(response, {
+        kind: 'lotteryTicket', action, user: owner, roundId: id, ticketNumber: ticket.ticketNumber,
+      });
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      if (result.success || result.signature) {
+        setPending({ action, ticket: ticket.ticketNumber });
+        setNotice(result.success ? 'successCheck' : 'pending');
+        setRefresh(n => n + 1);
+      } else setNotice('failed');
+    } catch {
+      if (walletRef.current === owner && selectionRef.current === id) setNotice('uncertain');
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
   }
 
-  async function claim() {
-    if (!address) return flash("Сначала подключите кошелёк");
-    const n = claimNum.trim();
-    if (!n || isNaN(Number(n))) return flash("❌ Укажите номер выигрышного билета");
-    try {
-      flash("Забираем приз…");
-      const resp = await api.lottery.claim({ winner: address, roundId, ticketNumber: n });
-      const r = await handleTxResponse(resp);
-      flash(r.success ? `Приз забран: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
-      if (r.success) setTimeout(() => load(roundId), 2000);
-    } catch (e: any) {
-      flash(`${humanizeVrfError(String(e?.message || e))}`);
-    }
-  }
-
-  const roundEntries = round
-    ? Object.entries(round).filter(([k]) => !["bump"].includes(k))
-    : [];
+  const status = !selectedId ? c.invalidRound : roundState === 'loading' || roundState === 'ready' && !activeRound ? c.roundLoading
+    : roundState === 'missing' ? c.roundMissing : roundState !== 'ready' ? c.roundError
+    : activeRound?.drawn ? c.drawn : activeRound?.drawCommitted ? c.drawPending : c.awaitingDraw;
+  const ticketStatus = !address ? c.connect : ticketState === 'loading' || ticketState === 'idle' && roundState === 'loading'
+    ? c.ticketsLoading : ticketState === 'error' ? c.ticketsError : ticketState === 'ready' && activeTickets?.length === 0
+      ? c.noTickets : null;
 
   return (
-    <div className="p-4 pt-6 pb-24 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2">
-          <img src={UI_ICONS.lottery} alt="" className="w-7 h-7 object-contain" />
-          Лотерея
+    <div className="p-4 pt-6 pb-24 space-y-4 min-w-0 [overflow-wrap:anywhere]" lang={language}>
+      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+        <h1 className="text-2xl font-bold text-parchment flex items-center gap-2 min-w-0 [overflow-wrap:anywhere]">
+          <img src={UI_ICONS.lottery} alt="" className="w-7 h-7 object-contain shrink-0" />{c.title}
         </h1>
-        <button onClick={() => load(roundId)} className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20">
-          {loading ? "…" : "⟳ Refresh"}
+        <button type="button" onClick={refreshNow} disabled={!selectedId || busy}
+          className="text-xs text-straw px-3 py-2 rounded-lg bg-soil-800 border border-straw/20 disabled:opacity-40">
+          {c.refresh}
         </button>
       </div>
-      <p className="text-straw text-xs">
-        Квантовый розыгрыш: цена билета целиком хранится on-chain в раунде; победителя выбирает оракул Switchboard
-        On-Demand (раскрыть может любой), приз — 70% пула; если раунд не разыгран, каждый билет возвращается полностью.
-      </p>
-
-      {txStatus && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
-          <NoticeMsg text={txStatus} />
-        </motion.div>
-      )}
-
-      {/* Выбор раунда */}
-      <div className="flex items-center gap-2">
-        <span className="text-straw text-xs">Раунд</span>
-        <input type="number" min="1" step="1" value={roundId}
-          onChange={(e) => setRoundId(e.target.value)}
-          className="w-24 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
-      </div>
-
-      {/* Барабан */}
-      <Card className="text-center py-6">
-        <motion.div
-          animate={{ rotate: spinning ? 360 : 0 }}
-          transition={spinning ? { repeat: Infinity, duration: 0.5, ease: "linear" } : { duration: 0.4 }}
-          className="text-6xl inline-block"
-        >
-          <img src={UI_ICONS.drum} alt="" className="w-16 h-16 object-contain" />
-        </motion.div>
-        <p className="text-parchment font-semibold mt-2">{spinning ? "Барабан крутится…" : "Квантовый розыгрыш"}</p>
-        <p className="text-straw text-xs mt-1">
-          {round?.winnerTicket !== undefined && toNum(round.winnerTicket) >= 0 && round?.drawn
-            ? `Выигрышный билет: №${fmtNum(round.winnerTicket)}`
-            : "Крутите барабан после продажи билетов"}
-        </p>
-      </Card>
-
-      {/* Состояние раунда */}
+      <p className="text-straw text-xs">{c.intro}</p>
+      <label className="flex flex-wrap items-center gap-2 text-straw text-xs">
+        {c.round}
+        <input type="text" inputMode="numeric" pattern="[0-9]*" value={roundId}
+          onChange={event => setRoundId(event.target.value.trim())}
+          className="w-28 max-w-full bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
+      </label>
+      {notice && <p className="text-straw text-xs" role="status">{c[notice]}</p>}
       <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Раунд {roundId}</div>
-        {!round && roundErr && (
-          <div className="text-center py-3">
-            <div className="mb-1"><img src={UI_ICONS.lottery} alt="" className="w-10 h-10 object-contain mx-auto" /></div>
-            <p className="text-straw text-xs mb-3">Раунд ещё не создан</p>
-            <button onClick={initRound} className="px-4 py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold">
-              Создать раунд {roundId}
-            </button>
-          </div>
-        )}
-        {round && (
-          <div className="grid grid-cols-2 gap-2">
-            {roundEntries.map(([k, v]) => (
-              <div key={k} className="px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10">
-                <p className="text-straw text-xs">{FIELD_LABELS[k] || k}</p>
-                <p className="text-parchment text-sm font-medium break-all">{fmtField(k, v)}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <h2 className="text-parchment font-semibold text-sm mb-2">{c.roundStatus}</h2>
+        <p className="text-straw text-xs" role="status">{status}</p>
+        {roundState === 'ready' && activeRound && <>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+            {[
+              [c.round, activeRound.roundId], [c.sold, BigInt(activeRound.ticketsSold).toLocaleString(language)],
+              [c.pool, `${lamportsToSol(activeRound.poolLamports)} SOL`],
+              [c.created, new Date(activeRound.createdAt * 1000).toLocaleString(language)],
+              [c.winning, activeRound.drawn && activeRound.winningTicket !== null ? activeRound.winningTicket : '—'],
+            ].map(([label, value]) => <div key={label} className="px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10 min-w-0">
+              <dt className="text-straw text-xs">{label}</dt><dd className="text-parchment text-sm font-medium break-words">{value}</dd>
+            </div>)}
+          </dl>
+          {activeRound.drawn && <p className="text-straw text-xs mt-3">{activeRound.claimed ? c.claimed : c.unclaimed}</p>}
+        </>}
       </Card>
-
-      {/* Покупка билета */}
       <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Купить билет</div>
-        {round?.ticketPriceLamports !== undefined && (
-          <p className="text-straw text-xs mb-2">Цена билета: <span className="text-wheat-500 font-semibold">{fmtSol(round.ticketPriceLamports)} ◎</span></p>
-        )}
-        <div className="flex items-center gap-2">
-          <p className="flex-1 text-straw text-xs">Номер билета назначает сеть по порядку покупки.</p>
-          <button onClick={buyTicket} disabled={!address} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium disabled:opacity-40">
-            <span className="inline-flex items-center gap-1"><img src={UI_ICONS.ticket} alt="" className="w-4 h-4 object-contain" /> Buy</span>
-          </button>
-        </div>
-
-        {myTickets.length > 0 && (
-          <div className="mt-3">
-            <p className="text-straw text-xs mb-1.5">Ваши билеты:</p>
-            <div className="flex flex-wrap gap-1.5">
-              {myTickets.map((t: any, i) => (
-                <span key={i} className="px-2.5 py-1 rounded-lg bg-wheat-500/15 border border-wheat-500/30 text-wheat-500 text-xs font-semibold inline-flex items-center gap-1">
-                  <img src={UI_ICONS.ticket} alt="" className="w-3.5 h-3.5 object-contain" /> №{fmtNum(t.ticketNumber ?? t)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <h2 className="text-parchment font-semibold text-sm mb-2">{c.tickets}</h2>
+        {ticketStatus && <p className="text-straw text-xs" role="status">{ticketStatus}</p>}
+        {roundState === 'ready' && ticketState === 'ready' && activeTickets && activeTickets.length > 0 && <>
+          <p className="text-straw text-xs mb-2">{activeRound?.drawn ? c.claimHelp : c.refundHelp}</p>
+          <ul className="space-y-2">
+            {activeTickets.map(ticket => <li key={ticket.pubkey} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-soil-800/70 border border-straw/10 min-w-0">
+              <span className="text-parchment text-sm">{c.ticket(BigInt(ticket.ticketNumber).toLocaleString(language))}</span>
+              {canClaim(ticket) && <button type="button" disabled={busy || !!pending} onClick={() => act('claim', ticket)}
+                className="px-3 py-2 rounded-xl bg-sprout-500 text-white text-xs disabled:opacity-40 max-w-full [overflow-wrap:anywhere]">{c.claim}</button>}
+              {!activeRound?.drawn && canRefund && <button type="button" disabled={busy || !!pending} onClick={() => act('refund', ticket)}
+                className="px-3 py-2 rounded-xl bg-wheat-600 text-white text-xs disabled:opacity-40 max-w-full [overflow-wrap:anywhere]">{c.refund}</button>}
+            </li>)}
+          </ul>
+          {!activeRound?.drawn && !canRefund && <p className="text-straw text-xs mt-2">{c.refundWaiting}</p>}
+        </>}
       </Card>
-
-      {/* Розыгрыш */}
       <Card>
-        <div className="text-parchment font-semibold text-sm mb-1">Розыгрыш (комит-ревил)</div>
-        <p className="text-straw text-xs mb-3">
-          Фаза 1 фиксирует хеш секрета ончейн, фаза 2 раскрывает его и определяет победителя — подтасовать задним числом нельзя.
-        </p>
-        <button onClick={draw} disabled={spinning}
-          className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-50">
-          {spinning ? "Розыгрыш идёт…" : <span className="inline-flex items-center gap-1.5"><img src={UI_ICONS.lottery} alt="" className="w-4 h-4 object-contain" /> Запустить розыгрыш</span>}
-        </button>
-      </Card>
-
-      {/* Клейм */}
-      <Card>
-        <div className="text-parchment font-semibold text-sm mb-2">Забрать приз</div>
-        <div className="flex items-center gap-2">
-          <input type="number" min="0" step="1" placeholder="Номер выигрышного билета" value={claimNum}
-            onChange={(e) => setClaimNum(e.target.value)}
-            className="flex-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
-          <button onClick={claim} className="px-4 py-2 rounded-xl bg-sprout-500 text-white text-sm font-medium">
-            Забрать
-          </button>
-        </div>
+        <h2 className="text-parchment font-semibold text-sm mb-2">{c.purchaseTitle}</h2>
+        <p className="text-straw text-xs" role="status">{c.purchasePaused}</p>
       </Card>
     </div>
   );

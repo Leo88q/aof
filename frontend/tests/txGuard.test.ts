@@ -190,3 +190,41 @@ test("fee payer and message shape: the wallet must pay; one lookup table is enou
   assert.equal((await guard(noLookup)).safe, true);
   assert.equal((await guard(new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }))).safe, false, "empty transaction");
 });
+
+test('lottery claim/refund intents bind wallet, round, ticket and exact instruction before signing', async () => {
+  const { lotteryPda } = await import('../src/lib/lotteryReadings');
+  const { CORE_INSTRUCTIONS } = await import('../src/lib/coreInstructions');
+  const roundId = '9007199254740993';
+  const ticket = '42';
+  const config = PublicKey.findProgramAddressSync([Buffer.from('config')], core)[0];
+  const ixFor = (action: 'claim' | 'refund', id = roundId, n = ticket, owner = user.publicKey) => {
+    const name = action === 'claim' ? 'claim_lottery_prize' : 'refund_lottery_ticket';
+    const spec = CORE_INSTRUCTIONS.find(value => value.name === name)!;
+    return new TransactionInstruction({ programId: core, data: Buffer.from(spec.discriminator), keys: [
+      { pubkey: config, isSigner: false, isWritable: false },
+      { pubkey: new PublicKey(lotteryPda('lottery_round', id)), isSigner: false, isWritable: true },
+      { pubkey: new PublicKey(lotteryPda('lottery_ticket', id, n)), isSigner: false, isWritable: action === 'refund' },
+      { pubkey: owner, isSigner: action === 'claim', isWritable: true },
+    ] });
+  };
+  const intent = (action: 'claim' | 'refund', changes: Record<string, string> = {}) =>
+    ({ kind: 'lotteryTicket', action, user: user.publicKey.toBase58(), roundId, ticketNumber: ticket, ...changes } as const);
+  for (const action of ['claim', 'refund'] as const) {
+    assert.equal((await guard(transaction(ixFor(action)), { intent: intent(action) })).safe, true);
+    assert.equal((await guard(transaction(ixFor(action, '0', '0')), { intent: intent(action, { roundId: '0', ticketNumber: '0' }) })).safe, true,
+      'existing round zero must remain claimable or refundable');
+    for (const [description, ix, expected] of [
+      ['wrong round', ixFor(action, '2'), intent(action)],
+      ['wrong ticket', ixFor(action, roundId, '43'), intent(action)],
+      ['wrong recipient', ixFor(action, roundId, ticket, other), intent(action)],
+      ['wrong wallet intent', ixFor(action), intent(action, { user: other.toBase58() })],
+      ['wrong action', ixFor(action), intent(action === 'claim' ? 'refund' : 'claim')],
+    ] as const) {
+      assert.equal((await guard(transaction(ix), { intent: expected })).safe, false, `${action}: ${description}`);
+    }
+    assert.equal((await guard(transaction(ixFor(action), SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: other, lamports: 1 })),
+      { intent: intent(action) })).safe, false, `${action}: extra payment`);
+    const extra = ixFor(action); extra.data = Buffer.concat([extra.data, Buffer.from([1])]);
+    assert.equal((await guard(transaction(extra), { intent: intent(action) })).safe, false, `${action}: unexpected data`);
+  }
+});

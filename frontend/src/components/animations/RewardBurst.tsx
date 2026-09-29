@@ -1,101 +1,29 @@
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
-import { ResourceGlyph } from "../visual/ResourceGlyph";
+import { Card } from '../ui/Card';
+import { ResourceGlyph } from '../visual/ResourceGlyph';
+import { UI_ICONS } from '../../lib/visualAssets';
+import { useInstrumentLanguage } from '../../i18n/LocaleProvider';
+import { dormantFeatureCopy } from '../../i18n/dormantFeatureCopy';
 
 interface RewardBurstProps {
   onClaim: () => void;
   rewardLabel: string;
 }
 
-// Сундук трясётся → открывается → лучи → награда вылетает частицами
-export function RewardBurst({ onClaim, rewardLabel }: RewardBurstProps) {
-  const [stage, setStage] = useState<"idle" | "shaking" | "burst" | "done">("idle");
-
-  function handleClick() {
-    if (stage !== "idle") return;
-    setStage("shaking");
-    setTimeout(() => setStage("burst"), 800);
-    setTimeout(() => {
-      setStage("done");
-      onClaim();
-    }, 1600);
-  }
-
-  if (stage === "done") {
-    return (
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        className="text-center py-2"
-      >
-        <img src={UI_ICONS.noticeSuccess} alt="" className="w-8 h-8 object-contain mx-auto" />
-        <p className="text-sprout-500 text-sm mt-1">Получено: {rewardLabel}</p>
-      </motion.div>
-    );
-  }
-
+/** Retired and currently unmounted. Animation time cannot prove settlement;
+ * keep the old prop shape for compatibility but never call onClaim on a timer. */
+export function RewardBurst(_props: RewardBurstProps) {
+  const language = useInstrumentLanguage();
+  const copy = dormantFeatureCopy[language];
   return (
-    <div className="relative flex flex-col items-center py-2">
-      {/* Лучи при открытии */}
-      {stage === "burst" && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1.5 }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <div className="w-32 h-32 rounded-full bg-wheat-500/30 blur-xl" />
-        </motion.div>
-      )}
-
-      {/* Сундук */}
-      <motion.button
-        onClick={handleClick}
-        animate={
-          stage === "shaking"
-            ? { rotate: [0, -8, 8, -8, 8, 0] }
-            : stage === "burst"
-            ? { scale: [1, 1.2, 0] }
-            : {}
-        }
-        transition={{ duration: stage === "shaking" ? 0.8 : 0.6 }}
-        className="text-5xl relative z-10"
-      >
-        {stage === "burst" ? (
-          <ResourceGlyph icon={UI_ICONS.rewardSpark} alt="" className="w-14 h-14" />
-        ) : (
-          <ResourceGlyph icon={UI_ICONS.rewardCapsule} alt="" className="w-14 h-14" />
-        )}
-      </motion.button>
-
-      {/* Частицы при взрыве */}
-      {stage === "burst" && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {Array.from({ length: 12 }).map((_, i) => {
-            const angle = (i / 12) * Math.PI * 2;
-            const particleIcons = [UI_ICONS.tokenCoin, UI_ICONS.rewardStar, resourceIcon("SYNAPSE") || "", resourceIcon("QUANTUM_BIT") || ""];
-            return (
-              <motion.span
-                key={i}
-                className="absolute"
-                initial={{ x: 0, y: 0, opacity: 1 }}
-                animate={{
-                  x: Math.cos(angle) * 80,
-                  y: Math.sin(angle) * 80,
-                  opacity: 0,
-                }}
-                transition={{ duration: 0.8 }}
-              >
-                <ResourceGlyph icon={particleIcons[i % 4]} alt="" className="w-5 h-5" />
-              </motion.span>
-            );
-          })}
+    <Card className="min-w-0">
+      <div role="status" lang={language} className="flex items-start gap-3 min-w-0 [overflow-wrap:anywhere]">
+        <ResourceGlyph icon={UI_ICONS.noticeError} alt="" className="w-7 h-7 shrink-0" />
+        <div className="min-w-0">
+          <h3 className="text-parchment font-semibold text-sm">{copy.rewardTitle}</h3>
+          <p className="text-gold-400 text-xs mt-1 font-semibold">{copy.rewardPaused}</p>
+          <p className="text-straw text-xs mt-1">{copy.rewardReason}</p>
         </div>
-      )}
-
-      {stage === "idle" && (
-        <p className="text-straw text-xs mt-2">Нажми чтобы открыть</p>
-      )}
-    </div>
+      </div>
+    </Card>
   );
 }

@@ -87,6 +87,22 @@
   color-scheme: dark;
 }
 
+/* Seasonal VIP is visual only. These palettes are applied to the game shell
+   exclusively after a fresh on-chain season/pass read; disconnect, expiry or
+   RPC failure removes the attribute. No resource, payout or odds change. */
+.app-shell[data-vip-theme="copper"] {
+  --fg-glow: #D5A66E;
+  --fg-accent: #F1C794;
+  --fg-accent-dim: #98774F;
+  --fg-reward: #DB8C79;
+}
+.app-shell[data-vip-theme="orchid"] {
+  --fg-glow: #B3A2E4;
+  --fg-accent: #D0C4F6;
+  --fg-accent-dim: #806CB0;
+  --fg-reward: #E4A3D4;
+}
+
 /* Совместимые алиасы прежних слоёв. Нужны, пока сайт (/site) живёт на своём
    site.css: он ссылается на --nf-*. Удаляются вместе с переездом сайта. */
 :root {
@@ -631,8 +647,8 @@ h1, h2, h3, .fg-title {
   font-size: 13.5px;
 }
 .fg-row + .fg-row { border-top: 1px solid color-mix(in srgb, var(--fg-text) 7%, transparent); }
-.fg-row__k { color: var(--fg-dim); }
-.fg-row__v { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg-text); text-align: right; }
+.fg-row__k { color: var(--fg-dim); min-width: 0; overflow-wrap: anywhere; }
+.fg-row__v { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg-text); text-align: right; min-width: 0; overflow-wrap: anywhere; }
 .fg-row__v small { color: var(--fg-muted); font-weight: 500; font-size: 11px; margin-left: 4px; }
 
 /* Честный прочерк и подпись «нет связи» */
@@ -643,7 +659,8 @@ h1, h2, h3, .fg-title {
 /* ---------- 6. ДЕТАЛИ ПРИБОРОВ ---------- */
 /* Криобанк: сосуд с азотом, стеллаж, соломинки */
 .cryo-body { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: stretch; }
-.dewar { display: grid; justify-items: center; gap: 5px; }
+.dewar { display: grid; justify-items: center; gap: 5px; min-width: 0; }
+.dewar small { max-width: 100%; text-align: center; overflow-wrap: anywhere; }
 .dewar__glass {
   position: relative;
   width: 30px;
@@ -679,8 +696,10 @@ h1, h2, h3, .fg-title {
 .cryo-rack + .cryo-rack { margin-top: 9px; }
 .cryo-rack__id {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
+  overflow-wrap: anywhere;
   font-size: 9.5px;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -791,7 +810,7 @@ h1, h2, h3, .fg-title {
 }
 .mini--on { color: #06171B; background: linear-gradient(180deg, var(--fg-accent), color-mix(in srgb, var(--fg-glow) 72%, #000)); }
 .strip__val { font-family: var(--fg-font-num); font-size: 12px; color: var(--fg-text); }
-.mix__bus { margin-top: 12px; display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--fg-dim); }
+.mix__bus { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; overflow-wrap: anywhere; font-size: 11px; color: var(--fg-dim); }
 .mix__bus i { flex: 1; height: 3px; border-radius: 2px; background: linear-gradient(90deg, #2A3239, color-mix(in srgb, var(--fg-glow) 55%, transparent)); }
 
 /* Эхолот: лента глубины и круговой индикатор */
@@ -818,7 +837,7 @@ h1, h2, h3, .fg-title {
 .ppi .blip { fill: var(--fg-accent); }
 .ppi__sweep { transform-origin: 60px 60px; animation: fgSpin 4.6s linear infinite; }
 @keyframes fgSpin { to { transform: rotate(360deg); } }
-.sonar__legend { display: grid; gap: 6px; font-size: 11px; color: var(--fg-dim); }
+.sonar__legend { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; font-size: 11px; color: var(--fg-dim); }
 .sonar__legend b { color: var(--fg-text); font-variant-numeric: tabular-nums; }
 
 /* Микропланшет: лунки и ридер */
@@ -864,7 +883,8 @@ h1, h2, h3, .fg-title {
   box-shadow: 0 0 10px color-mix(in srgb, var(--fg-ok) 40%, transparent);
 }
 .well--x { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg-err) 60%, transparent), inset 0 1px 2px rgba(0, 0, 0, .8); }
-.reader { display: grid; gap: 9px; align-content: start; }
+.reader { display: grid; gap: 9px; align-content: start; min-width: 0; }
+.reader .fg-key { white-space: normal; overflow-wrap: anywhere; }
 .reader__box {
   padding: 9px 10px;
   border-radius: 10px;
@@ -888,7 +908,7 @@ h1, h2, h3, .fg-title {
   background: linear-gradient(180deg, #101518, #0B0E11);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), inset 0 12px 22px -14px rgba(0, 0, 0, .9);
 }
-.lanes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; height: 118px; margin-bottom: 16px; }
+.lanes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; height: 118px; margin-bottom: 34px; }
 .lane {
   position: relative;
   border-radius: 6px;
@@ -920,13 +940,14 @@ h1, h2, h3, .fg-title {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -15px;
+  bottom: -32px;
+  min-height: 30px;
   text-align: center;
   font-size: 9px;
+  line-height: 1.15;
   color: var(--fg-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* Кросс: порты и патч-корды */
@@ -970,6 +991,7 @@ h1, h2, h3, .fg-title {
 }
 .pcard__head { margin-bottom: 8px; }
 .pcard__foot { margin-top: 9px; font-size: 9px; color: #3B444A; flex-wrap: wrap; }
+.pcard__head span, .pcard__foot span { min-width: 0; overflow-wrap: anywhere; }
 .holes { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px 5px; }
 .hole { aspect-ratio: 1; border-radius: 50%; background: #C3CBD0; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35); }
 .hole--punched { background: #0B0F12; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .9); }
@@ -1316,8 +1338,10 @@ input.fg-input:focus {
 
 .vg-index__head { display: flex; flex-direction: column; gap: 4px; padding: 0 8px 14px; }
 .vg-index__head b { font-family: var(--fg-font-title); font-size: 15px; letter-spacing: .02em; }
-.vg-index__head span { color: var(--fg-dim); font-size: 11px; }
-.vg-index__back { margin-top: 8px; color: var(--fg-glow); font-size: 12px; text-decoration: none; }
+.vg-index__head span { color: var(--fg-dim); font-size: 11px; overflow-wrap: anywhere; }
+.vg-index__head .locale-switcher { align-self: flex-start; margin-top: 8px; }
+.vg-index__head .locale-switcher__menu { left: 0; right: auto; width: min(248px, calc(100vw - 48px)); }
+.vg-index__back { margin-top: 8px; color: var(--fg-glow); font-size: 12px; text-decoration: none; overflow-wrap: anywhere; }
 .vg-index__back:hover { color: var(--fg-accent); }
 
 .vg-index__group { margin-bottom: 12px; }
@@ -1325,8 +1349,9 @@ input.fg-input:focus {
   padding: 6px 8px;
   color: var(--fg-muted);
   font-size: 10px;
-  letter-spacing: .14em;
+  letter-spacing: .08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .vg-index__item {
@@ -1343,7 +1368,8 @@ input.fg-input:focus {
   text-align: left;
   cursor: pointer;
 }
-.vg-index__item small { display: block; margin-top: 2px; color: var(--fg-muted); font-size: 10px; }
+.vg-index__item > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.vg-index__item small { display: block; margin-top: 2px; color: var(--fg-muted); font-size: 10px; overflow-wrap: anywhere; }
 .vg-index__item:hover { border-color: var(--fg-line); color: var(--fg-text); }
 .vg-index__item.active {
   border-color: color-mix(in srgb, var(--fg-glow) 45%, transparent);
@@ -1354,8 +1380,8 @@ input.fg-input:focus {
 
 .vg-main { padding: 22px clamp(16px, 4vw, 56px) 72px; max-width: 900px; }
 
-.vg-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.vg-count { color: var(--fg-muted); font-family: var(--fg-font-num); font-size: 12px; }
+.vg-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.vg-count { color: var(--fg-muted); font-family: var(--fg-font-num); font-size: 12px; overflow-wrap: anywhere; }
 .vg-nav {
   padding: 7px 12px;
   border: 1px solid var(--fg-line);
@@ -1365,14 +1391,18 @@ input.fg-input:focus {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .vg-nav:disabled { opacity: .4; cursor: default; }
 
 .vg-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 10px;
   margin: 0 0 4px;
+  overflow-wrap: anywhere;
   font-family: var(--fg-font-title);
   font-size: 24px;
   font-weight: 600;
@@ -1407,7 +1437,7 @@ input.fg-input:focus {
   letter-spacing: .14em;
   text-transform: uppercase;
 }
-.vg-facts dd { margin: 4px 0 0; color: var(--fg-text); font-size: 13px; line-height: 1.5; }
+.vg-facts dd { margin: 4px 0 0; color: var(--fg-text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .vg-file { color: var(--fg-glow); font-family: var(--fg-font-num); font-size: 11px; }
 
 .vg-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -1421,3 +1451,82 @@ input.fg-input:focus {
   .vg { grid-template-columns: 1fr; }
   .vg-index { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--fg-line); }
 }
+
+/* Landscape art at natural width: do not magnify 16:9 scenes to fill a portrait
+   viewport. Distinct frames keep tall screens atmospheric without duplication. */
+.nf-scene { display: flex; flex-direction: column; justify-content: flex-start; gap: 10px; }
+.nf-scene img { width: 100%; height: auto; flex: none; object-fit: contain; opacity: .54; }
+.nf-scene::after { background: linear-gradient(180deg, rgba(11,13,17,.48), rgba(11,13,17,.74) 54%, rgba(11,13,17,.88)); }
+.game-topbar {
+  position: relative; z-index: 8; flex: none;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 48px; padding: calc(8px + env(safe-area-inset-top)) 18px 8px;
+  background: rgba(11,13,17,.94); border-bottom: 1px solid var(--fg-line);
+}
+.game-topbar__brand { font: 700 15px/1.1 var(--fg-font-title); color: var(--fg-text); }
+.game-topbar__brand small { display: block; margin-top: 3px; color: var(--fg-dim); font: 500 9px/1.2 var(--fg-font-num); letter-spacing: .06em; }
+.game-topbar a { flex: none; color: var(--fg-accent); font: 600 12px/1.3 var(--fg-font-text); text-decoration: none; padding: 7px 10px; border: 1px solid var(--fg-line); border-radius: 10px; }
+.game-topbar a:hover { background: var(--fg-glass); }
+.game-topbar a:focus-visible { outline: 2px solid var(--fg-accent); outline-offset: 2px; }
+.game-topbar__tools { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.game-topbar__tools > a { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab-label--short { display: none; }
+@media (max-width: 440px) {
+  .tab-label--full { display: none; }
+  .tab-label--short { display: block; }
+  .game-topbar__brand small { display: none; }
+  .game-topbar__brand { font-size: 13px; }
+  .game-topbar { padding-inline: 10px; }
+  .game-topbar__tools > a { font-size: 11px; padding-inline: 7px; max-width: 112px; }
+}
+@media (max-width: 355px) {
+  .game-topbar__tools > a { max-width: 75px; }
+  .game-topbar__brand { font-size: 12px; }
+}
+.game-language-notice { position: relative; z-index: 7; flex: none; margin: 0; padding: 5px 12px; background: var(--fg-deep); border-bottom: 1px solid var(--fg-line); color: var(--fg-dim); text-align: center; font: 500 10px/1.35 var(--fg-font-text); overflow-wrap: anywhere; }
+/* Flexible labels for future translations, including Vietnamese and Portuguese. */
+.app-shell :where(.card, .fg-screen, .fg-quiet, .fg-key, .nav-title, .sub-tab-btn) { min-width: 0; overflow-wrap: anywhere; }
+.app-shell .sub-tab-btn { white-space: normal; text-align: center; justify-content: center; }
+.app-shell .fg-key { max-width: 100%; white-space: normal; text-align: center; }
+.app-shell .nav-title span { max-width: 100%; }
+/* Localized instrument panels: labels grow vertically instead of being clipped. */
+.fg__id, .fg-screen__head, .cryo-rack__id { flex-wrap: wrap; }
+.fg__id > *, .fg-screen__head > *, .cryo-rack__id > * { min-width: 0; overflow-wrap: anywhere; }
+.fg-sticker { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.fg-screen__title, .fg-screen__sub, .fg-ro__label, .fg-ro__hint, .slot__name { overflow-wrap: anywhere; }
+.slot__name { overflow: visible; text-overflow: clip; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .fg__id { letter-spacing: .04em; }
+  .fg__no { max-width: 100%; }
+  .cryo-rack__id { letter-spacing: .03em; }
+}
+/* A translated tool name must wrap inside its own console channel, not
+   stretch the neighboring faders or push the whole panel past the viewport. */
+.strip__name { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+
+/* Collection titles and rarity captions have long localized words. */
+.nf-gallery__name, .nf-gallery__en { min-width: 0; overflow-wrap: anywhere; }
+
+/* Translated economy names and precise nine-decimal on-chain balances must
+   wrap within their tiles instead of being truncated or pushing the grid out. */
+.resource-label, .pantry-item-label { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.resource-card, .pantry-item { min-width: 0; }
+.pantry-item { flex-wrap: wrap; }
+.resource-amount, .pantry-item-amount { min-width: 0; overflow-wrap: anywhere; }
+.pantry-filter { min-width: 0; overflow-wrap: anywhere; }
+
+/* Gel lane names in Portuguese, Vietnamese and Filipino may need two lines. */
+.economy-overview .lanes { margin-bottom: 30px; }
+.economy-overview .lane__name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; bottom: -27px; }
+
+/* Listing prices can have nine decimal places; translated sonar labels must
+   wrap without pushing the panel out of the 320px game viewport. */
+.listing-page .sonar__legend, .listing-page .sonar__legend span { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 440px) {
+  .listing-page .ppi-wrap { grid-template-columns: minmax(0, 1fr); }
+  .listing-page .ppi { margin-inline: auto; }
+}
+
+/* Player-account readouts and long profile section names in all seven locales. */
+.profile-home .fg-ro__cell { flex: 1 1 116px; min-width: 0; overflow-wrap: anywhere; }
+.profile-home .list-row .label, .profile-home .fg-screen__sub { overflow-wrap: anywhere; }

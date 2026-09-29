@@ -186,15 +186,17 @@ test('#104 строгий CSP, никаких сторонних скрипто�
   }
 });
 
-test('#105/#124/#125 страница правил говорит игроку про поддержку, устройство и принуждение', () => {
-  const rules = read('frontend/src/site/content/rules.ts');
+test('#105/#124/#125 localized safety rules warn about fake support, devices and coercion', () => {
+  const rules = read('frontend/src/i18n/siteRulesCopy.ts');
   for (const id of ["id: 'support'", "id: 'devices'", "id: 'coercion'", "id: 'keys'"]) {
-    assert.ok(rules.includes(id), `в правилах должен быть раздел ${id}`);
+    assert.ok(rules.includes(id), `missing rule ${id}`);
   }
-  assert.match(rules, /не пишет первой|не напишет тебе в личку/i, 'правило «поддержка не пишет первой» (#124)');
-  assert.match(rules, /iOS 18\.4|аппаратный кошелёк/i, 'правило про устройства и watering hole (#105)');
-  assert.match(rules, /принуд|под давлением/i, 'правило про физическое принуждение (#125)');
-  assert.match(read('frontend/src/legal/WalletSafetyNotice.tsx'), /seed-фразу или приватный ключ/, 'предупреждение перед подключением кошелька должно запрещать seed (#105)');
+  assert.match(rules, /самозваной поддержки|fake support/i);
+  assert.match(rules, /аппаратное устройство|hardware device/i);
+  assert.match(rules, /принуждают|coerced/i);
+  assert.match(read('frontend/src/legal/WalletSafetyNotice.tsx'), /walletCopy\[language\]/,
+    'wallet warning must use the localized seed phrase notice');
+  assert.match(read('frontend/src/i18n/walletCopy.ts'), /Никогда не вводите seed-фразу или приватный ключ/);
 });
 
 // ======================================================================

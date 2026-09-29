@@ -5,7 +5,7 @@ const SCENE_EMOJI: Record<string, string> = {
   "🗺️": "locMap", "🗺": "locMap", "🏚️": "locServerRuins", "🏚": "locServerRuins",
   "🏭": "locFactory", "🏰": "locVault", "🏡": "locEdge", "🏖️": "locCoolLake",
   "🏖": "locCoolLake", "🌵": "locArid", "🧙♂️": "npcOracle", "🧙": "npcOracle",
-  "💡": "buffIdea", "📜": "catalog",
+  "💡": "buffIdea", "📜": "catalog", "🥔": "rewardStar", // Potato is not in the MIND resource registry
 };
 
 /**
@@ -19,7 +19,7 @@ const ERROR = new Set(["❌", "", "️", "", "💀", "✕", "⏸️", "⏸", "�
 
 /** A few resource-flavoured prefixes reuse the existing resource icons. */
 const RESOURCE_EMOJI: Record<string, string> = {
-  "🧠": "MIND", "🥔": "MIND", "🥣": "SIGNAL", "🍞": "MODEL", "🌱": "NEURON",
+  "🧠": "MIND", "🥣": "SIGNAL", "🍞": "MODEL", "🌱": "NEURON",
   "🌾": "SYNAPSE", "🪨": "SILICON", "🪵": "CIRCUIT", "💧": "POWER", "⚡": "NEURON",
   "🔋": "POWER", "💻": "COMPUTE", "📊": "DATA", "🔌": "CIRCUIT", "🧱": "SILICON",
   "🔥": "POWER", "💰": "QUANTUM_BIT", "📦": "DATA",
@@ -52,7 +52,7 @@ export function NoticeMsg({ text, className = "", iconSize = 16 }: {
 }) {
   const n = noticeSplit(text);
   return (
-    <span className={"inline-flex items-center gap-1.5 " + className}>
+    <span className={"inline-flex items-center gap-1.5 max-w-full min-w-0 " + className}>
       {n.icon ? (
         <img
           src={n.icon}
@@ -63,7 +63,7 @@ export function NoticeMsg({ text, className = "", iconSize = 16 }: {
           height={iconSize}
         />
       ) : null}
-      <span>{n.text}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{n.text}</span>
     </span>
   );
 }

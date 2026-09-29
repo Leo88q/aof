@@ -1,5 +1,24 @@
 import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import { DEVICE_BY_KEY, DEVICE_MAP, type DeviceKey } from "./deviceMap";
+import { LanguageSwitcher, useLocale } from "../i18n/LocaleProvider";
+import { galleryCopy } from "../i18n/galleryCopy";
+import { frameIds, galleryFrameCopy, type FrameId } from "../i18n/galleryFrameCopy";
+import { cryoIds, galleryCryoCopy, type CryoId } from "../i18n/galleryCryoCopy";
+import { homeResourceNames } from "../i18n/homeDetail";
+import { mixIds, galleryMixCopy, type MixId } from "../i18n/galleryMixCopy";
+import { sonarIds, gallerySonarCopy, type SonarId } from "../i18n/gallerySonarCopy";
+import { plateIds, galleryPlateCopy, type PlateId } from "../i18n/galleryPlateCopy";
+import { gelIds, galleryGelCopy, type GelId } from "../i18n/galleryGelCopy";
+import { crossIds, galleryCrossCopy, type CrossId } from "../i18n/galleryCrossCopy";
+import { cardsIds, galleryCardsCopy, type CardsId } from "../i18n/galleryCardsCopy";
+import { baroIds, galleryBaroCopy, type BaroId } from "../i18n/galleryBaroCopy";
+import { behaviorIds, galleryBehaviorCopy, type BehaviorId } from "../i18n/galleryBehaviorCopy";
+import { labHeroCopy } from "../i18n/labHeroCopy";
+import { questsHomeCopy } from "../i18n/questsHomeCopy";
+import { inboxUiCopy } from "../i18n/inboxReadCopy";
+import { economyDetailCopy } from "../i18n/economyDetailCopy";
+import { toolName, toolsCopy } from "../i18n/toolsCopy";
+import type { Language } from "../i18n/translations";
 import {
   Key,
   Keys,
@@ -48,7 +67,7 @@ import {
 
 export type Slide = {
   id: string;
-  group: string;
+  group: DeviceKey | "behavior";
   device: DeviceKey;
   title: string;
   variant: string;
@@ -56,7 +75,7 @@ export type Slide = {
   note: string;
   /** На слайде есть показательные (синтетические) значения. */
   demo: boolean;
-  render: () => ReactNode;
+  render: (language?: Language) => ReactNode;
 };
 
 const straws = (levels: (number | null)[], names: string[], values: string[]): Straw[] =>
@@ -74,11 +93,13 @@ const emptyWells = (rows: number, cols: number): PlateWell[] => {
   return out;
 };
 
-const lanes = (spec: [string, number[]][]): GelLane[] =>
-  spec.map(([name, at], i) => ({
-    key: `${name}-${i}`,
-    name,
-    bands: at.map((v, j) => ({ at: v, kind: j === 0 ? "ref" : v > 0.6 ? "fresh" : "weak" })),
+type GelCategory = keyof (typeof economyDetailCopy)["ru"]["lanes"];
+const lanes = (spec: [GelCategory, number[]][], language: Language, faint = false): GelLane[] =>
+  spec.map(([key, positions]) => ({
+    key,
+    name: economyDetailCopy[language].lanes[key],
+    title: economyDetailCopy[language].categories[key],
+    bands: positions.map((at) => ({ at, kind: faint ? "weak" as const : "fresh" as const })),
   }));
 
 const steps = (s: string): StepState[] => s.split("").map((ch) => (ch === "d" ? "done" : ch === "n" ? "next" : "open"));
@@ -89,353 +110,350 @@ const ports = (labels: string[], tones: CrossPort["lamp"][] = []): CrossPort[] =
 const links = (pairs: [number, number, CrossLink["cord"], boolean?][]): CrossLink[] =>
   pairs.map(([from, to, cord, pulse]) => ({ from, to, cord, pulse }));
 
-const dayLabels = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
+const sampleDays = ["1", "2", "3", "4", "5", "6", "7"];
+const sampleLoadScale = (language: Language) => (["drought", "sunny", "festival"] as const)
+  .map((type) => labHeroCopy[language].load[type].toLocaleUpperCase(language));
 
 /* ─────────────────────────── Слайды ─────────────────────────── */
 
 const frameSlides: Slide[] = [
   {
     id: "frame-01",
-    group: "Каркас окна",
+    group: "frame",
     device: "frame",
-    title: "Крупное окно",
-    variant: "уровень «hero» — один прибор на весь экран",
-    where: "Лаборатория, первый экран · Лабораторное окно стоит первым",
-    note: "Крупное окно держит заголовок, этикетку и ленту ламп. Всё, что ниже — плитки и приборы на его полке.",
+    ...galleryFrameCopy.ru.slides["frame-01"],
     demo: false,
-    render: () => (
-      <Panel
-        tier="hero"
-        device="cryo"
-        id={<Sticker>ЛАБОРАТОРИЯ</Sticker>}
-        meta="СТЕНД A · ГЛУБОКИЙ ХОЛОД"
-        title="Твоя лаборатория"
-        sub="стойка образцов и сосуд с азотом"
-      >
-        <Lamps>
-          <Lamp tone="ok">связь с сетью</Lamp>
-          <Lamp tone="wait">энергии в сети нет</Lamp>
-        </Lamps>
-        <div style={{ marginTop: 14 }}>
-          <Readouts>
-            <Readout label="Энергия" value="—" dash hint="кошелёк не подключён" />
-            <Readout label="Образцов" value="—" dash hint="нет данных" />
-          </Readouts>
-        </div>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryFrameCopy[language].sample.hero;
+      return (
+        <Panel
+          tier="hero"
+          device="cryo"
+          id={<Sticker>{c.tag}</Sticker>}
+          meta={c.mode}
+          title={c.title}
+          sub={c.subtitle}
+        >
+          <Lamps>
+            <Lamp tone="ok">{c.connected}</Lamp>
+            <Lamp tone="wait">{c.noEnergy}</Lamp>
+          </Lamps>
+          <div style={{ marginTop: 14 }}>
+            <Readouts>
+              <Readout label={c.energy} value="—" dash hint={c.noWallet} />
+              <Readout label={c.samples} value="—" dash hint={c.noData} />
+            </Readouts>
+          </div>
+        </Panel>
+      );
+    },
   },
   {
     id: "frame-02",
-    group: "Каркас окна",
+    group: "frame",
     device: "frame",
-    title: "Рабочее окно",
-    variant: "уровень «panel» — прибор в потоке страницы",
-    where: "везде, где прибор не занимает экран целиком",
-    note: "Основной уровень: окно с бортиком, этикеткой слева и режимом справа.",
+    ...galleryFrameCopy.ru.slides["frame-02"],
     demo: false,
-    render: () => (
-      <Panel
-        tier="panel"
-        device="plate"
-        id={<Sticker alt>СТОЙКА</Sticker>}
-        meta="В РАБОТЕ"
-        title="Микропланшет места"
-        sub="лунка — место под инструмент"
-      >
-        <Note quiet>Рабочее окно редко стоит одно: под ним идут плитки и считыватели.</Note>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryFrameCopy[language].sample.panel;
+      return (
+        <Panel
+          tier="panel"
+          device="plate"
+          id={<Sticker alt>{c.tag}</Sticker>}
+          meta={c.mode}
+          title={c.title}
+          sub={c.subtitle}
+        >
+          <Note quiet>{c.note}</Note>
+        </Panel>
+      );
+    },
   },
   {
     id: "frame-03",
-    group: "Каркас окна",
+    group: "frame",
     device: "frame",
-    title: "Тихое окно",
-    variant: "уровень «quiet» — пояснение и справка",
-    where: "подписи под приборами, справки, пустые состояния",
-    note: "Тихое окно не спорит с прибором: нет бортика, есть подпись.",
+    ...galleryFrameCopy.ru.slides["frame-03"],
     demo: false,
-    render: () => (
-      <Panel tier="quiet" title="Зачем это окно">
-        <Note quiet>Тихий уровень нужен там, где прибор молчит: объяснить, чего не хватает, вместо пустоты.</Note>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryFrameCopy[language].sample.quiet;
+      return (
+        <Panel tier="quiet" title={c.title}>
+          <Note quiet>{c.note}</Note>
+        </Panel>
+      );
+    },
   },
   {
     id: "frame-04",
-    group: "Каркас окна",
+    group: "frame",
     device: "frame",
-    title: "Этикетки и считыватели",
-    variant: "штамп + значения с пояснениями",
-    where: "все приборные окна",
-    note: "Этикетка слева — имя аппарата; режим справа. Считыватель показывает значение и то, откуда оно взято.",
+    ...galleryFrameCopy.ru.slides["frame-04"],
     demo: false,
-    render: () => (
-      <Panel
-        tier="panel"
-        id={<Sticker bars>ОБРАЗЕЦ · 04</Sticker>}
-        meta="НОРМА"
-        title="Считыватели"
-        sub="подпись · значение · пояснение"
-      >
-        <Readouts>
-          <Readout label="Позиций с запасом" value="7" hint="всего позиций: 27" />
-          <Readout label="Полнее всего" value="1 240" hint="SPROUT" />
-          <Readout label="Архив смены" value="—" dash hint="архив не ведётся" />
-        </Readouts>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryFrameCopy[language].sample.readouts;
+      return (
+        <Panel
+          tier="panel"
+          id={<Sticker bars>{c.tag}</Sticker>}
+          meta={c.mode}
+          title={c.title}
+          sub={c.subtitle}
+        >
+          <Readouts>
+            <Readout label={c.stocked} value="7" hint={c.total} />
+            <Readout label={c.fullest} value={new Intl.NumberFormat(language).format(1240)} hint="SPROUT" />
+            <Readout label={c.archive} value="—" dash hint={c.noArchive} />
+          </Readouts>
+        </Panel>
+      );
+    },
   },
   {
     id: "frame-05",
-    group: "Каркас окна",
+    group: "frame",
     device: "frame",
-    title: "Лампы, клавиши, плитки",
-    variant: "управление без декора",
-    where: "панели действий, стойки, кошельки",
-    note: "Лампа горит только от реального источника. Клавиша ведёт себя одинаково во всех окнах.",
+    ...galleryFrameCopy.ru.slides["frame-05"],
     demo: false,
-    render: () => (
-      <Panel tier="panel" id={<Sticker alt>УПРАВЛЕНИЕ</Sticker>} meta="РУЧНОЙ" title="Органы управления">
-        <Lamps>
-          <Lamp tone="ok">связь</Lamp>
-          <Lamp tone="wait">в очереди</Lamp>
-          <Lamp tone="err">сбой</Lamp>
-        </Lamps>
-        <Tiles>
-          <Tile value="27" name="ресурсов" />
-          <Tile value="—" name="заданий" />
-          <Tile value="6" name="вкладок" />
-        </Tiles>
-        <Keys>
-          <Key tone="primary">Забрать</Key>
-          <Key>Осмотреть</Key>
-          <Key tone="ghost" tiny>
-            Справка
-          </Key>
-        </Keys>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryFrameCopy[language].sample.controls;
+      return (
+        <Panel tier="panel" id={<Sticker alt>{c.tag}</Sticker>} meta={c.mode} title={c.title}>
+          <Lamps>
+            <Lamp tone="ok">{c.connected}</Lamp>
+            <Lamp tone="wait">{c.queued}</Lamp>
+            <Lamp tone="err">{c.error}</Lamp>
+          </Lamps>
+          <Tiles>
+            <Tile value="27" name={c.resources} />
+            <Tile value="—" name={c.quests} />
+            <Tile value="6" name={c.tabs} />
+          </Tiles>
+          <Keys>
+            <Key tone="primary">{c.collect}</Key>
+            <Key>{c.inspect}</Key>
+            <Key tone="ghost" tiny>
+              {c.help}
+            </Key>
+          </Keys>
+        </Panel>
+      );
+    },
   },
   {
     id: "frame-06",
-    group: "Каркас окна",
+    group: "frame",
     device: "frame",
-    title: "Палитра A",
-    variant: "морозное стекло: 8 цветов",
-    where: "src/theme/forge.css — переменные --fg-*",
-    note: "Цвет в окнах идёт от значений и ламп, а не от рамок: фон почти чёрный, свет — циан.",
+    ...galleryFrameCopy.ru.slides["frame-06"],
     demo: false,
-    render: () => (
-      <div className="vg-swatches">
-        {[
-          ["--fg-void", "#0B0D11", "фон"],
-          ["--fg-text", "#E6EBF0", "текст"],
-          ["--fg-glow", "#5FC9DA", "свет"],
-          ["--fg-accent", "#8FE3F0", "яркий свет"],
-          ["--fg-ok", "#5FD3A8", "норма"],
-          ["--fg-reward", "#E0708A", "награда"],
-          ["--fg-err", "#E2685F", "сбой"],
-          ["--fg-deep", "#A99BEC", "глубина"],
-        ].map(([name, hex, role]) => (
-          <div className="vg-swatch" key={name}>
-            <span className="vg-swatch__chip" style={{ background: hex }} />
-            <span className="vg-swatch__name">{name}</span>
-            <span className="vg-swatch__role">{role}</span>
-            <code className="vg-swatch__hex">{hex}</code>
-          </div>
-        ))}
-      </div>
-    ),
+    render: (language = "ru") => {
+      const c = galleryFrameCopy[language].sample.swatches;
+      return (
+        <div className="vg-swatches">
+          {[
+            ["--fg-void", "#0B0D11", c[0]],
+            ["--fg-text", "#E6EBF0", c[1]],
+            ["--fg-glow", "#5FC9DA", c[2]],
+            ["--fg-accent", "#8FE3F0", c[3]],
+            ["--fg-ok", "#5FD3A8", c[4]],
+            ["--fg-reward", "#E0708A", c[5]],
+            ["--fg-err", "#E2685F", c[6]],
+            ["--fg-deep", "#A99BEC", c[7]],
+          ].map(([name, hex, role]) => (
+            <div className="vg-swatch" key={name}>
+              <span className="vg-swatch__chip" style={{ background: hex }} />
+              <span className="vg-swatch__name">{name}</span>
+              <span className="vg-swatch__role">{role}</span>
+              <code className="vg-swatch__hex">{hex}</code>
+            </div>
+          ))}
+        </div>
+      );
+    },
   },
 ];
 
 const cryoSlides: Slide[] = [
   {
     id: "cryo-01",
-    group: "К4 · криостойка и сосуд N₂",
+    group: "cryo",
     device: "cryo",
-    title: "Стойка с образцами",
-    variant: "полная полка",
-    where: "Лаборатория · первый экран (components/farm/LabHero.tsx)",
-    note: "Соломинка — позиция ресурса, уровень жидкости — доля от ёмкости. Значения показательные.",
+    ...galleryCryoCopy.ru.slides["cryo-01"],
     demo: true,
-    render: () => (
-      <CryoRack
-        title="Стойка A · базовые"
-        meta="норма"
-        slots={straws(
-          [0.82, 0.47, 0.18, 0.93],
-          ["SPROUT", "EMBER", "GOLD", "WATER"],
-          ["820", "470", "185", "9 300"],
-        )}
-      />
-    ),
+    render: (language = "ru") => {
+      const c = galleryCryoCopy[language].demo;
+      const names = homeResourceNames[language];
+      return (
+        <CryoRack
+          title={c.baseRack}
+          meta={c.baseMode}
+          slots={straws(
+            [0.82, 0.47, 0.18, 0.93],
+            [names.data, names.circuit, names.silicon, names.power],
+            [820, 470, 185, 9300].map((value) => new Intl.NumberFormat(language).format(value)),
+          )}
+        />
+      );
+    },
   },
   {
     id: "cryo-02",
-    group: "К4 · криостойка и сосуд N₂",
+    group: "cryo",
     device: "cryo",
-    title: "Стойка с наградной позицией",
-    variant: "отмеченный сосуд",
-    where: "Лаборатория · первый экран; награды сезона",
-    note: "Магентовый колпачок — награда, а не «премиум-скин»: он указывает на ресурс события.",
+    ...galleryCryoCopy.ru.slides["cryo-02"],
     demo: true,
-    render: () => (
-      <CryoRack
-        title="Стойка B · модельная цепочка"
-        meta="контроль"
-        slots={[
-          ...straws([0.64, 0.31], ["MIND", "SKR"], ["128", "64"]),
-          { key: "reward", name: "REWARD", value: "12", level: 0.55, reward: true },
-        ]}
-      />
-    ),
+    render: (language = "ru") => {
+      const c = galleryCryoCopy[language].demo;
+      const names = homeResourceNames[language];
+      return (
+        <CryoRack
+          title={c.chainRack}
+          meta={c.chainMode}
+          slots={[
+            ...straws([0.64, 0.31], [names.neuron, names.synapse], ["128", "64"]),
+            { key: "highlight", name: names.soulCore, value: "12", level: 0.55, reward: true },
+          ]}
+        />
+      );
+    },
   },
   {
     id: "cryo-03",
-    group: "К4 · криостойка и сосуд N₂",
+    group: "cryo",
     device: "cryo",
-    title: "Пустая стойка",
-    variant: "нет данных — нет жидкости",
-    where: "Лаборатория · кошелёк не подключён",
-    note: "Уровень null — соломинка сухая, а значение честно «—». Ноль здесь означал бы «пусто у игрока», а не «нет связи».",
+    ...galleryCryoCopy.ru.slides["cryo-03"],
     demo: false,
-    render: () => (
-      <CryoRack
-        title="Стойка A · базовые"
-        meta="нет данных"
-        slots={straws([null, null, null, null], ["SPROUT", "EMBER", "GOLD", "WATER"], ["—", "—", "—", "—"])}
-      />
-    ),
+    render: (language = "ru") => {
+      const c = galleryCryoCopy[language].demo;
+      const names = homeResourceNames[language];
+      return (
+        <CryoRack
+          title={c.baseRack}
+          meta={c.unavailable}
+          slots={straws([null, null, null, null],
+            [names.data, names.circuit, names.silicon, names.power], ["—", "—", "—", "—"])}
+        />
+      );
+    },
   },
   {
     id: "cryo-04",
-    group: "К4 · криостойка и сосуд N₂",
+    group: "cryo",
     device: "cryo",
-    title: "Сосуд с азотом",
-    variant: "доля энергии сети",
-    where: "Лаборатория · первый экран, рядом со стойкой",
-    note: "Стекло заполняется долей энергии. Без данных сосуд сухой и подписан «—».",
+    ...galleryCryoCopy.ru.slides["cryo-04"],
     demo: false,
-    render: () => (
-      <div className="vg-row">
-        <Dewar level={0.62} label="ЖИДК. N₂ · демо" />
-        <Dewar level={null} label="ЖИДК. N₂" />
-      </div>
-    ),
+    render: (language = "ru") => {
+      const c = galleryCryoCopy[language].demo;
+      return (
+        <div className="vg-row">
+          <Dewar level={0.62} label={c.energyDemo} />
+          <Dewar level={null} label={c.energyUnknown} />
+        </div>
+      );
+    },
   },
 ];
 
 const mixSlides: Slide[] = [
   {
     id: "mix-01",
-    group: "К5 · пульт мастерской",
+    group: "mix",
     device: "mix",
-    title: "Полный пульт",
-    variant: "восемь каналов",
-    where: "Инструменты · первый экран (pages/tools/ToolsHome.tsx)",
-    note: "Стрелка — прочность, фейдер — часы смены, буква M — инструмент работает. Значения показательные.",
+    ...galleryMixCopy.ru.slides["mix-01"],
     demo: true,
-    render: () => (
-      <MixerStrips
-        maxHours={20}
-        channels={channels([
-          ["плазменный резчик", 0.85, 17, true],
-          ["экстрактор кремния", 0.6, 12],
-          ["сборщик данных", 0.42, 8],
-          ["квантовый передатчик", 0.28, 5, true],
-          ["станция засева", 0.91, 18],
-          ["очиститель", 0.35, 7],
-          ["сушилка", 0.72, 14, true],
-          ["модель", 0.55, 11],
-        ])}
-      />
-    ),
+    render: (language = "ru") => {
+      const c = galleryMixCopy[language].sample;
+      return (
+        <MixerStrips
+          maxHours={20}
+          channels={channels([
+            [toolName(language, "plasma_cutter"), 0.85, 17, true],
+            [toolName(language, "silicon_extractor"), 0.6, 12],
+            [toolName(language, "data_harvester"), 0.42, 8],
+            [toolName(language, "quantum_transmitter"), 0.28, 5, true],
+            [toolName(language, "neural_seeder"), 0.91, 18],
+            [c.testOne, 0.35, 7],
+            [c.testTwo, 0.72, 14, true],
+            [c.testThree, 0.55, 11],
+          ])}
+        />
+      );
+    },
   },
   {
     id: "mix-02",
-    group: "К5 · пульт мастерской",
+    group: "mix",
     device: "mix",
-    title: "Короткая стойка",
-    variant: "три канала: пульт не растягивается",
-    where: "Инструменты · у игрока три инструмента",
-    note: "Каналов ровно столько, сколько инструментов: пустых полос прибор не рисует.",
+    ...galleryMixCopy.ru.slides["mix-02"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <MixerStrips
         maxHours={20}
         channels={channels([
-          ["плазменный резчик", 0.85, 17, true],
-          ["станция засева", 0.91, 18],
-          ["модель", null, null],
+          [toolName(language, "plasma_cutter"), 0.85, 17, true],
+          [toolName(language, "neural_seeder"), 0.91, 18],
+          [toolName(language, "data_harvester"), null, null],
         ])}
       />
     ),
   },
   {
     id: "mix-03",
-    group: "К5 · пульт мастерской",
+    group: "mix",
     device: "mix",
-    title: "Пульт до кошелька",
-    variant: "каталог инструментов, «нет данных»",
-    where: "Инструменты · кошелёк не подключён",
-    note: "Без кошелька каналы подписаны названиями инструментов, а шкалы пустые: прибор видно, выдуманной прочности нет.",
+    ...galleryMixCopy.ru.slides["mix-03"],
     demo: false,
-    render: () => (
+    render: (language = "ru") => (
       <MixerStrips
         maxHours={20}
         channels={channels([
-          ["плазменный резчик", null, null],
-          ["экстрактор кремния", null, null],
-          ["сборщик данных", null, null],
-          ["квантовый передатчик", null, null],
-          ["станция засева", null, null],
+          [toolName(language, "plasma_cutter"), null, null],
+          [toolName(language, "silicon_extractor"), null, null],
+          [toolName(language, "data_harvester"), null, null],
+          [toolName(language, "quantum_transmitter"), null, null],
+          [toolName(language, "neural_seeder"), null, null],
         ])}
       />
     ),
   },
   {
     id: "mix-04",
-    group: "К5 · пульт мастерской",
+    group: "mix",
     device: "mix",
-    title: "Стоящий канал",
-    variant: "инструмент в стойке, смена выключена",
-    where: "Инструменты · M выключен",
-    note: "Погасший канал — не «поломка»: инструмент стоит, но не работает.",
+    ...galleryMixCopy.ru.slides["mix-04"],
     demo: true,
-    render: () => (
-      <MixerStrips maxHours={20} channels={channels([["очиститель", 0.5, null], ["сушилка", 0.72, 14, true]])} />
+    render: (language = "ru") => (
+      <MixerStrips maxHours={20} channels={channels([
+        [toolName(language, "silicon_extractor"), 0.5, null],
+        [toolName(language, "data_harvester"), 0.72, 14, true],
+      ])} />
     ),
   },
   {
     id: "mix-05",
-    group: "К5 · пульт мастерской",
+    group: "mix",
     device: "mix",
-    title: "Шинный считыватель",
-    variant: "одна цифра под пультом",
-    where: "Инструменты · итоги пульта (MixerBus)",
-    note: "Дополнительная деталь пульта: короткая строка «подпись — значение» без отдельного окна.",
+    ...galleryMixCopy.ru.slides["mix-05"],
     demo: true,
-    render: () => (
-      <div style={{ display: "grid", gap: 8 }}>
-        <MixerBus label="Каналов в смене" value="3" />
-        <MixerBus label="Простой" dash />
-      </div>
-    ),
+    render: (language = "ru") => {
+      const c = galleryMixCopy[language].sample;
+      return (
+        <div style={{ display: "grid", gap: 8 }}>
+          <MixerBus label={c.shiftChannels} value="3" />
+          <MixerBus label={c.idle} dash />
+        </div>
+      );
+    },
   },
 ];
 
 const sonarSlides: Slide[] = [
   {
     id: "sonar-01",
-    group: "К6 · эхолот и сонар",
+    group: "sonar",
     device: "sonar",
-    title: "Лента глубины",
-    variant: "отметки добычи",
-    where: "Участок · журнал смены (pages/farm/FarmDashboard.tsx)",
-    note: "Метки — события архива: чем ниже, тем глубже смена. Значения показательные.",
+    ...gallerySonarCopy.ru.slides["sonar-01"],
     demo: true,
     render: () => (
       <EchoTrace
@@ -451,151 +469,128 @@ const sonarSlides: Slide[] = [
   },
   {
     id: "sonar-02",
-    group: "К6 · эхолот и сонар",
+    group: "sonar",
     device: "sonar",
-    title: "Молчащий эхолот",
-    variant: "архива нет — пера нет",
-    where: "Участок · журнал смены",
-    note: "Когда архив сети не ведётся, прибор рисует только сетку и честно молчит вместо выдуманного графика.",
+    ...gallerySonarCopy.ru.slides["sonar-02"],
     demo: false,
     render: () => <EchoTrace marks={[]} depth={null} />,
   },
   {
     id: "sonar-03",
-    group: "К6 · эхолот и сонар",
+    group: "sonar",
     device: "sonar",
-    title: "Глубокая смена",
-    variant: "одна крупная цель",
-    where: "Участок · глубокая выработка",
-    note: "Размер метки — вес события; лента не «украшение», а запись смены.",
+    ...gallerySonarCopy.ru.slides["sonar-03"],
     demo: true,
     render: () => <EchoTrace depth={0.78} marks={[{ at: 210, depth: 0.8, size: 2 }]} />,
   },
   {
     id: "sonar-04",
-    group: "К6 · эхолот и сонар",
+    group: "sonar",
     device: "sonar",
-    title: "Развёртка прилавков",
-    variant: "лоты по цене",
-    where: "Рынок · первый экран и витрина (pages/market/MarketHome.tsx, ListingPage.tsx)",
-    note: "Чем ближе к центру, тем дешевле лот. Круг — это цена, а не «радар редкости».",
+    ...gallerySonarCopy.ru.slides["sonar-04"],
     demo: true,
-    render: () => (
-      <SonarPPI
-        blips={[
-          { x: 60, y: 30, r: 2.6 },
-          { x: 92, y: 58, r: 2.2 },
-          { x: 74, y: 96, r: 2.8 },
-          { x: 38, y: 88, r: 2 },
-          { x: 46, y: 44, r: 2.4 },
-        ]}
-        legend={
-          <>
-            <span>Лотов: <b>5</b></span>
-            <span>Медиана: <b>0.0420 ◎</b></span>
-          </>
-        }
-      />
-    ),
+    render: (language = "ru") => {
+      const c = gallerySonarCopy[language];
+      return (
+        <SonarPPI
+          ariaLabel={c.slides["sonar-04"].title}
+          blips={[
+            { x: 60, y: 30, r: 2.6 },
+            { x: 92, y: 58, r: 2.2 },
+            { x: 74, y: 96, r: 2.8 },
+            { x: 38, y: 88, r: 2 },
+            { x: 46, y: 44, r: 2.4 },
+          ]}
+          legend={<>
+            <span>{c.sample.lots}: <b>5</b></span>
+            <span>{c.sample.layout}</span>
+          </>}
+        />
+      );
+    },
   },
   {
     id: "sonar-05",
-    group: "К6 · эхолот и сонар",
+    group: "sonar",
     device: "sonar",
-    title: "Пустая витрина",
-    variant: "нет данных сети",
-    where: "Рынок · первый экран, пока прилавки не читаются",
-    note: "Развёртка крутится, но отметок нет: прибор видно до появления данных, и он говорит словами, чего ждёт.",
+    ...gallerySonarCopy.ru.slides["sonar-05"],
     demo: false,
-    render: () => (
-      <SonarPPI
-        blips={[]}
-        legend={
-          <>
-            <span>Витрина: <b>—</b></span>
-            <span>Медиана: <b>—</b></span>
-          </>
-        }
-      />
-    ),
+    render: (language = "ru") => {
+      const c = gallerySonarCopy[language];
+      return (
+        <SonarPPI
+          ariaLabel={c.slides["sonar-05"].title}
+          blips={[]}
+          legend={<>
+            <span>{c.sample.listings}: <b>—</b></span>
+            <span>{c.sample.prices}: <b>—</b></span>
+          </>}
+        />
+      );
+    },
   },
   {
     id: "sonar-06",
-    group: "К6 · эхолот и сонар",
+    group: "sonar",
     device: "sonar",
-    title: "Плотный прилавок",
-    variant: "24 отметки",
-    where: "Рынок · витрина листингов, много лотов",
-    note: "Развёртка держит до 24 отметок: больше — уже не читается глазом.",
+    ...gallerySonarCopy.ru.slides["sonar-06"],
     demo: true,
-    render: () => (
-      <SonarPPI
-        blips={Array.from({ length: 24 }, (_, i) => {
-          const a = (-90 + (i / 24) * 360) * (Math.PI / 180);
-          const r = 9 + 43 * ((i * 37) % 100) / 100;
-          return { x: 60 + r * Math.cos(a), y: 60 + r * Math.sin(a), r: 2.2 };
-        })}
-        legend={<span>Лотов: <b>24</b></span>}
-      />
-    ),
+    render: (language = "ru") => {
+      const c = gallerySonarCopy[language];
+      return (
+        <SonarPPI
+          ariaLabel={c.slides["sonar-06"].title}
+          blips={Array.from({ length: 24 }, (_, i) => {
+            const a = (-90 + (i / 24) * 360) * (Math.PI / 180);
+            const r = 9 + 43 * ((i * 37) % 100) / 100;
+            return { x: 60 + r * Math.cos(a), y: 60 + r * Math.sin(a), r: 2.2 };
+          })}
+          legend={<span>{c.sample.lots}: <b>24</b></span>}
+        />
+      );
+    },
   },
 ];
 
 const plateSlides: Slide[] = [
   {
     id: "plate-01",
-    group: "К7 · микропланшет 96 лунок",
+    group: "plate",
     device: "plate",
-    title: "Планшет стойки",
-    variant: "работающие и стоящие инструменты",
-    where: "Участок · первый экран (pages/farm/FarmDashboard.tsx)",
-    note: "Лунка — место в стойке. Светится то, что работает; контур — стоит на месте.",
+    ...galleryPlateCopy.ru.slides["plate-01"],
     demo: true,
     render: () => (
       <PlateGrid
         rows={6}
         cols={8}
         wells={wells([
-          [0, 2, "g"],
-          [0, 6, "q"],
-          [1, 4, "g"],
-          [2, 1, "q"],
-          [3, 5, "g"],
-          [4, 3, "q"],
+          [0, 2, "g"], [0, 6, "q"], [1, 4, "g"],
+          [2, 1, "q"], [3, 5, "g"], [4, 3, "q"],
         ])}
       />
     ),
   },
   {
     id: "plate-02",
-    group: "К7 · микропланшет 96 лунок",
+    group: "plate",
     device: "plate",
-    title: "Пустой участок",
-    variant: "все лунки свободны",
-    where: "Участок · инструментов в стойке нет",
-    note: "Пустой планшет — это состояние участка, а не ошибка: место под инструменты есть, инструментов нет.",
+    ...galleryPlateCopy.ru.slides["plate-02"],
     demo: false,
     render: () => <PlateGrid rows={6} cols={8} wells={emptyWells(6, 8)} />,
   },
   {
     id: "plate-03",
-    group: "К7 · микропланшет 96 лунок",
+    group: "plate",
     device: "plate",
-    title: "Один инструмент",
-    variant: "одна занятая лунка",
-    where: "Участок · первый инструмент в стойке",
-    note: "Считывать планшет можно и по одной лунке: место занято — видно сразу.",
+    ...galleryPlateCopy.ru.slides["plate-03"],
     demo: true,
     render: () => <PlateGrid rows={6} cols={8} wells={wells([[3, 4, "g"]])} />,
   },
   {
     id: "plate-04",
-    group: "К7 · микропланшет 96 лунок",
+    group: "plate",
     device: "plate",
-    title: "Полный планшет",
-    variant: "12 × 8 — заводской формат",
-    where: "Участок · полная стойка",
-    note: "Полный планшет — контрольный размер прибора: он не растёт от количества инструментов.",
+    ...galleryPlateCopy.ru.slides["plate-04"],
     demo: true,
     render: () => (
       <PlateGrid
@@ -611,19 +606,16 @@ const plateSlides: Slide[] = [
   },
   {
     id: "plate-05",
-    group: "К7 · микропланшет 96 лунок",
+    group: "plate",
     device: "plate",
-    title: "Считыватель планшета",
-    variant: "выписка по лунке",
-    where: "Участок · карточка инструмента (PlateReader)",
-    note: "Когда планшет используется как читальный стол, значения выносятся в отдельные ячейки.",
+    ...galleryPlateCopy.ru.slides["plate-05"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <PlateReader
         boxes={[
-          { label: "Прочность", value: "17 / 20" },
-          { label: "Смена", value: "12 ч" },
-          { label: "Партия", value: "—", dash: true },
+          { label: toolsCopy[language].card.durability, value: "17 / 20" },
+          { label: galleryPlateCopy[language].sample.shift, value: `12 ${toolsCopy[language].card.hourAbbrev}` },
+          { label: galleryPlateCopy[language].sample.batch, value: "—", dash: true },
         ]}
       />
     ),
@@ -633,85 +625,64 @@ const plateSlides: Slide[] = [
 const gelSlides: Slide[] = [
   {
     id: "gel-01",
-    group: "К8 · гель-электрофорез",
+    group: "gel",
     device: "gel",
-    title: "Дорожки склада",
-    variant: "полосы по позициям",
-    where: "Экономика · обзор (pages/economy/ResourceOverview.tsx)",
-    note: "Дорожка — позиция ресурса, полоса — запас. Отдельная полоса сверху — эталон шкалы.",
+    ...galleryGelCopy.ru.slides["gel-01"],
     demo: true,
-    render: () => (
-      <GelLanes
-        lanes={lanes([
-          ["SPROUT", [0.2, 0.72]],
-          ["EMBER", [0.2, 0.51]],
-          ["GOLD", [0.2, 0.33]],
-          ["WATER", [0.2, 0.88]],
-        ])}
-      />
+    render: (language = "ru") => (
+      <GelLanes lanes={lanes([
+        ["lab", [0.2, 0.72]],
+        ["consumables", [0.2, 0.51]],
+        ["cores", [0.2, 0.33]],
+        ["fluids", [0.2, 0.88]],
+      ], language)} />
     ),
   },
   {
     id: "gel-02",
-    group: "К8 · гель-электрофорез",
+    group: "gel",
     device: "gel",
-    title: "Пустой склад",
-    variant: "ни одной полосы",
-    where: "Экономика · обзор, запасов нет",
-    note: "Пустой гель говорит словами: «Все позиции пусты — полос нет», и не рисует нулевые дорожки.",
+    ...galleryGelCopy.ru.slides["gel-02"],
     demo: false,
     render: () => <GelLanes lanes={[]} />,
   },
   {
     id: "gel-03",
-    group: "К8 · гель-электрофорез",
+    group: "gel",
     device: "gel",
-    title: "Одна позиция",
-    variant: "узкий гель",
-    where: "Экономика · обзор, один ресурс",
-    note: "Гель читается и по одной дорожке: прибор не требует полного набора.",
+    ...galleryGelCopy.ru.slides["gel-03"],
     demo: true,
-    render: () => <GelLanes lanes={lanes([["MIND", [0.2, 0.64]]])} />,
+    render: (language = "ru") => <GelLanes lanes={lanes([["lab", [0.2, 0.64]]], language)} />,
   },
   {
     id: "gel-04",
-    group: "К8 · гель-электрофорез",
+    group: "gel",
     device: "gel",
-    title: "Слабые полосы",
-    variant: "малый запас против эталона",
-    where: "Экономика · обзор, остатки на нуле",
-    note: "Слабая полоса — это «почти пусто», и её видно без чтения числа.",
+    ...galleryGelCopy.ru.slides["gel-04"],
     demo: true,
-    render: () => (
-      <GelLanes
-        lanes={lanes([
-          ["GOLD", [0.2, 0.12]],
-          ["WATER", [0.2, 0.09]],
-          ["EMBER", [0.2, 0.06]],
-        ])}
-      />
+    render: (language = "ru") => (
+      <GelLanes lanes={lanes([
+        ["quartz", [0.2, 0.12]],
+        ["fluids", [0.2, 0.09]],
+        ["consumables", [0.2, 0.06]],
+      ], language, true)} />
     ),
   },
   {
     id: "gel-05",
-    group: "К8 · гель-электрофорез",
+    group: "gel",
     device: "gel",
-    title: "Полный склад",
-    variant: "шесть дорожек",
-    where: "Экономика · обзор, много позиций",
-    note: "Чем больше дорожек, тем плотнее гель — прибор останавливается на шести, дальше идут считыватели.",
+    ...galleryGelCopy.ru.slides["gel-05"],
     demo: true,
-    render: () => (
-      <GelLanes
-        lanes={lanes([
-          ["SPROUT", [0.2, 0.92]],
-          ["EMBER", [0.2, 0.74]],
-          ["GOLD", [0.2, 0.61]],
-          ["WATER", [0.2, 0.55]],
-          ["MIND", [0.2, 0.38]],
-          ["SKR", [0.2, 0.22]],
-        ])}
-      />
+    render: (language = "ru") => (
+      <GelLanes lanes={lanes([
+        ["lab", [0.2, 0.92]],
+        ["consumables", [0.2, 0.74]],
+        ["cores", [0.2, 0.61]],
+        ["quartz", [0.2, 0.55]],
+        ["chips", [0.2, 0.38]],
+        ["fluids", [0.2, 0.22]],
+      ], language)} />
     ),
   },
 ];
@@ -719,21 +690,18 @@ const gelSlides: Slide[] = [
 const crossSlides: Slide[] = [
   {
     id: "cross-01",
-    group: "К9 · кросс-панель",
+    group: "cross",
     device: "cross",
-    title: "Письма как корды",
-    variant: "шесть портов, четыре связи",
-    where: "Инбокс · первый экран (pages/inbox/InboxHome.tsx)",
-    note: "Порт сверху — отправитель, снизу — получатель. Натянутый корд означает письмо; провис — нет ответа.",
+    ...galleryCrossCopy.ru.slides["cross-01"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <CrossPanel
-        top={ports(["сеть", "рынок", "цех", "лавка", "эпоха", "агент"], ["ok", "err", "idle", "ok", "ok", "idle"])}
-        bottom={ports(["ты", "склад", "стойка", "казна"])}
+        top={ports(["1", "2", "3", "4", "5", "6"], ["ok", "err", "idle", "ok", "ok", "idle"])}
+        bottom={ports([inboxUiCopy[language].waiting, inboxUiCopy[language].read, inboxUiCopy[language].fresh])}
         links={links([
           [0, 0, 1],
-          [1, 1, 2, true],
-          [2, 3, 3],
+          [1, 1, 2],
+          [2, 2, 3],
           [5, 2, 4, true],
         ])}
       />
@@ -741,39 +709,30 @@ const crossSlides: Slide[] = [
   },
   {
     id: "cross-02",
-    group: "К9 · кросс-панель",
+    group: "cross",
     device: "cross",
-    title: "Пустой ящик",
-    variant: "кордов нет",
-    where: "Инбокс · писем нет",
-    note: "Пустая кросс-панель — нормальное состояние: порты на месте, кордов нет, и это сказано словами.",
+    ...galleryCrossCopy.ru.slides["cross-02"],
     demo: false,
-    render: () => <CrossPanel top={ports(["сеть", "рынок", "цех"])} bottom={ports(["ты", "склад"])} links={[]} />,
+    render: (language = "ru") => <CrossPanel top={ports(["1", "2", "3"])} bottom={ports([inboxUiCopy[language].waiting, inboxUiCopy[language].read])} links={[]} />,
   },
   {
     id: "cross-03",
-    group: "К9 · кросс-панель",
+    group: "cross",
     device: "cross",
-    title: "Один корд",
-    variant: "одно письмо",
-    where: "Инбокс · одно входящее",
-    note: "Одиночный корд видно сразу: прибор не теряет смысл на коротком списке.",
+    ...galleryCrossCopy.ru.slides["cross-03"],
     demo: true,
-    render: () => <CrossPanel top={ports(["рынок"])} bottom={ports(["ты"])} links={links([[0, 0, 2, true]])} />,
+    render: (language = "ru") => <CrossPanel top={ports(["1"])} bottom={ports([inboxUiCopy[language].fresh])} links={links([[0, 0, 2, true]])} />,
   },
   {
     id: "cross-04",
-    group: "К9 · кросс-панель",
+    group: "cross",
     device: "cross",
-    title: "Сбойный порт",
-    variant: "лампа «сбой» на отправителе",
-    where: "Инбокс · источник недоступен",
-    note: "Красная лампа стоит у порта-источника: видно, кто именно не отвечает.",
+    ...galleryCrossCopy.ru.slides["cross-04"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <CrossPanel
-        top={ports(["сеть", "рынок", "цех"], ["ok", "err", "ok"])}
-        bottom={ports(["ты", "склад"], ["idle", "idle"])}
+        top={ports(["1", "2", "3"], ["ok", "err", "ok"])}
+        bottom={ports([inboxUiCopy[language].waiting, inboxUiCopy[language].read])}
         links={links([
           [0, 0, 1],
           [1, 1, 3],
@@ -784,20 +743,17 @@ const crossSlides: Slide[] = [
   },
   {
     id: "cross-05",
-    group: "К9 · кросс-панель",
+    group: "cross",
     device: "cross",
-    title: "Пульс на линии",
-    variant: "активная связь",
-    where: "Инбокс · письмо в работе",
-    note: "Пульс — единственное движение на панели, и оно означает «линия живая».",
+    ...galleryCrossCopy.ru.slides["cross-05"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <CrossPanel
-        top={ports(["сеть", "рынок"])}
-        bottom={ports(["ты", "казна"])}
+        top={ports(["1", "2"])}
+        bottom={ports([inboxUiCopy[language].fresh, inboxUiCopy[language].read])}
         links={links([
           [0, 0, 2, true],
-          [1, 1, 4, true],
+          [1, 1, 4],
         ])}
       />
     ),
@@ -807,195 +763,163 @@ const crossSlides: Slide[] = [
 const cardsSlides: Slide[] = [
   {
     id: "cards-01",
-    group: "К10 · перфокарты Жаккарда",
+    group: "cards",
     device: "cards",
-    title: "Прогресс задания",
-    variant: "четыре шага из пяти",
-    where: "Задания · первый экран (pages/quests/QuestsHome.tsx)",
-    note: "Колонка — шаг, пробитые ряды — зачтённые. Значения показательные.",
+    ...galleryCardsCopy.ru.slides["cards-01"],
     demo: true,
-    render: () => <PunchedCard title="ПРОГРЕСС" steps={steps("ddddn")} footLeft="4 / 5" footMid="80 %" />,
+    render: (language = "ru") => <PunchedCard title={galleryCardsCopy[language].sampleLabel} steps={steps("ddddn")} footLeft="4 / 5" footMid="80 %" />,
   },
   {
     id: "cards-02",
-    group: "К10 · перфокарты Жаккарда",
+    group: "cards",
     device: "cards",
-    title: "Пустая карта",
-    variant: "ни один шаг не зачтён",
-    where: "Задания · кошелёк не подключён или заданий нет",
-    note: "Пустая карта стоит на экране всегда: иначе приборов не видно до подключения кошелька.",
+    ...galleryCardsCopy.ru.slides["cards-02"],
     demo: false,
-    render: () => <PunchedCard title="ПРОГРЕСС" steps={steps("ooooo")} rows={4} footLeft="0 / 0" footMid="шагов" footRight="—" />,
+    render: (language = "ru") => <PunchedCard unknown title={questsHomeCopy[language].cardTitle} steps={steps("oooooooooooo")} rows={4} footMid={questsHomeCopy[language].placeholder} />,
   },
   {
     id: "cards-03",
-    group: "К10 · перфокарты Жаккарда",
+    group: "cards",
     device: "cards",
-    title: "Выполненное задание",
-    variant: "все шаги зачтены",
-    where: "Задания · награда получена",
-    note: "Полная перфорация — награда забрана; карта не исчезает, чтобы прогресс можно было перечитать.",
+    ...galleryCardsCopy.ru.slides["cards-03"],
     demo: true,
-    render: () => <PunchedCard title="ПРОГРЕСС" steps={steps("ddddd")} footLeft="5 / 5" footMid="100 %" />,
+    render: (language = "ru") => <PunchedCard title={galleryCardsCopy[language].sampleLabel} steps={steps("ddddd")} footLeft="5 / 5" footMid="100 %" />,
   },
   {
     id: "cards-04",
-    group: "К10 · перфокарты Жаккарда",
+    group: "cards",
     device: "cards",
-    title: "Короткая карта",
-    variant: "четыре ряда вместо пяти",
-    where: "Задания · короткие задания дня",
-    note: "Число рядов — настройка прибора: короткое задание не должно выглядеть обрезанным.",
+    ...galleryCardsCopy.ru.slides["cards-04"],
     demo: true,
-    render: () => <PunchedCard title="ПРОГРЕСС" steps={steps("dno")} rows={4} footLeft="1 / 3" footMid="33 %" />,
+    render: (language = "ru") => <PunchedCard title={galleryCardsCopy[language].sampleLabel} steps={steps("dno")} rows={4} footLeft="1 / 3" footMid="33 %" />,
   },
   {
     id: "cards-05",
-    group: "К10 · перфокарты Жаккарда",
+    group: "cards",
     device: "cards",
-    title: "Карта без ведомости",
-    variant: "значения спрашиваются словами",
-    where: "Задания · нет данных о шагах",
-    note: "Если шаги неизвестны, нижняя строка молчит: «—» вместо придуманных чисел.",
-    demo: false,
-    render: () => <PunchedCard title="ПРОГРЕСС" steps={steps("onooo")} footLeft="—" footMid="—" footRight="—" />,
+    ...galleryCardsCopy.ru.slides["cards-05"],
+    demo: true,
+    render: (language = "ru") => <PunchedCard unknown title={questsHomeCopy[language].cardTitle} steps={steps("ooooo")} footMid={questsHomeCopy[language].placeholder} />,
   },
 ];
 
 const baroSlides: Slide[] = [
   {
     id: "baro-01",
-    group: "К11 · барограф",
+    group: "baro",
     device: "baro",
-    title: "Лента нагрузки",
-    variant: "неделя погодных событий",
-    where: "Участок · колодец (components/farm/WeatherRecorder.tsx, WellPanel.tsx)",
-    note: "Барабан пишет нагрузку сети: номинал посередине, френзи наверху, блэкаут внизу. Значения показательные.",
+    ...galleryBaroCopy.ru.slides["baro-01"],
     demo: true,
-    render: () => <DrumChart points={[0.5, 0.62, 0.35, 0.9, 0.5, 0.2, 0.55]} dayLabels={dayLabels} />,
+    render: (language = "ru") => <DrumChart points={[0.32, 0.68, 0.32, 0.95, 0.32, 0.02, 0.68]} dayLabels={sampleDays} scaleLabels={sampleLoadScale(language)} />,
   },
   {
     id: "baro-02",
-    group: "К11 · барограф",
+    group: "baro",
     device: "baro",
-    title: "Перо на нуле",
-    variant: "событий нет",
-    where: "Участок · колодец, погода не менялась",
-    note: "Ровная линия — тоже запись: за неделю ничего не произошло, и это видно.",
+    ...galleryBaroCopy.ru.slides["baro-02"],
     demo: true,
-    render: () => <DrumChart points={[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]} dayLabels={dayLabels} />,
+    render: (language = "ru") => <DrumChart points={[0.32, 0.32, 0.32, 0.32, 0.32, 0.32, 0.32]} dayLabels={sampleDays} scaleLabels={sampleLoadScale(language)} />,
   },
   {
     id: "baro-03",
-    group: "К11 · барограф",
+    group: "baro",
     device: "baro",
-    title: "Молчащий барабан",
-    variant: "лента не заправлена",
-    where: "Участок · колодец, архива нет",
-    note: "Без точек перо не рисует кривую: пустой барабан честнее выдуманного прогноза.",
+    ...galleryBaroCopy.ru.slides["baro-03"],
     demo: false,
-    render: () => <DrumChart points={[]} dayLabels={dayLabels} />,
+    render: (language = "ru") => <DrumChart points={[]} dayLabels={[]} scaleLabels={sampleLoadScale(language)} />,
   },
   {
     id: "baro-04",
-    group: "К11 · барограф",
+    group: "baro",
     device: "baro",
-    title: "Блэкаут",
-    variant: "провал нагрузки",
-    where: "Участок · колодец, событие «блэкаут»",
-    note: "Нижняя полка шкалы — падение сети; верхняя — событие «френзи».",
+    ...galleryBaroCopy.ru.slides["baro-04"],
     demo: true,
-    render: () => <DrumChart points={[0.5, 0.45, 0.1, 0.05, 0.3, 0.62, 0.5]} dayLabels={dayLabels} />,
+    render: (language = "ru") => <DrumChart points={[0.32, 0.32, 0.02, 0.02, 0.32, 0.68, 0.32]} dayLabels={sampleDays} scaleLabels={sampleLoadScale(language)} />,
   },
 ];
 
 const behaviorSlides: Slide[] = [
   {
     id: "beh-01",
-    group: "Поведение окон",
+    group: "behavior",
     device: "frame",
-    title: "«—» вместо нуля",
-    variant: "нет связи ≠ ноль на балансе",
-    where: "все приборы: prop dash / level: null",
-    note: "Пустая ячейка со значением «—» означает «неизвестно». Ноль ставится только тогда, когда сеть реально отдала ноль.",
-    demo: false,
-    render: () => (
-      <Panel tier="panel" id={<Sticker alt>ПРАВИЛО</Sticker>} meta="ЧЕСТНОСТЬ" title="Неизвестное и пустое">
-        <Rows>
-          <Row k="Баланс в сети" v="—" note="нет связи с узлом" />
-          <Row k="Баланс в сети" v="0" note="узел ответил: пусто" />
-          <Row k="Прочность инструмента" v="17 / 20" note="прочитано из сети" />
-        </Rows>
-      </Panel>
-    ),
+    ...galleryBehaviorCopy.ru.slides["beh-01"],
+    demo: true,
+    render: (language = "ru") => {
+      const c = galleryBehaviorCopy[language].sample;
+      return (
+        <Panel tier="panel" id={<Sticker alt>{c.rule}</Sticker>} meta={c.honesty} title={c.unknownTitle}>
+          <Rows>
+            <Row k={c.balance} v="—" note={c.noConnection} />
+            <Row k={c.balance} v="0" note={c.zeroResponse} />
+            <Row k={toolsCopy[language].card.durability} v="17 / 20" note={c.exampleValue} />
+          </Rows>
+        </Panel>
+      );
+    },
   },
   {
     id: "beh-02",
-    group: "Поведение окон",
+    group: "behavior",
     device: "frame",
-    title: "Длинные подписи",
-    variant: "имя ресурса не ломает окно",
-    where: "все окна: подписи обрезаются, шкалы не сжимаются",
-    note: "Имя инструмента может быть длинным: канал пульта не должен от этого разъезжаться.",
+    ...galleryBehaviorCopy.ru.slides["beh-02"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <MixerStrips
         maxHours={20}
         channels={channels([
-          ["квантовый передатчик дальней связи", 0.7, 14, true],
-          ["экстрактор кремния повышенной чистоты", 0.4, 9],
+          [toolName(language, "quantum_transmitter"), 0.7, 14, true],
+          [toolName(language, "silicon_extractor"), 0.4, 9],
         ])}
       />
     ),
   },
   {
     id: "beh-03",
-    group: "Поведение окон",
+    group: "behavior",
     device: "frame",
-    title: "Пояснение вместо догадки",
-    variant: "тихая заметка под прибором",
-    where: "пустые состояния всех вкладок",
-    note: "Прибор не молчит и не выдумывает: он говорит, чего не хватает — кошелька, сети или самих данных.",
+    ...galleryBehaviorCopy.ru.slides["beh-03"],
     demo: false,
-    render: () => (
-      <Panel tier="panel" id={<Sticker alt>МОЛЧАНИЕ</Sticker>} meta="НЕТ ДАННЫХ" title="Как говорит пустой прибор">
-        <Note quiet>Подключи кошелёк — покажем прочность твоих инструментов.</Note>
-        <Note quiet>Стойка не читается: сеть не ответила.</Note>
-        <Note quiet>Инструментов пока нет: собери первый в кузнице или открой капсулу.</Note>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryBehaviorCopy[language].sample;
+      const tool = toolsCopy[language].home;
+      return (
+        <Panel tier="panel" id={<Sticker alt>{c.quiet}</Sticker>} meta={c.unavailable} title={c.emptyTitle}>
+          <Note quiet>{tool.connectHint}</Note>
+          <Note quiet>{tool.networkHint}</Note>
+          <Note quiet>{tool.emptyHint}</Note>
+        </Panel>
+      );
+    },
   },
   {
     id: "beh-04",
-    group: "Поведение окон",
+    group: "behavior",
     device: "frame",
-    title: "Только настоящие номера",
-    variant: "номер — подпись реального объекта",
-    where: "этикетки приборов: партия, стенд, ID",
-    note: "Номера в этикетках берутся из данных. Прибор без номера подписывается именем, а не придуманным индексом.",
+    ...galleryBehaviorCopy.ru.slides["beh-04"],
     demo: false,
-    render: () => (
-      <Panel tier="panel" id={<Sticker bars>СТОЙКА · 3</Sticker>} meta="ПУЛЬТ" title="Номер — это факт">
-        <Rows>
-          <Row k="Номер партии" v="0x3f…a1" note="ID инструмента" />
-          <Row k="Стенд" v="—" note="сеть не назвала стенд" />
-        </Rows>
-      </Panel>
-    ),
+    render: (language = "ru") => {
+      const c = galleryBehaviorCopy[language].sample;
+      return (
+        <Panel tier="panel" id={<Sticker bars>{c.rack}</Sticker>} meta={c.console} title={c.noIdTitle}>
+          <Rows>
+            <Row k={c.batch} v="—" note={c.idUnavailable} />
+            <Row k={c.stand} v="—" note={c.standUnavailable} />
+          </Rows>
+        </Panel>
+      );
+    },
   },
   {
     id: "beh-05",
-    group: "Поведение окон",
+    group: "behavior",
     device: "frame",
-    title: "Движение только физическое",
-    variant: "жидкость, стрелка, перо",
-    where: "все приборы; отключается системной настройкой «меньше движения»",
-    note: "Двигаются только части аппарата: жидкость в сосуде, стрелка, перо самописца. Декоративной анимации нет.",
+    ...galleryBehaviorCopy.ru.slides["beh-05"],
     demo: true,
-    render: () => (
+    render: (language = "ru") => (
       <div className="vg-row">
-        <Dewar level={0.35} label="уровень — демо" />
-        <MixerStrips maxHours={20} channels={channels([["стрелка", 0.66, 13, true]])} />
+        <Dewar level={0.35} label={galleryBehaviorCopy[language].sample.demoLevel} />
+        <MixerStrips maxHours={20} channels={channels([[galleryBehaviorCopy[language].sample.needle, 0.66, 13, true]])} />
       </div>
     ),
   },
@@ -1017,14 +941,31 @@ export const SLIDES: Slide[] = [
 /* ─────────────────────────── Экран палитры ─────────────────────────── */
 
 export function VisualGallery() {
+  const { language } = useLocale();
+  const copy = galleryCopy[language];
+  const slideMeta = (id: string) => {
+    if (frameIds.includes(id as FrameId)) return galleryFrameCopy[language].slides[id as FrameId];
+    if (cryoIds.includes(id as CryoId)) return galleryCryoCopy[language].slides[id as CryoId];
+    if (mixIds.includes(id as MixId)) return galleryMixCopy[language].slides[id as MixId];
+    if (sonarIds.includes(id as SonarId)) return gallerySonarCopy[language].slides[id as SonarId];
+    if (plateIds.includes(id as PlateId)) return galleryPlateCopy[language].slides[id as PlateId];
+    if (gelIds.includes(id as GelId)) return galleryGelCopy[language].slides[id as GelId];
+    if (crossIds.includes(id as CrossId)) return galleryCrossCopy[language].slides[id as CrossId];
+    if (cardsIds.includes(id as CardsId)) return galleryCardsCopy[language].slides[id as CardsId];
+    if (baroIds.includes(id as BaroId)) return galleryBaroCopy[language].slides[id as BaroId];
+    if (behaviorIds.includes(id as BehaviorId)) return galleryBehaviorCopy[language].slides[id as BehaviorId];
+    throw new Error(`Missing gallery translation for ${id}`);
+  };
   const [at, setAt] = useState(() => {
     const raw = Number(new URLSearchParams(window.location.search).get("s"));
     return Number.isFinite(raw) && raw >= 1 && raw <= SLIDES.length ? raw - 1 : 0;
   });
   const slide = SLIDES[Math.min(at, SLIDES.length - 1)];
+  const shown = slideMeta(slide.id);
+  const slideLanguage = language;
 
   const groups = useMemo(() => {
-    const out: { group: string; items: { slide: Slide; index: number }[] }[] = [];
+    const out: { group: Slide["group"]; items: { slide: Slide; index: number }[] }[] = [];
     SLIDES.forEach((s, index) => {
       const last = out[out.length - 1];
       if (last && last.group === s.group) last.items.push({ slide: s, index });
@@ -1035,6 +976,12 @@ export function VisualGallery() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing) return;
+      // Arrow keys belong to the focused control (especially the language menu),
+      // not to this window-wide slide shortcut.
+      if (e.target instanceof Element && e.target.closest(
+        'a, button, input, select, textarea, summary, details, [contenteditable="true"], [contenteditable=""], [role="slider"], [role="combobox"], [role="listbox"], [role="menu"], [role="tablist"], [tabindex]:not([tabindex="-1"])',
+      )) return;
       if (e.key === "ArrowRight") setAt((v) => Math.min(SLIDES.length - 1, v + 1));
       if (e.key === "ArrowLeft") setAt((v) => Math.max(0, v - 1));
     };
@@ -1049,22 +996,22 @@ export function VisualGallery() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [at]);
 
-  const device = DEVICE_BY_KEY[slide.device];
+  const device = { ...DEVICE_BY_KEY[slide.device], ...copy.devices[slide.device] };
 
   return (
     <div className="vg">
       <aside className="vg-index">
         <div className="vg-index__head">
-          <b>Инструментальная палитра</b>
-          <span>50 слайдов · 8 аппаратов К4–К11</span>
-          <a className="vg-index__back" href="/">
-            ← в игру
-          </a>
+          <b>{copy.chrome.title}</b>
+          <span>{SLIDES.length} {copy.chrome.slides} · {DEVICE_MAP.length - 1} {copy.chrome.instruments}</span>
+          <a className="vg-index__back" href="/">{copy.chrome.back}</a>
+          <LanguageSwitcher compact />
+
         </div>
-        <nav>
+        <nav aria-label={copy.chrome.navigation}>
           {groups.map((g) => (
             <div key={g.group} className="vg-index__group">
-              <div className="vg-index__title">{g.group}</div>
+              <div className="vg-index__title">{g.items[0].slide.id.startsWith("beh-") ? copy.chrome.behavior : copy.devices[g.items[0].slide.device].name}</div>
               {g.items.map(({ slide: s, index }) => (
                 <button
                   key={s.id}
@@ -1073,9 +1020,9 @@ export function VisualGallery() {
                   onClick={() => setAt(index)}
                 >
                   <span className="vg-index__num">{String(index + 1).padStart(2, "0")}</span>
-                  <span>
-                    {s.title}
-                    <small>{s.variant}</small>
+                  <span lang={language}>
+                    {slideMeta(s.id).title}
+                    <small>{slideMeta(s.id).variant}</small>
                   </span>
                 </button>
               ))}
@@ -1087,10 +1034,10 @@ export function VisualGallery() {
       <main className="vg-main">
         <div className="vg-top">
           <button type="button" className="vg-nav" onClick={() => setAt((v) => Math.max(0, v - 1))} disabled={at === 0}>
-            ← назад
+            {copy.chrome.previous}
           </button>
           <span className="vg-count">
-            слайд {at + 1} из {SLIDES.length}
+            {copy.chrome.count(at + 1, SLIDES.length)}
           </span>
           <button
             type="button"
@@ -1098,29 +1045,29 @@ export function VisualGallery() {
             onClick={() => setAt((v) => Math.min(SLIDES.length - 1, v + 1))}
             disabled={at === SLIDES.length - 1}
           >
-            вперёд →
+            {copy.chrome.next}
           </button>
         </div>
 
         <h1 className="vg-title">
-          {slide.title}
-          {slide.demo && <span className="vg-demo">демо-значения</span>}
+          <span lang={slideLanguage}>{shown.title}</span>
+          {slide.demo && <span className="vg-demo">{copy.chrome.demo}</span>}
         </h1>
-        <p className="vg-variant">{slide.variant}</p>
+        <p className="vg-variant" lang={slideLanguage}>{shown.variant}</p>
 
-        <div className="vg-stage">{slide.render()}</div>
+        <div className="vg-stage" lang={slideLanguage}>{slide.render(language)}</div>
 
         <dl className="vg-facts">
           <div>
-            <dt>Прибор</dt>
+            <dt>{copy.chrome.device}</dt>
             <dd>
               {device.name} — {device.purpose}
             </dd>
           </div>
           <div>
-            <dt>Где в игре</dt>
+            <dt>{copy.chrome.where}</dt>
             <dd>
-              {slide.where}
+              <span lang={slideLanguage}>{shown.where}</span>
               <br />
               <span className="vg-file">
                 {device.tab}
@@ -1129,8 +1076,8 @@ export function VisualGallery() {
             </dd>
           </div>
           <div>
-            <dt>Что видно</dt>
-            <dd>{slide.note}</dd>
+            <dt>{copy.chrome.visible}</dt>
+            <dd lang={slideLanguage}>{shown.note}</dd>
           </div>
         </dl>
       </main>
