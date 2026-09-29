@@ -3,7 +3,7 @@
 export const CONSENT_VERSION = '2026-09-28.2';
 export const CONSENT_KEY = 'nf:privacy-choice:v1';
 export const MAX_AGE = 180 * 24 * 60 * 60 * 1000;
-export const OPTIONAL_KEYS = ['aof:site:journal:v1', 'aof_onboarded', 'manor.sound', 'manor.motion'] as const;
+export const OPTIONAL_KEYS = ['aof:site:journal:v1', 'aof_onboarded', 'manor.sound', 'manor.motion', 'aof:language'] as const;
 export type Consent = {
   version: string; id: string; timestamp: number; expires: number;
   necessary: true; functional: boolean; analytics: false; marketing: false;

@@ -29,7 +29,24 @@ export interface PackOpenIntent {
   readonly packType: number;
   readonly maxPriceLamports: string;
 }
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent;
+export interface SeasonPassIntent {
+  readonly kind: "seasonPass";
+  readonly user: string;
+  readonly treasury: string;
+  readonly seasonId: number;
+  readonly priceLamports: "150000000";
+}
+/** Only an already-owned lottery ticket may be claimed or refunded.
+ * Ticket purchases are separately paused until the contract supports a
+ * wallet-signed maximum price, not merely a hard-coded transfer in a CPI. */
+export interface LotteryTicketIntent {
+  readonly kind: "lotteryTicket";
+  readonly action: "claim" | "refund";
+  readonly user: string;
+  readonly roundId: string;
+  readonly ticketNumber: string;
+}
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
@@ -103,6 +120,8 @@ export function validateTransactionIntent(
     return; // Other operations still use the existing guard policy, not full intent validation.
   }
   if (intent.kind === "packOpen") return validatePackOpenIntent(instructions, intent, user);
+  if (intent.kind === "seasonPass") return validateSeasonPassIntent(instructions, intent, user);
+  if (intent.kind === "lotteryTicket") return validateLotteryTicketIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -128,6 +147,54 @@ export function validateTransactionIntent(
     }
   }
   if (buys !== 1) throw new Error("Missing marketplace purchase");
+}
+
+function validateLotteryTicketIntent(instructions: Instruction[], intent: LotteryTicketIntent, user: PublicKey): void {
+  // Neither rounding through Number nor trusting a backend-provided PDA can
+  // change the ticket the player agreed to claim/refund.
+  const u64Bytes = (value: string, allowZero: boolean) => {
+    if (typeof value !== 'string' || !(allowZero ? /^(0|[1-9][0-9]{0,19})$/ : /^[1-9][0-9]{0,19}$/).test(value) ||
+        BigInt(value) > (1n << 64n) - 1n) throw new Error('Invalid lottery ticket number');
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, BigInt(value), true);
+    return bytes;
+  };
+  const roundBytes = u64Bytes(intent.roundId, true);
+  const ticketBytes = u64Bytes(intent.ticketNumber, true);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error('Wallet differs from the lottery intent');
+  const seeded = (seed: string, ...parts: Uint8Array[]) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...parts], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  const expectedName = intent.action === 'claim' ? 'claim_lottery_prize'
+    : intent.action === 'refund' ? 'refund_lottery_ticket' : null;
+  if (!expectedName || instructions.length !== 1 || spec?.name !== expectedName || ix.data.length !== 8 ||
+      !keysEqual(ix.keys, [pda('config'), seeded('lottery_round', roundBytes),
+        seeded('lottery_ticket', roundBytes, ticketBytes), user])) {
+    throw new Error('Lottery transaction differs from the verified ticket');
+  }
+}
+
+function validateSeasonPassIntent(instructions: Instruction[], intent: SeasonPassIntent, user: PublicKey): void {
+  if (intent.priceLamports !== '150000000' || !Number.isInteger(intent.seasonId) ||
+      intent.seasonId < 0 || intent.seasonId > 0xffffffff ||
+      !new PublicKey(intent.user).equals(user)) throw new Error('Invalid season pass purchase intent');
+  const seasonSeed = new Uint8Array(4);
+  new DataView(seasonSeed.buffer).setUint32(0, intent.seasonId, true);
+  const seeded = (seed: string, ...parts: Uint8Array[]) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...parts], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  // Find the discriminator in the generated program table via the known Anchor
+  // instruction name, not a second handwritten byte sequence.
+  const ix = instructions[0];
+  const purchase = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (instructions.length !== 1 || purchase?.name !== 'purchase_season_pass' ||
+      ix.data.length !== 8 || !keysEqual(ix.keys, [
+        pda('config'), user, new PublicKey(intent.treasury),
+        seeded('season', seasonSeed), seeded('season_pass', user.toBytes(), seasonSeed),
+        new PublicKey(SYSTEM),
+      ])) throw new Error('Unexpected season pass transaction');
 }
 
 function validatePackOpenIntent(instructions: Instruction[], intent: PackOpenIntent, user: PublicKey): void {

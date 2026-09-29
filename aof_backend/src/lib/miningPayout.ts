@@ -1,3 +1,4 @@
+import { TOOL_RESOURCE_MINT, miningRewardMint } from "./toolResourceMint";
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { materialMintsPda, configPda } from "./pda";
@@ -17,55 +18,14 @@ const YIELD_BPS: Record<string, number> = {
   legendary: 18000,
 };
 
-// Маппинг toolType → ключ в MaterialMints PDA
-// [REBRAND] new tool ids + legacy pre-rebrand ids (devnet tools keep working)
-const TOOL_TO_RESOURCE: Record<string, string> = {
-  plasma_cutter: "CIRCUIT",
-  silicon_extractor: "SILICON",
-  data_harvester: "DATASET",
-  quantum_transmitter: "DATASET",
-  neural_seeder: "NEURON",
-  // legacy aliases
-  axe: "CIRCUIT",
-  pick: "SILICON",
-  bow: "DATASET",
-  spear: "DATASET",
-  reaper: "NEURON",
-};
-
-/**
- * Получить mint ресурса по toolType.
- * Читает адреса из Config PDA (FOOD/WOOD/STONE) и MaterialMints PDA (все остальные).
- */
+/** Read the same mint account/field that collect_mining validates on-chain. */
 export async function getMintForToolType(toolType: string): Promise<PublicKey | null> {
-  const key = TOOL_TO_RESOURCE[toolType.toLowerCase()];
-  if (!key) return null;
-
-  // Базовые ресурсы из Config
-  if (key === "DATA" || key === "CIRCUIT" || key === "SILICON") {
-    const [cfgAddr] = configPda();
-    const cfg: any = await fetchOneForSigner("config", cfgAddr);
-    const field = key === "DATA" ? "foodMint" : key === "CIRCUIT" ? "woodMint" : "stoneMint";
-    const mint = cfg?.[field];
-    return mint ? new PublicKey(mint) : null;
-  }
-
-  // Новые ресурсы из MaterialMints
-  const [mmAddr] = materialMintsPda();
-  const mm: any = await fetchOneForSigner("materialMints", mmAddr);
-  const fieldMap: Record<string, string> = {
-    NEURON: "seeds",
-    SYNAPSE: "wheat",
-    SIGNAL: "flour",
-    MODEL: "bread",
-    POWER: "water",
-    COMPUTE: "coal",
-    DATASET: "meat",
-  };
-  const field = fieldMap[key];
-  if (!field) return null;
-  const mint = mm?.[field];
-  return mint ? new PublicKey(mint) : null;
+  const entry = TOOL_RESOURCE_MINT[toolType as keyof typeof TOOL_RESOURCE_MINT];
+  if (!entry) return null;
+  const [addr] = entry.account === 'config' ? configPda() : materialMintsPda();
+  const account = await fetchOneForSigner(entry.account === 'config' ? 'config' : 'materialMints', addr);
+  const mint = miningRewardMint(toolType, entry.account === 'config' ? account : null, entry.account === 'materials' ? account : null);
+  return mint;
 }
 
 /**

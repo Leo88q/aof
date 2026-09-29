@@ -12,7 +12,7 @@ pub struct Config {
     pub stone_mint: Pubkey,         // 32
     pub seeds_mint: Pubkey,         // 32 [НОВОЕ]
     pub water_mint: Pubkey,         // 32 [НОВОЕ]
-    pub potato_mint: Pubkey,        // 32 [НОВОЕ] Основной утилити-токен
+    pub potato_mint: Pubkey,        // 32 Historical ABI name: internal MIND resource, NOT external Potato
     pub craft_fee: u64,             // 8
     pub unstake_fee: u64,           // 8
     pub paused: bool,               // 1
@@ -48,14 +48,7 @@ pub struct Config {
     pub reserved: [u8; 32],         // 32
 }
 
-/// [AUDIT F-17] Canonical tool kinds. `ToolData.tool_type` is a free-form
-/// String, and `mint_tool` accepted any string up to 32 bytes. A tool minted as
-/// "Spear" (capital S) or "sword" produced nothing while mining (the mapping was
-/// case-sensitive in exploration and simply missing for spear) and could not be
-/// repaired. Every entry point now normalises to this set.
-/// [REBRAND 2026-09-24] NeuroForge tool ids. Pre-rebrand ids (axe/pick/
-/// spear/bow/reaper) remain accepted through LEGACY_TOOL_ALIASES so tools
-/// minted on devnet under the old names keep working.
+/// The five accepted ToolData kinds. Historical names are intentionally rejected.
 pub const TOOL_KINDS: [&str; 5] = [
     "plasma_cutter",
     "silicon_extractor",
@@ -64,29 +57,13 @@ pub const TOOL_KINDS: [&str; 5] = [
     "neural_seeder",
 ];
 
-const LEGACY_TOOL_ALIASES: [(&str, &str); 5] = [
-    ("axe", "plasma_cutter"),
-    ("pick", "silicon_extractor"),
-    ("spear", "data_harvester"),
-    ("bow", "quantum_transmitter"),
-    ("reaper", "neural_seeder"),
-];
-
 pub fn is_valid_tool_type(tool_type: &str) -> bool {
     canonical_tool_type(tool_type).is_some()
 }
 
-/// Lower-case canonical spelling, so "Plasma_Cutter" and "PLASMA_CUTTER"
-/// produce the same stored value and every comparison downstream is
-/// unambiguous. Accepts legacy pre-rebrand ids as aliases.
+/// Normalise letter case for the five current ids; reject historical names.
 pub fn canonical_tool_type(tool_type: &str) -> Option<&'static str> {
-    if let Some(k) = TOOL_KINDS.iter().copied().find(|k| tool_type.eq_ignore_ascii_case(k)) {
-        return Some(k);
-    }
-    LEGACY_TOOL_ALIASES
-        .iter()
-        .find(|(old, _)| tool_type.eq_ignore_ascii_case(old))
-        .map(|(_, new)| *new)
+    TOOL_KINDS.iter().copied().find(|kind| tool_type.eq_ignore_ascii_case(kind))
 }
 
 impl Config {
@@ -1362,10 +1339,9 @@ mod state_tests {
         assert!(!is_valid_tool_type("sword"));
         assert!(!is_valid_tool_type(""));
         assert_eq!(canonical_tool_type("Data_Harvester"), Some("data_harvester"));
-        // [REBRAND] legacy pre-rebrand ids still canonicalise (devnet compat)
-        assert_eq!(canonical_tool_type("Spear"), Some("data_harvester"));
-        assert_eq!(canonical_tool_type("axe"), Some("plasma_cutter"));
-        assert_eq!(canonical_tool_type("reaper"), Some("neural_seeder"));
+        for old in ["axe", "pick", "spear", "bow", "reaper"] {
+            assert_eq!(canonical_tool_type(old), None);
+        }
     }
 
     #[test]
@@ -1637,8 +1613,7 @@ mod property_tests {
     }
 
     /// [F-17] Case-insensitive canonicalisation must be total (no junk
-    /// canonicalises to a tool) and idempotent, or "Axe" and "axe" remain two
-    /// different tools downstream.
+    /// canonicalises to a tool) and idempotent, and historical names must not be accepted.
     #[test]
     fn tool_type_canonicalisation_is_total_and_idempotent() {
         let mut rng = Rng::new(0x117_2026);

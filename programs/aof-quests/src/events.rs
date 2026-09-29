@@ -64,6 +64,38 @@ pub struct DrumRefunded {
     pub amount: u64,
 }
 
+/// Versioned events: legacy drum indexers must never treat whole-Potato V2
+/// payouts as historical raw-atom mascot payouts (or vice versa).
+#[event]
+pub struct PotatoSpinCommitted {
+    pub user: Pubkey,
+    pub commit: Pubkey,
+    pub mint: Pubkey,
+    pub price_atoms: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+}
+
+#[event]
+pub struct PotatoSpinRevealed {
+    pub user: Pubkey,
+    pub commit: Pubkey,
+    pub mint: Pubkey,
+    pub prize_atoms: u64,
+    pub randomness: Pubkey,
+    pub seed_slot: u64,
+    pub value: [u8; 32],
+    pub cranker: Pubkey,
+}
+
+#[event]
+pub struct PotatoSpinRefunded {
+    pub user: Pubkey,
+    pub commit: Pubkey,
+    pub mint: Pubkey,
+    pub amount_atoms: u64,
+}
+
 #[event]
 pub struct VrfSlotAdded {
     pub index: u32,

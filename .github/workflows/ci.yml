@@ -899,11 +899,14 @@ jobs:
       - name: Self-test - reward receipts and bounded purchases
         run: npm run test:reward-receipts
 
-      - name: Self-test - resource registry
+      - name: Self-test - resource registry and mining gates
         run: |
           set -uo pipefail
-          npm run test:resource-registry 2>&1 | tee -a /tmp/backend-build.log
-          exit "${PIPESTATUS[0]}"
+          for test in test:resource-registry test:tool-mining test:mining-flag test:mining-preflight test:potato-inspect test:potato-economics test:active-season; do
+            npm run "$test" 2>&1 | tee -a /tmp/backend-build.log
+            status="${PIPESTATUS[0]}"
+            [ "$status" -eq 0 ] || exit "$status"
+          done
 
       - name: Self-test - security invariants
         run: |

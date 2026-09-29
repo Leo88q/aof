@@ -70,6 +70,10 @@ pub struct DrumCommitCtx<'info> {
 }
 
 pub fn handler(ctx: Context<DrumCommitCtx>) -> Result<()> {
+    // Fail closed even for direct RPC clients: current constants are raw atoms,
+    // not 5 whole units of a verified external Potato SPL mint. Replace with a
+    // decimals-aware, funded version and complete the devnet review first.
+    require!(false, QuestError::Paused);
     // The treasury must be able to pay the largest prize of this spin.
     require!(
         ctx.accounts.treasury_mascot.amount >= DRUM_MAX_PRIZE,

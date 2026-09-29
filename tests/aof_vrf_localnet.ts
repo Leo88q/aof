@@ -178,7 +178,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   async function mintTool(owner: Keypair) {
     const mint = await createMint(connection, owner, authPda, null, 0);
     const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, owner, mint, owner.publicKey)).address;
-    await program.methods.mintTool("axe", { common: {} }).accounts({
+    await program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: owner.publicKey,
       toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).rpc();

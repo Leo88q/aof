@@ -1,219 +1,84 @@
 import type { SitePage } from './schema';
+import { pageNames, messages, type PageId, type UIKey } from '../../i18n/translations';
+import { siteJournalCopy } from '../../i18n/siteJournalCopy';
+import { siteChanceCopy } from '../../i18n/siteChanceCopy';
+import { siteSeasons } from '../../i18n/siteSeasons';
+import { siteTrust } from '../../i18n/siteTrust';
+import { siteTools } from '../../i18n/siteTools';
+import { siteMine } from '../../i18n/siteMine';
+import { siteMarket } from '../../i18n/siteMarket';
+import { siteEconomy } from '../../i18n/siteEconomy';
+import { siteInvestors } from '../../i18n/siteInvestors';
+import { siteGuide } from '../../i18n/siteGuide';
+import { siteStrategies } from '../../i18n/siteStrategies';
+import { siteTrade } from '../../i18n/siteTrade';
+import { siteDocs } from '../../i18n/siteDocs';
+import { siteRecipes } from '../../i18n/siteRecipes';
+import { siteMind } from '../../i18n/siteMind';
+import { siteWorkshop } from '../../i18n/siteWorkshop';
+import { siteGlossary } from '../../i18n/siteGlossary';
+import { siteRulesCopy } from '../../i18n/siteRulesCopy';
+import { introPages } from '../../i18n/siteIntro';
+import { editorialPages } from '../../i18n/siteEditorial';
+import { siteLore } from '../../i18n/siteLore';
+import { siteRoadmap } from '../../i18n/siteRoadmap';
+import { siteFaq } from '../../i18n/siteFaq';
+import { resourceCatalogCopy } from '../../i18n/resourceCatalogCopy';
 
-export const pages: SitePage[] = [
-  { id: 'home', title: 'Лаборатория', group: 'Играть',
-    lead: 'Культивируй образцы. Обучай модели. Держи лабораторию в порядке.',
-    paragraphs: [
-      'NeuroForge — лаборатория-RPG на Solana. Загружай образцы в лунки, снимай съём, разделяй его в сигналы, обучай модели, собирай инструменты и торгуй на рынке.',
-      '20 единиц энергии. 20 единиц прочности. 5 редкостей. 5 уровней доверия. Числа задают рамки — решения принимаешь ты.',
-    ] },
+type Body = { lead: string; paragraphs: readonly string[] };
 
-  { id: 'manifesto', title: 'Манифест', group: 'Играть',
-    lead: 'Прозрачность вместо обещаний.',
-    paragraphs: [
-      'Каждое действие проверяемо. Ты видишь, что потратил, что создал и что передал другому оператору.',
-      'Условия действия — до подписи транзакции. Не после.',
-      'Сеть жива людьми. Репутация, сотрудничество и честная торговля делают лабораторию настоящей.',
-    ] },
+/** Stable routes and navigation order. The Russian metadata is derived from
+ * the same seven-language catalogs as the visible pages, not a second article. */
+const bodies = {
+  home: { lead: messages.ru.homeLead, paragraphs: [messages.ru.homeIntro, messages.ru.homeNumbers] },
+  manifesto: editorialPages.ru.manifesto,
+  start: introPages.ru.start,
+  world: introPages.ru.world,
+  energy: introPages.ru.energy,
+  weather: editorialPages.ru.weather,
+  farm: siteWorkshop.ru.farm,
+  craft: siteWorkshop.ru.craft,
+  tools: siteTools.ru,
+  mine: siteMine.ru,
+  packs: siteChanceCopy.ru.packs,
+  lottery: siteChanceCopy.ru.lottery,
+  economy: siteEconomy.ru,
+  market: siteMarket.ru,
+  seasons: siteSeasons.ru,
+  trust: siteTrust.ru,
+  resources: { lead: resourceCatalogCopy.ru.categories, paragraphs: [resourceCatalogCopy.ru.categories] },
+  guide: siteGuide.ru,
+  strategies: siteStrategies.ru,
+  quests: siteJournalCopy.ru,
+  recipes: siteRecipes.ru,
+  trade: siteTrade.ru,
+  investors: siteInvestors.ru,
+  potato: siteMind.ru,
+  lore: siteLore.ru,
+  glossary: siteGlossary.ru,
+  docs: siteDocs.ru,
+  faq: siteFaq.ru,
+  roadmap: siteRoadmap.ru,
+  rules: siteRulesCopy.ru,
+} satisfies Record<PageId, Body>;
 
-  { id: 'start', title: 'Первая смена', group: 'Играть',
-    lead: 'От подключения кошелька до первого результата.',
-    paragraphs: [
-      'Изучи энергию, прочность и стоимость действий. Подключи Solana-кошелёк.',
-      'Не вводи seed-фразу на сайте. Подпись запрашивает кошелёк. Проверяй сеть, адрес программы и разрешения.',
-      'Начни с короткой цепочки: сетевая станция → культивация → съём. Перед сборкой проверь рецепт, перед продажей — цену и комиссию.',
-    ] },
-
-  { id: 'world', title: 'Лаборатория и сеть', group: 'Играть',
-    lead: 'Четыре модуля одной системы.',
-    paragraphs: [
-      'Лаборатория культивирует образцы. Модуль сепарации и учебный стенд продолжают цепочку. Добыча и экспедиции дают редкие материалы.',
-      'Квантовая кузница превращает ресурсы в инструменты. Износ ведёт к ремонту. Рынок связывает твою работу с другими операторами.',
-      'Нагрузка сети меняет условия. Эпохи задают длинный ритм. Переобучение связывает окончание одного пути с началом другого.',
-    ] },
-
-  { id: 'energy', title: 'Энергия', group: 'Играть',
-    lead: '20 единиц — запас действий, а не повод торопиться.',
-    paragraphs: [
-      'Диапазон энергии: 0–20. Перед действием сравни текущий запас и цену.',
-      'Регенерация: +1 единица каждые 30 минут. Действия тратят: культивация 1, съём 1, сепарация 2, обучение 2.',
-    ] },
-
-  { id: 'weather', title: 'Нагрузка сети', group: 'Играть',
-    lead: 'Четыре состояния — одна устойчивая сеть.',
-    paragraphs: [
-      'Блэкаут — сеть остановлена: сетевая станция не качает. 0 единиц в час.',
-      'Номинал — штатный режим: 5 единиц в час.',
-      'Скачок — напряжение выше обычного: 15 единиц в час.',
-      'Френзи — пиковая нагрузка: 20 единиц в час. Самая щедрая смена.',
-    ] },
-
-  { id: 'farm', title: 'От образца до модели', group: 'Ремесло',
-    lead: 'Четыре звена производственной цепочки.',
-    paragraphs: [
-      'Нейрон (+ Энергопоток) → культивация в лунке → Синапс (×1.5). Синапс → сепарация → Сигнал. Сигнал + топливо → обучение → Модель.',
-      'Разделяй начало и получение результата. Повторное нажатие не ускоряет цикл.',
-      'Оставляй запас материалов на следующий цикл.',
-    ] },
-
-  { id: 'craft', title: 'Квантовая кузница', group: 'Ремесло',
-    lead: 'Сначала рецепт — потом расход.',
-    paragraphs: [
-      'Проверь входные материалы, стоимость и доступность рецепта.',
-      'Рецепты чипов и флюидов идут цепочкой: ядра → чипы → флюиды. Партия собирается сразу, но выпуск каждого ресурса ограничен нормой эпохи.',
-      'Сборка инструмента (NFT) считается по шести ресурсам, а цена растёт вместе с редкостью и спросом.',
-    ] },
-
-  { id: 'tools', title: 'Инструменты', group: 'Ремесло',
-    lead: '5 типов. 5 редкостей. 20 прочности.',
-    paragraphs: [
-      'Plasma Cutter добывает Схему. Silicon Extractor — Кремний. Data Harvester — Датасет. Quantum Transmitter — тоже Датасет. Neural Seeder — Нейроны.',
-      'Base → Enhanced → Quantum → Singularity → Transcendent. Редкость определяет yield и стоимость ремонта.',
-      'Прочность 0–20. При нуле — ремонт за Схему и Кремний. 3 слота зачарования.',
-    ] },
-
-  { id: 'mine', title: 'Добыча', group: 'Ремесло',
-    lead: 'Инструмент + время = ресурсы.',
-    paragraphs: [
-      'Выбери инструмент и длительность (8–20 часов в зависимости от редкости). Yield: ×1.0 (Base) — ×1.8 (Transcendent).',
-      'Из паков выпадают Plasma Cutter, Silicon Extractor и Data Harvester. Quantum Transmitter и Neural Seeder — только крафт.',
-    ] },
-
-  { id: 'packs', title: 'Капсулы дропа', group: 'Случайность',
-    lead: 'Три размера — честные шансы.',
-    paragraphs: [
-      'Три размера капсулы: малая, средняя и большая. Выпадают инструменты четырёх редкостей; Transcendent достаётся только сборкой.',
-      'Цену капсулы задаёт настройка сети — сверяй её в игре до открытия. Открытие идёт через commit/reveal, реролл редкости стоит отдельную плату.',
-    ] },
-
-  { id: 'lottery', title: 'Квантовый розыгрыш', group: 'Случайность',
-    lead: 'Билет → розыгрыш → приз.',
-    paragraphs: [
-      'Билет 0.0008 SOL. Раунд ждёт розыгрыша до 14 дней. 70% пула — победителю, 30% — развитие.',
-      'Розыгрыш честный: commit/reveal хеша. Проигравшие могут запросить refund.',
-    ] },
-
-  { id: 'economy', title: 'Экономика', group: 'Экономика',
-    lead: 'Ресурс появляется, меняет форму и расходуется.',
-    paragraphs: [
-      'Лаборатория, добыча и экспедиции добавляют ресурсы. Цепочки крафта меняют их форму.',
-      'Рынок перераспределяет ресурсы между игроками.',
-      'Эмиссия ограничена issuance cap на каждый ресурс и эпоху.',
-    ] },
-
-  { id: 'market', title: 'Рынок', group: 'Экономика',
-    lead: '6 способов торговли.',
-    paragraphs: [
-      'Marketplace — листинги по фиксированной цене. Orderbook — лимитные ордера.',
-      'Аукцион — ставки, последние 5 минут «горят». Аренда — чужой инструмент на срок.',
-      'HOT-маркет и пул ликвидности — для продвинутых операторов.',
-    ] },
-
-  { id: 'seasons', title: 'Эпохальный путь', group: 'Путь',
-    lead: '42 дня. 42 уровня. Бесконечный рост.',
-    paragraphs: [
-      'Эпоха длится 42 дня и держит 42 ступени. Ступень берётся опытом, награда — ресурсами.',
-      'Пропуск эпохи: бесплатный трек и premium-ветка за 0.15 SOL с отдельными наградами; 42 ступени на эпоху.',
-      'Перерождение связывает накопленный опыт с новым циклом.',
-    ] },
-
-  { id: 'trust', title: 'Доверие', group: 'Путь',
-    lead: '5 уровней репутации.',
-    paragraphs: [
-      'Novice → Operator → Experienced → Veteran → Legend. Уровень определяется активностью, возрастом аккаунта и стейкингом.',
-      'Каждый уровень открывает новые лимиты и разрешения. Session Keys делегируют ограниченные действия.',
-    ] },
-
-  { id: 'resources', title: 'Каталог ресурсов', group: 'Знания',
-    lead: '27 ресурсов. 6 категорий. Одна экосистема.',
-    paragraphs: [
-      'Базовые (Данные, Схема, Кремний, Энергопоток, Вычисления, Датасет). Модельная цепочка (Нейрон → Синапс → Сигнал → Модель).',
-      'Ядра и чипы (ядра и кварцы → чипы → флюиды). Коллаборации и особые позиции — гость MIND и Ядро-душа.',
-      'Открой карточку ресурса: источники, расходы и связанные механики.',
-    ] },
-
-  { id: 'guide', title: 'Первые смены', group: 'Играть',
-    lead: 'Шесть смен от кошелька до перерождения.',
-    paragraphs: [
-      'Путь проходят один раз: подключить кошелёк, прожить первую смену, собрать первый инструмент, продать первую партию, дойти до длинного цикла.',
-      'Каждая смена заканчивается понятным результатом: что потрачено, что получено и что читать дальше.',
-    ] },
-
-  { id: 'strategies', title: 'Пути мастера', group: 'Играть',
-    lead: 'Пять стилей игры — от спокойного цикла до гильдейской работы.',
-    paragraphs: [
-      'Путь — не класс и не ограничение, а привычка первых недель. Когда меняются условия эпохи, меняется и путь.',
-      'Под каждым путём — короткие правила, которые экономят материалы и нервы.',
-    ] },
-
-  { id: 'quests', title: 'Журнал знакомства', group: 'Играть',
-    lead: 'Шесть отметок для читателя — без игровых наград.',
-    paragraphs: [
-      'Журнал живёт только в этом браузере: он показывает, что сайт уже прочитан и что стоит открыть следом.',
-      'Это не игровой прогресс и не обещание награды: сбросить отметки можно в один клик.',
-    ] },
-
-  { id: 'recipes', title: 'Книга рецептов', group: 'Ремесло',
-    lead: 'Рецепты мастерской: входы, выходы, энергия и станция.',
-    paragraphs: [
-      'Рецепт — договор между материалами и трудом: он говорит, что принести и что получится на выходе.',
-      'Пометка «Редакционный пример» значит, что состав описан командой, но ещё не сверен с записью в сети: точные числа смотри в игре.',
-    ] },
-
-  { id: 'trade', title: 'Способы торговли', group: 'Экономика',
-    lead: 'Шесть площадок: от мгновенного листинга до пула ликвидности.',
-    paragraphs: [
-      'Каждая площадка отвечает на свой вопрос: как продать быстро, как получить лучшую цену и как заработать на времени.',
-      'У каждой — своя комиссия и свой риск. Условия читаются до подписи, а не после.',
-    ] },
-
-  { id: 'investors', title: 'Экономика для инвестора', group: 'Экономика',
-    lead: 'Источники, стоки и четыре цикла, в которых живут ресурсы.',
-    paragraphs: [
-      'Экономика стоит на труде и расходе: ресурсы появляются в лаборатории, добыче и экспедициях, а сгорают в рецептах, ремонте и розыгрышах.',
-      'Раздел описывает механику и не обещает доход: цена, ликвидность и спрос зависят от действий людей, а не от текста на сайте.',
-    ] },
-
-  { id: 'potato', title: 'Токен MIND', group: 'Экономика',
-    lead: 'Гость из другой мастерской: расходник, который сгорает.',
-    paragraphs: [
-      'MIND приходит снаружи — с другого кошелька или с события коллаборации. Внутри NeuroForge он только тратится: каждый расход сжигает токен в сети.',
-      'Ниже — пять способов расхода, правила обращения и голоса мастерской.',
-    ] },
-
-  { id: 'lore', title: 'История мастерской', group: 'Знания',
-    lead: 'Четыре эры: от грифельной доски до открытых ставен.',
-    paragraphs: [
-      'История здесь не учебник, а фон: она объясняет, откуда взялись тиры доверия, commit/reveal и ритуал перерождения.',
-      'Читай по эрам — или начни с той, что ближе к нынешнему состоянию игры.',
-    ] },
-
-  { id: 'glossary', title: 'Словарь', group: 'Знания',
-    lead: 'Термины мастерской, рынка и сети — простыми словами.',
-    paragraphs: [
-      'Словарь собирает слова, которые встречаются в игре и на сайте: от хеша обязательства до доли в пуле.',
-      'Если термин непонятен в тексте — ищи его здесь: определение всегда короче объяснения.',
-    ] },
-
-  { id: 'docs', title: 'Индекс инструкций', group: 'Знания',
-    lead: 'Имена инструкций: что вызывается при каждом действии.',
-    paragraphs: [
-      'Имена инструкций помогают сверить описание с записью в сети: одно действие — одно имя в операции.',
-      'Рабочие инструкции и статус площадок видны в игре; здесь — та же карта с пояснениями.',
-    ] },
-
-  { id: 'faq', title: 'Частые вопросы', group: 'Знания',
-    lead: 'Короткие ответы без тумана.',
-    paragraphs: ['Поиск работает по вопросу и ответу. Фильтр темы сужает список.'] },
-
-  { id: 'roadmap', title: 'Карта развития', group: 'Знания',
-    lead: 'Направления работы, а не обещания сроков.',
-    paragraphs: ['Сначала — стабильное основание. Затем — расширение механики и контента.'] },
-
-  { id: 'rules', title: 'Правила', group: 'Знания',
-    lead: 'Условия до действия.',
-    paragraphs: [
-      'Не используй ошибки для присвоения чужих активов. Не раскрывай чужие секреты.',
-      'Безопасность кошелька — твоя ответственность. Параметры могут меняться.',
-    ] },
+const routes: readonly (readonly [PageId, UIKey])[] = [
+  ['home', 'playGroup'], ['manifesto', 'playGroup'], ['start', 'playGroup'],
+  ['world', 'playGroup'], ['energy', 'playGroup'], ['weather', 'playGroup'],
+  ['farm', 'craftGroup'], ['craft', 'craftGroup'], ['tools', 'craftGroup'], ['mine', 'craftGroup'],
+  ['packs', 'chanceGroup'], ['lottery', 'chanceGroup'],
+  ['economy', 'economyGroup'], ['market', 'economyGroup'],
+  ['seasons', 'progressGroup'], ['trust', 'progressGroup'],
+  ['resources', 'learnGroup'], ['guide', 'playGroup'], ['strategies', 'playGroup'], ['quests', 'playGroup'],
+  ['recipes', 'craftGroup'], ['trade', 'economyGroup'], ['investors', 'economyGroup'],
+  ['potato', 'economyGroup'], ['lore', 'learnGroup'], ['glossary', 'learnGroup'],
+  ['docs', 'learnGroup'], ['faq', 'learnGroup'], ['roadmap', 'learnGroup'], ['rules', 'learnGroup'],
 ];
+
+export const pages: SitePage[] = routes.map(([id, group]) => ({
+  id,
+  title: pageNames.ru[id],
+  group: messages.ru[group],
+  lead: bodies[id].lead,
+  paragraphs: [...bodies[id].paragraphs],
+}));

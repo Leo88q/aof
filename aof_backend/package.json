@@ -47,7 +47,15 @@
     "test:read-cache": "ts-node --project tsconfig.json --transpile-only scripts/readCacheSelfTest.ts",
     "test:rpc-quorum": "ts-node --project tsconfig.json --transpile-only scripts/rpcQuorumSelfTest.ts",
     "loadtest": "node ../scripts/loadtest/nf-load.mjs",
-    "test:mutation": "node ../scripts/mutation/nf-mutate.mjs"
+    "test:mutation": "node ../scripts/mutation/nf-mutate.mjs",
+    "test:tool-mining": "ts-node --project tsconfig.json --transpile-only scripts/toolMiningSelfTest.ts",
+    "test:mining-flag": "ts-node --project tsconfig.json --transpile-only scripts/miningFlagSelfTest.ts",
+    "preflight:mining-devnet": "ts-node --project tsconfig.json --transpile-only scripts/miningDevnetPreflight.ts",
+    "test:mining-preflight": "ts-node --project tsconfig.json --transpile-only scripts/miningDevnetPreflightSelfTest.ts",
+    "inspect:potato-devnet": "ts-node --project tsconfig.json --transpile-only scripts/potatoDevnetInspect.ts",
+    "test:potato-inspect": "ts-node --project tsconfig.json --transpile-only scripts/potatoDevnetInspectSelfTest.ts",
+    "test:potato-economics": "ts-node --project tsconfig.json --transpile-only scripts/potatoEconomicsSelfTest.ts",
+    "test:active-season": "ts-node --project tsconfig.json --transpile-only scripts/activeSeasonSelfTest.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

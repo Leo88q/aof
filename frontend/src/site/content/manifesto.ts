@@ -1,8 +1,8 @@
+import { editorialPages } from '../../i18n/siteEditorial';
+
 export interface ManifestoPrinciple { title: string; text: string; }
-export const manifestoPrinciples: ManifestoPrinciple[] = [
-  { title: 'Проверяемость', text: 'Сначала условия и запись в сети, потом доверие к результату. Хеш обязательства виден до раскрытия: ты проверяешь не слово мастера, а его запись.' },
-  { title: 'Осознанность', text: 'Ты видишь расход, комиссию и разрешение до подписи. Игра не прячет цену за кнопкой: каждая транзакция читается как накладная.' },
-  { title: 'Ремесло', text: 'Цепочка действий важнее обещания лёгкой награды. Модель рождается из образца, энергопотока и цикла — и никак иначе. Мы не продаём пропуск мимо работы.' },
-  { title: 'Сообщество', text: 'Договорись о работе и выполни свою часть. Репутация в NeuroForge — это память о выполненных обещаниях, а не цветная рамка профиля.' },
-];
-export const manifestoClosing = 'Мы не обещаем заработка. Мы приглашаем к ремеслу: место живёт, пока ты можешь понять его правила и оставить после себя полезную вещь.';
+
+// Preserve the catalog export for callers, but share the reviewed seven-language
+// source with the visible page so a stale manifesto cannot diverge silently.
+export const manifestoPrinciples: ManifestoPrinciple[] = editorialPages.ru.manifesto.principles.map(({ title, text }) => ({ title, text }));
+export const manifestoClosing = editorialPages.ru.manifesto.closing;

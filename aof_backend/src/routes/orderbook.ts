@@ -1,98 +1,42 @@
-import { BN } from "bn.js";
-import { Router } from "express";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SystemProgram } from "@solana/web3.js";
-import { program } from "../provider";
-import { configPda, materialMintsPda, resourceOrderPda } from "../lib/pda";
-import { coSign, pk } from "../lib/tx";
-import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+import { Router } from 'express';
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { program } from '../provider';
+import { configPda, resourceOrderPda } from '../lib/pda';
+import { coSign, pk } from '../lib/tx';
 
 const r = Router();
 
-r.post("/buy/place", requireCircuitOpen, requireWalletLimits("orderbook__buy_place"), requireIdempotency, async (req, res) => {
-  try {
-    const maker = pk(req.body.maker);
-    const mint = pk(req.body.mint);
-    const kind = Number(req.body.kind);
-    const priceLamportsPerUnit = new BN(req.body.priceLamportsPerUnit);
-    const amount = new BN(req.body.amount);
-    const [config] = configPda();
-    const [materialMints] = materialMintsPda();
-    const [order] = resourceOrderPda(maker, mint);
+/**
+ * PRICE UNIT SAFETY: aof-core's place_buy_handler transfers
+ * price_lamports_per_unit * amount, where amount is in atomic SPL units
+ * (1 resource = 10^9 atoms). The old UI labeled the same price "SOL per
+ * resource" and rounded amount with parseFloat, potentially escrowing a
+ * billion times the shown total. A transaction guard did not bind that quote.
+ * Disable ALL new trade/match routes for old clients as well as the new UI;
+ * leave maker cancellation live so existing deposits remain recoverable.
+ * A future migration needs a new contract price unit, exact amount handling,
+ * a wallet-bound intent, and verified end-to-end quote tests before reopening.
+ */
+const tradingPaused = (_req: any, res: any) => res.status(503).json({ error: 'ORDERBOOK_NEW_TRADES_PAUSED_PRICE_UNIT_MISMATCH' });
+r.post('/buy/place', tradingPaused);
+r.post('/sell/place', tradingPaused);
+r.post('/match', tradingPaused);
 
-    const ix = await (program.methods as any)
-      .placeBuyOrder(kind, priceLamportsPerUnit as any, amount as any)
-      .accounts({ config, maker, mint, materialMints, order, systemProgram: SystemProgram.programId })
-      .instruction();
-
-    const tx = await coSign([ix], maker);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-r.post("/sell/place", requireCircuitOpen, requireWalletLimits("orderbook__sell_place"), requireIdempotency, async (req, res) => {
-  try {
-    const maker = pk(req.body.maker);
-    const mint = pk(req.body.mint);
-    const kind = Number(req.body.kind);
-    const priceLamportsPerUnit = new BN(req.body.priceLamportsPerUnit);
-    const amount = new BN(req.body.amount);
-    const [config] = configPda();
-    const [materialMints] = materialMintsPda();
-    const [order] = resourceOrderPda(maker, mint);
-    const makerToken = getAssociatedTokenAddressSync(mint, maker);
-    const orderVault = getAssociatedTokenAddressSync(mint, order, true);
-
-    const ix = await (program.methods as any)
-      .placeSellOrder(kind, priceLamportsPerUnit as any, amount as any)
-      .accounts({
-        config,
-        maker,
-        mint,
-        materialMints,
-        makerToken,
-        order,
-        orderVault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-
-    const createVaultAta = createAssociatedTokenAccountIdempotentInstruction(
-      maker,
-      orderVault,
-      order,
-      mint,
-    );
-    const tx = await coSign([createVaultAta, ix], maker);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-r.post("/buy/cancel", async (req, res) => {
+r.post('/buy/cancel', async (req, res) => {
   try {
     const maker = pk(req.body.maker);
     const mint = pk(req.body.mint);
     const [config] = configPda();
     const [order] = resourceOrderPda(maker, mint);
-
-    const ix = await (program.methods as any)
-      .cancelBuyOrder()
-      .accounts({ config, maker, mint, order })
-      .instruction();
-
-    const tx = await coSign([ix], maker);
-    res.json({ tx });
+    const ix = await (program.methods as any).cancelBuyOrder()
+      .accounts({ config, maker, mint, order }).instruction();
+    res.json({ tx: await coSign([ix], maker) });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-r.post("/sell/cancel", async (req, res) => {
+r.post('/sell/cancel', async (req, res) => {
   try {
     const maker = pk(req.body.maker);
     const mint = pk(req.body.mint);
@@ -100,51 +44,10 @@ r.post("/sell/cancel", async (req, res) => {
     const [order] = resourceOrderPda(maker, mint);
     const orderVault = getAssociatedTokenAddressSync(mint, order, true);
     const makerToken = getAssociatedTokenAddressSync(mint, maker);
-
-    const ix = await (program.methods as any)
-      .cancelSellOrder()
+    const ix = await (program.methods as any).cancelSellOrder()
       .accounts({ config, maker, mint, order, orderVault, makerToken, tokenProgram: TOKEN_PROGRAM_ID })
       .instruction();
-
-    const tx = await coSign([ix], maker);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-r.post("/match", requireCircuitOpen, requireWalletLimits("orderbook__match"), requireIdempotency, async (req, res) => {
-  try {
-    const caller = pk(req.body.caller);
-    const mint = pk(req.body.mint);
-    const buyMaker = pk(req.body.buyMaker);
-    const sellMaker = pk(req.body.sellMaker);
-    const treasury = pk(req.body.treasury);
-    const [config] = configPda();
-    const [materialMints] = materialMintsPda();
-    const [buyOrder] = resourceOrderPda(buyMaker, mint);
-    const [sellOrder] = resourceOrderPda(sellMaker, mint);
-    const sellVault = getAssociatedTokenAddressSync(mint, sellOrder, true);
-    const buyerToken = getAssociatedTokenAddressSync(mint, buyMaker);
-
-    const ix = await (program.methods as any)
-      .matchResourceOrders()
-      .accounts({
-        config,
-        materialMints,
-        mint,
-        buyOrder,
-        sellOrder,
-        seller: sellMaker,
-        treasury,
-        sellVault,
-        buyerToken,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
-
-    const tx = await coSign([ix], caller);
-    res.json({ tx });
+    res.json({ tx: await coSign([ix], maker) });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

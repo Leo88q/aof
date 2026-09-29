@@ -17,6 +17,33 @@ declare_id!("4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU");
 pub mod aof_quests {
     use super::*;
 
+    /// Create a versioned, isolated Potato treasury ATA, initially paused.
+    /// Historical QuestConfig mints/commits remain on their original path.
+    pub fn init_potato_bank(ctx: Context<InitPotatoBank>) -> Result<()> {
+        instructions::drum::potato_bank::init_handler(ctx)
+    }
+
+    /// Operator pause for FUTURE V2 Potato commits only; settlements/refunds
+    /// must remain permissionless even when this switch is on.
+    pub fn set_potato_bank_paused(ctx: Context<SetPotatoBankPaused>, paused: bool) -> Result<()> {
+        instructions::drum::potato_bank::set_paused_handler(ctx, paused)
+    }
+
+    /// V2 custody, 5 whole Potato per spin. Hard-disabled pending signed devnet validation.
+    pub fn potato_spin_commit(ctx: Context<PotatoSpinCommit>) -> Result<()> {
+        instructions::drum::potato_spin::commit_handler(ctx)
+    }
+
+    /// Existing V2 spins may settle even while the bank is paused.
+    pub fn potato_spin_reveal(ctx: Context<PotatoSpinReveal>, params: VrfRevealParams) -> Result<()> {
+        instructions::drum::potato_spin::reveal_handler(ctx, params)
+    }
+
+    /// Permissionless refund after the oracle reveal window closes.
+    pub fn potato_spin_expire(ctx: Context<PotatoSpinExpire>) -> Result<()> {
+        instructions::drum::potato_spin::expire_handler(ctx)
+    }
+
     // ===== [AUDIT F-02] two-step authority rotation =====
     pub fn set_pending_authority(ctx: Context<SetPendingAuthority>, new_authority: Pubkey) -> Result<()> {
         instructions::quests::authority::set_pending_authority_handler(ctx, new_authority)

@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resourceIcon } from "./visualAssets";
+import type { Language } from "../i18n/translations";
+import { homeResourceNames } from "../i18n/homeDetail";
+import { toolsCopy } from "../i18n/toolsCopy";
+import { marketTimeCopy } from "../i18n/marketTimeCopy";
 import { api } from "./api";
 
 // Ресурсные минты (заданы /admin/set-resource-mints) + kind из контракта (ResourceKind)
 export const RESOURCE_MINTS = [
   // [REBRAND] NeuroForge: keys = API-имена ресурсов (lowercase), kind = дискриминант ResourceKind
-  { key: "data", mint: "", kind: 0, label: "Данные", icon: resourceIcon("DATA") || "" },
-  { key: "circuit", mint: "", kind: 1, label: "Схема", icon: resourceIcon("CIRCUIT") || "" },
-  { key: "silicon", mint: "", kind: 2, label: "Кремний", icon: resourceIcon("SILICON") || "" },
+  { key: "data", mint: "", kind: 0, label: homeResourceNames.ru.data, icon: resourceIcon("DATA") || "" },
+  { key: "circuit", mint: "", kind: 1, label: homeResourceNames.ru.circuit, icon: resourceIcon("CIRCUIT") || "" },
+  { key: "silicon", mint: "", kind: 2, label: homeResourceNames.ru.silicon, icon: resourceIcon("SILICON") || "" },
   { key: "mind", mint: "", kind: 26, label: "MIND", icon: resourceIcon("MIND") || "" },
 ];
 
@@ -18,18 +22,17 @@ const IMG = {
   quantum_transmitter: "/assets/nfts/quantum-transmitter.jpg",
   neural_seeder: "/assets/nfts/neural-seeder.jpg",
 };
-// [REBRAND] NeuroForge tool art; legacy pre-rebrand ids alias to the same images.
+// Current NeuroForge tool art.
 export const TOOL_ICONS: Record<string, string> = {
   plasma_cutter: IMG.plasma_cutter, silicon_extractor: IMG.silicon_extractor,
   data_harvester: IMG.data_harvester, quantum_transmitter: IMG.quantum_transmitter,
   neural_seeder: IMG.neural_seeder,
-  axe: IMG.plasma_cutter, pick: IMG.silicon_extractor, spear: IMG.data_harvester,
-  bow: IMG.quantum_transmitter, reaper: IMG.neural_seeder,
 };
 
-export const RARITY_LABEL: Record<string, string> = {
-  common: "Базовый", uncommon: "Усиленный", rare: "Квантовый", epic: "Сингулярность", legendary: "Трансцендентный",
-};
+export const RARITY_LABEL: Record<string, string> = Object.fromEntries(
+  ['common', 'uncommon', 'rare', 'epic', 'legendary'].map((key, index) =>
+    [key, toolsCopy.ru.collectionPage.rarities[index]]),
+);
 
 // Предметный визуальный язык рынка (ТЗ v3 §0): редкость = цвет урожая
 export const RARITY_COLOR: Record<string, string> = {
@@ -52,13 +55,13 @@ export function toNum(v: any): number {
   return isFinite(n) ? n : 0;
 }
 
-export function fmtSol(lamports: any): string {
+export function fmtSol(lamports: any, language: Language = "ru"): string {
   const n = toNum(lamports);
-  return (n / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 4 });
+  return (n / 1e9).toLocaleString(language, { maximumFractionDigits: 4 });
 }
 
-export function fmtNum(v: any): string {
-  return toNum(v).toLocaleString("ru-RU");
+export function fmtNum(v: any, language: Language = "ru"): string {
+  return toNum(v).toLocaleString(language);
 }
 
 export function shortAddr(a?: string | null): string {
@@ -66,16 +69,18 @@ export function shortAddr(a?: string | null): string {
   return a.slice(0, 4) + "…" + a.slice(-4);
 }
 
-// Обратный отсчёт до unix-секунд
-export function timeLeftStr(untilSec: number): string {
+// Countdown to Unix seconds; callers must pass the active locale when rendering this text.
+// The default preserves the old Russian format for any legacy callers.
+export function timeLeftStr(untilSec: number, language: Language = "ru"): string {
   const s = Math.max(0, Math.floor(untilSec - Date.now() / 1000));
-  if (s <= 0) return "завершён";
+  const text = marketTimeCopy[language];
+  if (s <= 0) return text.finished;
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (d > 0) return `${d}д ${h}ч`;
-  if (h > 0) return `${h}ч ${m}м`;
+  if (d > 0) return text.daysHours(d, h);
+  if (h > 0) return text.hoursMinutes(h, m);
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
@@ -99,44 +104,61 @@ export function useNow(intervalMs = 1000): number {
 }
 
 // Вспышка статуса транзакции (единый паттерн с HotMarket)
-export function useFlash(): [string | null, (m: string, ms?: number) => void] {
-  const [msg, setMsg] = useState<string | null>(null);
-  const flash = (m: string, ms = 5000) => {
-    setMsg(m);
-    setTimeout(() => setMsg(null), ms);
+export function useFlash(language: Language): [string | null, (m: string, ms?: number) => void] {
+  const [entry, setEntry] = useState<{ text: string; language: Language } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeLanguage = useRef(language);
+  activeLanguage.current = language;
+
+  useEffect(() => {
+    setEntry(null);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [language]);
+
+  const flash = (text: string, ms = 5000) => {
+    // An async operation started under a previous locale must not publish its old copy.
+    if (activeLanguage.current !== language) return;
+    if (timer.current) clearTimeout(timer.current);
+    setEntry({ text, language });
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setEntry(null);
+    }, ms);
   };
-  return [msg, flash];
+  return [entry?.language === language ? entry.text : null, flash];
 }
 
 export type TradeResource = { key: string; label: string; icon: string; mint: string; kind: number };
 
 export const ALL_TRADE_RESOURCES: TradeResource[] = [
   // ResourceKind discriminants are kept in the same order as aof-core.
-  { key: "DATA", label: "Данные", icon: resourceIcon("DATA") || "", mint: "", kind: 0 },
-  { key: "CIRCUIT", label: "Схема", icon: resourceIcon("CIRCUIT") || "", mint: "", kind: 1 },
-  { key: "SILICON", label: "Кремний", icon: resourceIcon("SILICON") || "", mint: "", kind: 2 },
-  { key: "NEURON", label: "Нейрон", icon: resourceIcon("NEURON") || "", mint: "", kind: 3 },
-  { key: "SYNAPSE", label: "Синапс", icon: resourceIcon("SYNAPSE") || "", mint: "", kind: 4 },
-  { key: "SIGNAL", label: "Сигнал", icon: resourceIcon("SIGNAL") || "", mint: "", kind: 5 },
-  { key: "MODEL", label: "Модель", icon: resourceIcon("MODEL") || "", mint: "", kind: 6 },
-  { key: "POWER", label: "Энергопоток", icon: resourceIcon("POWER") || "", mint: "", kind: 7 },
-  { key: "COMPUTE", label: "Вычислительный цикл", icon: resourceIcon("COMPUTE") || "", mint: "", kind: 8 },
-  { key: "DATASET", label: "Датасет", icon: resourceIcon("DATASET") || "", mint: "", kind: 9 },
-  { key: "BLUE_CORE", label: "Синее ядро", icon: resourceIcon("BLUE_CORE") || "", mint: "", kind: 10 },
-  { key: "PURPLE_CORE", label: "Фиолетовое ядро", icon: resourceIcon("PURPLE_CORE") || "", mint: "", kind: 11 },
-  { key: "RED_CORE", label: "Красное ядро", icon: resourceIcon("RED_CORE") || "", mint: "", kind: 12 },
-  { key: "CLEAR_QUARTZ", label: "Чистый кварц", icon: resourceIcon("CLEAR_QUARTZ") || "", mint: "", kind: 13 },
-  { key: "ROSE_QUARTZ", label: "Розовый кварц", icon: resourceIcon("ROSE_QUARTZ") || "", mint: "", kind: 14 },
-  { key: "AMBER_QUARTZ", label: "Янтарный кварц", icon: resourceIcon("AMBER_QUARTZ") || "", mint: "", kind: 15 },
-  { key: "QUANTUM_BIT", label: "Квантовый бит", icon: resourceIcon("QUANTUM_BIT") || "", mint: "", kind: 16 },
-  { key: "NEURAL_CHIP", label: "Нейрочип", icon: resourceIcon("NEURAL_CHIP") || "", mint: "", kind: 17 },
-  { key: "PHOTON_BIT", label: "Фотонный бит", icon: resourceIcon("PHOTON_BIT") || "", mint: "", kind: 18 },
-  { key: "BIO_CHIP", label: "Биочип", icon: resourceIcon("BIO_CHIP") || "", mint: "", kind: 19 },
-  { key: "CRYO_FLUID", label: "Крио-флюид", icon: resourceIcon("CRYO_FLUID") || "", mint: "", kind: 20 },
-  { key: "VOLT_FLUID", label: "Вольт-флюид", icon: resourceIcon("VOLT_FLUID") || "", mint: "", kind: 21 },
-  { key: "BIO_FLUID", label: "Био-флюид", icon: resourceIcon("BIO_FLUID") || "", mint: "", kind: 22 },
-  { key: "NANO_FLUID", label: "Нано-флюид", icon: resourceIcon("NANO_FLUID") || "", mint: "", kind: 23 },
-  { key: "QUANTUM_FLUID", label: "Квантовый флюид", icon: resourceIcon("QUANTUM_FLUID") || "", mint: "", kind: 24 },
-  { key: "SOUL_CORE", label: "Ядро души", icon: resourceIcon("SOUL_CORE") || "", mint: "", kind: 25 },
-  { key: "MIND", label: "MIND", icon: resourceIcon("MIND") || "", mint: "", kind: 26 },
+  { key: "DATA", label: homeResourceNames.ru.data, icon: resourceIcon("DATA") || "", mint: "", kind: 0 },
+  { key: "CIRCUIT", label: homeResourceNames.ru.circuit, icon: resourceIcon("CIRCUIT") || "", mint: "", kind: 1 },
+  { key: "SILICON", label: homeResourceNames.ru.silicon, icon: resourceIcon("SILICON") || "", mint: "", kind: 2 },
+  { key: "NEURON", label: homeResourceNames.ru.neuron, icon: resourceIcon("NEURON") || "", mint: "", kind: 3 },
+  { key: "SYNAPSE", label: homeResourceNames.ru.synapse, icon: resourceIcon("SYNAPSE") || "", mint: "", kind: 4 },
+  { key: "SIGNAL", label: homeResourceNames.ru.signal, icon: resourceIcon("SIGNAL") || "", mint: "", kind: 5 },
+  { key: "MODEL", label: homeResourceNames.ru.model, icon: resourceIcon("MODEL") || "", mint: "", kind: 6 },
+  { key: "POWER", label: homeResourceNames.ru.power, icon: resourceIcon("POWER") || "", mint: "", kind: 7 },
+  { key: "COMPUTE", label: homeResourceNames.ru.compute, icon: resourceIcon("COMPUTE") || "", mint: "", kind: 8 },
+  { key: "DATASET", label: homeResourceNames.ru.dataset, icon: resourceIcon("DATASET") || "", mint: "", kind: 9 },
+  { key: "BLUE_CORE", label: homeResourceNames.ru.blueCore, icon: resourceIcon("BLUE_CORE") || "", mint: "", kind: 10 },
+  { key: "PURPLE_CORE", label: homeResourceNames.ru.purpleCore, icon: resourceIcon("PURPLE_CORE") || "", mint: "", kind: 11 },
+  { key: "RED_CORE", label: homeResourceNames.ru.redCore, icon: resourceIcon("RED_CORE") || "", mint: "", kind: 12 },
+  { key: "CLEAR_QUARTZ", label: homeResourceNames.ru.clearQuartz, icon: resourceIcon("CLEAR_QUARTZ") || "", mint: "", kind: 13 },
+  { key: "ROSE_QUARTZ", label: homeResourceNames.ru.roseQuartz, icon: resourceIcon("ROSE_QUARTZ") || "", mint: "", kind: 14 },
+  { key: "AMBER_QUARTZ", label: homeResourceNames.ru.amberQuartz, icon: resourceIcon("AMBER_QUARTZ") || "", mint: "", kind: 15 },
+  { key: "QUANTUM_BIT", label: homeResourceNames.ru.quantumBit, icon: resourceIcon("QUANTUM_BIT") || "", mint: "", kind: 16 },
+  { key: "NEURAL_CHIP", label: homeResourceNames.ru.neuralChip, icon: resourceIcon("NEURAL_CHIP") || "", mint: "", kind: 17 },
+  { key: "PHOTON_BIT", label: homeResourceNames.ru.photonBit, icon: resourceIcon("PHOTON_BIT") || "", mint: "", kind: 18 },
+  { key: "BIO_CHIP", label: homeResourceNames.ru.bioChip, icon: resourceIcon("BIO_CHIP") || "", mint: "", kind: 19 },
+  { key: "CRYO_FLUID", label: homeResourceNames.ru.cryoFluid, icon: resourceIcon("CRYO_FLUID") || "", mint: "", kind: 20 },
+  { key: "VOLT_FLUID", label: homeResourceNames.ru.voltFluid, icon: resourceIcon("VOLT_FLUID") || "", mint: "", kind: 21 },
+  { key: "BIO_FLUID", label: homeResourceNames.ru.bioFluid, icon: resourceIcon("BIO_FLUID") || "", mint: "", kind: 22 },
+  { key: "NANO_FLUID", label: homeResourceNames.ru.nanoFluid, icon: resourceIcon("NANO_FLUID") || "", mint: "", kind: 23 },
+  { key: "QUANTUM_FLUID", label: homeResourceNames.ru.quantumFluid, icon: resourceIcon("QUANTUM_FLUID") || "", mint: "", kind: 24 },
+  { key: "SOUL_CORE", label: homeResourceNames.ru.soulCore, icon: resourceIcon("SOUL_CORE") || "", mint: "", kind: 25 },
+  { key: "MIND", label: homeResourceNames.ru.mind, icon: resourceIcon("MIND") || "", mint: "", kind: 26 },
 ];

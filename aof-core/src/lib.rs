@@ -1755,7 +1755,7 @@ pub struct StartExplorationCommit<'info> {
         seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump,
         constraint = tool.owner == user.key() @ AofError::NotToolOwner,
         constraint = tool.operator == user.key() @ AofError::NotToolOperator,
-        constraint = tool.tool_type == "Bow" @ AofError::InvalidToolType,
+        constraint = tool.tool_type == "quantum_transmitter" @ AofError::InvalidToolType,
         constraint = !tool.is_mining @ AofError::ToolBusy
     )]
     pub tool: Box<Account<'info, ToolData>>,

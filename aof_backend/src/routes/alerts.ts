@@ -21,7 +21,7 @@ r.get("/:user", async (req, res) => {
   }
 });
 
-// Создать алерт (с проверкой лимита и апселлом для VIP)
+// Create an alert with the enforced free-tier limit; no paid alert tier exists.
 r.post("/create", async (req, res) => {
   try {
     const { user, rarity, currency, direction, threshold } = req.body;
@@ -32,7 +32,7 @@ r.post("/create", async (req, res) => {
 
     const alert = await db.$transaction(async (tx: any) => {
       const existing = await tx.priceAlert.count({ where: { user, active: true } });
-      // Воронка: если лимит исчерпан — апселл, а не блокировка
+      // The second alert is unavailable for everyone until a verified VIP tier exists.
       if (existing >= FREE_TIER_MAX_ALERTS) {
         throw new Error("FREE_TIER_LIMIT_REACHED");
       }
@@ -45,10 +45,7 @@ r.post("/create", async (req, res) => {
     if (e?.message === "FREE_TIER_LIMIT_REACHED") {
       return res.status(402).json({
         error: "Free tier limit reached",
-        upsell: {
-          message: "VIP разблокирует неограниченные алерты с выбором редкости, валюты и направления",
-          cta: "buy_vip_pass",
-        },
+        message: "The enforced limit is one alert; paid alerts are not available yet.",
       });
     }
     res.status(400).json({ error: e.message });

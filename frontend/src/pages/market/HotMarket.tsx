@@ -1,3 +1,5 @@
+import { useLocale } from "../../i18n/LocaleProvider";
+import { marketDetailCopy } from "../../i18n/marketDetailCopy";
 import { Card } from "../../components/ui/Card";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
@@ -10,16 +12,16 @@ import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice
  * accepting a trade against an unknown tool inventory.
  */
 export function HotMarket() {
+  const { language } = useLocale();
+  const copy = marketDetailCopy[language];
   return (
-    <div className="p-4 pt-6 pb-32">
-      <h1 className="text-2xl font-bold text-parchment mb-4 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketHot} alt="" className="w-7 h-7" /> Хот-маркет</h1>
+    <div lang={language} className="p-4 pt-6 pb-32 min-w-0">
+      <h1 className="text-2xl font-bold text-parchment mb-4 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketHot} alt="" className="w-7 h-7" /> {copy.hotTitle}</h1>
       {/* Единый источник правды по отключённым механикам — FeatureDisabledNotice. */}
       <FeatureDisabledNotice id="hot_market" />
       <Card className="mt-3">
         <p className="text-straw text-sm leading-relaxed">
-          Пул событийного рынка ещё не читается: инвентарь инструментов не подтверждён
-          сетью. Поэтому торговля, цены и графики закрыты — выдуманные лоты и чужие
-          ставки здесь не появятся.
+          {copy.hotExplanation}
         </p>
       </Card>
     </div>

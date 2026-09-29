@@ -5,7 +5,9 @@
 #   3. (optional) has on-chain bytecode whose sha256 matches a locally built .so.
 #
 # Usage:
-#   scripts/verify-programs.sh <cluster: devnet|mainnet-beta|localnet|URL> [expected_authority_pubkey] [target/deploy dir]
+#   scripts/verify-programs.sh <cluster: devnet|mainnet-beta|localnet|URL> [expected_authority_pubkey] [target/deploy dir] [--require-bytecode]
+# Use --require-bytecode with a known authority for a release gate. Without it,
+# this script only checks IDs/owners and MUST NOT be described as a bytecode check.
 #
 # Exit code is non-zero on any mismatch. Requires: solana CLI, python3,
 # sha256sum (GNU) или shasum (есть на macOS).
@@ -20,6 +22,14 @@ set -euo pipefail
 CLUSTER="${1:?cluster required (devnet|mainnet-beta|localnet|<rpc url>)}"
 EXPECTED_AUTHORITY="${2:-}"
 DEPLOY_DIR="${3:-target/deploy}"
+REQUIRE_BYTECODE=0
+if [[ "${4:-}" == "--require-bytecode" ]]; then REQUIRE_BYTECODE=1; fi
+if [[ -n "${4:-}" && "$REQUIRE_BYTECODE" == 0 ]]; then
+  echo "unknown fourth argument (expected --require-bytecode)" >&2; exit 2
+fi
+if (( REQUIRE_BYTECODE )) && [[ -z "$EXPECTED_AUTHORITY" ]]; then
+  echo "release verification requires an expected upgrade authority" >&2; exit 2
+fi
 
 case "$CLUSTER" in
   devnet)       URL="https://api.devnet.solana.com" ;;
@@ -103,7 +113,22 @@ for entry in "${ENTRIES[@]}"; do
         else
           head -c "$local_len" "$tmp/$name.dump" > "$tmp/$name.trunc"
           # Remaining on-chain bytes past the local length must be zero padding.
-          if tail -c +"$((local_len+1))" "$tmp/$name.dump" | tr -d '\0' | head -c1 | grep -q .; then
+          # Under `set -o pipefail`, a `tail | tr | head -c1 | grep`
+          # pipeline can report SIGPIPE instead of "found data", causing a
+          # nonzero tail to be mistaken for zero padding. Scan in bounded
+          # chunks instead; exit 0 only if a nonzero trailing byte exists.
+          if python3 - "$tmp/$name.dump" "$local_len" <<'PYTAIL'
+import sys
+with open(sys.argv[1], 'rb') as f:
+    f.seek(int(sys.argv[2]))
+    while True:
+        chunk = f.read(1024 * 1024)
+        if not chunk:
+            sys.exit(1)
+        if chunk.strip(b'\0'):
+            sys.exit(0)
+PYTAIL
+          then
             bytecode="MISMATCH(trailing)"; fail=1
           elif [[ "$(sha256_file "$so")" == "$(sha256_file "$tmp/$name.trunc")" ]]; then
             bytecode="match $(sha256_file "$so" | cut -c1-12)"
@@ -115,7 +140,8 @@ for entry in "${ENTRIES[@]}"; do
         bytecode="dump_failed"; fail=1
       fi
     else
-      bytecode="no_local_so"
+      bytecode="NO_LOCAL_SO"
+      if (( REQUIRE_BYTECODE )); then fail=1; fi
     fi
   else
     fail=1
@@ -125,8 +151,12 @@ done
 
 if (( fail )); then
   echo
-  echo "VERIFICATION FAILED: at least one program is missing, has an unexpected authority, drifted from declare_id!, or bytecode differs." >&2
+  echo "VERIFICATION FAILED: a program is missing, has the wrong ID/authority, bytecode differs, or a required local .so is unavailable." >&2
   exit 1
 fi
 echo
-echo "all programs verified on $CLUSTER"
+if (( REQUIRE_BYTECODE )); then
+  echo "all program IDs, authorities and deployed bytecode verified on $CLUSTER"
+else
+  echo "program IDs/owners checked on $CLUSTER; bytecode is NOT a release gate without --require-bytecode"
+fi

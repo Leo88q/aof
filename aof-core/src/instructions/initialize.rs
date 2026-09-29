@@ -35,9 +35,9 @@ pub fn handler(ctx: Context<Initialize>, treasury: Pubkey) -> Result<()> {
     cfg.unstake_fee = crate::constants::FEE_PER_NFT_MICROS;
     cfg.paused = false;
     cfg.bump = ctx.bumps.config;
-    // [AUDIT F-27] Mining starts enabled to preserve the previous behaviour;
-    // `set_mining_enabled` is the emergency brake.
-    cfg.mining_enabled = true;
+    // Fail closed on fresh deployments. The admin enables mining only after
+    // all five tool payout mints and the devnet collection path are verified.
+    cfg.mining_enabled = false;
     // [AUDIT F-02] No rotation pending at bootstrap.
     cfg.pending_authority = Pubkey::default();
     cfg.authority_updated_at = Clock::get()?.unix_timestamp;

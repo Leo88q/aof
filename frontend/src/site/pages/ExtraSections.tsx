@@ -1,19 +1,47 @@
-import { functionalStorage } from "../../legal/consent";
+import { readSiteJournal, resetSiteJournal, siteBadgeIds } from '../siteJournal';
+import { siteJournalCopy } from '../../i18n/siteJournalCopy';
+import { siteSeasons } from '../../i18n/siteSeasons';
+import { siteTrust } from '../../i18n/siteTrust';
+import { siteTools } from '../../i18n/siteTools';
+import { siteMine } from '../../i18n/siteMine';
+import { siteMarket, marketVenueIds, type MarketVenueId } from '../../i18n/siteMarket';
+import { siteEconomy, economyCycleIds } from '../../i18n/siteEconomy';
+import { siteInvestors } from '../../i18n/siteInvestors';
+import { siteGuide } from '../../i18n/siteGuide';
+import { siteStrategies } from '../../i18n/siteStrategies';
+import { siteTrade } from '../../i18n/siteTrade';
+import { siteDocs, instructionGroups } from '../../i18n/siteDocs';
+import { siteRecipes } from '../../i18n/siteRecipes';
+import { siteMind } from '../../i18n/siteMind';
+import { siteGlossary } from '../../i18n/siteGlossary';
+import { recipeWorkshopCopy } from '../../i18n/recipeWorkshopCopy';
+import { WORKSHOP_RECIPES } from '../../lib/workshopRecipes';
+import { tradeNavigationCopy } from '../../i18n/tradeNavigationCopy';
+import { toolName, toolsCopy } from '../../i18n/toolsCopy';
+import { siteRulesCopy } from '../../i18n/siteRulesCopy';
+import { useLocale } from '../../i18n/LocaleProvider';
+import { homeDetail, homeResourceNames, type ResourceId } from '../../i18n/homeDetail';
+import { furtherLabels } from '../../i18n/siteIntro';
+import { editorialPages } from '../../i18n/siteEditorial';
+import { siteLore } from '../../i18n/siteLore';
+import { siteRoadmap } from '../../i18n/siteRoadmap';
+import { siteFaq, type FaqTopic } from '../../i18n/siteFaq';
+import { pageNames, type PageId } from '../../i18n/translations';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Section } from '../ui/Components';
 import {
-  resourcesById, resources, recipes, stationNames,
-  potatoOrigin, potatoUses, potatoRules, potatoLore, potatoIntegration,
-  guideSteps, strategies, masterStories,
-  tradeMethods, tradeComparison, investorDeepDive,
-  faqItems, faqTagsList, glossaryTerms, loreChapters,
-  roadmapItems, roadmapEraNames, manifestoPrinciples, manifestoClosing, rulesList,
-  mechanics,
+  resourcesById, resources,
 } from '../content/game';
 import {
   resourceIcon, resourcePlate, resourceVisual, toolPlate, TOOL_NFTS, TOOL_RARITIES, UI_ICONS,
 } from '../../lib/visualAssets';
+
+const marketVenueIcons: Record<MarketVenueId, string> = {
+  listing: UI_ICONS.marketListing, orderbook: UI_ICONS.marketOrderbook,
+  auction: UI_ICONS.marketAuction, offer: UI_ICONS.marketOffer,
+  rental: UI_ICONS.marketRental, hotClosed: UI_ICONS.marketHot,
+};
 
 /** Картинка ресурса/предмета в квадратной плашке (`.nf-plate`, object-fit: contain). */
 function SitePlate({ src, alt = '', size, className = '' }: { src?: string; alt?: string; size?: number | string; className?: string }) {
@@ -27,72 +55,31 @@ function SitePlate({ src, alt = '', size, className = '' }: { src?: string; alt?
   );
 }
 
-/** Строка входа/выхода рецепта: иконка + имя + количество. `tools` и `skr` — не ресурсы каталога. */
-function RecipeIo({ recipeId, resourceId, amount, kind }: { recipeId: string; resourceId: string; amount: number; kind: 'in' | 'out' }) {
-  let icon: string | undefined;
-  let label: string;
-  if (resourceId === 'tools') {
-    const rarity = /legendary/.test(recipeId) ? 'legendary' : /epic/.test(recipeId) ? 'epic' : /rare/.test(recipeId) ? 'rare' : /uncommon/.test(recipeId) ? 'uncommon' : 'common';
-    icon = toolPlate('plasma_cutter', rarity);
-    label = 'Инструмент (NFT)';
-  } else if (resourceId === 'skr') {
-    icon = UI_ICONS.tokenCoin;
-    label = 'SKR';
-  } else {
-    const res = resourcesById.get(resourceId);
-    icon = resourceIcon(resourceId);
-    label = res ? res.name : resourceId;
-  }
-  return (
-    <li className={kind === 'in' ? 'site-recipe-in' : 'site-recipe-out'}>
-      <SitePlate src={icon} size={40} className="site-io-icon" />
-      <span>{label} ×{amount}</span>
-    </li>
-  );
-}
-
-const TOOL_RARITY_LABEL: Record<string, string> = {
-  common: 'Base', uncommon: 'Enhanced', rare: 'Quantum', epic: 'Singularity', legendary: 'Transcendent',
+// The eight entries below share their amounts with the in-game workshop.
+// These names are catalog labels, not substitutes for verified wallet balances.
+const recipeResourceIds: Record<string, ResourceId> = {
+  BLUE_CORE: 'blueCore', RED_CORE: 'redCore', CLEAR_QUARTZ: 'clearQuartz',
+  QUANTUM_BIT: 'quantumBit', NEURAL_CHIP: 'neuralChip', PHOTON_BIT: 'photonBit',
+  DATA: 'data', SILICON: 'silicon', CIRCUIT: 'circuit', NEURON: 'neuron',
+  ROSE_QUARTZ: 'roseQuartz', PURPLE_CORE: 'purpleCore', BIO_CHIP: 'bioChip',
+  CRYO_FLUID: 'cryoFluid', VOLT_FLUID: 'voltFluid', BIO_FLUID: 'bioFluid',
+  NANO_FLUID: 'nanoFluid', QUANTUM_FLUID: 'quantumFluid',
 };
-
-function groups(): [string, typeof recipes][] {
-  const map = new Map<string, typeof recipes>();
-  for (const r of recipes) {
-    const list = map.get(r.station) || [];
-    list.push(r);
-    map.set(r.station, list);
-  }
-  return [...map.entries()];
-}
-
-const trustTiers = [
-  { name: 'Stranger', text: 'Чужак, чья запись ещё пуста. С этого порога начинается каждый путь.' },
-  { name: 'Neighbour', text: 'Коллега: первые обещания выполнены, первые сделки состоялись без посредников.' },
-  { name: 'Partner', text: 'Партнёр по регулярным сделкам: совместные циклы и разделённый риск.' },
-  { name: 'Guildsman', text: 'Член круга: доля коллективной работы и коллективного ответа.' },
-  { name: 'Elder', text: 'Старейшина: запись длиннее эпохи, слово тяжелее печати.' },
-];
-
-const rarities = [
-  { name: 'Base', text: 'Грубая сборка, базовая кромка, проводная обмотка. Первый инструмент каждого мастера.' },
-  { name: 'Enhanced', text: 'Кованая сталь, промасленный дуб, кожаная обмотка. Держит кромку вдвое дольше.' },
-  { name: 'Quantum', text: 'Булат с медным ошейником. Патина как знак времени, а не дефекта.' },
-  { name: 'Singularity', text: 'Между редким и легендарным: уже больше ремесла, ещё не легенда.' },
-  { name: 'Transcendent', text: 'Метеоритное железо с медной инкрустацией. Тёплый на ощупь даже зимой.' },
-];
 
 const PARTICLES: Record<string, number> = { drought: 0, sun: 0, rain: 32, festival: 0 };
 
 function WeatherDemo() {
-  const [state, setState] = useState('sun');
-  const names: Record<string, string> = { drought: 'Блэкаут', sun: 'Номинал', rain: 'Скачок', festival: 'Френзи' };
+  const { language } = useLocale();
+  const text = editorialPages[language].weather;
+  const [state, setState] = useState<keyof typeof text.states>('sun');
+  const names = text.states;
   return (
     <div>
       <fieldset className="site-options">
-        <legend>Демонстрация неба</legend>
+        <legend>{text.demoLegend}</legend>
         {Object.entries(names).map(([sid, name]) => (
           <label key={sid}>
-            <input type="radio" name="site-weather" checked={state === sid} onChange={() => setState(sid)} />
+            <input type="radio" name="site-weather" checked={state === sid} onChange={() => setState(sid as keyof typeof names)} />
             {name}
           </label>
         ))}
@@ -116,285 +103,246 @@ function WeatherDemo() {
           </div>
         ))}
       </div>
-      <p role="status">Показано состояние: {names[state]} — выбор для примера, сеть публикует своё.</p>
+      <p role="status">{text.statePrefix}{names[state]}{text.stateSuffix}</p>
     </div>
   );
 }
 
 function SeasonWheelDemo() {
-  const [season, setSeason] = useState(0);
-  const names = ['Фаза I', 'Фаза II', 'Фаза III', 'Завершение цикла'];
+  const { language } = useLocale();
+  const copy = siteSeasons[language];
+  const [phase, setPhase] = useState(0);
   return (
-    <div className="site-season">
-      <button type="button" className="site-season-button" onClick={() => setSeason((s) => (s + 1) % 4)} aria-label={'Эпоха: ' + names[season] + '. Сменить'}>
+    <div className="site-season min-w-0 [overflow-wrap:anywhere]">
+      <p>{copy.wheelHint}</p>
+      <button type="button" className="site-season-button" onClick={() => setPhase((s) => (s + 1) % copy.phases.length)}
+        aria-label={`${copy.wheelLabel}: ${copy.phases[phase]}. ${copy.wheelAction}`}>
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <circle cx="50" cy="50" r="43" fill="var(--sb-body)" stroke="var(--sb-cyan)" strokeWidth="5" />
           {[0, 1, 2, 3].map((i) => (
             <path key={i} d="M50 12v25" transform={'rotate(' + i * 90 + ' 50 50)'} stroke="var(--sb-text)" strokeWidth="2" />
           ))}
-          <g style={{ transform: 'rotate(' + season * 90 + 'deg)', transformOrigin: '50px 50px' }}>
+          <g style={{ transform: 'rotate(' + phase * 90 + 'deg)', transformOrigin: '50px 50px' }}>
             <path d="M50 18l-8 30h16z" fill="var(--sb-gold)" />
           </g>
         </svg>
       </button>
-      <p role="status">{names[season]} · оформление, не погода игры</p>
+      <p role="status">{copy.wheelStatus(copy.phases[phase])}</p>
     </div>
   );
 }
 
 function ChainDiagram() {
+  const { language } = useLocale();
+  const text = homeDetail[language];
+  const resourceName = homeResourceNames[language];
   const steps = [
-    { id: 'neuron', name: 'Нейроны' },
-    { id: 'synapse', name: 'Синапс' },
-    { id: 'signal', name: 'Сигнал' },
-    { id: 'model', name: 'Модель' },
+    { id: 'neuron' },
+    { id: 'synapse' },
+    { id: 'signal' },
+    { id: 'model' },
   ];
   return (
     <figure className="site-diagram site-paper">
-      <ol className="site-chain" aria-label="Образец, синапс, сигнал, модель">
+      <ol className="site-chain" aria-label={['neuron', 'synapse', 'signal', 'model'].map(id => resourceName[id as ResourceId]).join(', ')}>
         {steps.map((st, i) => (
           <li key={st.id} className="site-chain__step">
             <Link to={'/site/resources/' + (resourcesById.get(st.id)?.slug ?? st.id)} className="site-chain__node">
               <SitePlate src={resourceIcon(st.id)} alt="" size={72} />
-              <span>{st.name}</span>
+              <span>{resourceName[st.id as ResourceId]}</span>
             </Link>
             {i < steps.length - 1 && <span className="site-chain__arrow" aria-hidden="true">→</span>}
           </li>
         ))}
       </ol>
-      <figcaption>Культивируй → разделяй → обучай. Схема качественная, без норм расхода.</figcaption>
+      <figcaption>{text.chainCaption}</figcaption>
     </figure>
   );
 }
 
-const JKEY = 'aof:site:journal:v1';
-const badgeDefs = [
-  { id: 'reader', name: 'Читатель', text: 'Открой пять разных страниц.' },
-  { id: 'resource', name: 'Материаловед', text: 'Осмотри карточку ресурса.' },
-  { id: 'commit', name: 'Проверяющий', text: 'Сверь локальный commit/reveal.' },
-  { id: 'pack', name: 'Распаковщик', text: 'Открой демонстрационный пак.' },
-  { id: 'drum', name: 'Ритм мастера', text: 'Попробуй демонстрационный барабан.' },
-  { id: 'chronicler', name: 'Планировщик', text: 'Открой карту развития: что делаем сейчас и что дальше.' },
-];
-function readJournal(): { visits: string[]; badges: string[] } {
-  try {
-    const raw = functionalStorage.getItem(JKEY);
-    if (!raw) return { visits: [], badges: [] };
-    const v = JSON.parse(raw);
-    return { visits: Array.isArray(v.visits) ? v.visits : [], badges: Array.isArray(v.badges) ? v.badges : [] };
-  } catch { return { visits: [], badges: [] }; }
-}
-function writeJournal(j: { visits: string[]; badges: string[] }) {
-  try { functionalStorage.setItem(JKEY, JSON.stringify(j)); } catch { /* private mode */ }
-}
 function JournalBoard() {
-  const [j, setJ] = useState(readJournal);
+  const { language } = useLocale();
+  const copy = siteJournalCopy[language];
+  const [journal, setJournal] = useState(readSiteJournal);
   useEffect(() => {
-    const onVisit = (e: Event) => {
-      const id = (e as CustomEvent).detail as string;
-      setJ((prev) => {
-        if (prev.visits.includes(id)) return prev;
-        const visits = [...prev.visits, id].slice(-100);
-        const badges = visits.length >= 5 && !prev.badges.includes('reader') ? [...prev.badges, 'reader'] : prev.badges;
-        const next = { visits, badges };
-        writeJournal(next);
-        return next;
-      });
-    };
-    const onBadge = (e: Event) => {
-      const id = (e as CustomEvent).detail as string;
-      setJ((prev) => {
-        if (prev.badges.includes(id)) return prev;
-        const next = { ...prev, badges: [...prev.badges, id] };
-        writeJournal(next);
-        return next;
-      });
-    };
-    const refreshPrivacy = () => setJ(readJournal());
-    window.addEventListener('nf:privacy-change', refreshPrivacy);
-    window.addEventListener('storage', refreshPrivacy);
-    window.addEventListener('aof:visit', onVisit);
-    window.addEventListener('aof:badge', onBadge);
-    return () => {
-      window.removeEventListener('nf:privacy-change', refreshPrivacy);
-      window.removeEventListener('storage', refreshPrivacy);
-      window.removeEventListener('aof:visit', onVisit);
-      window.removeEventListener('aof:badge', onBadge);
-    };
+    const refresh = () => setJournal(readSiteJournal());
+    window.addEventListener('aof:journal-change', refresh);
+    refresh(); // Read again in case the first route visit preceded this subscription.
+    return () => window.removeEventListener('aof:journal-change', refresh);
   }, []);
-  const reset = () => { const empty = { visits: [], badges: [] }; writeJournal(empty); setJ(empty); };
+  const reset = () => { resetSiteJournal(); setJournal(readSiteJournal()); };
   return (
-    <div className="site-card site-paper">
-      <h3>Твои отметки · {j.badges.length}/{badgeDefs.length}</h3>
-      <p>Только этот браузер. Без игровых наград. Страниц открыто: {j.visits.length}.</p>
-      <ul className="site-badge-list">
-        {badgeDefs.map((b) => (
-          <li key={b.id} data-earned={j.badges.includes(b.id)}>
-            <span aria-hidden="true">{j.badges.includes(b.id) ? '✓' : '○'}</span>
-            <div><strong>{b.name}</strong><p>{b.text}</p></div>
-          </li>
-        ))}
-      </ul>
-      <button type="button" className="site-small-button" onClick={reset}>Сбросить местные отметки</button>
+    <div className="site-card site-paper min-w-0 [overflow-wrap:anywhere]">
+      <h3>{copy.marks} · {journal ? `${journal.badges.length}/${siteBadgeIds.length}` : '— / —'}</h3>
+      {!journal ? <p role="status">{copy.consent}</p> : <>
+        <p>{copy.visits(journal.visits.length)} {copy.note}</p>
+        <ul className="site-badge-list">
+          {siteBadgeIds.map(id => (
+            <li key={id} data-earned={journal.badges.includes(id)}>
+              <span aria-hidden="true">{journal.badges.includes(id) ? '✓' : '○'}</span>
+              <div><strong>{copy.badges[id].name}</strong><p>{copy.badges[id].description}</p></div>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="site-small-button" onClick={reset}>{copy.reset}</button>
+      </>}
     </div>
   );
 }
 
 export function ExtraSections({ id }: { id: string }) {
+  const { language } = useLocale();
+  const home = homeDetail[language];
+  const resourceName = (id: string, fallback: string) => homeResourceNames[language][id as ResourceId] ?? fallback;
   const [faqQuery, setFaqQuery] = useState('');
-  const [faqTag, setFaqTag] = useState('all');
+  const [faqTag, setFaqTag] = useState<FaqTopic | 'all'>('all');
   const [glossQuery, setGlossQuery] = useState('');
-  const faqFiltered = faqItems.filter(f =>
-    (faqTag === 'all' || f.tags.includes(faqTag)) &&
-    (f.q + ' ' + f.a).toLowerCase().includes(faqQuery.toLowerCase()));
-  const glossFiltered = glossaryTerms.filter(g =>
-    (g.term + ' ' + g.definition).toLowerCase().includes(glossQuery.toLowerCase()));
+  const faq = siteFaq[language];
+  // A search entered in one language should not hide all questions after switching languages.
+  useEffect(() => { setFaqQuery(''); setFaqTag('all'); setGlossQuery(''); }, [language]);
+  const normalizedQuery = faqQuery.trim().toLocaleLowerCase(language);
+  const faqFiltered = faq.items.filter(f =>
+    (faqTag === 'all' || f.topic === faqTag) &&
+    (f.q + ' ' + f.a).toLocaleLowerCase(language).includes(normalizedQuery));
+  const gloss = siteGlossary[language];
+  const normalizedGloss = glossQuery.trim().toLocaleLowerCase(language);
+  const glossFiltered = gloss.entries.filter((g, index) =>
+    (g.term + ' ' + g.definition + ' ' + siteGlossary.ru.entries[index].term + ' ' + siteGlossary.en.entries[index].term)
+      .toLocaleLowerCase(language).includes(normalizedGloss));
 
   if (id === 'recipes') {
+    const copy = siteRecipes[language];
+    const workshop = recipeWorkshopCopy[language];
+    const names = homeResourceNames[language];
     return (
-      <Section title="Книга рецептов">
-        {groups().map(([station, list]) => (
-          <div key={station} className="site-recipe-group">
-            <h3>{stationNames[station] ?? station}</h3>
-            <div className="site-grid">
-              {list.map((r) => {
-                const missingResources = [...r.inputs, ...r.outputs]
-                  .map((item) => item.resourceId)
-                  .filter((resourceId, index, ids) => resourceId !== 'tools' && resourceId !== 'skr' && !resourcesById.has(resourceId) && ids.indexOf(resourceId) === index);
-                return (
-                  <article key={r.id} className="site-card site-paper site-recipe">
-                    <span className="site-badge">
-                      {r.verification === 'on-chain-verified'
-                        ? 'Проверено сетью'
-                        : 'Редакционный пример · в сети не сверен'}
-                    </span>
-                    <h4>{r.name}</h4>
-                    <ul className="site-recipe-io">
-                      {r.inputs.map((i) => <RecipeIo key={i.resourceId} recipeId={r.id} resourceId={i.resourceId} amount={i.amount} kind="in" />)}
-                    </ul>
-                    <p className="site-recipe-arrow" aria-hidden="true">↓</p>
-                    <ul className="site-recipe-io">
-                      {r.outputs.length > 0
-                        ? r.outputs.map((o) => <RecipeIo key={o.resourceId} recipeId={r.id} resourceId={o.resourceId} amount={o.amount} kind="out" />)
-                        : <li className="site-recipe-out"><span>Эффект без предмета</span></li>}
-                    </ul>
-                    <p className="site-recipe-meta">
-                      Энергия: {r.energy > 0 ? r.energy : 'не тратится'}{r.time ? ` · ${r.time}` : ''}{r.skrDiscount ? ' · SKR −15% на MIND' : ''}{r.potatoCost ? ` · MIND ×${r.potatoCost}` : ''}
-                    </p>
-                    <p>{r.description}</p>
-                    {missingResources.length > 0 && (
-                      <p className="site-guide-warn">В каталоге сайта не нашлось: {missingResources.join(', ')}. Сверь состав в игре — там числа актуальные.</p>
-                    )}
-                    {r.narrative && <blockquote className="site-narrative">{r.narrative}</blockquote>}
-                  </article>
-                );
-              })}
+      <Section title={copy.heading}>
+        {(['gems', 'flasks'] as const).map((category) => (
+          <div key={category} className="site-recipe-group">
+            <h3>{workshop[category]}</h3>
+            <div className="site-grid site-recipe-grid">
+              {WORKSHOP_RECIPES.filter(recipe => recipe.category === category).map((recipe) => (
+                <article key={recipe.id} className="site-card site-paper site-recipe">
+                  <span className="site-badge">{copy.sourceLabel}</span>
+                  <h4>{names[recipeResourceIds[recipe.output.key]]}</h4>
+                  <p className="site-recipe-meta">{copy.inputLabel}</p>
+                  <ul className="site-recipe-io">
+                    {recipe.inputs.map(({ key, amount }) => {
+                      const id = recipeResourceIds[key];
+                      return <li key={key} className="site-recipe-in">
+                        <SitePlate src={resourceIcon(id)} size={40} className="site-io-icon" />
+                        <span>{names[id]} ×{amount}</span>
+                      </li>;
+                    })}
+                  </ul>
+                  <p className="site-recipe-arrow" aria-hidden="true">↓</p>
+                  <p className="site-recipe-meta">{copy.outputLabel}</p>
+                  <ul className="site-recipe-io">
+                    <li className="site-recipe-out">
+                      <SitePlate src={resourceIcon(recipeResourceIds[recipe.output.key])} size={40} className="site-io-icon" />
+                      <span>{names[recipeResourceIds[recipe.output.key]]} ×{recipe.output.amount}</span>
+                    </li>
+                  </ul>
+                </article>
+              ))}
             </div>
           </div>
         ))}
+        <p className="site-guide-warn">{copy.note}</p>
       </Section>
     );
   }
 
   if (id === 'potato') {
+    const copy = siteMind[language];
     return (
       <>
-        <Section title="Откуда пришёл MIND">
-          <div className="site-media-row">
+        <Section title={copy.originHeading}>
+          <div className="site-media-row site-mind-origin">
             <SitePlate src={resourcePlate('mind')} alt="MIND" size="min(100%, 220px)" className="site-media-row__art" />
-            <div>
-              {potatoOrigin.paragraphs.map((p) => <p className="site-reading" key={p.slice(0, 24)}>{p}</p>)}
-            </div>
+            <div>{copy.origin.map((paragraph, index) => <p className="site-reading" key={index}>{paragraph}</p>)}</div>
           </div>
         </Section>
-        <Section title="Пять способов потратить">
-          <div className="site-grid">
-            {potatoUses.map((u) => (
-              <article key={u.id} className="site-card site-paper">
-                <span className="site-badge">{u.category}</span>
-                <h3>{u.title}</h3>
-                <p className="site-guide-meta">Расход: {u.cost} MIND</p>
-                <p>{u.description}</p>
-                <blockquote className="site-narrative">{u.narrative}</blockquote>
+        <Section title={copy.checksHeading}>
+          <div className="site-grid site-mind-grid">
+            {copy.checks.map((check) => (
+              <article key={check.id} className="site-card site-paper">
+                <h3>{check.title}</h3>
+                <p>{check.body}</p>
               </article>
             ))}
           </div>
         </Section>
-        <Section title="Правила токена">
-          <div className="site-accordion">
-            {potatoRules.map((r) => (
-              <details key={r.title}>
-                <summary>{r.title}</summary>
-                <div><p>{r.text}</p></div>
-              </details>
-            ))}
-          </div>
-        </Section>
-        <Section title="Голоса мастерской о MIND">
-          <div className="site-stories">
-            {potatoLore.map((f) => (
-              <blockquote key={f.id} className="site-story">
-                <p>{f.quote}</p>
-                <footer><strong>{f.character}</strong><span>{f.context}</span></footer>
+        <Section title={copy.voicesHeading}>
+          <p className="site-guide-warn">{copy.voicesNotice}</p>
+          <div className="site-stories site-mind-stories">
+            {copy.voices.map((voice) => (
+              <blockquote key={voice.id} className="site-story">
+                <p>{voice.quote}</p>
+                <footer><strong>{voice.character}</strong><span>{voice.context}</span></footer>
               </blockquote>
             ))}
           </div>
         </Section>
-        <Section title="Техническая интеграция">
-          <div className="site-grid">
-            <article className="site-card site-paper"><h3>Кошелёк</h3><p>{potatoIntegration.wallet}</p></article>
-            <article className="site-card site-paper"><h3>Проверка</h3><p>{potatoIntegration.verification}</p></article>
-            <article className="site-card site-paper"><h3>Безопасность</h3><p>{potatoIntegration.safety}</p></article>
+        <Section title={copy.safetyHeading}>
+          <div className="site-grid site-mind-grid">
+            {copy.safety.map((item) => (
+              <article key={item.id} className="site-card site-paper">
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            ))}
           </div>
+          <p className="site-guide-warn">{copy.note}</p>
         </Section>
       </>
     );
   }
 
   if (id === 'guide') {
+    const copy = siteGuide[language];
     return (
-      <Section title="Шесть смен мастера">
+      <Section title={copy.heading}>
         <ol className="site-guide">
-          {guideSteps.map((g) => (
-            <li key={g.id} className="site-paper site-guide-step">
-              <span className="site-step-number">{String(g.step).padStart(2, '0')}</span>
+          {copy.steps.map((shift, index) => (
+            <li key={shift.id} className="site-paper site-guide-step">
+              <span className="site-step-number">{String(index + 1).padStart(2, '0')}</span>
               <div>
-                <h3>{g.title}</h3>
-                <p className="site-guide-meta">{g.duration} · цель: {g.goal}</p>
-                <ul>{g.actions.map((a) => <li key={a.slice(0, 20)}>{a}</li>)}</ul>
-                {g.warnings.length > 0 && (
-                  <ul className="site-guide-warn">{g.warnings.map((w) => <li key={w.slice(0, 20)}>⚠ {w}</li>)}</ul>
-                )}
-                <blockquote className="site-narrative">{g.narrative}</blockquote>
+                <h3>{shift.title}</h3>
+                <p>{shift.action}</p>
+                <p className="site-guide-warn">{shift.caution}</p>
+                <blockquote className="site-narrative">{shift.image}</blockquote>
               </div>
             </li>
           ))}
         </ol>
+        <p className="site-guide-warn">{copy.note}</p>
       </Section>
     );
   }
 
   if (id === 'strategies') {
+    const copy = siteStrategies[language];
     return (
       <>
-        <Section title="Пять путей мастера">
-          <div className="site-grid">
-            {strategies.map((s) => (
-              <article key={s.id} className="site-card site-paper">
-                <h3>{s.title}</h3>
-                <p className="site-guide-meta">{s.playstyle}</p>
-                <p>{s.description}</p>
-                <ul>{s.tips.map((t) => <li key={t.slice(0, 20)}>{t}</li>)}</ul>
+        <Section title={copy.heading}>
+          <div className="site-grid site-strategy-grid">
+            {copy.paths.map((path) => (
+              <article key={path.id} className="site-card site-paper">
+                <h3>{path.title}</h3>
+                <p className="site-guide-meta">{path.style}</p>
+                <p>{path.description}</p>
+                <ul>{path.tips.map((tip, index) => <li key={index}>{tip}</li>)}</ul>
               </article>
             ))}
           </div>
         </Section>
-        <Section title="Голоса мастеров">
-          <div className="site-stories">
-            {masterStories.map((f) => (
-              <blockquote key={f.id} className="site-story">
-                <p>{f.quote}</p>
-                <footer><strong>{f.character}</strong><span>{f.context}</span></footer>
+        <Section title={copy.voicesHeading}>
+          <p className="site-guide-warn">{copy.voicesNotice}</p>
+          <div className="site-stories site-strategy-stories">
+            {copy.stories.map((story) => (
+              <blockquote key={story.id} className="site-story">
+                <p>{story.quote}</p>
+                <footer><strong>{story.character}</strong><span>{story.context}</span></footer>
               </blockquote>
             ))}
           </div>
@@ -404,125 +352,116 @@ export function ExtraSections({ id }: { id: string }) {
   }
 
   if (id === 'trade') {
+    const copy = siteTrade[language];
+    const venues = siteMarket[language];
+    const names = tradeNavigationCopy[language].market;
     return (
       <>
-        {/* [AUDIT G-05] "six ways to trade" while aof-market is off: the
-            venue list now states which ones are actually executable. */}
-        <Section title="Шесть способов торговли">
-          <div className="site-grid">
-            {tradeMethods.map((t) => (
-              <article key={t.id} className="site-card site-paper">
-                <h3>
-                  {t.name}{' '}
-                  {!t.live && (
-                    <span className="site-guide-warn" title="Программа aof-market пока не исполняет торговые инструкции">
-                      — не запущено
-                    </span>
-                  )}
-                </h3>
-                <p className="site-guide-meta">{t.speed} · риск: {t.risk} · контроль: {t.control}</p>
-                <p>{t.description}</p>
-                <blockquote className="site-narrative">{t.narrative}</blockquote>
-                <h4>Когда использовать</h4>
-                <ul>{t.whenToUse.map((w) => <li key={w.slice(0, 20)}>{w}</li>)}</ul>
-                <h4>Когда избегать</h4>
-                <ul className="site-guide-warn">{t.whenToAvoid.map((w) => <li key={w.slice(0, 20)}>{w}</li>)}</ul>
-                <p className="site-recipe-meta">Инструкции: {t.instructions.map((code) => <code key={code}>{code}</code>).reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
+        <Section title={copy.heading}>
+          <div className="site-grid site-trade-grid">
+            {marketVenueIds.map((venue) => (
+              <article key={venue} className="site-card site-paper">
+                <SitePlate src={marketVenueIcons[venue]} alt="" size={44} />
+                <h3>{names[venue]}</h3>
+                <p>{venues.venues[venue]}</p>
               </article>
             ))}
           </div>
         </Section>
-        <Section title="Сравнение способов">
-          <div className="site-table-wrap">
-            <table className="site-table">
-              <thead><tr>{tradeComparison.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
-              <tbody>
-                {tradeComparison.rows.map((r) => (
-                  <tr key={r[0]}>{r.map((c, i) => <td key={i}>{c}</td>)}</tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Section title={copy.checksHeading}>
+          <ol className="site-guide-warn site-guide-warn--numbered">
+            {copy.checks.map((check, index) => <li key={index}>{check}</li>)}
+          </ol>
+          <p className="site-guide-warn">{copy.note}</p>
         </Section>
       </>
     );
   }
 
   if (id === 'investors') {
+    const copy = siteInvestors[language];
+    const economy = siteEconomy[language];
     return (
       <>
-        <Section title="Четыре игровых цикла">
+        <Section title={copy.cyclesHeading}>
           <div className="site-grid">
-            {investorDeepDive.loops.map((l) => (
-              <article key={l.title} className="site-card site-paper">
-                <h3>{l.title}</h3>
-                <ol>{l.steps.map((s) => <li key={s.slice(0, 16)}>{s}</li>)}</ol>
-                <p>{l.note}</p>
-              </article>
-            ))}
+            {economyCycleIds.map((id) => {
+              const cycle = economy.cycles[id];
+              return (
+                <article key={id} className="site-card site-paper">
+                  <h3>{cycle.title}</h3>
+                  <ol>{cycle.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+                </article>
+              );
+            })}
           </div>
         </Section>
-        <Section title="Стоки и источники">
+        <Section title={copy.flowsHeading}>
           <div className="site-grid">
             <article className="site-card site-paper">
-              <h3>Куда уходит</h3>
-              <ul>{investorDeepDive.sinks.map((s) => <li key={s.title}><strong>{s.title}.</strong> {s.text}</li>)}</ul>
+              <h3>{economy.incoming}</h3>
+              <ul>{economy.incomingItems.map((item, index) => <li key={index}>{item}</li>)}</ul>
             </article>
             <article className="site-card site-paper">
-              <h3>Откуда приходит</h3>
-              <ul>{investorDeepDive.sources.map((s) => <li key={s.title}><strong>{s.title}.</strong> {s.text}</li>)}</ul>
+              <h3>{economy.outgoing}</h3>
+              <ul>{economy.outgoingItems.map((item, index) => <li key={index}>{item}</li>)}</ul>
             </article>
           </div>
         </Section>
-        <Section title="Вопросы, которые стоит задать">
-          <ul className="site-guide-warn">
-            {investorDeepDive.questions.map((q) => <li key={q.slice(0, 24)}>{q}</li>)}
-          </ul>
+        <Section title={copy.questionsHeading}>
+          <ol className="site-guide-warn site-guide-warn--numbered">
+            {copy.questions.map((question, index) => <li key={index}>{question}</li>)}
+          </ol>
+          <p className="site-guide-warn">{copy.note}</p>
         </Section>
       </>
     );
   }
 
   if (id === 'manifesto') {
+    const copy = editorialPages[language].manifesto;
     return (
-      <Section title="Четыре опоры">
+      <Section title={copy.heading}>
         <div className="site-grid">
-          {manifestoPrinciples.map((p) => (
+          {copy.principles.map((p) => (
             <article key={p.title} className="site-card site-paper">
               <h3>{p.title}</h3>
               <p>{p.text}</p>
             </article>
           ))}
         </div>
-        <blockquote className="site-narrative">{manifestoClosing}</blockquote>
+        <blockquote className="site-narrative">{copy.closing}</blockquote>
       </Section>
     );
   }
 
   if (id === 'rules') {
+    const copy = siteRulesCopy[language];
     return (
-      <Section title={`${rulesList.length} правил мастерской`}>
+      <Section title={copy.heading}>
         <div className="site-accordion">
-          {rulesList.map((r) => (
-            <details key={r.id}>
-              <summary>{r.title}</summary>
-              <div>{r.paragraphs.map((p) => <p key={p.slice(0, 20)}>{p}</p>)}</div>
+          {copy.items.map((rule) => (
+            <details key={rule.id}>
+              <summary>{rule.title}</summary>
+              <div>{rule.paragraphs.map((p, index) => <p key={index}>{p}</p>)}</div>
             </details>
           ))}
         </div>
+        <p className="site-guide-warn">{copy.note}</p>
       </Section>
     );
   }
 
   if (id === 'lore') {
+    const copy = siteLore[language];
     return (
-      <Section title="Эры мастерской">
-        <div className="site-timeline">
-          {loreChapters.map((ch) => (
-            <article key={ch.id} className="site-paper">
+      <Section title={copy.heading}>
+        <div className="site-timeline" lang={language}>
+          {copy.chapters.map((ch) => (
+            <article key={ch.id} className="site-paper [overflow-wrap:anywhere]">
               <p className="site-eyebrow">{ch.era}</p>
               <h3>{ch.title}</h3>
-              {ch.paragraphs.map((p) => <p key={p.slice(0, 20)}>{p}</p>)}
+              {ch.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
             </article>
           ))}
         </div>
@@ -531,57 +470,57 @@ export function ExtraSections({ id }: { id: string }) {
   }
 
   if (id === 'roadmap') {
+    const copy = siteRoadmap[language];
     return (
-      <Section title="Направления работы">
-        <div className="site-grid">
-          {roadmapItems.map((it) => (
-            <article key={it.id} className="site-card site-paper">
-              <span className="site-badge">{roadmapEraNames[it.era]}</span>
+      <Section title={copy.heading}>
+        <blockquote className="site-narrative" lang={language}>{copy.note}</blockquote>
+        <div className="site-grid" lang={language}>
+          {copy.items.map((it) => (
+            <article key={it.id} className="site-card site-paper [overflow-wrap:anywhere]">
+              <span className="site-badge">{copy.eraLabels[it.era]}</span>
               <h3>{it.title}</h3>
-              <ul>{it.bullets.map((b) => <li key={b.slice(0, 20)}>{b}</li>)}</ul>
+              <ul>{it.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
             </article>
           ))}
         </div>
-        <blockquote className="site-narrative">Статусы — редакционный план сайта и продукта. Они не являются подтверждённым релизом, аудитом или публичным обязательством.</blockquote>
       </Section>
     );
   }
 
   if (id === 'faq') {
     return (
-      <Section title={`${faqItems.length} ответов на частые вопросы`}>
-        <div className="site-filters">
-          <label>Поиск<input type="search" value={faqQuery} onChange={(e) => setFaqQuery(e.target.value)} placeholder="Вопрос или слово ответа" /></label>
-          <label>Тема<select value={faqTag} onChange={(e) => setFaqTag(e.target.value)}>
-            <option value="all">Все темы</option>
-            {faqTagsList.map((t) => <option key={t} value={t}>{t}</option>)}
+      <Section title={`${faq.heading} · ${faq.items.length}`}>
+        <div className="site-filters min-w-0">
+          <label>{faq.search}<input type="search" value={faqQuery} onChange={(e) => setFaqQuery(e.target.value)} placeholder={faq.placeholder} /></label>
+          <label>{faq.topic}<select value={faqTag} onChange={(e) => setFaqTag(e.target.value as FaqTopic | 'all')}>
+            <option value="all">{faq.all}</option>
+            {(Object.keys(faq.topics) as FaqTopic[]).map((topic) => <option key={topic} value={topic}>{faq.topics[topic]}</option>)}
           </select></label>
         </div>
-        <p role="status">Найдено: {faqFiltered.length}</p>
-        <div className="site-accordion">
+        <p role="status">{faq.found}: {faqFiltered.length}</p>
+        <div className="site-accordion min-w-0 [overflow-wrap:anywhere]">
           {faqFiltered.map((f) => (
-            <details key={f.q}>
+            <details key={f.id}>
               <summary>{f.q}</summary>
               <div><p>{f.a}</p></div>
             </details>
           ))}
         </div>
-        {faqFiltered.length === 0 && <p>Измени запрос: подходящих вопросов нет.</p>}
+        {faqFiltered.length === 0 && <p>{faq.noResults}</p>}
       </Section>
     );
   }
 
   if (id === 'glossary') {
     return (
-      <Section title={`${glossaryTerms.length} термина на одном столе`}>
-        <label className="site-search-label">Найди термин<input type="search" value={glossQuery} onChange={(e) => setGlossQuery(e.target.value)} /></label>
-        <p role="status">Найдено: {glossFiltered.length}</p>
+      <Section title={gloss.heading}>
+        <label className="site-search-label">{gloss.search}<input type="search" value={glossQuery} onChange={(e) => setGlossQuery(e.target.value)} /></label>
+        <p role="status">{gloss.found}: {glossFiltered.length}</p>
         <dl className="site-glossary">
           {glossFiltered.map((g) => {
-            const match = resources.find((r) => r.name.toLowerCase() === g.term.toLowerCase()) || resourceVisual(g.term);
-            const icon = match ? resourceIcon(match.id) : undefined;
+            const icon = g.id === 'mind' ? resourceIcon('mind') : undefined;
             return (
-              <div className={'site-paper' + (icon ? ' site-glossary__with-icon' : '')} key={g.term}>
+              <div className={'site-paper' + (icon ? ' site-glossary__with-icon' : '')} key={g.id}>
                 {icon && <SitePlate src={icon} size={44} className="site-glossary__icon" />}
                 <dt>{g.term}</dt>
                 <dd>{g.definition}</dd>
@@ -589,44 +528,50 @@ export function ExtraSections({ id }: { id: string }) {
             );
           })}
         </dl>
-        {glossFiltered.length === 0 && <p>Такого термина нет.</p>}
+        {glossFiltered.length === 0 && <p>{gloss.empty}</p>}
+        <blockquote className="site-narrative">{gloss.note}</blockquote>
       </Section>
     );
   }
 
   if (id === 'weather') {
+    const copy = editorialPages[language].weather;
     return (
-      <Section title="Четыре состояния неба">
+      <Section title={copy.heading}>
         <WeatherDemo />
-        <blockquote className="site-narrative">Демо меняет только картину на странице: настоящие модификаторы живут в игре и меняются вместе с балансом.</blockquote>
+        <blockquote className="site-narrative">{copy.caution}</blockquote>
       </Section>
     );
   }
 
   if (id === 'seasons') {
+    const copy = siteSeasons[language];
     return (
-      <Section title="Колесо эпох">
+      <Section title={copy.wheelTitle}>
         <SeasonWheelDemo />
-        <blockquote className="site-narrative">Колесо поворачивает только оформление: сейчас эпоха длится 42 дня и держит 42 ступени пропуска.</blockquote>
+        <blockquote className="site-narrative">{copy.disclaimer}</blockquote>
       </Section>
     );
   }
 
   if (id === 'trust') {
+    const copy = siteTrust[language];
     return (
-      <Section title="Пять медальонов доверия">
+      <Section title={copy.heading}>
+        <p className="site-guide-warn">{copy.note}</p>
         <div className="site-grid">
-          {trustTiers.map((t, i) => (
-            <article key={t.name} className="site-card site-paper" style={{ textAlign: 'center' }}>
-              <svg width="95" height="95" viewBox="0 0 100 100" role="img" aria-label={'Тир ' + (i + 1)}>
+          {copy.medallions.map((medallion, i) => (
+            <article key={medallion.id} className="site-card site-paper min-w-0 [overflow-wrap:anywhere]" style={{ textAlign: 'center' }}>
+              <svg width="95" height="95" viewBox="0 0 100 100" aria-hidden="true">
                 <circle cx="50" cy="50" r="43" fill="var(--sb-cyan)" stroke="var(--sb-body)" strokeWidth="4" />
                 {Array.from({ length: i + 1 }, (_, n) => (
                   <circle key={n} cx="50" cy="50" r={38 - n * 6} fill="none" stroke="var(--sb-body-2)" strokeWidth="1.5" />
                 ))}
                 <text x="50" y="58" textAnchor="middle" fontSize="26" fill="var(--sb-green)">{i + 1}</text>
               </svg>
-              <h3>{t.name}</h3>
-              <p>{t.text}</p>
+              <span className="sr-only">{copy.tierLabel(i + 1)}: </span>
+              <h3>{medallion.name}</h3>
+              <p>{medallion.text}</p>
             </article>
           ))}
         </div>
@@ -634,53 +579,77 @@ export function ExtraSections({ id }: { id: string }) {
     );
   }
 
-  if (id === 'tools') {
+  if (id === 'mine') {
+    const copy = siteMine[language];
     return (
       <>
-        <Section title="Пять редкостей — пять характеров">
+        <Section title={copy.heading}>
+          <ol className="site-steps">
+            {copy.steps.map((step, index) => (
+              <li key={index} className="site-paper">
+                <span className="site-step-number">{String(index + 1).padStart(2, '0')}</span>
+                <div><h3>{step.title}</h3><p>{step.text}</p></div>
+              </li>
+            ))}
+          </ol>
+          <p className="site-guide-warn">{copy.expedition}</p>
+          <p className="site-guide-warn">{copy.note}</p>
+        </Section>
+      </>
+    );
+  }
+
+  if (id === 'tools') {
+    const copy = siteTools[language];
+    const rarityLabels = toolsCopy[language].collectionPage.rarities;
+    return (
+      <>
+        <Section title={copy.rarityHeading}>
           <div className="site-grid">
-            {rarities.map((r, i) => (
-              <article key={r.name} className={'site-tool site-paper site-tool--' + i}>
-                <SitePlate src={toolPlate('plasma_cutter', TOOL_RARITIES[i])} alt={`Плазменный резчик · ${r.name}`} size="100%" className="site-tool__art" />
-                <h3>{r.name}</h3>
-                <p>{r.text}</p>
+            {TOOL_RARITIES.map((rarity, index) => (
+              <article key={rarity} className={'site-tool site-paper site-tool--' + index}>
+                <SitePlate src={toolPlate('plasma_cutter', rarity)} alt="" size="100%" className="site-tool__art" />
+                <h3>{rarityLabels[index]}</h3>
+                <p>{copy.rarityDescriptions[index]}</p>
               </article>
             ))}
           </div>
-          <blockquote className="site-narrative">Rarity — характеристика предмета, а не гарантия выгодной сделки: легендарный инструмент в простых руках дешевле обычного в рабочих.</blockquote>
+          <p className="site-guide-warn">{copy.rarityNotice}</p>
         </Section>
-        <Section title="Пять инструментов — двадцать пять NFT">
-          <p className="site-reading">Каждый инструмент существует в пяти редкостях. Ниже — все плашки NFT, которые выдаёт кузница: базовая сборка слева, Transcendent справа.</p>
+        <Section title={copy.galleryHeading}>
+          <p className="site-reading">{copy.galleryIntro}</p>
           <div className="site-nft-grid">
-            {TOOL_NFTS.map((t) => (
-              <article key={t.id} className="site-card site-paper site-nft">
-                <SitePlate src={t.base} alt={t.name} size="100%" className="site-nft__hero" />
-                <h3>{t.name}</h3>
+            {TOOL_NFTS.map((tool) => (
+              <article key={tool.id} className="site-card site-paper site-nft">
+                <SitePlate src={tool.base} alt="" size="100%" className="site-nft__hero" />
+                <h3>{toolName(language, tool.id)}</h3>
                 <ul className="site-nft__rarities">
-                  {TOOL_RARITIES.map((rar) => (
-                    <li key={rar}>
-                      <SitePlate src={toolPlate(t.id, rar)} alt={`${t.name} · ${TOOL_RARITY_LABEL[rar]}`} size="100%" />
-                      <small>{TOOL_RARITY_LABEL[rar]}</small>
+                  {TOOL_RARITIES.map((rarity, index) => (
+                    <li key={rarity}>
+                      <SitePlate src={toolPlate(tool.id, rarity)} alt="" size="100%" />
+                      <small>{rarityLabels[index]}</small>
                     </li>
                   ))}
                 </ul>
               </article>
             ))}
           </div>
+          <p className="site-guide-warn">{copy.galleryNotice}</p>
         </Section>
       </>
     );
   }
 
   if (id === 'quests') {
+    const copy = siteJournalCopy[language];
     return (
-      <Section title="Твой журнал знакомства">
+      <Section title={copy.heading}>
         <JournalBoard />
-        <div className="site-actions">
-          <Button to="/site/resources">Осмотри ресурс</Button>
-          <Button to="/site/packs" variant="ghost">Попробуй пак</Button>
-          <Button to="/site/lottery" variant="ghost">Найди ритм</Button>
-          <Button to="/site/roadmap" variant="ghost">Открой карту развития</Button>
+        <div className="site-actions min-w-0 [overflow-wrap:anywhere]">
+          <Button to="/site/resources">{copy.inspect}</Button>
+          <Button to="/site/packs" variant="ghost">{copy.capsule}</Button>
+          <Button to="/site/lottery" variant="ghost">{copy.wheel}</Button>
+          <Button to="/site/roadmap" variant="ghost">{copy.roadmap}</Button>
         </div>
       </Section>
     );
@@ -689,25 +658,25 @@ export function ExtraSections({ id }: { id: string }) {
   if (id === 'home') {
     return (
       <>
-        <Section title="Цепочка труда">
+        <Section title={home.chainTitle}>
           <ChainDiagram />
         </Section>
-        <Section title="Потрогай материал">
+        <Section title={home.samplesTitle}>
           <div className="site-grid">
-            {resources.slice(0, 8).map((r) => (
+            {resources.slice(0, 8).map((r, index) => (
               <Link className="site-card site-paper" key={r.id} to={'/site/resources/' + r.slug}>
                 <SitePlate src={resourcePlate(r.id)} alt="" size="100%" className="site-card__art" />
-                <p className="site-eyebrow">Материал</p>
-                <h3>{r.name}</h3>
-                <p>{r.lead}</p>
+                <p className="site-eyebrow">{home.material}</p>
+                <h3>{resourceName(r.id, r.name)}</h3>
+                <p>{language === 'ru' ? r.lead : home.leads[index]}</p>
               </Link>
             ))}
           </div>
-          <div className="site-icon-strip" aria-label="Все ресурсы">
+          <div className="site-icon-strip" aria-label={home.allResources}>
             {resources.map((r) => (
-              <Link key={r.id} to={'/site/resources/' + r.slug} title={r.name} className="site-icon-strip__item">
-                <SitePlate src={resourceIcon(r.id)} alt={r.name} size={56} />
-                <small>{r.name}</small>
+              <Link key={r.id} to={'/site/resources/' + r.slug} title={resourceName(r.id, r.name)} className="site-icon-strip__item">
+                <SitePlate src={resourceIcon(r.id)} alt="" size={56} />
+                <small>{resourceName(r.id, r.name)}</small>
               </Link>
             ))}
           </div>
@@ -716,53 +685,78 @@ export function ExtraSections({ id }: { id: string }) {
     );
   }
 
+  if (id === 'market') {
+    const copy = siteMarket[language];
+    const names = tradeNavigationCopy[language].market;
+    return (
+      <Section title={copy.heading}>
+        <div className="site-grid">
+          {marketVenueIds.map((venue) => (
+            <article key={venue} className="site-card site-paper">
+              <SitePlate src={marketVenueIcons[venue]} alt="" size={44} />
+              <h3>{names[venue]}</h3>
+              <p>{copy.venues[venue]}</p>
+            </article>
+          ))}
+        </div>
+        <p className="site-guide-warn">{copy.note}</p>
+      </Section>
+    );
+  }
+
   if (id === 'economy') {
+    const copy = siteEconomy[language];
     return (
       <>
-        <Section title="Откуда приходит и куда уходит">
+        <Section title={copy.flowHeading}>
           <div className="site-grid">
             <article className="site-card site-paper">
-              <h3>Источники</h3>
-              <ul>{investorDeepDive.sources.map((s) => <li key={s.title}><strong>{s.title}.</strong> {s.text}</li>)}</ul>
+              <h3>{copy.incoming}</h3>
+              <ul>{copy.incomingItems.map((item, index) => <li key={index}>{item}</li>)}</ul>
             </article>
             <article className="site-card site-paper">
-              <h3>Стоки</h3>
-              <ul>{investorDeepDive.sinks.map((s) => <li key={s.title}><strong>{s.title}.</strong> {s.text}</li>)}</ul>
+              <h3>{copy.outgoing}</h3>
+              <ul>{copy.outgoingItems.map((item, index) => <li key={index}>{item}</li>)}</ul>
             </article>
           </div>
         </Section>
-        <Section title="Четыре цикла экономики">
+        <Section title={copy.cyclesHeading}>
           <div className="site-grid">
-            {investorDeepDive.loops.map((l) => (
-              <article key={l.title} className="site-card site-paper">
-                <h3>{l.title}</h3>
-                <ol>{l.steps.map((s) => <li key={s.slice(0, 16)}>{s}</li>)}</ol>
-              </article>
-            ))}
+            {economyCycleIds.map((id) => {
+              const cycle = copy.cycles[id];
+              return (
+                <article key={id} className="site-card site-paper">
+                  <h3>{cycle.title}</h3>
+                  <ol>{cycle.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+                </article>
+              );
+            })}
           </div>
+          <p className="site-guide-warn">{copy.note}</p>
         </Section>
       </>
     );
   }
 
   if (id === 'docs') {
+    const copy = siteDocs[language];
     return (
-      <Section title="Индекс инструкций">
-        <div className="site-accordion">
-          {mechanics.filter((m) => m.steps.some((s) => s.instruction)).map((m) => (
-            <details key={m.id}>
-              <summary>{m.name}</summary>
+      <Section title={copy.heading}>
+        <p className="site-guide-warn">{copy.codeNote}</p>
+        <div className="site-accordion site-docs-accordion">
+          {instructionGroups.map((group) => (
+            <details key={group.id}>
+              <summary>{copy.groups[group.id].title}</summary>
               <div>
+                <p>{copy.groups[group.id].description}</p>
                 <ul>
-                  {m.steps.filter((s) => s.instruction).map((s) => (
-                    <li key={s.instruction}><code>{s.instruction}</code> — {s.title}</li>
-                  ))}
+                  {group.instructions.map((instruction) => <li key={instruction}><code>{instruction}</code></li>)}
                 </ul>
               </div>
             </details>
           ))}
         </div>
-        <blockquote className="site-narrative">Имена инструкций помогают связать описание с реализацией. Они не являются ссылкой на проведённый аудит.</blockquote>
+        <p className="site-guide-warn">{copy.caution}</p>
       </Section>
     );
   }
@@ -804,14 +798,15 @@ const relatedMap: Record<string, string[]> = {
   docs: ['glossary', 'faq', 'investors'],
 };
 export function CrossLinks({ id }: { id: string }) {
+  const { language } = useLocale();
   const ids = relatedMap[id];
   if (!ids || ids.length === 0) return null;
   return (
-    <Section title="Читай дальше">
+    <Section title={furtherLabels[language]}>
       <div className="site-actions">
         {ids.map((rid) => {
           const p = xlPages.find((x) => x.id === rid);
-          return p ? <Link key={rid} className="site-chip" to={'/site/' + rid}>{p.title} →</Link> : null;
+          return p ? <Link key={rid} className="site-chip" to={'/site/' + rid}>{pageNames[language][rid as PageId] ?? p.title} →</Link> : null;
         })}
       </div>
     </Section>

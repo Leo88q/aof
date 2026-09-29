@@ -10,6 +10,8 @@ const CONFIG_FIELDS: Record<ResourceMintKey, string> = {
   DATA: "foodMint",
   CIRCUIT: "woodMint",
   SILICON: "stoneMint",
+  // Historical core ABI field name: this is the IN-GAME MIND resource mint.
+  // The future external Potato SPL mint is not stored in core Config.
   MIND: "potatoMint",
   // These two are duplicated in Config for legacy/core instructions and must
   // agree with the canonical MaterialMints entries below.

@@ -2,8 +2,8 @@
 /**
  * Карта приборов для документации.
  *
- * Единственный источник правды — `src/gallery/deviceMap.ts`, который читает и
- * витрина `/visual`. Скрипт собирает из него `docs/UI_DEVICE_MAP_2026-09-28.md`,
+ * Расположение приборов берётся из `src/gallery/deviceMap.ts`, а тексты —
+ * из русского словаря витрины `/visual`. Скрипт собирает из них документ
  * чтобы документ не расходился с кодом: правишь таблицу в коде — обновляешь док.
  *
  * Запуск: npm run map:devices
@@ -12,33 +12,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEVICE_MAP } from "../src/gallery/deviceMap.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const repo = join(root, "..");
 
-const map = readFileSync(join(root, "src/gallery/deviceMap.ts"), "utf8");
 const gallery = readFileSync(join(root, "src/gallery/VisualGallery.tsx"), "utf8");
-
-const field = (block, name) => {
-  const m = block.match(new RegExp(`${name}:\\s*"([^"]*)"`));
-  return m ? m[1] : "";
-};
-
-const entries = map
-  .split("{\n    key:")
-  .slice(1)
-  .map((raw) => {
-    const block = raw.split("\n  },")[0];
-    return {
-      key: block.match(/^\s*"([^"]+)"/)?.[1] ?? "",
-      name: field(block, "name"),
-      tab: field(block, "tab"),
-      sub: field(block, "sub"),
-      file: field(block, "file"),
-      purpose: field(block, "purpose"),
-    };
-  });
+const entries = DEVICE_MAP;
 
 const instruments = entries.filter((e) => e.key !== "frame");
 
@@ -54,13 +35,20 @@ for (const slide of slides) {
   else groups.push({ name: slide.group, count: 1 });
 }
 
+// Gallery groups use stable IDs. Russian documentation labels come from the
+// canonical device map, not from the grouping keys used by every UI locale.
+const groupTitle = (key) => key === "behavior"
+  ? "Поведение окон"
+  : entries.find((entry) => entry.key === key)?.name ?? key;
+
 const today = new Date().toISOString().slice(0, 10);
 
 const doc = `# Карта приборов: где какой аппарат стоит в игре
 
-Составлено ${today}. Источник — \`frontend/src/gallery/deviceMap.ts\`; витрина приборов
-\`/visual\` собирается из того же файла. Правится карта в коде, документ
-пересобирается командой \`npm run map:devices\` из папки \`frontend\`.
+Составлено ${today}. Расположение приборов — \`frontend/src/gallery/deviceMap.ts\`,
+русские названия и описания — \`frontend/src/i18n/galleryCopy.ts\`. Из того же
+словаря берётся текст витрины \`/visual\`. Пересборка: \`npm run map:devices\`
+из папки \`frontend\`.
 
 ## Почему появился этот документ
 
@@ -95,7 +83,7 @@ ${instruments.map((e) => `| ${e.name} | ${e.tab} | ${e.sub} | ${e.purpose} | \`$
 каждый аппарат живым кодом и говорит, где он стоит в игре. Всего слайдов:
 ${slides.length}.
 
-${groups.map((g) => `- ${g.name} — ${g.count}`).join("\n")}
+${groups.map((g) => `- ${groupTitle(g.name)} — ${g.count}`).join("\n")}
 
 На слайдах с пометкой «демо-значения» числа показательные: они нужны, чтобы
 объяснить шкалу. В игре таких чисел нет — там либо значение из сети, либо «—».

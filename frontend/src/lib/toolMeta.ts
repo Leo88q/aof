@@ -7,17 +7,12 @@ export const RARITY_META: Record<string, { color: string; label: string }> = {
 };
 
 export const TOOL_ICON: Record<string, string> = {
-  // [REBRAND] NeuroForge tool art; legacy pre-rebrand ids alias to the same images
+  // Current NeuroForge tool art
   plasma_cutter: "/assets/nfts/plasma-cutter.jpg",
   silicon_extractor: "/assets/nfts/silicon-extractor.jpg",
   data_harvester: "/assets/nfts/data-harvester.jpg",
   quantum_transmitter: "/assets/nfts/quantum-transmitter.jpg",
   neural_seeder: "/assets/nfts/neural-seeder.jpg",
-  axe: "/assets/nfts/plasma-cutter.jpg",
-  pick: "/assets/nfts/silicon-extractor.jpg",
-  spear: "/assets/nfts/data-harvester.jpg",
-  bow: "/assets/nfts/quantum-transmitter.jpg",
-  reaper: "/assets/nfts/neural-seeder.jpg",
 };
 
 /**

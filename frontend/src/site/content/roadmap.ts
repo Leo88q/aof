@@ -1,16 +1,11 @@
+import { siteRoadmap } from '../../i18n/siteRoadmap';
+
 export interface RoadmapItem { id: string; era: 'done' | 'now' | 'next' | 'later'; title: string; bullets: string[]; }
-export const roadmapEraNames: Record<string, string> = { done: 'Принято', now: 'В работе', next: 'Следом', later: 'Направление' };
-export const roadmapItems: RoadmapItem[] = [
-  { id: 'r1', era: 'done', title: 'UI-основание', bullets: ['Токены, шрифты, тени, длительности', 'Storybook-стенд и TokenParity', 'Stylelint-правило aof/no-raw-color'] },
-  { id: 'r2', era: 'done', title: 'Информационный сайт', bullets: ['Информационные страницы с общей навигацией', 'Атмосфера первого экрана', 'Живые демонстрации печати, капсулы и барабана'] },
-  { id: 'r3', era: 'done', title: 'Контент и каталог', bullets: ['27 ресурсов с историями', '26 занятий с шагами и инструкциями', 'Книга рецептов и шесть способов торговли'] },
-  { id: 'r4', era: 'done', title: 'MIND-мост', bullets: ['Происхождение и 5 способов расхода', 'Правила burn-механик', 'Голоса мастеров о токене'] },
-  { id: 'r5', era: 'now', title: 'Визуальная полнота', bullets: ['Демо погоды и эпохное колесо', 'Медальоны тиров и карточки редкостей', 'Журнал отметок и цепочка труда на главной'] },
-  { id: 'r6', era: 'now', title: 'Арт P0', bullets: ['7 hero-картин мастерской', 'Логотип-сигил', 'Интеграция фонов в hero-секции'] },
-  { id: 'r7', era: 'next', title: 'Арт P1', bullets: ['28 иконок ресурсов', '9 инструментов и 5 редкостей', 'Тайловые текстуры материалов'] },
-  { id: 'r8', era: 'next', title: 'SEO и доступность', bullets: ['Мета-теги и OG-картинки', 'Sitemap и robots', 'Полный a11y-прогон'] },
-  { id: 'r9', era: 'next', title: 'Расширенное ремесло', bullets: ['Редкости и миграции инструментов', 'Коллаборационные рецепты P2', 'Балансировка стоков энергии'] },
-  { id: 'r10', era: 'later', title: 'Новые биомы', bullets: ['Пустыня, острова, горы', 'Экспедиционные находки биомов', 'Погодные модификаторы биомов'] },
-  { id: 'r11', era: 'later', title: 'Гильдейские занятия', bullets: ['Совместные квесты и челленджи', 'Территории и войны эпох', 'Общие мастерские гильдий'] },
-  { id: 'r12', era: 'later', title: 'Пользовательские мастерские', bullets: ['Авторские рецепты', 'Рынок рецептов', 'Мобильные улучшения интерфейса'] },
-];
+
+// Preserve the content catalog export for callers, but keep the Russian copy
+// in the same reviewed seven-language source as the visible roadmap page.
+export const roadmapEraNames: Record<RoadmapItem['era'], string> = siteRoadmap.ru.eraLabels;
+export const roadmapItems: RoadmapItem[] = siteRoadmap.ru.items.map(item => ({
+  ...item,
+  bullets: [...item.bullets],
+}));

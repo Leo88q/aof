@@ -1,12 +1,20 @@
+import { readMiningEnabled, useMiningAvailability } from "../../lib/useMiningAvailability";
 import { useCallback, useEffect, useState } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { farmPlotCopy, buildingKeys } from "../../i18n/farmPlotCopy";
+import { toolsCopy } from "../../i18n/toolsCopy";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
+import { WEATHER_BY_INDEX } from "../../lib/weather";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
+import { actionErrorFeedback } from "../../lib/txResponseFeedback";
+import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { useWalletStore } from "../../store/walletStore";
 import { useStore } from "../../store/useStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
-import {toolPlate, resourceIcon} from "../../lib/visualAssets";
+import { toolPlate, resourceIcon, TOOL_RARITIES, type ToolRarity } from "../../lib/visualAssets";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { buildingFor } from "../../lib/buildings";
 import { ArtPlate } from "../../components/visual/ArtPlate";
@@ -16,28 +24,7 @@ import { toNum, useFlash } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 const GRID = 8;
-
-// Подписи нагрузки сети: программа присылает служебные ключи эффекта
-// (well_water_rate_15_per_hour), их нельзя показывать игроку как есть.
-const WEATHER_TITLE: Record<string, string> = {
-  sunny: "Номинал",
-  rain: "Скачок",
-  drought: "Блэкаут",
-  festival: "Френзи",
-  harvest_festival: "Френзи",
-};
-const WEATHER_EFFECT: Record<string, string> = {
-  sunny: "Накопление энергопотока: 5/час",
-  rain: "Накопление энергопотока: 15/час",
-  drought: "Накопление энергопотока остановлено",
-  festival: "Накопление энергопотока: 20/час",
-  harvest_festival: "Накопление энергопотока: 20/час",
-};
-// Keep the feature fail-closed until the on-chain program has passed build and
-// validator tests. Enable explicitly only in a verified test environment.
-const MINING_ENABLED = (import.meta as any).env?.VITE_MINING_ENABLED === "true";
-
-// Слоты построек по центру участка (спиралью наружу)
+// Structure positions on the plot.
 const SLOTS = [
   { x: 3, y: 3 }, { x: 4, y: 3 }, { x: 3, y: 4 }, { x: 4, y: 4 },
   { x: 2, y: 2 }, { x: 5, y: 2 }, { x: 2, y: 5 }, { x: 5, y: 5 },
@@ -45,6 +32,18 @@ const SLOTS = [
 ];
 
 export function FarmPlot() {
+  const { language } = useLocale();
+  const copy = farmPlotCopy[language];
+  const conditions = labHeroCopy[language].load;
+  const buildingName = (type?: string | null) => {
+    const key = type && buildingKeys[type.toLowerCase()];
+    return key ? copy.buildings[key] : copy.building;
+  };
+  const rarityLabel = (value: unknown) => {
+    const index = TOOL_RARITIES.indexOf(rarityKey(value) as ToolRarity);
+    return index < 0 ? toolsCopy[language].card.unknownRarity : toolsCopy[language].collectionPage.rarities[index];
+  };
+  const MINING_ENABLED = useMiningAvailability();
   const { address } = useWalletStore();
   const { weather } = useStore() as any;
   // null = инвентарь не прочитан (загрузка или 503), [] = пусто по-настоящему.
@@ -52,7 +51,7 @@ export function FarmPlot() {
   const [toolsFailed, setToolsFailed] = useState(false);
   const [selected, setSelected] = useState<any>(null);
   const [busy, setBusy] = useState(false);
-  const [txStatus, flash] = useFlash();
+  const [txStatus, flash] = useFlash(language);
 
   const load = useCallback(() => {
     if (!address) return;
@@ -67,10 +66,17 @@ export function FarmPlot() {
       });
   }, [address]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!address) { setTools(null); setSelected(null); setToolsFailed(false); }
+    else load();
+  }, [address, load]);
 
   const staked = (tools ?? []).filter((t) => t.staked || t.isMining);
   const freeCount = (tools ?? []).length - staked.length;
+  const weatherType = weather?.type === "harvest_festival" ? "festival" : weather?.type;
+  const weatherState = Object.values(WEATHER_BY_INDEX).find((value) => value.type === weatherType);
+  const weatherLabel = weatherState ? conditions[weatherState.type] : copy.unknownLoad;
+  const weatherEffect = weatherState ? (weatherState.rate ? copy.powerGain(weatherState.rate) : copy.powerStopped) : '';
 
   // Карта тайлов: постройки из реальных застейканных инструментов + декор
   const tileMap = new Map<string, any>();
@@ -79,33 +85,33 @@ export function FarmPlot() {
   });
 
   async function quick(action: "start" | "collect") {
-    if (!MINING_ENABLED) return flash("Добыча на участке ещё не включена — идёт проверка правил сети");
-    if (!address) return flash("❌ Подключите кошелёк");
+    if (!MINING_ENABLED || !await readMiningEnabled()) return flash(copy.disabled);
+    if (!address) return flash(`❌ ${copy.connectWallet}`);
     if (!selected) return;
     setBusy(true);
     try {
-      flash(action === "start" ? "Экстрактор запущен…" : "Открываем контейнер…");
+      flash(action === "start" ? copy.starting : copy.opening);
       const resp = action === "start"
         ? await api.tools.startMining({ user: address, mint: selected.mint, hours: 4 })
         : await api.tools.collectMining({ user: address, mint: selected.mint });
       const r = await handleTxResponse(resp);
-      flash(r.success ? `Готово: ${r.signature?.slice(0, 10)}…` : `${r.error}`);
+      flash(r.success ? (r.signature ? `${copy.completed}: ${r.signature.slice(0, 10)}…` : copy.completed) : (r.error || copy.failed));
       if (r.success) {
         setSelected(null);
         setTimeout(load, 2500);
       }
     } catch (e: any) {
-      flash(`${e?.response?.data?.error || e.message}`);
+      flash(actionErrorFeedback(e, language, walletRuntimeCopy[language].unconfirmedResponse));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="p-4 pt-6 pb-24">
+    <div className="p-4 pt-6 pb-24" lang={language}>
       <div className="mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">Мой участок</h1>
-        <p className="text-straw text-[11px] mt-0.5">Инструменты в стойке становятся постройками на участке.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-parchment leading-tight">{copy.title}</h1>
+        <p className="text-straw text-[11px] mt-0.5">{copy.lead}</p>
       </div>
 
       {txStatus && (
@@ -117,7 +123,7 @@ export function FarmPlot() {
 
       {/* Участок */}
       <Card className="relative overflow-hidden mb-4">
-        {weather && typeof weather.type === "string" && <WeatherOverlay type={weather.type} />}
+        {weatherState && <WeatherOverlay type={weatherState.type} />}
         <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID}, minmax(0, 1fr))` }}>
           {Array.from({ length: GRID * GRID }).map((_, i) => {
             const x = i % GRID;
@@ -127,7 +133,7 @@ export function FarmPlot() {
             const decor = !tool && !locked && (x * 7 + y * 3) % 9 === 0;
             const done = tool?.isMining && toNum(tool.miningEnd) <= Date.now() / 1000;
             return (
-              <button key={i} onClick={() => tool && setSelected(tool)}
+              <button key={i} type="button" disabled={!tool} aria-label={tool ? buildingName(tool.toolType) : locked ? copy.expansion : copy.emptySlot} onClick={() => tool && setSelected(tool)}
                 className={`aspect-square rounded-md flex items-center justify-center text-base sm:text-lg border ${
                   tool
                     ? done ? "bg-gold/20 border-gold/50" : "bg-soil-600/70 border-wheat-600/30"
@@ -144,7 +150,7 @@ export function FarmPlot() {
                         квадратная плашка NFT в тайле выглядела как чёрный ящик. */}
                     <ResourceGlyph
                       icon={buildingFor(tool.toolType)?.icon || toolPlate(tool.toolType, rarityKey(tool.rarity))}
-                      alt={buildingFor(tool.toolType)?.name || tool.toolType || "Постройка"}
+                      alt=""
                       className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-[0_0_6px_rgba(0,212,255,0.35)]"
                     />
                     {tool.isMining && !done && (
@@ -159,13 +165,13 @@ export function FarmPlot() {
         </div>
         {/* Легенда: переносится по строкам, ничего не выезжает за карточку */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-straw mt-3 text-center">
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
             <ResourceGlyph icon={buildingFor("plasma_cutter")?.icon} alt="" className="w-4 h-4" />
             <ResourceGlyph icon={buildingFor("silicon_extractor")?.icon} alt="" className="w-4 h-4" />
-            постройка из инструмента в стойке
+            {copy.legendBuilding}
           </span>
-          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> майнит</span>
-          <span className="inline-flex items-center gap-1"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> расширение</span>
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-1"><ResourceGlyph icon={UI_ICONS.adminGear} alt="" className="w-4 h-4" /> {copy.mining}</span>
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-1"><ResourceGlyph icon={UI_ICONS.privileges} alt="" className="w-4 h-4" /> {copy.expansion}</span>
         </div>
       </Card>
 
@@ -173,39 +179,32 @@ export function FarmPlot() {
       {weather && typeof weather.type === "string" && (
         <Card className="mb-4 flex items-center gap-3">
           <span className="text-2xl">
-            <ResourceGlyph
-              icon={
-                weather.type === "rain"
-                  ? UI_ICONS.weatherSurge
-                  : weather.type === "sunny"
-                    ? UI_ICONS.weatherNominal
-                    : weather.type === "festival"
-                      ? UI_ICONS.weatherFrenzy
-                      : UI_ICONS.weatherBlackout
-              }
+            {weatherState && <ResourceGlyph
+              icon={weatherState?.type === "rain" ? UI_ICONS.weatherSurge
+                : weatherState?.type === "sunny" ? UI_ICONS.weatherNominal
+                : weatherState?.type === "festival" ? UI_ICONS.weatherFrenzy
+                : UI_ICONS.weatherBlackout}
               alt=""
               className="w-8 h-8"
-            />
+            />}
           </span>
           <div className="min-w-0">
-            <p className="text-sm text-parchment">{WEATHER_TITLE[weather.type] || weather.type}</p>
-            <p className="text-xs text-straw">{WEATHER_EFFECT[weather.type] || weather.effect || ""}</p>
+            <p className="text-sm text-parchment">{weatherLabel}</p>
+            <p className="text-xs text-straw">{weatherEffect}</p>
           </div>
         </Card>
       )}
 
       {/* Сводка */}
       <Card className="mb-4 flex items-center justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-parchment text-sm font-semibold">
-            Построек на участке: {tools === null ? (toolsFailed ? "—" : "…") : staked.length}
+            {copy.structures}: {!address || toolsFailed ? "—" : tools === null ? "…" : staked.length}
           </p>
           <p className="text-straw text-xs">
-            {tools === null
-              ? toolsFailed
-                ? "Инструменты недоступны из сети — счётчики неизвестны"
-                : "Читаем инструменты…"
-              : `В инвентаре (не в стойке): ${freeCount}`}
+            {!address ? copy.connectWallet : tools === null
+              ? toolsFailed ? copy.toolsUnknown : copy.toolsLoading
+              : `${copy.freeTools}: ${freeCount}`}
           </p>
         </div>
         <span className="text-2xl"><ResourceGlyph icon={UI_ICONS.locServerRuins} alt="" className="w-8 h-8" /></span>
@@ -215,39 +214,39 @@ export function FarmPlot() {
       <AnimatePresence>
         {selected && (
           <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }}
-            className="fixed bottom-20 left-0 right-0 max-w-md mx-auto px-4 z-50">
+            className="fixed bottom-20 left-0 right-0 max-w-md mx-auto px-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto">
             <Card className="bg-soil-900/95 backdrop-blur-xl border border-soil-700">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-parchment font-semibold flex items-center gap-2">
-                  <ArtPlate src={toolPlate(selected.toolType, rarityKey(selected.rarity))} alt={selected.toolType || "Инструмент"} size={36} />
-                  {buildingFor(selected.toolType)?.name || "Постройка"}
+                <h3 className="text-parchment font-semibold flex items-center gap-2 min-w-0 [overflow-wrap:anywhere]">
+                  <ArtPlate src={toolPlate(selected.toolType, rarityKey(selected.rarity))} alt="" size={36} />
+                  {buildingName(selected.toolType)}
                 </h3>
-                <button onClick={() => setSelected(null)} className="text-straw px-2">✕</button>
+                <button type="button" onClick={() => setSelected(null)} aria-label={copy.close} className="text-straw px-2">✕</button>
               </div>
               <p className="text-xs mb-1" style={{ color: RARITY_META[rarityKey(selected.rarity)]?.color }}>
-                {RARITY_META[rarityKey(selected.rarity)]?.label} · прочность {Number(selected.durability)}/20
+                {rarityLabel(selected.rarity)} · {copy.durability} {Number(selected.durability)}/20
               </p>
               {selected.isMining ? (
                 toNum(selected.miningEnd) <= Date.now() / 1000 ? (
                   <button onClick={() => quick("collect")} disabled={!MINING_ENABLED || busy}
                     className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
-                    {MINING_ENABLED ? "Забрать добычу" : "Сбор ещё не включён"}
+                    {MINING_ENABLED ? copy.collect : copy.collectDisabled}
                   </button>
                 ) : (
-                  <p className="text-straw text-xs mt-1 inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> Идёт добыча — вернись, когда экстрактор закончит</p>
+                  <p className="text-straw text-xs mt-1 inline-flex items-center gap-1"><ResourceGlyph icon={toolPlate("silicon_extractor") || ""} alt="" className="w-4 h-4" /> {copy.miningInProgress}</p>
                 )
               ) : (
                 <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}
                   className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
-                  {MINING_ENABLED ? "Начать добычу" : "Добыча ещё не включена"}
+                  {MINING_ENABLED ? copy.start : copy.startDisabled}
                 </button>
               )}
               {!MINING_ENABLED && (
                 <p className="text-straw text-[10px] mt-2 text-center leading-relaxed">
-                  Добыча включится после проверки контракта в тестовой сети. Инструменты и постройки уже сохранены.
+                  {copy.disabledNote}
                 </p>
               )}
-              <p className="text-straw text-xs mt-2 text-center">Тонкая настройка — во вкладке «Инструменты»</p>
+              <p className="text-straw text-xs mt-2 text-center">{copy.fineTuning}</p>
             </Card>
           </motion.div>
         )}

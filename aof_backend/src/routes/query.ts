@@ -147,13 +147,16 @@ r.get("/enchant-slots/:toolMint", async (req, res) => {
   res.json(list.map((x: any) => ({ pubkey: x.publicKey.toBase58(), ...deep(x.account) })));
 });
 
-// Ордербук по ресурсу (разделение на buy/sell)
+// The PDA remains open at zero quantity until the maker closes it. Expose
+// exhausted orders separately so the wallet can reclaim escrow/rent, without
+// displaying them as executable liquidity in the public bid/ask book.
 r.get("/orderbook/:mint", async (req, res) => {
   const all = await fetchAll("resourceOrder", [memcmpFilter(58, req.params.mint)]);
   const decoded = all.map((x: any) => ({ pubkey: x.publicKey.toBase58(), ...deep(x.account) }));
   res.json({
-    buy: decoded.filter((o: any) => o.isBuy && Number(o.amountRemaining) > 0),
-    sell: decoded.filter((o: any) => !o.isBuy && Number(o.amountRemaining) > 0),
+    buy: decoded.filter((o: any) => o.isBuy && BigInt(o.amountRemaining.toString()) > 0n),
+    sell: decoded.filter((o: any) => !o.isBuy && BigInt(o.amountRemaining.toString()) > 0n),
+    exhausted: decoded.filter((o: any) => BigInt(o.amountRemaining.toString()) === 0n),
   });
 });
 

@@ -324,3 +324,47 @@ test("Switchboard is accepted only as the game program's CPI, never as a top-lev
   };
   assert.equal((await guard(viaGame, {}, logsWithCpi)).safe, true);
 });
+
+// A season pass is a SOL payment: the wallet must only see the one canonical
+// purchase instruction for the verified season and treasury.
+test("season pass intent rejects swapped treasury, season and extra instructions", async () => {
+  const { validateTransactionIntent } = await import("../src/lib/transactionIntent");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions");
+  const spec = CORE_INSTRUCTIONS.find(s => s.name === 'purchase_season_pass')!;
+  const seasonId = 1;
+  const seed = Buffer.alloc(4); seed.writeUInt32LE(seasonId);
+  const derive = (...parts: Buffer[]) => PublicKey.findProgramAddressSync(parts, core)[0];
+  const keys = [derive(Buffer.from('config')), user.publicKey, other,
+    derive(Buffer.from('season'), seed), derive(Buffer.from('season_pass'), user.publicKey.toBuffer(), seed),
+    SystemProgram.programId];
+  const ix = { programId: core.toBase58(), keys, data: Uint8Array.from(spec.discriminator) };
+  const intent = { kind: 'seasonPass', user: user.publicKey.toBase58(), treasury: other.toBase58(),
+    seasonId, priceLamports: '150000000' as const } as const;
+  assert.doesNotThrow(() => validateTransactionIntent([ix], intent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([{ ...ix, keys: keys.map((key, i) => i === 2 ? user.publicKey : key) }], intent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([{ ...ix, keys: keys.map((key, i) => i === 3 ? other : key) }], intent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([ix, ix], intent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([ix], { ...intent, priceLamports: '1' as any }, user.publicKey));
+});
+
+test("VIP read distinguishes missing pass from failed or forged reads", async () => {
+  const { readVipSnapshot } = await import("../src/lib/vipReadings");
+  const owner = user.publicKey.toBase58();
+  const privileges = { farmTrader: { enabled: false }, priceAlerts: { limit: 1, fullOptions: false },
+    skipAdsInQuests: false, feeDiscountPct: 0 };
+  const free = { source: 'onchain', user: owner, seasonId: 1, seasonActive: true,
+    passPremium: false, isVip: false, pass: null, privileges };
+  assert.deepEqual(readVipSnapshot(free, owner, 1)?.pass, null);
+  assert.equal(readVipSnapshot(null, owner, 1), null);
+  assert.equal(readVipSnapshot({ ...free, source: 'database' }, owner, 1), null);
+  assert.equal(readVipSnapshot({ ...free, user: other.toBase58() }, owner, 1), null);
+  assert.equal(readVipSnapshot({ ...free, isVip: true }, owner, 1), null);
+  const vip = { ...free, passPremium: true, isVip: true,
+    pass: { premium: true, xp: 10, claimedBitmap: '5' },
+    privileges };
+  assert.equal(readVipSnapshot({ ...vip, privileges: { ...privileges, feeDiscountPct: 15 } }, owner, 1), null);
+  assert.equal(readVipSnapshot(vip, owner, 1)?.pass?.claimedRewards, 2);
+  assert.equal(readVipSnapshot({ ...vip, seasonActive: false, isVip: false,
+    privileges }, owner, 1)?.passPremium, true);
+  assert.equal(readVipSnapshot({ ...vip, pass: null }, owner, 1), null);
+});

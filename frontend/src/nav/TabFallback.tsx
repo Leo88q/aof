@@ -1,12 +1,13 @@
-import React from "react";
+import { useLocale } from "../i18n/LocaleProvider";
+import { gameTabs, type GameTab } from "../i18n/gameLabels";
+import { errorScreenCopy } from "../i18n/errorScreenCopy";
 
-// Заглушка на время подгрузки чанка вкладки. Раньше вкладки грузились
-// целиком в стартовом бандле, и игрок сразу видел экран; теперь показываем
-// силуэт страницы, чтобы переход не выглядел пустым.
-export function TabFallback({ label }: { label: string }) {
+// Shown while a tab chunk loads; announce its localized name to screen readers.
+export function TabFallback({ label }: { label: GameTab }) {
+  const { language } = useLocale();
   return (
-    <div className="page flex flex-col gap-3 p-3 sm:p-4" role="status" aria-live="polite">
-      <span className="sr-only">{label}: загружаем экран…</span>
+    <div lang={language} className="page flex flex-col gap-3 p-3 sm:p-4" role="status" aria-live="polite">
+      <span className="sr-only">{gameTabs[language][label].full}: {errorScreenCopy[language].loading}</span>
       <div className="h-9 w-2/3 rounded-xl bg-soil-800/70 animate-pulse" aria-hidden="true" />
       <div className="h-24 w-full rounded-2xl bg-soil-800/70 animate-pulse" aria-hidden="true" />
       <div className="h-24 w-full rounded-2xl bg-soil-800/70 animate-pulse" aria-hidden="true" />

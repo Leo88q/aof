@@ -1,70 +1,31 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
-import BN from "bn.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { questsProgram } from "../provider";
 import {
   questConfigPda,
-  questsProgramDataPda,
   questTemplatePda,
   questProgressPda,
 } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
+import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
 import { requireNoFraudHold } from "../security/fraudHold";
 
 const r = Router();
 
-// Инициализация конфигурации заданий
-r.post("/config/init", requireAdmin, async (req, res) => {
-  try {
-    const mascotMint = pk(req.body.mascotMint || req.body.potatoMint);
-    const treasuryMascot = pk(req.body.treasuryMascot || req.body.treasuryPotato);
-
-    const [questConfig] = questConfigPda();
-    const [programData] = questsProgramDataPda();
-
-    const ix = await (questsProgram.methods as any)
-      .initQuestConfig(mascotMint, treasuryMascot)
-      .accounts({
-        questConfig,
-        authority: AUTHORITY_PUBKEY,
-        programData,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// Do not initialise a QuestConfig with the internal Config.potatoMint (MIND).
+// A separate external Potato mint, its decimals and treasury must be verified
+// before enabling new quest payouts. Existing claim paths remain available.
+r.post("/config/init", requireAdmin, (_req, res) => {
+  res.status(503).json({ error: "External Potato mint not configured" });
 });
 
-// Создание шаблона квеста
-r.post("/quest/init", requireAdmin, async (req, res) => {
-  try {
-    const questId = Number(req.body.questId);
-    const rewardPotato = new BN(req.body.rewardPotato);
-
-    const [questConfig] = questConfigPda();
-    const [questTemplate] = questTemplatePda(questId);
-
-    const ix = await (questsProgram.methods as any)
-      .questInit(questId, rewardPotato)
-      .accounts({
-        questConfig,
-        questTemplate,
-        authority: AUTHORITY_PUBKEY,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// New raw-amount rewards cannot be priced correctly before Potato decimals are known.
+// Existing on-chain claims are deliberately not disabled.
+r.post("/quest/init", requireAdmin, (_req, res) => {
+  res.status(503).json({ error: "External Potato quest rewards not configured" });
 });
 
 // Клейм награды за выполненный квест

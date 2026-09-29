@@ -4,9 +4,33 @@
     "name": "aof_quests",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "NeuroForge — Quests, Achievements, Challenges, Quantum Drum"
+    "description": "NeuroForge \u2014 Quests, Achievements, Challenges, Quantum Drum"
   },
   "instructions": [
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "writable": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
     {
       "name": "achievement_unlock",
       "discriminator": [
@@ -92,6 +116,30 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "cancel_pending_authority",
+      "discriminator": [
+        155,
+        52,
+        245,
+        225,
+        85,
+        73,
+        58,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "challenge_contribute",
@@ -469,6 +517,86 @@
       "args": []
     },
     {
+      "name": "drum_expire",
+      "discriminator": [
+        147,
+        129,
+        210,
+        85,
+        203,
+        34,
+        245,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "drum_commit",
+          "writable": true
+        },
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "treasury_mascot",
+          "writable": true
+        },
+        {
+          "name": "mascot_mint"
+        },
+        {
+          "name": "user_mascot",
+          "writable": true
+        },
+        {
+          "name": "vrf_slot",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "drum_reveal",
       "discriminator": [
         12,
@@ -615,6 +743,94 @@
       ]
     },
     {
+      "name": "init_potato_bank",
+      "discriminator": [
+        147,
+        168,
+        178,
+        231,
+        2,
+        107,
+        18,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "potato_mint"
+        },
+        {
+          "name": "potato_bank",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116,
+                  97,
+                  116,
+                  111,
+                  95,
+                  98,
+                  97,
+                  110,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "potato_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "init_quest_config",
       "discriminator": [
         40,
@@ -673,6 +889,391 @@
         {
           "name": "treasury_mascot",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "potato_spin_commit",
+      "discriminator": [
+        197,
+        5,
+        255,
+        158,
+        221,
+        207,
+        109,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "potato_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116,
+                  97,
+                  116,
+                  111,
+                  95,
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "potato_bank",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116,
+                  97,
+                  116,
+                  111,
+                  95,
+                  98,
+                  97,
+                  110,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "potato_vault",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_potato",
+          "writable": true
+        },
+        {
+          "name": "vrf_slot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  115,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "randomness"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrf_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "oracle",
+          "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "switchboard_program"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "potato_spin_expire",
+      "discriminator": [
+        24,
+        141,
+        34,
+        224,
+        159,
+        50,
+        65,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "potato_commit",
+          "writable": true
+        },
+        {
+          "name": "potato_bank",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116,
+                  97,
+                  116,
+                  111,
+                  95,
+                  98,
+                  97,
+                  110,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "potato_vault",
+          "writable": true
+        },
+        {
+          "name": "potato_mint"
+        },
+        {
+          "name": "user_potato",
+          "writable": true
+        },
+        {
+          "name": "vrf_slot",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "potato_spin_reveal",
+      "discriminator": [
+        214,
+        235,
+        144,
+        20,
+        28,
+        210,
+        64,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "potato_commit",
+          "writable": true
+        },
+        {
+          "name": "potato_bank",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116,
+                  97,
+                  116,
+                  111,
+                  95,
+                  98,
+                  97,
+                  110,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "potato_vault",
+          "writable": true
+        },
+        {
+          "name": "potato_mint"
+        },
+        {
+          "name": "user_potato",
+          "writable": true
+        },
+        {
+          "name": "vrf_slot",
+          "writable": true
+        },
+        {
+          "name": "randomness",
+          "writable": true
+        },
+        {
+          "name": "vrf_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle"
+        },
+        {
+          "name": "queue"
+        },
+        {
+          "name": "stats",
+          "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "reward_escrow",
+          "writable": true
+        },
+        {
+          "name": "wrapped_sol_mint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
+          "name": "program_state"
+        },
+        {
+          "name": "switchboard_program"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "VrfRevealParams"
+            }
+          }
         }
       ]
     },
@@ -1013,70 +1614,18 @@
       ]
     },
     {
-      "name": "accept_authority",
+      "name": "set_potato_bank_paused",
       "discriminator": [
-        107,
-        86,
-        198,
-        91,
-        33,
-        12,
-        107,
-        160
-      ],
-      "accounts": [
-        {
-          "name": "quest_config",
-          "writable": true
-        },
-        {
-          "name": "new_authority",
-          "signer": true
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "cancel_pending_authority",
-      "discriminator": [
-        155,
-        52,
-        245,
-        225,
-        85,
-        73,
+        199,
         58,
-        238
+        104,
+        151,
+        138,
+        12,
+        130,
+        134
       ],
       "accounts": [
-        {
-          "name": "quest_config",
-          "writable": true
-        },
-        {
-          "name": "authority",
-          "signer": true
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "drum_expire",
-      "discriminator": [
-        147,
-        129,
-        210,
-        85,
-        203,
-        34,
-        245,
-        25
-      ],
-      "accounts": [
-        {
-          "name": "drum_commit",
-          "writable": true
-        },
         {
           "name": "quest_config",
           "pda": {
@@ -1102,43 +1651,40 @@
           }
         },
         {
-          "name": "cranker",
-          "writable": true,
+          "name": "authority",
           "signer": true
         },
         {
-          "name": "user",
-          "writable": true
-        },
-        {
-          "name": "treasury_mascot",
-          "writable": true
-        },
-        {
-          "name": "mascot_mint"
-        },
-        {
-          "name": "user_mascot",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "name": "potato_bank",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116,
+                  97,
+                  116,
+                  111,
+                  95,
+                  98,
+                  97,
+                  110,
+                  107
+                ]
+              }
+            ]
+          }
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "vrf_pool_add",
@@ -1397,6 +1943,32 @@
       ]
     },
     {
+      "name": "PotatoBank",
+      "discriminator": [
+        28,
+        104,
+        172,
+        150,
+        55,
+        51,
+        44,
+        229
+      ]
+    },
+    {
+      "name": "PotatoCommit",
+      "discriminator": [
+        78,
+        115,
+        254,
+        139,
+        198,
+        245,
+        92,
+        152
+      ]
+    },
+    {
       "name": "QuestConfig",
       "discriminator": [
         181,
@@ -1464,6 +2036,45 @@
       ]
     },
     {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "AuthorityRotationCancelled",
+      "discriminator": [
+        130,
+        2,
+        252,
+        115,
+        135,
+        42,
+        1,
+        109
+      ]
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "discriminator": [
+        76,
+        59,
+        57,
+        23,
+        22,
+        166,
+        253,
+        33
+      ]
+    },
+    {
       "name": "ChallengeContributed",
       "discriminator": [
         176,
@@ -1503,6 +2114,19 @@
       ]
     },
     {
+      "name": "DrumRefunded",
+      "discriminator": [
+        156,
+        184,
+        40,
+        128,
+        133,
+        159,
+        97,
+        55
+      ]
+    },
+    {
       "name": "DrumRevealed",
       "discriminator": [
         150,
@@ -1513,6 +2137,45 @@
         251,
         71,
         251
+      ]
+    },
+    {
+      "name": "PotatoSpinCommitted",
+      "discriminator": [
+        69,
+        177,
+        93,
+        254,
+        191,
+        140,
+        223,
+        168
+      ]
+    },
+    {
+      "name": "PotatoSpinRefunded",
+      "discriminator": [
+        213,
+        39,
+        11,
+        196,
+        18,
+        149,
+        117,
+        158
+      ]
+    },
+    {
+      "name": "PotatoSpinRevealed",
+      "discriminator": [
+        128,
+        205,
+        46,
+        74,
+        212,
+        13,
+        3,
+        118
       ]
     },
     {
@@ -1552,58 +2215,6 @@
         4,
         217,
         25
-      ]
-    },
-    {
-      "name": "AuthorityRotationProposed",
-      "discriminator": [
-        76,
-        59,
-        57,
-        23,
-        22,
-        166,
-        253,
-        33
-      ]
-    },
-    {
-      "name": "AuthorityChanged",
-      "discriminator": [
-        31,
-        19,
-        174,
-        152,
-        4,
-        82,
-        215,
-        226
-      ]
-    },
-    {
-      "name": "AuthorityRotationCancelled",
-      "discriminator": [
-        130,
-        2,
-        252,
-        115,
-        135,
-        42,
-        1,
-        109
-      ]
-    },
-    {
-      "name": "DrumRefunded",
-      "discriminator": [
-        156,
-        184,
-        40,
-        128,
-        133,
-        159,
-        97,
-        55
       ]
     },
     {
@@ -1802,6 +2413,66 @@
       }
     },
     {
+      "name": "AuthorityChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "cancelled",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityRotationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "next",
+            "type": "pubkey"
+          },
+          {
+            "name": "at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "ChallengeContributed",
       "type": {
         "kind": "struct",
@@ -1946,6 +2617,22 @@
       }
     },
     {
+      "name": "DrumRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "DrumRevealed",
       "type": {
         "kind": "struct",
@@ -1956,6 +2643,175 @@
           },
           {
             "name": "prize",
+            "type": "u64"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "value",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "cranker",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PotatoBank",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserved_atoms",
+            "type": "u64"
+          },
+          {
+            "name": "open_spins",
+            "type": "u32"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PotatoCommit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "commit_slot",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "cost",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PotatoSpinCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "commit",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "price_atoms",
+            "type": "u64"
+          },
+          {
+            "name": "randomness",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PotatoSpinRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "commit",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_atoms",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PotatoSpinRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "commit",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_atoms",
             "type": "u64"
           },
           {
@@ -2123,61 +2979,31 @@
       }
     },
     {
-      "name": "AuthorityRotationProposed",
+      "name": "VrfRevealParams",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "previous",
-            "type": "pubkey"
+            "name": "signature",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
           },
           {
-            "name": "next",
-            "type": "pubkey"
+            "name": "recovery_id",
+            "type": "u8"
           },
           {
-            "name": "at",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "AuthorityChanged",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "previous",
-            "type": "pubkey"
-          },
-          {
-            "name": "next",
-            "type": "pubkey"
-          },
-          {
-            "name": "at",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "AuthorityRotationCancelled",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "cancelled",
-            "type": "pubkey"
-          },
-          {
-            "name": "slot",
-            "type": "u64"
+            "name": "value",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -2223,22 +3049,6 @@
       }
     },
     {
-      "name": "DrumRefunded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
       "name": "VrfSlotAdded",
       "type": {
         "kind": "struct",
@@ -2270,36 +3080,6 @@
           {
             "name": "retired",
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "VrfRevealParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "signature",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
-          },
-          {
-            "name": "recovery_id",
-            "type": "u8"
-          },
-          {
-            "name": "value",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
           }
         ]
       }

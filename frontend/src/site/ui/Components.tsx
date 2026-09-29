@@ -1,4 +1,8 @@
 import { type ReactNode, useState, useEffect } from 'react';
+import { useLocale } from '../../i18n/LocaleProvider';
+import { commitLabels } from '../../i18n/commitLabels';
+import { siteChanceCopy } from '../../i18n/siteChanceCopy';
+import { resourceCatalogCopy } from '../../i18n/resourceCatalogCopy';
 import { Link } from 'react-router-dom';
 import { motion, useScroll } from 'framer-motion';
 import { useReducedMotionSite } from '../hooks/useReducedMotionSite';
@@ -37,7 +41,8 @@ export function ParchmentCard({ children }: { children: ReactNode }) {
 }
 
 export function StatusBadge({ status }: { status: 'live' | 'soon' }) {
-  return <span className="site-badge">{status === 'live' ? 'Описано в спецификации' : 'Запланировано'}</span>;
+  const { language } = useLocale();
+  return <span className="site-badge">{resourceCatalogCopy[language][status]}</span>;
 }
 
 export function Button({ children, to, onClick, variant = 'primary' }: {
@@ -79,6 +84,8 @@ function encodeUtf8(input: string) {
 }
 
 export function CommitReveal() {
+  const { language } = useLocale();
+  const copy = commitLabels[language];
   const [phase, setPhase] = useState<'idle' | 'committed' | 'revealed'>('idle');
   const [secret, setSecret] = useState('');
   const [commit, setCommit] = useState('');
@@ -104,70 +111,69 @@ export function CommitReveal() {
 
   return (
     <div className="site-ritual site-paper">
-      <h3>Запечатай запись. Затем проверь.</h3>
-      <p>Локальное демо SHA-256, без транзакции.</p>
-      {commit && <><h4>Хеш</h4><code className="site-hash">{commit}</code></>}
-      {phase === 'revealed' && <><h4>Секрет</h4><code className="site-hash">{secret}</code></>}
+      <h3>{copy.heading}</h3>
+      <p>{copy.summary}</p>
+      {commit && <><h4>{copy.hash}</h4><code className="site-hash">{commit}</code></>}
+      {phase === 'revealed' && <><h4>{copy.secret}</h4><code className="site-hash">{secret}</code></>}
       <p role="status">
-        {phase === 'idle' && 'Done к проверке.'}
-        {phase === 'committed' && 'Запись запечатана.'}
-        {phase === 'revealed' && (valid ? 'Хеш совпал.' : 'Хеш не совпал.')}
+        {phase === 'idle' && copy.idle}
+        {phase === 'committed' && copy.committed}
+        {phase === 'revealed' && (valid ? copy.valid : copy.invalid)}
       </p>
       <div className="site-actions">
-        {phase === 'idle' && <Button onClick={seal}>Запечатать</Button>}
-        {phase === 'committed' && <Button onClick={reveal}>Раскрыть и сверить</Button>}
-        {phase === 'revealed' && <Button onClick={() => { setPhase('idle'); setSecret(''); setCommit(''); }}>Ещё раз</Button>}
+        {phase === 'idle' && <Button onClick={seal}>{copy.seal}</Button>}
+        {phase === 'committed' && <Button onClick={reveal}>{copy.reveal}</Button>}
+        {phase === 'revealed' && <Button onClick={() => { setPhase('idle'); setSecret(''); setCommit(''); }}>{copy.again}</Button>}
       </div>
     </div>
   );
 }
 
 export function PackOpener() {
+  const { language } = useLocale();
+  const copy = siteChanceCopy[language].packDemo;
   const [size, setSize] = useState<'small' | 'medium' | 'big'>('medium');
-  const [phase, setPhase] = useState<'sealed' | 'revealed'>('sealed');
-  const [prize, setPrize] = useState('');
-  const prizes = ['Мешочек образцов', 'Связка схемы', 'Образец кремния', 'Медная заготовка'];
-
+  const [sample, setSample] = useState<number | null>(null);
   const open = () => {
-    setPrize(prizes[Math.floor(Math.random() * prizes.length)]);
+    setSample(Math.floor(Math.random() * copy.samples.length));
     window.dispatchEvent(new CustomEvent('aof:badge', { detail: 'pack' }));
-    setPhase('revealed');
   };
-
   return (
-    <div className="site-paper site-card">
-      <p className="site-demo-label">Демо упаковки</p>
-      <div className="site-options">
-        {(['small', 'medium', 'big'] as const).map(s => (
+    <div className="site-paper site-card min-w-0 [overflow-wrap:anywhere]">
+      <p className="site-demo-label">{copy.label}</p>
+      <p>{copy.hint}</p>
+      <fieldset className="site-options">
+        <legend>{copy.sizeLegend}</legend>
+        {(['small', 'medium', 'big'] as const).map((s, i) => (
           <label key={s}>
-            <input type="radio" name="pack" checked={size === s} onChange={() => { setSize(s); setPhase('sealed'); }} />
-            {s === 'small' ? ' Мешочек' : s === 'medium' ? ' Футляр' : ' Ящик'}
+            <input type="radio" name="pack" checked={size === s} onChange={() => { setSize(s); setSample(null); }} />
+            {copy.sizes[i]}
           </label>
         ))}
-      </div>
-      <p role="status">
-        {phase === 'sealed' ? 'Упаковка закрыта.' : 'Открыто: ' + prize + '. Только демонстрация.'}
-      </p>
+      </fieldset>
+      <p role="status">{sample === null ? copy.sealed : copy.opened(copy.samples[sample])}</p>
       <div className="site-actions">
-        {phase === 'sealed' ? <Button onClick={open}>Открыть демо</Button> : <Button onClick={() => setPhase('sealed')}>Ещё раз</Button>}
+        {sample === null ? <Button onClick={open}>{copy.open}</Button> : <Button onClick={() => setSample(null)}>{copy.again}</Button>}
       </div>
     </div>
   );
 }
 
 export function DrumInteract() {
-  const [result, setResult] = useState('');
+  const { language } = useLocale();
+  const copy = siteChanceCopy[language].drumDemo;
+  const [result, setResult] = useState<number | null>(null);
   const strike = () => {
-    const rhythms = ['Ритм участка', 'Ритм кузницы', 'Ритм модуля сепарации'];
-    setResult(rhythms[Math.floor(Math.random() * rhythms.length)]);
+    setResult(Math.floor(Math.random() * copy.rhythms.length));
     window.dispatchEvent(new CustomEvent('aof:badge', { detail: 'drum' }));
   };
   return (
-    <div className="site-paper site-ritual">
-      <p className="site-demo-label">Безденежный ритуал</p>
-      <h3>Почувствуй ритм мастерской</h3>
-      <Button onClick={strike}>Ударить в барабан</Button>
-      <p role="status">{result || 'Барабан ждёт первого удара.'}</p>
+    <div className="site-paper site-ritual min-w-0 [overflow-wrap:anywhere]">
+      <p className="site-demo-label">{copy.label}</p>
+      <h3>{copy.heading}</h3>
+      <p>{copy.hint}</p>
+      <div className="site-actions"><Button onClick={strike}>{copy.strike}</Button></div>
+      <p role="status">{result === null ? copy.idle : copy.rhythms[result]}</p>
     </div>
   );
 }

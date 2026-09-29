@@ -1,5 +1,8 @@
 import { humanizeVrfError } from "./vrfErrors";
+import { getApiErrorLanguage } from "./apiErrorLanguage";
 import { humanizeApiError, isFailClosedCode } from "./availability";
+import { apiErrorCopy } from "../i18n/apiErrorCopy";
+import { fetchApi } from "./apiFetch";
 
 // Production uses the same-origin reverse-proxy path. A fully qualified URL
 // remains available for a separately hosted backend via VITE_API_URL.
@@ -23,6 +26,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/notifications/device/unregister", subject: "notifications_device_unregister", field: "user" },
   { path: "/comeback/check", subject: "comeback_check", field: "user" },
   { path: "/comeback/claim", subject: "comeback_claim", field: "user" },
+  { path: "/inbox/list", subject: "inbox_list", field: "user" },
   { path: "/inbox/read", subject: "inbox_read", field: "user" },
   { path: "/inbox/claim", subject: "inbox_claim", field: "user" },
   { path: "/inbox/archive", subject: "inbox_archive", field: "user" },
@@ -129,22 +133,24 @@ async function parseApiResponse(res: Response): Promise<any> {
       (typeof data === "string" ? data : "") ||
       (errorText && !errorText.includes("<!DOCTYPE") && !errorText.includes("<html") ? errorText.slice(0, 200) : "") ||
       `HTTP ${res.status}`;
-    // Сначала известные fail-closed коды бэкенда, затем VRF-ошибки, затем как есть.
-    // Сырой код сохраняем: по нему UI отличает «механика закрыта» от сбоя сети.
+    // Known safety/VRF codes retain their specific translations. Unknown server
+    // prose is not a trusted locale string (and may contain private diagnostics).
+    // Preserve raw on error.code for diagnostics and fail-closed decisions.
     const raw = String(message);
-    const error = new Error(humanizeVrfError(humanizeApiError(raw))) as Error & {
-      code?: string;
-      failClosed?: boolean;
-    };
+    const localized = humanizeVrfError(humanizeApiError(raw, getApiErrorLanguage()), getApiErrorLanguage());
+    const error = new Error(localized === raw
+      ? apiErrorCopy[getApiErrorLanguage()].unexpected(res.status)
+      : localized) as Error & { code?: string; failClosed?: boolean };
     error.code = raw;
     error.failClosed = isFailClosedCode(raw);
     throw error;
   }
 
   if (data === null) {
-    throw new Error(
-      `API endpoint returned non-JSON response (status: ${res.status}, content-type: ${contentType || "none"})`
-    );
+    // Even a 2xx with no usable JSON is not evidence of a successful action.
+    const error = new Error(apiErrorCopy[getApiErrorLanguage()].unexpected(res.status)) as Error & { code?: string };
+    error.code = `NON_JSON_RESPONSE_${res.status}`;
+    throw error;
   }
 
   return data;
@@ -165,7 +171,7 @@ async function post(path: string, body: Record<string, any> = {}): Promise<any> 
     }
   }
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchApi(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify(requestBody),
@@ -186,7 +192,7 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
     }
   }
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchApi(`${BASE}${path}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify(requestBody),
@@ -195,7 +201,7 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
 }
 
 async function get(path: string): Promise<any> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetchApi(`${BASE}${path}`);
   return parseApiResponse(res);
 }
 
@@ -445,7 +451,9 @@ export const api = {
     rewardClaim: (v: any) => post("/season/reward/claim", v),
     // Роут vipStatus смонтирован на /season и слушает /:user — путь без
     // «vip-status», иначе запрос уходил в 404 и VIP молча не находился.
-    vipStatus: (user: string) => get(`/season/${user}`),
+    current: () => get('/season/current'),
+    vipStatus: (user: string, seasonId?: number) =>
+      get(`/season/${user}${seasonId === undefined ? '' : `?seasonId=${encodeURIComponent(seasonId)}`}`),
   },
 
   // === Безопасность ===
@@ -516,7 +524,7 @@ export const api = {
   },
 
   inbox: {
-    list: (user: string) => get(`/inbox/${user}`),
+    list: (user: string) => post("/inbox/list", { user }),
     read: (v: any) => post("/inbox/read", v),
     claim: (v: any) => post("/inbox/claim", v),
   },

@@ -1,11 +1,12 @@
 import { ProgressRing } from "../ProgressRing";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { labHeroCopy } from "../../i18n/labHeroCopy";
+import { weatherCopy } from "../../i18n/weatherCopy";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   SEASON_ICONS,
-  SEASON_LABELS,
   WEATHER_ICONS,
-  WEATHER_LABELS,
   fetchWeatherSnapshot,
   forecastFromDayId,
   weatherEffectLabel,
@@ -19,6 +20,16 @@ import { ResourceGlyph } from "../visual/ResourceGlyph";
 
 
 export function WeatherWidget({ compact = false }: { compact?: boolean }) {
+  const { language } = useLocale();
+  const text = weatherCopy[language];
+  const conditions = labHeroCopy[language].load;
+  const condition = (type?: string | null) => {
+    const key = type === 'harvest_festival' ? 'festival' : type;
+    return (key && conditions[key as keyof typeof conditions]) || text.unavailable;
+  };
+  const season = (key?: string | null) => key
+    ? text.seasons[key as keyof typeof text.seasons] || '—' : '—';
+  const effectLabel = (effect?: string | null) => weatherEffectLabel(effect, language);
   const [current, setCurrent] = useState<WeatherSnapshot | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,16 +71,16 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
       return (
         <span
           className="inline-flex items-center gap-1.5 min-w-0 max-w-full h-8 px-2.5 rounded-xl bg-soil-800/80 border border-gold-500/20"
-          title="Погода недоступна из сети"
+          title={text.unavailable}
         >
           <ResourceGlyph icon={UI_ICONS.weatherNominal} alt="" className="w-4 h-4 shrink-0 opacity-60" />
-          <span className="text-gold-400 text-[10px] truncate">нет данных сети</span>
+          <span className="text-gold-400 text-[10px] truncate">{text.noNetwork}</span>
         </span>
       );
     }
     return (
       <Card className="p-4 bg-soil-800 border border-gold-500/20">
-        <p className="text-gold-400 text-xs">Погода недоступна из сети</p>
+        <p className="text-gold-400 text-xs">{text.unavailable}</p>
       </Card>
     );
   }
@@ -77,7 +88,7 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
   const loadChip = (
     <span
       className="inline-flex items-center gap-1.5 min-w-0 max-w-full h-8 px-2.5 rounded-xl bg-soil-800/80 border border-straw/15"
-      title={`Нагрузка сети: ${WEATHER_LABELS[current.type] || current.type}`}
+      title={`${text.networkLoad}: ${condition(current.type)}`}
     >
       <img
         src={WEATHER_ICONS[current.type] || UI_ICONS.weatherNominal}
@@ -85,9 +96,9 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
         className="w-5 h-5 object-contain shrink-0"
       />
       <span className="text-parchment text-[11px] font-semibold truncate">
-        {WEATHER_LABELS[current.type] || current.type}
+        {condition(current.type)}
       </span>
-      <span className="text-straw text-[10px] shrink-0">· д.{((current.dayOfSeason ?? 0) + 1)}/42</span>
+      <span className="text-straw text-[10px] shrink-0">· {text.dayAbbrev}{((current.dayOfSeason ?? 0) + 1)}/42</span>
     </span>
   );
 
@@ -107,22 +118,22 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
           </motion.span>
           <div>
             <div className="text-parchment font-semibold capitalize">
-              {WEATHER_LABELS[current.type || ""] || current.type || "—"}
+              {condition(current.type)}
             </div>
-            <div className="text-straw text-xs">{weatherEffectLabel(current.effect)}</div>
+            <div className="text-straw text-xs">{effectLabel(current.effect)}</div>
           </div>
         </div>
         <div className="text-right">
           <img src={SEASON_ICONS[current.season || ""] || UI_ICONS.epochInit} alt="" className="w-8 h-8 object-contain ml-auto" />
-          <div className="text-xs text-straw">Эпоха: {SEASON_LABELS[current.season || ""] || "—"}</div>
+          <div className="text-xs text-straw">{text.epoch}: {season(current.season)}</div>
         </div>
       </div>
 
       {/* Прогресс сезона */}
       <div className="mb-3">
         <div className="flex justify-between text-xs text-straw mb-1">
-          <span>День {((current.dayOfSeason ?? 0) + 1)} из 42</span>
-          <span>{current.daysUntilNextSeason ?? 0} до смены</span>
+          <span>{text.day} {((current.dayOfSeason ?? 0) + 1)} {text.of} 42</span>
+          <span>{current.daysUntilNextSeason ?? 0} {text.untilChange}</span>
         </div>
         <div className="h-2 bg-soil-700 rounded-full overflow-hidden">
           <motion.div
@@ -137,7 +148,7 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
       {/* Прогноз на 3 дня */}
       {Array.isArray(forecast) && forecast.length > 0 && (
         <div className="border-t border-straw/10 pt-3">
-          <div className="text-xs text-straw mb-2">Прогноз на 3 дня · расписание дня из цепи:</div>
+          <div className="text-xs text-straw mb-2">{text.forecast}</div>
           <div className="grid grid-cols-3 gap-2">
             {forecast.map((day, i) => (
               <motion.div
@@ -149,10 +160,10 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
               >
                 <img src={WEATHER_ICONS[day.type] || UI_ICONS.weatherNominal} alt="" className="w-6 h-6 object-contain mx-auto mb-1" />
                 <div className="text-xs text-straw capitalize">
-                  {WEATHER_LABELS[day.type] || day.type}
+                  {condition(day.type)}
                 </div>
                 <div className="text-xs text-straw/60 mt-1">
-                  День {((day?.dayOfSeason ?? 0) + 1)}
+                  {text.day} {((day?.dayOfSeason ?? 0) + 1)}
                 </div>
               </motion.div>
             ))}

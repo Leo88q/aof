@@ -1,11 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { OPERATOR_FIELDS, operatorTodo, validateOperator, securityText } from '../scripts/legal-release.mjs';
 const draft = JSON.parse(readFileSync(new URL('../src/legal/operator.json',import.meta.url),'utf8'));
 // Synthetic structure-only fixture: not an operational operator/contact.
 const fixture = {...draft, approved:true, operatorName:'Fixture', operatorAddress:'Fixture address', operatorCountry:'CZ', registrationDetails:'Fixture registration', governingLaw:'Fixture law', retentionPolicy:'Fixture schedule', transferSafeguards:'Fixture review', privacyRepresentative:'Fixture role', contactEmail:'contact@fixture.neuroforge.org', privacyEmail:'privacy@fixture.neuroforge.org', securityEmail:'security@fixture.neuroforge.org', canonicalOrigin:'https://fixture.neuroforge.org', audienceCountries:['CZ'], processors:['Fixture processor, country, purpose']};
-test('unfinished documents cannot pass the release gate', () => { assert.ok(validateOperator({...draft,approved:false}).length > 0); });
+test('missing operator details remain visible but the release report does not block a build', () => {
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  assert.doesNotMatch(scripts['build:release'], /release:check|--emit-security/);
+  assert.match(scripts['build:release'], /check-public-output/);
+  assert.ok(validateOperator({...draft,approved:false}).length > 0);
+  const result = spawnSync(process.execPath, [new URL('../scripts/legal-release.mjs', import.meta.url).pathname, '--report'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /approved/);
+  assert.match(result.stdout, /юридические тексты сейчас не опубликованы/);
+  // Unverified contacts/origin must never appear in a fabricated security.txt.
+  const security = spawnSync(process.execPath, [new URL('../scripts/legal-release.mjs', import.meta.url).pathname, '--emit-security'], { encoding: 'utf8' });
+  assert.notEqual(security.status, 0);
+  assert.match(security.stderr, /securityEmail/);
+});
 test('required fields cannot be bypassed by an approval flag', () => {
   assert.ok(validateOperator({...fixture,privacyEmail:''}).length);
   assert.ok(validateOperator({...fixture,canonicalOrigin:'http://localhost'}).length);
@@ -19,6 +33,7 @@ test('security.txt uses checked contacts, canonical origin and bounded expiry', 
   assert.match(text, /Contact: mailto:security@fixture.neuroforge.org/);
   assert.match(text, /Canonical: https:\/\/fixture.neuroforge.org\/\.well-known\/security.txt/);
   assert.match(text, /Expires: 2027-03-27T00:00:00.000Z/);
+  assert.doesNotMatch(text, /Policy:.*\/legal\/disclosure/);
   assert.throws(() => securityText({...fixture,approved:false}));
 });
 

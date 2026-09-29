@@ -7,25 +7,16 @@ import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
-// [REBRAND] NeuroForge tool ids; legacy pre-rebrand ids are normalized
-// so tools minted before the rebrand still register in the catalog.
+// Only current NeuroForge tool ids can enter the compendium.
 const TOOL_TYPES = ["plasma_cutter", "silicon_extractor", "data_harvester", "quantum_transmitter", "neural_seeder"];
-const LEGACY_TOOL_IDS: Record<string, string> = {
-  axe: "plasma_cutter",
-  pick: "silicon_extractor",
-  spear: "data_harvester",
-  bow: "quantum_transmitter",
-  reaper: "neural_seeder",
-};
-const normalizeToolType = (t: string) => TOOL_TYPES.includes(t) ? t : (LEGACY_TOOL_IDS[t] || t);
 const RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
-const TOTAL_ENTRIES = TOOL_TYPES.length * RARITIES.length; // 20
+const TOTAL_ENTRIES = TOOL_TYPES.length * RARITIES.length; // 25
 
 // Отметить что инструмент "виден" (при получении/крафте/покупке)
 r.post("/mark-seen", requireWalletProof("compendium_mark_seen", "user"), validate(compendiumMarkSeenSchema), async (req, res) => {
   try {
     const { user, rarity } = req.body;
-    const toolType = normalizeToolType(req.body.toolType);
+    const toolType = req.body.toolType;
     if (!TOOL_TYPES.includes(toolType) || !RARITIES.includes(rarity)) {
       return res.status(400).json({ error: "Invalid toolType or rarity" });
     }

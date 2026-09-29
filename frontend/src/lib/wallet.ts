@@ -1,3 +1,6 @@
+import { LocalTxFeedbackError } from "./txResponseFeedback";
+import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
+import { getApiErrorLanguage } from "./apiErrorLanguage";
 import type { TransactionIntent } from "./transactionIntent";
 import { confirmSignature } from "./confirmation";
 import {
@@ -6,6 +9,8 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
+
+const walletText = () => walletRuntimeCopy[getApiErrorLanguage()];
 
 const configuredRpc = (import.meta as any).env?.VITE_RPC_URL as string | undefined;
 
@@ -40,7 +45,7 @@ function standardProvider(wallet: any) {
         account = out?.accounts?.[0] ?? account ?? null;
       }
       account = account || wallet.accounts?.[0] || null;
-      if (!account?.address) throw new Error("Кошелёк не вернул аккаунт Solana");
+      if (!account?.address) throw new Error(walletText().missingAccount);
       return { publicKey: new PublicKey(account.address) };
     },
     disconnect: async () => {
@@ -50,23 +55,23 @@ function standardProvider(wallet: any) {
     signMessage: async (message: Uint8Array) => {
       const feature = wallet.features?.["solana:signMessage"];
       if (typeof feature?.signMessage !== "function") {
-        throw new Error("Кошелёк не поддерживает подпись сообщений");
+        throw new Error(walletText().cannotSignMessage);
       }
-      if (!account) throw new Error("Кошелёк не подключён");
+      if (!account) throw new Error(walletText().notConnected);
       const out = await feature.signMessage({ message, account });
       const first = Array.isArray(out) ? out[0] : out;
-      if (!first?.signature) throw new Error("Кошелёк не вернул подпись");
+      if (!first?.signature) throw new Error(walletText().missingSignature);
       return { signature: first.signature as Uint8Array };
     },
     signAndSendTransaction: async (tx: any) => {
       const feature = wallet.features?.["solana:signAndSendTransaction"];
       if (typeof feature?.signAndSendTransaction !== "function") {
-        throw new Error("Кошелёк не поддерживает отправку транзакций");
+        throw new Error(walletText().cannotSend);
       }
-      if (!account) throw new Error("Кошелёк не подключён");
+      if (!account) throw new Error(walletText().notConnected);
       const out = await feature.signAndSendTransaction(tx);
       const first = Array.isArray(out) ? out[0] : out;
-      if (!first?.signature) throw new Error("Кошелёк не вернул подпись транзакции");
+      if (!first?.signature) throw new Error(walletText().missingTxSignature);
       return { signature: first.signature as string };
     },
   };
@@ -134,14 +139,14 @@ export function createWalletAdapter(): WalletAdapter {
       available: false,
       name: "none",
       connect: async () => {
-        throw new Error("Кошелёк не найден. Установите Phantom или откройте игру во встроенном браузере Phantom.");
+        throw new Error(walletText().notFound);
       },
       disconnect: async () => {},
       signMessage: async () => {
-        throw new Error("Кошелёк недоступен");
+        throw new Error(walletText().unavailable);
       },
       signAndSend: async () => {
-        throw new Error("Кошелёк недоступен");
+        throw new Error(walletText().unavailable);
       },
     };
   }
@@ -158,7 +163,7 @@ export function createWalletAdapter(): WalletAdapter {
     },
     signMessage: async (message: string) => {
       if (typeof provider.signMessage !== "function") {
-        throw new Error("Кошелёк не поддерживает подпись сообщений");
+        throw new Error(walletText().cannotSignMessage);
       }
       const result = await provider.signMessage(new TextEncoder().encode(message), "utf8");
       const signature = result?.signature || result;
@@ -170,12 +175,20 @@ export function createWalletAdapter(): WalletAdapter {
       const user = new PublicKey(provider.publicKey.toString());
       const { guardTransaction, getAofGuardConfig } = await import("./txGuard");
       const guard = await guardTransaction(tx, user, { ...getAofGuardConfig(), intent });
-      if (!guard.safe) throw new Error(guard.reason || "Transaction rejected by wallet guard");
+      if (!guard.safe) throw new LocalTxFeedbackError(guard.reason || walletText().unavailable);
       if (!provider.publicKey || !new PublicKey(provider.publicKey.toString()).equals(user)) {
         throw new Error("Wallet changed during transaction verification");
       }
       const { signature } = await provider.signAndSendTransaction(tx);
-      await confirmSignature(connection, signature);
+      try {
+        await confirmSignature(connection, signature);
+      } catch (cause) {
+        // A submitted payment with an unknown confirmation must retain its
+        // signature; otherwise callers can mistake it for a safe retry.
+        const error = cause instanceof Error ? cause : new Error(String(cause));
+        (error as Error & { signature?: string }).signature = signature;
+        throw error;
+      }
       return signature;
     },
   };

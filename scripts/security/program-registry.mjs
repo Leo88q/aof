@@ -98,18 +98,25 @@ for (const [name, entry] of registered) {
   if (!value) problems.push(`watchtower/addresses.json не содержит ${name}`);
   else if (value !== entry.address) problems.push(`watchtower/addresses.json ${name} = ${value} != реестр ${entry.address}`);
 }
-// txGuard — единственный источник allowlist программ для клиента: там должны
-// быть ВСЕ наши программы. Страница правил может ссылаться на реестр, но у неё
-// обязан быть хотя бы один канонический адрес (иначе игроку не с чем сверяться).
+// txGuard is the client program allowlist. Editorial safety copy is localized;
+// reference-unverified registry IDs must NOT be presented as verified network
+// addresses on the public site before RPC/bytecode verification.
 {
   const guard = read("frontend/src/lib/txGuard.ts");
   for (const [name, entry] of registered) {
     if (!guard.includes(entry.address)) problems.push(`frontend/src/lib/txGuard.ts: нет адреса ${name} (${entry.address}) — клиент не пустит легитимную программу или пропустит чужую`);
   }
   const rules = read("frontend/src/site/content/rules.ts");
-  const knownRulesAddresses = registered.size ? [...registered.values()].filter((e) => rules.includes(e.address)).length : 0;
-  if (knownRulesAddresses === 0) problems.push("frontend/src/site/content/rules.ts: ни одного канонического адреса программы — игроку не с чем сверяться (#104)");
-  if (!/addresses\.json|Anchor\.toml/.test(rules)) notes.push("frontend/src/site/content/rules.ts: нет ссылки на реестр адресов (Anchor.toml/watchtower/addresses.json)");
+  const localized = read("frontend/src/i18n/siteRulesCopy.ts");
+  if (!rules.includes("siteRulesCopy") || !localized.includes("ruleIds")) {
+    problems.push("public safety rules must use the localized nine-rule catalog");
+  }
+  const addressRegistry = JSON.parse(read("watchtower/addresses.json"));
+  for (const item of addressRegistry.programs || []) {
+    if (item.status === "reference-unverified" && localized.includes(item.address)) {
+      problems.push(`public safety copy must not present unverified ${item.name} as a verified address`);
+    }
+  }
 }
 
 // --------------------------------------------------- 2. политика записей ---

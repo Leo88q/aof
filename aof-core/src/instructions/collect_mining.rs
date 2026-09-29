@@ -15,21 +15,28 @@ use crate::ResourceKind;
 // `Rarity::yield_bps`) and the destination mint comes from the canonical
 // registry in `state::mint_for_kind`.
 //
-// Canonical tool -> resource mapping. [AUDIT F-17]: the previous mapping
-// silently dropped "spear" (one of the three types `PACK_TOOL_TYPES` can
-// produce), leaving those tools with no yield at all.
+// Canonical tool -> resource mapping for all five current types.
 fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
-    // Normalise first: new canonical ids AND legacy pre-rebrand ids
-    // (axe/pick/spear/bow/reaper) both resolve through canonical_tool_type.
+    // Accept only the current five ToolData ids.
     let canonical = crate::state::canonical_tool_type(tool_type)?;
     match canonical {
         "plasma_cutter" => Some(ResourceKind::Circuit),
         "silicon_extractor" => Some(ResourceKind::Silicon),
-        // Both hunting tools yield the same resource.
+        // Both data-processing tools yield Dataset.
         "data_harvester" | "quantum_transmitter" => Some(ResourceKind::Dataset),
         "neural_seeder" => Some(ResourceKind::Neuron),
         _ => None,
     }
+}
+
+// Use the same checked calculation in settlement and host regression tests.
+fn mining_reward_amount(hours: u8, rarity: Rarity) -> Result<u64> {
+    (hours as u64)
+        .checked_mul(BASE_RATE_MINING)
+        .and_then(|base| base.checked_mul(RESOURCE_UNIT))
+        .and_then(|base| base.checked_mul(rarity.yield_bps()))
+        .and_then(|base| base.checked_div(10_000))
+        .ok_or_else(|| AofError::MathOverflow.into())
 }
 
 pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
@@ -59,14 +66,7 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
         AofError::Unauthorized
     );
 
-    let amount = (hours as u64)
-        .checked_mul(BASE_RATE_MINING)
-        .and_then(|base| base.checked_mul(RESOURCE_UNIT))
-        .ok_or(AofError::MathOverflow)?
-        .checked_mul(ctx.accounts.tool.rarity.yield_bps())
-        .ok_or(AofError::MathOverflow)?
-        .checked_div(10_000)
-        .ok_or(AofError::MathOverflow)?;
+    let amount = mining_reward_amount(hours, ctx.accounts.tool.rarity)?;
     require!(amount > 0, AofError::ZeroAmount);
 
     // [AUDIT F-03] Mining is the single largest emission path in the game and
@@ -120,4 +120,41 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
         durability_after: durability,
     });
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_current_tool_routes_to_its_canonical_resource() {
+        for (tool, expected) in [
+            ("plasma_cutter", ResourceKind::Circuit),
+            ("silicon_extractor", ResourceKind::Silicon),
+            ("data_harvester", ResourceKind::Dataset),
+            ("quantum_transmitter", ResourceKind::Dataset),
+            ("neural_seeder", ResourceKind::Neuron),
+        ] {
+            assert_eq!(resource_kind_for_tool(tool), Some(expected));
+            assert_eq!(resource_kind_for_tool(&tool.to_uppercase()), Some(expected));
+        }
+        for old in ["axe", "pick", "spear", "bow", "reaper", "", "unknown"] {
+            assert_eq!(resource_kind_for_tool(old), None);
+        }
+    }
+
+    #[test]
+    fn reward_is_scaled_to_atomic_units_and_checked() {
+        for (rarity, bps) in [
+            (Rarity::Common, 10_000),
+            (Rarity::Uncommon, 11_500),
+            (Rarity::Rare, 13_000),
+            (Rarity::Epic, 15_000),
+            (Rarity::Legendary, 18_000),
+        ] {
+            assert_eq!(mining_reward_amount(2, rarity).unwrap(), 20 * RESOURCE_UNIT * bps / 10_000);
+        }
+        // Zero duration is rejected by start_mining/collect_mining, never minted.
+        assert_eq!(mining_reward_amount(0, Rarity::Common).unwrap(), 0);
+    }
 }

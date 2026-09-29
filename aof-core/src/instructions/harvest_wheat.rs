@@ -9,7 +9,7 @@ use crate::ResourceKind;
 /// [БЛОК L] Сбор пшеницы с готового тайла.
 /// Требует:
 /// - Тайл в состоянии "готово" (state == 2 или ready_at <= now)
-/// - Reaper (tool_type == "Reaper") не занят майнингом (is_mining == false)
+/// - Neural Seeder (tool_type == "neural_seeder") не занят майнингом (is_mining == false)
 /// - 1 Energy
 /// Тратит:
 /// - 1 Energy
@@ -18,11 +18,11 @@ use crate::ResourceKind;
 pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     require!(tile_index < 10, AofError::InvalidBatchSize);
 
-    // Проверка что инструмент — Reaper и не занят. Farm actions follow the
+    // Проверка что инструмент — Neural Seeder и не занят. Farm actions follow the
     // rental/delegate model: the current operator, not only the owner, signs.
     let tool = &mut ctx.accounts.tool_data;
     require!(tool.operator == ctx.accounts.user.key(), AofError::NotToolOperator);
-    require!(crate::state::canonical_tool_type(&tool.tool_type) == Some("neural_seeder"), AofError::InvalidRarityForCraft); // [REBRAND] reaper -> neural_seeder (legacy id still accepted)
+    require!(crate::state::canonical_tool_type(&tool.tool_type) == Some("neural_seeder"), AofError::InvalidRarityForCraft);
     require!(!tool.is_mining, AofError::ToolBusy);
 
     // Проверка что тайл готов

@@ -56,4 +56,10 @@ pub enum QuestError {
     CommitNotExpired,
     #[msg("Mascot treasury cannot cover the largest prize")]
     TreasuryTooLow,
+    #[msg("Potato bank is paused; new spins cannot be accepted")]
+    PotatoBankPaused,
+    #[msg("The isolated Potato vault cannot cover all outstanding spin obligations")]
+    PotatoBankInsolvent,
+    #[msg("Potato mint must be an initialized 9-decimal SPL token")]
+    InvalidPotatoMint,
 }

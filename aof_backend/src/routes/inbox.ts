@@ -102,10 +102,11 @@ const MATERIAL_REWARD_MINT: Record<string, string> = {
   LOVE_HEART: "love_heart",
 };
 
-// Список писем пользователя
-r.get("/:user", async (req, res) => {
+// Inbox messages are private; a public wallet address is not authorization.
+// Read via a single-use wallet proof bound to this request body and path.
+r.post("/list", requireWalletProof("inbox_list", "user"), async (req, res) => {
   try {
-    const user = req.params.user;
+    const user = req.body.user;
     const items = await db.inboxItem.findMany({
       where: { user },
       orderBy: { createdAt: "desc" },

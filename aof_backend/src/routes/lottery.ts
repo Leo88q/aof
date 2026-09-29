@@ -24,10 +24,6 @@ const u64 = (value: unknown, field: string): BN => {
   if (!/^[0-9]{1,20}$/.test(text)) throw new Error(`${field} must be a u64`);
   return new BN(text);
 };
-const counterPda = (roundId: BN, buyer: PublicKey) => PublicKey.findProgramAddressSync(
-  [Buffer.from("lottery_ticket"), Buffer.from("count"), roundId.toArrayLike(Buffer, "le", 8), buyer.toBuffer()],
-  program.programId,
-)[0];
 
 r.post("/round/init", requireAdmin, async (req, res) => {
   try {
@@ -71,32 +67,12 @@ r.get("/round/:roundId", async (req, res) => {
   }
 });
 
-r.post("/ticket/buy", async (req, res) => {
-  try {
-    const buyer = pk(req.body.buyer);
-    const roundId = u64(req.body.roundId, "roundId");
-    const [lotteryRound] = lotteryRoundPda(roundId);
-    const round: any = await (program.account as any).lotteryRound.fetch(lotteryRound);
-    if (round.drawCommitted || round.drawn) throw new Error("LOTTERY_SALES_CLOSED");
-    // The ticket PDA is numbered by tickets_sold at execution time; a
-    // concurrent purchase makes this transaction fail (retry), never mis-number.
-    const [lotteryTicket] = lotteryTicketPda(roundId, round.ticketsSold);
-    const ix = await (program.methods as any)
-      .buyLotteryTicket()
-      .accounts({
-        config: configPda()[0],
-        buyer,
-        lotteryRound,
-        lotteryTicket,
-        ticketCounter: counterPda(roundId, buyer),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const tx = await coSign([ix], buyer);
-    res.json({ tx, ticketNumber: round.ticketsSold.toString() });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
+// The deployed buy_lottery_ticket instruction has no max_price argument.
+// Its CPI transfers a compiled constant: a wallet cannot enforce the price
+// it saw on the page if the deployed program differs. Freeze new purchases in
+// both server and client until a bounded instruction + intent are deployed.
+r.post("/ticket/buy", (_req, res) => {
+  res.status(503).json({ error: "LOTTERY_PURCHASE_REQUIRES_BOUNDED_PRICE" });
 });
 
 /** Operator closes sales and commits the draw to a Switchboard pool slot. */

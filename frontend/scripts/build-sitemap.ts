@@ -1,7 +1,8 @@
 /**
  * Собирает public/sitemap.xml из фактического контента сайта.
  *
- * Origin в файле — плейсхолдер dev-сервера: `npm run build:release` заменяет его
+ * Origin в файле — плейсхолдер dev-сервера: в `build:release` такая карта исключается из вывода; отдельная команда
+ * `node scripts/legal-release.mjs --emit-security` заменяет origin лишь после проверки реквизитов
  * на проверенный canonicalOrigin из src/legal/operator.json (см. docs/LEGAL_AND_PRIVACY_OPERATIONS.md).
  * Так в индексацию не может уехать ни один маршрут, которого нет в дереве страниц.
  *

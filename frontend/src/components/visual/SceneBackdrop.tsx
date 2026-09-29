@@ -9,9 +9,12 @@ import { SCENE_BY_TAB, BACKGROUNDS } from "../../lib/visualAssets";
 export function SceneBackdrop() {
   const { tab } = useNav();
   const src = SCENE_BY_TAB[tab] ?? BACKGROUNDS.lab;
+  // Landscape art stays at its natural aspect ratio in the portrait game.
+  // Never enlarge the middle of a 16:9 scene to fill a tall viewport.
+  const scenes = [src, BACKGROUNDS.grid, BACKGROUNDS.deep, BACKGROUNDS.forge].filter((image, index, all) => all.indexOf(image) === index).slice(0, 3);
   return (
     <div className="nf-scene" aria-hidden="true">
-      <img key={src} src={src} alt="" draggable={false} />
+      {scenes.map((image) => <img key={image} src={image} alt="" draggable={false} />)}
     </div>
   );
 }
