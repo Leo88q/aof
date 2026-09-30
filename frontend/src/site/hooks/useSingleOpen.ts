@@ -1,0 +1,30 @@
+import { useEffect, useRef } from 'react';
+
+/**
+ * Одна открытая панель за раз.
+ *
+ * Жалоба владельца 2026-09-30: «верхняя панель когда разворачиваешь и
+ * раскрываешь две например остаются на месте и не сворачиваются при раскрытии
+ * других». Меню сайта и списки-аккордеоны — это нативные <details>, и браузер
+ * держит открытыми столько, сколько пользователь раскрыл. Правило простое:
+ * раскрыли новую панель — предыдущая закрывается. Работает без JavaScript-состояния
+ * на каждую панель, поэтому навигация клавиатурой и поиск по странице не ломаются.
+ */
+export function useSingleOpen<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    // `toggle` не всплывает, поэтому слушаем на фазе перехвата.
+    const onToggle = (event: Event) => {
+      const target = event.target as HTMLDetailsElement | null;
+      if (!target || target.tagName !== 'DETAILS' || !target.open) return;
+      for (const other of Array.from(root.querySelectorAll<HTMLDetailsElement>('details[open]'))) {
+        if (other !== target) other.open = false;
+      }
+    };
+    root.addEventListener('toggle', onToggle, true);
+    return () => root.removeEventListener('toggle', onToggle, true);
+  }, []);
+  return ref;
+}

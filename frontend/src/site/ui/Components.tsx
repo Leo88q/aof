@@ -4,9 +4,11 @@ import { commitLabels } from '../../i18n/commitLabels';
 import { siteChanceCopy } from '../../i18n/siteChanceCopy';
 import { resourceCatalogCopy } from '../../i18n/resourceCatalogCopy';
 import { Lamp, NamePlate } from './Controls';
+import { PackPlate } from '../../components/visual/PackPlate';
 import { Link } from 'react-router-dom';
 import { motion, useScroll } from 'framer-motion';
 import { useReducedMotionSite } from '../hooks/useReducedMotionSite';
+import { useSingleOpen } from '../hooks/useSingleOpen';
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return <p className="site-eyebrow">{children}</p>;
@@ -47,6 +49,15 @@ export function Section({ title, children }: { title?: string; children: ReactNo
       {children}
     </motion.section>
   );
+}
+
+/**
+ * Список-аккордеон: раскрывается только одна строка. Раньше правила, вопросы и
+ * регламенты держали открытыми все панели сразу — жалоба 2026-09-30.
+ */
+export function Accordion({ className = '', children }: { className?: string; children: ReactNode }) {
+  const ref = useSingleOpen<HTMLDivElement>();
+  return <div className={`site-accordion ${className}`.trim()} ref={ref}>{children}</div>;
 }
 
 export function ParchmentCard({ children }: { children: ReactNode }) {
@@ -155,6 +166,11 @@ export function PackOpener() {
     <div className="site-paper site-card min-w-0 [overflow-wrap:anywhere]">
       <p className="site-demo-label">{copy.label}</p>
       <p>{copy.hint}</p>
+      {/* Иллюстрация капсулы: размер меняет картину, открытие показывает
+          раскрытую витрину. Выигрыш не рисуется — его определяет оракул. */}
+      <div className="site-pack-demo">
+        <PackPlate packId={size} state={sample === null ? 'sealed' : 'opened'} size={168} alt={copy.label} />
+      </div>
       <fieldset className="site-options">
         <legend>{copy.sizeLegend}</legend>
         {(['small', 'medium', 'big'] as const).map((s, i) => (

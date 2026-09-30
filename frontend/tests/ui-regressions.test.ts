@@ -4349,3 +4349,71 @@ test("каталог ресурсов разложен по отделам и п
   });
   assert.ok(withRecipe.length >= 10, "таблица рецептов перестала связывать ресурсы");
 });
+
+test("витрина капсул дропа: картины, описания и раскрытие — и на сайте, и в игре", async () => {
+  // Жалоба владельца 2026-09-30: «иллюстрация дропа отсутствует — картинки и
+  // описание нет ни на сайте, ни в игре, при нажатии не раскрывается визуал».
+  const { PACK_ART, packPlate } = await import("../src/lib/visualAssets.ts");
+  const { packsCopy } = await import("../src/i18n/packsCopy.ts");
+  const { siteChanceCopy } = await import("../src/i18n/siteChanceCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const packs = code("src/pages/tools/PacksPage.tsx");
+  const site = code("src/site/ui/Components.tsx");
+  const plate = code("src/components/visual/PackPlate.tsx");
+
+  // Три закрытые витрины по размеру и одна открытая: открытая не показывает
+  // выигрыш — его решает оракул в сети.
+  for (const id of ["small", "medium", "big", "opened"] as const) {
+    assert.ok(PACK_ART[id], `нет картины капсулы: ${id}`);
+    assert.ok(existsSync(join(root, "public", PACK_ART[id])), `файл картины не найден: ${PACK_ART[id]}`);
+  }
+  assert.equal(packPlate("small"), PACK_ART.small);
+  assert.equal(packPlate(undefined), undefined, "без id плашка не должна показывать чужую картину");
+  assert.match(plate, /state === "opened" \? PACK_ART\.opened : PACK_ART\[packId\]/,
+    "открытая витрина должна отличаться от закрытой");
+
+  // Игра: карточка размера показывает картину и объяснение, ожидание — витрину
+  // выбранного размера, возврат — раскрытую пустую капсулу.
+  assert.match(packs, /<PackPlate packId=\{pack\.id\}/, "в игре у карточки капсулы нет картины");
+  assert.match(packs, /copy\.about\[pack\.id\]/, "в игре нет описания капсулы");
+  assert.match(packs, /<PackPlate packId=\{lastPack\} size="100%"/, "ожидание открытия без витрины");
+  assert.match(packs, /<PackPlate packId=\{lastPack\} state="opened"/, "возврат без раскрытой витрины");
+  assert.match(packs, /setLastPack\(pack\.id\)/, "витрина не запоминает открытый размер");
+
+  // Сайт: иллюстрация меняется вместе с размером и раскрывается по кнопке.
+  assert.match(site, /<PackPlate packId=\{size\} state=\{sample === null \? 'sealed' : 'opened'\}/,
+    "на сайте витрина капсулы не связана с размером и открытием");
+  assert.match(read("src/site/styles/site.css"), /\.site-pack-demo \{/, "у витрины капсулы нет оформления");
+
+  for (const language of languages) {
+    const game = packsCopy[language];
+    for (const size of ["small", "medium", "big"] as const) {
+      assert.ok(game.about[size]?.trim().length > 60, `${language}: ${size} без описания`);
+    }
+    assert.ok(game.illustration.trim(), `${language}: нет подписи витрины`);
+    const demo = siteChanceCopy[language].packDemo;
+    assert.ok(demo.sizes.length === 3 && demo.sealed.trim() && demo.open.trim(), `${language}: иллюстрация капсулы не подписана`);
+  }
+});
+
+test("раскрытие одной панели закрывает остальные — меню и аккордеоны", async () => {
+  // Жалоба владельца 2026-09-30: «верхняя панель когда разворачиваешь и
+  // раскрываешь две, например, остаются на месте и не сворачиваются при
+  // раскрытии других». Это нативные <details>: браузер держит открытыми все.
+  const hook = code("src/site/hooks/useSingleOpen.ts");
+  const components = code("src/site/ui/Components.tsx");
+  const layout = code("src/site/layout/Layout.tsx");
+  const extras = code("src/site/pages/ExtraSections.tsx");
+
+  assert.match(hook, /querySelectorAll<HTMLDetailsElement>\('details\[open\]'\)/, "нет поиска открытых панелей");
+  assert.match(hook, /other\.open = false/, "соседние панели не закрываются");
+  assert.match(hook, /addEventListener\('toggle', onToggle, true\)/,
+    "событие toggle не всплывает — нужен перехват");
+  assert.equal((extras.match(/<Accordion/g) || []).length, 3,
+    "правила, частые вопросы и регламенты должны быть на общем аккордеоне");
+  assert.ok(!/<div className="site-accordion/.test(extras), "остался старый div-аккордеон без правила");
+  assert.match(components, /export function Accordion\(/, "нет общего компонента аккордеона");
+  assert.match(components, /useSingleOpen<HTMLDivElement>\(\)/, "аккордеон не использует правило одной панели");
+  assert.match(layout, /const navRef = useSingleOpen<HTMLElement>\(\)/, "меню в шапке не сворачивает прежнюю группу");
+  assert.match(layout, /<nav className="site-desktop-nav"[^>]*ref=\{navRef\}/, "хук не подключён к меню");
+});

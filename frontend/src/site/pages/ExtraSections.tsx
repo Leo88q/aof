@@ -33,7 +33,7 @@ import { siteFaq, type FaqTopic } from '../../i18n/siteFaq';
 import { pageNames, type Language, type PageId } from '../../i18n/translations';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Section } from '../ui/Components';
+import { Accordion, Button, Section } from '../ui/Components';
 import {
   resourcesById, resources,
 } from '../content/game';
@@ -492,14 +492,14 @@ export function ExtraSections({ id }: { id: string }) {
     const copy = siteRulesCopy[language];
     return (
       <Section title={copy.heading}>
-        <div className="site-accordion">
+        <Accordion>
           {copy.items.map((rule) => (
             <details key={rule.id}>
               <summary>{rule.title}</summary>
               <div>{rule.paragraphs.map((p, index) => <p key={index}>{p}</p>)}</div>
             </details>
           ))}
-        </div>
+        </Accordion>
         <p className="site-guide-warn">{copy.note}</p>
       </Section>
     );
@@ -551,14 +551,14 @@ export function ExtraSections({ id }: { id: string }) {
           </select></label>
         </div>
         <p role="status">{faq.found}: {faqFiltered.length}</p>
-        <div className="site-accordion min-w-0 [overflow-wrap:anywhere]">
+        <Accordion className="min-w-0 [overflow-wrap:anywhere]">
           {faqFiltered.map((f) => (
             <details key={f.id}>
               <summary>{f.q}</summary>
               <div><p>{f.a}</p></div>
             </details>
           ))}
-        </div>
+        </Accordion>
         {faqFiltered.length === 0 && <p>{faq.noResults}</p>}
       </Section>
     );
@@ -900,7 +900,7 @@ export function ExtraSections({ id }: { id: string }) {
     return (
       <Section title={copy.heading}>
         <p className="site-guide-warn">{copy.codeNote}</p>
-        <div className="site-accordion site-docs-accordion">
+        <Accordion className="site-docs-accordion">
           {instructionGroups.map((group) => (
             <details key={group.id}>
               <summary>{copy.groups[group.id].title}</summary>
@@ -912,7 +912,7 @@ export function ExtraSections({ id }: { id: string }) {
               </div>
             </details>
           ))}
-        </div>
+        </Accordion>
         <p className="site-guide-warn">{copy.caution}</p>
       </Section>
     );

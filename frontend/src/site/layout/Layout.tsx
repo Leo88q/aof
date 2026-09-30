@@ -6,6 +6,7 @@ import { pages } from '../content/pages';
 import { sceneryForPage, SITE_SCENERY } from '../content/scenery';
 import { SiteBackdrop, StandDeck, useStandState } from './SiteStand';
 import { ScrollFlask } from '../ui/Components';
+import { useSingleOpen } from '../hooks/useSingleOpen';
 import { LanguageSwitcher, useLocale } from '../../i18n/LocaleProvider';
 import { groupKeys, pageNames, messages, type PageId } from '../../i18n/translations';
 import { introPages, type IntroId } from '../../i18n/siteIntro';
@@ -127,6 +128,9 @@ export function SiteLayout() {
   }, []);
   useEffect(() => { markJournalRoute(location.pathname); }, [location.pathname]);
   useEffect(() => { setMobile(false); }, [location.pathname]);
+  // Меню в шапке: раскрытая группа закрывает предыдущую (жалоба 2026-09-30 —
+  // две панели оставались висеть одновременно и перекрывали друг друга).
+  const navRef = useSingleOpen<HTMLElement>();
   const label = (id: string, fallback: string) => pageNames[language][id as PageId] ?? fallback;
   const group = (name: string) => groupKeys[name] ? t(groupKeys[name]) : name;
 
@@ -154,7 +158,7 @@ export function SiteLayout() {
             </svg>
             <span>NeuroForge<span className="site-logo-sub">Age of Intelligence</span></span>
           </Link>
-          <nav className="site-desktop-nav" aria-label={t('nav')}>
+          <nav className="site-desktop-nav" aria-label={t('nav')} ref={navRef}>
             {navGroups.map(g => (
               <details key={g.title}>
                 <summary>{group(g.title)}</summary>

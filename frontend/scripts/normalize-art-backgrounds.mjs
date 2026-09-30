@@ -32,8 +32,12 @@ import jpeg from "jpeg-js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ART_DIR = join(here, "../public/assets/nfts");
+/** Полки арта: карточки инструментов с ресурсами и витрина капсул дропа. */
+export const ART_DIRS = [ART_DIR, join(here, "../public/assets/packs")];
 
-/** Все картины полки: инструменты в корне и ресурсы во вложенной папке. */
+/** Все картины полки: инструменты в корне, ресурсы во вложенной папке,
+ *  капсулы дропа — на второй полке. Жалоба 2026-09-30: обход не заходил в
+ *  public/assets/packs, и витрина дропа жила с чужим оттенком фона. */
 export function artFiles(dir = ART_DIR, prefix = "") {
   const files = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -105,31 +109,36 @@ const distance = (bg) =>
 
 function main() {
   const write = process.argv.includes("--write");
-  const files = artFiles();
   const rows = [];
   const offenders = [];
+  const counts = { nfts: 0, packs: 0 };
 
-  for (const name of files) {
-    const file = join(ART_DIR, name);
-    const img = decode(file);
-    const before = borderColor(img);
-    const off = distance(before);
-    let after = before;
-    if (off > TOLERANCE && write) {
-      const fixed = levelToTile(img, before);
-      const encoded = jpeg.encode({ data: fixed.data, width: fixed.width, height: fixed.height }, 92);
-      writeFileSync(file, encoded.data);
-      after = borderColor(decode(file));
-      if (distance(after) > TOLERANCE) offenders.push(`${name}: фон остался ${after.join(",")}`);
-    } else if (off > TOLERANCE) {
-      offenders.push(`${name}: фон ${before.join(",")} (нужно ${[TILE.r, TILE.g, TILE.b].join(",")})`);
+  for (const dir of ART_DIRS) {
+    const shelf = dir.endsWith("/packs") ? "packs" : "nfts";
+    for (const name of artFiles(dir)) {
+      const file = join(dir, name);
+      const img = decode(file);
+      const before = borderColor(img);
+      const off = distance(before);
+      let after = before;
+      if (off > TOLERANCE && write) {
+        const fixed = levelToTile(img, before);
+        const encoded = jpeg.encode({ data: fixed.data, width: fixed.width, height: fixed.height }, 92);
+        writeFileSync(file, encoded.data);
+        after = borderColor(decode(file));
+        if (distance(after) > TOLERANCE) offenders.push(`${name}: фон остался ${after.join(",")}`);
+      } else if (off > TOLERANCE) {
+        offenders.push(`${name}: фон ${before.join(",")} (нужно ${[TILE.r, TILE.g, TILE.b].join(",")})`);
+      }
+      counts[shelf] += 1;
+      rows.push(`${`${shelf}/${name}`.padEnd(42)} ${before.join(",").padEnd(14)} → ${after.join(",").padEnd(14)} ${off <= TOLERANCE ? "норма" : "выровнено"}`);
     }
-    rows.push(`${name.padEnd(38)} ${before.join(",").padEnd(14)} → ${after.join(",").padEnd(14)} ${off <= TOLERANCE ? "норма" : "выровнено"}`);
   }
 
   console.log(rows.join("\n"));
-  const tools = files.filter((f) => !f.includes("/")).length;
-  console.log(`\nкартин: ${files.length} (инструменты: ${tools}, ресурсы: ${files.length - tools}), выравнивание ${write ? "записано" : "не записывалось"}`);
+  const tools = artFiles().filter((f) => !f.includes("/")).length;
+  const resources = counts.nfts - tools;
+  console.log(`\nкартин: ${counts.nfts + counts.packs} (инструменты: ${tools}, ресурсы: ${resources}, капсулы дропа: ${counts.packs}), выравнивание ${write ? "записано" : "не записывалось"}`);
   if (offenders.length) {
     console.log(`фон отличается от плитки у ${offenders.length} картин:`);
     console.log(offenders.map((o) => `  ${o}`).join("\n"));

@@ -1,7 +1,12 @@
 import type { Language } from './translations';
 
+type PackId = 'small' | 'medium' | 'big';
 type Copy = {
   title: string; intro: string; small: string; medium: string; big: string;
+  /** Подпись витрины: что это за капсула, до покупки. Жалоба 2026-09-30:
+   *  на экране были только цена и кнопка — ни картинки, ни описания. */
+  about: Record<PackId, string>;
+  illustration: string; revealSoon: string;
   connect: string; unconfigured: string; configLoading: string; configError: string;
   preparing: string; failed: string; paid: string; refundSent: string; revealed: string;
   waiting: string; seconds: string; revealSelf: string; refunded: string; settledUnknown: string;
@@ -12,6 +17,12 @@ type Copy = {
 
 export const packsCopy: Record<Language, Copy> = {
   ru: {
+    about: {
+      small: 'Малая капсула — ровный шанс на базовый инструмент. Первый вход в мастерскую: цена ниже, редкости выше базовой почти не встречаются.',
+      medium: 'Средняя капсула — основной поток. Заметные шансы на усиленный и квантовый инструмент, цена держит баланс между риском и пополнением стойки.',
+      big: 'Большая капсула — редкая ставка на сильные редкости. Дешевле собрать инструмент самому, дороже — получить его сразу из капсулы.',
+    },
+    illustration: 'Витрина капсулы', revealSoon: 'Инструмент из этой капсулы уже показан выше — изображение не выдаёт результат, его решает оракул в сети.',
     title: 'Капсулы дропа',
     intro: 'Результат определяет оракул Switchboard On-Demand: аккаунт случайности принадлежит игровой программе. Ни игра, ни игрок не могут перебросить или скрыть результат. Раскрыть его может любой; цена уходит в казну только после раскрытия, а если оракул не ответит вовремя, средства вернут.',
     small: 'Малая капсула', medium: 'Средняя капсула', big: 'Большая капсула',
@@ -23,6 +34,12 @@ export const packsCopy: Record<Language, Copy> = {
     commitUnknown: 'Оплата отправлена, но идентификатор открытия не пришёл. Проверьте незавершённые открытия перед повторной покупкой.',
   },
   en: {
+    about: {
+      small: 'The small capsule gives an even chance at a base tool. It is the entry point into the workshop: lower price, and rarities above base are almost never seen.',
+      medium: 'The medium capsule is the main stream. Noticeable odds for an enhanced or quantum tool, with the price keeping the balance between risk and restocking the rack.',
+      big: 'The large capsule is a rare bet on high rarities. Crafting a tool yourself is cheaper; opening it here is faster.',
+    },
+    illustration: 'Capsule display', revealSoon: 'The tool from this capsule is shown above — the artwork does not reveal the result; the on-chain oracle decides it.',
     title: 'Drop capsules',
     intro: 'The Switchboard On-Demand oracle determines the outcome. The randomness account belongs to the game program, so neither the game nor the player can reroll or hide the result. Anyone may reveal it. Payment reaches the treasury only after reveal; if the oracle never responds in time, you can recover your funds.',
     small: 'Small capsule', medium: 'Medium capsule', big: 'Large capsule',
@@ -34,6 +51,12 @@ export const packsCopy: Record<Language, Copy> = {
     commitUnknown: 'Payment was submitted, but the opening ID was not returned. Check pending openings before buying again.',
   },
   pt: {
+    about: {
+      small: 'A cápsula pequena oferece chance equilibrada de uma ferramenta básica. É a entrada na oficina: preço menor, e raridades acima da básica quase não aparecem.',
+      medium: 'A cápsula média é o fluxo principal. Chances perceptíveis de ferramenta aprimorada ou quântica; o preço equilibra risco e reposição da estante.',
+      big: 'A cápsula grande é uma aposta rara em raridades altas. Criar a ferramenta é mais barato; abri-la aqui é mais rápido.',
+    },
+    illustration: 'Vitrine da cápsula', revealSoon: 'A ferramenta desta cápsula já aparece acima — a arte não revela o resultado; quem decide é o oráculo na rede.',
     title: 'Cápsulas do drop',
     intro: 'O resultado é determinado pelo oráculo Switchboard On-Demand. A conta de aleatoriedade pertence ao programa do jogo; nem o jogo nem o jogador podem sortear de novo ou esconder o resultado. Qualquer pessoa pode revelá-lo. O pagamento só chega ao tesouro após a revelação; se o oráculo não responder a tempo, você poderá recuperar os fundos.',
     small: 'Cápsula pequena', medium: 'Cápsula média', big: 'Cápsula grande',
@@ -45,6 +68,12 @@ export const packsCopy: Record<Language, Copy> = {
     commitUnknown: 'Pagamento enviado, mas o identificador da abertura não chegou. Confira as aberturas pendentes antes de comprar novamente.',
   },
   es: {
+    about: {
+      small: 'La cápsula pequeña da una probabilidad equilibrada de una herramienta básica. Es la entrada al taller: precio menor y las rarezas superiores a la básica casi no aparecen.',
+      medium: 'La cápsula mediana es el flujo principal. Probabilidades notables de herramienta mejorada o cuántica; el precio equilibra riesgo y reposición del estante.',
+      big: 'La cápsula grande es una apuesta poco frecuente a rarezas altas. Fabricar la herramienta sale más barato; abrirla aquí es más rápido.',
+    },
+    illustration: 'Vitrina de la cápsula', revealSoon: 'La herramienta de esta cápsula ya aparece arriba: la imagen no revela el resultado; lo decide el oráculo en la red.',
     title: 'Cápsulas del drop',
     intro: 'El oráculo Switchboard On-Demand determina el resultado. La cuenta de aleatoriedad pertenece al programa del juego: ni el juego ni el jugador pueden volver a sortear u ocultar el resultado. Cualquiera puede revelarlo. El pago llega a la tesorería solo tras la revelación; si el oráculo no responde a tiempo, podrás recuperar los fondos.',
     small: 'Cápsula pequeña', medium: 'Cápsula mediana', big: 'Cápsula grande',
@@ -56,6 +85,12 @@ export const packsCopy: Record<Language, Copy> = {
     commitUnknown: 'El pago se envió, pero no llegó el ID de la apertura. Revisa las aperturas pendientes antes de volver a comprar.',
   },
   vi: {
+    about: {
+      small: 'Khoang nhỏ cho cơ hội đồng đều nhận dụng cụ cơ bản. Đây là bước đầu vào xưởng: giá thấp hơn, gần như không gặp độ hiếm cao hơn mức cơ bản.',
+      medium: 'Khoang vừa là dòng chính. Cơ hội rõ rệt cho dụng cụ tăng cường hoặc lượng tử; mức giá cân bằng giữa rủi ro và việc bổ sung giá đỡ.',
+      big: 'Khoang lớn là canh bạc hiếm cho độ hiếm cao. Tự chế tạo thì rẻ hơn; mở khoang thì nhanh hơn.',
+    },
+    illustration: 'Trưng bày khoang', revealSoon: 'Dụng cụ từ khoang này đã hiện ở trên — hình ảnh không tiết lộ kết quả; oracle trên chuỗi quyết định.',
     title: 'Hộp vật phẩm',
     intro: 'Hệ thống tiên tri Switchboard On-Demand quyết định kết quả. Tài khoản ngẫu nhiên thuộc về chương trình trò chơi, nên cả trò chơi lẫn người chơi không thể quay lại hoặc giấu kết quả. Bất kỳ ai cũng có thể công bố kết quả. Tiền chỉ vào ngân quỹ sau khi công bố; nếu hệ thống không phản hồi kịp, bạn có thể lấy lại tiền.',
     small: 'Hộp nhỏ', medium: 'Hộp vừa', big: 'Hộp lớn',
@@ -67,6 +102,12 @@ export const packsCopy: Record<Language, Copy> = {
     commitUnknown: 'Đã gửi thanh toán nhưng chưa nhận được mã lần mở. Hãy kiểm tra các lần mở chưa hoàn tất trước khi mua thêm.',
   },
   id: {
+    about: {
+      small: 'Kapsul kecil memberi peluang merata untuk alat dasar. Ini pintu masuk ke bengkel: harga lebih rendah, dan kelangkaan di atas dasar hampir tak muncul.',
+      medium: 'Kapsul sedang adalah aliran utama. Peluang jelas untuk alat yang diperkuat atau kuantum; harga menjaga keseimbangan risiko dan pengisian rak.',
+      big: 'Kapsul besar adalah taruhan langka untuk kelangkaan tinggi. Merakit sendiri lebih murah; membukanya di sini lebih cepat.',
+    },
+    illustration: 'Tampilan kapsul', revealSoon: 'Alat dari kapsul ini sudah tampil di atas — gambar tidak membuka hasil; oracle on-chain yang menentukan.',
     title: 'Kapsul hadiah',
     intro: 'Oracle Switchboard On-Demand menentukan hasilnya. Akun keacakan dimiliki program permainan, sehingga baik permainan maupun pemain tidak dapat mengundi ulang atau menyembunyikan hasil. Siapa saja bisa mengungkap hasilnya. Pembayaran baru masuk ke kas setelah pengungkapan; jika oracle tidak menjawab tepat waktu, danamu dapat dikembalikan.',
     small: 'Kapsul kecil', medium: 'Kapsul sedang', big: 'Kapsul besar',
@@ -78,6 +119,12 @@ export const packsCopy: Record<Language, Copy> = {
     commitUnknown: 'Pembayaran diajukan, tetapi ID pembukaan tidak diterima. Periksa pembukaan tertunda sebelum membeli lagi.',
   },
   fil: {
+    about: {
+      small: 'Ang maliit na kapsula ay pantay ang tsansa sa payak na kagamitan. Ito ang pasukan sa pagawaan: mas mababa ang presyo, at halos hindi lumalabas ang mas mataas sa payak.',
+      medium: 'Ang katamtamang kapsula ang pangunahing daloy. Kapansin-pansin ang tsansa sa pinahusay o quantum na kagamitan; ang presyo ang nagbabalanse ng panganib at pagpuno ng estante.',
+      big: 'Ang malaking kapsula ay bihirang taya sa matataas na kalidad. Mas mura ang gumawa mismo; mas mabilis ang pagbukas dito.',
+    },
+    illustration: 'Tanawin ng kapsula', revealSoon: 'Nakita na sa itaas ang kagamitan mula sa kapsulang ito — hindi isinisiwalat ng larawan ang resulta; ang oracle sa chain ang nagpapasya.',
     title: 'Mga kapsula ng gantimpala',
     intro: 'Ang Switchboard On-Demand oracle ang nagpapasya ng resulta. Ang account para sa randomness ay pag-aari ng program ng laro, kaya hindi maaaring ulitin o itago ng laro o manlalaro ang resulta. Kahit sino ay maaaring maghayag nito. Mapupunta lamang sa pondo ang bayad matapos ang paghayag; kung hindi sumagot ang oracle sa oras, maaari mong mabawi ang pera.',
     small: 'Maliit na kapsula', medium: 'Katamtamang kapsula', big: 'Malaking kapsula',
