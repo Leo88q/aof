@@ -43,6 +43,20 @@ test('bringup — сухой прогон по умолчанию и не вкл
     'preflight:mining-devnet',
     'scripts/enable-mining-devnet.sh',
     '/admin/config/collector-mint',
+    // Рынок инструментов включается тем же прогоном: без конфига и пулов
+    // hot_market_buy/sell остались бы механикой на бумаге.
+    '/hot-market/config/init',
+    '/hot-market/pool/init',
+    // Крафт инструментов читает CraftEconomy и RarityCounter: без них
+    // /tools/craft-quote и /tools/craft честно отдают 503, и «включено» врёт.
+    '/admin/craft-economy/init',
+    '/admin/rarity-counter/init',
+    // Конфиги паков, реролла, лотереи и сезона: без аккаунта механика не
+    // работает вовсе (покупка пака читает PackConfig, билет — LotteryRound).
+    '/packs/config/init',
+    '/reroll/config/init',
+    '/lottery/round/init',
+    '/season/init',
   ]) {
     assert.ok(source.includes(step), `bringup не выполняет шаг ${step}`);
   }
@@ -55,6 +69,17 @@ test('bringup-тест существует и пинит отказы', () => {
     'test_backend_steps_need_admin_token',
     'test_dry_run_changes_nothing',
     'test_preflight_blocked_never_turns_mining_on',
+    'test_market_step_is_idempotent_and_needs_real_mints',
+    'test_market_refuses_without_currency_addresses',
+    'test_craft_step_creates_economy_and_rarity_counters',
+    'test_craft_step_is_idempotent',
+    'test_craft_failure_refuses',
+    'test_craft_rarity_out_of_range_refuses',
+    'test_skip_craft_leaves_craft_closed',
+    'test_mechanics_step_configures_packs_lottery_season_reroll',
+    'test_mechanics_step_is_idempotent',
+    'test_mechanics_failure_refuses',
+    'test_skip_mechanics_leaves_configs_unset',
   ]) {
     assert.ok(source.includes(caseName), `нет теста ${caseName}`);
   }

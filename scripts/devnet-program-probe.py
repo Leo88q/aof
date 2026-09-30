@@ -118,6 +118,23 @@ def program_ids(registry: dict) -> dict:
     return {entry["name"]: entry["address"] for entry in registry.get("programs", [])}
 
 
+def repo_instruction_names(program: str) -> set[str] | None:
+    """Инструкции программы из IDL репозитория (source of truth для «есть ли путь»).
+
+    Зачем: часть механик закрыта не конфигом, а отсутствием инструкции в
+    программе. Такое состояние нельзя прочитать из сети — ни один аккаунт не
+    скажет «инструкции нет». Поэтому берём IDL, лежащий рядом со скриптом, и
+    честно называем источник: строки «нет инструкции» проверяются по репозиторию,
+    а не по RPC, и сами станут «включено», когда инструкция появится.
+    """
+    path = pathlib.Path(__file__).resolve().parent.parent / "aof_backend" / "src" / "idl" / f"{program}.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return {ix.get("name", "") for ix in data.get("instructions", [])}
+
+
 def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
     """Таблица «механика → включена или нет» с доказательством из сети.
 
@@ -181,7 +198,7 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
 
     mining_action = ("" if mining_on
                      else (config_action if not deployed.get("aof_core")
-                           else "scripts/devnet-bringup.sh --apply (шаг 6: тумблер добычи после preflight)"))
+                           else "scripts/devnet-bringup.sh --apply (шаг 8/10: тумблер добычи после preflight)"))
     row(
         "Добыча инструментов",
         "включено" if mining_on else "выключено",
@@ -213,19 +230,56 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
         (f"Config.wood_mint={repair_mints[0] or '—'}, stone_mint={repair_mints[1] or '—'}"
          if deployed.get("aof_core") else config_evidence),
         ("" if repair_on else (config_action if not deployed.get("aof_core")
-                               else "scripts/devnet-bringup.sh --apply (шаг 5: initMintsV2.ts задаёт адреса ресурсов)")),
+                               else "scripts/devnet-bringup.sh --apply (шаг 5/10: initMintsV2.ts задаёт адреса ресурсов)")),
     )
+
+    # Механики, которым нужен НОВЫЙ код программы: инструкции в aof_core нет,
+    # поэтому ни один аккаунт не сделает их включёнными. Строка читает IDL
+    # репозитория и сама станет «включено», когда инструкция появится (тогда же
+    # снимется 503 в соответствующем маршруте бэкенда).
+    core_instructions = repo_instruction_names("aof_core")
+    contract_blocked = [
+        ("Фляги: применение", ("use_flask",), "§3.8", "/tools/use-flask"),
+        ("Обмен ресурсов на энергию", ("exchange_food_energy",), "§3.8", "/resources/exchange-energy"),
+        ("Награда за лук (устаревший предмет)", ("bow_reward_commit", "bow_reward_reveal"), "§3.8", "/forge/bow/*"),
+    ]
+    for title, instructions, section, route in contract_blocked:
+        if core_instructions is None:
+            row(title, "нет данных", "IDL репозитория не читается — нечем проверить наличие инструкции",
+                "проверьте aof_backend/src/idl/aof_core.json")
+            continue
+        present = [name for name in instructions if name in core_instructions]
+        if present:
+            row(title, "включено", f"инструкция {'/'.join(present)} есть в IDL программы",
+                "" if present else f"проверьте маршрут {route}")
+        else:
+            row(title, "выключено",
+                f"в IDL aof_core нет инструкции {'/'.join(instructions)}: маршрут {route} отвечает 503",
+                f"работа по контракту (docs/UNBLOCK_PLAN_2026-09-30.md {section}): дописать инструкцию, собрать и задеплоить")
+
+    # Платный трек сезонного пропуска: инструкция purchase_season_pass в
+    # программе уже есть, закрыт не она — нужны раздельные треки, детерминированный
+    # XP и проверяемые VIP-льготы, иначе игрок платит за трек, которого нет.
+    row("Платный трек сезонного пропуска", "выключено",
+        "маршрут /season/pass/purchase отвечает 503 SEASON_PASS_PAID_TRACK_NOT_READY: "
+        "покупка закрыта до раздельных треков и проверяемых льгот (инструкция покупки в программе есть)",
+        "работа по контракту (docs/UNBLOCK_PLAN_2026-09-30.md §3.6): раздельные треки, идемпотентные начисления, потолки")
 
     # Остальные account-типы: есть ли хоть один аккаунт этого вида.
     others = [
-        ("Ресурсы и крафт", "MaterialMints", core, "шаг 5: initMintsV2.ts (23 минта материалов)"),
-        ("Экономика крафта", "CraftEconomy", core, "POST /admin/craft-economy/init"),
-        ("Капсулы дропа (паки)", "PackConfig", core, "POST /admin/config/init-pack-config"),
-        ("Реролл инструментов", "RerollConfig", core, "POST /admin/config/init-reroll-config"),
-        ("Сезоны и сезонный пропуск", "Season", core, "POST /admin/season/init"),
-        ("Лотерея", "LotteryRound", core, "POST /admin/lottery/round/init"),
+        ("Ресурсы и крафт", "MaterialMints", core, "шаг 5/10: initMintsV2.ts (23 минта материалов)"),
+        # Подсказки называют настоящие роуты (сверено с aof_backend/src/routes):
+        # выдуманный «/admin/...» путь хуже отсутствия подсказки — владелец
+        # ищет его и не находит.
+        ("Экономика крафта", "CraftEconomy", core, "POST /admin/craft-economy/init (шаг 5/10)"),
+        ("Счётчики редкости", "RarityCounter", core, "POST /admin/rarity-counter/init {\"rarityIdx\":1..4} (шаг 5/10)"),
+        ("Капсулы дропа (паки)", "PackConfig", core, "POST /packs/config/init (шаг 6/10: три типа с каноническими ценой и шансами)"),
+        ("Реролл инструментов", "RerollConfig", core, "POST /reroll/config/init (шаг 6/10, шансы REROLL_ODDS_BPS_DEFAULT)"),
+        ("Сезоны и сезонный пропуск", "Season", core,
+         "POST /season/init {\"seasonId\":1} (шаг 6/10); для /season/current владелец задаёт ACTIVE_SEASON_ID и EXPECTED_GENESIS_HASH"),
+        ("Лотерея", "LotteryRound", core, "POST /lottery/round/init {\"roundId\":\"1\"} (шаг 6/10)"),
         ("Коллекционеры (allowlist)", "CollectorAllowEntry", core,
-         "COLLECTOR_MINTS=\"<mint>:historian,<mint>:medallion\" scripts/devnet-bringup.sh --apply (шаг 7)"),
+         "COLLECTOR_MINTS=\"<mint>:historian,<mint>:medallion\" scripts/devnet-bringup.sh --apply (шаг 9/10)"),
         ("Страж казны (VaultGuard)", "VaultGuard", core, "POST /admin/vault-guard/init"),
     ]
     for title, account, program, action in others:

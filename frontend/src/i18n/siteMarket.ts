@@ -1,6 +1,6 @@
 import type { Language } from './translations';
 
-export const marketVenueIds = ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotClosed'] as const;
+export const marketVenueIds = ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotMarket'] as const;
 export type MarketVenueId = typeof marketVenueIds[number];
 type MarketArticle = {
   lead: string; paragraphs: readonly [string, string]; heading: string;
@@ -19,7 +19,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Ставки и расчёт зависят от состояния конкретного аукциона. Эта статья не подтверждает открытый лот, победу или возврат проигравшей ставки.',
       offer: 'Предложенная цена не означает состоявшуюся сделку. Прежде чем что-либо подписать, проверь инструмент, получателя и полную стоимость.',
       rental: 'Аренда зависит от условий отдельного соглашения: срока, платы и доли владельца. Иллюстрация не подтверждает доступность инструмента.',
-      hotClosed: 'Событийный рынок работает внутри приложения: пул покупает и продаёт инструменты по цене, которую считает программа. Эта страница не принимает ордера.',
+      hotMarket: 'Событийный рынок работает внутри приложения: пул покупает и продаёт инструменты по цене, которую считает программа. Эта страница не принимает ордера.',
     },
     note: 'Нет живых котировок, гарантий дохода или автоматического возврата. Ошибку чтения сети нельзя принимать за пустой рынок.',
   },
@@ -33,7 +33,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Bids and settlement depend on the particular auction’s status. This article does not confirm an open lot, a win or a losing-bid refund.',
       offer: 'A proposed price is not a completed deal. Before signing anything, check the tool, recipient and full cost.',
       rental: 'A rental depends on its own agreement: duration, fee and owner’s share. An illustration does not confirm that a tool is available.',
-      hotClosed: 'The event market runs inside the app: the pool buys and sells tools at a price the program computes. This page does not take orders.',
+      hotMarket: 'The event market runs inside the app: the pool buys and sells tools at a price the program computes. This page does not take orders.',
     },
     note: 'No live quotes, guaranteed returns or automatic refunds are shown. A network read failure is not an empty market.',
   },
@@ -47,7 +47,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Lances e liquidação dependem do estado de cada leilão. Este artigo não confirma um lote aberto, uma vitória ou o reembolso de um lance perdido.',
       offer: 'Propor um preço não conclui uma venda. Antes de assinar, verifica a ferramenta, o destinatário e o custo total.',
       rental: 'Uma locação depende do acordo: duração, custo e parte do proprietário. Uma imagem não comprova que a ferramenta está disponível.',
-      hotClosed: 'O mercado de eventos funciona dentro do aplicativo: o pool compra e vende ferramentas pelo preço que o programa calcula. Esta página não recebe ordens.',
+      hotMarket: 'O mercado de eventos funciona dentro do aplicativo: o pool compra e vende ferramentas pelo preço que o programa calcula. Esta página não recebe ordens.',
     },
     note: 'Não há preços em tempo real, rendimento garantido nem reembolsos automáticos. Falha na leitura da rede não significa mercado vazio.',
   },
@@ -61,7 +61,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Pujas y liquidaciones dependen del estado de cada subasta. Este artículo no confirma que haya un lote abierto, una victoria o el reembolso de una puja perdedora.',
       offer: 'Proponer un precio no cierra una operación. Antes de firmar, comprueba la herramienta, el destinatario y el coste total.',
       rental: 'Un alquiler depende de su propio acuerdo: plazo, coste y parte del propietario. Una imagen no confirma que la herramienta esté disponible.',
-      hotClosed: 'El mercado de eventos funciona dentro de la aplicación: el pool compra y vende herramientas al precio que calcula el programa. Esta página no acepta órdenes.',
+      hotMarket: 'El mercado de eventos funciona dentro de la aplicación: el pool compra y vende herramientas al precio que calcula el programa. Esta página no acepta órdenes.',
     },
     note: 'No hay cotizaciones en directo, ganancias garantizadas ni reembolsos automáticos. Un fallo al leer la red no equivale a un mercado vacío.',
   },
@@ -75,7 +75,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Trả giá và quyết toán tùy thuộc trạng thái của từng phiên đấu giá. Bài viết này không xác nhận lô hàng đang mở, chiến thắng hay hoàn tiền cho giá thầu thua.',
       offer: 'Đưa ra giá không có nghĩa là giao dịch đã hoàn tất. Trước khi ký, hãy kiểm tra công cụ, người nhận và toàn bộ chi phí.',
       rental: 'Việc thuê phụ thuộc vào từng thỏa thuận: thời hạn, phí và phần của chủ sở hữu. Hình minh họa không chứng minh công cụ đang cho thuê.',
-      hotClosed: 'Chợ sự kiện hoạt động trong ứng dụng: pool mua và bán công cụ theo giá do chương trình tính. Trang này không nhận lệnh.',
+      hotMarket: 'Chợ sự kiện hoạt động trong ứng dụng: pool mua và bán công cụ theo giá do chương trình tính. Trang này không nhận lệnh.',
     },
     note: 'Không có giá trực tiếp, lợi nhuận bảo đảm hay hoàn tiền tự động. Lỗi đọc mạng không có nghĩa chợ trống.',
   },
@@ -89,7 +89,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Tawaran dan penyelesaian bergantung pada status lelang tertentu. Artikel ini tidak mengonfirmasi lelang terbuka, kemenangan, atau pengembalian tawaran yang kalah.',
       offer: 'Mengajukan harga tidak berarti transaksi selesai. Sebelum menandatangani, periksa peralatan, penerima, dan seluruh biayanya.',
       rental: 'Sewa bergantung pada perjanjian masing-masing: durasi, biaya, dan bagian pemilik. Gambar tidak membuktikan peralatan sedang tersedia.',
-      hotClosed: 'Pasar acara berjalan di dalam aplikasi: pool membeli dan menjual peralatan dengan harga yang dihitung program. Halaman ini tidak menerima pesanan.',
+      hotMarket: 'Pasar acara berjalan di dalam aplikasi: pool membeli dan menjual peralatan dengan harga yang dihitung program. Halaman ini tidak menerima pesanan.',
     },
     note: 'Tidak ada harga langsung, keuntungan terjamin, atau pengembalian dana otomatis. Gagal membaca jaringan bukan berarti pasar kosong.',
   },
@@ -103,7 +103,7 @@ export const siteMarket: Record<Language, MarketArticle> = {
       auction: 'Nakadepende sa estado ng bawat subasta ang bid at pag-areglo. Hindi kinukumpirma ng artikulong ito ang bukas na lot, panalo, o refund ng natalong bid.',
       offer: 'Hindi pa tapos na kalakalan ang pag-alok ng presyo. Bago pumirma, suriin ang kagamitan, tatanggap, at kabuuang halaga.',
       rental: 'Nakabatay ang paupahan sa sariling kasunduan: tagal, bayad, at bahagi ng may-ari. Hindi patunay ng availability ang larawan.',
-      hotClosed: 'Nasa loob ng app tumatakbo ang pamilihan ng event: bumibili at nagbebenta ang pool ng kagamitan sa presyong kinukuwenta ng programa. Hindi tumatanggap ng order ang pahinang ito.',
+      hotMarket: 'Nasa loob ng app tumatakbo ang pamilihan ng event: bumibili at nagbebenta ang pool ng kagamitan sa presyong kinukuwenta ng programa. Hindi tumatanggap ng order ang pahinang ito.',
     },
     note: 'Walang live na presyo, garantisadong kita, o awtomatikong refund. Ang bigong pagbasa sa network ay hindi nangangahulugang walang alok.',
   },

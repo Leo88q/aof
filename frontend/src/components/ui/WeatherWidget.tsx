@@ -40,8 +40,8 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
       .then((snapshot) => {
         if (!alive) return;
         setCurrent(snapshot);
-        // Прогноз — следствие расписания дня (см. lib/weather.ts), а не
-        // отдельный офчейн-источник: /weather/forecast закрыт на бэкенде.
+        // Прогноз — следствие расписания дня (см. lib/weather.ts): то же правило
+        // сервит /weather/forecast, но виджет считает его локально.
         setForecast(snapshot ? forecastFromDayId(snapshot.dayId, 3) : []);
       })
       .finally(() => alive && setLoading(false));
@@ -121,6 +121,11 @@ export function WeatherWidget({ compact = false }: { compact?: boolean }) {
               {condition(current.type)}
             </div>
             <div className="text-straw text-xs">{effectLabel(current.effect)}</div>
+            {/* Значение дня всегда из правила цепи; если аккаунт WeatherState
+                его ещё не подтвердил, говорим об этом прямо. */}
+            {current.source !== "onchain" && (
+              <div className="text-straw/60 text-[10px]">{text.scheduleNote}</div>
+            )}
           </div>
         </div>
         <div className="text-right">

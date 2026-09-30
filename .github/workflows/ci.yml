@@ -897,7 +897,7 @@ jobs:
       - name: Self-test - resource registry and mining gates
         run: |
           set -uo pipefail
-          for test in test:resource-registry test:tool-mining test:mining-flag test:mining-preflight test:potato-inspect test:potato-economics test:active-season; do
+          for test in test:resource-registry test:tool-mining test:weather-schedule test:mining-flag test:mining-preflight test:potato-inspect test:potato-economics test:active-season; do
             npm run "$test" 2>&1 | tee -a /tmp/backend-build.log
             status="${PIPESTATUS[0]}"
             [ "$status" -eq 0 ] || exit "$status"

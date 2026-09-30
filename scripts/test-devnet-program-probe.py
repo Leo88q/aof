@@ -170,6 +170,23 @@ def scenario_configured_partially() -> None:
     check(rows["Ресурсы и крафт"]["state"] == "выключено", "нет ни одного MaterialMints")
     check(rows["Коллекционеры (allowlist)"]["state"] == "выключено", "allowlist пуст")
 
+    # Подсказки «как включить» обязаны называть существующие роуты: выдуманный
+    # /admin/... путь владелец ищет и не находит, а механика остаётся закрытой.
+    for title, route in (
+        ("Капсулы дропа (паки)", "/packs/config/init"),
+        ("Реролл инструментов", "/reroll/config/init"),
+        ("Сезоны и сезонный пропуск", "/season/init"),
+        ("Лотерея", "/lottery/round/init"),
+        ("Экономика крафта", "/admin/craft-economy/init"),
+        ("Счётчики редкости", "/admin/rarity-counter/init"),
+    ):
+        action = rows[title]["action"]
+        check(route in action, f"{title}: подсказка должна называть {route} (сейчас «{action}»)")
+        check("/admin/config/init-" not in action,
+              f"{title}: подсказка не должна вести на несуществующий /admin/config/init-*")
+    check("шаг 6/10" in rows["Капсулы дропа (паки)"]["action"],
+          "у паков назван шаг bringup, который их включает")
+
     paused = rows_for(FakeRpc({"aof_core": [config_blob(mining=True, paused=True)]}))
     check(paused["Общая пауза контракта"]["state"] == "выключено",
           "paused=true показывается отдельной строкой")
@@ -186,6 +203,7 @@ def scenario_everything_on() -> None:
             config_blob(mining=True, wood=wood, stone=stone),
             account_blob("MaterialMints"),
             account_blob("CraftEconomy"),
+            account_blob("RarityCounter"),
             account_blob("PackConfig"),
             account_blob("RerollConfig"),
             account_blob("Season"),
@@ -208,10 +226,12 @@ def scenario_everything_on() -> None:
 
     rows = rows_for(FakeRpc(accounts))
     for title in ("Добыча инструментов", "Ремонт инструментов", "Ресурсы и крафт", "Экономика крафта",
-                  "Капсулы дропа (паки)", "Реролл инструментов", "Сезоны и сезонный пропуск",
+                  "Счётчики редкости", "Капсулы дропа (паки)", "Реролл инструментов",
+                  "Сезоны и сезонный пропуск",
                   "Лотерея", "Коллекционеры (allowlist)", "Страж казны (VaultGuard)",
                   "Рынок инструментов (листинги)", "Перерождение"):
         check(rows[title]["state"] == "включено", f"{title}: должен быть включён")
+
     check("активных Listing: 1" in rows["Рынок инструментов (листинги)"]["evidence"],
           "в листингах считается только active=1")
     check(rows["Добыча инструментов"]["action"] == "", "у включённого нет подсказки «как включить»")
@@ -237,6 +257,40 @@ def scenario_everything_on() -> None:
     check(on >= 12 and total >= 14, f"включено {on} из {total}: сводка не должна терять строки")
 
 
+def scenario_contract_blocked_rows() -> None:
+    print("3.5 механики, которым нужна новая инструкция")
+    rows = rows_for(FakeRpc({"aof_core": [config_blob(mining=True, wood="Wood11111111111111111111111111111111111111",
+                                                      stone="Stone1111111111111111111111111111111111")]}))
+    for title, instruction in (("Фляги: применение", "use_flask"),
+                               ("Обмен ресурсов на энергию", "exchange_food_energy"),
+                               ("Награда за лук (устаревший предмет)", "bow_reward_commit")):
+        row = rows[title]
+        check(row["state"] == "выключено", f"{title}: инструкции нет в IDL — механика не может быть включена")
+        check(instruction in row["evidence"], f"{title}: в причине названа отсутствующая инструкция")
+        check("§3.8" in row["action"], f"{title}: в действии указан раздел плана")
+    season = rows["Платный трек сезонного пропуска"]
+    check(season["state"] == "выключено", "платный трек не выдаётся за рабочий")
+    check("SEASON_PASS_PAID_TRACK_NOT_READY" in season["evidence"],
+          "причина платного трека — не отсутствие инструкции покупки, а незакрытые требования")
+    check("§3.6" in season["action"], "у платного трека указан раздел плана")
+
+    # Инструкция появилась → строка обязана стать «включено» сама, без правок.
+    import json as _json, pathlib as _pathlib, tempfile as _tempfile
+    real = _pathlib.Path(probe.__file__).resolve().parent.parent / "aof_backend" / "src" / "idl" / "aof_core.json"
+    backup = real.read_text(encoding="utf-8")
+    try:
+        data = _json.loads(backup)
+        data["instructions"].append({"name": "use_flask", "accounts": [], "args": []})
+        real.write_text(_json.dumps(data), encoding="utf-8")
+        rows2 = rows_for(FakeRpc({"aof_core": [config_blob(mining=True)]}))
+        check(rows2["Фляги: применение"]["state"] == "включено",
+              "появилась инструкция use_flask — строка обязана включиться сама")
+        check(rows2["Фляги: применение"]["action"] == "",
+              "у включённой механики не должно оставаться подсказки «как включить»")
+    finally:
+        real.write_text(backup, encoding="utf-8")
+
+
 def check_filters_and_encoding() -> None:
     print("4. формат запросов к RPC")
     fake = FakeRpc({"aof_core": [config_blob(mining=True)]})
@@ -257,6 +311,7 @@ if __name__ == "__main__":
     scenario_empty()
     scenario_configured_partially()
     scenario_everything_on()
+    scenario_contract_blocked_rows()
     check_filters_and_encoding()
     if failures:
         print(f"\nПРОВАЛ: {len(failures)} проверк(и)")

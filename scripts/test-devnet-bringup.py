@@ -94,8 +94,88 @@ case "$url" in
       echo '{"miningEnabled":false}'
     fi;;
   */admin/config/collector-mint) echo '{"sig":"mock-collector-sig"}';;
-  */query/config) echo "{\\"woodMint\\":\\"$MOCK_MINT\\",\\"stoneMint\\":\\"$MOCK_MINT\\"}";;
-  */query/material-mints) echo "{\\"mints\\":{\\"meat\\":\\"$MOCK_MINT\\",\\"seeds\\":\\"$MOCK_MINT\\"}}";;
+  */query/config) echo "{\\"woodMint\\":\\"$MOCK_MINT\\",\\"stoneMint\\":\\"$MOCK_MINT\\",\\"potatoMint\\":\\"$MOCK_MINT\\",\\"treasury\\":\\"$MOCK_MINT\\"}";;
+  */query/material-mints) echo "{\\"initialized\\":true,\\"mints\\":{\\"meat\\":\\"$MOCK_MINT\\",\\"seeds\\":\\"$MOCK_MINT\\",\\"QUANTUM_BIT\\":\\"$MOCK_MINT\\"}}";;
+  */query/hot-market-config)
+    if [ -f "${MOCK_MARKET_STATE:-/nonexistent}" ]; then
+      printf '{"coreMint":"%s","gemMint":"%s"}\n' "$MOCK_MINT" "$MOCK_MINT"
+    else
+      echo '{"error":"Market config not initialized"}'
+    fi;;
+  */query/hot-market-pool/*)
+    rarity="${url##*/}"
+    if [ -f "${MOCK_POOL_STATE:-/nonexistent}/$rarity" ]; then echo '{"targetPriceCore":1000000000}'; else echo '{"error":"Pool not initialized"}'; fi;;
+  */query/craft-economy)
+    if [ -f "${MOCK_CRAFT_STATE:-/nonexistent}" ]; then echo '{"woodBase":["100000000000","1","2","3"]}'; else echo 'null'; fi;;
+  */query/rarity-counter/*)
+    rarity="${url##*/}"
+    if [ -f "${MOCK_CRAFT_STATE:-/nonexistent}.rarity$rarity" ]; then
+      printf '{"rarity":%s,"mintedCount":"0"}\n' "$rarity"
+    else
+      echo 'null'
+    fi;;
+  */admin/craft-economy/init)
+    [ "${MOCK_CRAFT_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    : > "${MOCK_CRAFT_STATE:-/dev/null}"
+    echo '{"sig":"mock-craft-sig"}';;
+  */admin/rarity-counter/init)
+    [ "${MOCK_CRAFT_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    rarity=""
+    for arg in "$@"; do
+      case "$arg" in '{"rarityIdx":'*) rarity="$(printf '%s' "$arg" | sed -e 's/^{"rarityIdx"://' -e 's/}.*//')";; esac
+    done
+    [ -n "$rarity" ] && : > "${MOCK_CRAFT_STATE:-/dev/null}.rarity$rarity"
+    echo '{"sig":"mock-rarity-sig"}';;
+  */packs/configs)
+    printf '{"packs":['
+    first=1
+    for entry in "0:small" "1:medium" "2:big"; do
+      index="${entry%%:*}"
+      if [ -f "${MOCK_MECHANICS_STATE:-/nonexistent}.pack$index" ]; then
+        [ "$first" = 1 ] || printf ','
+        printf '{"packType":"%s","priceLamports":"1","oddsBps":[1,1,1,1,0]}' "${entry#*:}"
+        first=0
+      fi
+    done
+    printf ']}\n';;
+  */query/reroll-config)
+    if [ -f "${MOCK_MECHANICS_STATE:-/nonexistent}.reroll" ]; then echo '{"oddsBps":[5500,3000,1100,400,0]}'; else echo 'null'; fi;;
+  */query/lottery/*)
+    if [ -f "${MOCK_MECHANICS_STATE:-/nonexistent}.lottery" ]; then echo '{"roundId":"1"}'; else echo 'null'; fi;;
+  */query/season/*)
+    if [ -f "${MOCK_MECHANICS_STATE:-/nonexistent}.season" ]; then echo '{"seasonId":1}'; else echo 'null'; fi;;
+  */packs/config/init)
+    [ "${MOCK_MECHANICS_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    index=""
+    for arg in "$@"; do case "$arg" in
+      *'"packType":'*) index="$(printf '%s' "$arg" | sed -e 's/^.*"packType"://' -e 's/,.*//')";;
+    esac; done
+    [ -n "$index" ] && : > "${MOCK_MECHANICS_STATE:-/dev/null}.pack$index"
+    echo '{"sig":"mock-pack-sig"}';;
+  */reroll/config/init)
+    [ "${MOCK_MECHANICS_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    : > "${MOCK_MECHANICS_STATE:-/dev/null}.reroll"
+    echo '{"sig":"mock-reroll-sig"}';;
+  */lottery/round/init)
+    [ "${MOCK_MECHANICS_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    : > "${MOCK_MECHANICS_STATE:-/dev/null}.lottery"
+    echo '{"sig":"mock-lottery-sig"}';;
+  */season/init)
+    [ "${MOCK_MECHANICS_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    : > "${MOCK_MECHANICS_STATE:-/dev/null}.season"
+    echo '{"sig":"mock-season-sig"}';;
+  */hot-market/config/init)
+    [ "${MOCK_MARKET_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    : > "${MOCK_MARKET_STATE:-/dev/null}"
+    echo '{"sig":"mock-market-sig"}';;
+  */hot-market/pool/init)
+    [ "${MOCK_MARKET_FAIL:-0}" = "1" ] && { echo '{"error":"mock failure"}'; exit 0; }
+    rarity=""
+    for arg in "$@"; do
+      case "$arg" in '{"rarity":'*) rarity="$(printf '%s' "$arg" | sed -e 's/^{"rarity"://' -e 's/,.*//')";; esac
+    done
+    [ -n "$rarity" ] && : > "${MOCK_POOL_STATE:-/dev/null}/$rarity"
+    echo '{"sig":"mock-pool-sig"}';;
   *) echo '{"ok":true}';;
 esac
 exit 0
@@ -127,6 +207,7 @@ class BringupScript(unittest.TestCase):
         self.probe = self.dir / "probe.py"
         self.probe.write_text(
             "import sys\nprint('ЗОНД: программы проверены')\n", encoding="utf-8")
+        (self.dir / "pools").mkdir()
         self.calls = self.dir / "calls.log"
 
     def tearDown(self):
@@ -154,6 +235,10 @@ class BringupScript(unittest.TestCase):
             "MOCK_ARTIFACTS": str(self.artifacts),
             "MOCK_MINT": CORE_ADDRESS,
             "MOCK_MINING_STATE": str(self.dir / "mining-on"),
+            "MOCK_MARKET_STATE": str(self.dir / "market-on"),
+            "MOCK_CRAFT_STATE": str(self.dir / "craft-on"),
+            "MOCK_MECHANICS_STATE": str(self.dir / "mechanics-on"),
+            "MOCK_POOL_STATE": str(self.dir / "pools"),
             "PROBE": str(self.probe),
             "SKIP": "",
         })
@@ -173,6 +258,21 @@ class BringupScript(unittest.TestCase):
     def posts(self) -> list[str]:
         return [line for line in self.log()
                 if "curl" in line and "-X POST" in line and "/admin/config" in line]
+
+    def craft_posts(self) -> list[str]:
+        return [line for line in self.log()
+                if "curl" in line and "-X POST" in line and "/admin/craft-economy" in line
+                or "curl" in line and "-X POST" in line and "/admin/rarity-counter" in line]
+
+    def mechanics_posts(self) -> list[str]:
+        return [line for line in self.log()
+                if "curl" in line and "-X POST" in line
+                and ("/packs/config" in line or "/reroll/config" in line
+                     or "/lottery/round" in line or "/season/init" in line)]
+
+    def market_posts(self) -> list[str]:
+        return [line for line in self.log()
+                if "curl" in line and "-X POST" in line and "/hot-market/" in line]
 
     def test_wrong_target_refuses_before_any_command(self):
         done = self.run_script(env_overrides={"AOF_DEPLOY_TARGET": "mainnet"})
@@ -218,6 +318,12 @@ class BringupScript(unittest.TestCase):
             "config": log.find("scripts/initConfig.ts"),
             "mints": log.find("scripts/initMintsV2.ts"),
             "caps": log.find("run caps:init"),
+            "packs": log.find("/packs/config/init"),
+            "reroll": log.find("/reroll/config/init"),
+            "lottery": log.find("/lottery/round/init"),
+            "season": log.find("/season/init"),
+            "marketconfig": log.find("/hot-market/config/init"),
+            "marketpool": log.find("/hot-market/pool/init"),
             "preflight": log.find("preflight:mining-devnet"),
             "mining": log.find("-X POST http://mock-backend/admin/config/mining"),
             "collector": log.find("/admin/config/collector-mint"),
@@ -252,10 +358,127 @@ class BringupScript(unittest.TestCase):
         self.assertEqual(done.returncode, 3)
         self.assertIn("historian", done.stderr)
 
+    def test_market_step_is_idempotent_and_needs_real_mints(self):
+        # Первый прогон: MarketConfig и пулы редкостей создаются.
+        first = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(first.returncode, 0, first.stderr + first.stdout)
+        self.assertEqual(len([l for l in self.market_posts() if "config/init" in l]), 1)
+        self.assertEqual(len([l for l in self.market_posts() if "pool/init" in l]), 4,
+                         "по умолчанию включаются четыре редкости пула")
+        # Второй прогон: существующие аккаунты не пересоздаются (init упал бы).
+        before = len(self.log())
+        second = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
+        fresh = [line for line in self.log()[before:]
+                 if "curl" in line and "-X POST" in line and "/hot-market/" in line]
+        self.assertEqual(fresh, [], "повторный прогон не должен создавать аккаунты заново")
+
+    def test_craft_step_creates_economy_and_rarity_counters(self):
+        done = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        craft = self.craft_posts()
+        self.assertEqual(len([l for l in craft if "craft-economy/init" in l]), 1,
+                         "CraftEconomy создаётся один раз")
+        self.assertEqual(len([l for l in craft if "rarity-counter/init" in l]), 4,
+                         "по умолчанию создаются счётчики редкостей 1..4")
+        for rarity in ("1", "2", "3", "4"):
+            self.assertIn(f'{{\"rarityIdx\":{rarity}}}', "\n".join(craft))
+        # Крафт включается до тумблера добычи и до allowlist коллекционеров.
+        log = "\n".join(self.log())
+        self.assertLess(log.find("/admin/craft-economy/init"), log.find("preflight:mining-devnet"))
+        self.assertLess(log.find("/admin/craft-economy/init"),
+                        log.find("-X POST http://mock-backend/admin/config/mining"),
+                        "крафт включается до тумблера добычи")
+
+    def test_craft_step_is_idempotent(self):
+        first = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(first.returncode, 0, first.stderr + first.stdout)
+        before = len(self.log())
+        second = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
+        fresh = [line for line in self.log()[before:]
+                 if "curl" in line and "-X POST" in line and "craft" in line]
+        self.assertEqual(fresh, [], "повторный прогон не должен пересоздавать CraftEconomy и счётчики")
+        self.assertIn("CraftEconomy уже инициализирован", second.stdout)
+
+    def test_craft_failure_refuses(self):
+        done = self.run_script("--apply", env_overrides={"MOCK_CRAFT_FAIL": "1"})
+        self.assertEqual(done.returncode, 3)
+        self.assertIn("CraftEconomy", done.stderr)
+
+    def test_craft_rarity_out_of_range_refuses(self):
+        done = self.run_script("--apply", env_overrides={"CRAFT_RARITY_COUNTERS": "5"})
+        self.assertEqual(done.returncode, 3)
+        self.assertIn("1..4", done.stderr)
+
+    def test_skip_craft_leaves_craft_closed(self):
+        done = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": "", "SKIP": "craft"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.craft_posts(), [])
+        self.assertIn("SKIP=craft", done.stdout)
+
+    def test_mechanics_step_configures_packs_lottery_season_reroll(self):
+        done = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        posts = self.mechanics_posts()
+        self.assertEqual(len([l for l in posts if "/packs/config/init" in l]), 3,
+                         "три типа паков: small/medium/big")
+        self.assertEqual(len([l for l in posts if "/reroll/config/init" in l]), 1)
+        self.assertEqual(len([l for l in posts if "/lottery/round/init" in l]), 1)
+        self.assertEqual(len([l for l in posts if "/season/init" in l]), 1)
+        log = "\n".join(posts)
+        # Цены и шансы — канонические, из aof-core/src/constants.rs.
+        for expected in ('"priceLamports":"100000000"', '"priceLamports":"300000000"',
+                         '"priceLamports":"1000000000"', "[6000,3200,700,100,0]",
+                         "[5000,3500,1000,500,0]", "[3500,4000,1500,1000,0]",
+                         "[5500,3000,1100,400,0]", '\"roundId\":\"1\"'):
+            self.assertIn(expected, log)
+        whole = "\n".join(self.log())
+        self.assertLess(whole.find("/packs/config/init"),
+                        whole.find("-X POST http://mock-backend/admin/config/mining"),
+                        "конфиги механик включаются до тумблера добычи")
+        self.assertLess(whole.find("/season/init"), whole.find("/hot-market/config/init"),
+                        "шаг 6 идёт до рынка (шаг 7)")
+
+    def test_mechanics_step_is_idempotent(self):
+        first = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(first.returncode, 0, first.stderr + first.stdout)
+        before = len(self.log())
+        second = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
+        self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
+        fresh = [line for line in self.log()[before:] if "curl" in line and "-X POST" in line
+                 and ("/packs/config" in line or "/reroll/config" in line
+                      or "/lottery/round" in line or "/season/init" in line)]
+        self.assertEqual(fresh, [], "повторный прогон не пересоздаёт конфиги механик")
+        for message in ("пак small уже настроен", "конфиг реролла уже есть",
+                        "раунд лотереи 1 уже создан", "сезон 1 уже создан"):
+            self.assertIn(message, second.stdout)
+
+    def test_mechanics_failure_refuses(self):
+        done = self.run_script("--apply", env_overrides={"MOCK_MECHANICS_FAIL": "1"})
+        self.assertEqual(done.returncode, 3)
+        self.assertIn("не настроен", done.stderr)
+
+    def test_skip_mechanics_leaves_configs_unset(self):
+        done = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": "", "SKIP": "mechanics"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.mechanics_posts(), [])
+        self.assertIn("SKIP=mechanics", done.stdout)
+
+    def test_market_refuses_without_currency_addresses(self):
+        # Валюты пула необратимы: без явных адресов шаг отказывает, а не угадывает.
+        done = self.run_script("--apply", env_overrides={
+            "COLLECTOR_MINTS": "",
+            "MARKET_CORE_MINT": "11111111111111111111111111111111",
+        })
+        self.assertEqual(done.returncode, 3)
+        self.assertIn("валют", done.stderr.lower())
+        self.assertEqual(self.market_posts(), [])
+
     def test_skip_backend_steps_needs_no_token(self):
         done = self.run_script("--apply", env_overrides={
             "ADMIN_TOKEN": "",
-            "SKIP": "config,mints,caps,mining,collectors,report",
+            "SKIP": "config,mints,caps,market,mining,collectors,report",
         })
         self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
         self.assertEqual(len(self.deploys()), len(PROGRAMS), self.log())
