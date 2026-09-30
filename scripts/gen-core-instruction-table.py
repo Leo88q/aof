@@ -41,6 +41,9 @@ ACTOR = {
     "recipient", "renter", "owner", "creator", "fulfiller",
     # signer slots that name the player in claim_lottery_prize / referral_bind
     "winner", "referred",
+    # transfer_tool signs as `sender`; the recipient is a counterparty and does
+    # not have to be the connected wallet.
+    "sender",
 }
 
 # Instructions whose handler reads `ctx.remaining_accounts`: the account list in

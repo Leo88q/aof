@@ -242,7 +242,7 @@ test("core instruction table is byte-for-byte the committed IDL, and every opera
   // The table is generated from this IDL (scripts/gen-core-instruction-table.py);
   // here the generated rows are re-derived from the IDL and compared.
   const idl = JSON.parse(readFileSync(new URL("../../aof_backend/src/idl/aof_core.json", import.meta.url), "utf8"));
-  const ACTOR = new Set(["user", "buyer", "seller", "maker", "caller", "cranker", "payer", "bidder", "recipient", "renter", "owner", "creator", "fulfiller", "winner", "referred"]);
+  const ACTOR = new Set(["user", "buyer", "seller", "maker", "caller", "cranker", "payer", "bidder", "recipient", "renter", "owner", "creator", "fulfiller", "winner", "referred", "sender"]);
   // Signer slots that name a role, never a player. `caller` of emergency_stop is
   // the guardian/admin (constraint in aof-core), `new_authority` accepts a rotation.
   const PRIVILEGED = new Set(["authority", "operator", "guardian", "admin", "migration_authority", "new_authority"]);

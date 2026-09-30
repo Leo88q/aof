@@ -83,7 +83,7 @@ export const EVENT_TYPES = Object.keys(CATEGORY);
 export const SUPPORTED_NATIVE: Record<string, string[]> = {
   PurchaseCompleted: ["ListingSold", "OfferAccepted", "AuctionSettled", "HotMarketBought", "LotteryTicketBought", "SeasonPassPurchased", "PackOpened"],
   PaymentSettled: ["ListingSold", "OfferAccepted", "AuctionSettled", "OrderMatched", "LimitOrderMatched", "HotMarketBought", "HotMarketSold", "CraftOrderFulfilled"],
-  AssetTransferred: ["ListingSold", "OfferAccepted", "AuctionSettled", "RentalStarted", "RentalEnded"],
+  AssetTransferred: ["ListingSold", "OfferAccepted", "AuctionSettled", "RentalStarted", "RentalEnded", "ToolTransferred"],
   AssetCreated: ["ToolMinted", "ToolCrafted", "PackOpened", "RerollResult"],
   CraftCompleted: ["ToolCrafted", "CraftEvent", "ToolRepaired"],
   FusionCompleted: ["RerollResult", "ForgeAttempted"],
@@ -229,6 +229,17 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "RentalEnded":
       emit("AssetTransferred", { playerId: pid(d.owner), attributes: { reason: "rental_end" } });
+      break;
+    // Канонический перенос инструмента (aof_core::transfer_tool) — единственное
+    // событие, по которому владение инструментом меняется законно: SPL-перевод
+    // без него оставляет ToolData.owner прежнему владельцу.
+    case "ToolTransferred":
+      emit("AssetTransferred", {
+        playerId: pid(d.from),
+        counterpartyId: pid(d.to),
+        asset: str(d.mint),
+        attributes: { reason: "transfer" },
+      });
       break;
     // ---- assets / crafting ----------------------------------------------------
     case "ToolMinted":

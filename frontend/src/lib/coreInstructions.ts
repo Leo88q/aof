@@ -1116,7 +1116,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     name: "transfer_tool",
     discriminator: [113, 133, 218, 29, 218, 58, 56, 24],
     accounts: ["sender", "mint", "sender_token", "recipient", "recipient_token", "tool_data", "token_program"],
-    actorIndexes: [3],
+    actorIndexes: [0, 3],
     signerIndexes: [0],
     authorityOnly: false,
     trailingAccounts: null,
