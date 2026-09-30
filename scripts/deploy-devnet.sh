@@ -149,7 +149,11 @@ done
 step "6/6 Проверка после деплоя"
 python3 "$PROBE" "$RPC_URL" || true
 echo
-echo "Дальше — по порядку (docs/UNBLOCK_PLAN_2026-09-30.md §0):"
+echo "Дальше можно одной командой (Config → минты → капы → добыча → коллекционеры):"
+echo "  AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh              # сухой прогон"
+echo "  AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply      # включить"
+echo
+echo "Тот же порядок вручную (docs/UNBLOCK_PLAN_2026-09-30.md §0):"
 echo "  1) инициализация Config:            cd aof_backend && npx ts-node scripts/initConfig.ts"
 echo "  2) минты ресурсов:                  npx ts-node scripts/initMintsV2.ts"
 echo "  3) потолки выпуска:                 npm run caps:init"

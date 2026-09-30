@@ -886,6 +886,10 @@ jobs:
           # never a .so whose declare_id! was rewritten (CI builds use
           # throwaway ids, so those binaries must not reach devnet).
           python3 scripts/test-deploy-devnet.py
+          # Bringup runbook: one command from "no programs on devnet" to a
+          # working game. Must never turn mining on before the payout mints
+          # exist, never touch mainnet, and never POST in a dry run.
+          python3 scripts/test-devnet-bringup.py
 
       - name: Self-test - wallet proof
         run: |
