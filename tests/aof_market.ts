@@ -81,17 +81,38 @@ describe("aof-market: горячий рынок покупает и продаё
     await connection.confirmTransaction(sig, "confirmed");
   }
 
+  async function waitForTokenMint(mint: PublicKey, timeoutMs = 10_000): Promise<void> {
+    // `createMint` confirms through its own web3.js transaction.  The local
+    // validator can nevertheless answer the immediately following ATA
+    // simulation from an older bank where the new account is still owned by
+    // SystemProgram; Associated Token then reports the misleading
+    // `IncorrectProgramId`.  Do not retry the mutation blindly: wait until the
+    // same RPC reader observes the mint under Tokenkeg first.
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const info = await connection.getAccountInfo(mint, "confirmed");
+      if (info?.owner.equals(TOKEN_PROGRAM_ID)) return;
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `mint ${mint.toBase58()} was not observed under ${TOKEN_PROGRAM_ID.toBase58()}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
   async function ensureAta(mint: PublicKey, owner: PublicKey, payer: Keypair): Promise<PublicKey> {
     const address = ata(mint, owner);
-    const info = await connection.getAccountInfo(address);
+    const info = await connection.getAccountInfo(address, "confirmed");
     if (!info) {
+      await waitForTokenMint(mint);
       const ix = createAssociatedTokenAccountInstruction(payer.publicKey, address, owner, mint);
-      const tx = new anchor.web3.Transaction().add(ix);
-      tx.feePayer = payer.publicKey;
-      const lifetime = await connection.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = lifetime.blockhash;
-      tx.sign(payer);
-      await anchor.web3.sendAndConfirmTransaction(connection, tx, [payer], { commitment: "confirmed" });
+      // Use AnchorProvider's blockhash/confirmation path, as the established
+      // core and extended validator suites do.  The instruction payer still
+      // signs and funds the ATA; the provider wallet only pays the tx fee.
+      await provider.sendAndConfirm(new anchor.web3.Transaction().add(ix), [payer], {
+        commitment: "confirmed",
+      });
     }
     return address;
   }
