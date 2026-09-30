@@ -3270,9 +3270,10 @@ test('site route metadata stays in sync with the visible seven-language page cat
   assert.ok(!/[А-Яа-яЁё]/.test(code('src/site/content/pages.ts')), 'duplicate Russian site copy');
 });
 
-test('all 34 fail-closed API codes have seven-language explanations and preserve the raw code', async () => {
+test('all fail-closed API codes have seven-language explanations and preserve the raw code', async () => {
   const { apiErrorCopy, apiErrorCodes } = await import('../src/i18n/apiErrorCopy.ts');
-  assert.equal(apiErrorCodes.length, 34);
+  // Список растёт вместе с бэкендом; важно не число, а полнота и уникальность.
+  assert.ok(apiErrorCodes.length >= 48, `в списке только ${apiErrorCodes.length} кодов`);
   assert.equal(new Set(apiErrorCodes).size, apiErrorCodes.length);
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     assert.deepEqual(Object.keys(apiErrorCopy[language].messages).sort(), [...apiErrorCodes].sort());
@@ -4416,4 +4417,53 @@ test("раскрытие одной панели закрывает осталь
   assert.match(components, /useSingleOpen<HTMLDivElement>\(\)/, "аккордеон не использует правило одной панели");
   assert.match(layout, /const navRef = useSingleOpen<HTMLElement>\(\)/, "меню в шапке не сворачивает прежнюю группу");
   assert.match(layout, /<nav className="site-desktop-nav"[^>]*ref=\{navRef\}/, "хук не подключён к меню");
+});
+
+test("у каждого отказа бэкенда есть человеческое объяснение на всех языках", async () => {
+  // Владелец 2026-09-30: «разблокируй везде все действия». Половина отказов —
+  // это состояние сети, а не переключатель, поэтому игрок обязан видеть
+  // причину, а не технический код. Тест ловит новый 503-код, к которому
+  // забыли текст.
+  const { apiErrorCodes, apiErrorCopy } = await import("../src/i18n/apiErrorCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const { isKnownVrfCode } = await import("../src/lib/vrfErrors.ts");
+
+  // Вытаскиваем все машинные коды, которые бэкенд может вернуть игроку.
+  const backendCodes = new Set<string>();
+  const backendRoot = join(root, "..", "aof_backend", "src");
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.endsWith(".ts")) continue;
+      const text = readFileSync(full, "utf8");
+      for (const match of text.matchAll(/error:\s*"([A-Z][A-Z0-9_]{6,})"/g)) backendCodes.add(match[1]);
+      for (const match of text.matchAll(/vrfUnavailable\("([A-Z0-9_]+)"\)/g)) backendCodes.add(match[1]);
+    }
+  };
+  walk(backendRoot);
+  assert.ok(backendCodes.size > 40, `кодов бэкенда найдено слишком мало: ${backendCodes.size}`);
+
+  const missing: string[] = [];
+  for (const code of backendCodes) {
+    // Коды VRF переводит второй стадии конвейера (vrfCopy), а не общий список.
+    if (isKnownVrfCode(code)) continue;
+    if (!apiErrorCodes.includes(code as never)) missing.push(code);
+  }
+  assert.deepEqual(missing, [], `у этих кодов бэкенда нет объяснения в apiErrorCopy: ${missing.join(", ")}`);
+
+  // Ни одно сообщение не должно быть пустым или оставленным по-русски в
+  // остальных языках: сравнение по совпадению строк ловит копипасту.
+  for (const language of languages) {
+    const copy = apiErrorCopy[language];
+    for (const code of apiErrorCodes) {
+      const text = copy.messages[code];
+      assert.ok(text && text.trim().length > 20, `${language}/${code}: пустое объяснение`);
+    }
+  }
+  for (const language of languages.filter(l => l !== "ru")) {
+    const ru = apiErrorCopy.ru.messages, other = apiErrorCopy[language].messages;
+    const same = apiErrorCodes.filter(code => other[code] === ru[code]);
+    assert.ok(same.length <= 2, `${language}: ${same.length} сообщений остались русскими (${same.slice(0, 3).join(", ")})`);
+  }
 });
