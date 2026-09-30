@@ -41,10 +41,19 @@ import {
   resourceIcon, resourcePlate, resourceVisual, toolPlate, TOOL_NFTS, TOOL_RARITIES, UI_ICONS,
 } from '../../lib/visualAssets';
 
+/**
+ * Подпись площадки в списке. Рынок событий включён, поэтому его название берётся
+ * из живого ключа `hotOpen` («рынок открыт»), а не из отдельного текста
+ * «недоступно»: такой текст существовал, пока механика была закрыта в коде.
+ */
+function venueLabel(names: (typeof tradeNavigationCopy)[Language]['market'], venue: MarketVenueId): string {
+  return venue === 'hotMarket' ? names.hotOpen : names[venue];
+}
+
 const marketVenueIcons: Record<MarketVenueId, string> = {
   listing: UI_ICONS.marketListing, orderbook: UI_ICONS.marketOrderbook,
   auction: UI_ICONS.marketAuction, offer: UI_ICONS.marketOffer,
-  rental: UI_ICONS.marketRental, hotClosed: UI_ICONS.marketHot,
+  rental: UI_ICONS.marketRental, hotMarket: UI_ICONS.marketHot,
 };
 
 /** Картинка ресурса/предмета в квадратной плашке (`.nf-plate`, object-fit: contain). */
@@ -415,7 +424,7 @@ export function ExtraSections({ id }: { id: string }) {
             {marketVenueIds.map((venue) => (
               <article key={venue} className="site-card site-paper">
                 <SitePlate src={marketVenueIcons[venue]} alt="" size={44} />
-                <h3>{names[venue]}</h3>
+                <h3>{venueLabel(names, venue)}</h3>
                 <p>{venues.venues[venue]}</p>
               </article>
             ))}
@@ -851,7 +860,7 @@ export function ExtraSections({ id }: { id: string }) {
           {marketVenueIds.map((venue) => (
             <article key={venue} className="site-card site-paper">
               <SitePlate src={marketVenueIcons[venue]} alt="" size={44} />
-              <h3>{names[venue]}</h3>
+              <h3>{venueLabel(names, venue)}</h3>
               <p>{copy.venues[venue]}</p>
             </article>
           ))}

@@ -165,10 +165,16 @@ for (const layer of disabledLayers) {
 }
 
 // Rebirth is no longer in DISABLED_MECHANICS: the atomic reset exists, so the
-// app must not warn about it (see the §3.4 block above).
-for (const id of ["collectors", "session"]) {
+// app must not warn about it (see the §3.4 block above). Collectors left the
+// same list for the same reason - the allowlist-backed stake is live, and the
+// app must not claim otherwise while the button works.
+for (const id of ["session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
+assert.doesNotMatch(appNotice, /^  collectors: \{/m,
+  "collectors: the mechanic is live behind the allowlist, the notice must be gone");
+assert.match(read("frontend/src/components/CollectorsPanel.tsx"), /api\.collectors\.stake/,
+  "collectors: the panel must stake through the live route");
 // [F-06] Other VRF mechanics have pool commit builders, not just editorial links:
 //   on-chain vrf.rs  ->  backend route builds a pool commit  ->  no app notice.
 const liveVrf: Array<{ id: string; route: string; builder: RegExp }> = [
@@ -190,6 +196,26 @@ for (const layer of liveVrf) {
 assert.match(backendRoute("reroll.ts"), /reservePoolSlot\(/);
 assert.doesNotMatch(appNotice, /^  reroll: \{/m);
 
+
+// [AUDIT F-33] Test tool grants are no longer a stub. The old route answered
+// TOOL_GRANT_DISABLED* because it had an empty account map; the map now exists,
+// so the route must build aof_core::mint_tool, and the on-chain guard that keeps
+// a grant out of a wallet that never asked for it must keep holding.
+{
+  const adminRoute = backendRoute("admin.ts");
+  assert.doesNotMatch(adminRoute, /TOOL_GRANT_DISABLED/,
+    "test-grant-tools must build the instruction instead of answering a disabled code");
+  assert.match(adminRoute, /mintTool\(/, "test-grant-tools must build aof_core::mint_tool");
+  assert.match(adminRoute, /createMint\(connection, AUTHORITY, auth, null, 0/,
+    "the granted tool must be a 0-decimal mint whose authority is the auth PDA");
+  assert.match(adminRoute, /recipient,/,
+    "the grant must name the recipient: mint_tool checks token_account.owner == recipient");
+  assert.match(adminRoute, /TOOL_KIND_IDS/,
+    "the grant must reject tool ids the program does not canonicalise");
+  assert.match(section(core, "pub struct MintTool", "pub struct BurnTool"),
+    /token_account\.owner == recipient\.key\(\)/,
+    "mint_tool must keep rejecting an ATA that belongs to another wallet");
+}
 
 // [AUDIT F-16] Collector perks are no longer hard-disabled: the on-chain
 // `require!(false, AofError::CollectorNotConfigured)` is gone and eligibility is

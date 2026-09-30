@@ -111,16 +111,21 @@ AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
 деплой → отчёт) одной командой: `bash scripts/dev-local.sh devnet`
 (с `--apply` — выполняет, без него — сухой прогон).
 
-`scripts/devnet-bringup.sh` делает шаги 1–7 ниже по порядку, идемпотентно и с
+`scripts/devnet-bringup.sh` делает шаги 1–9 ниже по порядку, идемпотентно и с
 предохранителями: отказывается работать не на devnet, без ключа, без SOL, без
 работающего backend (`BACKEND_URL`/`ADMIN_TOKEN`) и без собранных с **своими**
 ключами программ; никогда не включает добычу, если `preflight` содержит
 `BLOCKED`; в сухом прогоне не выполняет ни одной транзакции. В конце печатает
 зонд и напоминает, что осталось работой по контракту (§3). Офлайн-тесты
-предохранителей: `python3 scripts/test-devnet-bringup.py` (10/10).
+предохранителей: `python3 scripts/test-devnet-bringup.py` (21/21, включая
+крафт и конфиги механик: создаются один раз, счётчики редкостей 1..4, цены и
+шансы паков — канонические, отказ при недоступном бэкенде, `SKIP=craft`,
+`SKIP=mechanics`). Числа скрипта сверяются с `aof-core/src/constants.rs`
+гейтом `tests/readiness/mechanic-configs.test.cjs` — разъехаться молча они не
+могут.
 
 Если backend ещё не поднят, а задеплоить программы нужно сейчас, шаги backend
-можно отложить: `SKIP=config,mints,caps,mining,collectors`.
+можно отложить: `SKIP=config,mints,caps,craft,mechanics,mining,collectors`.
 
 Ниже — то же по шагам, если нужно делать вручную.
 
@@ -135,9 +140,21 @@ AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
 3. `cd aof_backend && npx ts-node scripts/initConfig.ts` — создать `Config`.
 4. `npx ts-node scripts/initMintsV2.ts` — минты ресурсов и MaterialMints.
 5. `npm run caps:init` — потолки выпуска.
-6. `scripts/enable-mining-devnet.sh --apply` — включить добычу (порядок и
+6. `POST /admin/craft-economy/init` — `CraftEconomy` каноническими `CRAFT_*`
+   из программы (цена редкости), затем `POST /admin/rarity-counter/init
+   {"rarityIdx":1..4}` на каждую редкость: без них `/tools/craft-quote` и
+   `/tools/craft` честно отвечают 503, и «крафт включён» было бы неправдой.
+7. `POST /packs/config/init` для типов 0/1/2 (small/medium/big) с каноническими
+   ценой и шансами из `aof-core/src/constants.rs`, затем `POST
+   /reroll/config/init` (`REROLL_ODDS_BPS_DEFAULT`), `POST /lottery/round/init
+   {"roundId":"1"}` и `POST /season/init {"seasonId":1}`: без этих аккаунтов
+   покупка пака, фьюз редкости, продажа билета и сезонный XP не работают вовсе.
+   Для чтения `/season/current` владелец дополнительно задаёт бэкенду
+   `ACTIVE_SEASON_ID=1` и `EXPECTED_GENESIS_HASH` — сезон проверяется по
+   on-chain окну 42 дня.
+8. `scripts/enable-mining-devnet.sh --apply` — включить добычу (порядок и
    предохранители из §1).
-7. `POST /admin/config/collector-mint` — allowlist коллекционеров (§6.1).
+9. `POST /admin/config/collector-mint` — allowlist коллекционеров (§6.1).
 
 > Ремонт по пути: `scripts/deploy-devnet.sh` лежал в git **без
 > executable-бита** (100644) — команда из этого runbook у владельца падала с
@@ -195,7 +212,19 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
 | 7 | **Коллекционеры (Historian/Medallion)** | `POST /admin/config/collector-mint` на каждый разрешённый NFT-минт ([AUDIT F-16], allowlist) | `POST /collectors/stake` проходит; без записи в allowlist программа по-прежнему отвечает `CollectorMintNotAllowed` |
 | 8 | **Потолки эмиссии** | `POST /admin/config/supply-cap` ([AUDIT F-03]) | `config/issuance-caps/init` → `set` |
 | 9 | **Аварийный тормоз казны** | `POST /admin/config/vault-guard` ([AUDIT F-01]) | `capPerEpoch > 0` |
-| 10 | **Платное событие «Potato»** (спины) | нужен **девнет-минт Potato** и казна: см. `docs/POTATO_DEVNET_SETUP.md`; адрес минта в репозиторий не коммитится | `npm --prefix aof_backend run inspect:potato-devnet` |
+| 10 | **Крафт инструментов** (`craft`) | `POST /admin/craft-economy/init` — одна инструкция, канонические `CRAFT_*` из программы (`100/150/500/2000` Circuit и т.д.) | `GET /query/craft-economy` отдаёт 12 массивов; `POST /tools/craft-quote` возвращает цену редкости, а не 503 |
+| 11 | **Счётчики редкости** (уникальность выпуска, фьюз сброса цены) | `POST /admin/rarity-counter/init {"rarityIdx":1..4}` — по одному аккаунту на uncommon/rare/epic/legendary | `GET /query/rarity-counter/1..4`; `/tools/craft` перестаёт отдавать «craft economy or rarity counter unavailable»; `reroll` читает тот же счётчик |
+| 12 | **Паки (капсулы дропа)** | `POST /packs/config/init {"packType":0\|1\|2,"priceLamports":…,"oddsBps":[…]}` — три типа с каноническими ценой и шансами (`PACK_*` из констант; `validate_odds` требует сумму 10000 и нулевой легендарный тир) | `GET /packs/configs` отдаёт три типа; `POST /packs/commit` строит транзакцию, а не 503 |
+| 13 | **Реролл инструмента** (фьюз редкости) | `POST /reroll/config/init {"oddsBps":REROLL_ODDS_BPS_DEFAULT}` | `GET /query/reroll-config` не пусто; фьюз читает `rarityCounter` и перестаёт отказывать |
+| 14 | **Лотерея** | `POST /lottery/round/init {"roundId":"1"}` — раунд открывает продажу билетов (14-дневное окно ставит программа) | `GET /query/lottery/1` отдаёт раунд; покупка билета проходит |
+| 15 | **Сезон и сезонный XP** | `POST /season/init {"seasonId":1}` + `ACTIVE_SEASON_ID=1`, `EXPECTED_GENESIS_HASH` в окружении бэкенда | `GET /season/current` отдаёт окно 42 дня; `POST /season/xp/grant`, `GET /query/season-pass/…`. **Платный трек пропуска этим не включается** — §3.6 |
+| 16 | **Платное событие «Potato»** (спины) | нужен **девнет-минт Potato** и казна: см. `docs/POTATO_DEVNET_SETUP.md`; адрес минта в репозиторий не коммитится | `npm --prefix aof_backend run inspect:potato-devnet` |
+
+Пункты 10–15 (крафт, счётчики редкости, паки, реролл, лотерея, сезон)
+выполняются шагами 5/10 и 6/10 `scripts/devnet-bringup.sh` — они идемпотентны,
+пропускают уже существующие аккаунты и отказываются «включать», если
+админ-маршрут вернул ошибку; `SKIP=craft` и `SKIP=mechanics` оставляют
+соответствующие механики закрытыми явно, а не молча.
 
 **Порядок для добычи:** 3 → 4 → 5 → 1 → 2. Если включить тумблер раньше
 минтов, `start` пройдёт, а `collect` упрётся в `MINING_TOOL_REWARD_NOT_CONFIGURED`
@@ -213,6 +242,7 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
 | Сезонный пропуск: чтение | владельцы уже купленных пропусков видят статус и VIP-оформление |
 | Просмотр заявок, глубина рынка, цены | чтение ордербука работает |
 | **Газ-бак (комиссии игры)** | Был виден только числом в «Лаборатории»: пополнить его в интерфейсе было нечем, хотя снятие инструмента и разлок коллекционера берут 0.01 SOL именно оттуда. Теперь есть панель: баланс из сети, сумма в SOL, депозит/вывод, порог мгновенного вывода и кулдаун. Новых правок контракта не потребовалось — маршруты `/gastank/deposit` и `/gastank/withdraw` уже были живыми |
+| **Погода и прогноз (колодец, календарь эпох)** | Считались доступными только с аккаунта `WeatherState`: без деплоя `/weather/current` отдавал 503, а `/weather/forecast` — «нет канонического источника». При этом в ядре `weather_for_day` — **чистая функция номера UTC-дня** («the weather of any past day can be recomputed exactly; `weather_crank` only caches today's value in `WeatherState` for UIs»), и ту же формулу применяет `well_accrual`. Теперь роут считает день сам (`aof_backend/src/lib/weatherSchedule.ts` — зеркало Rust, проверено численно), аккаунт в сети остаётся подтверждением, прогноз отдаётся тем же правилом, интерфейс помечает источник («правило дня» / «подтверждено сетью»), а три кода «погода закрыта» удалены из словаря отказов |
 | **Коллекционеры (Historics/Medallion)** | Перки были посчитаны в программе [AUDIT F-16] и объявлены на сайте, но поставить NFT в коллекцию в игре было нечем. Теперь есть панель: адрес NFT, вид перка, чтение позиции с чейна (новый read-маршрут `/query/collector/:mint`), постановка и возврат через подписанное намерение кошелька. Правила контракта показаны честно: 1 NFT за вызов, lock 3 дня, минт должен быть в allowlist оператора, возврат — 0.01 SOL из газ-бака |
 
 ## 3. Не переключатель: нужна работа по контракту (и деплой)
@@ -282,10 +312,41 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
 `scripts/devnet-bringup.sh --apply`) — и покупка включается без дополнительных
 переключателей.
 
-### 3.3 Сессионные ключи
-`session_create` отклоняется, пока резервирование не привязано к целевой
-инструкции атомарно. Программа есть, «доделать» = изменить привязку в
-`programs/aof-session-keys` и задеплоить.
+### 3.3 Сессионные ключи — остались единственной механикой, закрытой в коде
+`session_create` и `session_check_and_spend` отклоняются
+(`SkError::AtomicBindingRequired`), пока резервирование дневного лимита не
+привязано к целевой инструкции атомарно: иначе бот тратит лимит, а действие
+может не выполниться, и «резерв» становится фикцией.
+
+Что именно нужно сделать (привязка, а не «переключатель»):
+
+1. **Резерв и действие — одна инструкция.** Целевая программа (aof-core /
+   aof-market) получает `session` (PDA `[SESSION_SEED, authority]`),
+   `session_signer` (подпись одноразового ключа) и CPI-вызов
+   `session_check_and_spend` **внутри** своего обработчика, до изменения
+   состояния. Тогда «зарезервировано» и «сделано» — одна транзакция, и откат
+   одного откатывает второе.
+2. **Кто вызывает.** `session.target_program` обязан совпадать с программой,
+   которая делает CPI (передавать её аккаунтом и сверять с `crate::ID`
+   вызывающего), плюс проверка бита `allowed_ixs` по дискриминатору инструкции;
+   биты 60–63 запрещены (`FORBIDDEN_IXS_MASK`), как и сейчас.
+3. **Лимиты.** `max_amount_per_tx` берётся из `TrustSnapshot` при создании
+   (`tier_daily_cap_lamports`), дневной потолок — 1000× этого значения,
+   `day_start`/`spent_today` сбрасываются тем же обработчиком.
+4. **Проверки, без которых нельзя закрывать пункт:** unauthorized signer,
+   просроченная сессия, отозванная/приостановленная сессия, чужой target
+   program, значение больше лимита, повторное использование одного и того же
+   подписанта на другую программу, попытка вызвать запрещённый бит.
+5. **Почему это не делается без компилятора:** изменение затрагивает пять
+   программ (CPI в aof-core и aof-market), требует новых интеграционных тестов
+   на локальном валидаторе и обновления IDL; собрать и проверить это можно
+   только тулчейном Agave/Anchor (в песочнице агента компилятора нет).
+
+После реализации: снять `require!(false, ...)` в
+`programs/aof-session-keys/src/lib.rs`, добавить в
+`tests/readiness/*` гейт «сессия расходуется только вместе с целевой
+инструкцией», обновить route `/session/*` (сейчас 503) и запись в
+`DISABLED_MECHANICS` приложения.
 
 ### 3.4 Перерождение (rebirth) — **доделано в ветке, ждёт деплоя**
 Было: `do_rebirth` берёт SOL и увеличивает счётчик, но **не сбрасывает сезонное
@@ -329,16 +390,31 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
   /query/hot-market-pool|inventory/:rarity` отдаёт панели только сетевые данные;
   фронтенд больше не показывает заглушку «недоступно» для `hot_market`.
 
-Осталось то, что может сделать владелец: задеплоить `aof_core` и `aof_market`,
-затем `POST /hot-market/config/init` (если `MarketConfig` пуст) и
-`POST /hot-market/pool/init` на каждую редкость — пул без аккаунта не торгует,
-и зонд печатает именно это.
+Это не ручная последовательность: `scripts/devnet-bringup.sh` (шаг 7/10,
+`SKIP=market` его выключает) сам читает `GET /query/hot-market-config`,
+инициализирует `MarketConfig` и создаёт пулы редкостей идемпотентно — уже
+существующие аккаунты не пересоздаются. Валюты пула **необратимы**, поэтому
+скрипт не угадывает их: `MARKET_CORE_MINT`/`MARKET_GEM_MINT`/`MARKET_TREASURY`,
+а по умолчанию `Config.potatoMint` (внутриигровой MIND), `MaterialMints.gem_blue`
+(QUANTUM_BIT) и `Config.treasury`; если адрес не читается, шаг отказывает и
+называет `SKIP=market` — молча оставить рынок выключенным нельзя.
+
+Осталось то, что может сделать только владелец: задеплоить `aof_core` и
+`aof_market` и прогнать `AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh
+--apply` с `ADMIN_TOKEN`. Пул без аккаунта не торгует, и зонд печатает именно
+это.
 
 ### 3.6 Сезонный пропуск, платный трек (V2)
 Сегодня `claim_reward_handler` использует **одну** битовую карту на бесплатный
 и платный трек и выдаёт одинаковую награду; XP начисляется вне сети. Нужен
 `SeasonPass` V2 (раздельные треки, подписанные идемпотентные начисления,
 потолки) — иначе продавать 0,15 SOL нельзя.
+
+Важно не путать две вещи: сам аккаунт `Season` создаётся шагом 6/10
+`scripts/devnet-bringup.sh` (§1.15) — после него работает окно 42 дня,
+`/season/xp/grant` и чтение пропусков, — но маршрут покупки
+`/season/pass/purchase` продолжает отвечать 503 `SEASON_PASS_PAID_TRACK_NOT_READY`
+до этой работы. «Сезон включён» и «пропуска продаются» — разные утверждения.
 
 ### 3.7 Внешний Potato (покупки, квесты, барабан)
 Нет проверенного адреса минта, decimals и казны; старый барабан тратит
@@ -351,7 +427,7 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
 пустой список нельзя — игрок примет это за настоящее состояние. Лечится
 индексатором/хранилищем, а не гейтом:
 `quests` (прогресс, достижения), `portfolio` (оценка), `neighbors` (соседи и
-лимиты), `trust` (профиль, лидерборд), `weather` (состояние и прогноз),
+лимиты), `trust` (профиль, лидерборд),
 `privileges`, `vipStatus`/`season`, `energy` (баланс и трата), `farm` (состояние
 участка), `daily`, `streaks`, `comeback`, `challenges`, `guild`, `npc`,
 `traderRules`, `friend` (полив), `referralTiers` (привязка — есть канонический
@@ -416,8 +492,10 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
 ```
   [ВКЛ ] Добыча инструментов            Config есть: paused=false, mining_enabled=true
   [выкл] Ремонт инструментов            Config.wood_mint=111111…, stone_mint=111111…
-          ↳ scripts/devnet-bringup.sh --apply (шаг 5: initMintsV2.ts задаёт адреса ресурсов)
+          ↳ scripts/devnet-bringup.sh --apply (шаг 5/10: initMintsV2.ts задаёт адреса ресурсов)
   [ВКЛ ] Ресурсы и крафт                аккаунтов MaterialMints: 1
+  [выкл] Капсулы дропа (паки)           аккаунтов PackConfig: 0 (нужен хотя бы один)
+          ↳ POST /packs/config/init (шаг 6/10: три типа с каноническими ценой и шансами)
   …
 ```
 
@@ -441,5 +519,7 @@ scripts/test-devnet-program-probe.py` (поддельный RPC: ничего н
 2. §1.6 (ремонт) — тем же вызовом минтов.
 3. §1.7 (коллекционеры) — allowlist на конкретные минты.
 4. §3.1 (ордербук v2) — код + деплой + снятие паузы, затем §3.2 (лотерея).
+   Сами конфиги (§1.10–1.15: крафт, счётчики редкости, паки, реролл, лотерея,
+   сезон) создаются шагами 5/10 и 6/10 `scripts/devnet-bringup.sh`.
 5. §4 (индексатор) — отдельным проектом: без него половина витрин остаётся
    «неизвестно».

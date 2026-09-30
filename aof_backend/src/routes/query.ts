@@ -9,7 +9,7 @@ import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } 
 import { pk } from "../lib/tx";
 import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
-  rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda,
+  rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda, seasonPda, rerollConfigPda,
   toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda, marketConfigPda,
   weatherStatePda, wellStatePda, millStatePda, ovenStatePda } from "../lib/pda";
 import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
@@ -93,6 +93,19 @@ r.get("/rarity-counter/:idx", async (req, res) => {
 r.get("/pack-config/:type", async (req, res) => {
   const [addr] = packConfigPda(Number(req.params.type));
   res.json(deep(await fetchOne("packConfig", addr)));
+});
+
+// Конфиг фьюза редкости: /reroll/random и /reroll/config/init работают только
+// после его создания, поэтому отчёт bringup и панели читают его отсюда.
+r.get("/reroll-config", async (_req, res) => {
+  const [addr] = rerollConfigPda();
+  res.json(deep(await fetchOne("rerollConfig", addr)));
+});
+
+// Сезон по номеру: 42-дневное окно программа ставит сама при init.
+r.get("/season/:seasonId", async (req, res) => {
+  const [addr] = seasonPda(Number(req.params.seasonId));
+  res.json(deep(await fetchOne("season", addr)));
 });
 
 // Профиль игрока (жители, энергия, перки)
@@ -315,6 +328,27 @@ r.get("/hot-market-queue/:rarity", async (req, res) => {
   }
 });
 
+
+// Конфиг рынка: две валюты пула и казна. Нужен и панели, и шагу включения
+// (scripts/devnet-bringup.sh): без явного чтения нельзя понять, инициализирован
+// ли MarketConfig, а выбор валюты пула необратим.
+r.get("/hot-market-config", async (_req, res) => {
+  try {
+    const [address] = marketConfigPda();
+    const data: any = await (marketProgram.account as any).marketConfig.fetch(address);
+    res.json({
+      address: address.toBase58(),
+      authority: data.authority,
+      treasury: data.treasury,
+      coreMint: data.coreMint,
+      gemMint: data.gemMint,
+      feeBps: Number(data.feeBps),
+      paused: Boolean(data.paused),
+    });
+  } catch {
+    res.status(404).json({ error: "Market config not initialized" });
+  }
+});
 
 // [ФИКС Средний] Пул хот-маркета: параметры VRGDA для реальной глубины стакана.
 // lastTradeTs/горячее окно нужны панели, чтобы оценить цену с тем же затуханием,

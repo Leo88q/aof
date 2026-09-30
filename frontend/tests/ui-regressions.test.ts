@@ -123,9 +123,14 @@ test("выдуманные проценты прогресса не возвра
   assert.ok(!/value="12\.4"/.test(dash), "хардкод метрики вернулся в обзор лаборатории");
 });
 
-test("плитка хот-маркета не обещает отключённую механику", () => {
+test("плитка хот-маркета не изображает механику закрытой", () => {
   const market = read("src/pages/market/MarketHome.tsx");
-  assert.match(market, /isMechanicDisabled\("hot_market"\)/, "состояние механики должно учитываться");
+  // Механика включена (пул + aof_core::transfer_tool): ветки «закрыто» в коде
+  // быть не должно, иначе плитка снова покажет игроку ложную плашку.
+  assert.ok(!/hotDisabled|isMechanicDisabled/.test(market), "плитка не должна ветвиться на «закрыто»");
+  assert.match(market, /copy\.hotOpen/, "плитка обязана называть рынок открытым");
+  assert.doesNotMatch(read("src/i18n/tradeNavigationCopy.ts"), /hotClosed|hotReason/,
+    "тексты «недоступно» для включённой механики не нужны");
 });
 
 test("шапка сайта: кнопка меню существует и скрыта на десктопе", () => {
@@ -168,6 +173,11 @@ test("погода читается из одного канонического
   assert.match(weather, /bucket <= 9\) return 0/, "полоса блэкаута не совпадает с цепью");
   assert.match(weather, /bucket <= 59\) return 1/, "полоса номинала не совпадает с цепью");
   assert.match(weather, /bucket <= 89\) return 2/, "полоса скачка не совпадает с цепью");
+  // 64-битное умножение с маской, сдвиг на 32 и остаток по 100 — без этих трёх
+  // шагов зеркало перестаёт совпадать с Rust при любых полосах.
+  assert.match(weather, /& 0xffffffffffffffffn/, "в зеркале пропала маска u64");
+  assert.match(weather, />> 32n/, "в зеркале пропал сдвиг на 32 бита");
+  assert.match(weather, /% 100n/, "в зеркале пропал остаток по 100");
 
   // Шапка, обзор и колодец обязаны ходить через общий загрузчик.
   for (const file of [
@@ -178,10 +188,21 @@ test("погода читается из одного канонического
     assert.match(read(file), /fetchWeatherSnapshot/, `${file} снова читает погоду по-своему`);
     assert.ok(!/api\.weather\.current\(\)/.test(read(file)), `${file} дублирует прямой вызов /weather/current`);
   }
+  // /weather/forecast сервит то же правило дня, но виджет считает прогноз
+  // локально: незачем ходить в сеть за тем, что следует из номера дня.
   assert.ok(!/api\.weather\.forecast/.test(read("src/components/ui/WeatherWidget.tsx")),
-    "прогноз снова берётся из закрытого /weather/forecast");
+    "прогноз снова берётся из сети, хотя он следует из расписания дня");
   assert.match(read("src/components/ui/WeatherWidget.tsx"), /forecastFromDayId/,
     "прогноз должен считаться из расписания дня");
+
+  // Погода дня известна всегда: аккаунт WeatherState — подтверждение, а не
+  // условие показа. Загрузчик обязан уметь посчитать день сам.
+  assert.match(weather, /currentDayId/, "у загрузчика нет номера дня из часов");
+  assert.match(weather, /source: "canonical-schedule"/, "значение из правила дня не помечается");
+  assert.ok(!/Promise<WeatherSnapshot \| null>/.test(weather),
+    "загрузчик снова объявляет погоду неизвестной без аккаунта в сети");
+  assert.match(read("src/components/ui/WeatherWidget.tsx"), /text\.scheduleNote/,
+    "интерфейс обязан отличать правило дня от подтверждения сетью");
 });
 
 test("503 не выглядит как настоящие данные", () => {
@@ -1405,7 +1426,7 @@ test("рынок и навигация экономики честно пере�
   for (const language of ["ru", "en", "pt", "es", "vi", "id", "fil"]) {
     assert.match(copy, new RegExp(`\\n  ${language}: \\{`), `нет переводов рынка для ${language}`);
   }
-  for (const field of ["sonarHint", "hotReason", "orderbookSub", "calendar"]) {
+  for (const field of ["sonarHint", "hotOpen", "orderbookSub", "calendar"]) {
     assert.equal((copy.match(new RegExp(`${field}:`, "g")) || []).length, 8,
       `${field} должен быть типизирован и переведён на все семь языков`);
   }
@@ -1413,8 +1434,7 @@ test("рынок и навигация экономики честно пере�
   assert.match(market, /blips=\{\[\]\}/, "эхолот не должен изображать цены без источника");
   assert.match(market, /copy.sonarHint/, "эхолот должен объяснять, что цены здесь не запрашиваются");
   assert.ok(!market.includes("сеть не ответила"), "без запроса к сети нельзя объявлять сетевую ошибку");
-  assert.match(market, /isMechanicDisabled\("hot_market"\)/,
-    "отключённый событийный рынок не должен называться открытым");
+  assert.match(market, /copy\.hotOpen/, "событийный рынок включён и называется открытым");
   const economy = read("src/pages/economy/EconomyHome.tsx");
   assert.match(economy, /copy\[t.key\]/, "названия вкладок экономики должны меняться с языком");
   assert.match(economy, /aria-pressed=\{sub === t.key\}/, "состояние вкладки должно быть доступно скринридеру");
@@ -1426,7 +1446,7 @@ test("капсулы, флюиды и отключённые механики п
   const { marketDetailCopy } = await import("../src/i18n/marketDetailCopy.ts");
   const { disabledMechanicCopy } = await import("../src/i18n/disabledMechanicCopy.ts");
   const { humanizeVrfError } = await import("../src/lib/vrfErrors.ts");
-  const ids = ["collectors", "session", "tools_repair"];
+  const ids = ["session", "tools_repair"];
   for (const language of ["ru", "en", "pt", "es", "vi", "id", "fil"] as const) {
     for (const field of ["title", "intro", "small", "medium", "big", "configError", "pendingError", "commitUnknown", "refunded"] as const) {
       assert.ok(packsCopy[language][field], `${language}: нет текста ${field} для капсул`);
@@ -2001,9 +2021,24 @@ test('FAQ сайта целиком переведён: 30 вопросов в �
   assert.ok(!/export \* from '\.\/faq'/.test(read('src/site/content/game.ts')));
   assert.equal(existsSync(join(root, 'src/site/content/faq.ts')), false, 'старая версия с непроверенными обещаниями не должна попадать в сборку');
   for (const lang of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
-    assert.match(siteFaq[lang].items[21].a, /paus|suspens|tạm dừng|ditunda|Nakahinto|приостанов/i);
+    // Книга заявок живёт в v2 (цена за целый ресурс, эскроу в целых числах),
+    // поэтому ответ обязан это описывать и не повторять прежнюю формулировку
+    // «новые заявки приостановлены»: она относилась к v1-форме.
+    assert.match(siteFaq[lang].items[21].a, /цел|whole|inteiro|entero|nguyên vẹn|utuh|buong/i,
+      `${lang}: книга заявок должна называть цену за целый ресурс`);
+    assert.ok(!/приостанов|pausad|suspens|tạm dừng|ditunda|Nakahinto/i.test(siteFaq[lang].items[21].a),
+      `${lang}: книга заявок объявлена приостановленной, хотя v2 работает`);
     assert.match(siteFaq[lang].items[24].a, /not|não|no |Chưa|Belum|Hindi|Пока/i);
+    // Живые механики не описываются отрицанием в начале ответа.
+    for (const id of [6, 22]) {
+      assert.ok(!/^(нет|no|não|no|chưa|belum|hindi)\b/i.test(siteFaq[lang].items[id].a.trim()),
+        `${lang}: ответ ${id} объявляет включённую механику закрытой`);
+    }
   }
+  // ...и код подтверждает: рынок строит инструкции, а книга заявок — v2.
+  assert.match(read('../aof_backend/src/routes/hotMarket.ts'), /hotMarketBuy\(/);
+  assert.match(read('../aof_backend/src/routes/orderbook.ts'), /v2\/buy\/place/);
+  assert.ok(!/err!\(MarketError::TradingDisabled\)\s*there/.test(''), 'sanity');
 });
 
 test('локальный журнал сайта переведён на семь языков и не выдаёт отметки за игровые награды', async () => {
@@ -2357,7 +2392,7 @@ test('страница рынка: все шесть форматов на се�
   assert.match(layout, /localizedRoutes = new Set<string>\(\[[^\]]*'market'/);
   assert.match(layout, /id === 'market' \? siteMarket\[language\]/);
   assert.equal(pages.find(p => p.id === 'market')?.lead, siteMarket.ru.lead);
-  assert.deepEqual([...marketVenueIds], ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotClosed']);
+  assert.deepEqual([...marketVenueIds], ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotMarket']);
   const orderbook = code('../aof_backend/src/routes/orderbook.ts');
   for (const path of ['buy/place', 'sell/place', 'match']) assert.ok(orderbook.includes(`r.post('/${path}', legacyPaused)`), path);
   const hotMarket = code('../aof_backend/src/routes/hotMarket.ts');
@@ -2371,7 +2406,11 @@ test('страница рынка: все шесть форматов на се�
     assert.deepEqual(Object.keys(copy.venues).sort(), [...marketVenueIds].sort(), `${lang}: шесть площадок`);
     for (const venue of marketVenueIds) {
       assert.ok(copy.venues[venue].trim(), `${lang}: ${venue}`);
-      assert.ok(tradeNavigationCopy[lang].market[venue].trim(), `${lang}: название ${venue}`);
+      // Площадка рынка событий называется по живому состоянию: механика
+      // включена, поэтому берётся hotOpen, а не «закрыто».
+      const label = venue === 'hotMarket' ? tradeNavigationCopy[lang].market.hotOpen
+        : tradeNavigationCopy[lang].market[venue];
+      assert.ok(label.trim(), `${lang}: название ${venue}`);
     }
     const text = [copy.lead, ...copy.paragraphs, copy.heading, ...Object.values(copy.venues), copy.note].join(' ');
     if (lang !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${lang}: русский фрагмент`);
@@ -2544,7 +2583,8 @@ test('обзор торговых форматов на семи языках н
     assert.equal(copy.checks.length, 4, lang);
     assert.deepEqual(Object.keys(siteMarket[lang].venues), [...marketVenueIds], `${lang}: шесть площадок`);
     const values = [copy.lead, ...copy.paragraphs, copy.heading, copy.checksHeading, ...copy.checks, copy.note,
-      ...marketVenueIds.flatMap(id => [siteMarket[lang].venues[id], tradeNavigationCopy[lang].market[id]])];
+      ...marketVenueIds.flatMap(id => [siteMarket[lang].venues[id],
+        id === 'hotMarket' ? tradeNavigationCopy[lang].market.hotOpen : tradeNavigationCopy[lang].market[id]])];
     assert.ok(values.every(value => value.trim()), `${lang}: пустой текст`);
     if (lang !== 'ru') assert.ok(!values.some(value => /[А-Яа-яЁё]/.test(value)), `${lang}: русский текст`);
   }
@@ -3477,8 +3517,13 @@ test('laboratory and plot reuse translated resource and building names without d
 test('disabled mechanics keep canonical guard identifiers and translate all player copy', async () => {
   const { disabledMechanicCopy } = await import('../src/i18n/disabledMechanicCopy.ts');
   const notice = read('src/components/ui/FeatureDisabledNotice.tsx');
-  const ids = ['collectors', 'session', 'tools_repair'] as const;
+  const ids = ['session', 'tools_repair'] as const;
   for (const id of ids) assert.match(notice, new RegExp(`${id}: \\{ guard:`));
+  // [AUDIT F-16] Коллекционеры живые (allowlist оператора), поэтому постоянной
+  // плашки «недоступно» быть не должно: панель работает с живым состоянием.
+  assert.doesNotMatch(notice, /^  collectors: \{/m, 'коллекционеры включены — плашка была бы ложью');
+  assert.ok(!('collectors' in disabledMechanicCopy.ru.explanations),
+    'тексты «недоступно» для коллекционеров больше не нужны');
   assert.match(notice, /const m = DISABLED_MECHANICS\[id\]/);
   assert.match(notice, /disabledMechanicCopy\[language\]\.explanations\[id\]/);
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
@@ -4830,7 +4875,12 @@ test("перерождение: панель читает сеть, отверг
   assert.ok(status, "полный ответ обязан разбираться");
   assert.equal(status!.surplus.accounts.length, 1);
   assert.equal(surplusTotalAtoms(status!.surplus.accounts).toString(), "1500000000");
-  assert.equal(cooldownRemainingMs(status!, Date.now()), (604900 - 200) * 1000);
+  // Часы передаются явно: ответ не должен зависеть от того, успел ли пройти
+  // тик секунды между двумя замерами времени внутри функции.
+  assert.equal(cooldownRemainingMs(status!, 200_000), (604900 - 200) * 1000);
+  assert.equal(cooldownRemainingMs(status!, 604_899_000), 1000);
+  assert.equal(cooldownRemainingMs(status!, 604_900_000), 0, 'после срока кулдаун не блокирует');
+  assert.equal(cooldownRemainingMs(status!, 700_000_000), 0);
 
   // Любая неполнота — отказ, а не «покажем половину».
   for (const broken of [

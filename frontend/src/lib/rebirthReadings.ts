@@ -163,10 +163,19 @@ export function surplusTotalAtoms(surplus: readonly RebirthSurplusEntry[]): bigi
   return surplus.reduce((total, entry) => total + BigInt(entry.amountAtoms), 0n);
 }
 
-/** Сколько миллисекунд осталось до следующего перерождения; 0 — уже можно. */
+/**
+ * Сколько миллисекунд осталось до следующего перерождения; 0 — уже можно.
+ *
+ * Часы берутся из `nowMs` (по умолчанию — часы клиента), а не из повторного
+ * `Date.now()`: раньше функция складывала время из ответа сети с разницей двух
+ * собственных замеров часов, и на границе секунды ответ менялся на 1000 мс —
+ * тест падал примерно раз в десяток прогонов, а панель показывала то «можно»,
+ * то «нельзя» на одном и том же состоянии. Тот же приём, что у остальных
+ * обратных отсчётов приложения (`timeLeftStr`).
+ */
 export function cooldownRemainingMs(status: RebirthStatus, nowMs = Date.now()): number {
   if (status.nextAllowedAt === null) return 0;
-  const now = status.now + Math.floor((nowMs - Date.now()) / 1000);
+  const now = Math.floor(nowMs / 1000);
   return Math.max(0, (status.nextAllowedAt - now) * 1000);
 }
 

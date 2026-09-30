@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { SystemProgram, Transaction, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import {AUTHORITY, TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { fetchOne, fetchOneForSigner } from "../lib/decode";
@@ -580,10 +580,69 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
   }
 });
 
-// Tool grants stay disabled: the old endpoint had an incomplete account map and
-// must not advertise a transaction that cannot be built against the deployed IDL.
-r.post("/test-grant-tools", nonProductionOnly, (_req, res) => {
-  res.status(503).json({ error: "TOOL_GRANT_DISABLED_UNTIL_ACCOUNT_MAP_IS_IMPLEMENTED" });
+// Выдача инструментов (только вне продакшена). Раньше здесь стояла заглушка
+// «нет карты аккаунтов»: актуальная карта — config, authority, auth-PDA, минт,
+// ATA получателя, сам получатель и ToolData-PDA. Минт создаётся 0-decimal с
+// авторитетом auth-PDA (иначе mint_tool отклонит его по mint_authority), а
+// `token_account.owner == recipient` проверяет уже сама программа: инструмент
+// нельзя навязать кошельку, который его не просил.
+const TOOL_KIND_IDS = [
+  "plasma_cutter", "silicon_extractor", "data_harvester", "quantum_transmitter", "neural_seeder",
+] as const;
+const TOOL_RARITY_ARG: Record<string, any> = {
+  common: { common: {} },
+  uncommon: { uncommon: {} },
+  rare: { rare: {} },
+  epic: { epic: {} },
+  legendary: { legendary: {} },
+};
+
+r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
+  try {
+    if (!AUTHORITY) {
+      return res.status(503).json({ error: "Authority signing is disabled (AUTHORITY_MODE=read-only)." });
+    }
+    const recipient = pk(req.body.user || req.body.recipient);
+    const toolType = String(req.body.toolType || "plasma_cutter").toLowerCase();
+    const rarity = TOOL_RARITY_ARG[String(req.body.rarity || "common").toLowerCase()];
+    const count = Math.min(Math.max(Number(req.body.count ?? 1) || 1, 1), 5);
+    if (!(TOOL_KIND_IDS as readonly string[]).includes(toolType)) {
+      return res.status(400).json({ error: "Unknown tool type" });
+    }
+    if (!rarity) return res.status(400).json({ error: "Unknown rarity" });
+
+    const [config] = configPda();
+    const [auth] = authPda();
+    const instructions: any[] = [];
+    const granted: Array<{ mint: string; tokenAccount: string; toolData: string }> = [];
+    for (let index = 0; index < count; index += 1) {
+      const mint = await createMint(connection, AUTHORITY, auth, null, 0, undefined, { commitment: "confirmed" });
+      const tokenAccount = getAssociatedTokenAddressSync(mint, recipient);
+      const [toolData] = toolPda(mint);
+      instructions.push(
+        createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, tokenAccount, recipient, mint),
+      );
+      instructions.push(await (program.methods as any)
+        .mintTool(toolType, rarity)
+        .accounts({
+          config,
+          authority: AUTHORITY_PUBKEY,
+          auth,
+          mint,
+          tokenAccount,
+          recipient,
+          toolData,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction());
+      granted.push({ mint: mint.toBase58(), tokenAccount: tokenAccount.toBase58(), toolData: toolData.toBase58() });
+    }
+    const sig = await authorityOnly(instructions);
+    res.json({ success: true, count: granted.length, recipient: recipient.toBase58(), sig, granted });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 
