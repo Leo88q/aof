@@ -706,6 +706,43 @@ pub struct BurnTool<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TransferTool<'info> {
+    /// Текущий владелец — единственная подпись перевода.
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    #[account(constraint = mint.decimals == 0 @ AofError::InvalidMint)]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = sender_token.mint == mint.key(),
+        constraint = sender_token.owner == sender.key() @ AofError::NotToolOwner,
+        constraint = sender_token.amount >= 1 @ AofError::ZeroAmount
+    )]
+    pub sender_token: Account<'info, TokenAccount>,
+    /// CHECK: получатель; владельцем инструмента становится именно он.
+    pub recipient: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        constraint = recipient_token.mint == mint.key(),
+        constraint = recipient_token.owner == recipient.key() @ AofError::Unauthorized,
+        constraint = recipient_token.amount == 0 @ AofError::AlreadyOwnsTool
+    )]
+    pub recipient_token: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool_data.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool_data.owner == sender.key() @ AofError::NotToolOwner,
+        constraint = tool_data.operator == sender.key() @ AofError::NotToolOperator,
+        constraint = !tool_data.staked @ AofError::AlreadyStaked,
+        constraint = !tool_data.is_mining @ AofError::AlreadyMining
+    )]
+    pub tool_data: Account<'info, ToolData>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
 #[instruction(tool_type: String, rarity: Rarity, durability: u8)]
 pub struct MigrateTool<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
@@ -3854,6 +3891,11 @@ pub mod aof_core {
 
     pub fn migrate_tool(ctx: Context<MigrateTool>, tool_type: String, rarity: Rarity, durability: u8) -> Result<()> {
         instructions::migrate_tool::handler(ctx, tool_type, rarity, durability)
+    }
+
+    /// Канонический перенос инструмента (NFT + владение) одним действием.
+    pub fn transfer_tool(ctx: Context<TransferTool>) -> Result<()> {
+        instructions::tool_transfer::transfer_handler(ctx)
     }
 
     pub fn craft(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {

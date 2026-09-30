@@ -15,6 +15,16 @@ pub struct ToolBurned {
     pub mint: Pubkey,
 }
 
+/// Канонический перенос инструмента вместе с владением (`transfer_tool`).
+/// Индексаторы используют событие как источник правды о смене владельца:
+/// SPL-перевод без него владение не меняет.
+#[event]
+pub struct ToolTransferred {
+    pub mint: Pubkey,
+    pub from: Pubkey,
+    pub to: Pubkey,
+}
+
 #[event]
 pub struct Staked {
     pub user: Pubkey,

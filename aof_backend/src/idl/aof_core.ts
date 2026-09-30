@@ -10670,6 +10670,66 @@ export type AofCore = {
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "transferTool",
+      "discriminator": [
+        113,
+        133,
+        218,
+        29,
+        218,
+        58,
+        56,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "senderToken",
+          "writable": true
+        },
+        {
+          "name": "recipient"
+        },
+        {
+          "name": "recipientToken",
+          "writable": true
+        },
+        {
+          "name": "toolData",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -12182,6 +12242,19 @@ export type AofCore = {
         187,
         213
       ]
+    },
+    {
+      "name": "toolTransferred",
+      "discriminator": [
+        253,
+        253,
+        110,
+        212,
+        145,
+        146,
+        54,
+        128
+      ]
     }
   ],
   "errors": [
@@ -12874,6 +12947,11 @@ export type AofCore = {
       "code": 6137,
       "name": "seasonMismatch",
       "msg": "Season pass belongs to a different season"
+    },
+    {
+      "code": 6138,
+      "name": "alreadyOwnsTool",
+      "msg": "Recipient token account already holds a tool of this mint"
     }
   ],
   "types": [
@@ -16492,6 +16570,26 @@ export type AofCore = {
           {
             "name": "burnedAtoms",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "toolTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
           }
         ]
       }

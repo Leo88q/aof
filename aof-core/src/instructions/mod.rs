@@ -71,3 +71,4 @@ pub mod roles;
 // not compile: `instructions::set_pending_authority` would be unresolved.
 pub use authority::{accept_authority, cancel_pending_authority, set_pending_authority};
 pub use admin_config::{set_mining_enabled, set_supply_cap};
+pub mod tool_transfer;

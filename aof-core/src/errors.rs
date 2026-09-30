@@ -299,4 +299,7 @@ pub enum AofError {
     RebirthBurnLimitExceeded,
     #[msg("Season pass belongs to a different season")]
     SeasonMismatch,
+    // [transfer_tool] appended: existing codes must not move.
+    #[msg("Recipient token account already holds a tool of this mint")]
+    AlreadyOwnsTool,
 }
