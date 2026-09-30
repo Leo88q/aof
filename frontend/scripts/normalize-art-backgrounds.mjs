@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 /**
- * Один фон для арта инструментов.
+ * Один фон для арта: инструменты, ресурсы и всё, что лежит в public/assets/nfts.
  *
  * Жалоба владельца 2026-09-28: «у нфт разные цвета фонов». Картины рисовались
  * партиями, и подложка у них разная — почти чёрная, синяя, фиолетовая. На одной
  * полке каталога это читается как разные по качеству предметы.
+ *
+ * Жалоба 2026-09-30: «в инструментах и в ресурсах разные фоны по оттенку». Плашки
+ * ресурсов лежали во вложенной папке, а скрипт читал только верхний уровень:
+ * инструменты стояли на тёмно-синей подложке (7,14,30), ресурсы — на почти
+ * чёрной (2,9,20). Теперь обход рекурсивный, и обе полки меряются одной меркой.
  *
  * Скрипт приводит подложку каждой картины к цвету плитки интерфейса
  * (`--fg-deep`, #0D1013) уровнями по каждому каналу:
@@ -27,10 +32,23 @@ import jpeg from "jpeg-js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ART_DIR = join(here, "../public/assets/nfts");
+
+/** Все картины полки: инструменты в корне и ресурсы во вложенной папке. */
+export function artFiles(dir = ART_DIR, prefix = "") {
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) files.push(...artFiles(join(dir, entry.name), rel));
+    else if (entry.name.endsWith(".jpg")) files.push(rel);
+  }
+  return files.sort();
+}
 /** Цвет плитки интерфейса: с ним обязан совпадать фон картины. */
 export const TILE = { r: 0x0d, g: 0x10, b: 0x13 };
-/** Допуск: столько живёт шум сжатия. */
-export const TOLERANCE = 10;
+/** Допуск: столько живёт шум сжатия.
+ *  Было 10: при таком зазоре подложка с синим уклоном (+10 по синему) считалась
+ *  «нормой» и в каталоге читалась другим оттенком — жалоба 2026-09-30. */
+export const TOLERANCE = 6;
 
 export function decode(file) {
   const raw = jpeg.decode(readFileSync(file), { useTArray: true, maxMemoryUsageInMB: 512 });
@@ -87,7 +105,7 @@ const distance = (bg) =>
 
 function main() {
   const write = process.argv.includes("--write");
-  const files = readdirSync(ART_DIR).filter((f) => f.endsWith(".jpg")).sort();
+  const files = artFiles();
   const rows = [];
   const offenders = [];
 
@@ -110,7 +128,8 @@ function main() {
   }
 
   console.log(rows.join("\n"));
-  console.log(`\nкартин: ${files.length}, выравнивание ${write ? "записано" : "не записывалось"}`);
+  const tools = files.filter((f) => !f.includes("/")).length;
+  console.log(`\nкартин: ${files.length} (инструменты: ${tools}, ресурсы: ${files.length - tools}), выравнивание ${write ? "записано" : "не записывалось"}`);
   if (offenders.length) {
     console.log(`фон отличается от плитки у ${offenders.length} картин:`);
     console.log(offenders.map((o) => `  ${o}`).join("\n"));

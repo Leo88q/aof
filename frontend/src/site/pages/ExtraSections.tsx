@@ -18,6 +18,10 @@ import { recipeWorkshopCopy } from '../../i18n/recipeWorkshopCopy';
 import { WORKSHOP_RECIPES } from '../../lib/workshopRecipes';
 import { tradeNavigationCopy } from '../../i18n/tradeNavigationCopy';
 import { toolName, toolsCopy } from '../../i18n/toolsCopy';
+import {
+  toolsCatalogCopy, toolProfiles, TOOL_RESOURCE, TOOL_FROM_PACK, TOOL_SHIFT_HOURS, TOOL_YIELD_MULTIPLIER,
+  type ToolTypeId,
+} from '../../i18n/siteToolsCatalog';
 import { siteRulesCopy } from '../../i18n/siteRulesCopy';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { homeDetail, homeResourceNames, type ResourceId } from '../../i18n/homeDetail';
@@ -26,7 +30,7 @@ import { editorialPages } from '../../i18n/siteEditorial';
 import { siteLore } from '../../i18n/siteLore';
 import { siteRoadmap } from '../../i18n/siteRoadmap';
 import { siteFaq, type FaqTopic } from '../../i18n/siteFaq';
-import { pageNames, type PageId } from '../../i18n/translations';
+import { pageNames, type Language, type PageId } from '../../i18n/translations';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Section } from '../ui/Components';
@@ -187,6 +191,55 @@ function JournalBoard() {
         <button type="button" className="site-small-button" onClick={reset}>{copy.reset}</button>
       </>}
     </div>
+  );
+}
+
+/** Галерея 25 исполнений: галетник выбирает редкость, «все» показывает ряд целиком. */
+function ToolGallery({ language, intro, notice, filterLabel, allLabel, showing }: {
+  language: Language;
+  intro: string;
+  notice: string;
+  filterLabel: string;
+  allLabel: string;
+  showing: (shown: number, total: number) => string;
+}) {
+  const rarityLabels = toolsCopy[language].collectionPage.rarities;
+  const [rarity, setRarity] = useState<'all' | (typeof TOOL_RARITIES)[number]>('all');
+  const types = TOOL_NFTS.map((tool) => tool.id as ToolTypeId);
+  const visible = rarity === 'all' ? TOOL_RARITIES : [rarity];
+  return (
+    <>
+      <p className="site-reading">{intro}</p>
+      <div className="site-filters">
+        <label>
+          {filterLabel}
+          <select value={rarity} onChange={(event) => setRarity(event.target.value as typeof rarity)}>
+            <option value="all">{allLabel}</option>
+            {TOOL_RARITIES.map((key, index) => <option key={key} value={key}>{rarityLabels[index]}</option>)}
+          </select>
+        </label>
+      </div>
+      <p role="status">{showing(visible.length * types.length, TOOL_RARITIES.length * types.length)}</p>
+      <div className="site-tool-matrix">
+        {types.map((type) => (
+          <article key={type} className="site-card site-paper site-nft">
+            <h3>{toolName(language, type)}</h3>
+            <ul className="site-nft__rarities" data-compact={rarity === 'all'}>
+              {visible.map((key) => {
+                const index = TOOL_RARITIES.indexOf(key);
+                return (
+                  <li key={key}>
+                    <SitePlate src={toolPlate(type, key)} alt="" size="100%" />
+                    <small>{rarityLabels[index]}</small>
+                  </li>
+                );
+              })}
+            </ul>
+          </article>
+        ))}
+      </div>
+      <p className="site-guide-warn">{notice}</p>
+    </>
   );
 }
 
@@ -601,9 +654,92 @@ export function ExtraSections({ id }: { id: string }) {
 
   if (id === 'tools') {
     const copy = siteTools[language];
+    const catalog = toolsCatalogCopy[language];
     const rarityLabels = toolsCopy[language].collectionPage.rarities;
+    const profiles = toolProfiles[language];
+    const types = TOOL_NFTS.map((tool) => tool.id as ToolTypeId);
+    const source = (type: ToolTypeId) => TOOL_FROM_PACK[type] ? catalog.fromPack : catalog.craftOnly;
     return (
       <>
+        {/* 1. Реестр: типы одной таблицей — что добывает, сколько часов держит
+            заход, откуда берётся. Порядок колонок повторяет путь мастера. */}
+        <Section title={catalog.registryHeading}>
+          <p className="site-reading">{catalog.registryIntro}</p>
+          <div className="site-table-wrap">
+            <table className="site-table">
+              <thead>
+                <tr>
+                  <th scope="col">{catalog.columns.tool}</th>
+                  <th scope="col">{catalog.columns.resource}</th>
+                  <th scope="col">{catalog.columns.hours}</th>
+                  <th scope="col">{catalog.columns.yield}</th>
+                  <th scope="col">{catalog.columns.source}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {types.map((type) => (
+                  <tr key={type}>
+                    <th scope="row" className="site-tool-cell">
+                      <SitePlate src={toolPlate(type, 'common')} alt="" size={44} className="site-io-icon" />
+                      <span>{toolName(language, type)}</span>
+                    </th>
+                    <td className="site-tool-cell">
+                      <SitePlate src={resourceIcon(TOOL_RESOURCE[type])} alt="" size={32} className="site-io-icon" />
+                      <span>{resourceName(TOOL_RESOURCE[type], TOOL_RESOURCE[type])}</span>
+                    </td>
+                    <td>
+                      {TOOL_SHIFT_HOURS.join(' / ')}
+                      <small className="site-cell-note">{catalog.hoursHint}</small>
+                    </td>
+                    <td>
+                      ×{TOOL_YIELD_MULTIPLIER[0]} … ×{TOOL_YIELD_MULTIPLIER[TOOL_YIELD_MULTIPLIER.length - 1]}
+                      <small className="site-cell-note">{catalog.yieldHint}</small>
+                    </td>
+                    <td><span className="site-chip" data-source={TOOL_FROM_PACK[type] ? 'pack' : 'craft'}>{source(type)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        {/* 2. Профили: одна карточка на тип — картина, смысл и рабочие числа. */}
+        <Section title={catalog.profileHeading}>
+          <p className="site-reading">{catalog.profileIntro}</p>
+          <div className="site-grid site-tool-profiles">
+            {types.map((type, index) => (
+              <article key={type} className={'site-card site-paper site-tool site-tool--' + index % 5}>
+                <SitePlate src={toolPlate(type, 'common')} alt="" size="100%" className="site-tool__art" />
+                <h3>{toolName(language, type)}</h3>
+                <p>{profiles[type]}</p>
+                <dl className="site-tool-facts">
+                  <div>
+                    <dt>{catalog.columns.resource}</dt>
+                    <dd className="site-tool-cell">
+                      <SitePlate src={resourceIcon(TOOL_RESOURCE[type])} alt="" size={26} className="site-io-icon" />
+                      <span>{resourceName(TOOL_RESOURCE[type], TOOL_RESOURCE[type])}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{catalog.hoursLabel}</dt>
+                    <dd>{TOOL_SHIFT_HOURS.join(' · ')}</dd>
+                  </div>
+                  <div>
+                    <dt>{catalog.yieldLabel}</dt>
+                    <dd>×{TOOL_YIELD_MULTIPLIER.join(' · ×')}</dd>
+                  </div>
+                  <div>
+                    <dt>{catalog.sourceLabel}</dt>
+                    <dd>{source(type)}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <p className="site-guide-warn">{catalog.miningNote}</p>
+        </Section>
+
+        {/* 3. Редкости: характер словами и числа одной таблицей. */}
         <Section title={copy.rarityHeading}>
           <div className="site-grid">
             {TOOL_RARITIES.map((rarity, index) => (
@@ -611,30 +747,51 @@ export function ExtraSections({ id }: { id: string }) {
                 <SitePlate src={toolPlate('plasma_cutter', rarity)} alt="" size="100%" className="site-tool__art" />
                 <h3>{rarityLabels[index]}</h3>
                 <p>{copy.rarityDescriptions[index]}</p>
+                <dl className="site-tool-facts">
+                  <div><dt>{catalog.columns.hours}</dt><dd>{TOOL_SHIFT_HOURS[index]}</dd></div>
+                  <div><dt>{catalog.yieldLabel}</dt><dd>×{TOOL_YIELD_MULTIPLIER[index]}</dd></div>
+                </dl>
               </article>
             ))}
           </div>
           <p className="site-guide-warn">{copy.rarityNotice}</p>
-        </Section>
-        <Section title={copy.galleryHeading}>
-          <p className="site-reading">{copy.galleryIntro}</p>
-          <div className="site-nft-grid">
-            {TOOL_NFTS.map((tool) => (
-              <article key={tool.id} className="site-card site-paper site-nft">
-                <SitePlate src={tool.base} alt="" size="100%" className="site-nft__hero" />
-                <h3>{toolName(language, tool.id)}</h3>
-                <ul className="site-nft__rarities">
-                  {TOOL_RARITIES.map((rarity, index) => (
-                    <li key={rarity}>
-                      <SitePlate src={toolPlate(tool.id, rarity)} alt="" size="100%" />
-                      <small>{rarityLabels[index]}</small>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+          <div className="site-table-wrap site-rarity-matrix">
+            <h3>{catalog.matrixHeading}</h3>
+            <p className="site-reading">{catalog.matrixIntro}</p>
+            <table className="site-table">
+              <thead>
+                <tr>
+                  <th scope="col">{catalog.matrixHeading}</th>
+                  <th scope="col">{catalog.columns.hours}</th>
+                  <th scope="col">{catalog.yieldLabel}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {TOOL_RARITIES.map((rarity, index) => (
+                  <tr key={rarity} className={'site-rarity-row site-tool--' + index}>
+                    <th scope="row" className="site-tool-cell">
+                      <SitePlate src={toolPlate('silicon_extractor', rarity)} alt="" size={36} className="site-io-icon" />
+                      <span>{rarityLabels[index]}</span>
+                    </th>
+                    <td>{TOOL_SHIFT_HOURS[index]}</td>
+                    <td>×{TOOL_YIELD_MULTIPLIER[index]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <p className="site-guide-warn">{copy.galleryNotice}</p>
+        </Section>
+
+        {/* 4. Галерея: все 25 исполнений, фильтр по редкости. */}
+        <Section title={copy.galleryHeading}>
+          <ToolGallery
+            language={language}
+            intro={copy.galleryIntro}
+            notice={copy.galleryNotice}
+            filterLabel={catalog.galleryFilter}
+            allLabel={catalog.galleryAllRarities}
+            showing={catalog.galleryShowing}
+          />
         </Section>
       </>
     );

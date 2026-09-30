@@ -35,6 +35,7 @@ import { resourceLeads } from '../../i18n/resourceLeads';
 import { resourceDetailCopy, resourceRecipes } from '../../i18n/resourceDetailCopy';
 import { siteNotFound } from '../../i18n/siteNotFound';
 import { pages, resources, resourcesBySlug, mechanicRoutes } from '../content/game';
+import type { ResourceCategory } from '../content/schema';
 import { sitePanelCopy } from '../../i18n/sitePanelCopy';
 import { resourcePlate } from '../../lib/visualAssets';
 import { Lamp, Rocker } from '../ui/Controls';
@@ -225,6 +226,9 @@ export function ContentPage({ id }: { id: string }) {
   );
 }
 
+/** Порядок отделов каталога: от сырья к особым ресурсам. */
+const CATALOG_ORDER: ResourceCategory[] = ['base', 'chain', 'material', 'rare', 'consumable', 'token', 'collab', 'social'];
+
 export function ResourcesCatalog() {
   const { language, t } = useLocale();
   const copy = resourceCatalogCopy[language];
@@ -234,43 +238,71 @@ export function ResourcesCatalog() {
   // old-language query showing a misleading empty catalog for one render.
   const [search, setSearch] = useState({ language, query: '' });
   const query = search.language === language ? search.query : '';
-  const [category, setCategory] = useState('all');
-  // В фильтре только те категории, где что-то лежит: пустой раздел в списке
+  const [category, setCategory] = useState<'all' | ResourceCategory>('all');
+  // В фильтре только те отделы, где что-то лежит: пустой раздел в списке
   // выглядел как поломка поиска.
-  const usedCategories = [...new Set(resources.map(r => r.category))];
+  const usedCategories = CATALOG_ORDER.filter(key => resources.some(r => r.category === key));
   const list = resources.filter(r =>
     (category === 'all' || r.category === category) &&
     (resourceName(r.id, r.name) + ' ' + resourceLead(r.id, r.lead)).toLocaleLowerCase(language).includes(query.trim().toLocaleLowerCase(language))
   );
+  const groups = usedCategories
+    .map(key => ({ key, items: list.filter(r => r.category === key) }))
+    .filter(group => group.items.length > 0);
   return (
     <div lang={language}>
       <PageTitle eyebrow={t('resourceLink')} title={`${resources.length} ${copy.resources}`} lead={`${usedCategories.length} ${copy.categories}`} />
       <Section>
+        {/* Поиск и отдел стоят одной строкой: сначала сужаем ряд, потом читаем. */}
         <div className="site-filters">
           <label>{copy.search}<input type="search" value={query} onChange={e => setSearch({ language, query: e.target.value })} /></label>
           <label>{copy.category}
-            <select value={category} onChange={e => setCategory(e.target.value)}>
+            <select value={category} onChange={e => setCategory(e.target.value as 'all' | ResourceCategory)}>
               <option value="all">{copy.all}</option>
-              {usedCategories.map((k) => <option key={k} value={k}>{copy.labels[k as keyof typeof copy.labels]}</option>)}
+              {usedCategories.map((k) => <option key={k} value={k}>{copy.labels[k]}</option>)}
             </select>
           </label>
         </div>
-        <p role="status">{copy.found}: {list.length}</p>
-        <div className="site-grid">
-          {list.map(r => (
-            <Link className="site-card site-paper" key={r.id} to={'/site/resources/' + r.slug}>
-              {resourcePlate(r.id) && (
-                <span className="nf-plate" style={{ width: '100%', marginBottom: 12 }}>
-                  <img src={resourcePlate(r.id)} alt="" />
-                </span>
-              )}
-              <StatusBadge status={r.status} />
-              <h2>{resourceName(r.id, r.name)}</h2>
-              <p lang={language}>{resourceLead(r.id, r.lead)}</p>
-              <span>{copy.labels[r.category]}</span>
-            </Link>
-          ))}
-        </div>
+        <p role="status">{copy.showing(list.length, resources.length)}</p>
+        <p className="site-reading site-catalog-note">{copy.groupNote}</p>
+
+        {groups.map((group) => (
+          <section key={group.key} className="site-catalog-group" aria-labelledby={'catalog-' + group.key}>
+            {/* Отдел — та же лицевая панель: лампа, название ряда, счётчик. */}
+            <h2 className="site-catalog-group__title" id={'catalog-' + group.key}>
+              <Lamp state="live" />
+              {copy.labels[group.key]}
+              <span className="site-catalog-group__count">{group.items.length} / {resources.filter(r => r.category === group.key).length}</span>
+            </h2>
+            <p className="site-catalog-group__note">{copy.notes[group.key]}</p>
+            <div className="site-grid">
+              {group.items.map(r => {
+                const recipes = resourceRecipes(r.id as ResourceId, language);
+                return (
+                  <Link className="site-card site-paper site-resource" key={r.id} to={'/site/resources/' + r.slug}>
+                    {resourcePlate(r.id) && (
+                      <span className="nf-plate site-resource__art" style={{ width: '100%', marginBottom: 12 }}>
+                        <img src={resourcePlate(r.id)} alt="" />
+                      </span>
+                    )}
+                    <StatusBadge status={r.status} />
+                    <h3>{resourceName(r.id, r.name)}</h3>
+                    <p lang={language}>{resourceLead(r.id, r.lead)}</p>
+                    <ul className="site-resource__roles">
+                      <li>{copy.labels[r.category]}</li>
+                      {recipes.produces.length > 0 && <li>{copy.recipeMakes(recipes.produces.length)}</li>}
+                      {recipes.uses.length > 0 && <li>{copy.recipeUses(recipes.uses.length)}</li>}
+                    </ul>
+                    <span className="site-resource__chain">
+                      {copy.linkedLabel}: {r.relatedResources.map(id => resourceName(id, id)).join(' · ')}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+        {groups.length === 0 && <p className="site-guide-warn">{copy.found}: 0</p>}
       </Section>
     </div>
   );

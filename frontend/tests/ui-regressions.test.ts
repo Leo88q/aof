@@ -782,6 +782,12 @@ test("каталог не показывает пути к файлам, а ар
     encoding: "utf8",
   });
   assert.match(report, /фон у всех картин один/, `фон картин разъехался:\n${report}`);
+  // Жалоба 2026-09-30: «в инструментах и в ресурсах разные фоны по оттенку».
+  // Обход обязан заходить во вложенную папку ресурсов, иначе половина полки
+  // остаётся непроверенной, а допуск не должен пропускать синий уклон.
+  assert.match(report, /инструменты: 25, ресурсы: 2[0-9]/, `выравнивание не покрывает обе полки:\n${report}`);
+  assert.match(read("scripts/normalize-art-backgrounds.mjs"), /export const TOLERANCE = 6;/,
+    "допуск снова пропускает подложку с другим оттенком");
 });
 
 test("шесть вкладок дока делят ширину и помещаются на телефоне", () => {
@@ -2242,10 +2248,15 @@ test('сайт инструментов переводит все пять ти�
   const css = code('src/site/styles/site.css');
   assert.match(content, /id === 'tools' \? siteTools\[language\]/);
   assert.ok(!/tools: \['tools'\]/.test(content), 'не показывать старые инструкции как подтверждённое руководство');
-  assert.match(extras, /TOOL_NFTS\.map\(\(tool\) =>/);
+  // Реестр вынесен в собственный компонент витрины: тип перебирается по списку
+  // TOOL_NFTS, имя берётся из общего словаря, редкости — из ряда TOOL_RARITIES.
+  assert.match(extras, /TOOL_NFTS\.map\(\(tool\) => tool\.id as ToolTypeId\)/);
   assert.match(extras, /TOOL_RARITIES\.map\(\(rarity, index\) =>/);
-  assert.match(extras, /toolName\(language, tool\.id\)/);
+  assert.match(extras, /toolName\(language, type\)/);
   assert.match(extras, /rarityLabels\[index\]/);
+  assert.match(extras, /toolsCatalogCopy\[language\]/, 'реестр инструментов обязан читать свой словарь');
+  assert.match(extras, /TOOL_SHIFT_HOURS\.join/, 'часы захода берутся из спецификации, а не из текста');
+  assert.match(extras, /catalog\.registryHeading/, 'у реестра нет заголовка');
   assert.match(extras, /copy\.galleryNotice/);
   assert.match(layout, /localizedRoutes = new Set<string>\(\[[^\]]*'tools'/);
   assert.match(layout, /id === 'tools' \? siteTools\[language\]/);
@@ -4228,4 +4239,113 @@ test("подписи пульта стоят на всех семи языках
     assert.equal(copy.modes.length, 3, `${language}: у галетника должно быть три положения`);
     assert.notEqual(copy.statusOn, copy.statusOff, `${language}: состояния пульта не различаются`);
   }
+});
+
+test("реестр инструментов показывает все пять типов с числами спецификации", async () => {
+  // Жалоба владельца 2026-09-30: «в инструментах не показаны все инструменты и
+  // как-то всё хаотично». Теперь на странице реестр типов, профиль каждого типа,
+  // матрица редкостей и витрина всех 25 исполнений.
+  const catalog = await import("../src/i18n/siteToolsCatalog.ts");
+  const { TOOL_NFTS, TOOL_RARITIES, toolPlate } = await import("../src/lib/visualAssets.ts");
+  const { toolsCopy } = await import("../src/i18n/toolsCopy.ts");
+  const { homeResourceNames } = await import("../src/i18n/homeDetail.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const extras = code("src/site/pages/ExtraSections.tsx");
+
+  // Реестр описан для всех пяти типов: ресурс, часы, множитель, источник.
+  assert.equal(TOOL_NFTS.length, 5, "типов инструмента должно быть пять");
+  assert.equal(TOOL_RARITIES.length, 5, "редкостей должно быть пять");
+  assert.equal(Object.keys(catalog.TOOL_RESOURCE).length, 5, "не у всех типов указан ресурс");
+  assert.equal(Object.keys(catalog.TOOL_FROM_PACK).length, 5, "не у всех типов указан источник");
+  assert.equal(catalog.TOOL_SHIFT_HOURS.length, 5, "часы захода должны быть перечислены по редкости");
+  assert.equal(catalog.TOOL_YIELD_MULTIPLIER.length, 5, "множитель выхода должен быть перечислен по редкости");
+  for (const tool of TOOL_NFTS) {
+    const id = tool.id as keyof typeof catalog.TOOL_RESOURCE;
+    assert.ok(catalog.TOOL_RESOURCE[id], `${id}: нет добываемого ресурса`);
+    assert.ok(homeResourceNames.ru[catalog.TOOL_RESOURCE[id] as keyof typeof homeResourceNames.ru], `${id}: ресурс не назван`);
+    assert.equal(typeof catalog.TOOL_FROM_PACK[id], "boolean", `${id}: источник не определён`);
+  }
+  // Из капсул выпадают только три типа: это правило спецификации, не оформление.
+  const fromPack = Object.values(catalog.TOOL_FROM_PACK).filter(Boolean).length;
+  assert.equal(fromPack, 3, "из капсул дропа должны выпадать три типа из пяти");
+  // Витрина показывает каждое исполнение: 5 типов × 5 редкостей = 25 картин.
+  for (const tool of TOOL_NFTS) for (const rarity of TOOL_RARITIES) {
+    assert.ok(toolPlate(tool.id, rarity), `${tool.id}/${rarity}: нет картины`);
+  }
+  const source = read("src/lib/visualAssets.ts");
+  assert.equal((source.match(/\/assets\/nfts\/[a-z-]+\.jpg/g) || []).length >= 25, true, "картины исполнений пропали");
+
+  for (const language of languages) {
+    const copy = catalog.toolsCatalogCopy[language];
+    const profiles = catalog.toolProfiles[language];
+    for (const key of ["registryHeading", "registryIntro", "profileHeading", "profileIntro", "miningNote", "matrixHeading", "matrixIntro", "galleryFilter", "galleryAllRarities"] as const) {
+      assert.ok(copy[key] && copy[key].trim().length > 4, `${language}: пустая подпись ${key}`);
+    }
+    for (const key of ["tool", "resource", "hours", "yield", "source"] as const) {
+      assert.ok(copy.columns[key].trim(), `${language}: пустая колонка ${key}`);
+    }
+    assert.ok(copy.fromPack.trim() && copy.craftOnly.trim(), `${language}: нет подписи источника`);
+    assert.notEqual(copy.fromPack, copy.craftOnly, `${language}: капсула и сборка не различаются`);
+    assert.match(copy.produces("X"), /X/, `${language}: строка «добывает» теряет название ресурса`);
+    assert.match(copy.galleryShowing(5, 25), /5/);
+    assert.match(copy.galleryShowing(5, 25), /25/);
+    for (const tool of TOOL_NFTS) {
+      const text = profiles[tool.id as keyof typeof profiles];
+      assert.ok(text && text.trim().length > 40, `${language}: ${tool.id} без описания`);
+    }
+  }
+  // Страница обязана показывать и реестр, и профили, и матрицу, и витрину.
+  for (const anchor of ["catalog.registryHeading", "catalog.profileHeading", "catalog.matrixHeading", "copy.galleryHeading", "<ToolGallery"]) {
+    assert.ok(extras.includes(anchor), `на странице инструментов пропал блок: ${anchor}`);
+  }
+  assert.match(extras, /TOOL_YIELD_MULTIPLIER\[index\]/, "матрица редкостей должна показывать множитель выхода");
+});
+
+test("каталог ресурсов разложен по отделам и показывает все 27 ресурсов", async () => {
+  const { resources } = await import("../src/site/content/resources.ts");
+  const { resourceCatalogCopy } = await import("../src/i18n/resourceCatalogCopy.ts");
+  const { homeResourceNames } = await import("../src/i18n/homeDetail.ts");
+  const { resourceLeads } = await import("../src/i18n/resourceLeads.ts");
+  const { resourceRecipes } = await import("../src/i18n/resourceDetailCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const page = code("src/site/pages/ContentPage.tsx");
+  const css = read("src/site/styles/site.css");
+
+  assert.equal(resources.length, 27, "каталог обязан описывать все 27 ресурсов");
+  // Отделы выводятся по порядку и только те, где что-то лежит: пустой отдел
+  // выглядел как поломка поиска.
+  assert.match(page, /const CATALOG_ORDER: ResourceCategory\[\] = \[/, "нет порядка отделов");
+  assert.match(page, /CATALOG_ORDER\.filter\(key => resources\.some/, "отделы без ресурсов обязаны отсеиваться");
+  assert.match(page, /site-catalog-group__title/, "заголовок отдела пропал");
+  assert.match(page, /copy\.showing\(list\.length, resources\.length\)/, "нет счётчика показанного");
+  assert.match(page, /resourceRecipes\(r\.id as ResourceId, language\)/, "роли ресурса берутся из таблицы рецептов, а не из текста");
+  assert.match(css, /\.site-catalog-group__count \{/, "у отдела нет счётчика");
+  assert.match(css, /\.site-resource__roles li \{/, "у карточки ресурса нет марок роли");
+
+  const categories = [...new Set(resources.map((r: { category: string }) => r.category))];
+  assert.ok(categories.length >= 6, `отделов должно быть не меньше шести, найдено ${categories.length}`);
+  for (const language of languages) {
+    const copy = resourceCatalogCopy[language];
+    for (const category of categories) {
+      const key = category as keyof typeof copy.labels;
+      assert.ok(copy.labels[key]?.trim(), `${language}: нет названия отдела ${category}`);
+      assert.ok(copy.notes[key]?.trim().length > 30, `${language}: нет пояснения отдела ${category}`);
+    }
+    assert.ok(copy.linkedLabel.trim() && copy.groupNote.trim().length > 30, `${language}: нет подписи связей`);
+    assert.match(copy.recipeMakes(2), /2/);
+    assert.match(copy.recipeUses(3), /3/);
+    assert.match(copy.showing(27, 27), /27/);
+    assert.match(copy.showing(4, 27), /4/);
+    for (const resource of resources) {
+      const id = resource.id as keyof typeof homeResourceNames.ru;
+      assert.ok(homeResourceNames[language][id], `${language}: ${resource.id} без названия`);
+      assert.ok(resourceLeads[language][id], `${language}: ${resource.id} без описания`);
+    }
+  }
+  // Роли в карточке — это следствие таблицы рецептов, а не выдуманные числа.
+  const withRecipe = resources.filter((r: { id: string }) => {
+    const lines = resourceRecipes(r.id as never, "ru");
+    return lines.produces.length + lines.uses.length > 0;
+  });
+  assert.ok(withRecipe.length >= 10, "таблица рецептов перестала связывать ресурсы");
 });
