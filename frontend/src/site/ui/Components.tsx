@@ -3,6 +3,7 @@ import { useLocale } from '../../i18n/LocaleProvider';
 import { commitLabels } from '../../i18n/commitLabels';
 import { siteChanceCopy } from '../../i18n/siteChanceCopy';
 import { resourceCatalogCopy } from '../../i18n/resourceCatalogCopy';
+import { Lamp, NamePlate } from './Controls';
 import { Link } from 'react-router-dom';
 import { motion, useScroll } from 'framer-motion';
 import { useReducedMotionSite } from '../hooks/useReducedMotionSite';
@@ -15,9 +16,15 @@ export function PageTitle({ eyebrow, title, lead, children }: { eyebrow?: string
   return (
     <header className="site-title">
       {children}
-      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+      {/* Верхняя планка корпуса: лампа, гравированная табличка и вентиляция. */}
+      <div className="site-panel-bar">
+        <Lamp state="live" />
+        {eyebrow && <NamePlate><Eyebrow>{eyebrow}</Eyebrow></NamePlate>}
+        <span className="site-panel-bar__vent" aria-hidden="true" />
+      </div>
       <h1>{title}</h1>
       {lead && <p>{lead}</p>}
+      <span className="site-title__scale" aria-hidden="true" />
     </header>
   );
 }
@@ -30,7 +37,13 @@ export function Section({ title, children }: { title?: string; children: ReactNo
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.08 }}
       transition={{ duration: reduced ? 0 : 0.3 }}>
-      {title && <h2>{title}</h2>}
+      {title && (
+        <h2 className="site-section__title">
+          <Lamp state="live" />
+          {title}
+          <span className="site-section__rule" aria-hidden="true" />
+        </h2>
+      )}
       {children}
     </motion.section>
   );

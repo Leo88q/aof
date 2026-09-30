@@ -35,7 +35,9 @@ import { resourceLeads } from '../../i18n/resourceLeads';
 import { resourceDetailCopy, resourceRecipes } from '../../i18n/resourceDetailCopy';
 import { siteNotFound } from '../../i18n/siteNotFound';
 import { pages, resources, resourcesBySlug, mechanicRoutes } from '../content/game';
+import { sitePanelCopy } from '../../i18n/sitePanelCopy';
 import { resourcePlate } from '../../lib/visualAssets';
+import { Lamp, Rocker } from '../ui/Controls';
 import {
   PageTitle, Section, Button, Counter, ParchmentCard, StatusBadge,
   CommitReveal, PackOpener, DrumInteract,
@@ -46,6 +48,13 @@ export function ContentPage({ id }: { id: string }) {
   if (!page) return <NotFound />;
   const hero = id === 'home';
   const { language, t } = useLocale();
+  // Три экрана стенда: галетник выбирает освещённый, остальные уходят в тень.
+  const [screen, setScreen] = useState(0);
+  const galleryScreens = [
+    { src: '/assets/backgrounds/lab.jpg', caption: t('laboratory') },
+    { src: '/assets/backgrounds/forge.jpg', caption: t('workshop') },
+    { src: '/assets/backgrounds/market.jpg', caption: t('market') },
+  ];
   const localized = language !== 'ru';
   const intro = id === 'start' || id === 'world' || id === 'energy' ? introPages[language][id as IntroId] : undefined;
   const editorial = id === 'manifesto' || id === 'weather' ? editorialPages[language][id as EditorialId] : undefined;
@@ -101,10 +110,25 @@ export function ContentPage({ id }: { id: string }) {
       {hero && (
         <>
           <Section title={t('galleryTitle')}>
-            <div className="site-scene-gallery">
-              <figure><img src="/assets/backgrounds/lab.jpg" alt="" loading="lazy" /><figcaption>{t('laboratory')}</figcaption></figure>
-              <figure><img src="/assets/backgrounds/forge.jpg" alt="" loading="lazy" /><figcaption>{t('workshop')}</figcaption></figure>
-              <figure><img src="/assets/backgrounds/market.jpg" alt="" loading="lazy" /><figcaption>{t('market')}</figcaption></figure>
+            <div className="site-scene-bank">
+              <Rocker
+                legend={sitePanelCopy[language].galleryLegend}
+                options={galleryScreens.map(item => item.caption)}
+                value={screen}
+                onChange={setScreen}
+                id="site-gallery-screen"
+              />
+              <div className="site-scene-gallery">
+                {galleryScreens.map((item, index) => (
+                  <figure key={item.src} className="site-screen" data-on={index === screen}>
+                    <img src={item.src} alt="" loading="lazy" />
+                    <figcaption>
+                      <Lamp state={index === screen ? 'live' : 'off'} />
+                      {item.caption}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
             </div>
           </Section>
           <Section title={t('gameTitle')}>

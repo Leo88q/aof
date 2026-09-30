@@ -256,7 +256,7 @@ span.site-guide-warn { display: inline-block; padding: 2px 8px; margin: 0 0 8px;
 .site-title::after { content: none; }
 .site-title > * { position: relative; z-index: 1; }
 .site-title h1 { max-width: 1000px; margin-bottom: 20px; }
-.site-title > p:last-child { font-size: clamp(1rem, 2vw, 1.25rem); max-width: 680px; color: var(--sb-dim); margin: 0; }
+.site-title > p:last-of-type { font-size: clamp(1rem, 2vw, 1.25rem); max-width: 680px; color: var(--sb-dim); margin: 0; }
 .site-god-rays, .site-dust-motes { display: none; }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -815,7 +815,6 @@ a.site-card:hover .site-card__art:not(.site-plate--icon) { border-color: rgba(95
   .site-ritual > p, .site-ritual > code, .site-ritual > h4, .site-ritual > .site-actions,
   .site-ritual > .site-demo-label, .site-ritual > .site-button { grid-column: 1; }
   .site-title { padding: clamp(40px, 8vw, 80px) 16px 64px; }
-  .site-title::after { padding-right: 16px; background-position: 50% calc(100% - 6px), 50% 100%, 16px 16px; }
   .site-steps li { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
   .site-guide-step { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; }
   .site-step-number { font-size: 1.3rem; }
@@ -863,7 +862,7 @@ a.site-card:hover .site-card__art:not(.site-plate--icon) { border-color: rgba(95
   .site-header-inner { min-height: 66px; flex-wrap: wrap; }
   .site-header-tools { margin-left: auto; }
   .site-play-link { padding: 8px; font-size: 11px; }
-  .site-title::before { background: linear-gradient(90deg, rgba(11,13,17,.92), rgba(11,13,17,.77)), url('/assets/backgrounds/hero.jpg') center top / 100% auto no-repeat; }
+  .site-title::before { background: linear-gradient(90deg, rgba(11,13,17,.92), rgba(11,13,17,.77)), var(--site-scene, url('/assets/backgrounds/hero.jpg')) center top / cover no-repeat; }
   .site-scene-gallery { grid-template-columns: 1fr; }
   .site-scene-gallery img { aspect-ratio: auto; }
 }
@@ -891,3 +890,527 @@ a.site-card:hover .site-card__art:not(.site-plate--icon) { border-color: rgba(95
 .site-header-inner > *, .site-header-tools > * { min-width: 0; }
 .site-hero-actions > *, .site-actions > * { min-width: 0; }
 .site-section > h2, .site-title h1, .site-title p { overflow-wrap: anywhere; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   17. СТЕНД: ФОН, КОРПУСА И ПРИБОРЫ (2026-09-30)
+   Сайт получает нарисованный фон (пять сцен палитры A) и пульт к нему.
+   Окна перестают быть плоскими карточками и собираются как лицевые панели
+   приборов из игры: корпус, безель, экран под стеклом, гравированная
+   табличка, лампа состояния, рубильник, галетник и фейдер.
+   Ни одно число на сайте не берётся из пульта: он управляет только светом.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.aof-ui.aof-site {
+  --sb-frame: 14px;                     /* толщина корпуса вокруг окна */
+  --sb-bevel: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.55));
+  --sb-screw: radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.16) 0 1px, rgba(0, 0, 0, 0.55) 1.4px 2.6px, transparent 3.2px);
+  --sb-lamp-live: var(--sb-green);
+  --sb-lamp-wait: var(--sb-violet);
+  --sb-lamp-off: #2A3138;
+  --sb-metal: url('/assets/site/metal.jpg');
+}
+
+/* ── 17.1 ФОН СТЕНДА: сцена, металл или разметка ───────────────────────────── */
+.site-backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.site-backdrop__layer { position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s var(--sb-ease); }
+.site-backdrop__scene {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  filter: saturate(0.85) contrast(0.95);
+}
+.site-backdrop__metal { background: var(--sb-metal) center / 900px auto repeat; opacity: 0; }
+.site-backdrop__grid {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(95, 201, 218, 0.10) 0 1px, transparent 1px 68px),
+    repeating-linear-gradient(180deg, rgba(95, 201, 218, 0.10) 0 1px, transparent 1px 68px),
+    repeating-linear-gradient(90deg, rgba(95, 201, 218, 0.035) 0 1px, transparent 1px 17px),
+    repeating-linear-gradient(180deg, rgba(95, 201, 218, 0.035) 0 1px, transparent 1px 17px);
+  background-position: center;
+}
+.site-backdrop__layer[data-on='true'] { opacity: 1; }
+.site-backdrop__metal[data-on='true'] { opacity: 0.85; }
+.site-backdrop__grid[data-on='true'] { opacity: 0.75; }
+/* Тёмное стекло поверх сцены: свет только от приборов, читаемость текста цела. */
+.site-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(11, 13, 17, 0.35), rgba(11, 13, 17, 0.86) 70%),
+    linear-gradient(180deg, rgba(11, 13, 17, 0.55), rgba(11, 13, 17, 0.93));
+}
+/* Развёртка экрана: одна медленная полоса, как на стекле кинескопа. */
+.site-backdrop__scan {
+  position: absolute;
+  left: 0; right: 0;
+  top: -30%;
+  height: 30%;
+  background: linear-gradient(180deg, transparent, rgba(95, 201, 218, 0.05), transparent);
+  animation: site-scan 14s linear infinite;
+}
+@keyframes site-scan { to { transform: translateY(430%); } }
+/* Пульт выключен — фон гаснет, но корпуса окон остаются. */
+.aof-site[data-stand='off'] .site-backdrop__layer { opacity: 0 !important; }
+.aof-site[data-stand='off'] .site-backdrop__scan { display: none; }
+
+/* ── 17.2 КОРПУС: безель, винты и вентиляция ──────────────────────────────── */
+.site-header {
+  background:
+    linear-gradient(180deg, rgba(20, 25, 29, 0.94), rgba(11, 13, 17, 0.90)),
+    var(--sb-metal) center / 900px auto repeat;
+}
+.site-header::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  height: 6px;
+  pointer-events: none;
+  opacity: 0.5;
+  background: repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.10) 0 2px, transparent 2px 7px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+}
+.site-title {
+  width: min(1400px, calc(100% - 24px));
+  margin: 14px auto 0;
+  padding: clamp(34px, 5.4vw, 74px) clamp(20px, 4vw, 56px) clamp(30px, 4.4vw, 56px);
+  border: 0;
+  border-radius: var(--sb-r);
+  background: linear-gradient(180deg, rgba(18, 22, 26, 0.9), rgba(13, 16, 19, 0.94));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 26px 60px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 var(--sb-frame) rgba(16, 20, 23, 0.55),
+    inset 0 0 0 calc(var(--sb-frame) + 1px) rgba(95, 201, 218, 0.16);
+}
+.site-title::before {
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(11, 13, 17, 0.95) 0%, rgba(11, 13, 17, 0.82) 58%, rgba(11, 13, 17, 0.46) 100%),
+    var(--site-scene, url('/assets/backgrounds/hero.jpg')) right center / cover no-repeat;
+  opacity: 0.9;
+}
+.site-title::after {
+  content: '';
+  position: absolute;
+  left: var(--sb-frame);
+  right: var(--sb-frame);
+  bottom: var(--sb-frame);
+  height: 8px;
+  border-radius: 0 0 10px 10px;
+  pointer-events: none;
+  opacity: 0.55;
+  background: repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.12) 0 2px, transparent 2px 6px);
+  -webkit-mask-image: linear-gradient(90deg, #000, transparent 24%, transparent 76%, #000);
+  mask-image: linear-gradient(90deg, #000, transparent 24%, transparent 76%, #000);
+}
+.site-title > * { z-index: 1; }
+.site-title > h1, .site-title > p { z-index: 1; }
+
+/* Верхняя планка корпуса: лампа, табличка, вентиляция */
+.site-panel-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; position: relative; z-index: 1; }
+.site-panel-bar .site-nameplate { margin: 0; }
+.site-panel-bar .site-eyebrow { margin: 0; padding: 0; border: 0; background: none; color: var(--sb-cyan); box-shadow: none; }
+.site-panel-bar__vent {
+  flex: 1;
+  height: 8px;
+  min-width: 40px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.09) 0 2px, transparent 2px 6px);
+  opacity: 0.7;
+}
+.site-nameplate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font: 600 0.68rem/1.2 var(--sb-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sb-cyan);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(0, 0, 0, 0.25));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.4);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
+}
+/* Шкала под заголовком окна: линейка с рисками и подписью поля допуска */
+.site-title__scale {
+  display: block;
+  height: 12px;
+  margin-top: 26px;
+  opacity: 0.7;
+  background:
+    repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.28) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.16) 0 1px, transparent 1px 60px);
+  background-size: 100% 5px, 100% 11px;
+  background-position: 0 0, 0 0;
+  background-repeat: repeat-x, repeat-x;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, transparent 62%);
+  mask-image: linear-gradient(90deg, #000 0, transparent 62%);
+}
+
+/* Секция — тоже окно прибора: корпус, табличка заголовка и линейка */
+.site-section {
+  width: min(1180px, calc(100% - 24px));
+  margin: 26px auto;
+  padding: var(--sb-frame) clamp(16px, 2.4vw, 30px) clamp(20px, 2.6vw, 32px);
+  border-radius: var(--sb-r);
+  background: linear-gradient(180deg, rgba(20, 25, 29, 0.72), rgba(13, 16, 19, 0.82));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 20px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(95, 201, 218, 0.10);
+}
+.site-section > .site-section__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 12px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--sb-line);
+  font-size: clamp(1.3rem, 2.4vw, 2rem);
+}
+.site-section > .site-section__title::before,
+.site-section > .site-section__title::after { content: none; }
+.site-section__rule {
+  flex: 1;
+  height: 9px;
+  min-width: 30px;
+  opacity: 0.6;
+  background: repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.18) 0 1px, transparent 1px 9px);
+  -webkit-mask-image: linear-gradient(90deg, #000, transparent);
+  mask-image: linear-gradient(90deg, #000, transparent);
+}
+
+/* Лампа состояния: линза в обойме, свет только у живой */
+.site-lamp {
+  position: relative;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sb-lamp-off);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 0 2px rgba(255, 255, 255, 0.045);
+}
+.site-lamp--live { background: var(--sb-lamp-live); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 9px rgba(95, 211, 168, 0.75); }
+.site-lamp--wait { background: var(--sb-lamp-wait); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 9px rgba(169, 155, 236, 0.7); }
+.site-lamp--off { background: var(--sb-lamp-off); }
+
+/* Винты по углам панелей: корпус собран, а не нарисован */
+.site-card::after, .site-paper::after, .site-stat::after, .site-icon-strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: var(--sb-screw), var(--sb-screw), var(--sb-screw), var(--sb-screw);
+  background-size: 9px 9px;
+  background-repeat: no-repeat;
+  background-position: 9px 9px, calc(100% - 9px) 9px, 9px calc(100% - 9px), calc(100% - 9px) calc(100% - 9px);
+  opacity: 0.5;
+}
+/* Экран под стеклом: тёплая кромка и мягкий свет матрицы.
+   Одна и та же матовая плёнка на всех окнах сайта — сцена за ней угадывается. */
+.site-paper, .site-card, .site-oak, .site-table-wrap, .site-icon-strip, .site-nav-panel, .site-mobile-menu,
+.site-accordion details, .site-stat, .site-weather, .site-story, .site-frame, .site-ritual, .site-diagram,
+.site-tool, .site-nft, .nf-product__info {
+  background: linear-gradient(180deg, rgba(23, 28, 33, 0.94), rgba(13, 16, 19, 0.97));
+}
+/* Безель: кольцо корпуса внутри окна, между стеклом и содержимым. */
+.site-card, .site-paper, .site-tool, .site-nft, .site-nav-panel, .site-mobile-menu, .nf-product__info {
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 0 0 7px rgba(17, 21, 24, 0.35);
+}
+.site-card:hover::after, .site-paper:hover::after { opacity: 0.75; }
+/* Конец страницы: ряд одинаковых приборных плит из сгенерированного арта */
+.site-footer::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: -74px;
+  height: 74px;
+  pointer-events: none;
+  background: url('/assets/site/rail.jpg') center / cover no-repeat;
+  opacity: 0.3;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 60%, #000);
+  mask-image: linear-gradient(180deg, transparent, #000 60%, #000);
+}
+
+/* ── 17.3 ПРИБОРЫ ПУЛЬТА: рубильник, галетник, фейдер ─────────────────────── */
+.site-deck {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+  max-width: min(680px, calc(100vw - 36px));
+  padding: 12px 16px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(24, 29, 34, 0.94), rgba(13, 16, 19, 0.96)),
+    var(--sb-metal) center / 900px auto repeat;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 18px 44px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.site-deck__id { display: flex; align-items: center; gap: 9px; }
+.site-deck__id .site-nameplate { padding: 5px 10px; }
+.site-deck__status {
+  margin: 0;
+  font: 500 0.7rem/1.3 var(--sb-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sb-dim);
+}
+.site-deck[data-on='false'] .site-deck__status { color: var(--sb-muted); }
+
+/* Рубильник: рычаг с грибком, вал и обойма */
+.site-lever {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.35));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.site-lever__base {
+  position: absolute;
+  left: 12px;
+  bottom: 6px;
+  width: 26px;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #4A555F, #232A31);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.site-lever__arm {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 34px;
+  transform-origin: 50% 92%;
+  transform: rotate(24deg);
+  transition: transform 0.22s var(--sb-ease);
+}
+.site-lever[data-on='true'] .site-lever__arm { transform: rotate(-24deg); }
+.site-lever__grip {
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 20px;
+  height: 9px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #9AA7B4, #5A656E);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 5px rgba(0, 0, 0, 0.55);
+}
+.site-lever[data-on='true'] .site-lever__grip { background: linear-gradient(180deg, var(--sb-cyan-2), #3F9CAB); }
+.site-lever__arm::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 7px;
+  width: 4px;
+  height: 26px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #8A959E, #39424B);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.site-lever--compact { padding-block: 2px; }
+.site-lever--compact .site-lever__arm { width: 24px; height: 28px; }
+.site-lever--compact .site-lever__grip { width: 18px; left: 3px; }
+.site-lever--compact .site-lever__arm::before { left: 10px; height: 21px; }
+
+/* Галетник: три положения на одном валу, выбранное подсвечено */
+.site-rocker {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 3px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+}
+.site-rocker__stop {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font: 600 0.72rem/1.2 var(--sb-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sb-muted);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.site-rocker__stop:hover { color: var(--sb-dim); }
+.site-rocker__stop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.site-rocker__stop:has(input:focus-visible) { outline: 2px solid var(--sb-cyan); outline-offset: 2px; }
+.site-rocker__lamp {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sb-lamp-off);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.site-rocker__stop[data-on='true'] {
+  color: var(--sb-cyan-2);
+  background: linear-gradient(180deg, rgba(95, 201, 218, 0.16), rgba(95, 201, 218, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 0 0 1px rgba(95, 201, 218, 0.35);
+}
+.site-rocker__stop[data-on='true'] .site-rocker__lamp { background: var(--sb-cyan-2); box-shadow: 0 0 8px rgba(95, 201, 218, 0.8); }
+
+/* Фейдер: рейка с рисками и металлический ползунок */
+.site-fader { display: inline-flex; flex-direction: column; gap: 5px; min-width: 132px; }
+.site-fader__name { font: 600 0.62rem/1.2 var(--sb-font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--sb-muted); }
+.site-fader__input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.site-fader__input::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(230, 235, 240, 0.16) 0 1px, transparent 1px 10px),
+    linear-gradient(180deg, #10141A, #1B2228);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.site-fader__input::-moz-range-track { height: 5px; border-radius: 3px; background: linear-gradient(180deg, #10141A, #1B2228); }
+.site-fader__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 21px;
+  margin-top: -8px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #CFD8DD, #79848D 55%, #4C565E);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.site-fader__input::-moz-range-thumb {
+  width: 15px;
+  height: 21px;
+  border: 0;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #CFD8DD, #79848D 55%, #4C565E);
+}
+
+/* ── 17.4 ВИТРИНА ЭКРАНОВ: галетник выбирает освещённый ──────────────────── */
+.site-scene-bank { display: grid; gap: 14px; }
+.site-scene-bank > .site-rocker { justify-self: start; }
+.site-screen { position: relative; }
+.site-screen img { filter: saturate(0.55) brightness(0.72); transition: filter 0.35s var(--sb-ease); }
+.site-screen[data-on='true'] img { filter: none; }
+.site-screen figcaption { display: flex; align-items: center; gap: 9px; }
+.site-screen[data-on='true'] figcaption { color: var(--sb-text); }
+.site-screen[data-on='false'] figcaption { color: var(--sb-muted); }
+.site-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--sb-r-sm) var(--sb-r-sm) 0 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 60%, rgba(11, 13, 17, 0.5));
+  opacity: 1;
+  transition: opacity 0.35s var(--sb-ease);
+}
+.site-screen[data-on='true']::after { opacity: 0.35; }
+
+/* ── 17.5 ПЕРЕКЛЮЧАТЕЛИ В ОКНАХ: те же клавиши, что в игре ───────────────── */
+.site-options label {
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.55);
+  border: 0;
+  padding: 8px 14px 8px 12px;
+  font: 600 0.8rem/1.2 var(--sb-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--sb-muted);
+}
+.site-options label:hover { color: var(--sb-dim); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), inset 0 -1px 0 rgba(0, 0, 0, 0.55); }
+.site-options input[type='radio'] { appearance: none; -webkit-appearance: none; width: 8px; height: 8px; border-radius: 50%; background: var(--sb-lamp-off); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.site-options label:has(input:checked) {
+  color: var(--sb-cyan-2);
+  background: linear-gradient(180deg, rgba(95, 201, 218, 0.16), rgba(95, 201, 218, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(95, 201, 218, 0.35);
+}
+.site-options label:has(input:checked) input[type='radio'] { background: var(--sb-cyan-2); box-shadow: 0 0 8px rgba(95, 201, 218, 0.8); }
+.site-options label:has(input:focus-visible) { outline: 2px solid var(--sb-cyan); outline-offset: 2px; }
+
+/* Капсулы и клавиши: металлическая кромка и честное нажатие */
+.aof-site .site-button, .aof-site .site-small-button, .aof-site .site-chip,
+.aof-site .site-play-link, .locale-switcher summary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.4);
+}
+.aof-site .site-button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 8px 22px rgba(95, 201, 218, 0.22);
+}
+.aof-site .site-button:active, .aof-site .site-small-button:active, .aof-site .site-chip:active { transform: translateY(1px); }
+
+/* Строки таблицы и поля: та же кромка */
+.aof-site .site-table th { background: linear-gradient(180deg, #1B2228, #0E1322); }
+.aof-site .site-filters input, .aof-site .site-filters select, .aof-site .site-search-label input {
+  border-radius: 8px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* Подвал: край корпуса */
+.site-footer { background: linear-gradient(180deg, rgba(11, 13, 17, 0.86), rgba(5, 6, 12, 0.95)); }
+
+/* Место под пульт: он висит поверх нижнего края страницы. */
+.site-main { padding-bottom: 8px; }
+.site-footer { padding-bottom: 108px; }
+
+@media (max-width: 900px) {
+  .site-fader { display: none; }
+  .site-deck { gap: 10px 12px; padding: 10px 12px; }
+  .site-deck__status { width: 100%; }
+}
+@media (max-width: 620px) {
+  .site-section { padding: 10px 14px 18px; }
+  .site-deck { left: 10px; right: 10px; bottom: 10px; max-width: none; }
+  .site-deck__id .site-nameplate { padding: 4px 8px; letter-spacing: 0.1em; }
+  .site-rocker__stop { padding: 6px 9px; font-size: 0.66rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-backdrop__scan { animation: none; display: none; }
+}
+@media print {
+  .site-backdrop, .site-deck { display: none !important; }
+}

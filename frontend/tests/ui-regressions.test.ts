@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
@@ -4141,4 +4141,91 @@ test('glossary rank and rarity terms follow seven-language display catalogs with
   const page = code('src/site/pages/ExtraSections.tsx');
   assert.match(page, /siteGlossary\.ru\.entries\[index\]\.term \+ ' ' \+ siteGlossary\.en\.entries\[index\]\.term/);
   assert.match(page, /<dt>\{g\.term\}<\/dt>/);
+});
+
+test("фон сайта собран из сгенерированных сцен, и каждая лежит на диске", async () => {
+  // Задача владельца 2026-09-30: «добавить сгенерированные картинки на фон
+  // сайта». Сцена выбирается по маршруту, поэтому пропавший файл виден сразу
+  // на конкретной странице — проверяем и таблицу, и сам ассет.
+  const scenery = code("src/site/content/scenery.ts");
+  const images = [...scenery.matchAll(/["'](\/assets\/site\/[a-z-]+\.jpg)["']/g)].map((m) => m[1]);
+  assert.ok(images.length >= 6, `сцен стенда должно быть не меньше шести, найдено ${images.length}`);
+  for (const image of images) {
+    const file = join(root, "public", image.replace(/^\//, ""));
+    assert.ok(existsSync(file), `нет файла сцены ${image}`);
+    assert.ok(statSync(file).size > 20_000, `сцена ${image} пустая: файл меньше 20 КБ`);
+  }
+  // В таблице не должно остаться маршрутов, которых нет в дереве страниц:
+  // иначе сцена молча не доедет до игрока.
+  const { pages } = await import("../src/site/content/pages");
+  const ids = new Set(pages.map((p: { id: string }) => p.id));
+  const table = scenery.match(/const PAGE_SCENERY[^=]*=\s*\{([\s\S]*?)\n\};/);
+  assert.ok(table, "таблица сцен не найдена");
+  const listed = [...table![1].matchAll(/([a-z]+):\s*'/g)].map((m) => m[1]);
+  assert.ok(listed.length >= 20, "таблица сцен усохла");
+  assert.deepEqual(listed.filter((id) => !ids.has(id)), [], "в таблице сцен есть маршруты без страниц");
+  const { sceneryForPage, SITE_SCENERY } = await import("../src/site/content/scenery");
+  const known = new Set(Object.keys(SITE_SCENERY));
+  for (const page of pages) {
+    assert.ok(known.has(sceneryForPage(page.id)), `${page.id}: неизвестная сцена`);
+  }
+});
+
+test("пульт стенда управляет только картинкой и не трогает данные игры", () => {
+  // Пульт — оформление: рубильник, галетник и фейдер меняют свет фона.
+  // Ни одного числа из сети он читать не должен, иначе «стенд» станет
+  // вторым источником показаний рядом с игрой.
+  const stand = code("src/site/layout/SiteStand.tsx");
+  assert.ok(!/\bapi\b|fetch\(|useWallet|balance|signature/.test(stand), "пульт стенда тянет игровые данные");
+  assert.match(stand, /useState/, "положения приборов хранятся в состоянии страницы");
+  const controls = code("src/site/ui/Controls.tsx");
+  assert.match(controls, /role="switch"/, "рубильник обязан объявлять себя переключателем");
+  assert.match(controls, /aria-checked=\{on\}/, "у рубильника нет состояния для чтения с экрана");
+  assert.match(controls, /type="radio"/, "галетник собран на радиокнопках, а не на div");
+  assert.match(controls, /type="range"/, "фейдер — настоящий ползунок");
+  assert.match(controls, /htmlFor=\{fieldId\}/, "у фейдера должна быть подпись");
+  const css = read("src/site/styles/site.css");
+  assert.match(css, /\.site-backdrop \{[^}]*z-index: -1/, "фон стенда уйдёт за непрозрачный слой страницы");
+  assert.match(css, /\.aof-ui\.aof-site \{[^}]*isolation: isolate/, "без изоляции слоёв фон стенда не виден");
+  assert.match(css, /\.site-lever__arm \{[^}]*transform-origin/, "рычаг рубильника не качается");
+  assert.match(css, /\.site-deck \{[^}]*position: fixed/, "пульт должен стоять на экране, а не уезжать со страницей");
+  assert.match(read("src/site/layout/Layout.tsx"), /<SiteBackdrop scene=\{scenery\} state=\{stand\} \/>/);
+  assert.match(read("src/site/layout/Layout.tsx"), /<StandDeck state=\{stand\} \/>/);
+});
+
+test("окна сайта собраны как панели приборов: лампа, табличка, безель", () => {
+  const components = code("src/site/ui/Components.tsx");
+  assert.match(components, /site-panel-bar/, "у заголовка страницы нет планки корпуса");
+  assert.match(components, /<NamePlate>/, "подпись страницы вернулась к плоскому бейджу");
+  assert.match(components, /site-section__title/, "заголовок секции потерял лицевую панель");
+  assert.match(components, /<Lamp state="live" \/>/, "в окнах нет лампы состояния");
+  const css = read("src/site/styles/site.css");
+  for (const [name, pattern] of [
+    ["лампа живой лампы", /\.site-lamp--live \{/],
+    ["лампа ожидания", /\.site-lamp--wait \{/],
+    ["винты панели", /--sb-screw: radial-gradient/],
+    ["безeль окна", /inset 0 0 0 7px/],
+    ["галetник", /\.site-rocker__stop\[data-on='true'\]/],
+    ["фейдер", /\.site-fader__input::-webkit-slider-thumb/],
+    ["состояние экрана стенда", /\.site-screen\[data-on='true'\] img \{ filter: none; \}/],
+  ] as const) {
+    assert.match(css, pattern, `в слое приборов пропало: ${name}`);
+  }
+  const page = code("src/site/pages/ContentPage.tsx");
+  assert.match(page, /<Rocker/, "витрина экранов вернулась к ряду картинок без галетника");
+  assert.match(page, /data-on=\{index === screen\}/, "галетник не подсвечивает выбранный экран");
+});
+
+test("подписи пульта стоят на всех семи языках сайта", async () => {
+  const { sitePanelCopy } = await import("../src/i18n/sitePanelCopy");
+  const { languages } = await import("../src/i18n/translations");
+  for (const language of languages) {
+    const copy = sitePanelCopy[language];
+    assert.ok(copy, `${language}: нет подписей пульта`);
+    for (const key of ["deckLabel", "switchLabel", "modeLegend", "levelLabel", "statusOn", "statusOff", "galleryLegend"] as const) {
+      assert.ok(copy[key] && copy[key].trim().length > 1, `${language}: пустая подпись ${key}`);
+    }
+    assert.equal(copy.modes.length, 3, `${language}: у галетника должно быть три положения`);
+    assert.notEqual(copy.statusOn, copy.statusOff, `${language}: состояния пульта не различаются`);
+  }
 });

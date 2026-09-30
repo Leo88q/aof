@@ -1,0 +1,122 @@
+import { type ReactNode, useId } from 'react';
+
+/**
+ * Приборы сайта. Тот же набор, что стоит в игре: лампа состояния, рубильник,
+ * галетник на три положения и фейдер. Всё — настоящие органы управления
+ * (кнопка с role="switch", радиокнопки, ползунок), а не рисунок: их можно
+ * нажать с клавиатуры, и они честно объявляют своё состояние.
+ */
+
+export type LampState = 'live' | 'wait' | 'off';
+
+export function Lamp({ state = 'off', label }: { state?: LampState; label?: string }) {
+  return <span className={'site-lamp site-lamp--' + state} aria-hidden={label ? undefined : true} title={label} />;
+}
+
+/** Рубильник: рычаг вверх — включено, вниз — выключено. */
+export function Lever({
+  on,
+  onChange,
+  label,
+  compact = false,
+}: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      title={label}
+      className={'site-lever' + (compact ? ' site-lever--compact' : '')}
+      data-on={on}
+      onClick={() => onChange(!on)}
+    >
+      <span className="site-lever__arm" aria-hidden="true"><span className="site-lever__grip" /></span>
+      <span className="site-lever__base" aria-hidden="true" />
+      <Lamp state={on ? 'live' : 'off'} />
+    </button>
+  );
+}
+
+/** Галетник: три и больше положений на одном валу. */
+export function Rocker({
+  legend,
+  options,
+  value,
+  onChange,
+  id,
+}: {
+  legend: string;
+  options: readonly string[];
+  value: number;
+  onChange: (index: number) => void;
+  id?: string;
+}) {
+  const auto = useId();
+  const name = id ?? auto;
+  return (
+    <fieldset className="site-rocker">
+      <legend className="sr-only">{legend}</legend>
+      {options.map((option, index) => (
+        <label key={option} className="site-rocker__stop" data-on={index === value}>
+          <input
+            type="radio"
+            name={name}
+            value={index}
+            checked={index === value}
+            onChange={() => onChange(index)}
+          />
+          <span className="site-rocker__lamp" aria-hidden="true" />
+          <span className="site-rocker__name">{option}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** Фейдер: ползунок на металлической рейке. */
+export function Fader({
+  label,
+  value,
+  min = 0,
+  max = 100,
+  step = 5,
+  onChange,
+  id,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (next: number) => void;
+  id?: string;
+}) {
+  const auto = useId();
+  const fieldId = id ?? auto;
+  return (
+    <span className="site-fader">
+      <label className="site-fader__name" htmlFor={fieldId}>{label}</label>
+      <input
+        id={fieldId}
+        className="site-fader__input"
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </span>
+  );
+}
+
+/** Гравированная табличка корпуса. */
+export function NamePlate({ children }: { children: ReactNode }) {
+  return <div className="site-nameplate">{children}</div>;
+}
