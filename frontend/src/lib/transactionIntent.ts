@@ -46,7 +46,24 @@ export interface LotteryTicketIntent {
   readonly roundId: string;
   readonly ticketNumber: string;
 }
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent;
+/**
+ * Газ-бак: пополнение/вывод SOL. Игрок подтверждает на экране точную сумму, а
+ * кошелёк подписывает только инструкцию своего бака с этой же суммой — иначе
+ * подменённый ответ бэкенда мог списать больше показанного.
+ * Единицы повторяют контракт: депозит — лампорты, вывод — микро (1e6 на SOL).
+ */
+export type GasTankIntent =
+  | { readonly kind: "gasTank"; readonly action: "deposit"; readonly user: string; readonly amountLamports: string }
+  | { readonly kind: "gasTank"; readonly action: "withdraw"; readonly user: string; readonly amountMicros: string };
+/**
+ * Коллекционеры: NFT уходит в vault PDA на 3 дня (или возвращается из него).
+ * Игрок подтверждает конкретный минт и вид перка — подменённый ответ бэкенда
+ * не может увести в vault другой NFT.
+ */
+export type CollectorIntent =
+  | { readonly kind: "collector"; readonly action: "stake"; readonly user: string; readonly mint: string; readonly collectorKind: "historian" | "medallion" }
+  | { readonly kind: "collector"; readonly action: "unstake"; readonly user: string; readonly mint: string };
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
@@ -122,6 +139,8 @@ export function validateTransactionIntent(
   if (intent.kind === "packOpen") return validatePackOpenIntent(instructions, intent, user);
   if (intent.kind === "seasonPass") return validateSeasonPassIntent(instructions, intent, user);
   if (intent.kind === "lotteryTicket") return validateLotteryTicketIntent(instructions, intent, user);
+  if (intent.kind === "gasTank") return validateGasTankIntent(instructions, intent, user);
+  if (intent.kind === "collector") return validateCollectorIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -174,6 +193,55 @@ function validateLotteryTicketIntent(instructions: Instruction[], intent: Lotter
         seeded('lottery_ticket', roundBytes, ticketBytes), user])) {
     throw new Error('Lottery transaction differs from the verified ticket');
   }
+}
+
+function validateCollectorIntent(instructions: Instruction[], intent: CollectorIntent, user: PublicKey): void {
+  // Ставка уводит NFT в vault PDA на 3 дня, снятие возвращает его и списывает
+  // 0.01 SOL из газ-бака. Кошелёк подписывает только тот минт и тот вид перка,
+  // которые игрок видел на экране.
+  const mint = new PublicKey(intent.mint);
+  const [collector] = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("collector"), mint.toBytes()], new PublicKey(CORE_PROGRAM_ID));
+  const [collectorAllow] = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("collector_allow"), mint.toBytes()], new PublicKey(CORE_PROGRAM_ID));
+  const [vault] = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("vault")], new PublicKey(CORE_PROGRAM_ID));
+  const userToken = ata(mint, user);
+  const vaultToken = PublicKey.findProgramAddressSync([vault.toBytes(), TOKEN.toBytes(), mint.toBytes()], ATA)[0];
+  const expectedName = intent.action === "stake" ? "collector_stake" : "collector_unstake";
+  const expectedData = intent.action === "stake" ? 9 : 8;
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the collector intent");
+  if (instructions.length !== 1) throw new Error("Collector operation must be a single instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (spec?.name !== expectedName || ix.data.length !== expectedData) throw new Error("Unexpected collector instruction");
+  const keys = intent.action === "stake"
+    ? [pda("config"), user, mint, userToken, vault, vaultToken, collector, collectorAllow, pda("player", user), TOKEN, new PublicKey(SYSTEM)]
+    : [pda("config"), user, mint, userToken, vault, vaultToken, collector, pda("player", user), pda("gastank", user), TOKEN];
+  if (!keysEqual(ix.keys, keys)) throw new Error("Unexpected collector accounts");
+  if (intent.action === "stake") {
+    // Borsh-вариант CollectorKind: 0 = Historian, 1 = Medallion.
+    const expected = intent.collectorKind === "historian" ? 0 : 1;
+    if (ix.data[8] !== expected) throw new Error("Collector kind differs from user intent");
+  }
+}
+
+function validateGasTankIntent(instructions: Instruction[], intent: GasTankIntent, user: PublicKey): void {
+  // Сумма в контракте одна и та же (u64), но её единица зависит от действия:
+  // депозит — лампорты, вывод — микро. Проверяем и имя инструкции, и адреса, и
+  // само число: подписываем ровно то, что игрок видел на экране.
+  const expectedName = intent.action === "deposit" ? "deposit_gas" : "withdraw_gas";
+  const expectedAmount = positiveU64(intent.action === "deposit" ? intent.amountLamports : intent.amountMicros);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the gas tank intent");
+  if (instructions.length !== 1) throw new Error("Gas tank operation must be a single instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (spec?.name !== expectedName || ix.data.length !== 16) throw new Error("Unexpected gas tank instruction");
+  if (!keysEqual(ix.keys, [pda("config"), user, pda("gastank", user), new PublicKey(SYSTEM)])) {
+    throw new Error("Unexpected gas tank accounts");
+  }
+  const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+  if (view.getBigUint64(8, true) !== BigInt(expectedAmount)) throw new Error("Gas tank amount differs from user intent");
 }
 
 function validateSeasonPassIntent(instructions: Instruction[], intent: SeasonPassIntent, user: PublicKey): void {

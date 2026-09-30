@@ -15,6 +15,7 @@ import { FriendsList } from "../friend/FriendsList";
 import { SeasonPassPage } from "./SeasonPassPage";
 import { TrustPage } from "./TrustPage";
 import { PrivilegesPanel } from "../../components/PrivilegesPanel";
+import { CollectorsPanel } from "../../components/CollectorsPanel";
 import { QuestBoardPage } from "../quests/QuestBoardPage";
 import { DailyRewardButton } from "../../components/DailyRewardButton";
 import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
@@ -91,6 +92,10 @@ export function ProfileHome() {
           <ListRow icon={UI_ICONS.flasks} label={copy.gallery} onClick={() => window.open("/visual", "_blank", "noopener")} />
         </div>
       </Panel>
+
+      {/* Дефект: перки коллекционеров были объявлены, но включить их в игре
+          было нечем — ни постановки NFT, ни возврата. */}
+      <div className="mb-4"><CollectorsPanel /></div>
 
       <Panel tier="panel" className="mb-4" id={<Sticker>{copy.accessSticker}</Sticker>}
         meta={copy.accessMeta} title={copy.accessTitle} sub={copy.accessSub}>

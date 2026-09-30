@@ -1,0 +1,102 @@
+import { PublicKey } from "@solana/web3.js";
+import { api } from "./api";
+import { positiveU64 } from "./amounts";
+
+/**
+ * Газ-бак: SOL-баланс для комиссий внутри игры (GasTank PDA, seeds
+ * [gastank, owner]). Механику уже даёт программа, читают её `/query/gastank`
+ * и `/gastank/deposit`|`/gastank/withdraw`; в интерфейсе её не было вовсе —
+ * то есть снятие инструмента, разлок коллекционера и реролл были недоступны
+ * игроку, хотя стоят 0.01 SOL из бака.
+ *
+ * Единицы, как в контракте:
+ *   • депозит принимает ЛАМПОРТЫ (`deposit_gas(amount_lamports)`); дробные
+ *     лампорты не теряются — остаток лежит в `dust_lamports` и добавляется к
+ *     следующему пополнению [AUDIT F-20];
+ *   • вывод принимает МИКРО (1 SOL = 1e6 микро), не лампорты;
+ *   • вывод больше 0.2 SOL взводит 12-часовой кулдаун, мелкий — мгновенный
+ *     (тоже [AUDIT F-20]).
+ */
+
+/** 1 SOL = 1e6 микро (см. aof-core/src/constants.rs, MICROS_TO_LAMPORTS). */
+export const MICROS_PER_SOL = 1_000_000n;
+/** Комиссия за снятие инструмента и разлок коллекционера (FEE_PER_NFT_MICROS). */
+export const FEE_PER_NFT_MICROS = 10_000n;
+/** Порог мгновенного вывода (GASTANK_INSTANT_WITHDRAW_MICROS = 0.2 SOL). */
+export const INSTANT_WITHDRAW_MICROS = 200_000n;
+/** Кулдаун после крупного вывода (GASTANK_COOLDOWN_SECONDS = 12 ч). */
+export const COOLDOWN_SECONDS = 12 * 3600;
+/** Ниже 1000 лампортов депозит не даёт ни одной микро (уходит в пыль). */
+export const MIN_DEPOSIT_LAMPORTS = 1_000n;
+
+/**
+ * Микро из строки «0.05». Только BigInt и усечение: `parseFloat` на балансе
+ * игрока — это потеря точности там, где ошибка стоит денег. Бросает на
+ * пустой, отрицательной, дробной по микро (больше 6 знаков) строке.
+ */
+export function solToMicros(input: string): bigint {
+  const text = String(input ?? "").trim();
+  if (!/^\d+(\.\d{1,6})?$/.test(text)) throw new Error("Invalid SOL amount");
+  const [whole, fraction = ""] = text.split(".");
+  const micros = BigInt(whole) * MICROS_PER_SOL + BigInt(fraction.padEnd(6, "0") || "0");
+  return BigInt(positiveU64(micros.toString()));
+}
+
+/** Обратный перевод для показа: без хвостовых нулей, всегда как SOL. */
+export function microsToSol(micros: bigint | string): string {
+  const amount = typeof micros === "bigint" ? micros : BigInt(micros);
+  const whole = amount / MICROS_PER_SOL;
+  const fraction = (amount % MICROS_PER_SOL).toString().padStart(6, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
+/** Сколько микро нужно, чтобы депозит вообще был зачислен. */
+export function depositMicros(lamports: bigint): bigint {
+  return lamports / 1_000n;
+}
+
+export type GasTankReading =
+  | { kind: "ready"; balanceMicros: bigint; cooldownUntil: number; dustLamports: bigint; instantCapMicros: bigint }
+  | { kind: "missing" }
+  | { kind: "unknown" };
+
+/**
+ * Читает бак и проверяет каждое поле. `null` от `/query/gastank` означает
+ * «аккаунта ещё нет» (первый депозит его создаст) — это не то же самое, что
+ * сбой чтения: сбой показываем как «неизвестно» и не подставляем ноль.
+ */
+export async function readGasTank(owner: string): Promise<GasTankReading> {
+  let raw: any;
+  try {
+    raw = await api.query.gastank(owner);
+  } catch {
+    return { kind: "unknown" };
+  }
+  if (raw === null || raw === undefined) return { kind: "missing" };
+  if (typeof raw !== "object") return { kind: "unknown" };
+  const balance = raw.balanceMicros ?? raw.balance_micros;
+  const cooldown = raw.cooldownUntil ?? raw.cooldown_until ?? 0;
+  const dust = raw.dustLamports ?? raw.dust_lamports ?? 0;
+  if (balance === undefined || !/^\d+$/.test(String(balance))) return { kind: "unknown" };
+  if (!/^-?\d+$/.test(String(cooldown)) || !/^\d+$/.test(String(dust))) return { kind: "unknown" };
+  return {
+    kind: "ready",
+    balanceMicros: BigInt(String(balance)),
+    cooldownUntil: Number(cooldown),
+    dustLamports: BigInt(String(dust)),
+    instantCapMicros: INSTANT_WITHDRAW_MICROS,
+  };
+}
+
+/** Сколько операций по 0.01 SOL ещё оплатит бак — честная арифметика, не оценка. */
+export function unstakesAffordable(balanceMicros: bigint): bigint {
+  return balanceMicros / FEE_PER_NFT_MICROS;
+}
+
+/** PDA бака: проверяется на клиенте, чтобы подписывать только свой бак. */
+export function gasTankPda(owner: string): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("gastank"), new PublicKey(owner).toBytes()],
+    new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"),
+  )[0];
+}

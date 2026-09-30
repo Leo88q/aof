@@ -230,6 +230,7 @@ export const api = {
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
     player: (owner: string) => get(`/query/player/${owner}`),
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
+    collector: (mint: string) => get(`/query/collector/${mint}`),
     weatherState: () => get("/query/weather-state"),
     wellState: (owner: string) => get(`/query/well-state/${owner}`),
     millState: (owner: string) => get(`/query/mill-state/${owner}`),

@@ -4467,3 +4467,181 @@ test("у каждого отказа бэкенда есть человечес�
     assert.ok(same.length <= 2, `${language}: ${same.length} сообщений остались русскими (${same.slice(0, 3).join(", ")})`);
   }
 });
+
+test("газ-бак: живые действия игры впервые получили интерфейс", async () => {
+  // Владелец 2026-09-30: «включи, если не доделано то доделай». Механика бака
+  // была полностью живой (инструкции deposit_gas/withdraw_gas, маршруты
+  // /gastank/deposit|withdraw, чтение /query/gastank), но пополнить бак в игре
+  // было нечем — а снятие инструмента и разлок коллекционера берут 0.01 SOL
+  // именно из него.
+  const panel = code("src/components/GasTankPanel.tsx");
+  const lib = code("src/lib/gasTank.ts");
+  const dash = code("src/pages/farm/FarmDashboard.tsx");
+
+  assert.match(dash, /<GasTankPanel/, "панель бака не подключена к экрану лаборатории");
+  assert.match(lib, /api\.query\.gastank\(owner\)/, "баланс должен читаться из /query/gastank");
+  assert.match(panel, /handleTxResponse\(response, intent\)/, "транзакция бака идёт через общий контур с намерением");
+  assert.match(panel, /kind: "gasTank" as const, action: "deposit" as const/, "депозит не привязан к намерению кошелька");
+  assert.match(panel, /kind: "gasTank" as const, action: "withdraw" as const/, "вывод не привязан к намерению кошелька");
+  assert.ok(!/parseFloat|Number\(amount/.test(panel + lib), "сумма бака снова считается через плавающую точку");
+  // Неизвестное чтение не превращается в ноль: игрок видит прочерк.
+  assert.match(panel, /reading\.kind === "unknown" \? "—"/, "сбой чтения бака показывается нулём");
+  // Крупный вывод (> 0.2 SOL) обязан предупредить про кулдаун 12 ч.
+  assert.match(lib, /INSTANT_WITHDRAW_MICROS = 200_000n/, "порог мгновенного вывода разошёлся с контрактом");
+  assert.match(lib, /COOLDOWN_SECONDS = 12 \* 3600/, "кулдаун бака разошёлся с контрактом");
+  assert.match(lib, /FEE_PER_NFT_MICROS = 10_000n/, "комиссия снятия разошлась с контрактом");
+
+  // Тексты: семь языков, все поля заполнены, русский не подставлен вместо копий.
+  const { gasTankCopy } = await import("../src/i18n/gasTankCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const keys = Object.keys(gasTankCopy.ru).sort();
+  for (const language of languages) {
+    const copy: any = gasTankCopy[language];
+    assert.deepEqual(Object.keys(copy).sort(), keys, `${language}: набор полей бака разошёлся`);
+    for (const key of keys) {
+      const value = copy[key];
+      const text = typeof value === "function" ? value("1") : value;
+      assert.ok(typeof text === "string" && text.trim().length >= 2, `${language}/${key}: пустой текст бака`);
+    }
+  }
+  const subs = languages.filter(l => l !== "ru");
+  const identical = subs.filter(l => gasTankCopy[l].title === gasTankCopy.ru.title && gasTankCopy[l].balance === gasTankCopy.ru.balance);
+  assert.equal(identical.length, 0, `баковые тексты остались русскими: ${identical.join(", ")}`);
+});
+
+test("намерение газ-бака не подписывает чужую сумму и чужой аккаунт", async () => {
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { coreInstructionSpec } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+
+  const user = new PublicKey("7xKXtg2CW87d97TXJTDpQkAX9sv2vHHwL7PRQCPHh8oF");
+  const specFor = (name: string) => CORE_INSTRUCTIONS.find(i => i.name === name)!;
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const u64 = (value: bigint) => {
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, value, true);
+    return bytes;
+  };
+  const ix = (name: string, amountLamports: bigint, keys = [pda("config"), user, pda("gastank", user),
+    new PublicKey("11111111111111111111111111111111")]) => ({
+    programId: CORE_PROGRAM_ID,
+    keys,
+    data: new Uint8Array([...specFor(name).discriminator, ...u64(amountLamports)]),
+  });
+  const intent = (amountLamports: string) => ({
+    kind: "gasTank" as const, action: "deposit" as const, user: user.toBase58(), amountLamports,
+  });
+
+  // Ровно то, что игрок видел на экране, — подписывается.
+  validateTransactionIntent([ix("deposit_gas", 50_000_000n)], intent("50000000"), user);
+  // Подменённая сумма, чужой бак, подмена действия и лишняя инструкция — отказ.
+  assert.throws(() => validateTransactionIntent([ix("deposit_gas", 900_000_000n)], intent("50000000"), user));
+  assert.throws(() => validateTransactionIntent(
+    [ix("deposit_gas", 50_000_000n, [pda("config"), user, pda("gastank", new PublicKey("4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T")), new PublicKey("11111111111111111111111111111111")])],
+    intent("50000000"), user,
+  ));
+  assert.throws(() => validateTransactionIntent([ix("withdraw_gas", 50_000_000n)], intent("50000000"), user));
+  assert.throws(() => validateTransactionIntent(
+    [ix("deposit_gas", 50_000_000n), ix("deposit_gas", 50_000_000n)], intent("50000000"), user,
+  ));
+  // Вывод проверяется своей единицей (микро) и своим именем инструкции.
+  validateTransactionIntent([ix("withdraw_gas", 50_000n)], {
+    kind: "gasTank", action: "withdraw", user: user.toBase58(), amountMicros: "50000",
+  }, user);
+});
+
+test("коллекционеры: перки включаются из игры, а не только числом в профиле", async () => {
+  // [AUDIT F-16]: perks были посчитаны в программе и объявлены на сайте, но
+  // постановка NFT жила только в API. Панель обязана повторять правила
+  // контракта, а не «улучшать» их: 1 NFT за вызов, lock 3 дня, allowlist
+  // оператора, 0.01 SOL из газ-бака за возврат.
+  const panel = code("src/components/CollectorsPanel.tsx");
+  const lib = code("src/lib/collectors.ts");
+  const profile = code("src/pages/profile/ProfileHome.tsx");
+  const backend = read("../aof_backend/src/routes/query.ts");
+
+  assert.match(profile, /<CollectorsPanel \/>/, "панель коллекционеров не подключена к профилю");
+  assert.match(panel, /api\.collectors\.stake/, "нет пути постановки NFT");
+  assert.match(panel, /api\.collectors\.unstake/, "нет пути возврата NFT");
+  assert.match(panel, /handleTxResponse\(response, intent\)/, "транзакция коллекционера идёт мимо общего контура");
+  assert.match(lib, /COLLECTOR_LOCK_SECONDS = 3 \* 86400/, "лок разошёлся с контрактом (3 дня)");
+  assert.match(lib, /kind: "unknown"/, "сбой чтения позиции должен отличаться от «позиции нет»");
+  assert.ok(!/parseFloat/.test(panel + lib), "адрес или сумма коллекционера считаются плавающей точкой");
+  // Чтение позиции канонично и fail-closed: ошибка — 503, а не пустой объект.
+  assert.match(backend, /r\.get\("\/collector\/:mint"/, "нет read-маршрута позиции коллекционера");
+  assert.match(backend, /COLLECTOR_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN/, "ошибка чтения позиции не отличается от «нет позиции»");
+
+  const { collectorCopy } = await import("../src/i18n/collectorCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const keys = Object.keys(collectorCopy.ru).sort();
+  for (const language of languages) {
+    const copy: any = collectorCopy[language];
+    assert.deepEqual(Object.keys(copy).sort(), keys, `${language}: набор полей коллекционеров разошёлся`);
+    for (const key of keys) {
+      const value = copy[key];
+      const text = typeof value === "function" ? value("abc") : value;
+      assert.ok(typeof text === "string" && text.trim().length >= 2, `${language}/${key}: пустой текст`);
+    }
+  }
+});
+
+test("намерение коллекционера не уводит в хранилище чужой NFT", async () => {
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { coreInstructionSpec, CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  const user = new PublicKey("7xKXtg2CW87d97TXJTDpQkAX9sv2vHHwL7PRQCPHh8oF");
+  const other = new PublicKey("4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T");
+  const mint = new PublicKey("So11111111111111111111111111111111111111112");
+  const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const vault = pda("vault");
+  // Адрес персоны в тесте может оказаться off-curve, поэтому ATA выводим
+  // примитивом PDA (как это делает сам валидатор), а не удобным хелпером.
+  const ATA_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+  const ataRaw = (m: PublicKey, owner: PublicKey) => PublicKey.findProgramAddressSync(
+    [owner.toBytes(), TOKEN.toBytes(), m.toBytes()], ATA_PROGRAM)[0];
+  const keys = (m: PublicKey, forStake: boolean) => forStake
+    ? [pda("config"), user, m, ataRaw(m, user), vault, ataRaw(m, vault),
+      pda("collector", m), pda("collector_allow", m), pda("player", user), TOKEN, SYSTEM]
+    : [pda("config"), user, m, ataRaw(m, user), vault, ataRaw(m, vault),
+      pda("collector", m), pda("player", user), pda("gastank", user), TOKEN];
+  const disc = (name: string) => CORE_INSTRUCTIONS.find(i => i.name === name)!.discriminator;
+  const stakeIx = (m: PublicKey, kind: number) => ({
+    programId: CORE_PROGRAM_ID, keys: keys(m, true), data: new Uint8Array([...disc("collector_stake"), kind]),
+  });
+  const unstakeIx = (m: PublicKey) => ({
+    programId: CORE_PROGRAM_ID, keys: keys(m, false), data: new Uint8Array(disc("collector_unstake")),
+  });
+
+  validateTransactionIntent([stakeIx(mint, 0)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user);
+  validateTransactionIntent([unstakeIx(mint)], {
+    kind: "collector", action: "unstake", user: user.toBase58(), mint: mint.toBase58(),
+  }, user);
+  // Чужой минт, чужой вид перка, снятие вместо постановки и чужая сторона — отказ.
+  assert.throws(() => validateTransactionIntent([stakeIx(other, 0)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  assert.throws(() => validateTransactionIntent([stakeIx(mint, 1)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  assert.throws(() => validateTransactionIntent([unstakeIx(mint)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "medallion",
+  }, user));
+  assert.throws(() => validateTransactionIntent([stakeIx(mint, 0)], {
+    kind: "collector", action: "stake", user: other.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  // Вторая инструкция в пакете не прячется за первой.
+  assert.throws(() => validateTransactionIntent([stakeIx(mint, 0), unstakeIx(mint)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  void coreInstructionSpec;
+});

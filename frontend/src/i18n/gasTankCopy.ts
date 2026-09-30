@@ -1,0 +1,75 @@
+import type { Language } from './translations';
+
+/**
+ * Газ-бак: SOL-баланс для комиссий внутри игры. Числа в текстах — это правила
+ * контракта (0.01 SOL за снятие инструмента и разлок коллекционера, 0.2 SOL
+ * мгновенного вывода, 12 ч кулдаун после крупного вывода), а не оценка.
+ */
+type Copy = {
+  sticker: string; title: string; meta: string; sub: string;
+  balance: string; balanceMissing: string; balanceUnknown: string; reading: string; noWallet: string; operations: string;
+  affordable: (count: string) => string; feeHint: string; instantHint: string; dustHint: string;
+  amount: string; max: string; deposit: string; withdraw: string; sending: string;
+  depositDone: string; withdrawDone: string; uncertain: string; invalid: string;
+  insufficient: string; cooldownActive: (left: string) => string; cooldownReady: string; minDeposit: string;
+  connect: string;
+};
+
+export const gasTankCopy: Record<Language, Copy> = {
+  ru: {
+    sticker: 'ГАЗ-БАК', title: 'Газ-бак', meta: 'КОМИССИИ ИГРЫ', sub: 'SOL для действий внутри лаборатории',
+    balance: 'Баланс', operations: 'Операции', balanceMissing: 'Бак ещё не создан: первое пополнение его откроет.', balanceUnknown: 'Баланс не прочитан из сети — не показываем ноль вместо неизвестного.', reading: 'Читаем бак…', noWallet: 'Подключите кошелёк, чтобы видеть свой бак.',
+    affordable: n => `Оплаченных операций по 0.01 SOL: ${n}`, feeHint: 'Снятие инструмента и разлок коллекционера берут 0.01 SOL из бака (не из кошелька).', instantHint: 'До 0.2 SOL выводится сразу; крупнее — взводит кулдаун 12 ч.', dustHint: 'Лампорты меньше микро не теряются — переносятся на следующее пополнение.', 
+    amount: 'Сумма, SOL', max: 'Весь баланс', deposit: 'Пополнить', withdraw: 'Вывести', sending: 'Отправляем…',
+    depositDone: 'Пополнение подтверждено в сети.', withdrawDone: 'Вывод подтверждён в сети.', uncertain: 'Транзакция не подтверждена. Проверьте историю кошелька — повтор может списать дважды.',
+    invalid: 'Введите сумму в SOL: до 6 знаков после точки.', insufficient: 'Больше доступного баланса отправить нельзя.', cooldownActive: left => `Крупный вывод уже был: следующий возможен через ${left}.`, cooldownReady: 'Кулдаун не активен.', minDeposit: 'Минимум 0.000001 SOL — это одна микро.', connect: 'Подключите кошелёк',
+  },
+  en: {
+    sticker: 'GAS TANK', title: 'Gas tank', meta: 'IN-GAME FEES', sub: 'SOL for actions inside the laboratory',
+    balance: 'Balance', operations: 'Operations', balanceMissing: 'The tank does not exist yet: your first deposit creates it.', balanceUnknown: 'Balance was not read from the network — we will not show zero instead of unknown.', reading: 'Reading the tank…', noWallet: 'Connect a wallet to see your tank.',
+    affordable: n => `Paid operations at 0.01 SOL each: ${n}`, feeHint: 'Unstaking a tool and unlocking a collector take 0.01 SOL from the tank, not from the wallet.', instantHint: 'Up to 0.2 SOL leaves at once; a larger withdrawal arms a 12 h cooldown.', dustHint: 'Lamports below one micro are not lost — they carry over to your next deposit.',
+    amount: 'Amount, SOL', max: 'Full balance', deposit: 'Deposit', withdraw: 'Withdraw', sending: 'Sending…',
+    depositDone: 'Deposit confirmed on-chain.', withdrawDone: 'Withdrawal confirmed on-chain.', uncertain: 'The transaction is unconfirmed. Check your wallet history — retrying can charge twice.',
+    invalid: 'Enter a SOL amount with at most 6 decimals.', insufficient: 'You cannot send more than the available balance.', cooldownActive: left => `A large withdrawal already happened: the next one is possible in ${left}.`, cooldownReady: 'No cooldown is active.', minDeposit: 'Minimum is 0.000001 SOL — one micro.', connect: 'Connect a wallet',
+  },
+  pt: {
+    sticker: 'TANQUE DE GÁS', title: 'Tanque de gás', meta: 'TAXAS DO JOGO', sub: 'SOL para ações dentro do laboratório',
+    balance: 'Saldo', operations: 'Operações', balanceMissing: 'O tanque ainda não existe: o primeiro depósito cria-o.', balanceUnknown: 'O saldo não foi lido da rede — não mostramos zero em vez de desconhecido.', reading: 'Lendo o tanque…', noWallet: 'Conecte a carteira para ver o seu tanque.',
+    affordable: n => `Operações pagas a 0,01 SOL cada: ${n}`, feeHint: 'Retirar uma ferramenta e desbloquear um colecionador custam 0,01 SOL do tanque, não da carteira.', instantHint: 'Até 0,2 SOL sai na hora; valores maiores armam um tempo de espera de 12 h.', dustHint: 'Lamports menores que uma micro não se perdem — passam para o próximo depósito.',
+    amount: 'Valor, SOL', max: 'Saldo total', deposit: 'Depositar', withdraw: 'Sacar', sending: 'Enviando…',
+    depositDone: 'Depósito confirmado na rede.', withdrawDone: 'Saque confirmado na rede.', uncertain: 'A transação não foi confirmada. Confira o histórico da carteira — repetir pode cobrar duas vezes.',
+    invalid: 'Informe um valor em SOL com no máximo 6 casas decimais.', insufficient: 'Não é possível enviar mais que o saldo disponível.', cooldownActive: left => `Já houve um saque grande: o próximo será possível em ${left}.`, cooldownReady: 'Nenhum tempo de espera ativo.', minDeposit: 'O mínimo é 0,000001 SOL — uma micro.', connect: 'Conecte a carteira',
+  },
+  es: {
+    sticker: 'DEPÓSITO DE GAS', title: 'Depósito de gas', meta: 'COMISIONES DEL JUEGO', sub: 'SOL para acciones dentro del laboratorio',
+    balance: 'Saldo', operations: 'Operaciones', balanceMissing: 'El depósito aún no existe: el primer ingreso lo crea.', balanceUnknown: 'El saldo no se leyó de la red — no mostramos cero en lugar de desconocido.', reading: 'Leyendo el depósito…', noWallet: 'Conecta una cartera para ver tu depósito.',
+    affordable: n => `Operaciones pagadas a 0,01 SOL cada una: ${n}`, feeHint: 'Retirar una herramienta y desbloquear un coleccionista cuestan 0,01 SOL del depósito, no de la cartera.', instantHint: 'Hasta 0,2 SOL salen al instante; un retiro mayor activa un enfriamiento de 12 h.', dustHint: 'Los lamports menores que una micro no se pierden — pasan al siguiente ingreso.',
+    amount: 'Importe, SOL', max: 'Saldo completo', deposit: 'Ingresar', withdraw: 'Retirar', sending: 'Enviando…',
+    depositDone: 'Ingreso confirmado en la red.', withdrawDone: 'Retiro confirmado en la red.', uncertain: 'La transacción no está confirmada. Revisa el historial de la cartera — reintentar puede cobrar dos veces.',
+    invalid: 'Introduce un importe en SOL con un máximo de 6 decimales.', insufficient: 'No puedes enviar más que el saldo disponible.', cooldownActive: left => `Ya hubo un retiro grande: el siguiente será posible en ${left}.`, cooldownReady: 'No hay enfriamiento activo.', minDeposit: 'El mínimo es 0,000001 SOL — una micro.', connect: 'Conecta la cartera',
+  },
+  vi: {
+    sticker: 'BÌNH GAS', title: 'Bình gas', meta: 'PHÍ TRONG GAME', sub: 'SOL cho các thao tác trong phòng thí nghiệm',
+    balance: 'Số dư', operations: 'Thao tác', balanceMissing: 'Bình chưa tồn tại: lần nạp đầu tiên sẽ tạo nó.', balanceUnknown: 'Không đọc được số dư từ mạng — chúng tôi không hiển thị số 0 thay cho “không rõ”.', reading: 'Đang đọc bình…', noWallet: 'Kết nối ví để xem bình của bạn.',
+    affordable: n => `Số thao tác trả phí 0,01 SOL: ${n}`, feeHint: 'Rút công cụ và mở khoá nhà sưu tầm lấy 0,01 SOL từ bình, không lấy từ ví.', instantHint: 'Tối đa 0,2 SOL rút ngay; rút lớn hơn sẽ bật thời gian chờ 12 giờ.', dustHint: 'Lamport nhỏ hơn một micro không mất — được cộng vào lần nạp sau.',
+    amount: 'Số lượng, SOL', max: 'Toàn bộ số dư', deposit: 'Nạp', withdraw: 'Rút', sending: 'Đang gửi…',
+    depositDone: 'Đã xác nhận nạp trên chuỗi.', withdrawDone: 'Đã xác nhận rút trên chuỗi.', uncertain: 'Giao dịch chưa được xác nhận. Kiểm tra lịch sử ví — thử lại có thể bị trừ hai lần.',
+    invalid: 'Nhập số SOL với tối đa 6 chữ số thập phân.', insufficient: 'Không thể gửi nhiều hơn số dư khả dụng.', cooldownActive: left => `Đã có một lần rút lớn: lần tiếp theo sau ${left}.`, cooldownReady: 'Không có thời gian chờ nào.', minDeposit: 'Tối thiểu 0,000001 SOL — một micro.', connect: 'Kết nối ví',
+  },
+  id: {
+    sticker: 'TANGKI GAS', title: 'Tangki gas', meta: 'BIAYA DALAM GAME', sub: 'SOL untuk tindakan di dalam laboratorium',
+    balance: 'Saldo', operations: 'Operasi', balanceMissing: 'Tangki belum ada: setoran pertama akan membuatnya.', balanceUnknown: 'Saldo tidak terbaca dari jaringan — kami tidak menampilkan nol sebagai ganti “tidak diketahui”.', reading: 'Membaca tangki…', noWallet: 'Hubungkan dompet untuk melihat tangki Anda.',
+    affordable: n => `Operasi berbayar 0,01 SOL per satu: ${n}`, feeHint: 'Melepas alat dan membuka kolektor memakai 0,01 SOL dari tangki, bukan dari dompet.', instantHint: 'Hingga 0,2 SOL keluar seketika; penarikan lebih besar memicu jeda 12 jam.', dustHint: 'Lamport di bawah satu micro tidak hilang — dibawa ke setoran berikutnya.',
+    amount: 'Jumlah, SOL', max: 'Seluruh saldo', deposit: 'Setor', withdraw: 'Tarik', sending: 'Mengirim…',
+    depositDone: 'Setoran terkonfirmasi di jaringan.', withdrawDone: 'Penarikan terkonfirmasi di jaringan.', uncertain: 'Transaksi belum terkonfirmasi. Periksa riwayat dompet — mengulang bisa menagih dua kali.',
+    invalid: 'Masukkan jumlah SOL dengan paling banyak 6 angka desimal.', insufficient: 'Tidak bisa mengirim lebih dari saldo tersedia.', cooldownActive: left => `Sudah ada penarikan besar: penarikan berikutnya bisa dalam ${left}.`, cooldownReady: 'Tidak ada jeda aktif.', minDeposit: 'Minimal 0,000001 SOL — satu micro.', connect: 'Hubungkan dompet',
+  },
+  fil: {
+    sticker: 'TANGKE NG GAS', title: 'Tangke ng gas', meta: 'MGA BAYARIN SA LARO', sub: 'SOL para sa mga aksyon sa loob ng laboratoryo',
+    balance: 'Balanse', operations: 'Mga aksyon', balanceMissing: 'Wala pa ang tangke: gagawin ito ng unang paglalagay.', balanceUnknown: 'Hindi nabasa ang balanse mula sa network — hindi kami magpapakita ng zero kapalit ng “hindi alam”.', reading: 'Binabasa ang tangke…', noWallet: 'Ikonekta ang wallet para makita ang tangke mo.',
+    affordable: n => `Mga bayad na aksyon sa 0,01 SOL bawat isa: ${n}`, feeHint: 'Ang pag-alis ng kagamitan at pag-unlock ng kolektor ay kumukuha ng 0,01 SOL sa tangke, hindi sa wallet.', instantHint: 'Hanggang 0,2 SOL ang agad na lumalabas; mas malaki ay may 12 oras na paghihintay.', dustHint: 'Ang lamport na mas mababa sa isang micro ay hindi nawawala — dinadala sa susunod na paglalagay.',
+    amount: 'Halaga, SOL', max: 'Buong balanse', deposit: 'Maglagay', withdraw: 'Maglabas', sending: 'Ipinapadala…',
+    depositDone: 'Nakumpirma sa network ang paglalagay.', withdrawDone: 'Nakumpirma sa network ang paglabas.', uncertain: 'Hindi nakumpirma ang transaksyon. Tingnan ang kasaysayan ng wallet — maaaring doble ang singil kapag inulit.',
+    invalid: 'Maglagay ng halagang SOL na hanggang 6 na desimal.', insufficient: 'Hindi maaaring magpadala nang higit sa available na balanse.', cooldownActive: left => `May malaking paglabas na: susunod na pagkakataon sa ${left}.`, cooldownReady: 'Walang aktibong paghihintay.', minDeposit: 'Minimum ay 0,000001 SOL — isang micro.', connect: 'Ikonekta ang wallet',
+  },
+};

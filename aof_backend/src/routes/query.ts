@@ -7,7 +7,7 @@ import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import bs58 from "bs58";
 import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } from "../lib/decode";
 import { pk } from "../lib/tx";
-import { auctionPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
+import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda,
   toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda,
@@ -96,6 +96,34 @@ r.get("/player/:owner", async (req, res) => {
 r.get("/gastank/:owner", async (req, res) => {
   const [addr] = gastankPda(new PublicKey(req.params.owner));
   res.json(deep(await fetchOne("gasTank", addr)));
+});
+
+// Позиция коллекционера (Historian/Medallion) по минту NFT.
+// Публичного реестра самих минтов в сети нет — владелец зовёт stake по
+// конкретному адресу, поэтому и чтение адресуется минтом. Ошибка чтения
+// отдаётся как 503, а не как «позиции нет»: иначе игрок решит, что NFT свободен.
+r.get("/collector/:mint", async (req, res) => {
+  try {
+    const mint = new PublicKey(req.params.mint);
+    const [address] = collectorPda(mint);
+    const state: any = await fetchOne("stakedCollector", address);
+    if (!state) return res.json(null);
+    // Anchor декодирует enum как { historian: {} } | { medallion: {} }; если
+    // поле не распознано, отвечаем 503, а не выдуманным 'historian'.
+    const raw = state.kind;
+    const kind = raw && typeof raw === "object" && "historian" in raw ? "historian"
+      : raw && typeof raw === "object" && "medallion" in raw ? "medallion" : null;
+    if (!kind) return res.status(503).json({ error: "COLLECTOR_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+    res.json({
+      owner: String(state.owner),
+      mint: String(state.mint),
+      kind,
+      unlockAt: Number(state.unlockAt?.toString?.() ?? state.unlockAt ?? 0),
+      source: "onchain",
+    });
+  } catch (e: any) {
+    res.status(503).json({ error: "COLLECTOR_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+  }
 });
 
 // [БЛОК L] On-chain weather and production state
