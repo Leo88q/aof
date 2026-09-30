@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
+use anchor_lang::solana_program::program_pack::Pack;
+use anchor_spl::associated_token::get_associated_token_address;
+use anchor_spl::token::{self, Burn};
+use anchor_spl::token::spl_token::state::Account as TokenState;
 use crate::constants::*;
 use crate::errors::*;
 use crate::events::*;
@@ -24,6 +27,14 @@ use crate::ResetForRebirth;
 /// * `aof_rebirth::do_rebirth` (permanent bonus) в той же транзакции тоже
 ///   требует подписи authority, так что «отдельно бонус без сброса» не
 ///   существует.
+///
+/// Почему здесь не `Account<Mint>`/`Account<TokenAccount>`: Anchor строит
+/// `Account<'info, T>` только из `&'info AccountInfo<'info>`, а
+/// `Context::remaining_accounts` — это `&'c [AccountInfo<'info>]` с
+/// независимым `'c`, и компилятор такое не пропускает. Поэтому аккаунты
+/// проверяются явно (адрес ATA, программа-владелец, точная длина) и
+/// распаковываются официальным `spl_token::state::Account::unpack`, а не
+/// байтовыми смещениями. Порядок проверок важен: CPI сжигания идёт последним.
 pub fn handler(ctx: Context<ResetForRebirth>, season_id: u32) -> Result<()> {
     let player = &mut ctx.accounts.player;
     let xp_before = ctx.accounts.season_pass.xp;
@@ -52,32 +63,55 @@ pub fn handler(ctx: Context<ResetForRebirth>, season_id: u32) -> Result<()> {
         AofError::RebirthBurnLimitExceeded
     );
 
+    let user_key = ctx.accounts.user.key();
     let mut burned_accounts: u16 = 0;
     let mut burned_atoms: u64 = 0;
     for pair in pairs.chunks(2) {
         let mint_info = &pair[0];
         let token_info = &pair[1];
-        // Область видимости: `Account<T>` держит заимствование данных
-        // аккаунта, а CPI `burn` пишет в них же. Без этого Anchor падает на
-        // "already borrowed".
-        let amount = {
-            let mint = Account::<Mint>::try_from(mint_info)?;
-            let token = Account::<TokenAccount>::try_from(token_info)?;
-            require!(
-                ctx.accounts
-                    .config
-                    .is_resource_mint(&ctx.accounts.material_mints, &mint.key()),
-                AofError::InvalidResourceKind
-            );
-            require!(token.owner == ctx.accounts.user.key(), AofError::Unauthorized);
-            require!(token.mint == mint.key(), AofError::InvalidResourceKind);
-            require!(
-                is_canonical_ata(&token_info.key(), &token.owner, &token.mint),
-                AofError::NonCanonicalTokenAccount
-            );
-            require!(token.amount > 0, AofError::ZeroAmount);
-            token.amount
+
+        // (1) Минт обязан быть ресурсным минтом конфига — проверка по адресу,
+        //     без доверия к содержимому аккаунта.
+        require!(
+            ctx.accounts
+                .config
+                .is_resource_mint(&ctx.accounts.material_mints, &mint_info.key()),
+            AofError::InvalidResourceKind
+        );
+
+        // (2) Канонический ATA игрока. Адрес ATA выводится из
+        //     (владелец, token program, минт), поэтому совпадение адресов
+        //     доказывает и владельца токен-аккаунта, и его минт.
+        require_keys_eq!(
+            token_info.key(),
+            get_associated_token_address(&user_key, &mint_info.key()),
+            AofError::NonCanonicalTokenAccount
+        );
+
+        // (3) Аккаунт принадлежит классическому Token program (не Token-2022 и
+        //     не подделка) и имеет ровно длину SPL token account: только так
+        //     официальный распаковщик читает именно `amount`.
+        require_keys_eq!(
+            *token_info.owner,
+            anchor_spl::token::spl_token::ID,
+            AofError::InvalidResourceKind
+        );
+        let (data_owner, data_mint, amount) = {
+            // Область видимости: `try_borrow_data` держит заимствование данных
+            // аккаунта, а CPI `burn` пишет в них же. Без этого Anchor падает на
+            // "already borrowed".
+            let data = token_info.try_borrow_data()?;
+            require!(data.len() == TokenState::LEN, AofError::InvalidAmount);
+            let state = TokenState::unpack(&data[..]).map_err(|_| AofError::InvalidAmount)?;
+            (state.owner, state.mint, state.amount)
         };
+
+        // (4) Данные подтверждают адрес: владелец — игрок, минт — тот же.
+        require_keys_eq!(data_owner, user_key, AofError::Unauthorized);
+        require_keys_eq!(data_mint, mint_info.key(), AofError::InvalidResourceKind);
+        require!(amount > 0, AofError::ZeroAmount);
+
+        // (5) Только теперь — сжигание.
         token::burn(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),

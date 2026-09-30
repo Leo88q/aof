@@ -51,7 +51,8 @@ test('aof-core: reset_for_rebirth сбрасывает прогресс, про�
   assert.doesNotMatch(handler, /historian_count\s*=|medallion_count\s*=/,
     'перерождение не имеет права обнулять счётчики застейканных коллекций');
   // Список — remaining_accounts, поэтому проверки обязаны быть строгими.
-  for (const check of ['is_resource_mint', 'token.owner ==', 'token.mint ==', 'is_canonical_ata', 'ZeroAmount']) {
+  for (const check of ['is_resource_mint', 'get_associated_token_address', 'spl_token::ID',
+    'TokenState::LEN', 'TokenState::unpack', 'data_owner', 'data_mint', 'ZeroAmount']) {
     assert.ok(handler.includes(check), `сброс не проверяет ${check}`);
   }
   assert.match(handler, /require!\(\s*pairs\.len\(\) % 2 == 0/, 'непарный список аккаунтов должен падать');

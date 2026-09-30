@@ -12,6 +12,22 @@ const section = (source: string, start: string, end: string) => {
   return source.slice(startAt, endAt);
 };
 
+/** Тело функции: от открывающей скобки `pub fn name(` до парной закрывающей. */
+const fnBodyOf = (source: string, name: string) => {
+  const startAt = source.indexOf(`pub fn ${name}(`);
+  assert.notEqual(startAt, -1, `missing fn: ${name}`);
+  const open = source.indexOf("{", startAt);
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(open, index + 1);
+    }
+  }
+  assert.fail(`unterminated fn: ${name}`);
+};
+
 const core = read("aof-core/src/lib.rs");
 const rental = read("aof-core/src/instructions/rental.rs");
 const forge = read("aof-core/src/instructions/forge.rs");
@@ -38,9 +54,24 @@ assert.match(section(core, "pub struct AuctionSettleCtx", "pub struct OfferCreat
 assert.match(rental, /let current_owner = ctx\.accounts\.tool\.owner;/g);
 assert.equal((rental.match(/let current_owner = ctx\.accounts\.tool\.owner;/g) ?? []).length, 2);
 
-// Rebirth has no safe settlement yet and must fail closed in the program itself.
-// API 503 responses alone are not a security boundary.
-assert.match(rebirth, /require!\(false, .*FeatureDisabled/, "rebirth must fail closed on-chain");
+// [§3.4] Rebirth is enabled, but only as an atomic pair: the permanent bonus is
+// signed by the rebirth authority and the same transaction must carry the full
+// `aof_core::reset_for_rebirth`. Hard-disabled would be wrong (the reset now
+// exists), and an unsigned `do_rebirth` would hand out bonuses without the reset.
+assert.doesNotMatch(fnBodyOf(rebirth, "handler"), /require!\(\s*false/, "rebirth is disabled again by a stub");
+assert.match(section(rebirth, "pub struct DoRebirth", "pub fn handler"),
+  /address = rebirth_config\.authority @ RebirthError::Unauthorized/,
+  "do_rebirth must require the authority signature, otherwise the bonus is reachable without the reset");
+assert.match(fnBodyOf(rebirth, "handler"), /rebirth_cost_lamports/,
+  "rebirth must stay paid: the on-chain price is part of the promise");
+assert.match(fnBodyOf(rebirth, "handler"), /cooldown_seconds/,
+  "rebirth must stay rate-limited");
+const rebirthReset = read("aof-core/src/instructions/rebirth_reset.rs");
+for (const guard of ["is_resource_mint", "get_associated_token_address", "TokenState::unpack", "ZeroAmount"]) {
+  assert.ok(rebirthReset.includes(guard), `the atomic reset must validate ${guard} before burning`);
+}
+assert.match(read("aof_backend/src/routes/rebirth.ts"), /remainingAccounts/,
+  "the backend must hand the surplus list to the atomic reset");
 
 // The historical raw-atom drum and the proposed whole-Potato V2 both remain
 // closed for NEW payments. Neither the presence of VRF paths nor a bank pause
@@ -103,14 +134,15 @@ const appNotice = read("frontend/src/components/ui/FeatureDisabledNotice.tsx");
 const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
 const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
   { id: "hot_market", route: "hotMarket.ts", code: /HOT_MARKET_DISABLED/, guard: ["programs/aof-market/src/lib.rs", /err!\(MarketError::TradingDisabled\)/] },
-  { id: "rebirth", route: "rebirth.ts", code: /REBIRTH_DISABLED/, guard: ["programs/aof-rebirth/src/instructions/do_rebirth.rs", /require!\(false, RebirthError::FeatureDisabled\)/] },
   { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /require!\(false, SkError::AtomicBindingRequired\)/] },
 ];
 for (const layer of disabledLayers) {
   assert.match(read(layer.guard[0]), layer.guard[1], `${layer.id}: on-chain guard missing`);
   assert.match(backendRoute(layer.route), layer.code, `${layer.id}: backend route is not fail-closed`);
 }
-for (const id of ["hot_market", "collectors", "rebirth", "session"]) {
+// Rebirth is no longer in DISABLED_MECHANICS: the atomic reset exists, so the
+// app must not warn about it (see the §3.4 block above).
+for (const id of ["hot_market", "collectors", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
 // [F-06] Other VRF mechanics have pool commit builders, not just editorial links:

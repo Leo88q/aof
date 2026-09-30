@@ -418,10 +418,13 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
   // [§3.4] reset_for_rebirth — единственное место, где список аккаунтов задаёт
   // бэкенд: излишков у игрока может быть 0..16 пар (mint, token_account), и
   // фиксированная структура их не выражает. Это не «невалидированный
-  // remaining_accounts»: ниже проверяется, что каждая пара проходит чётность,
-  // лимит, канонический минт, владельца, совпадение mint==token.mint, канон ATA
-  // и ненулевой остаток ДО любого CPI. Исключение живёт только для этого файла
-  // и только для этого правила.
+  // remaining_accounts»: каждая пара проходит чётность, лимит, канонический
+  // ресурсный минт, вывод канонического ATA из (игрок, минт), проверку
+  // программы-владельца и точной длины SPL token account, официальную
+  // распаковку и сверку владельца/минта/остатка — и только потом CPI burn.
+  // Anchor тут не подходит: `Account<'info, T>` строится только из
+  // `&'info AccountInfo<'info>`, а `Context::remaining_accounts` даёт
+  // `&'c [AccountInfo<'info>]` с независимым 'c (см. комментарий в файле).
   const REMAINING_ACCOUNTS = 'aof-core/src/instructions/rebirth_reset.rs';
   {
     const raw = read(REMAINING_ACCOUNTS);
@@ -430,14 +433,20 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
       [/require!\(\s*pairs\.len\(\) % 2 == 0/, 'чётность пар'],
       [/pair_count <= REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS/, 'лимит пар'],
       [/is_resource_mint\(/, 'канонический ресурсный минт'],
-      [/token\.owner == ctx\.accounts\.user\.key\(\)/, 'владение токеном'],
-      [/token\.mint == mint\.key\(\)/, 'mint пары == token.mint'],
-      [/is_canonical_ata\(/, 'канонический ATA'],
-      [/token\.amount > 0/, 'ненулевой остаток'],
+      [/get_associated_token_address\(&user_key, &mint_info\.key\(\)\)/, 'адрес ATA выводится из игрока и минта'],
+      [/NonCanonicalTokenAccount/, 'не-ATA аккаунт отвергается'],
+      [/require_keys_eq!\(\s*\*token_info\.owner,\s*anchor_spl::token::spl_token::ID/, 'владелец — классический Token program'],
+      [/TokenState::LEN/, 'точная длина SPL token account'],
+      [/TokenState::unpack\(&data\[\.\.\]\)/, 'официальная распаковка вместо байтовых смещений'],
+      [/require_keys_eq!\(data_owner, user_key/, 'владелец в данных — игрок'],
+      [/require_keys_eq!\(data_mint, mint_info\.key\(\)/, 'минт в данных — минт пары'],
+      [/require!\(amount > 0/, 'ненулевой остаток'],
     ];
     for (const [re, why] of guards) assert.match(body, re, `${REMAINING_ACCOUNTS}: ${why} обязателен до сжигания`);
     // CPI идёт строго после всех проверок пары.
-    assert.ok(body.indexOf('is_canonical_ata(') < body.indexOf('token::burn('), 'проверки пары обязаны быть до CPI burn');
+    for (const check of ['get_associated_token_address(', 'TokenState::unpack(', 'require!(amount > 0']) {
+      assert.ok(body.indexOf(check) < body.indexOf('token::burn('), `проверка ${check} обязана быть до CPI burn`);
+    }
     assert.equal([...body.matchAll(/remaining_accounts/g)].length, 1, 'remaining_accounts читается один раз и только как pairs');
   }
   for (const [program, { code }] of Object.entries(sources)) {
