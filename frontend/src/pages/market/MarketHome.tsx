@@ -13,6 +13,7 @@ import { RentalPage } from "./RentalPage";
 import { OrderbookPage } from "./OrderbookPage";
 import { FlaskMarketplace } from "./FlaskMarketplace";
 import { UI_ICONS } from "../../lib/visualAssets";
+import { isMechanicDisabled } from "../../components/ui/FeatureDisabledNotice";
 import { Note, Panel, Sticker } from "../../ui/forge/kit";
 import { SonarPPI } from "../../ui/forge/devices";
 
@@ -23,7 +24,7 @@ type MarketDetailId = 'listing' | 'auction' | 'offer' | 'rental' | 'orderbook' |
 function MarketDetailScreen({ id, children }: { id: MarketDetailId; children: ReactNode }) {
   const { language } = useLocale();
   const market = tradeNavigationCopy[language].market;
-  const title = id === 'hot' ? market.hotOpen : market[id];
+  const title = id === 'hot' ? (isMechanicDisabled('hot_market') ? market.hotClosed : market.hotOpen) : market[id];
   return <>
     <NavHeader title={title} tabKey="market" />
     {children}
@@ -94,23 +95,38 @@ export function MarketHome() {
         ))}
       </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="mt-6">
-        <Card
-          onClick={() => go("hot", <HotMarket />)}
-          className="bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="font-semibold flex items-start gap-2 text-wheat-500">
-                <img src={UI_ICONS.marketHot} alt="" className="w-5 h-5 object-contain shrink-0" />
-                <span className="min-w-0 break-words">{copy.hotOpen}</span>
-              </h3>
-              <p className="text-straw text-xs mt-1">{copy.hotIntro}</p>
-            </div>
-            <span className="text-2xl shrink-0">→</span>
-          </div>
-        </Card>
-      </motion.div>
+      {(() => {
+        // Плитка не должна обещать то, что механика не умеет: пока hot_market
+        // закрыт на цепи, «Хот-маркет открыт» — ложное обещание.
+        const hotDisabled = isMechanicDisabled("hot_market");
+        return (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="mt-6">
+            <Card
+              onClick={() => go("hot", <HotMarket />)}
+              className={
+                hotDisabled
+                  ? "bg-soil-850 border border-straw/15"
+                  : "bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30"
+              }
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className={`font-semibold flex items-start gap-2 ${hotDisabled ? "text-straw" : "text-wheat-500"}`}>
+                    <img src={UI_ICONS.marketHot} alt="" className="w-5 h-5 object-contain shrink-0" />
+                    <span className="min-w-0 break-words">
+                      {hotDisabled ? copy.hotClosed : copy.hotOpen}
+                    </span>
+                  </h3>
+                  <p className="text-straw text-xs mt-1">
+                    {hotDisabled ? copy.hotReason : copy.hotIntro}
+                  </p>
+                </div>
+                <span className="text-2xl shrink-0">→</span>
+              </div>
+            </Card>
+          </motion.div>
+        );
+      })()}
     </div>
   );
 }
