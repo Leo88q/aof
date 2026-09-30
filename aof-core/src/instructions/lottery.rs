@@ -30,11 +30,17 @@ pub fn init_round_handler(ctx: Context<InitLotteryRound>, round_id: u64) -> Resu
 /// [F-06] Ticket purchase. The FULL price is escrowed on the round (nothing
 /// reaches the treasury before the draw), so an undrawn round can refund
 /// every ticket in full. Sales close as soon as a draw is committed.
-pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>) -> Result<()> {
+///
+/// `max_price_lamports` is the ceiling the buyer signed in the wallet intent.
+/// It is checked against the price actually escrowed in this transaction, so a
+/// changed constant (or a quote that raced a deploy) fails closed instead of
+/// charging more than the player saw.
+pub fn buy_ticket_handler(ctx: Context<BuyLotteryTicket>, max_price_lamports: u64) -> Result<()> {
     require!(!ctx.accounts.lottery_round.drawn, AofError::LotteryRoundClosed);
     require!(!ctx.accounts.lottery_round.draw_committed, AofError::LotterySalesClosed);
 
     let price = LOTTERY_TICKET_PRICE_LAMPORTS;
+    require!(price <= max_price_lamports, AofError::PriceAboveMaximum);
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),

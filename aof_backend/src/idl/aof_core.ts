@@ -562,7 +562,12 @@ export type AofCore = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "maxPriceLamports",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "cancelBuyOrder",

@@ -2152,7 +2152,7 @@ test('медальоны доверия переведены как иллюст
   assert.ok(!/5 уровней репутации|Novice → Operator/.test(fallback), 'рекламный рейтинг вновь оказался на странице');
 });
 
-test('игровая лотерея переведена и не предлагает неподтверждённые билеты, выигрыш или оплату', async () => {
+test('игровая лотерея переведена: покупка только с потолком цены, неподтверждённых билетов и выигрыша нет', async () => {
   const { lotteryCopy } = await import('../src/i18n/lotteryCopy.ts');
   const { lotteryPda, lotteryU64, readLotteryRound, readLotteryTickets, canRefundLotteryTicket } = await import('../src/lib/lotteryReadings.ts');
   const { Keypair } = await import('@solana/web3.js');
@@ -2196,8 +2196,13 @@ test('игровая лотерея переведена и не предлаг�
   assert.match(page, /readLotteryRound\(await api\.query\.lotteryRound\(id\), id\)/);
   assert.match(page, /readLotteryTickets\(await api\.query\.myTickets\(id, owner\), fresh, owner\)/);
   assert.match(page, /kind: 'lotteryTicket', action, user: owner, roundId: id, ticketNumber:/);
-  assert.ok(!/api\.lottery\.(ticketBuy|roundInit|drawCommit)\(/.test(page), 'публичная форма не должна платить без лимита или показывать админ-кнопки');
-  assert.match(backend, /r\.post\("\/ticket\/buy", \(_req, res\) => \{\s*res\.status\(503\)/);
+  // Покупка платит только с потолком цены, который подписал игрок: и страница,
+  // и интент используют одну константу, а бэкенд отказывает ниже неё.
+  assert.match(page, /api\.lottery\.ticketBuy\(\{\s*buyer: owner, roundId: id, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS,/);
+  assert.match(page, /kind: 'lotteryTicket', action: 'buy', user: owner, roundId: id,\s*ticketNumber: fresh\.ticketsSold, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS/);
+  assert.ok(!/api\.lottery\.(roundInit|drawCommit)\(/.test(page), 'в публичной форме не должно быть админ-кнопок');
+  assert.match(backend, /r\.post\("\/ticket\/buy", requireCircuitOpen, requireWalletLimits\("lottery_buy"\), requireIdempotency/);
+  assert.match(backend, /maxPrice\.lt\(ceiling\)/, 'потолок ниже цены должен отказывать до кошелька');
   assert.match(backend, /r\.post\("\/round\/init", requireAdmin/);
   assert.match(backend, /r\.post\("\/draw\/commit", requireAdmin/);
 });
@@ -4644,4 +4649,45 @@ test("намерение коллекционера не уводит в хра�
     kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
   }, user));
   void coreInstructionSpec;
+});
+
+test("намерение покупки билета не даёт списать больше подписанного потолка", async () => {
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { LOTTERY_TICKET_PRICE_LAMPORTS } = await import("../src/lib/lotteryReadings.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  const user = new PublicKey("7xKXtg2CW87d97TXJTDpQkAX9sv2vHHwL7PRQCPHh8oF");
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const pda = (seed: string, ...parts: Uint8Array[]) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...parts], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const u64 = (text: string) => {
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, BigInt(text), true);
+    return bytes;
+  };
+  const roundId = "9007199254740993";
+  const ticketNumber = "3";
+  const buyDisc = CORE_INSTRUCTIONS.find(i => i.name === "buy_lottery_ticket")!.discriminator;
+  const buyIx = (maxPrice: string, round = roundId, ticket = ticketNumber) => ({
+    programId: CORE_PROGRAM_ID,
+    keys: [pda("config"), user, pda("lottery_round", u64(round)),
+      pda("lottery_ticket", u64(round), u64(ticket)),
+      pda("lottery_ticket", new TextEncoder().encode("count"), u64(round), user.toBytes()), SYSTEM],
+    data: new Uint8Array([...buyDisc, ...u64(maxPrice)]),
+  });
+  const intent = {
+    kind: "lotteryTicket", action: "buy", user: user.toBase58(), roundId,
+    ticketNumber, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS,
+  } as const;
+
+  // Ровно один билет своего раунда с потолком из интерфейса — принимается.
+  validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], intent, user);
+  // Другой потолок, другой билет/раунд, чужой потолок в намерении, лишняя
+  // инструкция — отказ до кошелька.
+  assert.throws(() => validateTransactionIntent([buyIx("900000")], intent, user), /ceiling/);
+  assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], { ...intent, ticketNumber: "4" }, user));
+  assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], { ...intent, maxPriceLamports: "800001" }, user), /ceiling/);
+  assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS), buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], intent, user));
 });

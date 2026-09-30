@@ -36,16 +36,17 @@ export interface SeasonPassIntent {
   readonly seasonId: number;
   readonly priceLamports: "150000000";
 }
-/** Only an already-owned lottery ticket may be claimed or refunded.
- * Ticket purchases are separately paused until the contract supports a
- * wallet-signed maximum price, not merely a hard-coded transfer in a CPI. */
-export interface LotteryTicketIntent {
-  readonly kind: "lotteryTicket";
-  readonly action: "claim" | "refund";
-  readonly user: string;
-  readonly roundId: string;
-  readonly ticketNumber: string;
-}
+/**
+ * Lottery tickets: a purchase is signed with the ceiling the player saw, so a
+ * changed constant (or a substituted backend response) can never charge more
+ * than the screen showed; claim/refund stay bound to an already-owned ticket.
+ * `ticketNumber` is the round's `tickets_sold` at quote time — the program
+ * derives `lottery_ticket` and the per-wallet counter from it, so any other
+ * value produces different PDAs and the intent check fails.
+ */
+export type LotteryTicketIntent =
+  | { readonly kind: "lotteryTicket"; readonly action: "claim" | "refund"; readonly user: string; readonly roundId: string; readonly ticketNumber: string }
+  | { readonly kind: "lotteryTicket"; readonly action: "buy"; readonly user: string; readonly roundId: string; readonly ticketNumber: string; readonly maxPriceLamports: string };
 /**
  * Газ-бак: пополнение/вывод SOL. Игрок подтверждает на экране точную сумму, а
  * кошелёк подписывает только инструкцию своего бака с этой же суммой — иначе
@@ -186,6 +187,24 @@ function validateLotteryTicketIntent(instructions: Instruction[], intent: Lotter
   )[0];
   const ix = instructions[0];
   const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (intent.action === 'buy') {
+    // Data layout: 8-byte discriminator + u64 max_price_lamports (LE).
+    positiveU64(intent.maxPriceLamports);
+    const counterBytes = new TextEncoder().encode('count');
+    const expected = [pda('config'), user, seeded('lottery_round', roundBytes),
+      seeded('lottery_ticket', roundBytes, ticketBytes),
+      seeded('lottery_ticket', counterBytes, roundBytes, user.toBytes()),
+      new PublicKey(SYSTEM)];
+    if (instructions.length !== 1 || spec?.name !== 'buy_lottery_ticket' || ix.data.length !== 16 ||
+        !keysEqual(ix.keys, expected)) {
+      throw new Error('Lottery purchase differs from the verified round and wallet');
+    }
+    const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+    if (view.getBigUint64(8, true) !== BigInt(intent.maxPriceLamports)) {
+      throw new Error('Lottery price ceiling differs from user intent');
+    }
+    return;
+  }
   const expectedName = intent.action === 'claim' ? 'claim_lottery_prize'
     : intent.action === 'refund' ? 'refund_lottery_ticket' : null;
   if (!expectedName || instructions.length !== 1 || spec?.name !== expectedName || ix.data.length !== 8 ||

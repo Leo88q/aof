@@ -128,6 +128,11 @@ export const lotteryTicketPda = (
   roundId: BN | bigint | number | string,
   ticketNumber: BN | bigint | number | string
 ) => find([enc("lottery_ticket"), u64le(roundId), u64le(ticketNumber)]);
+/** Per-wallet ticket counter: seeds ["lottery_ticket", "count", round_id, buyer]. */
+export const lotteryTicketCounterPda = (
+  roundId: BN | bigint | number | string,
+  buyer: PublicKey
+) => find([enc("lottery_ticket"), enc("count"), u64le(roundId), buyer.toBuffer()]);
 export const listingPda = (mint: PublicKey) => find([enc("listing"), mint.toBuffer()]);
 export const auctionPda = (mint: PublicKey) => find([enc("auction"), mint.toBuffer()]);
 export const offerPda = (mint: PublicKey, buyer: PublicKey) =>

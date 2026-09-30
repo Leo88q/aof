@@ -332,8 +332,14 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const ticket = (n: number) => pda([B("lottery_ticket"), le(roundId), le(new BN(n))]);
     const ticketCounter = pda([B("lottery_ticket"), B("count"), le(roundId), buyer.publicKey.toBuffer()]);
     const roundBefore = await provider.connection.getBalance(lotteryRound);
+    const TICKET_CEILING = new BN(800_000); // LOTTERY_TICKET_PRICE_LAMPORTS: what the player signs
+    // A ceiling below the escrowed price must fail closed, not charge more.
+    await expectError(program.methods.buyLotteryTicket(TICKET_CEILING.subn(1)).accounts({
+      config: configPda, buyer: buyer.publicKey, lotteryRound, lotteryTicket: ticket(0), ticketCounter,
+      systemProgram: SystemProgram.programId,
+    }).signers([buyer]).rpc(), "PriceAboveMaximum");
     for (const n of [0, 1]) {
-      await program.methods.buyLotteryTicket().accounts({
+      await program.methods.buyLotteryTicket(TICKET_CEILING).accounts({
         config: configPda, buyer: buyer.publicKey, lotteryRound, lotteryTicket: ticket(n), ticketCounter,
         systemProgram: SystemProgram.programId,
       }).signers([buyer]).rpc();
