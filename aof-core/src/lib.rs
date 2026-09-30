@@ -4099,7 +4099,10 @@ pub mod aof_core {
     /// [§3.4] Полный сброс перерождения. Вызывается в ОДНОЙ транзакции с
     /// `aof_rebirth::do_rebirth`: либо игрок платит цену, теряет прогресс
     /// сезона и сжигает излишки, либо не происходит ничего.
-    pub fn reset_for_rebirth(ctx: Context<ResetForRebirth>, season_id: u32) -> Result<()> {
+    pub fn reset_for_rebirth<'info>(
+        ctx: Context<'_, '_, '_, 'info, ResetForRebirth<'info>>,
+        season_id: u32,
+    ) -> Result<()> {
         instructions::rebirth_reset::handler(ctx, season_id)
     }
 

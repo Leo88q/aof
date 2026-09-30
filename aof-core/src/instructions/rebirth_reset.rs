@@ -35,7 +35,14 @@ use crate::ResetForRebirth;
 /// проверяются явно (адрес ATA, программа-владелец, точная длина) и
 /// распаковываются официальным `spl_token::state::Account::unpack`, а не
 /// байтовыми смещениями. Порядок проверок важен: CPI сжигания идёт последним.
-pub fn handler(ctx: Context<ResetForRebirth>, season_id: u32) -> Result<()> {
+pub fn handler<'info>(
+    // Явные лайфтаймы обязательны: `AccountInfo`/`Signer` инвариантны по
+    // своему параметру, поэтому без общей `'info` у `ctx.accounts.*` и
+    // `ctx.remaining_accounts` компилятор требует `'2: '1` и падает на
+    // «lifetime may not live long enough» (официальная рекомендация Anchor).
+    ctx: Context<'_, '_, '_, 'info, ResetForRebirth<'info>>,
+    season_id: u32,
+) -> Result<()> {
     let player = &mut ctx.accounts.player;
     let xp_before = ctx.accounts.season_pass.xp;
     let has_tent_before = player.has_tent;
