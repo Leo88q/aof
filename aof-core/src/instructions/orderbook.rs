@@ -546,7 +546,11 @@ mod orderbook_v2_quote_tests {
     #[test]
     fn quote_fails_closed_instead_of_wrapping() {
         assert!(quote_total_lamports(u64::MAX, u64::MAX).is_err());
-        assert!(quote_total_lamports(u64::MAX, 1_000_000_000).is_err());
+        // u64::MAX × 1 целый ресурс в u64 ещё влезает (ровно u64::MAX), а вот
+        // два целых ресурса — уже нет: округление вверх не должно обернуться
+        // в маленькое число.
+        assert_eq!(quote_total_lamports(u64::MAX, 1_000_000_000).unwrap(), u64::MAX);
+        assert!(quote_total_lamports(u64::MAX, 2_000_000_000).is_err());
     }
 
     /// Подушка тейкер-комиссии тоже округляется вверх, иначе депозит не покроет
