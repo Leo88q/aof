@@ -14,6 +14,7 @@ on:
       - 'arena/01a0efab-aof'
 permissions:
   contents: read
+  pull-requests: write
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -50,9 +51,38 @@ jobs:
           npm run preflight:mining-devnet 2>&1 | tee /tmp/preflight.log || true
           echo "=== mining-devnet-preflight.json ==="
           cat "${MINING_PREFLIGHT_REPORT}" 2>/dev/null || echo "report not written"
+      - name: Collect the report
+        if: always()
+        env:
+          REPORT: ${{ runner.temp }}/mining-devnet-preflight.json
+        run: |
+          set -uo pipefail
+          {
+            echo "### Состояние девнета (только чтение; байткод и подписи не проверяются)"
+            echo
+            echo '```json'
+            cat "$REPORT" 2>/dev/null || echo '{"note":"отчёт не записан: RPC недоступен или preflight упал до записи"}'
+            echo '```'
+            echo
+            echo "Проверка адресов программ:"
+            echo
+            echo '```'
+            grep -E "^(aof_|api\.devnet)" /tmp/programs.log 2>/dev/null || echo "шаг проверки адресов не дал строк"
+            echo '```'
+          } > /tmp/devnet-report.md
+          cat /tmp/devnet-report.md
+      - name: Publish to the pull request (and to the run summary)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          cat /tmp/devnet-report.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          gh pr comment --body-file /tmp/devnet-report.md --edit-last || gh pr comment --body-file /tmp/devnet-report.md || true
       - name: Which program IDs answer on devnet
         run: |
           set -uo pipefail
+          exec > >(tee /tmp/programs.log) 2>&1
           python3 - <<'PY'
           import json, urllib.request
           ids = json.load(open('../watchtower/addresses.json'))['programs']
@@ -72,6 +102,7 @@ jobs:
               except Exception as e:
                   print(f"{entry['name']:16} {entry['address']}  -> ошибка чтения: {e}")
           PY
+          true
       - name: Add report to run summary
         if: always()
         env:
