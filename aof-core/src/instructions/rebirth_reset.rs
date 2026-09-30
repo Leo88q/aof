@@ -86,16 +86,7 @@ pub fn handler<'info>(
             AofError::InvalidResourceKind
         );
 
-        // (2) Канонический ATA игрока. Адрес ATA выводится из
-        //     (владелец, token program, минт), поэтому совпадение адресов
-        //     доказывает и владельца токен-аккаунта, и его минт.
-        require_keys_eq!(
-            token_info.key(),
-            get_associated_token_address(&user_key, &mint_info.key()),
-            AofError::NonCanonicalTokenAccount
-        );
-
-        // (3) Аккаунт принадлежит классическому Token program (не Token-2022 и
+        // (2) Аккаунт принадлежит классическому Token program (не Token-2022 и
         //     не подделка) и имеет ровно длину SPL token account: только так
         //     официальный распаковщик читает именно `amount`.
         require_keys_eq!(
@@ -113,10 +104,24 @@ pub fn handler<'info>(
             (state.owner, state.mint, state.amount)
         };
 
-        // (4) Данные подтверждают адрес: владелец — игрок, минт — тот же.
+        // (3) Данные обязаны подтвердить пару: владелец — игрок, минт — тот
+        //     же, что передан рядом. Эти проверки идут раньше адресной, чтобы
+        //     отказ называл конкретную причину («чужой», «не тот минт»), а не
+        //     только «не тот адрес».
         require_keys_eq!(data_owner, user_key, AofError::Unauthorized);
         require_keys_eq!(data_mint, mint_info.key(), AofError::InvalidResourceKind);
         require!(amount > 0, AofError::ZeroAmount);
+
+        // (4) И только канонический ATA игрока: адрес выводится из
+        //     (владелец, token program, минт), поэтому совпадение адресов
+        //     доказывает и владельца токен-аккаунта, и его минт. Из-за этого
+        //     «правильный владелец и минт, но счёт открыт вручную» тоже
+        //     отвергается: сжигание не может уйти из не того места.
+        require_keys_eq!(
+            token_info.key(),
+            get_associated_token_address(&user_key, &mint_info.key()),
+            AofError::NonCanonicalTokenAccount
+        );
 
         // (5) Только теперь — сжигание.
         token::burn(
