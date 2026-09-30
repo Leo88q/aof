@@ -79,8 +79,10 @@ IDL (JSON и TS), `watchtower/addresses.json`, клиентские allowlist'ы
    `pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, ResetForRebirth<'info>>, …)`.
 
 `Anchor test` после этого впервые прогнал весь набор на локальном валидаторе:
-**47 passing, 1 failing** — и провал был именно в тесте перерождения:
-ожидался `Unauthorized`, приходил `NonCanonicalTokenAccount`. Причина —
+47 passing, 1 failing — и провал был именно в тесте перерождения:
+ожидался `Unauthorized`, приходил `NonCanonicalTokenAccount`. После правки
+прогон зелёный (в отчёте о compute units `ResetForRebirth` видна как успешно
+выполненная на валидаторе). Причина —
 порядок отказов: адресная проверка ATA стояла раньше разбора данных и
 затмевала более точную причину, а тест (и бэкенд, который переводит код
 ошибки в сообщение игроку) различает «чужой», «не тот минт» и «не тот счёт».

@@ -63,12 +63,14 @@ bash scripts/dev-local.sh sync
   `reset_for_rebirth`; исправлено явными проверками вместо
   `Account::try_from` из `remaining_accounts` и явным `'info` в сигнатуре
   (подробности — `docs/UNBLOCK_PLAN_2026-09-30.md`, §0.1-бис).
-* `Anchor test (local validator)` — набор впервые прогнан на локальном
-  валидаторе: 47 passing, 1 failing, и единственный провал был в тесте
-  перерождения (порядок кодов отказа: `NonCanonicalTokenAccount`/`ZeroAmount`
-  вместо `Unauthorized`/`InvalidResourceKind`/`NonCanonicalTokenAccount`).
-  Порядок отказов исправлен; ожидаемый результат — 48 passing.
-* Локально без сети зелёные: 151 readiness-тест, python-гейты
+* `Anchor test (local validator)` — **зелёный**: весь набор идёт на локальном
+  валидаторе. В прогоне, где он впервые запустился, было 47 passing / 1 failing,
+  и единственный провал был в тесте перерождения: механика работала, но код
+  отказа называл не ту причину (`NonCanonicalTokenAccount`/`ZeroAmount` вместо
+  `Unauthorized`/`InvalidResourceKind`). Порядок отказов исправлен, прогон
+  зелёный; в отчёте о compute units инструкция `ResetForRebirth` видна как
+  успешно выполненная на валидаторе.
+* Локально без сети зелёные: 155 readiness-тестов, python-гейты
   (`test-p0-security`, `check-idl-drift`, генератор таблицы инструкций),
   security-скрипты (`check-hidden-unicode`, `program-registry`,
   `agent-config-lock`, `agent-skills`, `upstream-watch`, `audit-gate`).
