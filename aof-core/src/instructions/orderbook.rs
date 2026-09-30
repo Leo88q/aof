@@ -404,11 +404,17 @@ pub fn cancel_buy_handler_v2(ctx: Context<CancelBuyOrderV2>) -> Result<()> {
 
 pub fn cancel_sell_handler_v2(ctx: Context<CancelSellOrderV2>) -> Result<()> {
     let remaining = ctx.accounts.order.amount_remaining;
+    // Ключи и bump кладём в локальные значения до сборки seeds: `mint.key()`
+    // даёт временный Pubkey (E0716), а `seeds`, живущий до конца функции, не
+    // даёт затем обнулить `amount_remaining` (E0502).
+    let maker_key = ctx.accounts.order.maker;
+    let mint_key = ctx.accounts.mint.key();
+    let bump = ctx.accounts.order.bump;
     let seeds: &[&[u8]] = &[
         RESOURCE_ORDER_V2_SEED,
-        ctx.accounts.order.maker.as_ref(),
-        ctx.accounts.mint.key().as_ref(),
-        &[ctx.accounts.order.bump],
+        maker_key.as_ref(),
+        mint_key.as_ref(),
+        &[bump],
     ];
     if remaining > 0 {
         token::transfer(
@@ -473,11 +479,16 @@ pub fn match_handler_v2(ctx: Context<MatchResourceOrdersV2>) -> Result<()> {
     require!(ctx.accounts.buy_order.escrow_lamports >= buyer_pays, AofError::InsufficientOrderEscrow);
     let seller_receives = gross.checked_sub(maker_fee).ok_or(AofError::MathOverflow)?;
 
+    // Тот же приём, что и в cancel: ключи в локальные значения, чтобы проброс
+    // временного Pubkey не ронял сборку.
+    let seller_key = ctx.accounts.sell_order.maker;
+    let mint_key = ctx.accounts.mint.key();
+    let sell_bump = ctx.accounts.sell_order.bump;
     let seeds: &[&[u8]] = &[
         RESOURCE_ORDER_V2_SEED,
-        ctx.accounts.sell_order.maker.as_ref(),
-        ctx.accounts.mint.key().as_ref(),
-        &[ctx.accounts.sell_order.bump],
+        seller_key.as_ref(),
+        mint_key.as_ref(),
+        &[sell_bump],
     ];
     token::transfer(
         CpiContext::new_with_signer(

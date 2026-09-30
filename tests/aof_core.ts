@@ -834,8 +834,11 @@ describe("aof-core: security & core flows", () => {
     expect(order.escrowLamports.toString()).to.equal(String(deposit - total - takerFee));
     expect(order.amountRemaining.toString()).to.equal("0");
 
-    // Отмена после полного свода: rent возвращается, эскроу уже выплачен.
+    // Отмена после полного свода: эскроу уже выплачен, но rent обоих аккаунтов
+    // (ордера и vault) обязан вернуться продавцу — иначе выход заперт.
     const sellerBefore = await provider.connection.getBalance(seller.publicKey);
+    const sellerRent = (await provider.connection.getBalance(sellOrder))
+      + (await provider.connection.getBalance(sellVault));
     await program.methods.cancelSellOrderV2().accounts({
       config: configPda, maker: seller.publicKey, mint: woodMint, order: sellOrder,
       orderVault: sellVault, makerToken: sellerWood, tokenProgram: TOKEN_PROGRAM_ID,
@@ -843,8 +846,11 @@ describe("aof-core: security & core flows", () => {
     await program.methods.cancelBuyOrderV2().accounts({
       config: configPda, maker: buyer.publicKey, mint: woodMint, order: buyOrder,
     }).signers([buyer]).rpc();
-    expect(await provider.connection.getBalance(seller.publicKey)).to.equal(sellerBefore);
+    expect(await provider.connection.getBalance(seller.publicKey) - sellerBefore).to.equal(sellerRent);
+    expect(await provider.connection.getAccountInfo(sellOrder)).to.equal(null);
     expect(await provider.connection.getAccountInfo(sellVault)).to.equal(null);
+    expect(order.escrowLamports.toString()).to.equal("0");
+    expect(await balance(sellerWood)).to.be.greaterThan(new BN(0));
   });
 
   // [F-06] Paid randomness mechanics commit through Switchboard On-Demand. With

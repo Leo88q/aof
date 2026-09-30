@@ -190,6 +190,16 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("PaymentSettled", { playerId: null, amount: str(d.amount), currency: LAMPORTS, attributes: { venue: "orderbook", pricePerUnit: str(d.priceLamportsPerUnit), buyOrder: str(d.buyOrder), sellOrder: str(d.sellOrder) } });
       emit("LiabilitySettled", { playerId: null, amount: str(d.amount), currency: LAMPORTS, attributes: { liability: "orderbook" } });
       break;
+    // [AUDIT orderbook price unit] v2 — цена за ЦЕЛЫЙ ресурс. Отдельные типы
+    // событий, чтобы индексор не смешивал шкалы: эскроу покупателя равен
+    // total_lamports, а сделка несёт gross и обе комиссии.
+    case "OrderPlacedV2":
+      emit("LiabilityCreated", { playerId: pid(d.maker), amount: str(d.totalLamports), currency: LAMPORTS, attributes: { liability: "orderbook_v2", side: bool(d.isBuy) ? "buy" : "sell", pricePerWhole: str(d.priceLamportsPerWhole) } });
+      break;
+    case "OrderMatchedV2":
+      emit("PaymentSettled", { playerId: null, amount: str(d.grossLamports), currency: LAMPORTS, attributes: { venue: "orderbook_v2", pricePerWhole: str(d.priceLamportsPerWhole), buyOrder: str(d.buyOrder), sellOrder: str(d.sellOrder), takerFeeLamports: str(d.takerFeeLamports), makerFeeLamports: str(d.makerFeeLamports) } });
+      emit("LiabilitySettled", { playerId: null, amount: str(d.grossLamports), currency: LAMPORTS, attributes: { liability: "orderbook_v2" } });
+      break;
     case "LimitOrderPlaced":
       emit("LiabilityCreated", { playerId: pid(d.maker), amount: str(d.limitPrice), currency: "HOT_MARKET_UNIT", attributes: { liability: "limit_order", side: bool(d.isBuy) ? "buy" : "sell", rarity: str(d.rarity) } });
       break;
