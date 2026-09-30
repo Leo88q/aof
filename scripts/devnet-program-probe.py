@@ -343,11 +343,17 @@ def main(argv: list[str]) -> int:
             continue
         deployed += 1
         owner = value.get("owner")
-        size = len(value.get("data", [""])[0]) * 3 // 4
-        note = "исполняемая" if value.get("executable") else "не исполняемая (данные, не программа)"
         loader = "loader совпадает" if owner == LOADER else "чужой владелец"
-        say(f"{entry['name']:16} {address}  -> executable={value.get('executable')} owner={owner} "
-            f"bytes={size} ({note}, {loader})")
+        if value.get("executable"):
+            # У аккаунта программы данные — это 36 байт состояния (ProgramState),
+            # а байткод лежит в отдельном аккаунте programdata. Печатать 36 как
+            # «размер программы» значило бы вводить в заблуждение, поэтому здесь
+            # только факт исполняемости, а хеш байткода проверяет verify-programs.sh.
+            say(f"{entry['name']:16} {address}  -> исполняемая ({loader}); "
+                f"хеш байткода: scripts/verify-programs.sh --require-bytecode")
+        else:
+            size = len(value.get("data", [""])[0]) * 3 // 4
+            say(f"{entry['name']:16} {address}  -> НЕ исполняемая: данные {size} Б ({loader})")
         line.update({"deployed": True, "executable": bool(value.get("executable")), "owner": owner})
         report["programs"].append(line)
 
