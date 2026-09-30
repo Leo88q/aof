@@ -245,6 +245,10 @@ else
   echo "Повторите ту же команду с --apply."
 fi
 echo
+echo "Чтобы читались история, квесты и рынок, после включения держите запущенными сервисы:"
+echo "  cd aof_backend && npm run chain-indexer   # курсоры aof_core/aof_market/aof_quests, health :8082"
+echo "  cd aof_backend && npm run workers:all     # trust-worker, farm-trader, price-cranker по включённым механикам"
+echo
 echo "Осталось работой по контракту (не переключатель, docs/UNBLOCK_PLAN_2026-09-30.md §3):"
 echo "  * ордербук: цена за целый ресурс + связанный intent (v2-инструкции);"
 echo "  * перерождение: полный сброс сезонного состояния и активов одним действием;"

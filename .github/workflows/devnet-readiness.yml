@@ -74,6 +74,18 @@ jobs:
             echo '```'
             cat /tmp/programs.log 2>/dev/null || echo "проверка адресов не выполнялась"
             echo '```'
+            echo
+            echo "Включение — одна команда (нужны ключ оператора, SOL и запущенный backend):"
+            echo
+            echo '```sh'
+            echo "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон"
+            echo "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить"
+            echo '```'
+            echo
+            echo "Не переключатели — нужна правка и новая сборка программ: ордербук (цена за"
+            echo "целый ресурс), полный сброс при перерождении, потолок цены в лотерее, платный"
+            echo "сезон-пропуск, Potato V2, обмен инструментами. Разбор:"
+            echo "docs/UNBLOCK_PLAN_2026-09-30.md §3."
           } > /tmp/devnet-report.md
           cat /tmp/devnet-report.md
       - name: Publish to the pull request (and to the run summary)
