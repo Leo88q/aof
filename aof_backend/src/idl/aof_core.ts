@@ -10041,6 +10041,527 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "placeBuyOrderV2",
+      "discriminator": [
+        247,
+        218,
+        160,
+        245,
+        7,
+        231,
+        160,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  111,
+                  117,
+                  114,
+                  99,
+                  101,
+                  95,
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": "u8"
+        },
+        {
+          "name": "priceLamportsPerWhole",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "placeSellOrderV2",
+      "discriminator": [
+        81,
+        69,
+        48,
+        185,
+        155,
+        116,
+        212,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "makerToken",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  111,
+                  117,
+                  114,
+                  99,
+                  101,
+                  95,
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orderVault",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": "u8"
+        },
+        {
+          "name": "priceLamportsPerWhole",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancelBuyOrderV2",
+      "discriminator": [
+        209,
+        122,
+        46,
+        175,
+        34,
+        196,
+        203,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  111,
+                  117,
+                  114,
+                  99,
+                  101,
+                  95,
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancelSellOrderV2",
+      "discriminator": [
+        111,
+        136,
+        76,
+        159,
+        176,
+        255,
+        114,
+        49
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  111,
+                  117,
+                  114,
+                  99,
+                  101,
+                  95,
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orderVault",
+          "writable": true
+        },
+        {
+          "name": "makerToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "matchResourceOrdersV2",
+      "discriminator": [
+        125,
+        171,
+        84,
+        144,
+        102,
+        255,
+        14,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "buyOrder",
+          "writable": true
+        },
+        {
+          "name": "sellOrder",
+          "writable": true
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "sellVault",
+          "writable": true
+        },
+        {
+          "name": "buyerToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -10575,6 +11096,19 @@ export type AofCore = {
         18,
         96,
         242
+      ]
+    },
+    {
+      "name": "resourceOrderV2",
+      "discriminator": [
+        17,
+        151,
+        107,
+        25,
+        254,
+        245,
+        182,
+        178
       ]
     }
   ],
@@ -11501,6 +12035,32 @@ export type AofCore = {
         163,
         195
       ]
+    },
+    {
+      "name": "orderPlacedV2",
+      "discriminator": [
+        20,
+        225,
+        47,
+        181,
+        75,
+        106,
+        204,
+        155
+      ]
+    },
+    {
+      "name": "orderMatchedV2",
+      "discriminator": [
+        145,
+        101,
+        220,
+        61,
+        32,
+        55,
+        105,
+        107
+      ]
     }
   ],
   "errors": [
@@ -12178,6 +12738,11 @@ export type AofCore = {
       "code": 6134,
       "name": "lotteryRoundNotEmpty",
       "msg": "Lottery round still holds funds"
+    },
+    {
+      "code": 6135,
+      "name": "insufficientOrderEscrow",
+      "msg": "Order escrow does not cover this fill"
     }
   ],
   "types": [
@@ -15660,6 +16225,110 @@ export type AofCore = {
                 32
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "resourceOrderV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "isBuy",
+            "type": "bool"
+          },
+          {
+            "name": "priceLamportsPerWhole",
+            "type": "u64"
+          },
+          {
+            "name": "amountRemaining",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrowLamports",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "orderPlacedV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "isBuy",
+            "type": "bool"
+          },
+          {
+            "name": "priceLamportsPerWhole",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "totalLamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "orderMatchedV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyOrder",
+            "type": "pubkey"
+          },
+          {
+            "name": "sellOrder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "priceLamportsPerWhole",
+            "type": "u64"
+          },
+          {
+            "name": "grossLamports",
+            "type": "u64"
+          },
+          {
+            "name": "takerFeeLamports",
+            "type": "u64"
+          },
+          {
+            "name": "makerFeeLamports",
+            "type": "u64"
           }
         ]
       }

@@ -69,10 +69,13 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/rental/end", subject: "rental_end", field: "caller" },
   { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
   { path: "/rental/delist", subject: "rental_delist", field: "caller" },
+  { path: "/orderbook/v2/buy/place", subject: "orderbook_v2_buy_place", field: "maker" },
   { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
+  { path: "/orderbook/v2/sell/place", subject: "orderbook_v2_sell_place", field: "maker" },
   { path: "/orderbook/sell/place", subject: "orderbook_sell_place", field: "maker" },
   { path: "/orderbook/buy/cancel", subject: "orderbook_buy_cancel", field: "maker" },
   { path: "/orderbook/sell/cancel", subject: "orderbook_sell_cancel", field: "maker" },
+  { path: "/orderbook/v2/match", subject: "orderbook_v2_match", field: "caller" },
   { path: "/orderbook/match", subject: "orderbook_match", field: "caller" },
   { path: "/packs/commit", subject: "packs_commit", field: "user" },
   { path: "/packs/reveal", subject: "packs_reveal", field: "user" },
@@ -240,6 +243,7 @@ export const api = {
     friendFarm: (address: string) => get(`/query/friend-farm/${address}`),
     enchantSlots: (toolMint: string) => get(`/query/enchant-slots/${toolMint}`),
     orderbook: (mint: string) => get(`/query/orderbook/${mint}`),
+    orderbookV2: (mint: string) => get(`/query/orderbook-v2/${mint}`),
     auctions: (mint?: string) => get(`/query/auctions${mint ? `?mint=${mint}` : ""}`),
     auction: (mint: string) => get(`/query/auction/${mint}`),
     listings: () => get("/query/listings"),
@@ -430,6 +434,12 @@ export const api = {
 
   // === Ордербук ресурсов ===
   orderbook: {
+    // v2: цена за ЦЕЛЫЙ ресурс, эскроу округляется вверх в программе.
+    placeBuyV2: (v: any) => post("/orderbook/v2/buy/place", v),
+    placeSellV2: (v: any) => post("/orderbook/v2/sell/place", v),
+    cancelBuyV2: (v: any) => post("/orderbook/v2/buy/cancel", v),
+    cancelSellV2: (v: any) => post("/orderbook/v2/sell/cancel", v),
+    matchV2: (v: any) => post("/orderbook/v2/match", v),
     placeBuy: (v: any) => post("/orderbook/buy/place", v),
     placeSell: (v: any) => post("/orderbook/sell/place", v),
     cancelBuy: (v: any) => post("/orderbook/buy/cancel", v),

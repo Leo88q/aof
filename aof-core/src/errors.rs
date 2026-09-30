@@ -291,4 +291,7 @@ pub enum AofError {
     LotterySalesOpen,
     #[msg("Lottery round still holds funds")]
     LotteryRoundNotEmpty,
+    // [AUDIT orderbook price unit] appended: existing codes must not move.
+    #[msg("Order escrow does not cover this fill")]
+    InsufficientOrderEscrow,
 }

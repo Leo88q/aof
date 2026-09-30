@@ -188,6 +188,22 @@ r.get("/orderbook/:mint", async (req, res) => {
   });
 });
 
+// v2 book: same shape as /orderbook/:mint, but the price is per WHOLE resource
+// (`priceLamportsPerWhole`) and buy rows carry the escrow that is still held.
+// The v1 route stays for old escrows, which are only cancellable.
+r.get("/orderbook-v2/:mint", async (req, res) => {
+  // mint лежит на смещении 58, как и в v1 (сдвиг даёт та же пара bool/u8
+  // перед ценой); раскладку проверяет tests/readiness/orderbook-v2-layout.test.cjs.
+  const all = await fetchAll("resourceOrderV2", [memcmpFilter(58, req.params.mint)]);
+  const decoded = all.map((x: any) => ({ pubkey: x.publicKey.toBase58(), ...deep(x.account) }));
+  const open = (o: any) => BigInt(o.amountRemaining.toString()) > 0n;
+  res.json({
+    buy: decoded.filter((o: any) => o.isBuy && open(o)),
+    sell: decoded.filter((o: any) => !o.isBuy && open(o)),
+    exhausted: decoded.filter((o: any) => !open(o)),
+  });
+});
+
 // Все активные аукционы (опционально по минту)
 r.get("/auctions", async (req, res) => {
   const filters = [memcmpFilter(128, bs58.encode(Buffer.from([1])))]; // active=true

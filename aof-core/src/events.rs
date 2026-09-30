@@ -307,6 +307,30 @@ pub struct OrderMatched {
     pub price_lamports_per_unit: u64,
 }
 
+/// [AUDIT orderbook price unit] v2 order placement: `price_lamports_per_whole`
+/// is per whole resource, `total_lamports` is what the escrow holds (rounded
+/// up). Emitted separately from `OrderPlaced` so the indexer never has to guess
+/// which price unit a row uses.
+#[event]
+pub struct OrderPlacedV2 {
+    pub maker: Pubkey,
+    pub is_buy: bool,
+    pub price_lamports_per_whole: u64,
+    pub amount: u64,
+    pub total_lamports: u64,
+}
+
+#[event]
+pub struct OrderMatchedV2 {
+    pub buy_order: Pubkey,
+    pub sell_order: Pubkey,
+    pub amount: u64,
+    pub price_lamports_per_whole: u64,
+    pub gross_lamports: u64,
+    pub taker_fee_lamports: u64,
+    pub maker_fee_lamports: u64,
+}
+
 #[event]
 pub struct CraftOrderFulfilled {
     pub creator: Pubkey,

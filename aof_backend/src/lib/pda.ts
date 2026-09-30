@@ -141,6 +141,9 @@ export const rentalListingPda = (mint: PublicKey) => find([enc("rental_listing")
 export const rentalAgreementPda = (mint: PublicKey) => find([enc("rental_agreement"), mint.toBuffer()]);
 export const resourceOrderPda = (maker: PublicKey, mint: PublicKey) =>
   find([enc("resource_order"), maker.toBuffer(), mint.toBuffer()]);
+/** v2 order PDA: separate seed so v1 escrows stay cancellable through v1. */
+export const resourceOrderV2Pda = (maker: PublicKey, mint: PublicKey) =>
+  find([enc("resource_order_v2"), maker.toBuffer(), mint.toBuffer()]);
 export const craftOrderPda = (creator: PublicKey) => find([enc("craft_order"), creator.toBuffer()]);
 export const seasonPda = (seasonId: number) => find([enc("season"), u32le(seasonId)]);
 export const seasonPassPda = (owner: PublicKey, seasonId: number) =>

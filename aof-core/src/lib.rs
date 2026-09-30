@@ -3298,6 +3298,125 @@ pub struct MatchResourceOrders<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+// ----- Ордербук ресурсов v2 (цена за целый ресурс) -----
+// [AUDIT orderbook price unit] v1 accepted `price_lamports_per_unit` and
+// multiplied it by `amount` in ATOMS, so the smallest expressible price was one
+// lamport per atom = 1 SOL per whole resource, while the old UI labeled the same
+// number "per resource" and could escrow 10^9 times the shown total. v2 quotes
+// the price per whole resource and rounds every lamport amount up.
+
+#[derive(Accounts)]
+#[instruction(kind: u8, price_lamports_per_whole: u64, amount: u64)]
+pub struct PlaceBuyOrderV2<'info> {
+    // Box ради того же лимита стекового кадра SBPF (4096 байт), что и в
+    // PlaceSellOrder выше: данные аккаунтов уезжают в кучу.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    pub mint: Box<Account<'info, Mint>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(init, payer = maker, space = RESOURCE_ORDER_V2_SPACE, seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
+    pub order: Box<Account<'info, ResourceOrderV2>>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(kind: u8, price_lamports_per_whole: u64, amount: u64)]
+pub struct PlaceSellOrderV2<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    pub mint: Box<Account<'info, Mint>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
+    pub maker_token: Box<Account<'info, TokenAccount>>,
+    #[account(init, payer = maker, space = RESOURCE_ORDER_V2_SPACE, seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
+    pub order: Box<Account<'info, ResourceOrderV2>>,
+    #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
+    pub order_vault: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CancelBuyOrderV2<'info> {
+    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
+    // deposit/escrow, so a pause must never lock players out of it.
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        close = maker,
+        seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()],
+        bump,
+        constraint = order.maker == maker.key() @ AofError::Unauthorized,
+        constraint = order.mint == mint.key() @ AofError::InvalidMint,
+        constraint = order.is_buy @ AofError::InvalidAmount
+    )]
+    pub order: Account<'info, ResourceOrderV2>,
+}
+
+#[derive(Accounts)]
+pub struct CancelSellOrderV2<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        close = maker,
+        seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()],
+        bump,
+        constraint = order.maker == maker.key() @ AofError::Unauthorized,
+        constraint = order.mint == mint.key() @ AofError::InvalidMint,
+        constraint = !order.is_buy @ AofError::InvalidAmount
+    )]
+    pub order: Account<'info, ResourceOrderV2>,
+    #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
+    pub order_vault: Account<'info, TokenAccount>,
+    #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
+    pub maker_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct MatchResourceOrdersV2<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    pub mint: Account<'info, Mint>,
+    #[account(mut, seeds = [RESOURCE_ORDER_V2_SEED, buy_order.maker.as_ref(), mint.key().as_ref()], bump, constraint = buy_order.mint == mint.key() @ AofError::OrdersDoNotCross)]
+    pub buy_order: Box<Account<'info, ResourceOrderV2>>,
+    #[account(
+        mut,
+        seeds = [RESOURCE_ORDER_V2_SEED, sell_order.maker.as_ref(), mint.key().as_ref()],
+        bump,
+        constraint = sell_order.mint == mint.key() @ AofError::OrdersDoNotCross
+    )]
+    pub sell_order: Box<Account<'info, ResourceOrderV2>>,
+    /// CHECK: продавец, получатель SOL
+    #[account(mut, address = sell_order.maker)]
+    pub seller: UncheckedAccount<'info>,
+    /// CHECK: казна
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(mut, constraint = sell_vault.owner == sell_order.key(), constraint = sell_vault.mint == mint.key())]
+    pub sell_vault: Account<'info, TokenAccount>,
+    /// покупатель — владелец buy_order, получает ресурс
+    #[account(mut, constraint = buyer_token.mint == mint.key(), constraint = buyer_token.owner == buy_order.maker, constraint = is_canonical_ata(&buyer_token.key(), &buyer_token.owner, &mint.key()) @ AofError::NonCanonicalTokenAccount)]
+    pub buyer_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
 // ----- Крафт под заказ -----
 
 #[derive(Accounts)]
@@ -3921,6 +4040,22 @@ pub mod aof_core {
     }
     pub fn match_resource_orders(ctx: Context<MatchResourceOrders>) -> Result<()> {
         instructions::orderbook::match_handler(ctx)
+    }
+    // --- Ордербук ресурсов v2: цена за ЦЕЛЫЙ ресурс, эскроу с округлением вверх ---
+    pub fn place_buy_order_v2(ctx: Context<PlaceBuyOrderV2>, kind: u8, price_lamports_per_whole: u64, amount: u64) -> Result<()> {
+        instructions::orderbook::place_buy_handler_v2(ctx, kind, price_lamports_per_whole, amount)
+    }
+    pub fn place_sell_order_v2(ctx: Context<PlaceSellOrderV2>, kind: u8, price_lamports_per_whole: u64, amount: u64) -> Result<()> {
+        instructions::orderbook::place_sell_handler_v2(ctx, kind, price_lamports_per_whole, amount)
+    }
+    pub fn cancel_buy_order_v2(ctx: Context<CancelBuyOrderV2>) -> Result<()> {
+        instructions::orderbook::cancel_buy_handler_v2(ctx)
+    }
+    pub fn cancel_sell_order_v2(ctx: Context<CancelSellOrderV2>) -> Result<()> {
+        instructions::orderbook::cancel_sell_handler_v2(ctx)
+    }
+    pub fn match_resource_orders_v2(ctx: Context<MatchResourceOrdersV2>) -> Result<()> {
+        instructions::orderbook::match_handler_v2(ctx)
     }
 
     // --- Крафт под заказ ---

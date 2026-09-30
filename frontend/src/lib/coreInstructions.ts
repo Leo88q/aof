@@ -939,6 +939,46 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     signerIndexes: [],
     authorityOnly: false,
   },
+  {
+    name: "place_buy_order_v2",
+    discriminator: [247, 218, 160, 245, 7, 231, 160, 124],
+    accounts: ["config", "maker", "mint", "material_mints", "order", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+  },
+  {
+    name: "place_sell_order_v2",
+    discriminator: [81, 69, 48, 185, 155, 116, 212, 158],
+    accounts: ["config", "maker", "mint", "material_mints", "maker_token", "order", "order_vault", "token_program", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+  },
+  {
+    name: "cancel_buy_order_v2",
+    discriminator: [209, 122, 46, 175, 34, 196, 203, 152],
+    accounts: ["config", "maker", "mint", "order"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+  },
+  {
+    name: "cancel_sell_order_v2",
+    discriminator: [111, 136, 76, 159, 176, 255, 114, 49],
+    accounts: ["config", "maker", "mint", "order", "order_vault", "maker_token", "token_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+  },
+  {
+    name: "match_resource_orders_v2",
+    discriminator: [125, 171, 84, 144, 102, 255, 14, 220],
+    accounts: ["config", "material_mints", "mint", "buy_order", "sell_order", "seller", "treasury", "sell_vault", "buyer_token", "token_program"],
+    actorIndexes: [5],
+    signerIndexes: [],
+    authorityOnly: false,
+  },
 
 ];
 

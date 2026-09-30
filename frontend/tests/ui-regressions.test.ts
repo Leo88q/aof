@@ -1879,24 +1879,39 @@ test('экспедиция переведена и не выдаёт закры�
   }
 });
 
-test('книга заявок переведена; чтение, цена и закрытие эскроу не подменяются пустыми данными', async () => {
+test('книга заявок: v1 закрыт, v2 платит по подписанной цене за целый ресурс', async () => {
   const page = code('src/pages/market/OrderbookPage.tsx');
   const chart = code('src/components/charts/DepthChart.tsx');
   const backend = code('../aof_backend/src/routes/query.ts');
   const contract = code('../aof-core/src/instructions/orderbook.rs');
   const routes = code('../aof_backend/src/routes/orderbook.ts');
   assert.match(contract, /price_lamports_per_unit\.checked_mul\(amount\)/);
+  // v1 остаётся закрыт для новых заявок: старые эскроу должны отменяться, а не
+  // читаться как «заявок нет».
   for (const route of ['/buy/place', '/sell/place', '/match']) {
-    assert.ok(routes.includes(`r.post('${route}', tradingPaused)`), `${route} must stay closed for older clients`);
+    assert.ok(routes.includes(`r.post('${route}', legacyPaused)`), `${route} must stay closed for older clients`);
   }
   assert.match(routes, /r\.post\('\/buy\/cancel', async/);
   assert.match(routes, /r\.post\('\/sell\/cancel', async/);
+  // v2: цена за ЦЕЛЫЙ ресурс, эскроу вверх, кошелёк сверяет ту же сумму.
+  for (const route of ['/v2/buy/place', '/v2/sell/place']) {
+    assert.match(routes, new RegExp(`r\\.post\\('${route.replace(/\//g, '\\/')}', requireCircuitOpen`), route);
+  }
+  assert.match(routes, /r\.post\('\/v2\/match', requireCircuitOpen/);
+  assert.match(routes, /quoteTotalLamports\(pricePerWhole, amountAtoms\)/);
+  // Программа считает тот же итог и отказывает, если эскроу его не покрывает.
+  assert.match(contract, /RESOURCE_ATOMS_PER_UNIT - 1\)/);
+  assert.match(contract, /require!\(ctx\.accounts\.buy_order\.escrow_lamports >= buyer_pays/);
+  const lottery = code('../aof-core/src/instructions/lottery.rs');
+  assert.match(lottery, /require!\(price <= max_price_lamports/);
   assert.match(page, /orderbookCopy\[language\]/);
   assert.match(page, /homeResourceNames\[language\]/);
-  assert.ok(!/api\.orderbook\.(placeBuy|placeSell|match)\(/.test(page), 'ошибочную форму нельзя вернуть без пересмотра единиц цены');
-  assert.match(page, /api\.orderbook\.cancelBuy/);
-  assert.match(page, /api\.orderbook\.cancelSell/);
-  assert.match(page, /readOrderbook\(await api\.query\.orderbook/);
+  assert.ok(!/api\.orderbook\.(placeBuy|placeSell|match)\(/.test(page), 'старая v1-форма не возвращается');
+  assert.match(page, /api\.orderbook\.placeBuyV2\(/, 'покупка через v2');
+  assert.match(page, /api\.orderbook\.matchV2\(/, 'свод доступен из интерфейса');
+  assert.match(page, /api\.orderbook\.cancelBuyV2/);
+  assert.match(page, /api\.orderbook\.cancelSellV2/);
+  assert.match(page, /readOrderbookV2\(await api\.query\.orderbookV2/);
   assert.match(backend, /exhausted: decoded\.filter/);
   assert.match(chart, /BigInt\(level\.amount\)/);
   assert.ok(!/[А-Яа-яЁё]/.test(page + chart), 'видимые подписи только в локалях');
@@ -1905,8 +1920,9 @@ test('книга заявок переведена; чтение, цена и з
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     assert.deepEqual(Object.keys(orderbookCopy[language]), fields);
     for (const [key, value] of Object.entries(orderbookCopy[language])) {
-      assert.ok(value.trim(), `${language}.${key}: пустой текст`);
-      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(value), `${language}.${key}: не переведено`);
+      const text = typeof value === 'function' ? (value as (a: string, b: string) => string)('1', '2') : value;
+      assert.ok(text.trim(), `${language}.${key}: пустой текст`);
+      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${language}.${key}: не переведено`);
     }
   }
   assert.ok(!existsSync(new URL('../src/site/content/trade.ts', import.meta.url)), 'старые опасные рекомендации по книге заявок удалены');
@@ -2334,7 +2350,7 @@ test('страница рынка: все шесть форматов на се�
   assert.equal(pages.find(p => p.id === 'market')?.lead, siteMarket.ru.lead);
   assert.deepEqual([...marketVenueIds], ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotClosed']);
   const orderbook = code('../aof_backend/src/routes/orderbook.ts');
-  for (const path of ['buy/place', 'sell/place', 'match']) assert.ok(orderbook.includes(`r.post('/${path}', tradingPaused)`), path);
+  for (const path of ['buy/place', 'sell/place', 'match']) assert.ok(orderbook.includes(`r.post('/${path}', legacyPaused)`), path);
   assert.match(code('../aof_backend/src/routes/hotMarket.ts'), /HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER/);
   for (const lang of languages) {
     const copy = siteMarket[lang];
@@ -4690,4 +4706,79 @@ test("намерение покупки билета не даёт списат�
   assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], { ...intent, ticketNumber: "4" }, user));
   assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], { ...intent, maxPriceLamports: "800001" }, user), /ceiling/);
   assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS), buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], intent, user));
+});
+
+test("книга v2: целочисленная цена, эскроу вверх и проверка намерения до кошелька", async () => {
+  const { quoteTotalLamports, takerBufferLamports, resourceUnitsToAtoms, solPerWholeToLamports,
+    readOrderbookV2, lamportsPerWholeToSol, comparePriceV2 } = await import("../src/lib/orderbookReadings.ts");
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  // Формулы повторяют `quote_total_lamports` и подушку тейкера из программы.
+  assert.equal(quoteTotalLamports("1000000000", "1000000000"), 1000000000n);
+  assert.equal(quoteTotalLamports("3", "1"), 1n);
+  assert.equal(quoteTotalLamports("1500000000", "1"), 2n);
+  assert.equal(takerBufferLamports(10_000n), 40n);
+  assert.equal(takerBufferLamports(1n), 1n);
+  // Ввод пользователя: 9 знаков после точки, больше — отказ, а не округление.
+  assert.equal(resourceUnitsToAtoms("1.5"), "1500000000");
+  assert.equal(resourceUnitsToAtoms("0.000000001"), "1");
+  assert.equal(solPerWholeToLamports("0.001"), "1000000");
+  assert.equal(lamportsPerWholeToSol("1000000", "en"), "0.001");
+  for (const bad of ["1.0000000001", "0", "-1", "1e9", "", "0.0000000001"]) {
+    assert.throws(() => resourceUnitsToAtoms(bad), `должно отвергаться: ${bad}`);
+  }
+  for (const bad of ["0", "1.0000000001", "abc"]) assert.throws(() => solPerWholeToLamports(bad));
+
+  const maker = new PublicKey(new Uint8Array(32).fill(7)).toBase58();
+  const mint = new PublicKey(new Uint8Array(32).fill(8)).toBase58();
+  const order = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("resource_order_v2"), new PublicKey(maker).toBuffer(), new PublicKey(mint).toBuffer()],
+    new PublicKey(CORE_PROGRAM_ID),
+  )[0].toBase58();
+  const row = { pubkey: order, maker, mint, kind: 1, isBuy: true,
+    priceLamportsPerWhole: "1000000", amountRemaining: "1500000000", escrowLamports: "1501000" };
+  const book = { buy: [row], sell: [], exhausted: [] };
+  assert.deepEqual(readOrderbookV2(book, mint, 1), book);
+  assert.equal(comparePriceV2(row, { ...row, priceLamportsPerWhole: "1000001" }), -1);
+  for (const invalid of [null, {}, { buy: [], sell: [] }, { ...book, buy: [{ ...row, pubkey: maker }] },
+    { ...book, buy: [{ ...row, escrowLamports: "0" }] },      // покупатель без эскроу
+    { ...book, buy: [{ ...row, priceLamportsPerWhole: "0" }] },
+    { ...book, buy: [{ ...row, amountRemaining: "0" }] },
+    { buy: [], sell: [{ ...row, isBuy: false, escrowLamports: "1" }], exhausted: [] }]) {
+    assert.equal(readOrderbookV2(invalid, mint, 1), null, JSON.stringify(invalid).slice(0, 120));
+  }
+
+  // Намерение: одна инструкция, те же аккаунты, те же 8+1+8+8 байт условий и
+  // тот же посчитанный эскроу.
+  const user = new PublicKey(new Uint8Array(32).fill(9));
+  const disc = CORE_INSTRUCTIONS.find(i => i.name === "place_buy_order_v2")!.discriminator;
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID))[0];
+  const u64 = (value: bigint) => {
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, value, true);
+    return bytes;
+  };
+  const userOrder = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("resource_order_v2"), user.toBytes(), new PublicKey(mint).toBytes()],
+    new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  // escrow = ceil(1e6 × 1.5e9 / 1e9) + ceil(total × 40 / 1e4) = 1_500_000 + 6_000
+  const terms = { kind: "orderbookV2", action: "buy", user: user.toBase58(), mint, resourceKind: 1,
+    priceLamportsPerWhole: "1000000", amountAtoms: "1500000000", escrowLamports: "1506000" } as const;
+  const buyIx = (price: bigint, atoms: bigint, kind = 1) => ({
+    programId: CORE_PROGRAM_ID,
+    keys: [pda("config"), user, new PublicKey(mint), pda("material_mints"), userOrder, SYSTEM],
+    data: new Uint8Array([...disc, kind, ...u64(price), ...u64(atoms)]),
+  });
+  validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n)], terms, user);
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_001n, 1_500_000_000n)], terms, user), /terms/);
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n, 2)], terms, user), /terms/);
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n), buyIx(1_000_000n, 1_500_000_000n)], terms, user));
+  // Подмена залога: бэкенд не может показать одну сумму, а списать другую.
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n)],
+    { ...terms, escrowLamports: "1506001" }, user), /escrow/);
 });

@@ -64,7 +64,19 @@ export type GasTankIntent =
 export type CollectorIntent =
   | { readonly kind: "collector"; readonly action: "stake"; readonly user: string; readonly mint: string; readonly collectorKind: "historian" | "medallion" }
   | { readonly kind: "collector"; readonly action: "unstake"; readonly user: string; readonly mint: string };
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent;
+/**
+ * Книга заявок v2: цена за ЦЕЛЫЙ ресурс, эскроу считает сама программа. Кошелёк
+ * сверяет и заявку, и посчитанный эскроу, поэтому подменённый ответ бэкенда не
+ * может ни увести в залог другую сумму, ни свести чужую пару.
+ */
+export type OrderbookV2Intent =
+  | { readonly kind: "orderbookV2"; readonly action: "buy"; readonly user: string; readonly mint: string; readonly resourceKind: number; readonly priceLamportsPerWhole: string; readonly amountAtoms: string; readonly escrowLamports: string }
+  | { readonly kind: "orderbookV2"; readonly action: "sell"; readonly user: string; readonly mint: string; readonly resourceKind: number; readonly priceLamportsPerWhole: string; readonly amountAtoms: string }
+  | { readonly kind: "orderbookV2"; readonly action: "cancelBuy"; readonly user: string; readonly mint: string }
+  | { readonly kind: "orderbookV2"; readonly action: "cancelSell"; readonly user: string; readonly mint: string }
+  | { readonly kind: "orderbookV2"; readonly action: "match"; readonly user: string; readonly mint: string; readonly buyMaker: string; readonly sellMaker: string; readonly treasury: string };
+
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
@@ -142,6 +154,7 @@ export function validateTransactionIntent(
   if (intent.kind === "lotteryTicket") return validateLotteryTicketIntent(instructions, intent, user);
   if (intent.kind === "gasTank") return validateGasTankIntent(instructions, intent, user);
   if (intent.kind === "collector") return validateCollectorIntent(instructions, intent, user);
+  if (intent.kind === "orderbookV2") return validateOrderbookV2Intent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -211,6 +224,91 @@ function validateLotteryTicketIntent(instructions: Instruction[], intent: Lotter
       !keysEqual(ix.keys, [pda('config'), seeded('lottery_round', roundBytes),
         seeded('lottery_ticket', roundBytes, ticketBytes), user])) {
     throw new Error('Lottery transaction differs from the verified ticket');
+  }
+}
+
+const ATOMS_PER_RESOURCE = 1_000_000_000n;
+const quoteTotal = (pricePerWhole: bigint, atoms: bigint) => (pricePerWhole * atoms + ATOMS_PER_RESOURCE - 1n) / ATOMS_PER_RESOURCE;
+const takerBuffer = (total: bigint) => (total * 40n + 9_999n) / 10_000n;
+
+function validateOrderbookV2Intent(instructions: Instruction[], intent: OrderbookV2Intent, user: PublicKey): void {
+  const mint = new PublicKey(intent.mint);
+  const seedsOf = (...parts: (string | Uint8Array)[]) => parts.map((part) =>
+    typeof part === "string" ? new TextEncoder().encode(part) : part);
+  const orderPda = (maker: PublicKey) => PublicKey.findProgramAddressSync(
+    seedsOf("resource_order_v2", maker.toBytes(), mint.toBytes()), new PublicKey(CORE_PROGRAM_ID))[0];
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the order intent");
+  if (instructions.length !== 1) throw new Error("Order operation must be a single instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  const order = orderPda(user);
+  const materialMints = pda("material_mints");
+  const u64 = (value: unknown, field: string): bigint => {
+    if (typeof value !== "string" || !/^[1-9][0-9]{0,19}$/.test(value) || BigInt(value) > (1n << 64n) - 1n) {
+      throw new Error(`${field} must be a positive u64`);
+    }
+    return BigInt(value);
+  };
+
+  if (intent.action === "buy") {
+    const price = u64(intent.priceLamportsPerWhole, "priceLamportsPerWhole");
+    const atoms = u64(intent.amountAtoms, "amountAtoms");
+    const escrow = u64(intent.escrowLamports, "escrowLamports");
+    // Программа спишет ровно это; расхождение — отказ до открытия кошелька.
+    const expected = quoteTotal(price, atoms) + takerBuffer(quoteTotal(price, atoms));
+    if (expected !== escrow) throw new Error("Order escrow differs from the verified quote");
+    if (!Number.isInteger(intent.resourceKind) || intent.resourceKind < 0 || intent.resourceKind > 26) throw new Error("Invalid resource kind");
+    if (spec?.name !== "place_buy_order_v2" || ix.data.length !== 25 ||
+        !keysEqual(ix.keys, [pda("config"), user, mint, materialMints, order, new PublicKey(SYSTEM)])) {
+      throw new Error("Unknown buy order layout");
+    }
+    const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+    if (ix.data[8] !== intent.resourceKind || view.getBigUint64(9, true) !== price || view.getBigUint64(17, true) !== atoms) {
+      throw new Error("Order terms differ from user intent");
+    }
+    return;
+  }
+
+  if (intent.action === "sell") {
+    const price = u64(intent.priceLamportsPerWhole, "priceLamportsPerWhole");
+    const atoms = u64(intent.amountAtoms, "amountAtoms");
+    if (!Number.isInteger(intent.resourceKind) || intent.resourceKind < 0 || intent.resourceKind > 26) throw new Error("Invalid resource kind");
+    // Vault — канонический ATA самого PDA заявки: иначе токены уйдут не туда.
+    const vault = PublicKey.findProgramAddressSync([order.toBytes(), TOKEN.toBytes(), mint.toBytes()], ATA)[0];
+    if (spec?.name !== "place_sell_order_v2" || ix.data.length !== 25 ||
+        !keysEqual(ix.keys, [pda("config"), user, mint, materialMints, ata(mint, user), order, vault,
+          TOKEN, new PublicKey(SYSTEM)])) {
+      throw new Error("Unknown sell order layout");
+    }
+    const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+    if (ix.data[8] !== intent.resourceKind || view.getBigUint64(9, true) !== price || view.getBigUint64(17, true) !== atoms) {
+      throw new Error("Order terms differ from user intent");
+    }
+    return;
+  }
+
+  if (intent.action === "cancelBuy" || intent.action === "cancelSell") {
+    const expectedName = intent.action === "cancelBuy" ? "cancel_buy_order_v2" : "cancel_sell_order_v2";
+    const keys = intent.action === "cancelBuy"
+      ? [pda("config"), user, mint, order]
+      : [pda("config"), user, mint, order,
+        PublicKey.findProgramAddressSync([order.toBytes(), TOKEN.toBytes(), mint.toBytes()], ATA)[0],
+        ata(mint, user), TOKEN];
+    if (spec?.name !== expectedName || ix.data.length !== 8 || !keysEqual(ix.keys, keys)) {
+      throw new Error("Cancellation differs from the verified order");
+    }
+    return;
+  }
+
+  const buyMaker = new PublicKey(intent.buyMaker);
+  const sellMaker = new PublicKey(intent.sellMaker);
+  const buyOrder = orderPda(buyMaker), sellOrder = orderPda(sellMaker);
+  if (spec?.name !== "match_resource_orders_v2" || ix.data.length !== 8 ||
+      !keysEqual(ix.keys, [pda("config"), materialMints, mint, buyOrder, sellOrder, sellMaker,
+        new PublicKey(intent.treasury),
+        PublicKey.findProgramAddressSync([sellOrder.toBytes(), TOKEN.toBytes(), mint.toBytes()], ATA)[0],
+        ata(mint, buyMaker), TOKEN])) {
+    throw new Error("Match differs from the verified pair");
   }
 }
 
