@@ -134,6 +134,7 @@ export function OrderbookPage() {
     <p className="text-straw text-xs break-words">{copy.intro}</p>
     <Card className="border border-wheat-600/40">
       <p className="text-wheat-500 text-sm font-semibold break-words">{copy.paused}</p>
+      <p className="text-straw text-xs mt-2 break-words">{copy.pausedWhatWorks}</p>
       <p className="text-straw text-xs mt-2 break-words">{copy.unitWarning}</p>
     </Card>
     <label className="block min-w-0 text-straw text-xs">

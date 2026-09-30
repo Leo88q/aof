@@ -879,6 +879,9 @@ jobs:
           python3 scripts/test-reward-migrations.py
           python3 scripts/test-idl-drift.py
           python3 scripts/test-mint-writable-gate.py
+          # Runbook that flips Config.mining_enabled must refuse to do so
+          # before the payout mints exist (offline, against a mock admin API).
+          python3 scripts/test-enable-mining-devnet.py
 
       - name: Self-test - wallet proof
         run: |
