@@ -797,15 +797,22 @@ describe("aof-core: security & core flows", () => {
       order: dustOrder, systemProgram: SystemProgram.programId,
     }).signers([buyer]).rpc();
     expect((await program.account.resourceOrderV2.fetch(dustOrder)).escrowLamports.toString()).to.equal("3");
+    const dustAccount = await provider.connection.getAccountInfo(dustOrder);
+    expect(dustAccount).to.not.equal(null);
+    // Эскроу лежит в САМОМ аккаунте заявки: getBalance вернул бы rent + эскроу,
+    // поэтому сверяем баланс минус rent-exemption — ровно 3 лампора.
+    const dustRentMin = await provider.connection.getMinimumBalanceForRentExemption(dustAccount!.data.length);
+    const dustBalance = dustAccount!.lamports;
+    expect(dustBalance - dustRentMin).to.equal(3);
     const buyerBefore = await provider.connection.getBalance(buyer.publicKey);
-    const dustRent = await provider.connection.getBalance(dustOrder);
     await program.methods.cancelBuyOrderV2().accounts({
       config: configPda, maker: buyer.publicKey, mint: stoneMint, order: dustOrder,
     }).signers([buyer]).rpc();
     expect(await provider.connection.getAccountInfo(dustOrder)).to.equal(null);
-    // close = maker возвращает и rent, и остаток эскроу ровно один раз: игрок
-    // не теряет депозит и не получает лишнего (комиссию платит провайдер).
-    expect(await provider.connection.getBalance(buyer.publicKey) - buyerBefore).to.equal(dustRent + 3);
+    // close = maker возвращает ВЕСЬ баланс закрытого аккаунта (rent + эскроу)
+    // ровно один раз: «баланс + эскроу» было бы двойным счётом, а «ноль» —
+    // потерей депозита (комиссию за подпись платит кошелёк провайдера).
+    expect(await provider.connection.getBalance(buyer.publicKey) - buyerBefore).to.equal(dustBalance);
 
     // Нулевая цена и нулевой объём не создают заявку вовсе (ZeroAmount).
     const zeroOrder = pda([B("resource_order_v2"), buyer.publicKey.toBuffer(), foodMint.toBuffer()]);
@@ -839,6 +846,8 @@ describe("aof-core: security & core flows", () => {
     // Отмена после полного свода: эскроу уже выплачен, но rent обоих аккаунтов
     // (ордера и vault) обязан вернуться продавцу — иначе выход заперт.
     const sellerBefore = await provider.connection.getBalance(seller.publicKey);
+    // Продавец держит в заявке только rent: ресурс лежит в vault, а SOL-эскроу
+    // у продавца не бывает, поэтому возврат равен ровно сумме двух аккаунтов.
     const sellerRent = (await provider.connection.getBalance(sellOrder))
       + (await provider.connection.getBalance(sellVault));
     await program.methods.cancelSellOrderV2().accounts({

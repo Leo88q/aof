@@ -590,7 +590,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
 
     // Прогресс: жители/палатка появляются от минта ресурса, XP — от оператора.
     const woodAta = await giveResource("wood", woodMint, user.publicKey, 3);
-    const stoneAta = await giveResource("silicon", stoneMint, user.publicKey, 2);
+    const stoneAta = await giveResource("stone", stoneMint, user.publicKey, 2);
     await program.methods.grantSeasonXp(4_000).accounts({
       config: configPda, authority, user: user.publicKey, season, seasonPass,
       systemProgram: SystemProgram.programId,
@@ -606,11 +606,13 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       { pubkey: mint, isSigner: false, isWritable: true },
       { pubkey: index === 0 ? woodAta : stoneAta, isSigner: false, isWritable: true },
     ]);
+    // Подпись игрока обязательна: сжигание идёт от его имени (burn authority —
+    // владелец токен-аккаунта), а подпись бэкенда гарантирует полный список.
     const reset = (accounts: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[]) =>
       program.methods.resetForRebirth(seasonId).accounts({
         config: configPda, operator: authority, user: user.publicKey, player, season, seasonPass,
         materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
-      }).remainingAccounts(accounts).rpc();
+      }).remainingAccounts(accounts).signers([user]).rpc();
 
     // Не-подписант: сброс от чужого имени не должен трогать чужой прогресс.
     const stranger = Keypair.generate(); await airdrop(stranger);
@@ -676,21 +678,52 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     // Непарный список аккаунтов отвергается целиком, а не «как получится».
     await expectError(reset([{ pubkey: woodMint, isSigner: false, isWritable: true }]), "InvalidAmount");
 
-    // Кулдаун: вторая транзакция «сброс + ребёрт» отменяется целиком, поэтому
-    // ни поколение, ни XP не меняются — частичного сброса без ребёрта нет.
+    // Кулдаун: снова набираем прогресс и пробуем вторую транзакцию «сброс +
+    // ребёрт». Она обязана упасть на кулдауне ЦЕЛИКОМ: если бы сброс успел
+    // примениться, игрок остался бы без ресурсов и XP, но без бонуса.
+    const secondWood = await giveResource("wood", woodMint, user.publicKey, 1);
+    const secondStone = await giveResource("stone", stoneMint, user.publicKey, 1);
+    await program.methods.grantSeasonXp(1_000).accounts({
+      config: configPda, authority, user: user.publicKey, season, seasonPass,
+      systemProgram: SystemProgram.programId,
+    }).rpc();
+    // Жители и палатка — через authority-only ручку: иначе после первого
+    // сброса они остаются нулевыми, и «откат» было бы нечем проверить.
+    await program.methods.adjustPlayerCapacity(3, true).accounts({
+      config: configPda, authority, player,
+    }).rpc();
+    const xpBefore = (await program.account.seasonPass.fetch(seasonPass)).xp;
+    const villagersBefore = (await program.account.player.fetch(player)).villagers;
+    expect(villagersBefore).to.be.greaterThan(0);
+    expect((await program.account.player.fetch(player)).hasTent).to.equal(true);
+    // Комиссию минта забирает казна, поэтому сверяем с фактическим остатком.
+    const woodSecond = await balance(secondWood), stoneSecond = await balance(secondStone);
+    expect(xpBefore).to.equal(1_000);
+    expect(woodSecond.gtn(0) && stoneSecond.gtn(0), "перед второй попыткой у игрока обязаны быть излишки").to.equal(true);
     const second = new Transaction().add(
       await program.methods.resetForRebirth(seasonId).accounts({
         config: configPda, operator: authority, user: user.publicKey, player, season, seasonPass,
         materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
-      }).instruction(),
+      }).remainingAccounts([
+        { pubkey: woodMint, isSigner: false, isWritable: true },
+        { pubkey: secondWood, isSigner: false, isWritable: true },
+        { pubkey: stoneMint, isSigner: false, isWritable: true },
+        { pubkey: secondStone, isSigner: false, isWritable: true },
+      ]).instruction(),
       await rebirth.methods.doRebirth().accounts({
         rebirthConfig, authority, rebirthRecord, user: user.publicKey, treasury: authority,
         systemProgram: SystemProgram.programId,
       }).instruction(),
     );
-    await expectError(provider.sendAndConfirm(second, [user]), "CooldownActive");
+    let failed = false;
+    try { await provider.sendAndConfirm(second, [user]); } catch { failed = true; }
+    expect(failed, "вторая транзакция обязана упасть на кулдауне").to.equal(true);
     expect((await rebirth.account.rebirthRecord.fetch(rebirthRecord)).rebirthCount).to.equal(1);
-    expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(0);
+    expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(xpBefore);
+    expect((await program.account.player.fetch(player)).villagers).to.equal(villagersBefore);
+    expect((await program.account.player.fetch(player)).hasTent).to.equal(true);
+    expect((await balance(secondWood)).toString()).to.equal(woodSecond.toString());
+    expect((await balance(secondStone)).toString()).to.equal(stoneSecond.toString());
   });
 
 });
