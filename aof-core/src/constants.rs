@@ -185,6 +185,10 @@ pub const OFFER_SEED: &[u8] = b"offer";
 pub const RENTAL_LISTING_SEED: &[u8] = b"rental_listing";
 pub const RENTAL_AGREEMENT_SEED: &[u8] = b"rental_agreement";
 pub const RESOURCE_ORDER_SEED: &[u8] = b"resource_order";
+/// [AUDIT orderbook price unit] v2 orders are derived from a different seed so
+/// every old escrow stays cancellable through the old instruction set while new
+/// orders use a price that a wallet can verify (see `RESOURCE_ORDER_V2_SEED`).
+pub const RESOURCE_ORDER_V2_SEED: &[u8] = b"resource_order_v2";
 pub const CRAFT_ORDER_SEED: &[u8] = b"craft_order";
 pub const SEASON_SEED: &[u8] = b"season";
 pub const SEASON_PASS_SEED: &[u8] = b"season_pass";
@@ -287,6 +291,17 @@ pub const RENTAL_MAX_OWNER_SPLIT_BPS: u16 = 10_000 - RENTAL_FEE_BPS;
 // ----- Ордербук ресурсов -----
 pub const ORDERBOOK_MAKER_FEE_BPS: u16 = 10;  // 0.1%
 pub const ORDERBOOK_TAKER_FEE_BPS: u16 = 40;  // 0.4%
+/// One whole resource unit in atomic SPL units (all resource mints use 9
+/// decimals). v2 prices are quoted **per whole resource** and every lamport
+/// amount is rounded UP, so a price like 0.001 SOL per resource is expressible
+/// and the escrow can never be a billion times the displayed total.
+pub const RESOURCE_ATOMS_PER_UNIT: u128 = 1_000_000_000;
+
+/// [§3.4] Сколько пар `(mint, token_account)` перерождение может сжечь за одну
+/// транзакцию. Предел держит и размер транзакции (1232 байта), и бюджет
+/// вычислений (каждый burn — отдельный CPI): игрок с большим складом сначала
+/// сжигает излишки обычным `burn_resource`, а затем завершает перерождение.
+pub const REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS: usize = 16;
 
 // ----- Крафт под заказ -----
 pub const CRAFT_ORDER_FEE_BPS: u16 = 200; // 2%
@@ -414,6 +429,7 @@ pub const OFFER_SPACE: usize = 8 + Offer::INIT_SPACE;
 pub const RENTAL_LISTING_SPACE: usize = 8 + RentalListing::INIT_SPACE;
 pub const RENTAL_AGREEMENT_SPACE: usize = 8 + RentalAgreement::INIT_SPACE;
 pub const RESOURCE_ORDER_SPACE: usize = 8 + ResourceOrder::INIT_SPACE;
+pub const RESOURCE_ORDER_V2_SPACE: usize = 8 + ResourceOrderV2::INIT_SPACE;
 pub const CRAFT_ORDER_SPACE: usize = 8 + CraftOrder::INIT_SPACE;
 pub const SEASON_SPACE: usize = 8 + Season::INIT_SPACE;
 pub const SEASON_PASS_SPACE: usize = 8 + SeasonPass::INIT_SPACE;

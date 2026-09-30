@@ -13,6 +13,13 @@ pub struct DoRebirth<'info> {
     )]
     pub rebirth_config: Account<'info, RebirthConfig>,
 
+    /// [§3.4] Подпись бэкенда. Ребёрт даёт постоянный бонус, поэтому он не
+    /// должен быть достижим без той же транзакции, что несёт полный сброс
+    /// (`aof_core::reset_for_rebirth`). Игрок не может вызвать ребёрт сам и
+    /// сохранить излишки.
+    #[account(address = rebirth_config.authority @ RebirthError::Unauthorized)]
+    pub authority: Signer<'info>,
+
     #[account(
         init_if_needed,
         payer = user,
@@ -33,11 +40,10 @@ pub struct DoRebirth<'info> {
 }
 
 pub fn handler(ctx: Context<DoRebirth>) -> Result<()> {
-    // The cross-program progress reset is not atomic yet. Fail closed here as
-    // well as in the backend: this instruction is public and can be invoked
-    // directly without going through the API.
-    require!(false, RebirthError::FeatureDisabled);
-
+    // Полный сброс прогресса теперь существует: `aof_core::reset_for_rebirth`
+    // в этой же транзакции обнуляет деревню, сезонный пропуск и сжигает
+    // излишки. Подпись `authority` (см. DoRebirth) не даёт собрать «бонус без
+    // сброса» вручную, а падение любой части транзакции отменяет всё.
     let config = &ctx.accounts.rebirth_config;
     let record = &mut ctx.accounts.rebirth_record;
 

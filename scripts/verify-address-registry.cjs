@@ -9,7 +9,7 @@ async function verify(registry, rpc) {
     deploymentMatchesSource: false, custodyVerified: false, status: 'unavailable', programs: [], error: null };
   try {
     const genesis = await rpc('getGenesisHash', []);
-    if (genesis !== 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG7') throw new Error('wrong_cluster');
+    if (genesis !== 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG') throw new Error('wrong_cluster');
     const response = await rpc('getMultipleAccounts', [registry.programs.map(p => p.address), { encoding: 'base64', commitment: 'finalized' }]);
     if (!Array.isArray(response?.value) || response.value.length !== registry.programs.length) throw new Error('invalid_rpc_response');
     result.slot = response.context?.slot ?? null;

@@ -15,6 +15,16 @@ pub struct ToolBurned {
     pub mint: Pubkey,
 }
 
+/// Канонический перенос инструмента вместе с владением (`transfer_tool`).
+/// Индексаторы используют событие как источник правды о смене владельца:
+/// SPL-перевод без него владение не меняет.
+#[event]
+pub struct ToolTransferred {
+    pub mint: Pubkey,
+    pub from: Pubkey,
+    pub to: Pubkey,
+}
+
 #[event]
 pub struct Staked {
     pub user: Pubkey,
@@ -305,6 +315,30 @@ pub struct OrderMatched {
     pub sell_order: Pubkey,
     pub amount: u64,
     pub price_lamports_per_unit: u64,
+}
+
+/// [AUDIT orderbook price unit] v2 order placement: `price_lamports_per_whole`
+/// is per whole resource, `total_lamports` is what the escrow holds (rounded
+/// up). Emitted separately from `OrderPlaced` so the indexer never has to guess
+/// which price unit a row uses.
+#[event]
+pub struct OrderPlacedV2 {
+    pub maker: Pubkey,
+    pub is_buy: bool,
+    pub price_lamports_per_whole: u64,
+    pub amount: u64,
+    pub total_lamports: u64,
+}
+
+#[event]
+pub struct OrderMatchedV2 {
+    pub buy_order: Pubkey,
+    pub sell_order: Pubkey,
+    pub amount: u64,
+    pub price_lamports_per_whole: u64,
+    pub gross_lamports: u64,
+    pub taker_fee_lamports: u64,
+    pub maker_fee_lamports: u64,
 }
 
 #[event]
@@ -599,4 +633,18 @@ pub struct RentalListed {
 pub struct RentalDelisted {
     pub mint: Pubkey,
     pub owner: Pubkey,
+}
+
+/// [§3.4] Полный сброс перерождения применён. Событие фиксирует и факт
+/// сброса прогресса, и сколько излишков сожжено: индексор не должен выводить
+/// это из молчания, а игрок — обнаружить сброс без объяснения.
+#[event]
+pub struct RebirthReset {
+    pub user: Pubkey,
+    pub season_id: u32,
+    /// Сколько XP было у пропуска до сброса (для индексатора и истории).
+    pub xp_before: u32,
+    pub has_tent_before: bool,
+    pub burned_accounts: u16,
+    pub burned_atoms: u64,
 }

@@ -16,6 +16,9 @@ jobs:
           node-version: '22'
       - run: python3 scripts/check-idl-drift.py
       - run: python3 scripts/test-p0-security.py
+      # Зонд состояния сети — источник утверждений «включено/выключено», поэтому
+      # его разбор проверяется офлайн (поддельный RPC), включая base58-фильтры.
+      - run: python3 scripts/test-devnet-program-probe.py
       # [F-06] aof-quests carries a generated copy of aof-core's vrf.rs.
       - run: python3 scripts/sync-quests-vrf.py --check
       # [SECURITY #117/#130] скрытые юникод-символы (включая Trojan Source) и

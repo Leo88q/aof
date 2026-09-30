@@ -128,6 +128,11 @@ export const lotteryTicketPda = (
   roundId: BN | bigint | number | string,
   ticketNumber: BN | bigint | number | string
 ) => find([enc("lottery_ticket"), u64le(roundId), u64le(ticketNumber)]);
+/** Per-wallet ticket counter: seeds ["lottery_ticket", "count", round_id, buyer]. */
+export const lotteryTicketCounterPda = (
+  roundId: BN | bigint | number | string,
+  buyer: PublicKey
+) => find([enc("lottery_ticket"), enc("count"), u64le(roundId), buyer.toBuffer()]);
 export const listingPda = (mint: PublicKey) => find([enc("listing"), mint.toBuffer()]);
 export const auctionPda = (mint: PublicKey) => find([enc("auction"), mint.toBuffer()]);
 export const offerPda = (mint: PublicKey, buyer: PublicKey) =>
@@ -136,6 +141,9 @@ export const rentalListingPda = (mint: PublicKey) => find([enc("rental_listing")
 export const rentalAgreementPda = (mint: PublicKey) => find([enc("rental_agreement"), mint.toBuffer()]);
 export const resourceOrderPda = (maker: PublicKey, mint: PublicKey) =>
   find([enc("resource_order"), maker.toBuffer(), mint.toBuffer()]);
+/** v2 order PDA: separate seed so v1 escrows stay cancellable through v1. */
+export const resourceOrderV2Pda = (maker: PublicKey, mint: PublicKey) =>
+  find([enc("resource_order_v2"), maker.toBuffer(), mint.toBuffer()]);
 export const craftOrderPda = (creator: PublicKey) => find([enc("craft_order"), creator.toBuffer()]);
 export const seasonPda = (seasonId: number) => find([enc("season"), u32le(seasonId)]);
 export const seasonPassPda = (owner: PublicKey, seasonId: number) =>

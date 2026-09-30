@@ -3,18 +3,27 @@ import { program } from "../provider";
 import { Router } from "express";
 import { marketProgram, connection } from "../provider";
 import { PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import bs58 from "bs58";
 import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } from "../lib/decode";
 import { pk } from "../lib/tx";
-import { auctionPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
+import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda,
-  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda,
+  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda, marketConfigPda,
   weatherStatePda, wellStatePda, millStatePda, ovenStatePda } from "../lib/pda";
 import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 
 const r = Router();
+// Имена редкости по индексу enum Rarity (aof-core/src/state.rs). Anchor
+// декодирует вариант как объект {common:{}}, поэтому нужен тот же разбор, что
+// в lib/vrfSettlement.ts.
+const HOT_RARITY_NAMES = ["common", "uncommon", "rare", "epic", "legendary"];
+const hotRarityName = (value: any): string => {
+  if (typeof value === "number") return HOT_RARITY_NAMES[value] || String(value);
+  return HOT_RARITY_NAMES.find((name) => value && typeof value === "object" && name in value) || "unknown";
+};
+
 const RESOURCE_UNIT = 1_000_000_000;
 const resourceDisplay = (value: any) => Number(value?.toString?.() ?? value ?? 0) / RESOURCE_UNIT;
 
@@ -98,6 +107,34 @@ r.get("/gastank/:owner", async (req, res) => {
   res.json(deep(await fetchOne("gasTank", addr)));
 });
 
+// Позиция коллекционера (Historian/Medallion) по минту NFT.
+// Публичного реестра самих минтов в сети нет — владелец зовёт stake по
+// конкретному адресу, поэтому и чтение адресуется минтом. Ошибка чтения
+// отдаётся как 503, а не как «позиции нет»: иначе игрок решит, что NFT свободен.
+r.get("/collector/:mint", async (req, res) => {
+  try {
+    const mint = new PublicKey(req.params.mint);
+    const [address] = collectorPda(mint);
+    const state: any = await fetchOne("stakedCollector", address);
+    if (!state) return res.json(null);
+    // Anchor декодирует enum как { historian: {} } | { medallion: {} }; если
+    // поле не распознано, отвечаем 503, а не выдуманным 'historian'.
+    const raw = state.kind;
+    const kind = raw && typeof raw === "object" && "historian" in raw ? "historian"
+      : raw && typeof raw === "object" && "medallion" in raw ? "medallion" : null;
+    if (!kind) return res.status(503).json({ error: "COLLECTOR_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+    res.json({
+      owner: String(state.owner),
+      mint: String(state.mint),
+      kind,
+      unlockAt: Number(state.unlockAt?.toString?.() ?? state.unlockAt ?? 0),
+      source: "onchain",
+    });
+  } catch (e: any) {
+    res.status(503).json({ error: "COLLECTOR_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+  }
+});
+
 // [БЛОК L] On-chain weather and production state
 r.get("/weather-state", async (_req, res) => {
   const [addr] = weatherStatePda();
@@ -157,6 +194,22 @@ r.get("/orderbook/:mint", async (req, res) => {
     buy: decoded.filter((o: any) => o.isBuy && BigInt(o.amountRemaining.toString()) > 0n),
     sell: decoded.filter((o: any) => !o.isBuy && BigInt(o.amountRemaining.toString()) > 0n),
     exhausted: decoded.filter((o: any) => BigInt(o.amountRemaining.toString()) === 0n),
+  });
+});
+
+// v2 book: same shape as /orderbook/:mint, but the price is per WHOLE resource
+// (`priceLamportsPerWhole`) and buy rows carry the escrow that is still held.
+// The v1 route stays for old escrows, which are only cancellable.
+r.get("/orderbook-v2/:mint", async (req, res) => {
+  // mint лежит на смещении 58, как и в v1 (сдвиг даёт та же пара bool/u8
+  // перед ценой); раскладку проверяет tests/readiness/orderbook-v2-layout.test.cjs.
+  const all = await fetchAll("resourceOrderV2", [memcmpFilter(58, req.params.mint)]);
+  const decoded = all.map((x: any) => ({ pubkey: x.publicKey.toBase58(), ...deep(x.account) }));
+  const open = (o: any) => BigInt(o.amountRemaining.toString()) > 0n;
+  res.json({
+    buy: decoded.filter((o: any) => o.isBuy && open(o)),
+    sell: decoded.filter((o: any) => !o.isBuy && open(o)),
+    exhausted: decoded.filter((o: any) => !open(o)),
   });
 });
 
@@ -263,17 +316,34 @@ r.get("/hot-market-queue/:rarity", async (req, res) => {
 });
 
 
-// [ФИКС Средний] Пул хот-маркета: параметры VRGDA для реальной глубины стакана
+// [ФИКС Средний] Пул хот-маркета: параметры VRGDA для реальной глубины стакана.
+// lastTradeTs/горячее окно нужны панели, чтобы оценить цену с тем же затуханием,
+// что и on-chain pricing (programs/aof-market/src/pricing.rs); decimals — чтобы
+// показывать цену в токенах, а не в атомах.
 r.get("/hot-market-pool/:rarity", async (req, res) => {
   try {
     const rarity = Number(req.params.rarity);
     const [pool] = hotMarketPoolPda(rarity);
+    const [marketConfigAddress] = marketConfigPda();
     let data: any;
+    let marketConfig: any;
     try {
       data = await (marketProgram.account as any)["hotMarketPool"].fetch(pool);
+      marketConfig = await (marketProgram.account as any).marketConfig.fetch(marketConfigAddress);
     } catch {
       return res.status(404).json({ error: "Pool not initialized" });
     }
+
+    const decimalsOf = async (mint: any): Promise<number | null> => {
+      try {
+        const info: any = await connection.getParsedAccountInfo(mint);
+        const value = info?.value?.data?.parsed?.info?.decimals;
+        return Number.isInteger(value) ? value : null;
+      } catch {
+        return null;
+      }
+    };
+
     res.json({
       rarity,
       targetPriceCore: Number(data.targetPriceCore),
@@ -284,8 +354,54 @@ r.get("/hot-market-pool/:rarity", async (req, res) => {
       feeBps: Number(data.feeBps),
       soldSinceStart: Number(data.soldSinceStart),
       purchasesInWindow: Number(data.purchasesInWindow),
+      lastTradeTs: Number(data.lastTradeTs),
+      hotWindowEndTs: Number(data.hotWindowEndTs),
+      hotMultiplierBps: Number(data.hotMultiplierBps),
+      coreDecimals: await decimalsOf(marketConfig.coreMint),
+      gemDecimals: await decimalsOf(marketConfig.gemMint),
       paused: Boolean(data.paused),
     });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Инвентарь пула: что пул держит прямо сейчас. Инструменты лежат в ATA пула
+// (Token program), поэтому витрина читает реальные минты через
+// getTokenAccountsByOwner и показывает только те, у которых есть канонический
+// ToolData с владельцем-пулом: чужой мусор, переведённый в ATA пула, никому не
+// продаётся «по цене пула».
+r.get("/hot-market-inventory/:rarity", async (req, res) => {
+  try {
+    const rarity = Number(req.params.rarity);
+    const [pool] = hotMarketPoolPda(rarity);
+    const [marketConfigAddress] = marketConfigPda();
+    const marketConfig: any = await (marketProgram.account as any).marketConfig.fetch(marketConfigAddress);
+    const currencies = new Set([marketConfig.coreMint.toBase58(), marketConfig.gemMint.toBase58()]);
+    const { value } = await connection.getParsedTokenAccountsByOwner(pool, { programId: TOKEN_PROGRAM_ID });
+    const candidates = value
+      .map((entry: any) => ({
+        mint: entry.account.data.parsed.info.mint as string,
+        amount: String(entry.account.data.parsed.info.tokenAmount.amount),
+      }))
+      .filter((token: any) => !currencies.has(token.mint) && token.amount !== "0");
+    const poolKey = pool.toBase58();
+    const items: any[] = [];
+    for (const candidate of candidates) {
+      const [toolDataAddress] = toolPda(new PublicKey(candidate.mint));
+      const tool: any = await fetchOne("toolData", toolDataAddress);
+      if (!tool || tool.owner !== poolKey) continue;
+      items.push({
+        mint: candidate.mint,
+        toolData: toolDataAddress.toBase58(),
+        toolType: tool.toolType,
+        rarity: hotRarityName(tool.rarity),
+        durability: Number(tool.durability),
+        staked: Boolean(tool.staked),
+        isMining: Boolean(tool.isMining),
+      });
+    }
+    res.json({ rarity, pool: poolKey, count: items.length, items });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

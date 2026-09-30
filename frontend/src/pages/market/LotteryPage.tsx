@@ -7,12 +7,13 @@ import { lotteryCopy } from '../../i18n/lotteryCopy';
 import { Card } from '../../components/ui/Card';
 import { UI_ICONS } from '../../lib/visualAssets';
 import { lamportsToSol } from '../../lib/amounts';
-import { canRefundLotteryTicket, lotteryU64, readLotteryRound, readLotteryTickets,
-  type LotteryRound, type LotteryTicket } from '../../lib/lotteryReadings';
+import { canRefundLotteryTicket, LOTTERY_TICKET_PRICE_LAMPORTS, lotteryU64, readLotteryRound,
+  readLotteryTickets, type LotteryRound, type LotteryTicket } from '../../lib/lotteryReadings';
 
-/** Public game view: no admin create/draw controls and no unbounded ticket purchase.
- * Existing owners can still claim or refund, with a wallet-bound ticket intent.
- * A failed read is never rendered as an empty round or ticket list. */
+/** Public game view: no admin create/draw controls. A purchase is signed with
+ * the price ceiling the player sees (`max_price_lamports`), and existing owners
+ * can claim or refund, each with a wallet-bound ticket intent. A failed read is
+ * never rendered as an empty round or ticket list. */
 export function LotteryPage() {
   const { language } = useLocale();
   const c = lotteryCopy[language];
@@ -131,6 +132,44 @@ export function LotteryPage() {
     }
   }
 
+  async function buyTicket() {
+    const owner = address, id = selectedId;
+    if (!owner || !id || busyRef.current || pending || roundState !== 'ready' || !activeRound ||
+        activeRound.drawn || activeRound.drawCommitted) return;
+    busyRef.current = true;
+    setBusy(true);
+    setNotice('working');
+    try {
+      // Re-read the round immediately before asking the wallet: the ticket PDA
+      // is derived from `tickets_sold`, and sales may have closed meanwhile.
+      const fresh = readLotteryRound(await api.query.lotteryRound(id), id);
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      if (!fresh || fresh.drawn || fresh.drawCommitted) {
+        setNotice('uncertain');
+        setRefresh(n => n + 1);
+        return;
+      }
+      const response = await api.lottery.ticketBuy({
+        buyer: owner, roundId: id, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS,
+      });
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      const result = await handleTxResponse(response, {
+        kind: 'lotteryTicket', action: 'buy', user: owner, roundId: id,
+        ticketNumber: fresh.ticketsSold, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS,
+      });
+      if (walletRef.current !== owner || selectionRef.current !== id) return;
+      if (result.success || result.signature) {
+        setNotice(result.success ? 'successCheck' : 'pending');
+        setRefresh(n => n + 1);
+      } else setNotice('failed');
+    } catch {
+      if (walletRef.current === owner && selectionRef.current === id) setNotice('uncertain');
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
   const status = !selectedId ? c.invalidRound : roundState === 'loading' || roundState === 'ready' && !activeRound ? c.roundLoading
     : roundState === 'missing' ? c.roundMissing : roundState !== 'ready' ? c.roundError
     : activeRound?.drawn ? c.drawn : activeRound?.drawCommitted ? c.drawPending : c.awaitingDraw;
@@ -193,7 +232,17 @@ export function LotteryPage() {
       </Card>
       <Card>
         <h2 className="text-parchment font-semibold text-sm mb-2">{c.purchaseTitle}</h2>
-        <p className="text-straw text-xs" role="status">{c.purchasePaused}</p>
+        {!address ? <p className="text-straw text-xs" role="status">{c.connect}</p>
+          : !activeRound || roundState !== 'ready' ? <p className="text-straw text-xs" role="status">{c.purchaseClosed}</p>
+          : activeRound.drawn || activeRound.drawCommitted ? <p className="text-straw text-xs" role="status">{c.purchaseClosed}</p>
+          : <>
+            <p className="text-straw text-xs">{c.priceLine(lamportsToSol(LOTTERY_TICKET_PRICE_LAMPORTS))}</p>
+            <p className="text-straw text-xs mt-1">{c.buyHelp}</p>
+            <button type="button" disabled={busy || !!pending} onClick={buyTicket}
+              className="mt-3 px-3 py-2 rounded-xl bg-sprout-500 text-white text-xs disabled:opacity-40 max-w-full [overflow-wrap:anywhere]">
+              {c.buy}
+            </button>
+          </>}
       </Card>
     </div>
   );

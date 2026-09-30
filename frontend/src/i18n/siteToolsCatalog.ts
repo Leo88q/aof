@@ -1,0 +1,258 @@
+import type { Language } from './translations';
+
+/**
+ * Реестр инструментов для сайта: 5 типов × 5 редкостей.
+ *
+ * Числа — из спецификации программы (`GAME_INVENTORY.md`, `aof-core`):
+ * часы захода 8 / 12 / 14 / 20 / 20 по редкости, множитель выхода
+ * ×1.00 … ×1.80, из капсул дропа выпадают только три типа. Это описание
+ * каталога, а не инвентарь подключённого кошелька и не обещание дохода.
+ */
+export type ToolTypeId = 'plasma_cutter' | 'silicon_extractor' | 'data_harvester' | 'quantum_transmitter' | 'neural_seeder';
+
+export type ToolsCatalogCopy = {
+  registryHeading: string;
+  registryIntro: string;
+  columns: { tool: string; resource: string; hours: string; yield: string; source: string };
+  fromPack: string;
+  craftOnly: string;
+  hoursHint: string;
+  yieldHint: string;
+  profileHeading: string;
+  profileIntro: string;
+  produces: (resource: string) => string;
+  hoursLabel: string;
+  yieldLabel: string;
+  sourceLabel: string;
+  miningNote: string;
+  matrixHeading: string;
+  matrixIntro: string;
+  galleryFilter: string;
+  galleryAllRarities: string;
+  galleryShowing: (shown: number, total: number) => string;
+};
+
+export const toolsCatalogCopy: Record<Language, ToolsCatalogCopy> = {
+  ru: {
+    registryHeading: 'Реестр: пять типов, пять редкостей',
+    registryIntro: 'Строка реестра описывает тип инструмента из спецификации программы. Это не предмет в кошельке и не предложение о продаже.',
+    columns: { tool: 'Инструмент', resource: 'Добывает', hours: 'Часы за заход', yield: 'Выход', source: 'Откуда' },
+    fromPack: 'Капсулы дропа',
+    craftOnly: 'Только сборка',
+    hoursHint: 'Базовый → Трансцендентный',
+    yieldHint: 'множитель выхода',
+    profileHeading: 'Что делает каждый инструмент',
+    profileIntro: 'Пять карточек: какой ресурс добывает тип, сколько держится заход и откуда инструмент берётся.',
+    produces: (resource) => `Добывает: ${resource}`,
+    hoursLabel: 'Часы захода по редкости',
+    yieldLabel: 'Множитель выхода',
+    sourceLabel: 'Источник',
+    miningNote: 'Добыча приостановлена до проверки правил в сети: таблица описывает правила программы, а не доступное действие. Наличие инструмента и его прочность проверяй в игре.',
+    matrixHeading: 'Часы и выход по редкости',
+    matrixIntro: 'Одна таблица на все пять типов: редкость задаёт длину захода и множитель выхода, тип задаёт ресурс.',
+    galleryFilter: 'Показывать исполнения',
+    galleryAllRarities: 'Все редкости',
+    galleryShowing: (shown, total) => `Показано ${shown} из ${total} исполнений`,
+  },
+  en: {
+    registryHeading: 'Registry: five types, five rarities',
+    registryIntro: 'A registry row describes a tool type from the program specification. It is not an item in your wallet and not a sale offer.',
+    columns: { tool: 'Tool', resource: 'Yields', hours: 'Hours per shift', yield: 'Output', source: 'Source' },
+    fromPack: 'Drop capsules',
+    craftOnly: 'Crafting only',
+    hoursHint: 'Base → Transcendent',
+    yieldHint: 'output multiplier',
+    profileHeading: 'What each tool does',
+    profileIntro: 'Five cards: which resource the type yields, how long a shift lasts and where the tool comes from.',
+    produces: (resource) => `Yields: ${resource}`,
+    hoursLabel: 'Shift hours by rarity',
+    yieldLabel: 'Output multiplier',
+    sourceLabel: 'Source',
+    miningNote: 'Mining is paused pending verification of the on-chain rules: this table describes the program’s rules, not an available action. Check ownership and durability in the game.',
+    matrixHeading: 'Hours and output by rarity',
+    matrixIntro: 'One table for all five types: rarity sets shift length and output multiplier, the type sets the resource.',
+    galleryFilter: 'Show styles',
+    galleryAllRarities: 'All rarities',
+    galleryShowing: (shown, total) => `Showing ${shown} of ${total} artworks`,
+  },
+  pt: {
+    registryHeading: 'Registo: cinco tipos, cinco raridades',
+    registryIntro: 'Uma linha do registo descreve um tipo de ferramenta da especificação do programa. Não é um item na tua carteira nem uma oferta de venda.',
+    columns: { tool: 'Ferramenta', resource: 'Extrai', hours: 'Horas por turno', yield: 'Produção', source: 'Origem' },
+    fromPack: 'Cápsulas de itens',
+    craftOnly: 'Só por criação',
+    hoursHint: 'Básico → Transcendente',
+    yieldHint: 'multiplicador de produção',
+    profileHeading: 'O que faz cada ferramenta',
+    profileIntro: 'Cinco fichas: que recurso o tipo extrai, quanto dura o turno e de onde vem a ferramenta.',
+    produces: (resource) => `Extrai: ${resource}`,
+    hoursLabel: 'Horas do turno por raridade',
+    yieldLabel: 'Multiplicador de produção',
+    sourceLabel: 'Origem',
+    miningNote: 'A extração está suspensa até as regras na rede serem verificadas: esta tabela descreve as regras do programa, não uma ação disponível. Confere a posse e a durabilidade no jogo.',
+    matrixHeading: 'Horas e produção por raridade',
+    matrixIntro: 'Uma tabela para os cinco tipos: a raridade define a duração do turno e o multiplicador, o tipo define o recurso.',
+    galleryFilter: 'Mostrar estilos',
+    galleryAllRarities: 'Todas as raridades',
+    galleryShowing: (shown, total) => `Mostrando ${shown} de ${total} artes`,
+  },
+  es: {
+    registryHeading: 'Registro: cinco tipos, cinco rarezas',
+    registryIntro: 'Una fila del registro describe un tipo de herramienta de la especificación del programa. No es un objeto de tu cartera ni una oferta de venta.',
+    columns: { tool: 'Herramienta', resource: 'Extrae', hours: 'Horas por turno', yield: 'Producción', source: 'Origen' },
+    fromPack: 'Cápsulas de botín',
+    craftOnly: 'Solo fabricación',
+    hoursHint: 'Básico → Trascendente',
+    yieldHint: 'multiplicador de producción',
+    profileHeading: 'Qué hace cada herramienta',
+    profileIntro: 'Cinco fichas: qué recurso extrae el tipo, cuánto dura el turno y de dónde sale la herramienta.',
+    produces: (resource) => `Extrae: ${resource}`,
+    hoursLabel: 'Horas del turno por rareza',
+    yieldLabel: 'Multiplicador de producción',
+    sourceLabel: 'Origen',
+    miningNote: 'La extracción está suspendida hasta verificar las reglas de la red: esta tabla describe las reglas del programa, no una acción disponible. Comprueba la propiedad y la durabilidad en el juego.',
+    matrixHeading: 'Horas y producción por rareza',
+    matrixIntro: 'Una tabla para los cinco tipos: la rareza fija la duración del turno y el multiplicador; el tipo fija el recurso.',
+    galleryFilter: 'Mostrar estilos',
+    galleryAllRarities: 'Todas las rarezas',
+    galleryShowing: (shown, total) => `Se muestran ${shown} de ${total} ilustraciones`,
+  },
+  vi: {
+    registryHeading: 'Danh mục: năm loại, năm độ hiếm',
+    registryIntro: 'Mỗi dòng danh mục mô tả một loại công cụ theo đặc tả của chương trình. Đây không phải vật phẩm trong ví và không phải lời chào bán.',
+    columns: { tool: 'Công cụ', resource: 'Khai thác', hours: 'Giờ mỗi ca', yield: 'Sản lượng', source: 'Nguồn' },
+    fromPack: 'Kapsula vật phẩm',
+    craftOnly: 'Chỉ chế tạo',
+    hoursHint: 'Cơ bản → Siêu việt',
+    yieldHint: 'hệ số sản lượng',
+    profileHeading: 'Mỗi công cụ làm gì',
+    profileIntro: 'Năm thẻ: loại công cụ khai thác tài nguyên nào, một ca kéo dài bao lâu và công cụ đến từ đâu.',
+    produces: (resource) => `Khai thác: ${resource}`,
+    hoursLabel: 'Giờ mỗi ca theo độ hiếm',
+    yieldLabel: 'Hệ số sản lượng',
+    sourceLabel: 'Nguồn',
+    miningNote: 'Khai thác đang tạm dừng để xác minh quy tắc trên chuỗi: bảng này mô tả quy tắc của chương trình, không phải hành động đang mở. Hãy kiểm tra quyền sở hữu và độ bền trong trò chơi.',
+    matrixHeading: 'Giờ và sản lượng theo độ hiếm',
+    matrixIntro: 'Một bảng cho cả năm loại: độ hiếm quyết định thời lượng ca và hệ số, loại quyết định tài nguyên.',
+    galleryFilter: 'Hiện kiểu',
+    galleryAllRarities: 'Tất cả độ hiếm',
+    galleryShowing: (shown, total) => `Đang hiện ${shown} trong ${total} hình`,
+  },
+  id: {
+    registryHeading: 'Daftar: lima jenis, lima kelangkaan',
+    registryIntro: 'Satu baris daftar menjelaskan jenis peralatan menurut spesifikasi program. Ini bukan barang di dompetmu dan bukan penawaran jual.',
+    columns: { tool: 'Peralatan', resource: 'Menambang', hours: 'Jam per giliran', yield: 'Hasil', source: 'Asal' },
+    fromPack: 'Kapsul hadiah',
+    craftOnly: 'Hanya rakitan',
+    hoursHint: 'Dasar → Transenden',
+    yieldHint: 'pengali hasil',
+    profileHeading: 'Apa yang dilakukan setiap peralatan',
+    profileIntro: 'Lima kartu: sumber daya apa yang ditambang, berapa lama satu giliran, dan dari mana peralatan itu berasal.',
+    produces: (resource) => `Menambang: ${resource}`,
+    hoursLabel: 'Jam giliran per kelangkaan',
+    yieldLabel: 'Pengali hasil',
+    sourceLabel: 'Asal',
+    miningNote: 'Penambangan dihentikan sampai aturan di blockchain diverifikasi: tabel ini menjelaskan aturan program, bukan tindakan yang tersedia. Periksa kepemilikan dan daya tahan di permainan.',
+    matrixHeading: 'Jam dan hasil per kelangkaan',
+    matrixIntro: 'Satu tabel untuk kelima jenis: kelangkaan menentukan lama giliran dan pengali, jenis menentukan sumber daya.',
+    galleryFilter: 'Tampilkan gaya',
+    galleryAllRarities: 'Semua kelangkaan',
+    galleryShowing: (shown, total) => `Menampilkan ${shown} dari ${total} karya`,
+  },
+  fil: {
+    registryHeading: 'Talaan: limang uri, limang antas',
+    registryIntro: 'Inilalarawan ng bawat hanay ang uri ng kagamitan ayon sa espesipikasyon ng programa. Hindi ito bagay sa wallet mo at hindi alok na pagbebenta.',
+    columns: { tool: 'Kagamitan', resource: 'Kinukuha', hours: 'Oras bawat turno', yield: 'Bunga', source: 'Pinagmulan' },
+    fromPack: 'Mga kapsula ng gantimpala',
+    craftOnly: 'Sa paggawa lamang',
+    hoursHint: 'Base → Transendente',
+    yieldHint: 'dagdag-bunga',
+    profileHeading: 'Ang gawain ng bawat kagamitan',
+    profileIntro: 'Limang kard: anong yaman ang kinukuha, gaano katagal ang isang turno, at saan galing ang kagamitan.',
+    produces: (resource) => `Kinukuha: ${resource}`,
+    hoursLabel: 'Oras ng turno ayon sa antas',
+    yieldLabel: 'Dagdag-bunga',
+    sourceLabel: 'Pinagmulan',
+    miningNote: 'Nakatigil ang pagmimina hanggang maverify ang mga tuntunin sa blockchain: inilalarawan ng talahanayang ito ang tuntunin ng programa, hindi isang bukas na aksiyon. Suriin sa laro ang pagmamay-ari at tibay.',
+    matrixHeading: 'Oras at bunga ayon sa antas',
+    matrixIntro: 'Isang talahanayan para sa limang uri: ang antas ang nagtatakda ng haba ng turno at dagdag-bunga, ang uri ang nagtatakda ng yaman.',
+    galleryFilter: 'Ipakita ang estilo',
+    galleryAllRarities: 'Lahat ng antas',
+    galleryShowing: (shown, total) => `Ipinapakita ang ${shown} sa ${total}`,
+  },
+};
+
+/** Добываемый ресурс по типу инструмента (`resource_kind_for_tool` в aof-core). */
+export const TOOL_RESOURCE: Record<ToolTypeId, string> = {
+  plasma_cutter: 'circuit',
+  silicon_extractor: 'silicon',
+  data_harvester: 'dataset',
+  quantum_transmitter: 'dataset',
+  neural_seeder: 'neuron',
+};
+
+/** Из капсул дропа выпадают только три типа; остальные собираются крафтом. */
+export const TOOL_FROM_PACK: Record<ToolTypeId, boolean> = {
+  plasma_cutter: true,
+  silicon_extractor: true,
+  data_harvester: true,
+  quantum_transmitter: false,
+  neural_seeder: false,
+};
+
+/** Часы захода и множитель выхода по редкости: Base, Enhanced, Quantum, Singularity, Transcendent. */
+export const TOOL_SHIFT_HOURS = [8, 12, 14, 20, 20] as const;
+export const TOOL_YIELD_MULTIPLIER = ['1.00', '1.15', '1.30', '1.50', '1.80'] as const;
+
+/** Короткий профиль типа: одна фраза, которая держит смысл инструмента. */
+export const toolProfiles: Record<Language, Record<ToolTypeId, string>> = {
+  ru: {
+    plasma_cutter: 'Рабочая лошадка кремниевой линии: снимает слой за слоем и отдаёт CIRCUIT. Выпадает из капсул дропа.',
+    silicon_extractor: 'Достаёт SILICON — материал конструкций и чипов. Выпадает из капсул дропа.',
+    data_harvester: 'Работает там, где остались следы данных, и приносит DATASET. Выпадает из капсул дропа.',
+    quantum_transmitter: 'Квантовый поток для той же добычи: тоже DATASET, но в капсулах не выпадает — только сборка.',
+    neural_seeder: 'Сеет NEURON, первое звено производственной цепочки. В капсулах не выпадает — только сборка.',
+  },
+  en: {
+    plasma_cutter: 'The workhorse of the silicon line: strips layer by layer and returns CIRCUIT. Drops from capsules.',
+    silicon_extractor: 'Pulls SILICON out of the rock — the material for structures and chips. Drops from capsules.',
+    data_harvester: 'Works where traces of data remain and brings back DATASET. Drops from capsules.',
+    quantum_transmitter: 'A quantum stream for the same work: DATASET again, but never from capsules — crafting only.',
+    neural_seeder: 'Sows NEURON, the first link of the production chain. Never from capsules — crafting only.',
+  },
+  pt: {
+    plasma_cutter: 'A ferramenta central da linha de silício: retira camada a camada e devolve CIRCUIT. Sai de cápsulas.',
+    silicon_extractor: 'Extrai SILICON da rocha — material de estruturas e chips. Sai de cápsulas.',
+    data_harvester: 'Trabalha onde restaram vestígios de dados e traz DATASET. Sai de cápsulas.',
+    quantum_transmitter: 'Um fluxo quântico para o mesmo trabalho: também DATASET, mas nunca de cápsulas — só por criação.',
+    neural_seeder: 'Semeia NEURON, o primeiro elo da cadeia de produção. Nunca de cápsulas — só por criação.',
+  },
+  es: {
+    plasma_cutter: 'La herramienta central de la línea de silicio: retira capa a capa y devuelve CIRCUIT. Sale de cápsulas.',
+    silicon_extractor: 'Extrae SILICON de la roca: material para estructuras y chips. Sale de cápsulas.',
+    data_harvester: 'Trabaja donde quedan rastros de datos y devuelve DATASET. Sale de cápsulas.',
+    quantum_transmitter: 'Un flujo cuántico para el mismo trabajo: también DATASET, pero nunca de cápsulas — solo fabricación.',
+    neural_seeder: 'Siembra NEURON, el primer eslabón de la cadena de producción. Nunca de cápsulas — solo fabricación.',
+  },
+  vi: {
+    plasma_cutter: 'Công cụ chủ lực của tuyến silicon: bóc từng lớp và trả về CIRCUIT. Rơi từ kapsula.',
+    silicon_extractor: 'Lấy SILICON khỏi đá — vật liệu cho kết cấu và chip. Rơi từ kapsula.',
+    data_harvester: 'Làm việc nơi còn dấu vết dữ liệu và mang về DATASET. Rơi từ kapsula.',
+    quantum_transmitter: 'Luồng lượng tử cho cùng công việc: cũng là DATASET, nhưng không rơi từ kapsula — chỉ chế tạo.',
+    neural_seeder: 'Gieo NEURON, mắt xích đầu của dây chuyền sản xuất. Không rơi từ kapsula — chỉ chế tạo.',
+  },
+  id: {
+    plasma_cutter: 'Peralatan andalan lini silikon: mengupas lapis demi lapis dan menghasilkan CIRCUIT. Muncul dari kapsul.',
+    silicon_extractor: 'Mengambil SILICON dari batuan — bahan untuk struktur dan chip. Muncul dari kapsul.',
+    data_harvester: 'Bekerja di tempat yang masih menyimpan jejak data dan membawa DATASET. Muncul dari kapsul.',
+    quantum_transmitter: 'Aliran kuantum untuk pekerjaan yang sama: tetap DATASET, tapi tidak muncul dari kapsul — hanya rakitan.',
+    neural_seeder: 'Menyemai NEURON, mata rantai pertama produksi. Tidak muncul dari kapsul — hanya rakitan.',
+  },
+  fil: {
+    plasma_cutter: 'Pangunahing kagamitan ng linyang silikon: nag-aalis ng suson at nagbibigay ng CIRCUIT. Galing sa kapsula.',
+    silicon_extractor: 'Kumukuha ng SILICON sa bato — materyales ng estruktura at chip. Galing sa kapsula.',
+    data_harvester: 'Gumagana kung saan may bakas ng datos at nagdadala ng DATASET. Galing sa kapsula.',
+    quantum_transmitter: 'Daloy kuwantum para sa parehong gawain: DATASET din, ngunit hindi galing sa kapsula — sa paggawa lamang.',
+    neural_seeder: 'Nagtatanim ng NEURON, unang kawing ng daloy ng paggawa. Hindi galing sa kapsula — sa paggawa lamang.',
+  },
+};

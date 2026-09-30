@@ -10,7 +10,7 @@ type InvestorArticle = {
 export const siteInvestors: Record<Language, InvestorArticle> = {
   ru: {
     lead: 'Сначала доказательства, затем выводы об экономике.',
-    paragraphs: ['Это редакционный разбор возможных потоков, не предложение инвестировать. Он не показывает текущую эмиссию, объём торгов, выручку или число пользователей: за этими числами нужны проверяемые записи и методика расчёта.', 'Некоторые действия ещё отключены или не имеют подтверждённого индекса. Добыча инструментами выключена по умолчанию; новые заявки и сведение в книге заявок приостановлены; перерождение и обещанные бонусы не доступны как подтверждённый экономический цикл.'],
+    paragraphs: ['Это редакционный разбор возможных потоков, не предложение инвестировать. Он не показывает текущую эмиссию, объём торгов, выручку или число пользователей: за этими числами нужны проверяемые записи и методика расчёта.', 'Некоторые действия ещё отключены или не имеют подтверждённого индекса. Добыча инструментами выключена по умолчанию; новые заявки и сведение в книге заявок приостановлены; перерождение теперь платное и сбрасывает прогресс сезона, но подтверждённого экономического цикла из него ещё нет.'],
     cyclesHeading: 'Четыре схемы, а не прогноз дохода', flowsHeading: 'Возможные потоки, а не отчёт о выручке', questionsHeading: 'Пять вопросов для проверки',
     questions: [
       'Какие полномочия есть у операторских ключей в развёрнутой программе и кто может их менять?',
@@ -23,7 +23,7 @@ export const siteInvestors: Record<Language, InvestorArticle> = {
   },
   en: {
     lead: 'Begin with evidence, then draw conclusions about the economy.',
-    paragraphs: ['This is an editorial look at possible flows, not an investment offer. It shows no current issuance, trading volume, revenue or user count: those figures require verifiable records and a stated methodology.', 'Some actions are disabled or lack a verified index. Tool mining is off by default; new order-book placement and matching are paused; rebirth and advertised bonuses are not an established economic cycle.'],
+    paragraphs: ['This is an editorial look at possible flows, not an investment offer. It shows no current issuance, trading volume, revenue or user count: those figures require verifiable records and a stated methodology.', 'Some actions are disabled or lack a verified index. Tool mining is off by default; new order-book placement and matching are paused; rebirth now charges a price and resets season progress, but it is not an established economic cycle yet.'],
     cyclesHeading: 'Four diagrams, not a return forecast', flowsHeading: 'Possible flows, not a revenue report', questionsHeading: 'Five questions to investigate',
     questions: [
       'What powers do operator keys have in the deployed program, and who can change them?',
@@ -36,7 +36,7 @@ export const siteInvestors: Record<Language, InvestorArticle> = {
   },
   pt: {
     lead: 'Primeiro as provas, depois as conclusões sobre a economia.',
-    paragraphs: ['Este é um olhar editorial sobre possíveis fluxos, não uma oferta de investimento. Não mostra emissão atual, volume negociado, receita nem número de utilizadores: são necessárias fontes verificáveis e uma metodologia definida.', 'Algumas ações estão desativadas ou não têm um índice verificado. A extração com ferramentas está desligada por padrão; novas ordens e cruzamentos no livro estão suspensos; o renascimento e as vantagens anunciadas não constituem um ciclo económico confirmado.'],
+    paragraphs: ['Este é um olhar editorial sobre possíveis fluxos, não uma oferta de investimento. Não mostra emissão atual, volume negociado, receita nem número de utilizadores: são necessárias fontes verificáveis e uma metodologia definida.', 'Algumas ações estão desativadas ou não têm um índice verificado. A extração com ferramentas está desligada por padrão; novas ordens e cruzamentos no livro estão suspensos; o renascimento já cobra preço e reinicia o progresso da temporada, mas ainda não é um ciclo económico confirmado.'],
     cyclesHeading: 'Quatro esquemas, não previsões de rendimento', flowsHeading: 'Fluxos possíveis, não um relatório de receitas', questionsHeading: 'Cinco perguntas a investigar',
     questions: [
       'Que poderes têm as chaves do operador no programa publicado, e quem os pode alterar?',
@@ -49,7 +49,7 @@ export const siteInvestors: Record<Language, InvestorArticle> = {
   },
   es: {
     lead: 'Primero las pruebas; luego, las conclusiones sobre la economía.',
-    paragraphs: ['Este es un análisis editorial de posibles flujos, no una oferta de inversión. No muestra emisión actual, volumen de operaciones, ingresos ni usuarios: esas cifras requieren registros verificables y una metodología explícita.', 'Algunas acciones están desactivadas o carecen de un índice verificado. La extracción con herramientas está apagada por defecto; las nuevas órdenes y cruces del libro están suspendidos; el renacimiento y los beneficios anunciados no son un ciclo económico confirmado.'],
+    paragraphs: ['Este es un análisis editorial de posibles flujos, no una oferta de inversión. No muestra emisión actual, volumen de operaciones, ingresos ni usuarios: esas cifras requieren registros verificables y una metodología explícita.', 'Algunas acciones están desactivadas o carecen de un índice verificado. La extracción con herramientas está apagada por defecto; las nuevas órdenes y cruces del libro están suspendidos; el renacimiento ya cobra un precio y reinicia el progreso de la temporada, pero aún no es un ciclo económico confirmado.'],
     cyclesHeading: 'Cuatro esquemas, no previsiones de ganancias', flowsHeading: 'Flujos posibles, no un informe de ingresos', questionsHeading: 'Cinco preguntas para investigar',
     questions: [
       '¿Qué facultades tienen las claves del operador en el programa desplegado y quién puede cambiarlas?',
@@ -62,7 +62,7 @@ export const siteInvestors: Record<Language, InvestorArticle> = {
   },
   vi: {
     lead: 'Bắt đầu từ bằng chứng, rồi mới kết luận về kinh tế.',
-    paragraphs: ['Đây là bài phân tích biên tập về các dòng tài nguyên có thể có, không phải lời mời đầu tư. Bài viết không hiển thị lượng phát hành, khối lượng giao dịch, doanh thu hay số người dùng hiện tại: các số liệu ấy cần bản ghi xác minh được và phương pháp tính rõ ràng.', 'Một số hành động đã bị tắt hoặc chưa có chỉ mục xác minh. Khai thác bằng công cụ mặc định bị tắt; đặt và khớp lệnh mới trong sổ lệnh bị tạm dừng; tái sinh và các lợi ích được quảng bá chưa tạo thành một chu kỳ kinh tế đã xác nhận.'],
+    paragraphs: ['Đây là bài phân tích biên tập về các dòng tài nguyên có thể có, không phải lời mời đầu tư. Bài viết không hiển thị lượng phát hành, khối lượng giao dịch, doanh thu hay số người dùng hiện tại: các số liệu ấy cần bản ghi xác minh được và phương pháp tính rõ ràng.', 'Một số hành động đã bị tắt hoặc chưa có chỉ mục xác minh. Khai thác bằng công cụ mặc định bị tắt; đặt và khớp lệnh mới trong sổ lệnh bị tạm dừng; tái sinh đã thu phí và đặt lại tiến trình mùa, nhưng vẫn chưa là một chu kỳ kinh tế đã xác nhận.'],
     cyclesHeading: 'Bốn sơ đồ, không phải dự báo lợi nhuận', flowsHeading: 'Dòng chảy có thể có, không phải báo cáo doanh thu', questionsHeading: 'Năm câu hỏi cần tìm hiểu',
     questions: [
       'Khóa vận hành có những quyền gì trong chương trình đã triển khai, và ai có thể thay đổi chúng?',
@@ -75,7 +75,7 @@ export const siteInvestors: Record<Language, InvestorArticle> = {
   },
   id: {
     lead: 'Mulailah dari bukti sebelum menarik kesimpulan tentang ekonomi.',
-    paragraphs: ['Ini ulasan editorial tentang kemungkinan aliran sumber daya, bukan tawaran investasi. Halaman ini tidak menampilkan penerbitan, volume perdagangan, pendapatan, atau jumlah pengguna terkini: angka itu memerlukan catatan terverifikasi dan metode perhitungan yang jelas.', 'Sebagian tindakan dimatikan atau belum memiliki indeks yang terverifikasi. Penambangan peralatan mati secara bawaan; penempatan dan pencocokan pesanan baru ditunda; kelahiran kembali dan manfaat yang diiklankan belum menjadi siklus ekonomi yang terkonfirmasi.'],
+    paragraphs: ['Ini ulasan editorial tentang kemungkinan aliran sumber daya, bukan tawaran investasi. Halaman ini tidak menampilkan penerbitan, volume perdagangan, pendapatan, atau jumlah pengguna terkini: angka itu memerlukan catatan terverifikasi dan metode perhitungan yang jelas.', 'Sebagian tindakan dimatikan atau belum memiliki indeks yang terverifikasi. Penambangan peralatan mati secara bawaan; penempatan dan pencocokan pesanan baru ditunda; kelahiran kembali kini memungut biaya dan mengatur ulang kemajuan musim, tetapi belum menjadi siklus ekonomi yang terkonfirmasi.'],
     cyclesHeading: 'Empat diagram, bukan ramalan keuntungan', flowsHeading: 'Kemungkinan aliran, bukan laporan pendapatan', questionsHeading: 'Lima pertanyaan untuk diperiksa',
     questions: [
       'Apa wewenang kunci operator dalam program yang telah diterapkan, dan siapa yang dapat mengubahnya?',
@@ -88,7 +88,7 @@ export const siteInvestors: Record<Language, InvestorArticle> = {
   },
   fil: {
     lead: 'Magsimula sa ebidensiya bago humusga sa ekonomiya.',
-    paragraphs: ['Editoryal na pagtingin ito sa maaaring daloy ng yaman, hindi alok ng pamumuhunan. Wala itong kasalukuyang datos sa pag-isyu, dami ng kalakalan, kita, o bilang ng gumagamit: kailangan dito ang nabeberipikang tala at malinaw na paraan ng pagbibilang.', 'May mga gawaing nakapatay o wala pang beripikadong index. Nakatigil bilang default ang pagmimina gamit ang kagamitan; nakahinto ang paglalagay at pagtutugma ng bagong order; hindi pa kumpirmadong siklo ng ekonomiya ang muling pagsilang at mga ipinangakong benepisyo.'],
+    paragraphs: ['Editoryal na pagtingin ito sa maaaring daloy ng yaman, hindi alok ng pamumuhunan. Wala itong kasalukuyang datos sa pag-isyu, dami ng kalakalan, kita, o bilang ng gumagamit: kailangan dito ang nabeberipikang tala at malinaw na paraan ng pagbibilang.', 'May mga gawaing nakapatay o wala pang beripikadong index. Nakatigil bilang default ang pagmimina gamit ang kagamitan; nakahinto ang paglalagay at pagtutugma ng bagong order; may bayad na ngayon ang muling pagsilang at ni-reset ang progreso ng panahon, ngunit hindi pa ito kumpirmadong siklo ng ekonomiya.'],
     cyclesHeading: 'Apat na diagram, hindi tantiya ng kita', flowsHeading: 'Maaaring daloy, hindi ulat ng kinita', questionsHeading: 'Limang tanong na dapat siyasatin',
     questions: [
       'Anong kapangyarihan ang taglay ng operator key sa nakalathalang program, at sino ang makapagbabago nito?',

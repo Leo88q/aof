@@ -75,6 +75,29 @@ assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" },
   assert.deepEqual(validateEvents([created, settled, refunded]), []);
   assert.ok(!JSON.stringify([created, settled, refunded]).includes(W.alice));
 }
+// [§3.4] Перерождение: сброс сезона + сжигание излишка. Сброс виден как смена
+// состояния сессии, излишек — как сжигание; при нулевом излишке ноги сжигания
+// нет (никогда не показываем «сожгли 0» как событие экономики).
+{
+  const base = { ...by("Staked"), eventType: "RebirthReset", wallet: W.alice, mint: null,
+    data: { user: W.alice, season_id: "3", xp_before: "4000", has_tent_before: true, burned_accounts: "2", burned_atoms: "1500" } };
+  const out = normalizeChainEvent(base, SALT);
+  assert.deepEqual(out.map((e) => e.type), ["ConfigUpdated", "TokenBurned"]);
+  assert.equal(out[0].playerId, alice);
+  assert.equal(out[0].attributes.setting, "rebirth_reset");
+  assert.equal(out[0].attributes.seasonId, "3");
+  assert.equal(out[1].amount, "1500");
+  assert.equal(out[1].currency, "RESOURCE_ATOMS");
+  const empty = normalizeChainEvent({ ...base, data: { ...base.data, burned_accounts: "0", burned_atoms: "0" } }, SALT);
+  assert.deepEqual(empty.map((e) => e.type), ["ConfigUpdated"]);
+  assert.deepEqual(validateEvents(out), []);
+  assert.ok(!JSON.stringify(out).includes(W.alice));
+  const [performed] = normalizeChainEvent({ ...base, eventType: "RebirthPerformed", data: { user: W.alice, generation: "2", rebirth_count: "1", permanent_bonus_bps: "250" } }, SALT);
+  assert.equal(performed.type, "ConfigUpdated");
+  assert.equal(performed.attributes.setting, "rebirth_performed");
+  assert.equal(performed.attributes.permanentBonusBps, "250");
+  assert.equal(performed.category, "security");
+}
 // Raw wallets never appear anywhere in the output.
 {
   const all = EVENTS.flatMap((e) => normalizeChainEvent(e, SALT, { treasury: W.treasury }));

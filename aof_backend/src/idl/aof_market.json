@@ -153,6 +153,17 @@
           "writable": true
         },
         {
+          "name": "pool_currency",
+          "writable": true
+        },
+        {
+          "name": "tool_data",
+          "writable": true
+        },
+        {
+          "name": "core_program"
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
@@ -245,6 +256,17 @@
         {
           "name": "pool_tool",
           "writable": true
+        },
+        {
+          "name": "treasury_currency",
+          "writable": true
+        },
+        {
+          "name": "tool_data",
+          "writable": true
+        },
+        {
+          "name": "core_program"
         },
         {
           "name": "token_program",

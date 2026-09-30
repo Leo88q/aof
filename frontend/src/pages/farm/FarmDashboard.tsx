@@ -5,6 +5,7 @@ import { farmOverviewCopy } from "../../i18n/farmOverviewCopy";
 import { labHeroCopy } from "../../i18n/labHeroCopy";
 import { farmPlotCopy, buildingKeys } from "../../i18n/farmPlotCopy";
 import { ActiveBuffs } from "../../components/ActiveBuffs";
+import { GasTankPanel } from "../../components/GasTankPanel";
 import { useEffect, useState } from "react";
 import { useNav } from "../../nav/NavContext";
 import { motion } from "framer-motion";
@@ -190,6 +191,10 @@ export function FarmDashboard() {
               </>
             }
           />
+
+          {/* Дефект: снятие инструмента и разлок коллекционера берут 0.01 SOL
+              из газ-бака, а пополнить его в интерфейсе было нечем. */}
+          <GasTankPanel onChanged={() => setRefreshKey(k => k + 1)} />
 
           <Card className="mb-4" onClick={() => push("farm", "farm", <FarmPlot />)}>
             <div className="flex items-center justify-between mb-3">

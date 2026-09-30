@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
@@ -253,8 +253,18 @@ test("эмодзи не выводятся текстом: плашки вмес
 
 test("закрытые механики объясняются единым текстом, а кнопки без эмодзи-подписей", () => {
   const profile = read("src/pages/profile/ProfileHome.tsx");
-  assert.match(profile, /FeatureDisabledNotice id="rebirth"/,
-    "причина rebirth обязана браться из DISABLED_MECHANICS, а не дублироваться текстом");
+  // [§3.4] Перерождение вышло из списка закрытых: у него своя панель, которая
+  // читает цену/кулдаун/излишки из сети и подписывает полный сброс.
+  assert.match(profile, /<RebirthPanel \/>/,
+    "перерождение обязано показывать живую панель, а не заглушку");
+  assert.ok(!/FeatureDisabledNotice id="rebirth"/.test(profile),
+    "перерождение больше не закрытая механика: заглушка вернулась");
+  const noticeSource = read("src/components/ui/FeatureDisabledNotice.tsx");
+  const disabledBlock = noticeSource.slice(
+    noticeSource.indexOf("export const DISABLED_MECHANICS = {"),
+    noticeSource.indexOf("} as const;"),
+  );
+  assert.ok(!/rebirth:/.test(disabledBlock), "rebirth всё ещё в DISABLED_MECHANICS");
   const mining = read("src/components/ToolMiningCard.tsx");
   for (const label of ['"⏸️ Сбор отключён', '"⏸️ Добыча отключена до проверки в сети"', '"↩️ Вернуть']) {
     assert.ok(!mining.includes(label), `эмоji-подпись в JSX-кнопке вернулась: ${label}`);
@@ -310,7 +320,6 @@ test("UI узнаёт реальные fail-closed коды бэкенда", () 
     "QUEST_PROGRESS_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
     "REPAIR_RESOURCES_NOT_CONFIGURED",
     "MINING_DISABLED_ONCHAIN",
-    "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER",
     "ENERGY_SPEND_MUST_USE_CANONICAL_GAME_INSTRUCTION",
     "LEGACY_REWARD_REQUIRES_RECONCILIATION",
     "HTTP 503",
@@ -782,6 +791,12 @@ test("каталог не показывает пути к файлам, а ар
     encoding: "utf8",
   });
   assert.match(report, /фон у всех картин один/, `фон картин разъехался:\n${report}`);
+  // Жалоба 2026-09-30: «в инструментах и в ресурсах разные фоны по оттенку».
+  // Обход обязан заходить во вложенную папку ресурсов, иначе половина полки
+  // остаётся непроверенной, а допуск не должен пропускать синий уклон.
+  assert.match(report, /инструменты: 25, ресурсы: 2[0-9]/, `выравнивание не покрывает обе полки:\n${report}`);
+  assert.match(read("scripts/normalize-art-backgrounds.mjs"), /export const TOLERANCE = 6;/,
+    "допуск снова пропускает подложку с другим оттенком");
 });
 
 test("шесть вкладок дока делят ширину и помещаются на телефоне", () => {
@@ -1411,7 +1426,7 @@ test("капсулы, флюиды и отключённые механики п
   const { marketDetailCopy } = await import("../src/i18n/marketDetailCopy.ts");
   const { disabledMechanicCopy } = await import("../src/i18n/disabledMechanicCopy.ts");
   const { humanizeVrfError } = await import("../src/lib/vrfErrors.ts");
-  const ids = ["hot_market", "collectors", "rebirth", "session", "tools_repair"];
+  const ids = ["collectors", "session", "tools_repair"];
   for (const language of ["ru", "en", "pt", "es", "vi", "id", "fil"] as const) {
     for (const field of ["title", "intro", "small", "medium", "big", "configError", "pendingError", "commitUnknown", "refunded"] as const) {
       assert.ok(packsCopy[language][field], `${language}: нет текста ${field} для капсул`);
@@ -1873,24 +1888,39 @@ test('экспедиция переведена и не выдаёт закры�
   }
 });
 
-test('книга заявок переведена; чтение, цена и закрытие эскроу не подменяются пустыми данными', async () => {
+test('книга заявок: v1 закрыт, v2 платит по подписанной цене за целый ресурс', async () => {
   const page = code('src/pages/market/OrderbookPage.tsx');
   const chart = code('src/components/charts/DepthChart.tsx');
   const backend = code('../aof_backend/src/routes/query.ts');
   const contract = code('../aof-core/src/instructions/orderbook.rs');
   const routes = code('../aof_backend/src/routes/orderbook.ts');
   assert.match(contract, /price_lamports_per_unit\.checked_mul\(amount\)/);
+  // v1 остаётся закрыт для новых заявок: старые эскроу должны отменяться, а не
+  // читаться как «заявок нет».
   for (const route of ['/buy/place', '/sell/place', '/match']) {
-    assert.ok(routes.includes(`r.post('${route}', tradingPaused)`), `${route} must stay closed for older clients`);
+    assert.ok(routes.includes(`r.post('${route}', legacyPaused)`), `${route} must stay closed for older clients`);
   }
   assert.match(routes, /r\.post\('\/buy\/cancel', async/);
   assert.match(routes, /r\.post\('\/sell\/cancel', async/);
+  // v2: цена за ЦЕЛЫЙ ресурс, эскроу вверх, кошелёк сверяет ту же сумму.
+  for (const route of ['/v2/buy/place', '/v2/sell/place']) {
+    assert.match(routes, new RegExp(`r\\.post\\('${route.replace(/\//g, '\\/')}', requireCircuitOpen`), route);
+  }
+  assert.match(routes, /r\.post\('\/v2\/match', requireCircuitOpen/);
+  assert.match(routes, /quoteTotalLamports\(pricePerWhole, amountAtoms\)/);
+  // Программа считает тот же итог и отказывает, если эскроу его не покрывает.
+  assert.match(contract, /RESOURCE_ATOMS_PER_UNIT - 1\)/);
+  assert.match(contract, /require!\(ctx\.accounts\.buy_order\.escrow_lamports >= buyer_pays/);
+  const lottery = code('../aof-core/src/instructions/lottery.rs');
+  assert.match(lottery, /require!\(price <= max_price_lamports/);
   assert.match(page, /orderbookCopy\[language\]/);
   assert.match(page, /homeResourceNames\[language\]/);
-  assert.ok(!/api\.orderbook\.(placeBuy|placeSell|match)\(/.test(page), 'ошибочную форму нельзя вернуть без пересмотра единиц цены');
-  assert.match(page, /api\.orderbook\.cancelBuy/);
-  assert.match(page, /api\.orderbook\.cancelSell/);
-  assert.match(page, /readOrderbook\(await api\.query\.orderbook/);
+  assert.ok(!/api\.orderbook\.(placeBuy|placeSell|match)\(/.test(page), 'старая v1-форма не возвращается');
+  assert.match(page, /api\.orderbook\.placeBuyV2\(/, 'покупка через v2');
+  assert.match(page, /api\.orderbook\.matchV2\(/, 'свод доступен из интерфейса');
+  assert.match(page, /api\.orderbook\.cancelBuyV2/);
+  assert.match(page, /api\.orderbook\.cancelSellV2/);
+  assert.match(page, /readOrderbookV2\(await api\.query\.orderbookV2/);
   assert.match(backend, /exhausted: decoded\.filter/);
   assert.match(chart, /BigInt\(level\.amount\)/);
   assert.ok(!/[А-Яа-яЁё]/.test(page + chart), 'видимые подписи только в локалях');
@@ -1899,8 +1929,9 @@ test('книга заявок переведена; чтение, цена и з
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     assert.deepEqual(Object.keys(orderbookCopy[language]), fields);
     for (const [key, value] of Object.entries(orderbookCopy[language])) {
-      assert.ok(value.trim(), `${language}.${key}: пустой текст`);
-      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(value), `${language}.${key}: не переведено`);
+      const text = typeof value === 'function' ? (value as (a: string, b: string) => string)('1', '2') : value;
+      assert.ok(text.trim(), `${language}.${key}: пустой текст`);
+      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${language}.${key}: не переведено`);
     }
   }
   assert.ok(!existsSync(new URL('../src/site/content/trade.ts', import.meta.url)), 'старые опасные рекомендации по книге заявок удалены');
@@ -2146,7 +2177,7 @@ test('медальоны доверия переведены как иллюст
   assert.ok(!/5 уровней репутации|Novice → Operator/.test(fallback), 'рекламный рейтинг вновь оказался на странице');
 });
 
-test('игровая лотерея переведена и не предлагает неподтверждённые билеты, выигрыш или оплату', async () => {
+test('игровая лотерея переведена: покупка только с потолком цены, неподтверждённых билетов и выигрыша нет', async () => {
   const { lotteryCopy } = await import('../src/i18n/lotteryCopy.ts');
   const { lotteryPda, lotteryU64, readLotteryRound, readLotteryTickets, canRefundLotteryTicket } = await import('../src/lib/lotteryReadings.ts');
   const { Keypair } = await import('@solana/web3.js');
@@ -2190,8 +2221,13 @@ test('игровая лотерея переведена и не предлаг�
   assert.match(page, /readLotteryRound\(await api\.query\.lotteryRound\(id\), id\)/);
   assert.match(page, /readLotteryTickets\(await api\.query\.myTickets\(id, owner\), fresh, owner\)/);
   assert.match(page, /kind: 'lotteryTicket', action, user: owner, roundId: id, ticketNumber:/);
-  assert.ok(!/api\.lottery\.(ticketBuy|roundInit|drawCommit)\(/.test(page), 'публичная форма не должна платить без лимита или показывать админ-кнопки');
-  assert.match(backend, /r\.post\("\/ticket\/buy", \(_req, res\) => \{\s*res\.status\(503\)/);
+  // Покупка платит только с потолком цены, который подписал игрок: и страница,
+  // и интент используют одну константу, а бэкенд отказывает ниже неё.
+  assert.match(page, /api\.lottery\.ticketBuy\(\{\s*buyer: owner, roundId: id, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS,/);
+  assert.match(page, /kind: 'lotteryTicket', action: 'buy', user: owner, roundId: id,\s*ticketNumber: fresh\.ticketsSold, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS/);
+  assert.ok(!/api\.lottery\.(roundInit|drawCommit)\(/.test(page), 'в публичной форме не должно быть админ-кнопок');
+  assert.match(backend, /r\.post\("\/ticket\/buy", requireCircuitOpen, requireWalletLimits\("lottery_buy"\), requireIdempotency/);
+  assert.match(backend, /maxPrice\.lt\(ceiling\)/, 'потолок ниже цены должен отказывать до кошелька');
   assert.match(backend, /r\.post\("\/round\/init", requireAdmin/);
   assert.match(backend, /r\.post\("\/draw\/commit", requireAdmin/);
 });
@@ -2242,10 +2278,15 @@ test('сайт инструментов переводит все пять ти�
   const css = code('src/site/styles/site.css');
   assert.match(content, /id === 'tools' \? siteTools\[language\]/);
   assert.ok(!/tools: \['tools'\]/.test(content), 'не показывать старые инструкции как подтверждённое руководство');
-  assert.match(extras, /TOOL_NFTS\.map\(\(tool\) =>/);
+  // Реестр вынесен в собственный компонент витрины: тип перебирается по списку
+  // TOOL_NFTS, имя берётся из общего словаря, редкости — из ряда TOOL_RARITIES.
+  assert.match(extras, /TOOL_NFTS\.map\(\(tool\) => tool\.id as ToolTypeId\)/);
   assert.match(extras, /TOOL_RARITIES\.map\(\(rarity, index\) =>/);
-  assert.match(extras, /toolName\(language, tool\.id\)/);
+  assert.match(extras, /toolName\(language, type\)/);
   assert.match(extras, /rarityLabels\[index\]/);
+  assert.match(extras, /toolsCatalogCopy\[language\]/, 'реестр инструментов обязан читать свой словарь');
+  assert.match(extras, /TOOL_SHIFT_HOURS\.join/, 'часы захода берутся из спецификации, а не из текста');
+  assert.match(extras, /catalog\.registryHeading/, 'у реестра нет заголовка');
   assert.match(extras, /copy\.galleryNotice/);
   assert.match(layout, /localizedRoutes = new Set<string>\(\[[^\]]*'tools'/);
   assert.match(layout, /id === 'tools' \? siteTools\[language\]/);
@@ -2318,8 +2359,12 @@ test('страница рынка: все шесть форматов на се�
   assert.equal(pages.find(p => p.id === 'market')?.lead, siteMarket.ru.lead);
   assert.deepEqual([...marketVenueIds], ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotClosed']);
   const orderbook = code('../aof_backend/src/routes/orderbook.ts');
-  for (const path of ['buy/place', 'sell/place', 'match']) assert.ok(orderbook.includes(`r.post('/${path}', tradingPaused)`), path);
-  assert.match(code('../aof_backend/src/routes/hotMarket.ts'), /HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER/);
+  for (const path of ['buy/place', 'sell/place', 'match']) assert.ok(orderbook.includes(`r.post('/${path}', legacyPaused)`), path);
+  const hotMarket = code('../aof_backend/src/routes/hotMarket.ts');
+  assert.match(hotMarket, /hotMarketBuy/, 'событийный рынок обязан строить каноническую покупку');
+  assert.match(hotMarket, /hotMarketSellIntoQueue/, 'событийный рынок обязан строить каноническую продажу');
+  assert.match(hotMarket, /requireQuote\(/, 'обе стороны подписывают границу цены');
+  assert.doesNotMatch(hotMarket, /HOT_MARKET_DISABLED/, 'механика больше не закрыта заглушкой');
   for (const lang of languages) {
     const copy = siteMarket[lang];
     assert.equal(copy.paragraphs.length, 2, lang);
@@ -2424,7 +2469,10 @@ test('шесть первых смен переведены на семь язы
   assert.match(css, /site-guide-step \{[^}]*minmax\(0, 1fr\)[^}]*overflow-wrap: anywhere/);
   assert.match(css, /site-guide-step \{ grid-template-columns: 44px minmax\(0, 1fr\)/);
   assert.match(siteGuide.en.steps[4].caution, /paused/);
-  assert.match(siteGuide.en.steps[5].caution, /rebirth is disabled/);
+  // [§3.4] Перерождение включено: текст смены обязан предупреждать о цене и
+  // списке излишков, а не повторять, что механика отключена.
+  assert.match(siteGuide.en.steps[5].caution, /Rebirth charges a price/);
+  assert.ok(!/rebirth is disabled/.test(siteGuide.en.steps[5].caution));
   for (const lang of languages) {
     const copy = siteGuide[lang];
     assert.equal(copy.paragraphs.length, 2, lang);
@@ -3259,9 +3307,10 @@ test('site route metadata stays in sync with the visible seven-language page cat
   assert.ok(!/[А-Яа-яЁё]/.test(code('src/site/content/pages.ts')), 'duplicate Russian site copy');
 });
 
-test('all 34 fail-closed API codes have seven-language explanations and preserve the raw code', async () => {
+test('all fail-closed API codes have seven-language explanations and preserve the raw code', async () => {
   const { apiErrorCopy, apiErrorCodes } = await import('../src/i18n/apiErrorCopy.ts');
-  assert.equal(apiErrorCodes.length, 34);
+  // Список растёт вместе с бэкендом; важно не число, а полнота и уникальность.
+  assert.ok(apiErrorCodes.length >= 48, `в списке только ${apiErrorCodes.length} кодов`);
   assert.equal(new Set(apiErrorCodes).size, apiErrorCodes.length);
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     assert.deepEqual(Object.keys(apiErrorCopy[language].messages).sort(), [...apiErrorCodes].sort());
@@ -3428,7 +3477,7 @@ test('laboratory and plot reuse translated resource and building names without d
 test('disabled mechanics keep canonical guard identifiers and translate all player copy', async () => {
   const { disabledMechanicCopy } = await import('../src/i18n/disabledMechanicCopy.ts');
   const notice = read('src/components/ui/FeatureDisabledNotice.tsx');
-  const ids = ['hot_market', 'collectors', 'rebirth', 'session', 'tools_repair'] as const;
+  const ids = ['collectors', 'session', 'tools_repair'] as const;
   for (const id of ids) assert.match(notice, new RegExp(`${id}: \\{ guard:`));
   assert.match(notice, /const m = DISABLED_MECHANICS\[id\]/);
   assert.match(notice, /disabledMechanicCopy\[language\]\.explanations\[id\]/);
@@ -4141,4 +4190,716 @@ test('glossary rank and rarity terms follow seven-language display catalogs with
   const page = code('src/site/pages/ExtraSections.tsx');
   assert.match(page, /siteGlossary\.ru\.entries\[index\]\.term \+ ' ' \+ siteGlossary\.en\.entries\[index\]\.term/);
   assert.match(page, /<dt>\{g\.term\}<\/dt>/);
+});
+
+test("фон сайта собран из сгенерированных сцен, и каждая лежит на диске", async () => {
+  // Задача владельца 2026-09-30: «добавить сгенерированные картинки на фон
+  // сайта». Сцена выбирается по маршруту, поэтому пропавший файл виден сразу
+  // на конкретной странице — проверяем и таблицу, и сам ассет.
+  const scenery = code("src/site/content/scenery.ts");
+  const images = [...scenery.matchAll(/["'](\/assets\/site\/[a-z-]+\.jpg)["']/g)].map((m) => m[1]);
+  assert.ok(images.length >= 6, `сцен стенда должно быть не меньше шести, найдено ${images.length}`);
+  for (const image of images) {
+    const file = join(root, "public", image.replace(/^\//, ""));
+    assert.ok(existsSync(file), `нет файла сцены ${image}`);
+    assert.ok(statSync(file).size > 20_000, `сцена ${image} пустая: файл меньше 20 КБ`);
+  }
+  // В таблице не должно остаться маршрутов, которых нет в дереве страниц:
+  // иначе сцена молча не доедет до игрока.
+  const { pages } = await import("../src/site/content/pages");
+  const ids = new Set(pages.map((p: { id: string }) => p.id));
+  const table = scenery.match(/const PAGE_SCENERY[^=]*=\s*\{([\s\S]*?)\n\};/);
+  assert.ok(table, "таблица сцен не найдена");
+  const listed = [...table![1].matchAll(/([a-z]+):\s*'/g)].map((m) => m[1]);
+  assert.ok(listed.length >= 20, "таблица сцен усохла");
+  assert.deepEqual(listed.filter((id) => !ids.has(id)), [], "в таблице сцен есть маршруты без страниц");
+  const { sceneryForPage, SITE_SCENERY } = await import("../src/site/content/scenery");
+  const known = new Set(Object.keys(SITE_SCENERY));
+  for (const page of pages) {
+    assert.ok(known.has(sceneryForPage(page.id)), `${page.id}: неизвестная сцена`);
+  }
+});
+
+test("пульт стенда управляет только картинкой и не трогает данные игры", () => {
+  // Пульт — оформление: рубильник, галетник и фейдер меняют свет фона.
+  // Ни одного числа из сети он читать не должен, иначе «стенд» станет
+  // вторым источником показаний рядом с игрой.
+  const stand = code("src/site/layout/SiteStand.tsx");
+  assert.ok(!/\bapi\b|fetch\(|useWallet|balance|signature/.test(stand), "пульт стенда тянет игровые данные");
+  assert.match(stand, /useState/, "положения приборов хранятся в состоянии страницы");
+  const controls = code("src/site/ui/Controls.tsx");
+  assert.match(controls, /role="switch"/, "рубильник обязан объявлять себя переключателем");
+  assert.match(controls, /aria-checked=\{on\}/, "у рубильника нет состояния для чтения с экрана");
+  assert.match(controls, /type="radio"/, "галетник собран на радиокнопках, а не на div");
+  assert.match(controls, /type="range"/, "фейдер — настоящий ползунок");
+  assert.match(controls, /htmlFor=\{fieldId\}/, "у фейдера должна быть подпись");
+  const css = read("src/site/styles/site.css");
+  assert.match(css, /\.site-backdrop \{[^}]*z-index: -1/, "фон стенда уйдёт за непрозрачный слой страницы");
+  assert.match(css, /\.aof-ui\.aof-site \{[^}]*isolation: isolate/, "без изоляции слоёв фон стенда не виден");
+  assert.match(css, /\.site-lever__arm \{[^}]*transform-origin/, "рычаг рубильника не качается");
+  assert.match(css, /\.site-deck \{[^}]*position: fixed/, "пульт должен стоять на экране, а не уезжать со страницей");
+  assert.match(read("src/site/layout/Layout.tsx"), /<SiteBackdrop scene=\{scenery\} state=\{stand\} \/>/);
+  assert.match(read("src/site/layout/Layout.tsx"), /<StandDeck state=\{stand\} \/>/);
+});
+
+test("окна сайта собраны как панели приборов: лампа, табличка, безель", () => {
+  const components = code("src/site/ui/Components.tsx");
+  assert.match(components, /site-panel-bar/, "у заголовка страницы нет планки корпуса");
+  assert.match(components, /<NamePlate>/, "подпись страницы вернулась к плоскому бейджу");
+  assert.match(components, /site-section__title/, "заголовок секции потерял лицевую панель");
+  assert.match(components, /<Lamp state="live" \/>/, "в окнах нет лампы состояния");
+  const css = read("src/site/styles/site.css");
+  for (const [name, pattern] of [
+    ["лампа живой лампы", /\.site-lamp--live \{/],
+    ["лампа ожидания", /\.site-lamp--wait \{/],
+    ["винты панели", /--sb-screw: radial-gradient/],
+    ["безeль окна", /inset 0 0 0 7px/],
+    ["галetник", /\.site-rocker__stop\[data-on='true'\]/],
+    ["фейдер", /\.site-fader__input::-webkit-slider-thumb/],
+    ["состояние экрана стенда", /\.site-screen\[data-on='true'\] img \{ filter: none; \}/],
+  ] as const) {
+    assert.match(css, pattern, `в слое приборов пропало: ${name}`);
+  }
+  const page = code("src/site/pages/ContentPage.tsx");
+  assert.match(page, /<Rocker/, "витрина экранов вернулась к ряду картинок без галетника");
+  assert.match(page, /data-on=\{index === screen\}/, "галетник не подсвечивает выбранный экран");
+});
+
+test("подписи пульта стоят на всех семи языках сайта", async () => {
+  const { sitePanelCopy } = await import("../src/i18n/sitePanelCopy");
+  const { languages } = await import("../src/i18n/translations");
+  for (const language of languages) {
+    const copy = sitePanelCopy[language];
+    assert.ok(copy, `${language}: нет подписей пульта`);
+    for (const key of ["deckLabel", "switchLabel", "modeLegend", "levelLabel", "statusOn", "statusOff", "galleryLegend"] as const) {
+      assert.ok(copy[key] && copy[key].trim().length > 1, `${language}: пустая подпись ${key}`);
+    }
+    assert.equal(copy.modes.length, 3, `${language}: у галетника должно быть три положения`);
+    assert.notEqual(copy.statusOn, copy.statusOff, `${language}: состояния пульта не различаются`);
+  }
+});
+
+test("реестр инструментов показывает все пять типов с числами спецификации", async () => {
+  // Жалоба владельца 2026-09-30: «в инструментах не показаны все инструменты и
+  // как-то всё хаотично». Теперь на странице реестр типов, профиль каждого типа,
+  // матрица редкостей и витрина всех 25 исполнений.
+  const catalog = await import("../src/i18n/siteToolsCatalog.ts");
+  const { TOOL_NFTS, TOOL_RARITIES, toolPlate } = await import("../src/lib/visualAssets.ts");
+  const { toolsCopy } = await import("../src/i18n/toolsCopy.ts");
+  const { homeResourceNames } = await import("../src/i18n/homeDetail.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const extras = code("src/site/pages/ExtraSections.tsx");
+
+  // Реестр описан для всех пяти типов: ресурс, часы, множитель, источник.
+  assert.equal(TOOL_NFTS.length, 5, "типов инструмента должно быть пять");
+  assert.equal(TOOL_RARITIES.length, 5, "редкостей должно быть пять");
+  assert.equal(Object.keys(catalog.TOOL_RESOURCE).length, 5, "не у всех типов указан ресурс");
+  assert.equal(Object.keys(catalog.TOOL_FROM_PACK).length, 5, "не у всех типов указан источник");
+  assert.equal(catalog.TOOL_SHIFT_HOURS.length, 5, "часы захода должны быть перечислены по редкости");
+  assert.equal(catalog.TOOL_YIELD_MULTIPLIER.length, 5, "множитель выхода должен быть перечислен по редкости");
+  for (const tool of TOOL_NFTS) {
+    const id = tool.id as keyof typeof catalog.TOOL_RESOURCE;
+    assert.ok(catalog.TOOL_RESOURCE[id], `${id}: нет добываемого ресурса`);
+    assert.ok(homeResourceNames.ru[catalog.TOOL_RESOURCE[id] as keyof typeof homeResourceNames.ru], `${id}: ресурс не назван`);
+    assert.equal(typeof catalog.TOOL_FROM_PACK[id], "boolean", `${id}: источник не определён`);
+  }
+  // Из капсул выпадают только три типа: это правило спецификации, не оформление.
+  const fromPack = Object.values(catalog.TOOL_FROM_PACK).filter(Boolean).length;
+  assert.equal(fromPack, 3, "из капсул дропа должны выпадать три типа из пяти");
+  // Витрина показывает каждое исполнение: 5 типов × 5 редкостей = 25 картин.
+  for (const tool of TOOL_NFTS) for (const rarity of TOOL_RARITIES) {
+    assert.ok(toolPlate(tool.id, rarity), `${tool.id}/${rarity}: нет картины`);
+  }
+  const source = read("src/lib/visualAssets.ts");
+  assert.equal((source.match(/\/assets\/nfts\/[a-z-]+\.jpg/g) || []).length >= 25, true, "картины исполнений пропали");
+
+  for (const language of languages) {
+    const copy = catalog.toolsCatalogCopy[language];
+    const profiles = catalog.toolProfiles[language];
+    for (const key of ["registryHeading", "registryIntro", "profileHeading", "profileIntro", "miningNote", "matrixHeading", "matrixIntro", "galleryFilter", "galleryAllRarities"] as const) {
+      assert.ok(copy[key] && copy[key].trim().length > 4, `${language}: пустая подпись ${key}`);
+    }
+    for (const key of ["tool", "resource", "hours", "yield", "source"] as const) {
+      assert.ok(copy.columns[key].trim(), `${language}: пустая колонка ${key}`);
+    }
+    assert.ok(copy.fromPack.trim() && copy.craftOnly.trim(), `${language}: нет подписи источника`);
+    assert.notEqual(copy.fromPack, copy.craftOnly, `${language}: капсула и сборка не различаются`);
+    assert.match(copy.produces("X"), /X/, `${language}: строка «добывает» теряет название ресурса`);
+    assert.match(copy.galleryShowing(5, 25), /5/);
+    assert.match(copy.galleryShowing(5, 25), /25/);
+    for (const tool of TOOL_NFTS) {
+      const text = profiles[tool.id as keyof typeof profiles];
+      assert.ok(text && text.trim().length > 40, `${language}: ${tool.id} без описания`);
+    }
+  }
+  // Страница обязана показывать и реестр, и профили, и матрицу, и витрину.
+  for (const anchor of ["catalog.registryHeading", "catalog.profileHeading", "catalog.matrixHeading", "copy.galleryHeading", "<ToolGallery"]) {
+    assert.ok(extras.includes(anchor), `на странице инструментов пропал блок: ${anchor}`);
+  }
+  assert.match(extras, /TOOL_YIELD_MULTIPLIER\[index\]/, "матрица редкостей должна показывать множитель выхода");
+});
+
+test("каталог ресурсов разложен по отделам и показывает все 27 ресурсов", async () => {
+  const { resources } = await import("../src/site/content/resources.ts");
+  const { resourceCatalogCopy } = await import("../src/i18n/resourceCatalogCopy.ts");
+  const { homeResourceNames } = await import("../src/i18n/homeDetail.ts");
+  const { resourceLeads } = await import("../src/i18n/resourceLeads.ts");
+  const { resourceRecipes } = await import("../src/i18n/resourceDetailCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const page = code("src/site/pages/ContentPage.tsx");
+  const css = read("src/site/styles/site.css");
+
+  assert.equal(resources.length, 27, "каталог обязан описывать все 27 ресурсов");
+  // Отделы выводятся по порядку и только те, где что-то лежит: пустой отдел
+  // выглядел как поломка поиска.
+  assert.match(page, /const CATALOG_ORDER: ResourceCategory\[\] = \[/, "нет порядка отделов");
+  assert.match(page, /CATALOG_ORDER\.filter\(key => resources\.some/, "отделы без ресурсов обязаны отсеиваться");
+  assert.match(page, /site-catalog-group__title/, "заголовок отдела пропал");
+  assert.match(page, /copy\.showing\(list\.length, resources\.length\)/, "нет счётчика показанного");
+  assert.match(page, /resourceRecipes\(r\.id as ResourceId, language\)/, "роли ресурса берутся из таблицы рецептов, а не из текста");
+  assert.match(css, /\.site-catalog-group__count \{/, "у отдела нет счётчика");
+  assert.match(css, /\.site-resource__roles li \{/, "у карточки ресурса нет марок роли");
+
+  const categories = [...new Set(resources.map((r: { category: string }) => r.category))];
+  assert.ok(categories.length >= 6, `отделов должно быть не меньше шести, найдено ${categories.length}`);
+  for (const language of languages) {
+    const copy = resourceCatalogCopy[language];
+    for (const category of categories) {
+      const key = category as keyof typeof copy.labels;
+      assert.ok(copy.labels[key]?.trim(), `${language}: нет названия отдела ${category}`);
+      assert.ok(copy.notes[key]?.trim().length > 30, `${language}: нет пояснения отдела ${category}`);
+    }
+    assert.ok(copy.linkedLabel.trim() && copy.groupNote.trim().length > 30, `${language}: нет подписи связей`);
+    assert.match(copy.recipeMakes(2), /2/);
+    assert.match(copy.recipeUses(3), /3/);
+    assert.match(copy.showing(27, 27), /27/);
+    assert.match(copy.showing(4, 27), /4/);
+    for (const resource of resources) {
+      const id = resource.id as keyof typeof homeResourceNames.ru;
+      assert.ok(homeResourceNames[language][id], `${language}: ${resource.id} без названия`);
+      assert.ok(resourceLeads[language][id], `${language}: ${resource.id} без описания`);
+    }
+  }
+  // Роли в карточке — это следствие таблицы рецептов, а не выдуманные числа.
+  const withRecipe = resources.filter((r: { id: string }) => {
+    const lines = resourceRecipes(r.id as never, "ru");
+    return lines.produces.length + lines.uses.length > 0;
+  });
+  assert.ok(withRecipe.length >= 10, "таблица рецептов перестала связывать ресурсы");
+});
+
+test("витрина капсул дропа: картины, описания и раскрытие — и на сайте, и в игре", async () => {
+  // Жалоба владельца 2026-09-30: «иллюстрация дропа отсутствует — картинки и
+  // описание нет ни на сайте, ни в игре, при нажатии не раскрывается визуал».
+  const { PACK_ART, packPlate } = await import("../src/lib/visualAssets.ts");
+  const { packsCopy } = await import("../src/i18n/packsCopy.ts");
+  const { siteChanceCopy } = await import("../src/i18n/siteChanceCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const packs = code("src/pages/tools/PacksPage.tsx");
+  const site = code("src/site/ui/Components.tsx");
+  const plate = code("src/components/visual/PackPlate.tsx");
+
+  // Три закрытые витрины по размеру и одна открытая: открытая не показывает
+  // выигрыш — его решает оракул в сети.
+  for (const id of ["small", "medium", "big", "opened"] as const) {
+    assert.ok(PACK_ART[id], `нет картины капсулы: ${id}`);
+    assert.ok(existsSync(join(root, "public", PACK_ART[id])), `файл картины не найден: ${PACK_ART[id]}`);
+  }
+  assert.equal(packPlate("small"), PACK_ART.small);
+  assert.equal(packPlate(undefined), undefined, "без id плашка не должна показывать чужую картину");
+  assert.match(plate, /state === "opened" \? PACK_ART\.opened : PACK_ART\[packId\]/,
+    "открытая витрина должна отличаться от закрытой");
+
+  // Игра: карточка размера показывает картину и объяснение, ожидание — витрину
+  // выбранного размера, возврат — раскрытую пустую капсулу.
+  assert.match(packs, /<PackPlate packId=\{pack\.id\}/, "в игре у карточки капсулы нет картины");
+  assert.match(packs, /copy\.about\[pack\.id\]/, "в игре нет описания капсулы");
+  assert.match(packs, /<PackPlate packId=\{lastPack\} size="100%"/, "ожидание открытия без витрины");
+  assert.match(packs, /<PackPlate packId=\{lastPack\} state="opened"/, "возврат без раскрытой витрины");
+  assert.match(packs, /setLastPack\(pack\.id\)/, "витрина не запоминает открытый размер");
+
+  // Сайт: иллюстрация меняется вместе с размером и раскрывается по кнопке.
+  assert.match(site, /<PackPlate packId=\{size\} state=\{sample === null \? 'sealed' : 'opened'\}/,
+    "на сайте витрина капсулы не связана с размером и открытием");
+  assert.match(read("src/site/styles/site.css"), /\.site-pack-demo \{/, "у витрины капсулы нет оформления");
+
+  for (const language of languages) {
+    const game = packsCopy[language];
+    for (const size of ["small", "medium", "big"] as const) {
+      assert.ok(game.about[size]?.trim().length > 60, `${language}: ${size} без описания`);
+    }
+    assert.ok(game.illustration.trim(), `${language}: нет подписи витрины`);
+    const demo = siteChanceCopy[language].packDemo;
+    assert.ok(demo.sizes.length === 3 && demo.sealed.trim() && demo.open.trim(), `${language}: иллюстрация капсулы не подписана`);
+  }
+});
+
+test("раскрытие одной панели закрывает остальные — меню и аккордеоны", async () => {
+  // Жалоба владельца 2026-09-30: «верхняя панель когда разворачиваешь и
+  // раскрываешь две, например, остаются на месте и не сворачиваются при
+  // раскрытии других». Это нативные <details>: браузер держит открытыми все.
+  const hook = code("src/site/hooks/useSingleOpen.ts");
+  const components = code("src/site/ui/Components.tsx");
+  const layout = code("src/site/layout/Layout.tsx");
+  const extras = code("src/site/pages/ExtraSections.tsx");
+
+  assert.match(hook, /querySelectorAll<HTMLDetailsElement>\('details\[open\]'\)/, "нет поиска открытых панелей");
+  assert.match(hook, /other\.open = false/, "соседние панели не закрываются");
+  assert.match(hook, /addEventListener\('toggle', onToggle, true\)/,
+    "событие toggle не всплывает — нужен перехват");
+  assert.equal((extras.match(/<Accordion/g) || []).length, 3,
+    "правила, частые вопросы и регламенты должны быть на общем аккордеоне");
+  assert.ok(!/<div className="site-accordion/.test(extras), "остался старый div-аккордеон без правила");
+  assert.match(components, /export function Accordion\(/, "нет общего компонента аккордеона");
+  assert.match(components, /useSingleOpen<HTMLDivElement>\(\)/, "аккордеон не использует правило одной панели");
+  assert.match(layout, /const navRef = useSingleOpen<HTMLElement>\(\)/, "меню в шапке не сворачивает прежнюю группу");
+  assert.match(layout, /<nav className="site-desktop-nav"[^>]*ref=\{navRef\}/, "хук не подключён к меню");
+});
+
+test("у каждого отказа бэкенда есть человеческое объяснение на всех языках", async () => {
+  // Владелец 2026-09-30: «разблокируй везде все действия». Половина отказов —
+  // это состояние сети, а не переключатель, поэтому игрок обязан видеть
+  // причину, а не технический код. Тест ловит новый 503-код, к которому
+  // забыли текст.
+  const { apiErrorCodes, apiErrorCopy } = await import("../src/i18n/apiErrorCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const { isKnownVrfCode } = await import("../src/lib/vrfErrors.ts");
+
+  // Вытаскиваем все машинные коды, которые бэкенд может вернуть игроку.
+  const backendCodes = new Set<string>();
+  const backendRoot = join(root, "..", "aof_backend", "src");
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.endsWith(".ts")) continue;
+      const text = readFileSync(full, "utf8");
+      for (const match of text.matchAll(/error:\s*"([A-Z][A-Z0-9_]{6,})"/g)) backendCodes.add(match[1]);
+      for (const match of text.matchAll(/vrfUnavailable\("([A-Z0-9_]+)"\)/g)) backendCodes.add(match[1]);
+    }
+  };
+  walk(backendRoot);
+  assert.ok(backendCodes.size > 40, `кодов бэкенда найдено слишком мало: ${backendCodes.size}`);
+
+  const missing: string[] = [];
+  for (const code of backendCodes) {
+    // Коды VRF переводит второй стадии конвейера (vrfCopy), а не общий список.
+    if (isKnownVrfCode(code)) continue;
+    if (!apiErrorCodes.includes(code as never)) missing.push(code);
+  }
+  assert.deepEqual(missing, [], `у этих кодов бэкенда нет объяснения в apiErrorCopy: ${missing.join(", ")}`);
+
+  // Ни одно сообщение не должно быть пустым или оставленным по-русски в
+  // остальных языках: сравнение по совпадению строк ловит копипасту.
+  for (const language of languages) {
+    const copy = apiErrorCopy[language];
+    for (const code of apiErrorCodes) {
+      const text = copy.messages[code];
+      assert.ok(text && text.trim().length > 20, `${language}/${code}: пустое объяснение`);
+    }
+  }
+  for (const language of languages.filter(l => l !== "ru")) {
+    const ru = apiErrorCopy.ru.messages, other = apiErrorCopy[language].messages;
+    const same = apiErrorCodes.filter(code => other[code] === ru[code]);
+    assert.ok(same.length <= 2, `${language}: ${same.length} сообщений остались русскими (${same.slice(0, 3).join(", ")})`);
+  }
+});
+
+test("газ-бак: живые действия игры впервые получили интерфейс", async () => {
+  // Владелец 2026-09-30: «включи, если не доделано то доделай». Механика бака
+  // была полностью живой (инструкции deposit_gas/withdraw_gas, маршруты
+  // /gastank/deposit|withdraw, чтение /query/gastank), но пополнить бак в игре
+  // было нечем — а снятие инструмента и разлок коллекционера берут 0.01 SOL
+  // именно из него.
+  const panel = code("src/components/GasTankPanel.tsx");
+  const lib = code("src/lib/gasTank.ts");
+  const dash = code("src/pages/farm/FarmDashboard.tsx");
+
+  assert.match(dash, /<GasTankPanel/, "панель бака не подключена к экрану лаборатории");
+  assert.match(lib, /api\.query\.gastank\(owner\)/, "баланс должен читаться из /query/gastank");
+  assert.match(panel, /handleTxResponse\(response, intent\)/, "транзакция бака идёт через общий контур с намерением");
+  assert.match(panel, /kind: "gasTank" as const, action: "deposit" as const/, "депозит не привязан к намерению кошелька");
+  assert.match(panel, /kind: "gasTank" as const, action: "withdraw" as const/, "вывод не привязан к намерению кошелька");
+  assert.ok(!/parseFloat|Number\(amount/.test(panel + lib), "сумма бака снова считается через плавающую точку");
+  // Неизвестное чтение не превращается в ноль: игрок видит прочерк.
+  assert.match(panel, /reading\.kind === "unknown" \? "—"/, "сбой чтения бака показывается нулём");
+  // Крупный вывод (> 0.2 SOL) обязан предупредить про кулдаун 12 ч.
+  assert.match(lib, /INSTANT_WITHDRAW_MICROS = 200_000n/, "порог мгновенного вывода разошёлся с контрактом");
+  assert.match(lib, /COOLDOWN_SECONDS = 12 \* 3600/, "кулдаун бака разошёлся с контрактом");
+  assert.match(lib, /FEE_PER_NFT_MICROS = 10_000n/, "комиссия снятия разошлась с контрактом");
+
+  // Тексты: семь языков, все поля заполнены, русский не подставлен вместо копий.
+  const { gasTankCopy } = await import("../src/i18n/gasTankCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const keys = Object.keys(gasTankCopy.ru).sort();
+  for (const language of languages) {
+    const copy: any = gasTankCopy[language];
+    assert.deepEqual(Object.keys(copy).sort(), keys, `${language}: набор полей бака разошёлся`);
+    for (const key of keys) {
+      const value = copy[key];
+      const text = typeof value === "function" ? value("1") : value;
+      assert.ok(typeof text === "string" && text.trim().length >= 2, `${language}/${key}: пустой текст бака`);
+    }
+  }
+  const subs = languages.filter(l => l !== "ru");
+  const identical = subs.filter(l => gasTankCopy[l].title === gasTankCopy.ru.title && gasTankCopy[l].balance === gasTankCopy.ru.balance);
+  assert.equal(identical.length, 0, `баковые тексты остались русскими: ${identical.join(", ")}`);
+});
+
+test("намерение газ-бака не подписывает чужую сумму и чужой аккаунт", async () => {
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { coreInstructionSpec } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+
+  const user = new PublicKey("7xKXtg2CW87d97TXJTDpQkAX9sv2vHHwL7PRQCPHh8oF");
+  const specFor = (name: string) => CORE_INSTRUCTIONS.find(i => i.name === name)!;
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const u64 = (value: bigint) => {
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, value, true);
+    return bytes;
+  };
+  const ix = (name: string, amountLamports: bigint, keys = [pda("config"), user, pda("gastank", user),
+    new PublicKey("11111111111111111111111111111111")]) => ({
+    programId: CORE_PROGRAM_ID,
+    keys,
+    data: new Uint8Array([...specFor(name).discriminator, ...u64(amountLamports)]),
+  });
+  const intent = (amountLamports: string) => ({
+    kind: "gasTank" as const, action: "deposit" as const, user: user.toBase58(), amountLamports,
+  });
+
+  // Ровно то, что игрок видел на экране, — подписывается.
+  validateTransactionIntent([ix("deposit_gas", 50_000_000n)], intent("50000000"), user);
+  // Подменённая сумма, чужой бак, подмена действия и лишняя инструкция — отказ.
+  assert.throws(() => validateTransactionIntent([ix("deposit_gas", 900_000_000n)], intent("50000000"), user));
+  assert.throws(() => validateTransactionIntent(
+    [ix("deposit_gas", 50_000_000n, [pda("config"), user, pda("gastank", new PublicKey("4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T")), new PublicKey("11111111111111111111111111111111")])],
+    intent("50000000"), user,
+  ));
+  assert.throws(() => validateTransactionIntent([ix("withdraw_gas", 50_000_000n)], intent("50000000"), user));
+  assert.throws(() => validateTransactionIntent(
+    [ix("deposit_gas", 50_000_000n), ix("deposit_gas", 50_000_000n)], intent("50000000"), user,
+  ));
+  // Вывод проверяется своей единицей (микро) и своим именем инструкции.
+  validateTransactionIntent([ix("withdraw_gas", 50_000n)], {
+    kind: "gasTank", action: "withdraw", user: user.toBase58(), amountMicros: "50000",
+  }, user);
+});
+
+test("коллекционеры: перки включаются из игры, а не только числом в профиле", async () => {
+  // [AUDIT F-16]: perks были посчитаны в программе и объявлены на сайте, но
+  // постановка NFT жила только в API. Панель обязана повторять правила
+  // контракта, а не «улучшать» их: 1 NFT за вызов, lock 3 дня, allowlist
+  // оператора, 0.01 SOL из газ-бака за возврат.
+  const panel = code("src/components/CollectorsPanel.tsx");
+  const lib = code("src/lib/collectors.ts");
+  const profile = code("src/pages/profile/ProfileHome.tsx");
+  const backend = read("../aof_backend/src/routes/query.ts");
+
+  assert.match(profile, /<CollectorsPanel \/>/, "панель коллекционеров не подключена к профилю");
+  assert.match(panel, /api\.collectors\.stake/, "нет пути постановки NFT");
+  assert.match(panel, /api\.collectors\.unstake/, "нет пути возврата NFT");
+  assert.match(panel, /handleTxResponse\(response, intent\)/, "транзакция коллекционера идёт мимо общего контура");
+  assert.match(lib, /COLLECTOR_LOCK_SECONDS = 3 \* 86400/, "лок разошёлся с контрактом (3 дня)");
+  assert.match(lib, /kind: "unknown"/, "сбой чтения позиции должен отличаться от «позиции нет»");
+  assert.ok(!/parseFloat/.test(panel + lib), "адрес или сумма коллекционера считаются плавающей точкой");
+  // Чтение позиции канонично и fail-closed: ошибка — 503, а не пустой объект.
+  assert.match(backend, /r\.get\("\/collector\/:mint"/, "нет read-маршрута позиции коллекционера");
+  assert.match(backend, /COLLECTOR_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN/, "ошибка чтения позиции не отличается от «нет позиции»");
+
+  const { collectorCopy } = await import("../src/i18n/collectorCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+  const keys = Object.keys(collectorCopy.ru).sort();
+  for (const language of languages) {
+    const copy: any = collectorCopy[language];
+    assert.deepEqual(Object.keys(copy).sort(), keys, `${language}: набор полей коллекционеров разошёлся`);
+    for (const key of keys) {
+      const value = copy[key];
+      const text = typeof value === "function" ? value("abc") : value;
+      assert.ok(typeof text === "string" && text.trim().length >= 2, `${language}/${key}: пустой текст`);
+    }
+  }
+});
+
+test("намерение коллекционера не уводит в хранилище чужой NFT", async () => {
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { coreInstructionSpec, CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  const user = new PublicKey("7xKXtg2CW87d97TXJTDpQkAX9sv2vHHwL7PRQCPHh8oF");
+  const other = new PublicKey("4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T");
+  const mint = new PublicKey("So11111111111111111111111111111111111111112");
+  const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const vault = pda("vault");
+  // Адрес персоны в тесте может оказаться off-curve, поэтому ATA выводим
+  // примитивом PDA (как это делает сам валидатор), а не удобным хелпером.
+  const ATA_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+  const ataRaw = (m: PublicKey, owner: PublicKey) => PublicKey.findProgramAddressSync(
+    [owner.toBytes(), TOKEN.toBytes(), m.toBytes()], ATA_PROGRAM)[0];
+  const keys = (m: PublicKey, forStake: boolean) => forStake
+    ? [pda("config"), user, m, ataRaw(m, user), vault, ataRaw(m, vault),
+      pda("collector", m), pda("collector_allow", m), pda("player", user), TOKEN, SYSTEM]
+    : [pda("config"), user, m, ataRaw(m, user), vault, ataRaw(m, vault),
+      pda("collector", m), pda("player", user), pda("gastank", user), TOKEN];
+  const disc = (name: string) => CORE_INSTRUCTIONS.find(i => i.name === name)!.discriminator;
+  const stakeIx = (m: PublicKey, kind: number) => ({
+    programId: CORE_PROGRAM_ID, keys: keys(m, true), data: new Uint8Array([...disc("collector_stake"), kind]),
+  });
+  const unstakeIx = (m: PublicKey) => ({
+    programId: CORE_PROGRAM_ID, keys: keys(m, false), data: new Uint8Array(disc("collector_unstake")),
+  });
+
+  validateTransactionIntent([stakeIx(mint, 0)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user);
+  validateTransactionIntent([unstakeIx(mint)], {
+    kind: "collector", action: "unstake", user: user.toBase58(), mint: mint.toBase58(),
+  }, user);
+  // Чужой минт, чужой вид перка, снятие вместо постановки и чужая сторона — отказ.
+  assert.throws(() => validateTransactionIntent([stakeIx(other, 0)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  assert.throws(() => validateTransactionIntent([stakeIx(mint, 1)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  assert.throws(() => validateTransactionIntent([unstakeIx(mint)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "medallion",
+  }, user));
+  assert.throws(() => validateTransactionIntent([stakeIx(mint, 0)], {
+    kind: "collector", action: "stake", user: other.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  // Вторая инструкция в пакете не прячется за первой.
+  assert.throws(() => validateTransactionIntent([stakeIx(mint, 0), unstakeIx(mint)], {
+    kind: "collector", action: "stake", user: user.toBase58(), mint: mint.toBase58(), collectorKind: "historian",
+  }, user));
+  void coreInstructionSpec;
+});
+
+test("намерение покупки билета не даёт списать больше подписанного потолка", async () => {
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { LOTTERY_TICKET_PRICE_LAMPORTS } = await import("../src/lib/lotteryReadings.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  const user = new PublicKey("7xKXtg2CW87d97TXJTDpQkAX9sv2vHHwL7PRQCPHh8oF");
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const pda = (seed: string, ...parts: Uint8Array[]) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...parts], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const u64 = (text: string) => {
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, BigInt(text), true);
+    return bytes;
+  };
+  const roundId = "9007199254740993";
+  const ticketNumber = "3";
+  const buyDisc = CORE_INSTRUCTIONS.find(i => i.name === "buy_lottery_ticket")!.discriminator;
+  const buyIx = (maxPrice: string, round = roundId, ticket = ticketNumber) => ({
+    programId: CORE_PROGRAM_ID,
+    keys: [pda("config"), user, pda("lottery_round", u64(round)),
+      pda("lottery_ticket", u64(round), u64(ticket)),
+      pda("lottery_ticket", new TextEncoder().encode("count"), u64(round), user.toBytes()), SYSTEM],
+    data: new Uint8Array([...buyDisc, ...u64(maxPrice)]),
+  });
+  const intent = {
+    kind: "lotteryTicket", action: "buy", user: user.toBase58(), roundId,
+    ticketNumber, maxPriceLamports: LOTTERY_TICKET_PRICE_LAMPORTS,
+  } as const;
+
+  // Ровно один билет своего раунда с потолком из интерфейса — принимается.
+  validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], intent, user);
+  // Другой потолок, другой билет/раунд, чужой потолок в намерении, лишняя
+  // инструкция — отказ до кошелька.
+  assert.throws(() => validateTransactionIntent([buyIx("900000")], intent, user), /ceiling/);
+  assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], { ...intent, ticketNumber: "4" }, user));
+  assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], { ...intent, maxPriceLamports: "800001" }, user), /ceiling/);
+  assert.throws(() => validateTransactionIntent([buyIx(LOTTERY_TICKET_PRICE_LAMPORTS), buyIx(LOTTERY_TICKET_PRICE_LAMPORTS)], intent, user));
+});
+
+test("книга v2: целочисленная цена, эскроу вверх и проверка намерения до кошелька", async () => {
+  const { quoteTotalLamports, takerBufferLamports, resourceUnitsToAtoms, solPerWholeToLamports,
+    readOrderbookV2, lamportsPerWholeToSol, comparePriceV2 } = await import("../src/lib/orderbookReadings.ts");
+  const { validateTransactionIntent, CORE_PROGRAM_ID } = await import("../src/lib/transactionIntent.ts");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  // Формулы повторяют `quote_total_lamports` и подушку тейкера из программы.
+  assert.equal(quoteTotalLamports("1000000000", "1000000000"), 1000000000n);
+  assert.equal(quoteTotalLamports("3", "1"), 1n);
+  assert.equal(quoteTotalLamports("1500000000", "1"), 2n);
+  assert.equal(takerBufferLamports(10_000n), 40n);
+  assert.equal(takerBufferLamports(1n), 1n);
+  // Ввод пользователя: 9 знаков после точки, больше — отказ, а не округление.
+  assert.equal(resourceUnitsToAtoms("1.5"), "1500000000");
+  assert.equal(resourceUnitsToAtoms("0.000000001"), "1");
+  assert.equal(solPerWholeToLamports("0.001"), "1000000");
+  assert.equal(lamportsPerWholeToSol("1000000", "en"), "0.001");
+  for (const bad of ["1.0000000001", "0", "-1", "1e9", "", "0.0000000001"]) {
+    assert.throws(() => resourceUnitsToAtoms(bad), `должно отвергаться: ${bad}`);
+  }
+  for (const bad of ["0", "1.0000000001", "abc"]) assert.throws(() => solPerWholeToLamports(bad));
+
+  const maker = new PublicKey(new Uint8Array(32).fill(7)).toBase58();
+  const mint = new PublicKey(new Uint8Array(32).fill(8)).toBase58();
+  const order = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("resource_order_v2"), new PublicKey(maker).toBuffer(), new PublicKey(mint).toBuffer()],
+    new PublicKey(CORE_PROGRAM_ID),
+  )[0].toBase58();
+  const row = { pubkey: order, maker, mint, kind: 1, isBuy: true,
+    priceLamportsPerWhole: "1000000", amountRemaining: "1500000000", escrowLamports: "1501000" };
+  const book = { buy: [row], sell: [], exhausted: [] };
+  assert.deepEqual(readOrderbookV2(book, mint, 1), book);
+  assert.equal(comparePriceV2(row, { ...row, priceLamportsPerWhole: "1000001" }), -1);
+  for (const invalid of [null, {}, { buy: [], sell: [] }, { ...book, buy: [{ ...row, pubkey: maker }] },
+    { ...book, buy: [{ ...row, escrowLamports: "0" }] },      // покупатель без эскроу
+    { ...book, buy: [{ ...row, priceLamportsPerWhole: "0" }] },
+    { ...book, buy: [{ ...row, amountRemaining: "0" }] },
+    { buy: [], sell: [{ ...row, isBuy: false, escrowLamports: "1" }], exhausted: [] }]) {
+    assert.equal(readOrderbookV2(invalid, mint, 1), null, JSON.stringify(invalid).slice(0, 120));
+  }
+
+  // Намерение: одна инструкция, те же аккаунты, те же 8+1+8+8 байт условий и
+  // тот же посчитанный эскроу.
+  const user = new PublicKey(new Uint8Array(32).fill(9));
+  const disc = CORE_INSTRUCTIONS.find(i => i.name === "place_buy_order_v2")!.discriminator;
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID))[0];
+  const u64 = (value: bigint) => {
+    const bytes = new Uint8Array(8);
+    new DataView(bytes.buffer).setBigUint64(0, value, true);
+    return bytes;
+  };
+  const userOrder = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("resource_order_v2"), user.toBytes(), new PublicKey(mint).toBytes()],
+    new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  // escrow = ceil(1e6 × 1.5e9 / 1e9) + ceil(total × 40 / 1e4) = 1_500_000 + 6_000
+  const terms = { kind: "orderbookV2", action: "buy", user: user.toBase58(), mint, resourceKind: 1,
+    priceLamportsPerWhole: "1000000", amountAtoms: "1500000000", escrowLamports: "1506000" } as const;
+  const buyIx = (price: bigint, atoms: bigint, kind = 1) => ({
+    programId: CORE_PROGRAM_ID,
+    keys: [pda("config"), user, new PublicKey(mint), pda("material_mints"), userOrder, SYSTEM],
+    data: new Uint8Array([...disc, kind, ...u64(price), ...u64(atoms)]),
+  });
+  validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n)], terms, user);
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_001n, 1_500_000_000n)], terms, user), /terms/);
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n, 2)], terms, user), /terms/);
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n), buyIx(1_000_000n, 1_500_000_000n)], terms, user));
+  // Подмена залога: бэкенд не может показать одну сумму, а списать другую.
+  assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n)],
+    { ...terms, escrowLamports: "1506001" }, user), /escrow/);
+});
+
+test("перерождение: панель читает сеть, отвергает расхождение и подписывает полный сброс", async () => {
+  const { readRebirthStatus, surplusTotalAtoms, cooldownRemainingMs, verifySurplusOnChain } =
+    await import("../src/lib/rebirthReadings.ts");
+  const { validateTransactionIntent, CORE_PROGRAM_ID, REBIRTH_PROGRAM_ID, REBIRTH_DO_DISCRIMINATOR } =
+    await import("../src/lib/transactionIntent.ts");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  const mint = new PublicKey(new Uint8Array(32).fill(3)).toBase58();
+  // Ресурсный ATA игрока: адрес вычисляется, а не берётся «как похоже» —
+  // программа сброса принимает только канонический ATA (is_canonical_ata).
+  const ATA_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+  const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const ownerKey = new PublicKey(new Uint8Array(32).fill(9));
+  const token = PublicKey.findProgramAddressSync(
+    [ownerKey.toBytes(), TOKEN_PROGRAM.toBytes(), new PublicKey(mint).toBytes()], ATA_PROGRAM,
+  )[0].toBase58();
+  const raw = {
+    seasonId: 7, rebirth: {
+      configured: true, paused: false, authority: mint, treasury: token, costLamports: "100000000",
+      cooldownSeconds: 604800, maxRebirths: 10, bonusPerRebirthBps: 200, maxBonusBps: 2000,
+      generation: 2, rebirthCount: 1, permanentBonusBps: 200, lastRebirthTs: 100, nextAllowedAt: 604900,
+    },
+    progress: { player: true, villagers: 4, villagersAvailable: 2, hasTent: true, seasonPass: true, xp: 1500, premium: false },
+    surplus: { limit: 16, accounts: [{ mint, tokenAccount: token, amountAtoms: "1500000000" }], fitsInOneTransaction: true },
+    canRebirth: true, reasons: [], now: 200,
+  };
+  const status = readRebirthStatus(raw);
+  assert.ok(status, "полный ответ обязан разбираться");
+  assert.equal(status!.surplus.accounts.length, 1);
+  assert.equal(surplusTotalAtoms(status!.surplus.accounts).toString(), "1500000000");
+  assert.equal(cooldownRemainingMs(status!, Date.now()), (604900 - 200) * 1000);
+
+  // Любая неполнота — отказ, а не «покажем половину».
+  for (const broken of [
+    null, {}, { ...raw, seasonId: -1 }, { ...raw, rebirth: { ...raw.rebirth, costLamports: "0x10" } },
+    { ...raw, rebirth: { ...raw.rebirth, treasury: "not-an-address" } },
+    { ...raw, surplus: { ...raw.surplus, accounts: [{ mint, tokenAccount: token, amountAtoms: "0" }] } },
+    { ...raw, surplus: { ...raw.surplus, accounts: [{ mint, tokenAccount: token }] } },
+    { ...raw, surplus: { limit: 1, accounts: [{ mint, tokenAccount: token, amountAtoms: "1" }, { mint, tokenAccount: token, amountAtoms: "1" }], fitsInOneTransaction: true } },
+    { ...raw, reasons: [7] }, { ...raw, canRebirth: "yes" },
+  ]) {
+    assert.equal(readRebirthStatus(broken), null, JSON.stringify(broken).slice(0, 100));
+  }
+
+  // Независимая сверка склада: совпало / разошлось / сеть недоступна.
+  const account = (amount: bigint) => {
+    const data = new Uint8Array(165);
+    new DataView(data.buffer).setBigUint64(64, amount, true);
+    return { data };
+  };
+  const surplus = [{ mint, tokenAccount: token, amountAtoms: "1500000000" }];
+  const rpc = (value: bigint) => ({ getMultipleAccountsInfo: async () => [account(value)] });
+  assert.deepEqual(await verifySurplusOnChain(rpc(1_500_000_000n), surplus),
+    { kind: "confirmed", totalAtoms: "1500000000" });
+  assert.deepEqual(await verifySurplusOnChain(rpc(1_400_000_000n), surplus),
+    { kind: "mismatch", mint, expected: "1500000000", actual: "1400000000" });
+  assert.deepEqual(await verifySurplusOnChain({ getMultipleAccountsInfo: async () => { throw new Error("rpc"); } }, surplus),
+    { kind: "unavailable" });
+
+  // Намерение: ровно две инструкции и те же аккаунты, что показаны игроку.
+  const user = new PublicKey(new Uint8Array(32).fill(9));
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const pda = (seed: string, program = CORE_PROGRAM_ID, ...parts: Uint8Array[]) =>
+    PublicKey.findProgramAddressSync([new TextEncoder().encode(seed), ...parts], new PublicKey(program))[0];
+  const u32 = (value: number) => { const bytes = new Uint8Array(4); new DataView(bytes.buffer).setUint32(0, value, true); return bytes; };
+  const season = pda("season", CORE_PROGRAM_ID, u32(7));
+  const seasonPass = pda("season_pass", CORE_PROGRAM_ID, user.toBytes(), u32(7));
+  const player = pda("player", CORE_PROGRAM_ID, user.toBytes());
+  const resetDisc = CORE_INSTRUCTIONS.find(i => i.name === "reset_for_rebirth")!.discriminator;
+  const operator = new PublicKey(new Uint8Array(32).fill(11));
+  const resetIx = {
+    programId: CORE_PROGRAM_ID,
+    keys: [pda("config"), operator, user, player, season, seasonPass, pda("material_mints"), TOKEN,
+      new PublicKey(mint), new PublicKey(token)],
+    data: new Uint8Array([...resetDisc, ...u32(7)]),
+  };
+  const doIx = {
+    programId: REBIRTH_PROGRAM_ID,
+    keys: [pda("rebirth_config", REBIRTH_PROGRAM_ID), operator, pda("rebirth_record", REBIRTH_PROGRAM_ID, user.toBytes()),
+      user, new PublicKey(token), SYSTEM],
+    data: new Uint8Array(REBIRTH_DO_DISCRIMINATOR),
+  };
+  const intent = { kind: "rebirth", user: user.toBase58(), seasonId: 7, costLamports: "100000000",
+    treasury: token, surplus: [{ mint, tokenAccount: token, amountAtoms: "1500000000" }] } as const;
+  validateTransactionIntent([resetIx, doIx], intent, user);
+  // Порядок, состав и полнота списка — часть намерения.
+  assert.throws(() => validateTransactionIntent([doIx, resetIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, doIx, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([{ ...resetIx, keys: resetIx.keys.slice(0, 8) }, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([{ ...resetIx, keys: [...resetIx.keys, resetIx.keys[8]] }, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, { ...doIx, keys: doIx.keys.slice(1) }], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, { ...doIx, data: new Uint8Array(9) }], intent, user));
+  assert.throws(() => validateTransactionIntent([{ ...resetIx, data: new Uint8Array([...resetDisc, ...u32(8)]) }, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, doIx], { ...intent, user: operator.toBase58() }, user));
+  // Неканонический токен-аккаунт: сброс сжёг бы не тот ATA.
+  assert.throws(() => validateTransactionIntent([resetIx, doIx],
+    { ...intent, surplus: [{ mint, tokenAccount: mint, amountAtoms: "1500000000" }] }, user));
+  assert.throws(() => validateTransactionIntent([
+    { ...resetIx, keys: [...resetIx.keys.slice(0, 8), new PublicKey(mint), new PublicKey(mint)] }, doIx,
+  ], intent, user));
 });
