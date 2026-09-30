@@ -195,9 +195,10 @@ jobs:
         # readable through the API.
         #
         # Every annotation carries `file=`/`line=` taken from rustc's `-->`
-        # line, so a failure can be located with
-        #   gh api repos/OWNER/REPO/check-runs/<id>/annotations
-        # even when the job log itself cannot be downloaded.
+        # line plus rustc's own `note:` lines (they name the invariant type and
+        # which lifetime must outlive which), so a failure can be diagnosed
+        # with `gh api repos/OWNER/REPO/check-runs/<id>/annotations` even when
+        # the job log itself cannot be downloaded.
         run: |
           python3 - <<'PY'
           import os, re
@@ -212,6 +213,20 @@ jobs:
 
           def esc(line):
               return line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")[:900]
+
+
+          def block(start):
+              """The error line plus rustc's own notes, as one annotation."""
+              chunk = [lines[start].strip()]
+              for j in range(start + 1, min(start + 40, len(lines))):
+                  s = lines[j].strip()
+                  if re.match(r"^error(\[|:)", s):        # next error
+                      break
+                  if re.match(r"^(note|help):", s) or s.startswith("= note:"):
+                      chunk.append(s)
+                  if len(chunk) >= 5:
+                      break
+              return "\n".join(chunk)
 
 
           # Compile errors first, each paired with its own source location.
@@ -230,9 +245,9 @@ jobs:
                       break
               spot = re.match(r"([^\s:]+):(\d+):(\d+)", loc)
               if spot:
-                  print("::error file=%s,line=%s::%s" % (spot.group(1), spot.group(2), esc(stripped)))
+                  print("::error file=%s,line=%s::%s" % (spot.group(1), spot.group(2), esc(block(i))))
               else:
-                  print("::error file=.github::" + esc(stripped + ("  " + loc if loc else "")))
+                  print("::error file=.github::" + esc(block(i)))
               emitted += 1
 
           # Then test failures: assertion values and the failing test names.
