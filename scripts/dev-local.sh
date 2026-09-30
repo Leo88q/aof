@@ -17,6 +17,12 @@
 #   bash scripts/dev-local.sh test      # тесты без валидатора: frontend + readiness + os + backend self-tests
 #   bash scripts/dev-local.sh build     # сборка: frontend (tsc + vite build), backend (prisma generate + tsc)
 #   bash scripts/dev-local.sh up        # поднять backend :8080 и frontend :3000 (Ctrl+C гасит оба) — тестовый запуск
+#   WITH_SERVICES=1 bash scripts/dev-local.sh up
+#                                       # + фоновые сервисы, без которых половина витрин «неизвестно»:
+#                                       #   chain-indexer (история/квесты/рынок, health :8082),
+#                                       #   indexer (тики и свечи цен, WS :8081), trust-worker,
+#                                       #   farm-trader, price-cranker. Выбор: SERVICES=chain-indexer,...
+#                                       #   Сервисы делят .env и БД с backend, поэтому SKIP_BACKEND=1 их не поднимает.
 #   bash scripts/dev-local.sh devnet    # всё до девнета: keys → install → test → build(anchor) → deploy+включение → отчёт
 #                                       #   без --apply это безопасный сухой прогон; с --apply деплоит и включает
 #   bash scripts/dev-local.sh all       # check + up
@@ -29,6 +35,7 @@
 #   SKIP_FRONTEND=1  — только API
 #   WITH_ANCHOR=1    — в check/test/build добавить on-chain часть: cargo test + anchor build --no-idl + anchor test
 #                      (нужны Rust 1.89 / Agave 4.2.1 / Anchor 0.30.1, см. docs/BUILD_TROUBLESHOOTING.md)
+#   SERVICES=chain-indexer,indexer,trust-worker,farm-trader,price-cranker — что поднимает WITH_SERVICES=1
 #   PROGRAMS=aof_core,aof_market,aof_session_keys — какие программы получают новые ключи в `keys`/`devnet`
 #   Without keys нельзя создать программу по объявленному адресу; смена адреса переписывает
 #   declare_id!, Anchor.toml, реестр, IDL, watchtower и клиентов одной командой (scripts/rotate-program-ids.mjs).
@@ -47,6 +54,12 @@ SKIP_SYNC="${SKIP_SYNC:-0}"
 SKIP_BACKEND="${SKIP_BACKEND:-0}"
 SKIP_FRONTEND="${SKIP_FRONTEND:-0}"
 WITH_ANCHOR="${WITH_ANCHOR:-0}"
+# Фоновые сервисы backend («нужен индексатор»): по умолчанию выключены, потому
+# что это ещё пять процессов на машине разработчика. Включаются осознанно:
+#   WITH_SERVICES=1 bash scripts/dev-local.sh up
+WITH_SERVICES="${WITH_SERVICES:-0}"
+SERVICES="${SERVICES:-chain-indexer,indexer,trust-worker,farm-trader,price-cranker}"
+SERVICE_WAIT="${SERVICE_WAIT:-8}"   # сколько ждать старта сервисов перед проверкой живости
 # Канонический program id aof_core читается из реестра, а не хранится копией:
 # после смены адресов (scripts/rotate-program-ids.mjs) копия молча уводит
 # backend на программу, которой в сети нет.
@@ -355,6 +368,90 @@ cmd_check() {
 EOF
 }
 
+# Сервис -> npm-скрипт в aof_backend и, если есть, порт для проверки живости.
+# Скрипт, порт и назначение держим в одном месте: tests/readiness/bringup-entrypoints.test.cjs
+# сверяет их с aof_backend/package.json, чтобы переименованный скрипт не превратился
+# в тихо не запускающийся сервис.
+service_script() { # имя сервиса -> npm-скрипт
+  case "$1" in
+    chain-indexer) echo chain-indexer ;;
+    indexer)       echo indexer ;;
+    trust-worker)  echo trust-worker ;;
+    farm-trader)   echo farm-trader ;;
+    price-cranker) echo price-cranker ;;
+    push-worker)   echo push-worker ;;
+    *)             echo "" ;;
+  esac
+}
+
+service_port() { # имя сервиса -> порт (пусто, если сервис не слушает порт)
+  case "$1" in
+    chain-indexer) echo "${INDEXER_HEALTH_PORT:-8082}" ;;
+    indexer)       echo "${WS_PORT:-8081}" ;;
+    *)             echo "" ;;
+  esac
+}
+
+service_role() { # имя сервиса -> зачем он нужен игроку
+  case "$1" in
+    chain-indexer) echo "история, квесты, сделки и рынок читаются из БД" ;;
+    indexer)       echo "графики цен: тики и свечи хот-маркета" ;;
+    trust-worker)  echo "траст-скор и правила для трейдеров" ;;
+    farm-trader)   echo "исполнение правил автоторговли игроков" ;;
+    price-cranker) echo "пересчёт цены пула (VRGDA) без застревания на пике" ;;
+    push-worker)   echo "пуш-уведомления" ;;
+    *)             echo "" ;;
+  esac
+}
+
+# Поднимает выбранные сервисы рядом с backend и печатает, что реально живо.
+# Список pid'ов поднятых сервисов — глобальный, а не nameref: на macOS
+# /bin/bash 3.2 не умеет `local -n`, и скрипт там обязан работать.
+SVC_PIDS=()
+start_services() {
+  local logs="$BE/data/logs" name script port log pid dead=0 entry started=() started_pids=()
+  mkdir -p "$logs"
+  IFS=',' read -r -a requested <<< "$SERVICES"
+  for name in "${requested[@]}"; do
+    name="$(printf '%s' "$name" | tr -d '[:space:]')"
+    [ -n "$name" ] || continue
+    script="$(service_script "$name")"
+    if [ -z "$script" ]; then
+      warn "неизвестный сервис '$name' — пропускаю (известные: chain-indexer,indexer,trust-worker,farm-trader,price-cranker,push-worker)"
+      continue
+    fi
+    log="logs/$name.log"
+    # `exec` важен дважды: без него подшелл держит унаследованные fd и
+    # процессы, которые запустили скрипт (тесты, `npm run`, CI-шаг), ждут
+    # закрытия пайпа ещё долго после старта сервиса. С `exec` в фоне живёт ровно
+    # сервис, и kill_tree гасит его вместе с детьми.
+    (cd "$BE" && exec npm run -s "$script" >"data/$log" 2>&1) &
+    pid=$!; SVC_PIDS+=("$pid")
+    started+=("$name")
+    # Bash 3.2 (macOS) не знает ассоциативных массивов, поэтому пары «имя:pid»
+    # держим в обычном массиве: так живость проверяется по своему pid, а не
+    # поиском по `ps` (его вывод отличается между Linux и macOS).
+    started_pids+=("$name:$pid")
+  done
+  [ "${#started[@]}" -gt 0 ] || return 0
+  # Сервисы стартуют не мгновенно (ts-node компилирует), поэтому сначала даём
+  # им время, а потом проверяем каждый: упавший — это не «поднялось».
+  sleep "${SERVICE_WAIT:-8}"
+  for entry in "${started_pids[@]}"; do
+    name="${entry%%:*}"; pid="${entry##*:}"
+    log="$logs/$name.log"
+    port="$(service_port "$name")"
+    if { [ -n "$port" ] && http_ok "http://127.0.0.1:$port/health"; } || { [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; }; then
+      printf '   ✓ %-14s %s\n' "$name" "$(service_role "$name")"
+    else
+      dead=$((dead + 1))
+      warn "сервис $name не поднялся — последние строки $log:"
+      tail -n 5 "$log" 2>/dev/null | sed 's/^/      /' >&2 || true
+    fi
+  done
+  [ "$dead" -eq 0 ] || warn "$dead сервис(ов) не поднялось: игра будет работать, но часть витрин останется «неизвестно». Логи: aof_backend/data/logs/*.log"
+}
+
 cmd_up() {
   need_node; ensure_deps
   local pids=() be_pid="" fe_pid=""
@@ -394,6 +491,16 @@ cmd_up() {
     fe_pid=$!; pids+=("$fe_pid")
   fi
 
+  if [ "$WITH_SERVICES" = "1" ]; then
+    if [ "$SKIP_BACKEND" = "1" ]; then
+      warn "WITH_SERVICES=1 игнорируется при SKIP_BACKEND=1: сервисы делят .env и БД с backend"
+    else
+      log "фоновые сервисы: $SERVICES"
+      start_services
+      for pid in ${SVC_PIDS[@]+"${SVC_PIDS[@]}"}; do pids+=("$pid"); done
+    fi
+  fi
+
   cat <<EOF
 
   ┌──────────────────────────────────────────────────────────┐
@@ -402,8 +509,17 @@ cmd_up() {
   │  API  : http://localhost:$BACKEND_PORT/health   (/ready — БД + RPC)
   │  Ctrl+C — остановить всё
   └──────────────────────────────────────────────────────────┘
+EOF
+  if [ "$WITH_SERVICES" != "1" ]; then
+    cat <<EOF
+
+  Часть витрин (история, квесты, графики цен, траст) читает БД, которую
+  наполняют фоновые сервисы. Поднять их вместе с игрой:
+
+      WITH_SERVICES=1 bash scripts/dev-local.sh up
 
 EOF
+  fi
   # Держим скрипт живым, пока живы оба процесса; как только один упал — cleanup через trap.
   # (без `wait -n`: его нет в bash 3.2 на macOS)
   local p all_alive

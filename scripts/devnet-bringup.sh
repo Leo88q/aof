@@ -252,9 +252,14 @@ else
   echo "Повторите ту же команду с --apply."
 fi
 echo
-echo "Чтобы читались история, квесты и рынок, после включения держите запущенными сервисы:"
-echo "  cd aof_backend && npm run chain-indexer   # курсоры aof_core/aof_market/aof_quests, health :8082"
-echo "  cd aof_backend && npm run workers:all     # trust-worker, farm-trader, price-cranker по включённым механикам"
+echo "Чтобы читались история, квесты, сделки и графики цен, рядом с игрой должны"
+echo "работать фоновые сервисы. Одной командой (Ctrl+C гасит всё):"
+echo
+echo "  WITH_SERVICES=1 bash scripts/dev-local.sh up"
+echo
+echo "Поднимается: chain-indexer (история/квесты/рынок, health :8082), indexer"
+echo "(тики и свечи цен, WS :8081), trust-worker, farm-trader, price-cranker."
+echo "Каждый проверяется на живость, логи — aof_backend/data/logs/*.log."
 echo
 echo "Включается тем же деплоем (код уже в ветке, но требует новой сборки aof_core)."
 echo "Это НЕ работа «когда-нибудь»: после деплоя эти механики просто работают,"

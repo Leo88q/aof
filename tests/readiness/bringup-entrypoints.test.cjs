@@ -59,3 +59,44 @@ test('bringup-тест существует и пинит отказы', () => {
     assert.ok(source.includes(caseName), `нет теста ${caseName}`);
   }
 });
+
+test('dev-local.sh поднимает фоновые сервисы и совместим с bash 3.2 (macOS)', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/dev-local.sh'), 'utf8');
+  const scripts = JSON.parse(
+    fs.readFileSync(path.join(root, 'aof_backend/package.json'), 'utf8'),
+  ).scripts;
+
+  // 1) Каждый сервис из списка по умолчанию обязан существовать как npm-скрипт:
+  //    переименование скрипта иначе превратит `WITH_SERVICES=1 ... up` в тихо
+  //    не запустившийся процесс, и витрины останутся «неизвестно» без причины.
+  const services = source.match(/^SERVICES="\$\{SERVICES:-([^}]+)\}"/m);
+  assert.ok(services, 'в dev-local.sh нет списка SERVICES по умолчанию');
+  const names = services[1].split(',').map((s) => s.trim()).filter(Boolean);
+  assert.ok(names.length >= 4, `SERVICES по умолчанию слишком короткий: ${names.join(',')}`);
+  for (const name of names) {
+    const mapped = source.match(new RegExp(`${name.replace(/-/g, '\\-')}\\)\\s+echo ([a-z-]+) ;;`));
+    assert.ok(mapped, `в service_script нет соответствия для ${name}`);
+    assert.ok(
+      scripts[mapped[1]],
+      `сервис ${name} маппится на npm-скрипт ${mapped[1]}, которого нет в aof_backend/package.json`,
+    );
+  }
+
+  // 2) Скрипт — часть runbook владельца на macOS, где /bin/bash 3.2:
+  //    `local -n` (nameref) там не существует и роняет запуск целиком.
+  //    Проверяем только код: комментарии про эти же ограничения — можно.
+  const code = source.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+  assert.doesNotMatch(code, /local -n /, 'nameref (`local -n`) не работает в bash 3.2 на macOS');
+  assert.doesNotMatch(code, /declare -A/, 'ассоциативные массивы не работают в bash 3.2 на macOS');
+  assert.doesNotMatch(code, /[^\w-]wait -n/, '`wait -n` не работает в bash 3.2 на macOS');
+
+  // 3) Без WITH_SERVICES скрипт обязан сказать, как их включить, — иначе
+  //    владелец не узнает, что «неизвестно» в игре лечится пятью сервисами.
+  assert.match(source, /WITH_SERVICES/, 'нет переменной WITH_SERVICES');
+  assert.match(source, /WITH_SERVICES=1 bash scripts\/dev-local\.sh up/, 'нет подсказки, как включить сервисы');
+
+  // 4) Сервисы, у которых есть порт, обязаны иметь и проверку живости: «поднято»
+  //    без проверки — это то же предположение, которое мы убираем.
+  assert.match(source, /service_port\(\)/, 'нет функции service_port');
+  assert.match(source, /kill -0 "\$pid"/, 'живость сервиса не проверяется');
+});
