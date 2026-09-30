@@ -6,7 +6,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import coreIdl from '../src/idl/aof_core.json';
 import questsIdl from '../src/idl/aof_quests.json';
 
-const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG7';
+const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 const core = new PublicKey(coreIdl.address);
 const quests = new PublicKey(questsIdl.address);
 const report: { status: string; observations: Record<string, unknown>; blockers: string[]; warning: string } = {
