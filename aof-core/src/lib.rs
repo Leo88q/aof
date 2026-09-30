@@ -3559,6 +3559,44 @@ pub struct ClaimSeasonReward<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// [§3.4] Полный сброс прогресса перерождения. Отдельные инструкции
+/// `reset_player`/`reset_pass`/`burn` позволили бы оплатить перерождение и
+/// дойти только до части сброса, поэтому здесь всё, что обещано правилами,
+/// выполняется одной инструкцией, а полноту списка излишков подтверждает
+/// подпись бэкенда (`config.operator`).
+#[derive(Accounts)]
+#[instruction(season_id: u32)]
+pub struct ResetForRebirth<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = operator @ AofError::Unauthorized)]
+    pub config: Box<Account<'info, Config>>,
+    /// [AUDIT rebirth reset] Подпись бэкенда: только он видит полный список
+    /// ресурсных аккаунтов игрока. Без неё игрок собрал бы транзакцию с
+    /// частичным списком и оставил излишки себе.
+    pub operator: Signer<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [PLAYER_SEED, user.key().as_ref()],
+        bump,
+        constraint = player.owner == user.key() @ AofError::Unauthorized,
+    )]
+    pub player: Account<'info, Player>,
+    #[account(seeds = [SEASON_SEED, &season_id.to_le_bytes()], bump = season.bump)]
+    pub season: Account<'info, Season>,
+    #[account(
+        mut,
+        seeds = [SEASON_PASS_SEED, user.key().as_ref(), &season_id.to_le_bytes()],
+        bump,
+        constraint = season_pass.season_id == season_id @ AofError::SeasonMismatch,
+        constraint = season_pass.owner == user.key() @ AofError::Unauthorized,
+    )]
+    pub season_pass: Account<'info, SeasonPass>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    pub token_program: Program<'info, Token>,
+}
+
 #[program]
 pub mod aof_core {
     use super::*;
@@ -4056,6 +4094,13 @@ pub mod aof_core {
     }
     pub fn match_resource_orders_v2(ctx: Context<MatchResourceOrdersV2>) -> Result<()> {
         instructions::orderbook::match_handler_v2(ctx)
+    }
+
+    /// [§3.4] Полный сброс перерождения. Вызывается в ОДНОЙ транзакции с
+    /// `aof_rebirth::do_rebirth`: либо игрок платит цену, теряет прогресс
+    /// сезона и сжигает излишки, либо не происходит ничего.
+    pub fn reset_for_rebirth(ctx: Context<ResetForRebirth>, season_id: u32) -> Result<()> {
+        instructions::rebirth_reset::handler(ctx, season_id)
     }
 
     // --- Крафт под заказ ---

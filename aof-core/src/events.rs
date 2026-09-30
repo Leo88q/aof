@@ -624,3 +624,17 @@ pub struct RentalDelisted {
     pub mint: Pubkey,
     pub owner: Pubkey,
 }
+
+/// [§3.4] Полный сброс перерождения применён. Событие фиксирует и факт
+/// сброса прогресса, и сколько излишков сожжено: индексор не должен выводить
+/// это из молчания, а игрок — обнаружить сброс без объяснения.
+#[event]
+pub struct RebirthReset {
+    pub user: Pubkey,
+    pub season_id: u32,
+    /// Сколько XP было у пропуска до сброса (для индексатора и истории).
+    pub xp_before: u32,
+    pub has_tent_before: bool,
+    pub burned_accounts: u16,
+    pub burned_atoms: u64,
+}

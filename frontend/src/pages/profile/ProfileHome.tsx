@@ -18,7 +18,7 @@ import { PrivilegesPanel } from "../../components/PrivilegesPanel";
 import { CollectorsPanel } from "../../components/CollectorsPanel";
 import { QuestBoardPage } from "../quests/QuestBoardPage";
 import { DailyRewardButton } from "../../components/DailyRewardButton";
-import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
+import { RebirthPanel } from "../../components/RebirthPanel";
 import { PortfolioHome } from "../portfolio/PortfolioHome";
 import { LeaderboardPage } from "../social/LeaderboardPage";
 import { PlayerRatingPage } from "../social/PlayerRatingPage";
@@ -102,12 +102,9 @@ export function ProfileHome() {
         <PrivilegesPanel compact />
       </Panel>
 
-      <Panel tier="panel" className="mb-4" id={<Sticker alt>{copy.rebirthSticker}</Sticker>}
-        meta={copy.rebirthMeta} title={copy.rebirthTitle} sub={copy.rebirthSub}>
-        <Note quiet>{copy.rebirthNote}</Note>
-        <Keys><Key disabled>{copy.rebirthDisabled}</Key></Keys>
-      </Panel>
-      <FeatureDisabledNotice id="rebirth" />
+      {/* [§3.4] Перерождение включено: панель читает цену, кулдаун и список
+          излишков из сети и подписывает полный сброс одной транзакцией. */}
+      <div className="mb-4"><RebirthPanel /></div>
 
     </div>
   );

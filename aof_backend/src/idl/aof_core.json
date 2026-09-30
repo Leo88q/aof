@@ -10556,6 +10556,114 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "reset_for_rebirth",
+      "discriminator": [
+        255,
+        181,
+        123,
+        174,
+        107,
+        241,
+        223,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "season"
+        },
+        {
+          "name": "season_pass",
+          "writable": true
+        },
+        {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -12055,6 +12163,19 @@
         105,
         107
       ]
+    },
+    {
+      "name": "RebirthReset",
+      "discriminator": [
+        46,
+        19,
+        179,
+        56,
+        246,
+        103,
+        187,
+        213
+      ]
     }
   ],
   "errors": [
@@ -12737,6 +12858,16 @@
       "code": 6135,
       "name": "InsufficientOrderEscrow",
       "msg": "Order escrow does not cover this fill"
+    },
+    {
+      "code": 6136,
+      "name": "RebirthBurnLimitExceeded",
+      "msg": "Rebirth reset received more resource accounts than one transaction may burn"
+    },
+    {
+      "code": 6137,
+      "name": "SeasonMismatch",
+      "msg": "Season pass belongs to a different season"
     }
   ],
   "types": [
@@ -16322,6 +16453,38 @@
           },
           {
             "name": "maker_fee_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RebirthReset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "xp_before",
+            "type": "u32"
+          },
+          {
+            "name": "has_tent_before",
+            "type": "bool"
+          },
+          {
+            "name": "burned_accounts",
+            "type": "u16"
+          },
+          {
+            "name": "burned_atoms",
             "type": "u64"
           }
         ]

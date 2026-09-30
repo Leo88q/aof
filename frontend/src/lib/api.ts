@@ -81,6 +81,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/packs/reveal", subject: "packs_reveal", field: "user" },
   { path: "/quests/quest/claim", subject: "quests_claim", field: "user" },
   { path: "/quests/achievement/unlock", subject: "quests_achievement", field: "user" },
+  { path: "/rebirth/do", subject: "rebirth_do", field: "user" },
   { path: "/referral/bind", subject: "referral_bind", field: "referred" },
   { path: "/referral/upgrade", subject: "referral_upgrade", field: "user" },
   { path: "/reroll/fuse", subject: "reroll_fuse", field: "user" },
@@ -512,8 +513,10 @@ export const api = {
     crank: (v: any) => post("/hot-market/crank", v),
   },
 
-  // [ФИКС Группы 1] Ребёрт (контракт: цена + кулдаун — Группа 3)
+  // [§3.4] Перерождение: полный сброс одной транзакцией (aof_core::reset_for_rebirth
+  // + aof_rebirth::do_rebirth). Статус читается из сети, ничего не досчитывается.
   rebirth: {
+    status: (user: string) => get(`/rebirth/status/${user}`),
     do: (v: any) => post("/rebirth/do", v),
   },
 

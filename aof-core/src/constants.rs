@@ -297,6 +297,12 @@ pub const ORDERBOOK_TAKER_FEE_BPS: u16 = 40;  // 0.4%
 /// and the escrow can never be a billion times the displayed total.
 pub const RESOURCE_ATOMS_PER_UNIT: u128 = 1_000_000_000;
 
+/// [§3.4] Сколько пар `(mint, token_account)` перерождение может сжечь за одну
+/// транзакцию. Предел держит и размер транзакции (1232 байта), и бюджет
+/// вычислений (каждый burn — отдельный CPI): игрок с большим складом сначала
+/// сжигает излишки обычным `burn_resource`, а затем завершает перерождение.
+pub const REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS: usize = 16;
+
 // ----- Крафт под заказ -----
 pub const CRAFT_ORDER_FEE_BPS: u16 = 200; // 2%
 

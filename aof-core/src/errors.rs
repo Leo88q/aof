@@ -294,4 +294,9 @@ pub enum AofError {
     // [AUDIT orderbook price unit] appended: existing codes must not move.
     #[msg("Order escrow does not cover this fill")]
     InsufficientOrderEscrow,
+    // [AUDIT rebirth reset §3.4] appended: existing codes must not move.
+    #[msg("Rebirth reset received more resource accounts than one transaction may burn")]
+    RebirthBurnLimitExceeded,
+    #[msg("Season pass belongs to a different season")]
+    SeasonMismatch,
 }

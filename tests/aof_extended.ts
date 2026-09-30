@@ -10,7 +10,8 @@ import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction } from "@solana/web3.js";
 import {
-  createMint, getMint, mintTo, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
+  createMint, getMint, mintTo, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction,
+  createAccount as createTokenAccount, TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { expect } from "chai";
 import fs from "fs";
@@ -551,4 +552,145 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     await cancel(buyer, buyerToken);
     expect((await balance(buyerToken)).toString()).to.equal("1");
   });
+
+  // ========== REBIRTH (§3.4) ==========
+  // Полный сброс: одна транзакция несёт и `reset_for_rebirth` (aof-core), и
+  // `do_rebirth` (aof-rebirth). Проверяются обе стороны обещания: прогресс
+  // сезона обнулён и излишки сожжены — или не произошло ничего.
+  it("rebirth: полный сброс одной транзакцией — прогресс и излишки, без частичных состояний", async () => {
+    const rebirthIdlPath = process.cwd() + "/target/idl/aof_rebirth.json";
+    const rebirthIdl = JSON.parse(fs.readFileSync(rebirthIdlPath, "utf8"));
+    if (!rebirthIdl.address) rebirthIdl.address = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb";
+    const rebirth: any = new anchor.Program(rebirthIdl as any, provider);
+    const rebirthPid = rebirth.programId as PublicKey;
+    const rebirthPda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, rebirthPid)[0];
+
+    const rebirthConfig = rebirthPda([B("rebirth_config")]);
+    const [programData] = PublicKey.findProgramAddressSync(
+      [rebirthPid.toBuffer()], new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
+    );
+    const costLamports = 100_000_000; // 0.1 SOL
+    if (!(await provider.connection.getAccountInfo(rebirthConfig))) {
+      await rebirth.methods.initRebirthConfig(200, 2_000, 10, authority, new BN(costLamports), new BN(3_600)).accounts({
+        rebirthConfig, authority, programData, systemProgram: SystemProgram.programId,
+      }).rpc();
+    }
+
+    const seasonId = Math.floor(Date.now() / 1000) >>> 0;
+    const sid = Buffer.alloc(4); sid.writeUInt32LE(seasonId);
+    const season = pda([B("season"), sid]);
+    await program.methods.initSeason(seasonId).accounts({
+      config: configPda, authority, season, systemProgram: SystemProgram.programId,
+    }).rpc();
+
+    const user = Keypair.generate(); await airdrop(user, 5);
+    const seasonPass = pda([B("season_pass"), user.publicKey.toBuffer(), sid]);
+    const player = playerPda(user.publicKey);
+    const rebirthRecord = rebirthPda([B("rebirth_record"), user.publicKey.toBuffer()]);
+
+    // Прогресс: жители/палатка появляются от минта ресурса, XP — от оператора.
+    const woodAta = await giveResource("wood", woodMint, user.publicKey, 3);
+    const stoneAta = await giveResource("silicon", stoneMint, user.publicKey, 2);
+    await program.methods.grantSeasonXp(4_000).accounts({
+      config: configPda, authority, user: user.publicKey, season, seasonPass,
+      systemProgram: SystemProgram.programId,
+    }).rpc();
+
+    const playerBefore = await program.account.player.fetch(player);
+    expect(playerBefore.villagers > 0, "минт ресурса обязан создать прогресс игрока").to.equal(true);
+    const woodBefore = await balance(woodAta), stoneBefore = await balance(stoneAta);
+    expect(woodBefore.gtn(0) && stoneBefore.gtn(0)).to.equal(true);
+    expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(4_000);
+
+    const surplus = [woodMint, stoneMint].flatMap((mint, index) => [
+      { pubkey: mint, isSigner: false, isWritable: true },
+      { pubkey: index === 0 ? woodAta : stoneAta, isSigner: false, isWritable: true },
+    ]);
+    const reset = (accounts: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[]) =>
+      program.methods.resetForRebirth(seasonId).accounts({
+        config: configPda, operator: authority, user: user.publicKey, player, season, seasonPass,
+        materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
+      }).remainingAccounts(accounts).rpc();
+
+    // Не-подписант: сброс от чужого имени не должен трогать чужой прогресс.
+    const stranger = Keypair.generate(); await airdrop(stranger);
+    await expectError(program.methods.resetForRebirth(seasonId).accounts({
+      config: configPda, operator: stranger.publicKey, user: user.publicKey, player, season, seasonPass,
+      materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
+    }).remainingAccounts(surplus).signers([stranger, user]).rpc(), "Unauthorized");
+
+    // Любая чужая пара обязана уронить всю инструкцию, а не «сработать частично».
+    const strangerAta = await ensureAta(woodMint, stranger.publicKey);
+    await expectError(reset([
+      { pubkey: woodMint, isSigner: false, isWritable: true },
+      { pubkey: strangerAta, isSigner: false, isWritable: true },
+    ]), "Unauthorized");
+    await expectError(reset([
+      { pubkey: woodMint, isSigner: false, isWritable: true },
+      { pubkey: stoneAta, isSigner: false, isWritable: true },
+    ]), "InvalidResourceKind");
+    // Не-канонический токен-аккаунт того же минта и владельца: программа
+    // принимает только ATA, иначе сжигание ушло бы не из того места.
+    const manualKeypair = Keypair.generate();
+    const manual = await createTokenAccount(provider.connection, setupPayer, woodMint, user.publicKey, manualKeypair);
+    await expectError(reset([
+      { pubkey: woodMint, isSigner: false, isWritable: true },
+      { pubkey: manual, isSigner: false, isWritable: true },
+    ]), "NonCanonicalTokenAccount");
+
+    // Оплата и полный сброс — одной транзакцией: либо всё, либо ничего.
+    const tx = new Transaction().add(
+      await program.methods.resetForRebirth(seasonId).accounts({
+        config: configPda, operator: authority, user: user.publicKey, player, season, seasonPass,
+        materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
+      }).remainingAccounts(surplus).instruction(),
+      await rebirth.methods.doRebirth().accounts({
+        rebirthConfig, authority, rebirthRecord, user: user.publicKey, treasury: authority,
+        systemProgram: SystemProgram.programId,
+      }).instruction(),
+    );
+    const treasuryBefore = await lamports(authority);
+    await provider.sendAndConfirm(tx, [user]);
+
+    const playerAfter = await program.account.player.fetch(player);
+    expect(playerAfter.villagers).to.equal(0);
+    expect(playerAfter.villagersAvailable).to.equal(0);
+    expect(playerAfter.hasTent).to.equal(false);
+    const passAfter = await program.account.seasonPass.fetch(seasonPass);
+    expect(passAfter.xp).to.equal(0);
+    expect(passAfter.claimedBitmap.toString()).to.equal("0");
+    expect(passAfter.premium).to.equal(false);
+    expect((await balance(woodAta)).toString()).to.equal("0");
+    expect((await balance(stoneAta)).toString()).to.equal("0");
+    expect(playerAfter.historianCount).to.equal(playerBefore.historianCount);
+    expect(playerAfter.medallionCount).to.equal(playerBefore.medallionCount);
+    const record = await rebirth.account.rebirthRecord.fetch(rebirthRecord);
+    expect(record.rebirthCount).to.equal(1);
+    expect(record.generation).to.equal(2);
+    expect(record.permanentBonusBps).to.equal(200);
+    // Комиссию транзакции платит провайдер (он же казна), поэтому цена
+    // возрождения видна как приход за вычетом этой комиссии.
+    const treasuryAfter = await lamports(authority);
+    expect(treasuryAfter - treasuryBefore).to.be.greaterThan(costLamports - 100_000);
+
+    // Непарный список аккаунтов отвергается целиком, а не «как получится».
+    await expectError(reset([{ pubkey: woodMint, isSigner: false, isWritable: true }]), "InvalidAmount");
+
+    // Кулдаун: вторая транзакция «сброс + ребёрт» отменяется целиком, поэтому
+    // ни поколение, ни XP не меняются — частичного сброса без ребёрта нет.
+    const second = new Transaction().add(
+      await program.methods.resetForRebirth(seasonId).accounts({
+        config: configPda, operator: authority, user: user.publicKey, player, season, seasonPass,
+        materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
+      }).instruction(),
+      await rebirth.methods.doRebirth().accounts({
+        rebirthConfig, authority, rebirthRecord, user: user.publicKey, treasury: authority,
+        systemProgram: SystemProgram.programId,
+      }).instruction(),
+    );
+    await expectError(provider.sendAndConfirm(second, [user]), "CooldownActive");
+    expect((await rebirth.account.rebirthRecord.fetch(rebirthRecord)).rebirthCount).to.equal(1);
+    expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(0);
+  });
+
 });

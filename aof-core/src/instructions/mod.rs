@@ -58,6 +58,8 @@ pub mod rental;
 pub mod orderbook;
 pub mod craft_order;
 pub mod season;
+// [§3.4] полный сброс перерождения одним действием
+pub mod rebirth_reset;
 
 pub mod mint_resource_once;
 pub mod issuance_cap;

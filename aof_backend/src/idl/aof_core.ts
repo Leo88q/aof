@@ -10562,6 +10562,114 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "resetForRebirth",
+      "discriminator": [
+        255,
+        181,
+        123,
+        174,
+        107,
+        241,
+        223,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "season"
+        },
+        {
+          "name": "seasonPass",
+          "writable": true
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "seasonId",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -12061,6 +12169,19 @@ export type AofCore = {
         105,
         107
       ]
+    },
+    {
+      "name": "rebirthReset",
+      "discriminator": [
+        46,
+        19,
+        179,
+        56,
+        246,
+        103,
+        187,
+        213
+      ]
     }
   ],
   "errors": [
@@ -12743,6 +12864,16 @@ export type AofCore = {
       "code": 6135,
       "name": "insufficientOrderEscrow",
       "msg": "Order escrow does not cover this fill"
+    },
+    {
+      "code": 6136,
+      "name": "rebirthBurnLimitExceeded",
+      "msg": "Rebirth reset received more resource accounts than one transaction may burn"
+    },
+    {
+      "code": 6137,
+      "name": "seasonMismatch",
+      "msg": "Season pass belongs to a different season"
     }
   ],
   "types": [
@@ -16328,6 +16459,38 @@ export type AofCore = {
           },
           {
             "name": "makerFeeLamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rebirthReset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "seasonId",
+            "type": "u32"
+          },
+          {
+            "name": "xpBefore",
+            "type": "u32"
+          },
+          {
+            "name": "hasTentBefore",
+            "type": "bool"
+          },
+          {
+            "name": "burnedAccounts",
+            "type": "u16"
+          },
+          {
+            "name": "burnedAtoms",
             "type": "u64"
           }
         ]

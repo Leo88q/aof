@@ -3,6 +3,13 @@ import { positiveU64 } from "./amounts";
 import { coreInstructionSpec } from "./coreInstructions";
 
 export const CORE_PROGRAM_ID = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+/** aof-rebirth: постоянный бонус и запись поколения. Идентификатор совпадает
+ * с остальными гвардами (Anchor.toml / txGuard AOF_PROGRAMS). */
+export const REBIRTH_PROGRAM_ID = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb";
+/** `do_rebirth` — байты взяты из aof_backend/src/idl/aof_rebirth.json; тест
+ * `readiness/rebirth-reset.test.cjs` сверяет их с IDL, чтобы константа не
+ * разъехалась с программой молча. */
+export const REBIRTH_DO_DISCRIMINATOR = [76, 11, 54, 198, 197, 72, 21, 13] as const;
 const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ATA = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 const SYSTEM = "11111111111111111111111111111111";
@@ -76,13 +83,30 @@ export type OrderbookV2Intent =
   | { readonly kind: "orderbookV2"; readonly action: "cancelSell"; readonly user: string; readonly mint: string }
   | { readonly kind: "orderbookV2"; readonly action: "match"; readonly user: string; readonly mint: string; readonly buyMaker: string; readonly sellMaker: string; readonly treasury: string };
 
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent;
+/**
+ * [§3.4] Перерождение. Кошелёк подписывает ровно две инструкции в одной
+ * транзакции: полный сброс в aof-core и запись ребёрта в aof-rebirth. Список
+ * сжигаемых излишков входит в интент, поэтому подменённый ответ бэкенда не
+ * может ни сжечь чужие аккаунты, ни оставить часть склада при сбросе.
+ */
+export interface RebirthIntent {
+  readonly kind: "rebirth";
+  readonly user: string;
+  readonly seasonId: number;
+  readonly costLamports: string;
+  readonly treasury: string;
+  readonly surplus: readonly { readonly mint: string; readonly tokenAccount: string; readonly amountAtoms: string }[];
+}
+
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
  * operator's co-signature for co-signed game commits. */
 export function expectedSigners(intent: TransactionIntent | undefined): number {
-  return intent?.kind === "packOpen" ? 2 : 1;
+  // packOpen и rebirth co-sign-ятся оператором: без его подписи транзакция не
+  // собирается, поэтому кошелёк разрешает вторую подпись.
+  return intent?.kind === "packOpen" || intent?.kind === "rebirth" ? 2 : 1;
 }
 type Instruction = { programId: string; keys: PublicKey[]; data: Uint8Array };
 
@@ -113,7 +137,12 @@ export function validateCoreInstructions(instructions: Instruction[], user: Publ
     if (spec.authorityOnly) {
       throw new Error(`Authority-only instruction ${spec.name} cannot be signed by a player wallet`);
     }
-    if (ix.keys.length !== spec.accounts.length) {
+    // `trailingAccounts: "pairs"` (reset_for_rebirth) — единственный случай,
+    // когда программа читает `ctx.remaining_accounts`. Их состав не описывает
+    // IDL, поэтому здесь проверяется только форма: пары после фиксированного
+    // префикса. Что именно за пары — знает валидатор намерения перерождения.
+    const allowedExtra = spec.trailingAccounts === "pairs" ? ix.keys.length - spec.accounts.length : 0;
+    if (allowedExtra < 0 || allowedExtra % 2 !== 0 || (allowedExtra === 0 && ix.keys.length !== spec.accounts.length)) {
       throw new Error(`Unexpected account count for ${spec.name}`);
     }
     // Every party slot the program requires a signature from must be the
@@ -155,6 +184,7 @@ export function validateTransactionIntent(
   if (intent.kind === "gasTank") return validateGasTankIntent(instructions, intent, user);
   if (intent.kind === "collector") return validateCollectorIntent(instructions, intent, user);
   if (intent.kind === "orderbookV2") return validateOrderbookV2Intent(instructions, intent, user);
+  if (intent.kind === "rebirth") return validateRebirthIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -230,6 +260,93 @@ function validateLotteryTicketIntent(instructions: Instruction[], intent: Lotter
 const ATOMS_PER_RESOURCE = 1_000_000_000n;
 const quoteTotal = (pricePerWhole: bigint, atoms: bigint) => (pricePerWhole * atoms + ATOMS_PER_RESOURCE - 1n) / ATOMS_PER_RESOURCE;
 const takerBuffer = (total: bigint) => (total * 40n + 9_999n) / 10_000n;
+
+/**
+ * [§3.4] Перерождение: ровно две инструкции — `reset_for_rebirth` в aof-core и
+ * `do_rebirth` в aof-rebirth — с точными аккаунтами и полным списком излишков.
+ * Любая третья инструкция, другой порядок, другой набор `(mint, token_account)`
+ * или другой размер данных отменяют подпись.
+ */
+function validateRebirthIntent(instructions: Instruction[], intent: RebirthIntent, user: PublicKey): void {
+  if (instructions.length !== 2) throw new Error("Rebirth must be exactly two instructions");
+  const me = new PublicKey(intent.user);
+  if (!me.equals(user)) throw new Error("Wallet differs from the rebirth intent");
+  if (!Number.isSafeInteger(intent.seasonId) || intent.seasonId < 0 || intent.seasonId > 0xffffffff) {
+    throw new Error("Invalid rebirth season");
+  }
+  positiveU64(intent.costLamports);
+  if (!Array.isArray(intent.surplus) || intent.surplus.length > 16) throw new Error("Invalid rebirth surplus list");
+
+  if (instructions[0].programId !== CORE_PROGRAM_ID || instructions[1].programId !== REBIRTH_PROGRAM_ID) {
+    throw new Error("Rebirth must stay inside the two game programs");
+  }
+  const resetSpec = coreInstructionSpec(instructions[0].programId, instructions[0].data, CORE_PROGRAM_ID);
+  if (resetSpec?.name !== "reset_for_rebirth") throw new Error("Missing full-reset instruction");
+  const rebirthData = instructions[1].data;
+  if (rebirthData.length < 8 ||
+      !REBIRTH_DO_DISCRIMINATOR.every((byte, index) => rebirthData[index] === byte)) {
+    throw new Error("Missing rebirth instruction");
+  }
+
+  const u32 = new Uint8Array(4);
+  new DataView(u32.buffer).setUint32(0, intent.seasonId, true);
+  const seasonAddress = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("season"), u32], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const seasonPassAddress = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("season_pass"), me.toBytes(), u32], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const expectedKeys = [
+    pda("config"),
+    new PublicKey(instructions[0].keys[1]), // operator: подписывает бэкенд, конкретный ключ проверяет ядро
+    me,
+    pda("player", me),
+    seasonAddress,
+    seasonPassAddress,
+    pda("material_mints"),
+    TOKEN,
+  ];
+  // Сравнивается фиксированный префикс: за ним идут пары излишков, их
+  // проверка — ниже, позиционно.
+  if (!keysEqual(instructions[0].keys.slice(0, expectedKeys.length), expectedKeys)) {
+    throw new Error("Unexpected full-reset accounts");
+  }
+  if (instructions[0].data.length !== 12) throw new Error("Unexpected full-reset payload");
+  const seasonView = new DataView(instructions[0].data.buffer, instructions[0].data.byteOffset, 12);
+  if (seasonView.getUint32(8, true) !== intent.seasonId) throw new Error("Season differs from the rebirth intent");
+
+  // Список сжигаемых аккаунтов сверяется позиционно: тот же порядок, те же
+  // минты и токен-аккаунты, что показаны игроку.
+  if (instructions[0].keys.length !== expectedKeys.length + intent.surplus.length * 2) {
+    throw new Error("Rebirth surplus list does not match the transaction");
+  }
+  intent.surplus.forEach((entry, index) => {
+    const mint = new PublicKey(entry.mint);
+    const token = new PublicKey(entry.tokenAccount);
+    positiveU64(entry.amountAtoms);
+    const actualMint = instructions[0].keys[expectedKeys.length + index * 2];
+    const actualToken = instructions[0].keys[expectedKeys.length + index * 2 + 1];
+    if (!mint.equals(actualMint) || !token.equals(actualToken)) throw new Error("Rebirth burns an unexpected account");
+    if (!ata(mint, me).equals(token)) throw new Error("Rebirth burns a non-canonical token account");
+  });
+
+  const rebirthConfig = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("rebirth_config")], new PublicKey(REBIRTH_PROGRAM_ID),
+  )[0];
+  const rebirthRecord = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("rebirth_record"), me.toBytes()], new PublicKey(REBIRTH_PROGRAM_ID),
+  )[0];
+  const expectedRebirthKeys = [
+    rebirthConfig,
+    new PublicKey(instructions[1].keys[1]), // authority: подпись бэкенда
+    rebirthRecord,
+    me,
+    new PublicKey(intent.treasury),
+    new PublicKey(SYSTEM),
+  ];
+  if (!keysEqual(instructions[1].keys, expectedRebirthKeys)) throw new Error("Unexpected rebirth accounts");
+  if (instructions[1].data.length !== 8) throw new Error("Unexpected rebirth payload");
+}
 
 function validateOrderbookV2Intent(instructions: Instruction[], intent: OrderbookV2Intent, user: PublicKey): void {
   const mint = new PublicKey(intent.mint);

@@ -8,6 +8,10 @@ import { disabledMechanicCopy } from "../../i18n/disabledMechanicCopy";
  * Switchboard On-Demand. Платный барабан остаётся закрыт: ни наличие
  * VRF-пути, ни редакционная ссылка не разрешают приём Potato.
  *
+ * [§3.4] Перерождение из этого списка убрано: полный сброс существует
+ * (`aof_core::reset_for_rebirth` + `aof_rebirth::do_rebirth` одной
+ * транзакцией), поэтому у механики своя панель, а не заглушка.
+ *
  * Гейты on-chain и backend проверяются отдельно. Сайт содержит справочные
  * страницы, а не достоверную таблицу доступности механик.
  *
@@ -19,7 +23,6 @@ import { disabledMechanicCopy } from "../../i18n/disabledMechanicCopy";
 export const DISABLED_MECHANICS = {
   hot_market: { guard: "hot_market_buy/sell → TradingDisabled; /hot-market/buy|sell → 503." },
   collectors: { guard: "collector_stake → CollectorNotConfigured." },
-  rebirth: { guard: "do_rebirth → FeatureDisabled; /rebirth/do → 503." },
   session: { guard: "session_create → AtomicBindingRequired; /session/* → 503." },
   tools_repair: { guard: "POST /tools/repair → 503 REPAIR_RESOURCES_NOT_CONFIGURED (Config missing woodMint/stoneMint)." },
 } as const;

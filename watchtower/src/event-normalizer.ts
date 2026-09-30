@@ -94,7 +94,7 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "PaidOut", "QuestRewardClaimed", "LotteryRoundRefunded"],
   RewardClaimed: ["ResourceIssued"],
   TokenMinted: ["ResourceIssued", "ToolMinted"],
-  TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult"],
+  TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult", "RebirthReset"],
   TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
   TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
   LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted",
@@ -105,7 +105,7 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
     "MaterialMintsInitialized", "ConfigMigrated", "CashoutFreezeChanged", "EmergencyStopActivated",
-    "VrfSlotAdded", "VrfSlotRetiredChanged", "VrfSlotRecovered"],
+    "VrfSlotAdded", "VrfSlotRetiredChanged", "VrfSlotRecovered", "RebirthReset", "RebirthPerformed"],
   // [AUDIT F-02] The two-step authority rotation is now emitted by every
   // program that has a Config, so both are native sources - the "unsupported,
   // no multisig yet" reason in the catalog is obsolete.
@@ -493,6 +493,20 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "MaterialMintsInitialized":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "material_mints" } });
+      break;
+    // [§3.4] Перерождение: полный сброс одной транзакцией. Сжигание излишка
+    // идёт одной ногой TokenBurned (атомы разных минтов), а сам сброс — как
+    // изменение состояния сессии игрока. Суммы не досчитываются: burn=0 →
+    // ноги TokenBurned нет, а излишки никогда не показываются как доход.
+    case "RebirthReset": {
+      emit("ConfigUpdated", { playerId: pid(d.user), attributes: { setting: "rebirth_reset", seasonId: str(d.season_id), xpBefore: str(d.xp_before), hasTentBefore: bool(d.has_tent_before), burnedAccounts: str(d.burned_accounts) } });
+      if (Number(d.burned_accounts ?? 0) > 0) {
+        emit("TokenBurned", { playerId: pid(d.user), amount: str(d.burned_atoms), currency: "RESOURCE_ATOMS", attributes: { reason: "rebirth_reset", seasonId: str(d.season_id), burnedAccounts: str(d.burned_accounts) } });
+      }
+      break;
+    }
+    case "RebirthPerformed":
+      emit("ConfigUpdated", { playerId: pid(d.user), attributes: { setting: "rebirth_performed", generation: str(d.generation), rebirthCount: str(d.rebirth_count), permanentBonusBps: str(d.permanent_bonus_bps) } });
       break;
     case "LotteryRoundRefunded":
       emit("RewardGranted", { playerId: null, amount: str(d.lamports), currency: LAMPORTS, attributes: { source: "lottery_refund", roundId: str(d.roundId), ticketsSold: str(d.ticketsSold) } });

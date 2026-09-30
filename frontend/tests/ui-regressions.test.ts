@@ -253,8 +253,18 @@ test("эмодзи не выводятся текстом: плашки вмес
 
 test("закрытые механики объясняются единым текстом, а кнопки без эмодзи-подписей", () => {
   const profile = read("src/pages/profile/ProfileHome.tsx");
-  assert.match(profile, /FeatureDisabledNotice id="rebirth"/,
-    "причина rebirth обязана браться из DISABLED_MECHANICS, а не дублироваться текстом");
+  // [§3.4] Перерождение вышло из списка закрытых: у него своя панель, которая
+  // читает цену/кулдаун/излишки из сети и подписывает полный сброс.
+  assert.match(profile, /<RebirthPanel \/>/,
+    "перерождение обязано показывать живую панель, а не заглушку");
+  assert.ok(!/FeatureDisabledNotice id="rebirth"/.test(profile),
+    "перерождение больше не закрытая механика: заглушка вернулась");
+  const noticeSource = read("src/components/ui/FeatureDisabledNotice.tsx");
+  const disabledBlock = noticeSource.slice(
+    noticeSource.indexOf("export const DISABLED_MECHANICS = {"),
+    noticeSource.indexOf("} as const;"),
+  );
+  assert.ok(!/rebirth:/.test(disabledBlock), "rebirth всё ещё в DISABLED_MECHANICS");
   const mining = read("src/components/ToolMiningCard.tsx");
   for (const label of ['"⏸️ Сбор отключён', '"⏸️ Добыча отключена до проверки в сети"', '"↩️ Вернуть']) {
     assert.ok(!mining.includes(label), `эмоji-подпись в JSX-кнопке вернулась: ${label}`);
@@ -1417,7 +1427,7 @@ test("капсулы, флюиды и отключённые механики п
   const { marketDetailCopy } = await import("../src/i18n/marketDetailCopy.ts");
   const { disabledMechanicCopy } = await import("../src/i18n/disabledMechanicCopy.ts");
   const { humanizeVrfError } = await import("../src/lib/vrfErrors.ts");
-  const ids = ["hot_market", "collectors", "rebirth", "session", "tools_repair"];
+  const ids = ["hot_market", "collectors", "session", "tools_repair"];
   for (const language of ["ru", "en", "pt", "es", "vi", "id", "fil"] as const) {
     for (const field of ["title", "intro", "small", "medium", "big", "configError", "pendingError", "commitUnknown", "refunded"] as const) {
       assert.ok(packsCopy[language][field], `${language}: нет текста ${field} для капсул`);
@@ -2456,7 +2466,10 @@ test('шесть первых смен переведены на семь язы
   assert.match(css, /site-guide-step \{[^}]*minmax\(0, 1fr\)[^}]*overflow-wrap: anywhere/);
   assert.match(css, /site-guide-step \{ grid-template-columns: 44px minmax\(0, 1fr\)/);
   assert.match(siteGuide.en.steps[4].caution, /paused/);
-  assert.match(siteGuide.en.steps[5].caution, /rebirth is disabled/);
+  // [§3.4] Перерождение включено: текст смены обязан предупреждать о цене и
+  // списке излишков, а не повторять, что механика отключена.
+  assert.match(siteGuide.en.steps[5].caution, /Rebirth charges a price/);
+  assert.ok(!/rebirth is disabled/.test(siteGuide.en.steps[5].caution));
   for (const lang of languages) {
     const copy = siteGuide[lang];
     assert.equal(copy.paragraphs.length, 2, lang);
@@ -3461,7 +3474,7 @@ test('laboratory and plot reuse translated resource and building names without d
 test('disabled mechanics keep canonical guard identifiers and translate all player copy', async () => {
   const { disabledMechanicCopy } = await import('../src/i18n/disabledMechanicCopy.ts');
   const notice = read('src/components/ui/FeatureDisabledNotice.tsx');
-  const ids = ['hot_market', 'collectors', 'rebirth', 'session', 'tools_repair'] as const;
+  const ids = ['hot_market', 'collectors', 'session', 'tools_repair'] as const;
   for (const id of ids) assert.match(notice, new RegExp(`${id}: \\{ guard:`));
   assert.match(notice, /const m = DISABLED_MECHANICS\[id\]/);
   assert.match(notice, /disabledMechanicCopy\[language\]\.explanations\[id\]/);
@@ -4781,4 +4794,109 @@ test("книга v2: целочисленная цена, эскроу ввер�
   // Подмена залога: бэкенд не может показать одну сумму, а списать другую.
   assert.throws(() => validateTransactionIntent([buyIx(1_000_000n, 1_500_000_000n)],
     { ...terms, escrowLamports: "1506001" }, user), /escrow/);
+});
+
+test("перерождение: панель читает сеть, отвергает расхождение и подписывает полный сброс", async () => {
+  const { readRebirthStatus, surplusTotalAtoms, cooldownRemainingMs, verifySurplusOnChain } =
+    await import("../src/lib/rebirthReadings.ts");
+  const { validateTransactionIntent, CORE_PROGRAM_ID, REBIRTH_PROGRAM_ID, REBIRTH_DO_DISCRIMINATOR } =
+    await import("../src/lib/transactionIntent.ts");
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions.ts");
+  const { PublicKey } = await import("@solana/web3.js");
+
+  const mint = new PublicKey(new Uint8Array(32).fill(3)).toBase58();
+  // Ресурсный ATA игрока: адрес вычисляется, а не берётся «как похоже» —
+  // программа сброса принимает только канонический ATA (is_canonical_ata).
+  const ATA_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+  const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const ownerKey = new PublicKey(new Uint8Array(32).fill(9));
+  const token = PublicKey.findProgramAddressSync(
+    [ownerKey.toBytes(), TOKEN_PROGRAM.toBytes(), new PublicKey(mint).toBytes()], ATA_PROGRAM,
+  )[0].toBase58();
+  const raw = {
+    seasonId: 7, rebirth: {
+      configured: true, paused: false, authority: mint, treasury: token, costLamports: "100000000",
+      cooldownSeconds: 604800, maxRebirths: 10, bonusPerRebirthBps: 200, maxBonusBps: 2000,
+      generation: 2, rebirthCount: 1, permanentBonusBps: 200, lastRebirthTs: 100, nextAllowedAt: 604900,
+    },
+    progress: { player: true, villagers: 4, villagersAvailable: 2, hasTent: true, seasonPass: true, xp: 1500, premium: false },
+    surplus: { limit: 16, accounts: [{ mint, tokenAccount: token, amountAtoms: "1500000000" }], fitsInOneTransaction: true },
+    canRebirth: true, reasons: [], now: 200,
+  };
+  const status = readRebirthStatus(raw);
+  assert.ok(status, "полный ответ обязан разбираться");
+  assert.equal(status!.surplus.accounts.length, 1);
+  assert.equal(surplusTotalAtoms(status!.surplus.accounts).toString(), "1500000000");
+  assert.equal(cooldownRemainingMs(status!, Date.now()), (604900 - 200) * 1000);
+
+  // Любая неполнота — отказ, а не «покажем половину».
+  for (const broken of [
+    null, {}, { ...raw, seasonId: -1 }, { ...raw, rebirth: { ...raw.rebirth, costLamports: "0x10" } },
+    { ...raw, rebirth: { ...raw.rebirth, treasury: "not-an-address" } },
+    { ...raw, surplus: { ...raw.surplus, accounts: [{ mint, tokenAccount: token, amountAtoms: "0" }] } },
+    { ...raw, surplus: { ...raw.surplus, accounts: [{ mint, tokenAccount: token }] } },
+    { ...raw, surplus: { limit: 1, accounts: [{ mint, tokenAccount: token, amountAtoms: "1" }, { mint, tokenAccount: token, amountAtoms: "1" }], fitsInOneTransaction: true } },
+    { ...raw, reasons: [7] }, { ...raw, canRebirth: "yes" },
+  ]) {
+    assert.equal(readRebirthStatus(broken), null, JSON.stringify(broken).slice(0, 100));
+  }
+
+  // Независимая сверка склада: совпало / разошлось / сеть недоступна.
+  const account = (amount: bigint) => {
+    const data = new Uint8Array(165);
+    new DataView(data.buffer).setBigUint64(64, amount, true);
+    return { data };
+  };
+  const surplus = [{ mint, tokenAccount: token, amountAtoms: "1500000000" }];
+  const rpc = (value: bigint) => ({ getMultipleAccountsInfo: async () => [account(value)] });
+  assert.deepEqual(await verifySurplusOnChain(rpc(1_500_000_000n), surplus),
+    { kind: "confirmed", totalAtoms: "1500000000" });
+  assert.deepEqual(await verifySurplusOnChain(rpc(1_400_000_000n), surplus),
+    { kind: "mismatch", mint, expected: "1500000000", actual: "1400000000" });
+  assert.deepEqual(await verifySurplusOnChain({ getMultipleAccountsInfo: async () => { throw new Error("rpc"); } }, surplus),
+    { kind: "unavailable" });
+
+  // Намерение: ровно две инструкции и те же аккаунты, что показаны игроку.
+  const user = new PublicKey(new Uint8Array(32).fill(9));
+  const SYSTEM = new PublicKey("11111111111111111111111111111111");
+  const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const pda = (seed: string, program = CORE_PROGRAM_ID, ...parts: Uint8Array[]) =>
+    PublicKey.findProgramAddressSync([new TextEncoder().encode(seed), ...parts], new PublicKey(program))[0];
+  const u32 = (value: number) => { const bytes = new Uint8Array(4); new DataView(bytes.buffer).setUint32(0, value, true); return bytes; };
+  const season = pda("season", CORE_PROGRAM_ID, u32(7));
+  const seasonPass = pda("season_pass", CORE_PROGRAM_ID, user.toBytes(), u32(7));
+  const player = pda("player", CORE_PROGRAM_ID, user.toBytes());
+  const resetDisc = CORE_INSTRUCTIONS.find(i => i.name === "reset_for_rebirth")!.discriminator;
+  const operator = new PublicKey(new Uint8Array(32).fill(11));
+  const resetIx = {
+    programId: CORE_PROGRAM_ID,
+    keys: [pda("config"), operator, user, player, season, seasonPass, pda("material_mints"), TOKEN,
+      new PublicKey(mint), new PublicKey(token)],
+    data: new Uint8Array([...resetDisc, ...u32(7)]),
+  };
+  const doIx = {
+    programId: REBIRTH_PROGRAM_ID,
+    keys: [pda("rebirth_config", REBIRTH_PROGRAM_ID), operator, pda("rebirth_record", REBIRTH_PROGRAM_ID, user.toBytes()),
+      user, new PublicKey(token), SYSTEM],
+    data: new Uint8Array(REBIRTH_DO_DISCRIMINATOR),
+  };
+  const intent = { kind: "rebirth", user: user.toBase58(), seasonId: 7, costLamports: "100000000",
+    treasury: token, surplus: [{ mint, tokenAccount: token, amountAtoms: "1500000000" }] } as const;
+  validateTransactionIntent([resetIx, doIx], intent, user);
+  // Порядок, состав и полнота списка — часть намерения.
+  assert.throws(() => validateTransactionIntent([doIx, resetIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, doIx, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([{ ...resetIx, keys: resetIx.keys.slice(0, 8) }, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([{ ...resetIx, keys: [...resetIx.keys, resetIx.keys[8]] }, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, { ...doIx, keys: doIx.keys.slice(1) }], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, { ...doIx, data: new Uint8Array(9) }], intent, user));
+  assert.throws(() => validateTransactionIntent([{ ...resetIx, data: new Uint8Array([...resetDisc, ...u32(8)]) }, doIx], intent, user));
+  assert.throws(() => validateTransactionIntent([resetIx, doIx], { ...intent, user: operator.toBase58() }, user));
+  // Неканонический токен-аккаунт: сброс сжёг бы не тот ATA.
+  assert.throws(() => validateTransactionIntent([resetIx, doIx],
+    { ...intent, surplus: [{ mint, tokenAccount: mint, amountAtoms: "1500000000" }] }, user));
+  assert.throws(() => validateTransactionIntent([
+    { ...resetIx, keys: [...resetIx.keys.slice(0, 8), new PublicKey(mint), new PublicKey(mint)] }, doIx,
+  ], intent, user));
 });

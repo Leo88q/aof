@@ -221,6 +221,7 @@ const MAPPED_MUTATIONS: MappedProof[] = [
   { path: "/packs/reveal", subject: "packs_reveal", selector: "user" },
   { path: "/quests/quest/claim", subject: "quests_claim", selector: "user" },
   { path: "/quests/achievement/unlock", subject: "quests_achievement", selector: "user" },
+  { path: "/rebirth/do", subject: "rebirth_do", selector: "user" },
   { path: "/referral/bind", subject: "referral_bind", selector: "referred" },
   { path: "/referral/upgrade", subject: "referral_upgrade", selector: "user" },
   { path: "/reroll/fuse", subject: "reroll_fuse", selector: "user" },

@@ -105,7 +105,7 @@ LP-доля|Учёт участия в пуле, если пул существ�
 Проскальзывание|Разница между ожидаемой и фактической ценой исполнения.
 Пропуск эпохи|Отдельная возможность сезона; стоимость и преимущества узнавай из текущих данных.
 XP|Единицы прогресса в конкретной системе; не путай с наградой, готовой к получению.
-Перерождение|Задуманный сброс прогресса; сейчас отключён до безопасной реализации.
+Перерождение|Сброс прогресса сезона и сжигание излишков одной транзакцией; за каждый даёт постоянный бонус.
 Crank|Инструкция продвижения процесса; наличие имени не доказывает, что функция запущена.
 Локальная отметка|Запись о чтении сайта в браузере при согласии на хранение; не игровая награда.
 MIND|Название ресурса в исходном коде; подлинность mint и расход проверяй перед действием.`, 'ru'),
@@ -173,7 +173,7 @@ LP share|A record of pool participation if a pool exists; no fees or returns are
 Slippage|The difference between expected and execution prices.
 Season pass|A seasonal option; check its current cost and benefits in network data.
 XP|Progress units in a specific system, not a reward ready to claim.
-Rebirth|A proposed progress reset; currently disabled pending safe implementation.
+Rebirth|A season-progress reset that burns the surplus in one transaction and grants a permanent bonus.
 Crank|An instruction that advances a process; the name does not prove it is live.
 Local mark|A site-reading record kept in your browser with storage consent, not a game reward.
 MIND|A resource name in source code; verify its mint and costs before acting.`, 'en'),
@@ -241,7 +241,7 @@ Cota do pool|Registo de participação num pool, se existir; sem promessa de tax
 Deslizamento|Diferença entre o preço esperado e o preço de execução.
 Passe de época|Opção sazonal; confere preço e vantagens atuais nos dados da rede.
 XP|Unidades de progresso num sistema específico, não prémio pronto a receber.
-Renascimento|Reinício de progresso previsto; desativado até existir implementação segura.
+Renascimento|Reinício do progresso da temporada que queima o excedente numa transação e dá bônus permanente.
 Crank|Instrução que avança um processo; o nome não prova que esteja disponível.
 Marca local|Registo de leitura do site no navegador, com consentimento; não é prémio do jogo.
 MIND|Nome de recurso no código; confirma o mint e o custo antes de agir.`, 'pt'),
@@ -309,7 +309,7 @@ Parte de un pool|Registro de participación si existe el pool; no se prometen co
 Deslizamiento|Diferencia entre el precio previsto y el de ejecución.
 Pase de temporada|Opción estacional; consulta costes y ventajas actuales en la red.
 XP|Unidades de progreso de un sistema concreto, no recompensa lista para cobrar.
-Renacimiento|Reinicio de progreso previsto; desactivado hasta su implementación segura.
+Renacimiento|Reinicio del progreso de la temporada que quema el excedente en una transacción y otorga un bono permanente.
 Crank|Instrucción que avanza un proceso; el nombre no demuestra que funcione.
 Marca local|Registro de lectura en el navegador con consentimiento; no es premio del juego.
 MIND|Nombre de recurso en el código; verifica mint y costes antes de actuar.`, 'es'),
@@ -377,7 +377,7 @@ Phần góp vào quỹ|Ghi nhận tham gia quỹ nếu có; không hứa phí ha
 Trượt giá|Chênh lệch giữa giá dự kiến và giá thực hiện.
 Thẻ mùa giải|Lựa chọn theo mùa; xem phí và quyền lợi hiện tại trên mạng.
 XP|Đơn vị tiến trình trong từng hệ thống, không phải thưởng sẵn để nhận.
-Tái sinh|Việc đặt lại tiến trình theo kế hoạch; hiện đã tắt chờ triển khai an toàn.
+Tái sinh|Đặt lại tiến trình mùa và đốt phần dư trong một giao dịch; mỗi lần cho một thưởng vĩnh viễn.
 Crank|Lệnh đẩy tiến trình; tên lệnh không chứng minh tính năng đang chạy.
 Dấu đọc cục bộ|Ghi nhận việc đọc trang trong trình duyệt khi đồng ý lưu trữ; không phải thưởng game.
 MIND|Tên tài nguyên trong mã nguồn; kiểm tra mint và chi phí trước khi hành động.`, 'vi'),
@@ -445,7 +445,7 @@ Porsi kumpulan|Catatan bagian dalam pool jika ada; tidak ada janji biaya atau ke
 Slippage|Selisih antara harga perkiraan dan harga eksekusi.
 Pas musim|Pilihan musiman; periksa biaya dan manfaat terbaru pada data jaringan.
 XP|Unit kemajuan dalam sistem tertentu, bukan hadiah siap diklaim.
-Kelahiran kembali|Rencana pengaturan ulang progres; saat ini dimatikan hingga aman.
+Kelahiran kembali|Reset kemajuan musim yang membakar kelebihan dalam satu transaksi dan memberi bonus permanen.
 Crank|Instruksi pemrosesan; namanya tidak membuktikan fitur telah aktif.
 Tanda lokal|Catatan membaca situs di browser dengan izin penyimpanan; bukan hadiah game.
 MIND|Nama sumber daya di kode; periksa mint dan biaya sebelum bertindak.`, 'id'),
@@ -513,7 +513,7 @@ Bahagi sa pool|Talaan ng paglahok sa pool kung mayroon; walang pangakong bayarin
 Pagdulas ng presyo|Agwat ng inaasahang presyo at presyong naipatupad.
 Pase sa panahon|Pana-panahong pagpipilian; tingnan sa network ang bagong gastos at benepisyo.
 XP|Yunit ng pag-unlad sa isang sistema, hindi gantimpalang maaari nang kunin.
-Muling pagsilang|Iminungkahing pag-reset ng progreso; nakasara hanggang ligtas itong magawa.
+Muling pagsilang|Reset ng progreso ng panahon na nagsusunog ng sobra sa isang transaksyon at nagbibigay ng permanenteng bonus.
 Crank|Instruksyong nagpapatuloy ng proseso; hindi patunay ng aktibong feature ang pangalan.
 Lokal na marka|Tala ng pagbabasa sa browser kapag pinayagan ang imbakan; hindi gantimpala sa laro.
 MIND|Pangalan ng yaman sa code; suriin ang mint at gastos bago kumilos.`, 'fil'),
