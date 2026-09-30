@@ -798,12 +798,14 @@ describe("aof-core: security & core flows", () => {
     }).signers([buyer]).rpc();
     expect((await program.account.resourceOrderV2.fetch(dustOrder)).escrowLamports.toString()).to.equal("3");
     const buyerBefore = await provider.connection.getBalance(buyer.publicKey);
+    const dustRent = await provider.connection.getBalance(dustOrder);
     await program.methods.cancelBuyOrderV2().accounts({
       config: configPda, maker: buyer.publicKey, mint: stoneMint, order: dustOrder,
     }).signers([buyer]).rpc();
     expect(await provider.connection.getAccountInfo(dustOrder)).to.equal(null);
-    // close = maker возвращает и rent, и остаток эскроу: сетка покупателя ровно нулевая.
-    expect(await provider.connection.getBalance(buyer.publicKey)).to.equal(buyerBefore);
+    // close = maker возвращает и rent, и остаток эскроу ровно один раз: игрок
+    // не теряет депозит и не получает лишнего (комиссию платит провайдер).
+    expect(await provider.connection.getBalance(buyer.publicKey) - buyerBefore).to.equal(dustRent + 3);
 
     // Нулевая цена и нулевой объём не создают заявку вовсе (ZeroAmount).
     const zeroOrder = pda([B("resource_order_v2"), buyer.publicKey.toBuffer(), foodMint.toBuffer()]);
@@ -850,7 +852,7 @@ describe("aof-core: security & core flows", () => {
     expect(await provider.connection.getAccountInfo(sellOrder)).to.equal(null);
     expect(await provider.connection.getAccountInfo(sellVault)).to.equal(null);
     expect(order.escrowLamports.toString()).to.equal("0");
-    expect(await balance(sellerWood)).to.be.greaterThan(new BN(0));
+    expect((await balance(sellerWood)).toNumber()).to.be.greaterThan(0);
   });
 
   // [F-06] Paid randomness mechanics commit through Switchboard On-Demand. With
