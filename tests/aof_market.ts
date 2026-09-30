@@ -25,7 +25,7 @@ import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import {
   createMint, mintTo, getAccount, getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { expect } from "chai";
 import fs from "fs";
@@ -106,13 +106,44 @@ describe("aof-market: горячий рынок покупает и продаё
     const info = await connection.getAccountInfo(address, "confirmed");
     if (!info) {
       await waitForTokenMint(mint);
-      const ix = createAssociatedTokenAccountInstruction(payer.publicKey, address, owner, mint);
-      // Use AnchorProvider's blockhash/confirmation path, as the established
-      // core and extended validator suites do.  The instruction payer still
-      // signs and funds the ATA; the provider wallet only pays the tx fee.
-      await provider.sendAndConfirm(new anchor.web3.Transaction().add(ix), [payer], {
-        commitment: "confirmed",
-      });
+      const ix = createAssociatedTokenAccountIdempotentInstruction(
+        payer.publicKey,
+        address,
+        owner,
+        mint,
+      );
+      // This suite starts after a deliberately long (~5 minute) time-warping
+      // test.  AnchorProvider may still hold a cached blockhash from before the
+      // warp, so build and confirm against one explicit lifetime.  The ATA
+      // instruction is idempotent, which makes a retry safe if confirmation is
+      // lost at the blockhash boundary.
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const lifetime = await connection.getLatestBlockhash("confirmed");
+        const tx = new anchor.web3.Transaction().add(ix);
+        tx.feePayer = payer.publicKey;
+        tx.recentBlockhash = lifetime.blockhash;
+        tx.sign(payer);
+        try {
+          const signature = await connection.sendRawTransaction(tx.serialize(), {
+            preflightCommitment: "confirmed",
+          });
+          const confirmation = await connection.confirmTransaction(
+            { signature, ...lifetime },
+            "confirmed",
+          );
+          if (confirmation.value.err) {
+            throw new Error(`ATA transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+          }
+          return address;
+        } catch (error) {
+          lastError = error;
+          if (!/blockhash\s*not\s*found|block height exceeded/i.test(String((error as any)?.message ?? error))) {
+            throw error;
+          }
+        }
+      }
+      throw lastError;
     }
     return address;
   }
