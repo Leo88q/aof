@@ -919,6 +919,14 @@ jobs:
             [ "$status" -eq 0 ] || exit "$status"
           done
 
+      - name: Program id consistency (declare_id! / Anchor.toml / registry / IDL / clients)
+        # Здесь дерево ещё не тронуто (ключи раннера создаются только в job
+        # «Anchor build»), поэтому гейт проверяет именно то, что лежит в репозитории:
+        # один и тот же адрес в declare_id!, Anchor.toml, реестре, IDL, watchtower
+        # и клиентских allowlist'ах, и никаких старых адресов в коде.
+        working-directory: .
+        run: node scripts/rotate-program-ids.mjs --check
+
       - name: Self-test - security invariants
         run: |
           set -uo pipefail

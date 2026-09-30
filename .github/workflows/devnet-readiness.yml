@@ -56,6 +56,13 @@ jobs:
         run: |
           set -uo pipefail
           python3 ../scripts/devnet-program-probe.py 2>&1 | tee /tmp/programs.log
+      - name: Program id consistency (declare_id! / Anchor.toml / registry / IDL / clients)
+        # Адрес программы — это один base58 в семи местах. Если он разойдётся,
+        # игра молча зовёт программу, которой в сети нет. Гейт читает реестр как
+        # источник истины и падает на любом расхождении; историю (прошлые адреса
+        # после смены) он проверяет отдельно, чтобы старый адрес не вернулся.
+        working-directory: .
+        run: node scripts/rotate-program-ids.mjs --check
       - name: Collect the report
         if: always()
         env:

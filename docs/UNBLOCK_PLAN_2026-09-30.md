@@ -26,13 +26,46 @@
 нельзя, причина неизвестна». Исправлено во всех пяти файлах, добавлен страж в
 `tests/readiness`, который теперь валит сборку на такой опечатке.
 
-### 0.1 Что нужно сделать: одна команда
+### 0.1 Ключей программ нет — адрес объявлен, но недостижим
+
+Создать программу по адресу можно **только ключом этого адреса**: подписывает
+деплой сам аккаунт программы. Ключей `aof_core`, `aof_market` и
+`aof_session_keys` в репозитории нет (`.gitignore` исключает `keys/` и
+`target/deploy/*.json`) — и именно этих трёх программ нет и в сети. Значит
+`scripts/deploy-devnet.sh` остановится с честным «нет ключа программы», и
+единственный выход — объявить новые адреса и переписать их **одной командой** во
+всех местах сразу:
+
+```sh
+bash scripts/dev-local.sh keys                                        # показать: адрес, есть ли ключ
+PROGRAMS=aof_core,aof_market,aof_session_keys \
+  bash scripts/dev-local.sh keys --apply                              # сгенерировать ключи и переписать всё
+```
+
+Переписываются `declare_id!`, `Anchor.toml` (localnet/devnet/mainnet), реестр,
+IDL (JSON и TS), `watchtower/addresses.json`, клиентские allowlist'ы и константы
+транзакций, тесты и живые документы; датированные аудиты не переписываются — это
+записи о прошлом состоянии. Старые адреса реестр помнит в `previousAddresses`, и
+гейт `node scripts/rotate-program-ids.mjs --check` (в CI: job
+«Backend build + self-tests» и «Devnet readiness») падает, если старый адрес
+вернётся в код или разъедется хоть одно из мест. Ключи остаются на машине
+владельца и в git не попадают.
+
+`aof_quests`, `aof_rebirth` и `aof_liquidity` уже живут на девнете по своим
+адресам — их в список не включайте: смена адреса осиротила бы существующие
+аккаунты.
+
+### 0.2 Что нужно сделать: одна команда
 
 ```sh
 # на своей машине, где есть solana CLI, ключ оператора и SOL на девнете
 AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон
 AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
 ```
+
+Тот же путь целиком (обновление из GitHub → уборка → ключи → тесты → сборка →
+деплой → отчёт) одной командой: `bash scripts/dev-local.sh devnet`
+(с `--apply` — выполняет, без него — сухой прогон).
 
 `scripts/devnet-bringup.sh` делает шаги 1–7 ниже по порядку, идемпотентно и с
 предохранителями: отказывается работать не на devnet, без ключа, без SOL, без
@@ -220,7 +253,7 @@ PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=<бэкенд> ADMIN_TOKEN=<т�
 | Слой | Что сделано |
 | --- | --- |
 | `aof-core::reset_for_rebirth(season_id)` | обнуляет прогресс (`villagers`, `villagers_available`, `has_tent`) и `SeasonPass` (`xp`, `claimed_bitmap`, `premium`); сжигает ВЕСЬ остаток ресурсов, переданных парами `(mint, token)` в `remaining_accounts` |
-| проверки до CPI | чётность пар, лимит `REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS = 16`, канонический ресурсный минт (`is_resource_mint`), `token.owner == user`, `token.mint == mint`, канонический ATA (`is_canonical_ata`), `amount > 0` — любая ошибка роняет всю инструкцию, и тогда не сбрасывается ничего |
+| проверки до CPI | чётность пар, лимит `REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS = 16`, канонический ресурсный минт (`is_resource_mint`), адрес ATA, выведенный из (игрок, минт), владелец — классический Token program, точная длина SPL token account, официальная распаковка и сверка владельца/минта/остатка, `amount > 0` — любая ошибка роняет всю инструкцию, и тогда не сбрасывается ничего |
 | подписи | `reset_for_rebirth` подписывает `config.operator` (бэкенд видит полный список излишков), `do_rebirth` — `rebirth_config.authority`; «бонус без сброса» одной транзакцией невозможен |
 | `aof_rebirth::do_rebirth` | записывает поколение/счётчик/постоянный бонус в той же транзакции |
 | backend `POST /rebirth/do` | fail-closed: пауза, ключи authority/operator, сезон/игрок/пропуск, лимит, кулдаун, `surplus ≤ 16`; co-sign обеих инструкций, `409 REBIRTH_*`; `GET /rebirth/status/:user` ничего не досчитывает |

@@ -115,9 +115,11 @@ for entry in "${MISSING[@]}"; do
   [ -f "$so" ] || die "нет собранной программы: $so (соберите 'anchor build --no-idl' или возьмите артефакт из CI: Actions → Build program artifacts)"
   [ -f "$keypair" ] || die "нет ключа программы $keypair.
    Чтобы создать программу по адресу $address, нужен именно его keypair: аккаунт программы подписывает свой деплой.
-   Варианты: (1) взять файл с машины, где программа собиралась; (2) сменить адрес — тогда его нужно
-   переписать сразу в declare_id!, Anchor.toml ([programs.*]), watchtower/addresses.json, src/idl/*.json,
-   aof_backend/src/config.ts и frontend/src/lib/*; после этого CI (AOF readiness) поймает расхождения."
+   Варианты: (1) взять файл с машины, где программа собиралась; (2) сменить адрес одной командой —
+   она сама создаст ключи и перепишет declare_id!, Anchor.toml, реестр, IDL, watchtower и клиентов,
+   а CI-гейт (AOF readiness → tests/readiness/program-ids.test.cjs) поймает любое расхождение:
+       PROGRAMS=$name bash scripts/dev-local.sh keys --apply
+   или напрямую: node scripts/rotate-program-ids.mjs --generate $name --apply"
   actual="$(solana address -k "$keypair" 2>/dev/null)" || die "ключ программы $keypair не читается"
   [ "$actual" = "$address" ] || die "ключ $keypair принадлежит адресу $actual, а объявлен $address — деплой в чужой адрес запрещён"
   verify_so_id "$so" "$address" || die "в собранной программе $so нет объявленного адреса $address.

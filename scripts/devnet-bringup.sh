@@ -21,6 +21,8 @@
 #   * AOF_DEPLOY_TARGET=devnet — mainnet этим скриптом не включается;
 #   * ключ оператора AUTHORITY_KEYPAIR (по умолчанию
 #     solana/keys/aof-authority-devnet.json) и ≥ MIN_SOL SOL на нём;
+#   * ключи программ target/deploy/<name>-keypair.json, чьи pubkey равны
+#     объявленным адресам (иначе см. §0.1: PROGRAMS=... scripts/dev-local.sh keys --apply);
 #   * solana CLI; для сборки — anchor; для шагов 5–7 — работающий backend
 #     (BACKEND_URL, ADMIN_TOKEN) в hot-режиме, потому что минты и тумблер добычи
 #     подписываются его ключом (AUTHORITY_SECRET_KEY);

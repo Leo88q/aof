@@ -11,10 +11,14 @@
 # Использование:
 #   bash scripts/dev-local.sh check     # ОДНОЙ КОМАНДОЙ: sync (свежие файлы и фото с GitHub) + install + test + build
 #   bash scripts/dev-local.sh sync      # git fetch + pull --ff-only + merge origin/main (+ git lfs pull, если есть)
+#   bash scripts/dev-local.sh clean     # уборка: target/, dist/, .anchor, кэши сборки (CLEAN_DEEP=1 — ещё и node_modules)
+#   bash scripts/dev-local.sh keys      # ключи программ: показать адреса и переписать их везде (--apply; PROGRAMS=...)
 #   bash scripts/dev-local.sh install   # npm ci во frontend/ и aof_backend/
 #   bash scripts/dev-local.sh test      # тесты без валидатора: frontend + readiness + os + backend self-tests
 #   bash scripts/dev-local.sh build     # сборка: frontend (tsc + vite build), backend (prisma generate + tsc)
-#   bash scripts/dev-local.sh up        # поднять backend :8080 и frontend :3000 (Ctrl+C гасит оба)
+#   bash scripts/dev-local.sh up        # поднять backend :8080 и frontend :3000 (Ctrl+C гасит оба) — тестовый запуск
+#   bash scripts/dev-local.sh devnet    # всё до девнета: keys → install → test → build(anchor) → deploy+включение → отчёт
+#                                       #   без --apply это безопасный сухой прогон; с --apply деплоит и включает
 #   bash scripts/dev-local.sh all       # check + up
 #
 # Переменные окружения:
@@ -25,6 +29,9 @@
 #   SKIP_FRONTEND=1  — только API
 #   WITH_ANCHOR=1    — в check/test/build добавить on-chain часть: cargo test + anchor build --no-idl + anchor test
 #                      (нужны Rust 1.89 / Agave 4.2.1 / Anchor 0.30.1, см. docs/BUILD_TROUBLESHOOTING.md)
+#   PROGRAMS=aof_core,aof_market,aof_session_keys — какие программы получают новые ключи в `keys`/`devnet`
+#   Without keys нельзя создать программу по объявленному адресу; смена адреса переписывает
+#   declare_id!, Anchor.toml, реестр, IDL, watchtower и клиентов одной командой (scripts/rotate-program-ids.mjs).
 
 set -euo pipefail
 
@@ -40,8 +47,13 @@ SKIP_SYNC="${SKIP_SYNC:-0}"
 SKIP_BACKEND="${SKIP_BACKEND:-0}"
 SKIP_FRONTEND="${SKIP_FRONTEND:-0}"
 WITH_ANCHOR="${WITH_ANCHOR:-0}"
-# Канонический program id aof_core (Anchor.toml / aof_backend/.env.example)
-PROGRAM_ID="${PROGRAM_ID:-HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq}"
+# Канонический program id aof_core читается из реестра, а не хранится копией:
+# после смены адресов (scripts/rotate-program-ids.mjs) копия молча уводит
+# backend на программу, которой в сети нет.
+# APPLY=1 — выполнять необратимые шаги (деплой на девнет). По умолчанию сухой прогон.
+APPLY=0
+for arg in "$@"; do [ "$arg" = "--apply" ] && APPLY=1; done
+PROGRAMS="${PROGRAMS:-}"
 
 log() { printf '\n\033[1;36m== %s ==\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m⚠️  %s\033[0m\n' "$*" >&2; }
@@ -53,6 +65,28 @@ need_node() {
   local major
   major="$(node -p 'Number(process.versions.node.split(".")[0])')"
   [ "$major" -ge 20 ] || die "Нужен Node >= 20, сейчас $(node --version)"
+}
+
+# Адрес программы из единственного источника истины — security/program-registry.json.
+registry_address() { # имя программы
+  local name=$1 value=""
+  value="$(node -e '
+    const fs=require("fs");
+    const r=JSON.parse(fs.readFileSync("security/program-registry.json","utf8"));
+    const p=r.programs.find(x=>x.name===process.argv[1]);
+    if(!p||!p.address) process.exit(1);
+    process.stdout.write(p.address);
+  ' "$name" 2>/dev/null || true)"
+  if [ -z "$value" ] && command -v python3 >/dev/null 2>&1; then
+    value="$(python3 -c '
+import json,sys
+r=json.load(open("security/program-registry.json"))
+p=next((x for x in r["programs"] if x["name"]==sys.argv[1]), None)
+print(p["address"] if p and p.get("address") else "", end="")
+' "$name" 2>/dev/null || true)"
+  fi
+  [ -n "$value" ] || die "в security/program-registry.json нет адреса для $name"
+  printf '%s' "$value"
 }
 
 file_sha() { node -e 'const c=require("crypto"),f=require("fs");console.log(c.createHash("sha256").update(f.readFileSync(process.argv[1])).digest("hex"))' "$1"; }
@@ -150,7 +184,7 @@ EXPOSE_ERROR_STACK=true
 CORS_ORIGIN=http://localhost:$FRONTEND_PORT,http://127.0.0.1:$FRONTEND_PORT
 
 RPC_URL=$RPC_URL
-PROGRAM_ID=$PROGRAM_ID
+PROGRAM_ID=$(registry_address aof_core)
 # throwaway dev authority; pubkey: $authority_pub
 AUTHORITY_MODE=hot
 AUTHORITY_SECRET_KEY=$authority_secret
@@ -193,7 +227,10 @@ anchor_hint() {
 }
 
 cmd_anchor_test() {
-  anchor_available || die "WITH_ANCHOR=1, но anchor/cargo не найдены (см. docs/BUILD_TROUBLESHOOTING.md)"
+  if ! anchor_available; then
+    [ "$APPLY" = 1 ] && die "WITH_ANCHOR=1, но anchor/cargo не найдены (см. docs/BUILD_TROUBLESHOOTING.md)"
+    warn "anchor/cargo не найдены — on-chain тесты пропущены (сухой прогон)"; return 0
+  fi
   log "on-chain: cargo test --workspace --lib (unit-тесты программ, без валидатора)"
   (cd "$ROOT" && cargo test --workspace --lib)
   log "on-chain: anchor test --skip-build (поднимет solana-test-validator, ~2 мин)"
@@ -201,7 +238,10 @@ cmd_anchor_test() {
 }
 
 cmd_anchor_build() {
-  anchor_available || die "WITH_ANCHOR=1, но anchor/cargo не найдены (см. docs/BUILD_TROUBLESHOOTING.md)"
+  if ! anchor_available; then
+    [ "$APPLY" = 1 ] && die "WITH_ANCHOR=1, но anchor/cargo не найдены (см. docs/BUILD_TROUBLESHOOTING.md)"
+    warn "anchor/cargo не найдены — on-chain сборка пропущена (сухой прогон)"; return 0
+  fi
   log "on-chain: bash scripts/build-local.sh (anchor build --no-idl + seed IDL)"
   (cd "$ROOT" && bash scripts/build-local.sh)
 }
@@ -375,23 +415,129 @@ EOF
   done
 }
 
+# ---------------------------------------------------------------------------
+# Уборка. Ключи (solana/keys, target/deploy/*-keypair.json) и .env не трогаем:
+# их потеря — это потеря возможности задеплоить и поднять backend.
+# ---------------------------------------------------------------------------
+cmd_clean() {
+  log "Уборка артефактов сборки"
+  local targets=(
+    "$ROOT/target" "$ROOT/.anchor" "$ROOT/test-ledger"
+    "$FE/dist" "$FE/dist-storybook" "$BE/dist" "$ROOT/src/os/dist"
+  )
+  local t
+  for t in "${targets[@]}"; do
+    [ -e "$t" ] || continue
+    rm -rf "$t"
+    echo "  удалено: ${t#$ROOT/}"
+  done
+  find "$ROOT" -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete 2>/dev/null || true
+  find "$ROOT" -name 'npm-debug.log*' -maxdepth 3 -delete 2>/dev/null || true
+  if [ "${CLEAN_DEEP:-0}" = "1" ]; then
+    log "CLEAN_DEEP=1 — удаляю node_modules (следующий install поставит заново)"
+    rm -rf "$FE/node_modules" "$BE/node_modules" "$ROOT/node_modules"
+    [ -L "$ROOT/watchtower/node_modules" ] && rm -f "$ROOT/watchtower/node_modules"
+  fi
+  log "Готово. Ключи программ и .env на месте:"
+  ls -1 "$ROOT/solana/keys" 2>/dev/null | sed 's/^/  solana\/keys\//' || true
+  ls -1 "$ROOT/target/deploy"/*-keypair.json 2>/dev/null | sed "s|$ROOT/|  |" || echo "  (ключей программ пока нет: bash scripts/dev-local.sh keys)"
+}
+
+# ---------------------------------------------------------------------------
+# Ключи программ. Без ключа программу по объявленному адресу создать нельзя,
+# поэтому смена адреса — это не «поправить строчку», а одна операция из
+# generator + перезаписи declare_id!/Anchor.toml/реестра/IDL/watchtower/клиентов.
+# ---------------------------------------------------------------------------
+cmd_keys() {
+  need_node
+  local rotate="$ROOT/scripts/rotate-program-ids.mjs"
+  [ -f "$rotate" ] || die "нет $rotate"
+  if [ "$APPLY" != "1" ]; then
+    log "Ключи программ: состояние (перезапись — с --apply)"
+    node "$rotate" --check || die "адреса расходятся; исправляется так: PROGRAMS=aof_core bash scripts/dev-local.sh keys --apply"
+    return 0
+  fi
+  [ -n "$PROGRAMS" ] || die "нужен список программ: PROGRAMS=aof_core,aof_market,aof_session_keys bash scripts/dev-local.sh keys --apply
+   Меняйте только те программы, которых в сети нет или чьи ключи потеряны: у уже задеплоенной программы адрес менять нельзя."
+  log "Ключи программ: генерирую отсутствующие и переписываю адреса — $PROGRAMS"
+  node "$rotate" --generate "$PROGRAMS" --apply || die "смена адресов не прошла (см. вывод выше)"
+  log "Адреса после смены:"
+  node "$rotate" --plan
+}
+
+# ---------------------------------------------------------------------------
+# Девнет одной командой: ключи -> install -> тесты -> сборка -> деплой+включение -> отчёт.
+# Без --apply ничего не меняет в сети (devnet-bringup.sh сам по умолчанию dry-run).
+# ---------------------------------------------------------------------------
+cmd_devnet() {
+  local started=$SECONDS
+  need_node
+  command -v git >/dev/null 2>&1 || die "git не найден"
+  [ "${AOF_DEPLOY_TARGET:-devnet}" = "devnet" ] || die "AOF_DEPLOY_TARGET=$AOF_DEPLOY_TARGET: этим путём деплоится только devnet"
+  if ! command -v solana >/dev/null 2>&1; then
+    # Сухой прогон должен показывать план и без установленного Solana CLI;
+    # отказ уместен только там, где без CLI действительно нельзя (--apply).
+    [ "$APPLY" = 1 ] && die "нет solana CLI — деплой без него невозможен (docs/BUILD_TROUBLESHOOTING.md)"
+    warn "нет solana CLI: шаг деплоя в сухом прогоне пропускаю (для --apply он обязателен)"
+    SKIP_DEPLOY=1
+  fi
+
+  if [ "${SKIP_SYNC:-0}" = "1" ]; then
+    warn "SKIP_SYNC=1 — GitHub не опрашиваю"
+  else
+    cmd_sync
+  fi
+  if [ "$APPLY" = "1" ] && [ -n "$PROGRAMS" ]; then
+    cmd_keys || die "ключи/адреса не в порядке — до деплоя это не «мелочь»"
+  elif [ "$APPLY" = "1" ]; then
+    node "$ROOT/scripts/rotate-program-ids.mjs" --check || die "адреса расходятся: сначала PROGRAMS=... bash scripts/dev-local.sh keys --apply"
+  fi
+  cmd_install
+  cmd_test
+  WITH_ANCHOR=1 cmd_build
+
+  if [ "${SKIP_DEPLOY:-0}" = "1" ]; then
+    warn "SKIP_DEPLOY=1 — деплой пропущен"
+  elif [ "$APPLY" = "1" ]; then
+    log "Девнет: деплой и включение (devnet-bringup.sh --apply)"
+    AOF_DEPLOY_TARGET=devnet RPC_URL="$RPC_URL" scripts/devnet-bringup.sh --apply \
+      || die "включение девнета не прошло — причина в выводе выше (скрипт fail-closed)"
+  else
+    log "Девнет: сухой прогон (ничего не деплоится и не включается)"
+    AOF_DEPLOY_TARGET=devnet RPC_URL="$RPC_URL" scripts/devnet-bringup.sh \
+      || die "сухой прогон нашёл проблему — исправьте до запуска с --apply"
+  fi
+
+  log "Итог за $((SECONDS - started)) c"
+  python3 "$ROOT/scripts/devnet-program-probe.py" "${RPC_URL}" || true
+  cat <<EOF
+  Дальше:
+    запуск игры и сайта локально : bash scripts/dev-local.sh up
+    повтор без сборки           : SKIP=build AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply
+EOF
+}
+
 cmd_all() {
   cmd_check
   cmd_up
 }
 
 usage() {
-  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  awk 'NR>1 && /^set -euo pipefail/ {exit} NR>1 {sub(/^# ?/, ""); print}' "${BASH_SOURCE[0]}"
 }
 
-case "${1:-}" in
+COMMAND="${1:-}"; shift || true
+case "$COMMAND" in
   check)   cmd_check ;;
   sync)    cmd_sync ;;
+  clean)   cmd_clean ;;
+  keys)    cmd_keys ;;
   install) cmd_install ;;
   test)    cmd_test ;;
   build)   cmd_build ;;
   up)      cmd_up ;;
+  devnet)  cmd_devnet ;;
   all)     cmd_all ;;
   -h|--help|help|"") usage ;;
-  *) die "неизвестная команда: $1 (check|sync|install|test|build|up|all)" ;;
+  *) die "неизвестная команда: $COMMAND (check|sync|clean|keys|install|test|build|up|devnet|all)" ;;
 esac
