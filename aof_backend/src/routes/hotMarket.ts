@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import {AUTHORITY_PUBKEY} from "../config";
+import {AUTHORITY_PUBKEY, PROGRAM_ID} from "../config";
 import { marketProgram } from "../provider";
-import { marketConfigPda, marketProgramDataPda, hotMarketPoolPda } from "../lib/pda";
+import { marketConfigPda, marketProgramDataPda, hotMarketPoolPda, toolPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
@@ -19,6 +19,25 @@ function currencyArg(value: unknown): { core: {} } | { gem: {} } {
 
 function currencyMint(config: any, currency: CurrencyName) {
   return currency === "gem" ? config.gemMint : config.coreMint;
+}
+
+
+/**
+ * Слиппедж-пара сделки обязательна. Пустая или нулевая граница превращает
+ * подписанную транзакцию в «согласен на любую цену пула», поэтому обе стороны
+ * горячего рынка подписывают потолок (покупка) или минимум (продажа).
+ */
+function requireQuote(value: unknown, field: string): void {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    const err: any = new Error(`${field} is required: the wallet must sign a price bound`);
+    err.status = 400;
+    throw err;
+  }
+  if (BigInt(String(value)) <= 0n) {
+    const err: any = new Error(`${field} must be greater than zero`);
+    err.status = 400;
+    throw err;
+  }
 }
 
 // Инициализация конфигурации рынка. Все параметры и адреса соответствуют
@@ -63,6 +82,7 @@ r.post("/pool/init", requireAdmin, async (req, res) => {
     const feeBps = Number(req.body.feeBps);
     const [config] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
+    const marketConfig: any = await (marketProgram.account as any).marketConfig.fetch(config);
 
     const ix = await (marketProgram.methods as any)
       .initPool(
@@ -81,37 +101,52 @@ r.post("/pool/init", requireAdmin, async (req, res) => {
         systemProgram: SystemProgram.programId,
       })
       .instruction();
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
+
+    // Двустороннему пулу нужны свои ATA обеих валют: сюда приходит цена покупки
+    // и отсюда платит продажа. Казна получает комиссию в свои ATA. Создаём
+    // идемпотентно тем же authority, который инициализирует пул.
+    const setup = [marketConfig.coreMint, marketConfig.gemMint].flatMap((mint: any) => [
+      createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, getAssociatedTokenAddressSync(mint, pool, true), pool, mint),
+      createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, getAssociatedTokenAddressSync(mint, marketConfig.treasury), marketConfig.treasury, mint),
+    ]);
+
+    const sig = await authorityOnly([...setup, ix]);
+    res.json({ sig, poolCurrencyAta: getAssociatedTokenAddressSync(marketConfig.coreMint, pool, true).toBase58() });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// Trading stays fail-closed until the on-chain instruction verifies the
-// canonical ToolData and synchronizes its owner with the transferred NFT.
-r.post("/buy", (_req, res) => {
-  res.status(503).json({ error: "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER" });
-});
-
-/*
-// Покупка инструмента из фактически пополненного pool_tool ATA.
+// Покупка инструмента из инвентаря пула. aof_market проверяет канонический
+// ToolData (PDA [tool, mint] программы aof_core) и переводит NFT вместе с
+// владением одной CPI в aof_core::transfer_tool — купленный инструмент сразу
+// можно майнить и ремонтировать. Цену считает программа: покупатель подписывает
+// только потолок maxPrice.
 r.post("/buy", requireCircuitOpen, requireWalletLimits("hotmarket_buy"), requireIdempotency, async (req, res) => {
   try {
     const buyer = pk(req.body.buyer);
     const rarity = Number(req.body.rarity);
     const currency = (req.body.currency === "gem" ? "gem" : "core") as CurrencyName;
     const newToolMint = pk(req.body.newToolMint || req.body.toolMint);
+    // Потолок цены обязателен: без него кошелёк подписал бы любую цену пула.
+    requireQuote(req.body.maxPrice ?? req.body.priceSnapshot, "maxPrice");
     const maxPrice = new BN(req.body.maxPrice ?? req.body.priceSnapshot);
     const [configAddress] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
     const config: any = await (marketProgram.account as any).marketConfig.fetch(configAddress);
     const mint = currencyMint(config, currency);
-    const treasury = config.treasury;
     const buyerCurrency = getAssociatedTokenAddressSync(mint, buyer);
-    const treasuryCurrency = getAssociatedTokenAddressSync(mint, treasury);
+    const treasuryCurrency = getAssociatedTokenAddressSync(mint, config.treasury);
+    const poolCurrency = getAssociatedTokenAddressSync(mint, pool, true);
     const poolTool = getAssociatedTokenAddressSync(newToolMint, pool, true);
     const buyerTool = getAssociatedTokenAddressSync(newToolMint, buyer);
+    const [toolData] = toolPda(newToolMint);
+
+    // Покупатель получает инструмент в свой ATA: создаём его идемпотентно, платит
+    // покупатель (он и так подписывает транзакцию).
+    const createBuyerToolAta = createAssociatedTokenAccountIdempotentInstruction(
+      buyer, buyerTool, buyer, newToolMint,
+    );
 
     const ix = await (marketProgram.methods as any)
       .hotMarketBuy(rarity, currencyArg(currency), maxPrice)
@@ -119,53 +154,58 @@ r.post("/buy", requireCircuitOpen, requireWalletLimits("hotmarket_buy"), require
         config: configAddress,
         buyer,
         pool,
-        treasury,
+        treasury: config.treasury,
         currencyMint: mint,
         buyerCurrency,
         treasuryCurrency,
         newToolMint,
         poolTool,
         buyerTool,
+        poolCurrency,
+        toolData,
+        coreProgram: PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
-    const tx = await coSign([ix], buyer);
-    res.json({ tx });
+    const tx = await coSign([createBuyerToolAta, ix], buyer);
+    res.json({ tx, priceCeiling: maxPrice.toString() });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
-*/
 
-// Selling is also disabled: the current program accepts a mint without
-// proving that it is the canonical ToolData for the selected rarity.
-r.post("/sell", (_req, res) => {
-  res.status(503).json({ error: "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER" });
-});
-
-/*
-// Продажа инструмента пулу. The instruction now transfers the NFT into the
-// pool before paying the seller; it cannot be used as a free-token faucet.
+// Продажа инструмента в пул. Инструмент обязан быть каноническим ToolData
+// самого продавца, NFT уходит в инвентарь пула, выплата — из резерва пула.
+// Продавец подписывает минимум цены, чтобы пул не заплатил меньше.
 r.post("/sell", requireCircuitOpen, requireWalletLimits("hotmarket_sell"), requireIdempotency, async (req, res) => {
   try {
     const seller = pk(req.body.seller);
     const rarity = Number(req.body.rarity);
     const currency = (req.body.currency === "gem" ? "gem" : "core") as CurrencyName;
     const soldToolMint = pk(req.body.soldToolMint || req.body.toolMint);
-    const minPrice = new BN(req.body.minPrice || "0");
-    const [config] = marketConfigPda();
+    requireQuote(req.body.minPrice, "minPrice");
+    const minPrice = new BN(req.body.minPrice);
+    const [configAddress] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
-    const configData: any = await (marketProgram.account as any).marketConfig.fetch(config);
-    const mint = currencyMint(configData, currency);
+    const config: any = await (marketProgram.account as any).marketConfig.fetch(configAddress);
+    const mint = currencyMint(config, currency);
     const sellerCurrency = getAssociatedTokenAddressSync(mint, seller);
     const poolCurrency = getAssociatedTokenAddressSync(mint, pool, true);
+    const treasuryCurrency = getAssociatedTokenAddressSync(mint, config.treasury);
     const sellerTool = getAssociatedTokenAddressSync(soldToolMint, seller);
     const poolTool = getAssociatedTokenAddressSync(soldToolMint, pool, true);
+    const [toolData] = toolPda(soldToolMint);
+
+    // Пулу нужен ATA проданного инструмента: создаём идемпотентно, ренту платит
+    // продавец (владелец ATA — PDA пула, поэтому owner off-curve разрешён).
+    const createPoolToolAta = createAssociatedTokenAccountIdempotentInstruction(
+      seller, poolTool, pool, soldToolMint,
+    );
 
     const ix = await (marketProgram.methods as any)
       .hotMarketSellIntoQueue(rarity, currencyArg(currency), minPrice)
       .accounts({
-        config,
+        config: configAddress,
         seller,
         pool,
         currencyMint: mint,
@@ -174,16 +214,18 @@ r.post("/sell", requireCircuitOpen, requireWalletLimits("hotmarket_sell"), requi
         soldToolMint,
         sellerTool,
         poolTool,
+        treasuryCurrency,
+        toolData,
+        coreProgram: PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
-    const tx = await coSign([ix], seller);
-    res.json({ tx });
+    const tx = await coSign([createPoolToolAta, ix], seller);
+    res.json({ tx, priceFloor: minPrice.toString() });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
-*/
 
 // Пропуск текущего окна (не transfer, только permissionless event).
 r.post("/skip", requireCircuitOpen, requireWalletLimits("hot_market_skip"), requireIdempotency, async (req, res) => {

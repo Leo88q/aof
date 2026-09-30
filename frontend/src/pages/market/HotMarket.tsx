@@ -1,29 +1,304 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { api } from "../../lib/api";
+import { useWalletStore } from "../../store/walletStore";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { marketDetailCopy } from "../../i18n/marketDetailCopy";
-import { Card } from "../../components/ui/Card";
+import { hotMarketCopy } from "../../i18n/hotMarketCopy";
+import { toolName, toolsCopy } from "../../i18n/toolsCopy";
+import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
+import { handleTxResponse } from "../../lib/txFlow";
+import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
-import { FeatureDisabledNotice } from "../../components/ui/FeatureDisabledNotice";
+import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { Card } from "../../components/ui/Card";
+import { Panel, Readout, Readouts, Row, Rows, Note } from "../../ui/forge/kit";
+import { RARITY_COLOR, RARITY_LABEL, rarityKey, shortAddr, timeLeftStr } from "../../lib/marketUtils";
+import {
+  estimateHotPrice,
+  formatUnits,
+  parseUnits,
+  readHotInventory,
+  readHotPool,
+  readHotSellableTools,
+  type HotInventoryItem,
+  type HotPool,
+  type HotTool,
+} from "../../lib/hotMarketReadings";
+
+const POOL_RARITIES = ["common", "uncommon", "rare", "epic"] as const;
 
 /**
- * The previous screen displayed synthetic candles and a synthetic queue while
- * the deployed aof-market program has no queue/indexer for those values. Keep
- * the route discoverable, but fail closed instead of presenting fake prices or
- * accepting a trade against an unknown tool inventory.
+ * Событийный рынок. Панель показывает только то, что читается из сети:
+ * параметры пула (`/query/hot-market-pool/:rarity`) и его инвентарь
+ * (`/query/hot-market-inventory/:rarity`, бэкенд оставляет лишь канонические
+ * ToolData с владельцем-пулом). Цена в поле — ориентир по формуле пула; саму
+ * цену считает программа, поэтому покупатель подписывает потолок, а продавец —
+ * минимум, и без этой границы транзакция не собирается.
  */
 export function HotMarket() {
   const { language } = useLocale();
   const copy = marketDetailCopy[language];
+  const t = hotMarketCopy[language];
+  const { address } = useWalletStore();
+
+  const [rarity, setRarity] = useState(0);
+  const [pool, setPool] = useState<HotPool | null>(null);
+  const [poolState, setPoolState] = useState<"loading" | "ready" | "closed">("loading");
+  const [inventory, setInventory] = useState<HotInventoryItem[] | null>(null);
+  const [owned, setOwned] = useState<HotTool[] | null>(null);
+  const [currency, setCurrency] = useState<"core" | "gem">("core");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+  const request = useRef(0);
+
+  const decimals = pool ? (currency === "gem" ? pool.gemDecimals : pool.coreDecimals) : null;
+  const base = pool ? (currency === "gem" ? pool.targetPriceGem : pool.targetPriceCore) : 0;
+  const quote = pool ? formatUnits(estimateHotPrice(pool, base, Date.now()), decimals) : "";
+
+  const load = useCallback(async () => {
+    const ticket = ++request.current;
+    setPoolState("loading");
+    setInventory(null);
+    try {
+      const raw = await api.query.hotMarketPool(rarity);
+      if (ticket !== request.current) return;
+      const parsed = readHotPool(raw);
+      setPool(parsed);
+      setPoolState(parsed ? "ready" : "closed");
+    } catch (error) {
+      if (ticket !== request.current) return;
+      // Пул не инициализирован (или сеть не ответила) — панель честно закрыта,
+      // вместо выдуманных цен.
+      setPool(null);
+      setPoolState("closed");
+      setFlash(String((error as Error)?.message ?? ""));
+    }
+    try {
+      const raw = await api.query.hotMarketInventory(rarity);
+      if (ticket !== request.current) return;
+      setInventory(readHotInventory(raw));
+    } catch {
+      if (ticket !== request.current) return;
+      setInventory(null);
+    }
+  }, [rarity]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!address) { setOwned(null); return; }
+    void api.query.myTools(address)
+      .then((raw: unknown) => { if (alive) setOwned(readHotSellableTools(raw, address)); })
+      .catch(() => { if (alive) setOwned(null); });
+    return () => { alive = false; };
+  }, [address]);
+
+  useEffect(() => {
+    if (quote && !maxPrice && !minPrice) { setMaxPrice(quote); setMinPrice(quote); }
+  }, [quote, maxPrice, minPrice]);
+
+  async function buy(item: HotInventoryItem) {
+    if (busy) return;
+    if (!address) { setFlash(t.connect); return; }
+    const bound = parseUnits(maxPrice, decimals);
+    if (!bound) { setFlash(t.needQuote); return; }
+    setBusy(true);
+    setFlash(t.preparing);
+    try {
+      const response = await api.hotMarket.buy({
+        buyer: address, rarity, currency, newToolMint: item.mint, maxPrice: bound,
+      });
+      const result = await handleTxResponse(response);
+      setFlash(result.success ? `✓ ${result.signature?.slice(0, 10) ?? ""}` : result.error ?? walletRuntimeCopy[language].unconfirmedResponse);
+      if (result.success) await load();
+    } catch (error) {
+      setFlash(actionErrorFeedback(error, language, walletRuntimeCopy[language].unconfirmedResponse));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sell() {
+    if (busy) return;
+    if (!address) { setFlash(t.connect); return; }
+    if (!selected) { setFlash(t.chooseTool); return; }
+    const bound = parseUnits(minPrice, decimals);
+    if (!bound) { setFlash(t.needQuote); return; }
+    setBusy(true);
+    setFlash(t.preparing);
+    try {
+      const response = await api.hotMarket.sell({
+        seller: address, rarity, currency, soldToolMint: selected, minPrice: bound,
+      });
+      const result = await handleTxResponse(response);
+      setFlash(result.success ? `✓ ${result.signature?.slice(0, 10) ?? ""}` : result.error ?? walletRuntimeCopy[language].unconfirmedResponse);
+      if (result.success) { setSelected(null); await load(); }
+    } catch (error) {
+      setFlash(actionErrorFeedback(error, language, walletRuntimeCopy[language].unconfirmedResponse));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const currencyLabel = currency === "gem" ? "GEM" : "CORE";
+  const hotUntil = pool?.hotWindowEndTs && pool.hotWindowEndTs * 1000 > Date.now()
+    ? `${timeLeftStr(pool.hotWindowEndTs, language)}`
+    : t.hotWindowOff;
+
   return (
     <div lang={language} className="p-4 pt-6 pb-32 min-w-0">
-      <h1 className="text-2xl font-bold text-parchment mb-4 flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.marketHot} alt="" className="w-7 h-7" /> {copy.hotTitle}</h1>
-      {/* Единый источник правды по отключённым механикам — FeatureDisabledNotice. */}
-      <FeatureDisabledNotice id="hot_market" />
+      <h1 className="text-2xl font-bold text-parchment mb-4 flex items-center gap-2">
+        <ResourceGlyph icon={UI_ICONS.marketHot} alt="" className="w-7 h-7" /> {copy.hotTitle}
+      </h1>
       <Card className="mt-3">
-        <p className="text-straw text-sm leading-relaxed">
-          {copy.hotExplanation}
-        </p>
+        <p className="text-straw text-sm leading-relaxed">{copy.hotExplanation}</p>
       </Card>
+
+      <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label={t.inventory}>
+        {POOL_RARITIES.map((key, index) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={rarity === index}
+            onClick={() => setRarity(index)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${rarity === index
+              ? "bg-wheat-600/20 border-wheat-600/50 text-parchment"
+              : "bg-soil-850 border-straw/15 text-straw hover:text-parchment"}`}
+          >
+            <span className={RARITY_COLOR[key]}>{toolsCopy[language].collectionPage.rarities[index]}</span>
+          </button>
+        ))}
+      </div>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
+        <Panel device="sonar" title={t.poolTitle} sub={RARITY_LABEL[POOL_RARITIES[rarity]]} meta={`${t.basePrice} · ${currencyLabel}`}>
+          <div className="flex gap-2 mb-3">
+            {(["core", "gem"] as const).map((value) => (
+              <button
+                key={value}
+                onClick={() => { setCurrency(value); setMaxPrice(""); setMinPrice(""); }}
+                aria-pressed={currency === value}
+                className={`px-3 py-1 rounded-lg text-[11px] font-semibold border ${currency === value
+                  ? "bg-wheat-600/20 border-wheat-600/50 text-parchment"
+                  : "bg-soil-850 border-straw/15 text-straw"}`}
+              >
+                {value.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {poolState === "loading" && <Note quiet>{t.preparing}</Note>}
+          {poolState === "closed" && <NoticeMsg text={t.poolClosed} />}
+          {poolState === "ready" && pool && (
+            <Readouts>
+              <Readout label={`${t.basePrice} ${currencyLabel}`} value={formatUnits(base, decimals)} />
+              <Readout label={t.purchases} value={pool.purchasesInWindow} />
+              <Readout label={t.soldTotal} value={pool.soldSinceStart} />
+              <Readout label={t.fee} value={`${(pool.feeBps / 100).toFixed(2)} %`} />
+              <Readout label={t.hotWindow} value={hotUntil} />
+            </Readouts>
+          )}
+        </Panel>
+      </motion.div>
+
+      <Panel device="plain" className="mt-4" title={t.inventory} meta={poolState === "ready" ? `${quote} ${currencyLabel}` : undefined}>
+        {inventory === null && <NoticeMsg text={t.inventoryUnreadable} />}
+        {inventory !== null && inventory.length === 0 && <Note quiet>{t.inventoryEmpty}</Note>}
+        {inventory !== null && inventory.length > 0 && (
+          <Rows>
+            {inventory.map((item) => (
+              <Row
+                key={item.mint}
+                k={<span className="flex items-center gap-2 min-w-0">
+                  <span className={RARITY_COLOR[item.rarity ? rarityKey(item.rarity) : "common"]}>
+                    {toolName(language, item.toolType)}
+                  </span>
+                  <span className="text-[10px] text-straw/70">{shortAddr(item.mint)}</span>
+                </span>}
+                v={<span className="flex items-center gap-3">
+                  <span className="text-[11px] text-straw">{t.durability} {item.durability ?? "—"}</span>
+                  <button
+                    onClick={() => void buy(item)}
+                    disabled={busy || poolState !== "ready"}
+                    className="px-3 py-1 rounded-lg text-[11px] font-semibold bg-wheat-600/20 border border-wheat-600/40 text-parchment disabled:opacity-40"
+                  >
+                    {t.buy}
+                  </button>
+                </span>}
+              />
+            ))}
+          </Rows>
+        )}
+        <div className="mt-3">
+          <label className="block text-[11px] text-straw mb-1">{t.maxPrice} · {currencyLabel}</label>
+          <input
+            value={maxPrice}
+            onChange={(event) => setMaxPrice(event.target.value)}
+            inputMode="decimal"
+            className="w-40 bg-soil-850 border border-straw/20 rounded-lg px-3 py-1.5 text-sm text-parchment"
+          />
+        </div>
+      </Panel>
+
+      <Panel device="plate" className="mt-4" title={t.sellable}>
+        {!address && <NoticeMsg text={t.connect} />}
+        {address && owned === null && <NoticeMsg text={t.inventoryUnreadable} />}
+        {address && owned !== null && owned.length === 0 && <Note quiet>{t.noSellable}</Note>}
+        {address && owned !== null && owned.length > 0 && (
+          <>
+            <Rows>
+              {owned.map((item) => (
+                <Row
+                  key={item.mint}
+                  k={<span className="flex items-center gap-2 min-w-0">
+                    <span className={RARITY_COLOR[item.rarity ? rarityKey(item.rarity) : "common"]}>
+                      {toolName(language, item.toolType)}
+                    </span>
+                    <span className="text-[10px] text-straw/70">{shortAddr(item.mint)}</span>
+                  </span>}
+                  v={<button
+                    onClick={() => setSelected(item.mint === selected ? null : item.mint)}
+                    aria-pressed={selected === item.mint}
+                    className={`px-3 py-1 rounded-lg text-[11px] font-semibold border ${selected === item.mint
+                      ? "bg-wheat-600/30 border-wheat-600/60 text-parchment"
+                      : "bg-soil-850 border-straw/15 text-straw"}`}
+                  >
+                    {selected === item.mint ? "✓" : t.sell}
+                  </button>}
+                />
+              ))}
+            </Rows>
+            <div className="mt-3 flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="block text-[11px] text-straw mb-1">{t.minPrice} · {currencyLabel}</label>
+                <input
+                  value={minPrice}
+                  onChange={(event) => setMinPrice(event.target.value)}
+                  inputMode="decimal"
+                  className="w-40 bg-soil-850 border border-straw/20 rounded-lg px-3 py-1.5 text-sm text-parchment"
+                />
+              </div>
+              <button
+                onClick={() => void sell()}
+                disabled={busy || !selected || poolState !== "ready"}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-wheat-600/20 border border-wheat-600/40 text-parchment disabled:opacity-40"
+              >
+                {t.sell}
+              </button>
+            </div>
+          </>
+        )}
+      </Panel>
+
+      <div className="mt-4">
+        <Note quiet>{t.estimateNote}</Note>
+        {flash && <NoticeMsg className="mt-2" text={flash} />}
+      </div>
     </div>
   );
 }

@@ -267,10 +267,15 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
         try:
             pools = account_count(rpc, market, "HotMarketPool", call_fn=call_fn)
             configured = account_count(rpc, market, "MarketConfig", call_fn=call_fn)
-            row("Горячий рынок (пул)", "выключено" if not pools else "включено частично",
+            ready = bool(pools and configured)
+            row("Горячий рынок (пул)", "включено" if ready else "выключено",
                 f"MarketConfig: {configured}, пулов редкостей: {pools}; "
-                "в коде aof-market hot_market_buy/sell возвращают TradingDisabled",
-                "обмен идёт через листинги aof_core (уже включены); пул ждёт кросс-программной работы (§3.5)")
+                + ("hot_market_buy/hot_market_sell_into_queue принимают только канонический "
+                   "инструмент (PDA tool+mint) и меняют владение CPI aof_core::transfer_tool"
+                   if ready else "торговле нужен хотя бы один пул редкости"),
+                "" if ready else
+                "задеплоено; инициализируйте пул: POST /hot-market/pool/init "
+                "(и /hot-market/config/init, если MarketConfig = 0)")
         except Exception as exc:
             row("Горячий рынок (пул)", "нет данных", f"aof-market: {exc}")
     if session and not deployed.get("aof_session_keys"):

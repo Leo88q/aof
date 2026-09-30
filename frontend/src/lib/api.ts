@@ -258,6 +258,7 @@ export const api = {
     // [ФИКС Группы 1] Очередь хот-маркета: голова для покупки вместо хардкода
     hotMarketQueue: (rarity: number) => get(`/query/hot-market-queue/${rarity}`),
     hotMarketPool: (rarity: number) => get(`/query/hot-market-pool/${rarity}`),
+    hotMarketInventory: (rarity: number) => get(`/query/hot-market-inventory/${rarity}`),
   },
 
   // === Админ ===

@@ -133,16 +133,40 @@ assert.match(siteMechanics, /does not imply that any instruction is enabled on-c
 const appNotice = read("frontend/src/components/ui/FeatureDisabledNotice.tsx");
 const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
 const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
-  { id: "hot_market", route: "hotMarket.ts", code: /HOT_MARKET_DISABLED/, guard: ["programs/aof-market/src/lib.rs", /err!\(MarketError::TradingDisabled\)/] },
   { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /require!\(false, SkError::AtomicBindingRequired\)/] },
 ];
 for (const layer of disabledLayers) {
   assert.match(read(layer.guard[0]), layer.guard[1], `${layer.id}: on-chain guard missing`);
   assert.match(backendRoute(layer.route), layer.code, `${layer.id}: backend route is not fail-closed`);
 }
+// [AUDIT F-19] The event market left the fail-closed list: both sides build a
+// real instruction and ownership follows the NFT through aof_core::transfer_tool
+// (CPI from aof_market). The reverse invariant matters just as much - a live
+// button must not carry a "temporarily unavailable" notice, and a route that
+// still answers a disabled code must not pretend to be live.
+{
+  const hotRoute = backendRoute("hotMarket.ts");
+  const liveHotRoute = hotRoute.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(liveHotRoute, /hotMarketBuy\(/, "hot_market: the buy route does not build the instruction");
+  assert.match(liveHotRoute, /hotMarketSellIntoQueue\(/, "hot_market: the sell route does not build the instruction");
+  assert.match(liveHotRoute, /requireQuote\(/, "hot_market: both sides must sign a price bound");
+  assert.match(liveHotRoute, /createAssociatedTokenAccountIdempotentInstruction/,
+    "hot_market: the recipient/pool token account must be created idempotently");
+  assert.doesNotMatch(liveHotRoute, /HOT_MARKET_DISABLED/, "hot_market: the route still answers the placeholder");
+  const marketProgram = read("programs/aof-market/src/lib.rs");
+  assert.doesNotMatch(section(marketProgram, "pub fn hot_market_buy", "pub fn hot_market_skip"), /TradingDisabled/,
+    "hot_market: buy or sell is still behind the stub");
+  assert.match(marketProgram, /transfer_tool_cpi/, "hot_market: ownership must move through aof_core::transfer_tool");
+  assert.match(read("programs/aof-market/src/tools.rs"), /read_canonical_tool/,
+    "hot_market: a tool must be proven canonical through its ToolData before it is priced");
+  assert.match(read("aof-core/src/instructions/tool_transfer.rs"), /tool\.owner = recipient/,
+    "transfer_tool must rewrite the owner together with the NFT");
+  assert.doesNotMatch(appNotice, /^  hot_market: \{/m, "hot_market: the mechanic is live, the notice must be gone");
+}
+
 // Rebirth is no longer in DISABLED_MECHANICS: the atomic reset exists, so the
 // app must not warn about it (see the §3.4 block above).
-for (const id of ["hot_market", "collectors", "session"]) {
+for (const id of ["collectors", "session"]) {
   assert.match(appNotice, new RegExp(`^  ${id}: \\{`, "m"), `${id}: missing from DISABLED_MECHANICS in the app`);
 }
 // [F-06] Other VRF mechanics have pool commit builders, not just editorial links:

@@ -426,8 +426,10 @@ pub mod aof_market {
             )?;
         }
 
-        // 4. NFT + ToolData.owner одной инструкцией aof_core.
-        let bump = ctx.bumps.pool;
+        // 4. NFT + ToolData.owner одной инструкцией aof_core. Пул объявлен как
+        // `bump = pool.bump`, поэтому канонический bump лежит в самом аккаунте
+        // (Anchor не добавляет его в ctx.bumps для явно заданного bump).
+        let bump = ctx.accounts.pool.bump;
         let rarity_seed = [rarity];
         let seeds: &[&[u8]] = &[POOL_SEED, &rarity_seed, &[bump]];
         crate::tools::transfer_tool_cpi(
@@ -499,8 +501,9 @@ pub mod aof_market {
             None,
         )?;
 
-        // 4. Выплата продавцу и комиссия казне из резерва пула.
-        let bump = ctx.bumps.pool;
+        // 4. Выплата продавцу и комиссия казне из резерва пула. Тот же
+        // канонический bump, что и в покупке (см. HotMarketBuy).
+        let bump = ctx.accounts.pool.bump;
         let rarity_seed = [rarity];
         let seeds: &[&[u8]] = &[POOL_SEED, &rarity_seed, &[bump]];
         token::transfer(

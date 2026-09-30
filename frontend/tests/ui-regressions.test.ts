@@ -320,7 +320,6 @@ test("UI узнаёт реальные fail-closed коды бэкенда", () 
     "QUEST_PROGRESS_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
     "REPAIR_RESOURCES_NOT_CONFIGURED",
     "MINING_DISABLED_ONCHAIN",
-    "HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER",
     "ENERGY_SPEND_MUST_USE_CANONICAL_GAME_INSTRUCTION",
     "LEGACY_REWARD_REQUIRES_RECONCILIATION",
     "HTTP 503",
@@ -1427,7 +1426,7 @@ test("капсулы, флюиды и отключённые механики п
   const { marketDetailCopy } = await import("../src/i18n/marketDetailCopy.ts");
   const { disabledMechanicCopy } = await import("../src/i18n/disabledMechanicCopy.ts");
   const { humanizeVrfError } = await import("../src/lib/vrfErrors.ts");
-  const ids = ["hot_market", "collectors", "session", "tools_repair"];
+  const ids = ["collectors", "session", "tools_repair"];
   for (const language of ["ru", "en", "pt", "es", "vi", "id", "fil"] as const) {
     for (const field of ["title", "intro", "small", "medium", "big", "configError", "pendingError", "commitUnknown", "refunded"] as const) {
       assert.ok(packsCopy[language][field], `${language}: нет текста ${field} для капсул`);
@@ -2361,7 +2360,11 @@ test('страница рынка: все шесть форматов на се�
   assert.deepEqual([...marketVenueIds], ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotClosed']);
   const orderbook = code('../aof_backend/src/routes/orderbook.ts');
   for (const path of ['buy/place', 'sell/place', 'match']) assert.ok(orderbook.includes(`r.post('/${path}', legacyPaused)`), path);
-  assert.match(code('../aof_backend/src/routes/hotMarket.ts'), /HOT_MARKET_DISABLED_UNTIL_CANONICAL_TOOL_TRANSFER/);
+  const hotMarket = code('../aof_backend/src/routes/hotMarket.ts');
+  assert.match(hotMarket, /hotMarketBuy/, 'событийный рынок обязан строить каноническую покупку');
+  assert.match(hotMarket, /hotMarketSellIntoQueue/, 'событийный рынок обязан строить каноническую продажу');
+  assert.match(hotMarket, /requireQuote\(/, 'обе стороны подписывают границу цены');
+  assert.doesNotMatch(hotMarket, /HOT_MARKET_DISABLED/, 'механика больше не закрыта заглушкой');
   for (const lang of languages) {
     const copy = siteMarket[lang];
     assert.equal(copy.paragraphs.length, 2, lang);
@@ -3474,7 +3477,7 @@ test('laboratory and plot reuse translated resource and building names without d
 test('disabled mechanics keep canonical guard identifiers and translate all player copy', async () => {
   const { disabledMechanicCopy } = await import('../src/i18n/disabledMechanicCopy.ts');
   const notice = read('src/components/ui/FeatureDisabledNotice.tsx');
-  const ids = ['hot_market', 'collectors', 'session', 'tools_repair'] as const;
+  const ids = ['collectors', 'session', 'tools_repair'] as const;
   for (const id of ids) assert.match(notice, new RegExp(`${id}: \\{ guard:`));
   assert.match(notice, /const m = DISABLED_MECHANICS\[id\]/);
   assert.match(notice, /disabledMechanicCopy\[language\]\.explanations\[id\]/);
