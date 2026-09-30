@@ -882,6 +882,10 @@ jobs:
           # Runbook that flips Config.mining_enabled must refuse to do so
           # before the payout mints exist (offline, against a mock admin API).
           python3 scripts/test-enable-mining-devnet.py
+          # Deploy runbook: never mainnet, never a foreign program keypair, and
+          # never a .so whose declare_id! was rewritten (CI builds use
+          # throwaway ids, so those binaries must not reach devnet).
+          python3 scripts/test-deploy-devnet.py
 
       - name: Self-test - wallet proof
         run: |
