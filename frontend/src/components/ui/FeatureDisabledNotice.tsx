@@ -12,17 +12,6 @@ import { disabledMechanicCopy } from "../../i18n/disabledMechanicCopy";
  * (`aof_core::reset_for_rebirth` + `aof_rebirth::do_rebirth` одной
  * транзакцией), поэтому у механики своя панель, а не заглушка.
  *
- * [§3.4] Перерождение из этого списка убрано: полный сброс существует
- * (`aof_core::reset_for_rebirth` + `aof_rebirth::do_rebirth` одной
- * транзакцией), поэтому у механики своя панель, а не заглушка.
- *
- * [AUDIT F-16] Коллекционеры тоже убраны: on-chain `require!(false,
- * CollectorNotConfigured)` больше нет, `collector_stake` переводит NFT в vault
- * PDA и обновляет счётчики перка, а доступ решает allowlist оператора
- * (`POST /admin/config/collector-mint`, шаг 8 devnet-bringup). Панель
- * `components/CollectorsPanel.tsx` работает с живым состоянием, поэтому
- * постоянная плашка «недоступно» была бы ложью.
- *
  * Гейты on-chain и backend проверяются отдельно. Сайт содержит справочные
  * страницы, а не достоверную таблицу доступности механик.
  *

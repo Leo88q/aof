@@ -1,6 +1,6 @@
 import type { Language } from './translations';
 
-export const marketVenueIds = ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotMarket'] as const;
+export const marketVenueIds = ['listing', 'orderbook', 'auction', 'offer', 'rental', 'hotClosed'] as const;
 export type MarketVenueId = typeof marketVenueIds[number];
 type MarketArticle = {
   lead: string; paragraphs: readonly [string, string]; heading: string;

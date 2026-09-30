@@ -743,43 +743,6 @@ pub struct TransferTool<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TransferTool<'info> {
-    /// Текущий владелец — единственная подпись перевода.
-    #[account(mut)]
-    pub sender: Signer<'info>,
-    #[account(constraint = mint.decimals == 0 @ AofError::InvalidMint)]
-    pub mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        constraint = sender_token.mint == mint.key(),
-        constraint = sender_token.owner == sender.key() @ AofError::NotToolOwner,
-        constraint = sender_token.amount >= 1 @ AofError::ZeroAmount
-    )]
-    pub sender_token: Account<'info, TokenAccount>,
-    /// CHECK: получатель; владельцем инструмента становится именно он.
-    pub recipient: UncheckedAccount<'info>,
-    #[account(
-        mut,
-        constraint = recipient_token.mint == mint.key(),
-        constraint = recipient_token.owner == recipient.key() @ AofError::Unauthorized,
-        constraint = recipient_token.amount == 0 @ AofError::AlreadyOwnsTool
-    )]
-    pub recipient_token: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        seeds = [TOOL_SEED, mint.key().as_ref()],
-        bump,
-        constraint = tool_data.mint == mint.key() @ AofError::InvalidMint,
-        constraint = tool_data.owner == sender.key() @ AofError::NotToolOwner,
-        constraint = tool_data.operator == sender.key() @ AofError::NotToolOperator,
-        constraint = !tool_data.staked @ AofError::AlreadyStaked,
-        constraint = !tool_data.is_mining @ AofError::AlreadyMining
-    )]
-    pub tool_data: Account<'info, ToolData>,
-    pub token_program: Program<'info, Token>,
-}
-
-#[derive(Accounts)]
 #[instruction(tool_type: String, rarity: Rarity, durability: u8)]
 pub struct MigrateTool<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
@@ -3491,125 +3454,6 @@ pub struct MatchResourceOrdersV2<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-// ----- Ордербук ресурсов v2 (цена за целый ресурс) -----
-// [AUDIT orderbook price unit] v1 accepted `price_lamports_per_unit` and
-// multiplied it by `amount` in ATOMS, so the smallest expressible price was one
-// lamport per atom = 1 SOL per whole resource, while the old UI labeled the same
-// number "per resource" and could escrow 10^9 times the shown total. v2 quotes
-// the price per whole resource and rounds every lamport amount up.
-
-#[derive(Accounts)]
-#[instruction(kind: u8, price_lamports_per_whole: u64, amount: u64)]
-pub struct PlaceBuyOrderV2<'info> {
-    // Box ради того же лимита стекового кадра SBPF (4096 байт), что и в
-    // PlaceSellOrder выше: данные аккаунтов уезжают в кучу.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Box<Account<'info, Config>>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    pub mint: Box<Account<'info, Mint>>,
-    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Box<Account<'info, MaterialMints>>,
-    #[account(init, payer = maker, space = RESOURCE_ORDER_V2_SPACE, seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
-    pub order: Box<Account<'info, ResourceOrderV2>>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(kind: u8, price_lamports_per_whole: u64, amount: u64)]
-pub struct PlaceSellOrderV2<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Box<Account<'info, Config>>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    pub mint: Box<Account<'info, Mint>>,
-    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Box<Account<'info, MaterialMints>>,
-    #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
-    pub maker_token: Box<Account<'info, TokenAccount>>,
-    #[account(init, payer = maker, space = RESOURCE_ORDER_V2_SPACE, seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()], bump)]
-    pub order: Box<Account<'info, ResourceOrderV2>>,
-    #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
-    pub order_vault: Box<Account<'info, TokenAccount>>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct CancelBuyOrderV2<'info> {
-    // [SECURITY_CHECKLIST_REVIEW F-C] Exit path: it only returns the caller's own
-    // deposit/escrow, so a pause must never lock players out of it.
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
-    pub config: Box<Account<'info, Config>>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    pub mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        close = maker,
-        seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()],
-        bump,
-        constraint = order.maker == maker.key() @ AofError::Unauthorized,
-        constraint = order.mint == mint.key() @ AofError::InvalidMint,
-        constraint = order.is_buy @ AofError::InvalidAmount
-    )]
-    pub order: Account<'info, ResourceOrderV2>,
-}
-
-#[derive(Accounts)]
-pub struct CancelSellOrderV2<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
-    pub config: Box<Account<'info, Config>>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    pub mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        close = maker,
-        seeds = [RESOURCE_ORDER_V2_SEED, maker.key().as_ref(), mint.key().as_ref()],
-        bump,
-        constraint = order.maker == maker.key() @ AofError::Unauthorized,
-        constraint = order.mint == mint.key() @ AofError::InvalidMint,
-        constraint = !order.is_buy @ AofError::InvalidAmount
-    )]
-    pub order: Account<'info, ResourceOrderV2>,
-    #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == mint.key())]
-    pub order_vault: Account<'info, TokenAccount>,
-    #[account(mut, constraint = maker_token.mint == mint.key(), constraint = maker_token.owner == maker.key())]
-    pub maker_token: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-}
-
-#[derive(Accounts)]
-pub struct MatchResourceOrdersV2<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused, constraint = !config.cashout_frozen @ AofError::CashoutFrozen)]
-    pub config: Box<Account<'info, Config>>,
-    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Box<Account<'info, MaterialMints>>,
-    pub mint: Account<'info, Mint>,
-    #[account(mut, seeds = [RESOURCE_ORDER_V2_SEED, buy_order.maker.as_ref(), mint.key().as_ref()], bump, constraint = buy_order.mint == mint.key() @ AofError::OrdersDoNotCross)]
-    pub buy_order: Box<Account<'info, ResourceOrderV2>>,
-    #[account(
-        mut,
-        seeds = [RESOURCE_ORDER_V2_SEED, sell_order.maker.as_ref(), mint.key().as_ref()],
-        bump,
-        constraint = sell_order.mint == mint.key() @ AofError::OrdersDoNotCross
-    )]
-    pub sell_order: Box<Account<'info, ResourceOrderV2>>,
-    /// CHECK: продавец, получатель SOL
-    #[account(mut, address = sell_order.maker)]
-    pub seller: UncheckedAccount<'info>,
-    /// CHECK: казна
-    #[account(mut, address = config.treasury)]
-    pub treasury: UncheckedAccount<'info>,
-    #[account(mut, constraint = sell_vault.owner == sell_order.key(), constraint = sell_vault.mint == mint.key())]
-    pub sell_vault: Account<'info, TokenAccount>,
-    /// покупатель — владелец buy_order, получает ресурс
-    #[account(mut, constraint = buyer_token.mint == mint.key(), constraint = buyer_token.owner == buy_order.maker, constraint = is_canonical_ata(&buyer_token.key(), &buyer_token.owner, &mint.key()) @ AofError::NonCanonicalTokenAccount)]
-    pub buyer_token: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-}
-
 // ----- Крафт под заказ -----
 
 #[derive(Accounts)]
@@ -3749,44 +3593,6 @@ pub struct ClaimSeasonReward<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    pub token_program: Program<'info, Token>,
-}
-
-/// [§3.4] Полный сброс прогресса перерождения. Отдельные инструкции
-/// `reset_player`/`reset_pass`/`burn` позволили бы оплатить перерождение и
-/// дойти только до части сброса, поэтому здесь всё, что обещано правилами,
-/// выполняется одной инструкцией, а полноту списка излишков подтверждает
-/// подпись бэкенда (`config.operator`).
-#[derive(Accounts)]
-#[instruction(season_id: u32)]
-pub struct ResetForRebirth<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = operator @ AofError::Unauthorized)]
-    pub config: Box<Account<'info, Config>>,
-    /// [AUDIT rebirth reset] Подпись бэкенда: только он видит полный список
-    /// ресурсных аккаунтов игрока. Без неё игрок собрал бы транзакцию с
-    /// частичным списком и оставил излишки себе.
-    pub operator: Signer<'info>,
-    #[account(mut)]
-    pub user: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [PLAYER_SEED, user.key().as_ref()],
-        bump,
-        constraint = player.owner == user.key() @ AofError::Unauthorized,
-    )]
-    pub player: Account<'info, Player>,
-    #[account(seeds = [SEASON_SEED, &season_id.to_le_bytes()], bump = season.bump)]
-    pub season: Account<'info, Season>,
-    #[account(
-        mut,
-        seeds = [SEASON_PASS_SEED, user.key().as_ref(), &season_id.to_le_bytes()],
-        bump,
-        constraint = season_pass.season_id == season_id @ AofError::SeasonMismatch,
-        constraint = season_pass.owner == user.key() @ AofError::Unauthorized,
-    )]
-    pub season_pass: Account<'info, SeasonPass>,
-    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Box<Account<'info, MaterialMints>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -4092,11 +3898,6 @@ pub mod aof_core {
         instructions::tool_transfer::transfer_handler(ctx)
     }
 
-    /// Канонический перенос инструмента (NFT + владение) одним действием.
-    pub fn transfer_tool(ctx: Context<TransferTool>) -> Result<()> {
-        instructions::tool_transfer::transfer_handler(ctx)
-    }
-
     pub fn craft(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {
         instructions::craft::handler(ctx, tool_type, rarity)
     }
@@ -4238,32 +4039,6 @@ pub mod aof_core {
     }
     pub fn claim_lottery_prize(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
         instructions::lottery::claim_prize_handler(ctx)
-    }
-    // --- Ордербук ресурсов v2: цена за ЦЕЛЫЙ ресурс, эскроу с округлением вверх ---
-    pub fn place_buy_order_v2(ctx: Context<PlaceBuyOrderV2>, kind: u8, price_lamports_per_whole: u64, amount: u64) -> Result<()> {
-        instructions::orderbook::place_buy_handler_v2(ctx, kind, price_lamports_per_whole, amount)
-    }
-    pub fn place_sell_order_v2(ctx: Context<PlaceSellOrderV2>, kind: u8, price_lamports_per_whole: u64, amount: u64) -> Result<()> {
-        instructions::orderbook::place_sell_handler_v2(ctx, kind, price_lamports_per_whole, amount)
-    }
-    pub fn cancel_buy_order_v2(ctx: Context<CancelBuyOrderV2>) -> Result<()> {
-        instructions::orderbook::cancel_buy_handler_v2(ctx)
-    }
-    pub fn cancel_sell_order_v2(ctx: Context<CancelSellOrderV2>) -> Result<()> {
-        instructions::orderbook::cancel_sell_handler_v2(ctx)
-    }
-    pub fn match_resource_orders_v2(ctx: Context<MatchResourceOrdersV2>) -> Result<()> {
-        instructions::orderbook::match_handler_v2(ctx)
-    }
-
-    /// [§3.4] Полный сброс перерождения. Вызывается в ОДНОЙ транзакции с
-    /// `aof_rebirth::do_rebirth`: либо игрок платит цену, теряет прогресс
-    /// сезона и сжигает излишки, либо не происходит ничего.
-    pub fn reset_for_rebirth<'info>(
-        ctx: Context<'_, '_, '_, 'info, ResetForRebirth<'info>>,
-        season_id: u32,
-    ) -> Result<()> {
-        instructions::rebirth_reset::handler(ctx, season_id)
     }
 
     // --- Рынок ---

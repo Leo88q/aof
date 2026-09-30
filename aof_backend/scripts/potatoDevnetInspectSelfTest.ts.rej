@@ -1,9 +1,0 @@
-@@ -89,7 +89,7 @@
-     const bankData = await questCoder.encode('PotatoBank', {
-       mint, vault, reserved_atoms: new BN(openSpins * 50_000_000_000), open_spins: openSpins, paused, bump: 255,
-     } as any);
--    const result = request.method === 'getGenesisHash' ? 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG7' :
-+    const result = request.method === 'getGenesisHash' ? 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG' :
-       { context: { slot: 1 }, value: [
-         account(core, mindIsPotato ? coreWithMindCollision : coreData), account(quests, questData), account(TOKEN_PROGRAM_ID, mintData),
-         account(quests, bankData), account(TOKEN_PROGRAM_ID, vaultData),
