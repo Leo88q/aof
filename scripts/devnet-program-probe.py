@@ -83,9 +83,10 @@ def account_count(rpc: str, program_id: str, account_name: str, *, call_fn=call,
     """Сколько аккаунтов этого типа есть у программы. Ошибка чтения = 0."""
     filters = [{"memcmp": {"offset": 0, "bytes": b58(discriminator(account_name))}}]
     filters.extend(extra_filters or [])
-    config: dict = {"encoding": "base64", "filters": filters}
-    if data_slice:
-        config["dataSlice"] = data_slice
+    # Для подсчёта хватает одного байта: фильтры узел применяет до среза, а
+    # полные аккаунты (например, все листинги) в ответ не нужны.
+    config: dict = {"encoding": "base64", "filters": filters,
+                    "dataSlice": data_slice or {"offset": 0, "length": 1}}
     result = call_fn(rpc, "getProgramAccounts", [program_id, config])
     if "error" in result:
         raise RuntimeError(str(result["error"].get("message", result["error"]))[:120])
