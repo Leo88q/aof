@@ -1,0 +1,44 @@
+@@ -0,0 +1,43 @@
++use anchor_lang::prelude::*;
++use anchor_spl::token::{self, Transfer};
++use crate::events::*;
++use crate::TransferTool;
++
++/// Канонический перенос инструмента: один подписанный шаг двигает и NFT, и
++/// `ToolData.owner`/`operator`.
++///
++/// До этой инструкции инструмент можно было передать только SPL-переводом:
++/// токен уезжал, а `ToolData.owner` оставался у продавца, поэтому покупатель не
++/// мог ни майнить, ни ремонтировать купленный инструмент, а площадки не умели
++/// отличить настоящий инструмент от произвольного SPL-минта. Теперь оба
++/// изменения происходят в одной атомарной инструкции, что и позволяет открыть
++/// горячий рынок (`aof_market::hot_market_*` вызывает её через CPI).
++pub fn transfer_handler(ctx: Context<TransferTool>) -> Result<()> {
++    let recipient = ctx.accounts.recipient.key();
++    token::transfer(
++        CpiContext::new(
++            ctx.accounts.token_program.to_account_info(),
++            Transfer {
++                from: ctx.accounts.sender_token.to_account_info(),
++                to: ctx.accounts.recipient_token.to_account_info(),
++                authority: ctx.accounts.sender.to_account_info(),
++            },
++        ),
++        1,
++    )?;
++
++    let tool = &mut ctx.accounts.tool_data;
++    tool.owner = recipient;
++    tool.operator = recipient;
++    // Инструмент переходит без старых обязательств: стейк запрещён выше
++    // (constraint `!tool_data.staked`), поэтому оставшийся unlock_at не должен
++    // блокировать новому владельцу разблокировку/переплавку.
++    tool.unlock_at = 0;
++
++    emit!(ToolTransferred {
++        mint: ctx.accounts.mint.key(),
++        from: ctx.accounts.sender.key(),
++        to: recipient,
++    });
++    Ok(())
++}

@@ -1,0 +1,980 @@
+@@ -32,6 +32,12 @@
+   readonly signerIndexes: readonly number[];
+   /** Authority-signed only: a player wallet must never be asked to sign it. */
+   readonly authorityOnly: boolean;
++  /**
++   * Trailing accounts the IDL cannot describe: `"pairs"` means the caller adds
++   * `(mint, token_account)` couples after the fixed prefix. The caller's intent
++   * validator must check every one of them; `null` means the list is exact.
++   */
++  readonly trailingAccounts: "pairs" | null;
+ };
+ 
+ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
+@@ -42,6 +48,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "auction_bid",
+@@ -50,6 +57,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "auction_create",
+@@ -58,6 +66,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "auction_settle",
+@@ -66,6 +75,7 @@
+     actorIndexes: [3],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "burn_nft",
+@@ -74,6 +84,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "burn_resource",
+@@ -82,6 +93,7 @@
+     actorIndexes: [2],
+     signerIndexes: [2],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "burn_tool",
+@@ -90,6 +102,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "buy_lottery_ticket",
+@@ -98,6 +111,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "cancel_buy_order",
+@@ -106,6 +120,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "cancel_sell_order",
+@@ -114,6 +129,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "claim_lottery_prize",
+@@ -122,6 +138,7 @@
+     actorIndexes: [3],
+     signerIndexes: [3],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "claim_season_reward",
+@@ -130,6 +147,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "collect_bread",
+@@ -138,6 +156,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "collect_flour",
+@@ -146,6 +165,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "collect_mining",
+@@ -154,6 +174,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "collect_well_water",
+@@ -162,6 +183,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "collector_stake",
+@@ -170,6 +192,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "collector_unstake",
+@@ -178,6 +201,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "commit_lottery_draw",
+@@ -186,6 +210,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "craft",
+@@ -194,6 +219,7 @@
+     actorIndexes: [2],
+     signerIndexes: [1, 2],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "craft_order_cancel",
+@@ -202,6 +228,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "craft_order_create",
+@@ -210,6 +237,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "craft_order_fulfill",
+@@ -218,6 +246,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "craft_recipe",
+@@ -226,6 +255,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "deposit_gas",
+@@ -234,6 +264,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "draw_lottery",
+@@ -242,6 +273,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "explore_reveal",
+@@ -250,6 +282,7 @@
+     actorIndexes: [2, 4],
+     signerIndexes: [2],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "forge_attempt_commit",
+@@ -258,6 +291,7 @@
+     actorIndexes: [2],
+     signerIndexes: [1, 2],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "forge_attempt_reveal",
+@@ -266,6 +300,7 @@
+     actorIndexes: [1, 4],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "forge_attempt_expire",
+@@ -274,6 +309,7 @@
+     actorIndexes: [3],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "grant_season_xp",
+@@ -282,6 +318,7 @@
+     actorIndexes: [2],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "harvest_wheat",
+@@ -290,6 +327,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_craft_economy",
+@@ -298,6 +336,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_lottery_round",
+@@ -306,6 +345,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_material_mints",
+@@ -314,6 +354,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_pack_config",
+@@ -322,6 +363,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_rarity_counter",
+@@ -330,6 +372,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_reroll_config",
+@@ -338,6 +381,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_season",
+@@ -346,6 +390,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "initialize",
+@@ -354,6 +399,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "marketplace_buy",
+@@ -362,6 +408,7 @@
+     actorIndexes: [1, 2],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "marketplace_cancel",
+@@ -370,6 +417,7 @@
+     actorIndexes: [3],
+     signerIndexes: [3],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "marketplace_list",
+@@ -378,6 +426,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "match_resource_orders",
+@@ -386,6 +435,7 @@
+     actorIndexes: [5],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "migrate_tool",
+@@ -394,6 +444,7 @@
+     actorIndexes: [],
+     signerIndexes: [1, 2],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "mint_resource",
+@@ -402,6 +453,7 @@
+     actorIndexes: [],
+     signerIndexes: [2],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "mint_tool",
+@@ -410,6 +462,7 @@
+     actorIndexes: [5],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "offer_accept",
+@@ -418,6 +471,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "offer_cancel",
+@@ -426,6 +480,7 @@
+     actorIndexes: [3],
+     signerIndexes: [3],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "offer_create",
+@@ -434,6 +489,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "pack_open_commit",
+@@ -442,6 +498,7 @@
+     actorIndexes: [2],
+     signerIndexes: [1, 2],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "pack_open_reveal",
+@@ -450,6 +507,7 @@
+     actorIndexes: [1, 3],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "pack_open_expire",
+@@ -458,6 +516,7 @@
+     actorIndexes: [2],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "pay_out",
+@@ -466,6 +525,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "pay_out_with_referral",
+@@ -474,6 +534,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "place_buy_order",
+@@ -482,6 +543,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "place_sell_order",
+@@ -490,6 +552,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "plant_seeds",
+@@ -498,6 +561,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "purchase_season_pass",
+@@ -506,6 +570,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "referral_bind",
+@@ -514,6 +579,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "referral_upgrade",
+@@ -522,6 +588,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "rental_end",
+@@ -530,6 +597,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "rental_list",
+@@ -538,6 +606,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "rental_revoke",
+@@ -546,6 +615,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "rental_start",
+@@ -554,6 +624,7 @@
+     actorIndexes: [1, 5],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "repair",
+@@ -562,6 +633,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "reroll",
+@@ -570,6 +642,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "reroll_random_commit",
+@@ -578,6 +651,7 @@
+     actorIndexes: [2],
+     signerIndexes: [1, 2],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "reroll_random_reveal",
+@@ -586,6 +660,7 @@
+     actorIndexes: [1, 3],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_craft_economy",
+@@ -594,6 +669,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_fees",
+@@ -602,6 +678,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_pack_config",
+@@ -610,6 +687,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_paused",
+@@ -618,6 +696,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_reroll_config",
+@@ -626,6 +705,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_resource_mints",
+@@ -634,6 +714,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "stake",
+@@ -642,6 +723,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "start_baking",
+@@ -650,6 +732,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "start_exploration_commit",
+@@ -658,6 +741,7 @@
+     actorIndexes: [3],
+     signerIndexes: [1, 3],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "start_milling",
+@@ -666,6 +750,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "start_mining",
+@@ -674,6 +759,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "sweep_gas_fees",
+@@ -682,6 +768,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "unstake",
+@@ -690,6 +777,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "upgrade_exploration_tier",
+@@ -698,6 +786,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "weather_crank",
+@@ -706,6 +795,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "withdraw_gas",
+@@ -714,6 +804,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "mint_resource_once",
+@@ -722,6 +813,7 @@
+     actorIndexes: [],
+     signerIndexes: [2],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "marketplace_buy_bounded",
+@@ -730,6 +822,7 @@
+     actorIndexes: [1, 2],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_issuance_cap",
+@@ -738,6 +831,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_issuance_cap",
+@@ -746,6 +840,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_pending_authority",
+@@ -754,6 +849,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "accept_authority",
+@@ -762,6 +858,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "cancel_pending_authority",
+@@ -770,6 +867,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_mining_enabled",
+@@ -778,6 +876,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "init_vault_guard",
+@@ -786,6 +885,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_vault_guard",
+@@ -794,6 +894,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_supply_cap",
+@@ -802,6 +903,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "register_collector_mint",
+@@ -810,6 +912,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "revoke_collector_mint",
+@@ -818,6 +921,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "refund_lottery_round",
+@@ -826,6 +930,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "migrate_config_v2",
+@@ -834,6 +939,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_roles",
+@@ -842,6 +948,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "emergency_stop",
+@@ -850,6 +957,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "set_cashout_frozen",
+@@ -858,6 +966,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "rental_start_bounded",
+@@ -866,6 +975,7 @@
+     actorIndexes: [1, 5],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "rental_delist",
+@@ -874,6 +984,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "auction_cancel",
+@@ -882,6 +993,7 @@
+     actorIndexes: [1],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "vrf_pool_add",
+@@ -890,6 +1002,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "vrf_pool_set_retired",
+@@ -898,6 +1011,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "vrf_slot_recover",
+@@ -906,6 +1020,7 @@
+     actorIndexes: [],
+     signerIndexes: [1],
+     authorityOnly: true,
++    trailingAccounts: null,
+   },
+   {
+     name: "reroll_random_expire",
+@@ -914,6 +1029,7 @@
+     actorIndexes: [1, 3],
+     signerIndexes: [1],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "explore_expire",
+@@ -922,6 +1038,7 @@
+     actorIndexes: [3],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "expire_lottery_draw",
+@@ -930,6 +1047,7 @@
+     actorIndexes: [],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
+   },
+   {
+     name: "refund_lottery_ticket",
+@@ -938,6 +1056,70 @@
+     actorIndexes: [3],
+     signerIndexes: [],
+     authorityOnly: false,
++    trailingAccounts: null,
++  },
++  {
++    name: "place_buy_order_v2",
++    discriminator: [247, 218, 160, 245, 7, 231, 160, 124],
++    accounts: ["config", "maker", "mint", "material_mints", "order", "system_program"],
++    actorIndexes: [1],
++    signerIndexes: [1],
++    authorityOnly: false,
++    trailingAccounts: null,
++  },
++  {
++    name: "place_sell_order_v2",
++    discriminator: [81, 69, 48, 185, 155, 116, 212, 158],
++    accounts: ["config", "maker", "mint", "material_mints", "maker_token", "order", "order_vault", "token_program", "system_program"],
++    actorIndexes: [1],
++    signerIndexes: [1],
++    authorityOnly: false,
++    trailingAccounts: null,
++  },
++  {
++    name: "cancel_buy_order_v2",
++    discriminator: [209, 122, 46, 175, 34, 196, 203, 152],
++    accounts: ["config", "maker", "mint", "order"],
++    actorIndexes: [1],
++    signerIndexes: [1],
++    authorityOnly: false,
++    trailingAccounts: null,
++  },
++  {
++    name: "cancel_sell_order_v2",
++    discriminator: [111, 136, 76, 159, 176, 255, 114, 49],
++    accounts: ["config", "maker", "mint", "order", "order_vault", "maker_token", "token_program"],
++    actorIndexes: [1],
++    signerIndexes: [1],
++    authorityOnly: false,
++    trailingAccounts: null,
++  },
++  {
++    name: "match_resource_orders_v2",
++    discriminator: [125, 171, 84, 144, 102, 255, 14, 220],
++    accounts: ["config", "material_mints", "mint", "buy_order", "sell_order", "seller", "treasury", "sell_vault", "buyer_token", "token_program"],
++    actorIndexes: [5],
++    signerIndexes: [],
++    authorityOnly: false,
++    trailingAccounts: null,
++  },
++  {
++    name: "reset_for_rebirth",
++    discriminator: [255, 181, 123, 174, 107, 241, 223, 99],
++    accounts: ["config", "operator", "user", "player", "season", "season_pass", "material_mints", "token_program"],
++    actorIndexes: [2],
++    signerIndexes: [1, 2],
++    authorityOnly: false,
++    trailingAccounts: "pairs",
++  },
++  {
++    name: "transfer_tool",
++    discriminator: [113, 133, 218, 29, 218, 58, 56, 24],
++    accounts: ["sender", "mint", "sender_token", "recipient", "recipient_token", "tool_data", "token_program"],
++    actorIndexes: [0, 3],
++    signerIndexes: [0],
++    authorityOnly: false,
++    trailingAccounts: null,
+   },
+ 
+ ];

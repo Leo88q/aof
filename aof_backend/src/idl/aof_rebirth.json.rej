@@ -1,0 +1,11 @@
+@@ -46,6 +46,10 @@
+             ]
+           }
+         },
++        {
++          "name": "authority",
++          "signer": true
++        },
+         {
+           "name": "rebirth_record",
+           "writable": true,

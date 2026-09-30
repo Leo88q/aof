@@ -16,9 +16,11 @@ import type { Language } from "../i18n/translations";
  *    WeatherState { day_id, weather, updated_at };
  *  - aof_backend/src/routes/weather.ts: WEATHER_META и seasonFromDayId.
  *
- * Значение читается с одного и того же аккаунта WeatherState PDA: сначала
- * канонический роут /weather/current, при его недоступности — /query/weather-state
- * (тот же адрес). Расхождение шапки и панели колодца закрыто именно здесь.
+ * Погода дня известна всегда: это чистая функция номера UTC-дня, поэтому и
+ * /weather/current, и /weather/forecast, и этот файл считают её одним правилом.
+ * Аккаунт WeatherState (роут /query/weather-state) — только подтверждение дня
+ * `weather_crank`; если его нет или он устарел, значение всё равно берётся из
+ * того же расписания, что применяет программа при начислении воды.
  */
 
 export const DAYS_PER_SEASON = 42;
@@ -89,6 +91,15 @@ export function weatherIndexForDay(dayId: number): number {
   return 3; // frenzy
 }
 
+/**
+ * Номер дня расписания по часам: `floor(секунды / 86_400)` — ровно та же
+ * граница UTC-суток, что у `div_euclid(86_400)` в ядре. Нужен, когда ни
+ * канонический роут, ни аккаунт дня недоступны: правило дня известно и без них.
+ */
+export function currentDayId(nowMs: number = Date.now()): number {
+  return Math.floor(Math.floor(Math.trunc(nowMs) / 1000) / 86400);
+}
+
 /** Подписи и значки состояний — один источник для шапки, колодца и календаря эпох. */
 export const WEATHER_LABELS: Record<string, string> = {
   ...labHeroCopy.ru.load,
@@ -131,8 +142,8 @@ export interface ForecastDay {
 /**
  * Прогноз — не отдельный офчейн-источник, а прямое следствие расписания дня:
  * погода дня целиком определяется его day_id, поэтому следующие дни известны
- * заранее. /weather/forecast закрыт именно потому, что раньше отдавал другую
- * (офчейн) формулу; здесь формула та же, что у цепи.
+ * заранее. Здесь формула та же, что у цепи, и то же правило сервит
+ * /weather/forecast: виджет считает прогноз локально, чтобы не ходить в сеть.
  */
 export function forecastFromDayId(dayId: number, days = 3): ForecastDay[] {
   const out: ForecastDay[] = [];
@@ -159,16 +170,25 @@ export interface WeatherSnapshot {
   seasonIndex: number;
   dayOfSeason: number;
   daysUntilNextSeason: number;
-  /** Откуда пришло состояние: канонический роут или чтение того же PDA. */
-  source: "current" | "weather-state";
+  /**
+   * Откуда взято значение:
+   *  - `onchain` — день подтверждён аккаунтом WeatherState (`weather_crank`);
+   *  - `weather-state` — прочитан тот же PDA напрямую, без роута дня;
+   *  - `canonical-schedule` — посчитано правилом дня (то же, что в ядре).
+   * Все три дают одно число; различается только подтверждение, и UI его
+   * показывает, чтобы «правило дня» не выглядело как «данные из сети».
+   */
+  source: "onchain" | "weather-state" | "canonical-schedule";
 }
 
 /**
- * Единственный загрузчик погоды для UI. Возвращает null только если
- * канонического состояния нет вообще — тогда панели обязаны честно сказать
- * «нет данных сети», а не рисовать выдуманную погоду.
+ * Единственный загрузчик погоды для UI.
+ *
+ * Возвращает состояние всегда: погода дня — чистая функция номера дня, и
+ * отсутствие аккаунта в сети (или самого деплоя) не делает её неизвестной.
+ * Если оба роута недоступны, значение считается тем же правилом локально.
  */
-export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot | null> {
+export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot> {
   const current: any = await api.weather.current().catch(() => null);
 
   const currentType = normalizeType(current?.type);
@@ -192,7 +212,9 @@ export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot | null> {
       effect: meta?.effect || current.effect || "",
       ratePerHour: meta?.rate ?? 0,
       dayId: dayId ?? 0,
-      source: "current",
+      // Роут сам говорит, подтверждён ли день аккаунтом сети или посчитан
+      // правилом дня; неизвестный ответ считаем правилом дня, а не «данными сети».
+      source: current.source === "onchain" ? "onchain" : "canonical-schedule",
       ...season,
     };
   }
@@ -200,18 +222,33 @@ export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot | null> {
   // Тот же WeatherState PDA, но через публичный /query: работает, когда
   // канонический роут не смог отдать аккаунт.
   const state: any = await api.query.weatherState().catch(() => null);
-  const dayId = toInt(state?.dayId ?? state?.day_id);
-  const weatherIndex = toInt(state?.weather ?? state?.weatherIndex);
-  const meta = weatherIndex !== null ? WEATHER_BY_INDEX[weatherIndex] : undefined;
-  if (dayId === null || !meta) return null;
+  const cachedDayId = toInt(state?.dayId ?? state?.day_id);
+  const cachedIndex = toInt(state?.weather ?? state?.weatherIndex);
+  const cachedMeta = cachedIndex !== null ? WEATHER_BY_INDEX[cachedIndex] : undefined;
+  if (cachedDayId !== null && cachedMeta) {
+    return {
+      type: cachedMeta.type,
+      weatherIndex: cachedIndex as number,
+      effect: cachedMeta.effect,
+      ratePerHour: cachedMeta.rate,
+      dayId: cachedDayId,
+      source: "weather-state",
+      ...seasonFromDayId(cachedDayId),
+    };
+  }
 
+  // Ни роут, ни аккаунт недоступны — но погода дня известна из правила дня:
+  // это то же значение, которое программа применит при начислении воды.
+  const dayId = currentDayId();
+  const index = weatherIndexForDay(dayId);
+  const meta = WEATHER_BY_INDEX[index];
   return {
     type: meta.type,
-    weatherIndex: weatherIndex as number,
+    weatherIndex: index,
     effect: meta.effect,
     ratePerHour: meta.rate,
     dayId,
-    source: "weather-state",
+    source: "canonical-schedule",
     ...seasonFromDayId(dayId),
   };
 }

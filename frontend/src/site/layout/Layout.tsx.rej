@@ -1,0 +1,67 @@
+@@ -1,9 +1,12 @@
+ import { setPageMetadata } from '../../lib/pageMetadata';
+-import { useEffect, useState } from 'react';
++import { useEffect, useState, type CSSProperties } from 'react';
+ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+ import { pages as seoPages, resourcesBySlug as seoResources } from '../content/game';
+ import { pages } from '../content/pages';
++import { sceneryForPage, SITE_SCENERY } from '../content/scenery';
++import { SiteBackdrop, StandDeck, useStandState } from './SiteStand';
+ import { ScrollFlask } from '../ui/Components';
++import { useSingleOpen } from '../hooks/useSingleOpen';
+ import { LanguageSwitcher, useLocale } from '../../i18n/LocaleProvider';
+ import { groupKeys, pageNames, messages, type PageId } from '../../i18n/translations';
+ import { introPages, type IntroId } from '../../i18n/siteIntro';
+@@ -52,7 +55,11 @@
+ export function SiteLayout() {
+   const location = useLocation();
+   const [mobile, setMobile] = useState(false);
++  const stand = useStandState();
+   const { language, t } = useLocale();
++  // Сцена маршрута: она же стоит на пульте стенда и в окне заголовка.
++  const scenery = sceneryForPage(location.pathname.split('/').filter(Boolean)[1] || 'home');
++  const standStyle = { '--site-scene': `url('${SITE_SCENERY[scenery]}')` } as CSSProperties;
+   // Переход по ссылке с длинной страницы оставлял окно на прежнем месте: новая
+   // страница открывалась своей серединой или подвалом. Теперь маршрут меняется —
+   // окно возвращается наверх, а фокус уходит в содержимое (для чтения с экрана).
+@@ -121,12 +128,22 @@
+   }, []);
+   useEffect(() => { markJournalRoute(location.pathname); }, [location.pathname]);
+   useEffect(() => { setMobile(false); }, [location.pathname]);
++  // Меню в шапке: раскрытая группа закрывает предыдущую (жалоба 2026-09-30 —
++  // две панели оставались висеть одновременно и перекрывали друг друга).
++  const navRef = useSingleOpen<HTMLElement>();
+   const label = (id: string, fallback: string) => pageNames[language][id as PageId] ?? fallback;
+   const group = (name: string) => groupKeys[name] ? t(groupKeys[name]) : name;
+ 
+   return (
+-    <div className="aof-ui aof-site" lang={language}>
++    <div
++      className="aof-ui aof-site"
++      lang={language}
++      data-stand={stand.on ? 'on' : 'off'}
++      data-backdrop={stand.mode}
++      style={standStyle}
++    >
+       <a className="site-skip" href="#site-main">{t('skip')}</a>
++      <SiteBackdrop scene={scenery} state={stand} />
+       <header className="site-header">
+         <div className="site-header-inner">
+           <Link className="site-logo" to="/site/home">
+@@ -141,7 +158,7 @@
+             </svg>
+             <span>NeuroForge<span className="site-logo-sub">Age of Intelligence</span></span>
+           </Link>
+-          <nav className="site-desktop-nav" aria-label={t('nav')}>
++          <nav className="site-desktop-nav" aria-label={t('nav')} ref={navRef}>
+             {navGroups.map(g => (
+               <details key={g.title}>
+                 <summary>{group(g.title)}</summary>
+@@ -182,6 +199,7 @@
+           <p className="site-translation-note" lang={language}>{t('translationNotice')}</p>}
+         <Outlet context={{ language }} />
+       </main>
++      <StandDeck state={stand} />
+       <footer className="site-footer">
+         <div className="site-footer-intro">
+           <h2>{t('footerTitle')}</h2>

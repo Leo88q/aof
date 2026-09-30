@@ -1,0 +1,36 @@
+@@ -152,6 +152,17 @@
+           "name": "buyer_tool",
+           "writable": true
+         },
++        {
++          "name": "pool_currency",
++          "writable": true
++        },
++        {
++          "name": "tool_data",
++          "writable": true
++        },
++        {
++          "name": "core_program"
++        },
+         {
+           "name": "token_program",
+           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+@@ -246,6 +257,17 @@
+           "name": "pool_tool",
+           "writable": true
+         },
++        {
++          "name": "treasury_currency",
++          "writable": true
++        },
++        {
++          "name": "tool_data",
++          "writable": true
++        },
++        {
++          "name": "core_program"
++        },
+         {
+           "name": "token_program",
+           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"

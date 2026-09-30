@@ -1,0 +1,109 @@
+@@ -0,0 +1,108 @@
++name: Devnet readiness (read-only, no signer)
++
++# Зачем: владелец видит в игре красные плашки «сеть не настроена», а из
++# песочницы агента RPC девнета недоступен (api.devnet.solana.com не отвечает),
++# поэтому на вопрос «что именно не настроено» не было фактического ответа.
++# Здесь запускается тот же читающий preflight, что и релизный гейт, плюс
++# проверка, отвечают ли шесть program id из watchtower/addresses.json.
++#
++# Ничего не подписывает: ни ключа, ни транзакции, ни airdrop, ни записи в БД.
++# Отчёт уходит комментарием в PR (лог job'а из песочницы агента не скачивается).
++on:
++  workflow_dispatch:
++  push:
++    branches:
++      - 'arena/01a0efab-aof'
++permissions:
++  contents: read
++  pull-requests: write
++jobs:
++  inspect:
++    runs-on: ubuntu-latest
++    timeout-minutes: 15
++    defaults:
++      run:
++        working-directory: aof_backend
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: '22'
++          cache: npm
++          cache-dependency-path: aof_backend/package-lock.json
++      - name: Install backend dependencies without package scripts
++        run: npm ci --ignore-scripts --no-audit --no-fund
++      - name: Offline guards for the same readers
++        run: |
++          npm run test:mining-preflight
++          npm run test:mining-flag
++      - name: Public devnet reachability
++        run: |
++          set -uo pipefail
++          code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 20 \
++            https://api.devnet.solana.com -X POST -H 'Content-Type: application/json' \
++            -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' || echo 000)
++          echo "api.devnet.solana.com HTTP $code"
++          cat /tmp/health.json 2>/dev/null || true
++      - name: Read-only devnet state (config, mints, caps)
++        env:
++          MINING_PREFLIGHT_REPORT: ${{ runner.temp }}/mining-devnet-preflight.json
++        run: |
++          set -uo pipefail
++          npm run preflight:mining-devnet 2>&1 | tee /tmp/preflight.log || true
++          echo "=== mining-devnet-preflight.json ==="
++          cat "${MINING_PREFLIGHT_REPORT}" 2>/dev/null || echo "report not written"
++      - name: Which program IDs answer on devnet
++        run: |
++          set -uo pipefail
++          python3 ../scripts/devnet-program-probe.py 2>&1 | tee /tmp/programs.log
++      - name: Program id consistency (declare_id! / Anchor.toml / registry / IDL / clients)
++        # Адрес программы — это один base58 в семи местах. Если он разойдётся,
++        # игра молча зовёт программу, которой в сети нет. Гейт читает реестр как
++        # источник истины и падает на любом расхождении; историю (прошлые адреса
++        # после смены) он проверяет отдельно, чтобы старый адрес не вернулся.
++        working-directory: .
++        run: node scripts/rotate-program-ids.mjs --check
++      - name: Collect the report
++        if: always()
++        env:
++          REPORT: ${{ runner.temp }}/mining-devnet-preflight.json
++        run: |
++          set -uo pipefail
++          {
++            echo "### Состояние девнета (только чтение; байткод и подписи не проверяются)"
++            echo
++            echo '```json'
++            cat "$REPORT" 2>/dev/null || echo '{"note":"отчёт не записан: RPC недоступен или preflight упал до записи"}'
++            echo '```'
++            echo
++            echo "Адреса программ на девнете:"
++            echo
++            echo '```'
++            cat /tmp/programs.log 2>/dev/null || echo "проверка адресов не выполнялась"
++            echo '```'
++            echo
++            echo "Включение — одна команда (нужны ключ оператора, SOL и запущенный backend):"
++            echo
++            echo '```sh'
++            echo "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон"
++            echo "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить"
++            echo '```'
++            echo
++            echo "Включается тем же деплоем (код уже в ветке, нужна только новая сборка):"
++            echo "ордербук с ценой за целый ресурс, потолок цены в лотерее, полный сброс при"
++            echo "перерождении. Осталось работой по контракту: пул горячего рынка (нужна"
++            echo "кросс-программная смена владельца ToolData), сессионные ключи (атомарная"
++            echo "привязка резерва к целевой инструкции), платный сезон-пропуск V2, Potato V2."
++            echo "Обмен «инструмент в SOL» одним действием уже работает через листинги и офферы"
++            echo "aof_core. Разбор: docs/UNBLOCK_PLAN_2026-09-30.md §3."
++          } > /tmp/devnet-report.md
++          cat /tmp/devnet-report.md
++      - name: Publish to the pull request (and to the run summary)
++        if: always()
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++        run: |
++          set -uo pipefail
++          cat /tmp/devnet-report.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
++          gh pr comment --body-file /tmp/devnet-report.md --edit-last || gh pr comment --body-file /tmp/devnet-report.md || true

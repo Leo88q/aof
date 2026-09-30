@@ -55,7 +55,8 @@
     "inspect:potato-devnet": "ts-node --project tsconfig.json --transpile-only scripts/potatoDevnetInspect.ts",
     "test:potato-inspect": "ts-node --project tsconfig.json --transpile-only scripts/potatoDevnetInspectSelfTest.ts",
     "test:potato-economics": "ts-node --project tsconfig.json --transpile-only scripts/potatoEconomicsSelfTest.ts",
-    "test:active-season": "ts-node --project tsconfig.json --transpile-only scripts/activeSeasonSelfTest.ts"
+    "test:active-season": "ts-node --project tsconfig.json --transpile-only scripts/activeSeasonSelfTest.ts",
+    "test:weather-schedule": "ts-node --project tsconfig.json --transpile-only scripts/weatherScheduleSelfTest.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

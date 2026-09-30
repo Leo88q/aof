@@ -1,0 +1,10 @@
+@@ -19,3 +19,9 @@
+ [dependencies]
+ anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
+ anchor-spl = "0.30.1"
++
++# Канонический перенос инструмента живёт в aof_core::transfer_tool: рынок
++# вызывает её через typed CPI, чтобы NFT и ToolData.owner менялись в одной
++# транзакции. Фича `cpi` отключает entrypoint aof_core в этой сборке — иначе
++# символ entrypoint из линкуемой программы перекрыл бы собственный.
++aof-core = { path = "../../aof-core", features = ["cpi"] }

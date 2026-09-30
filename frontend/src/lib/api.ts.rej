@@ -1,0 +1,69 @@
+@@ -69,15 +69,19 @@
+   { path: "/rental/end", subject: "rental_end", field: "caller" },
+   { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
+   { path: "/rental/delist", subject: "rental_delist", field: "caller" },
++  { path: "/orderbook/v2/buy/place", subject: "orderbook_v2_buy_place", field: "maker" },
+   { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
++  { path: "/orderbook/v2/sell/place", subject: "orderbook_v2_sell_place", field: "maker" },
+   { path: "/orderbook/sell/place", subject: "orderbook_sell_place", field: "maker" },
+   { path: "/orderbook/buy/cancel", subject: "orderbook_buy_cancel", field: "maker" },
+   { path: "/orderbook/sell/cancel", subject: "orderbook_sell_cancel", field: "maker" },
++  { path: "/orderbook/v2/match", subject: "orderbook_v2_match", field: "caller" },
+   { path: "/orderbook/match", subject: "orderbook_match", field: "caller" },
+   { path: "/packs/commit", subject: "packs_commit", field: "user" },
+   { path: "/packs/reveal", subject: "packs_reveal", field: "user" },
+   { path: "/quests/quest/claim", subject: "quests_claim", field: "user" },
+   { path: "/quests/achievement/unlock", subject: "quests_achievement", field: "user" },
++  { path: "/rebirth/do", subject: "rebirth_do", field: "user" },
+   { path: "/referral/bind", subject: "referral_bind", field: "referred" },
+   { path: "/referral/upgrade", subject: "referral_upgrade", field: "user" },
+   { path: "/reroll/fuse", subject: "reroll_fuse", field: "user" },
+@@ -230,6 +234,7 @@
+     packConfig: (type: number) => get(`/query/pack-config/${type}`),
+     player: (owner: string) => get(`/query/player/${owner}`),
+     gastank: (owner: string) => get(`/query/gastank/${owner}`),
++    collector: (mint: string) => get(`/query/collector/${mint}`),
+     weatherState: () => get("/query/weather-state"),
+     wellState: (owner: string) => get(`/query/well-state/${owner}`),
+     millState: (owner: string) => get(`/query/mill-state/${owner}`),
+@@ -239,6 +244,7 @@
+     friendFarm: (address: string) => get(`/query/friend-farm/${address}`),
+     enchantSlots: (toolMint: string) => get(`/query/enchant-slots/${toolMint}`),
+     orderbook: (mint: string) => get(`/query/orderbook/${mint}`),
++    orderbookV2: (mint: string) => get(`/query/orderbook-v2/${mint}`),
+     auctions: (mint?: string) => get(`/query/auctions${mint ? `?mint=${mint}` : ""}`),
+     auction: (mint: string) => get(`/query/auction/${mint}`),
+     listings: () => get("/query/listings"),
+@@ -252,6 +258,7 @@
+     // [ФИКС Группы 1] Очередь хот-маркета: голова для покупки вместо хардкода
+     hotMarketQueue: (rarity: number) => get(`/query/hot-market-queue/${rarity}`),
+     hotMarketPool: (rarity: number) => get(`/query/hot-market-pool/${rarity}`),
++    hotMarketInventory: (rarity: number) => get(`/query/hot-market-inventory/${rarity}`),
+   },
+ 
+   // === Админ ===
+@@ -429,6 +436,12 @@
+ 
+   // === Ордербук ресурсов ===
+   orderbook: {
++    // v2: цена за ЦЕЛЫЙ ресурс, эскроу округляется вверх в программе.
++    placeBuyV2: (v: any) => post("/orderbook/v2/buy/place", v),
++    placeSellV2: (v: any) => post("/orderbook/v2/sell/place", v),
++    cancelBuyV2: (v: any) => post("/orderbook/v2/buy/cancel", v),
++    cancelSellV2: (v: any) => post("/orderbook/v2/sell/cancel", v),
++    matchV2: (v: any) => post("/orderbook/v2/match", v),
+     placeBuy: (v: any) => post("/orderbook/buy/place", v),
+     placeSell: (v: any) => post("/orderbook/sell/place", v),
+     cancelBuy: (v: any) => post("/orderbook/buy/cancel", v),
+@@ -501,8 +514,10 @@
+     crank: (v: any) => post("/hot-market/crank", v),
+   },
+ 
+-  // [ФИКС Группы 1] Ребёрт (контракт: цена + кулдаун — Группа 3)
++  // [§3.4] Перерождение: полный сброс одной транзакцией (aof_core::reset_for_rebirth
++  // + aof_rebirth::do_rebirth). Статус читается из сети, ничего не досчитывается.
+   rebirth: {
++    status: (user: string) => get(`/rebirth/status/${user}`),
+     do: (v: any) => post("/rebirth/do", v),
+   },
+ 

@@ -1,0 +1,88 @@
+@@ -3,9 +3,10 @@
+ import { PublicKey, SystemProgram } from "@solana/web3.js";
+ import { AUTHORITY_PUBKEY } from "../config";
+ import { program, connection } from "../provider";
+-import { configPda, lotteryRoundPda, lotteryTicketPda } from "../lib/pda";
++import { configPda, lotteryRoundPda, lotteryTicketPda, lotteryTicketCounterPda } from "../lib/pda";
+ import { authorityOnly, coSign, pk } from "../lib/tx";
+ import { requireAdmin } from "../middleware/adminAuth";
++import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
+ import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+ import { commitStatus, fetchPendingCommit, buildRevealInstructions } from "../lib/vrfSettlement";
+ 
+@@ -19,6 +20,12 @@
+  */
+ const r = Router();
+ 
++/** Must equal `LOTTERY_TICKET_PRICE_LAMPORTS` in `aof-core/src/constants.rs`.
++ * The frontend reads the same number from `/query/lottery-round`-style quotes;
++ * a mismatch is caught by the program's `max_price_lamports` check, not by
++ * trusting this constant. */
++const LOTTERY_TICKET_PRICE_LAMPORTS = new BN(800_000);
++
+ const u64 = (value: unknown, field: string): BN => {
+   const text = String(value ?? "");
+   if (!/^[0-9]{1,20}$/.test(text)) throw new Error(`${field} must be a u64`);
+@@ -67,12 +74,56 @@
+   }
+ });
+ 
+-// The deployed buy_lottery_ticket instruction has no max_price argument.
+-// Its CPI transfers a compiled constant: a wallet cannot enforce the price
+-// it saw on the page if the deployed program differs. Freeze new purchases in
+-// both server and client until a bounded instruction + intent are deployed.
+-r.post("/ticket/buy", (_req, res) => {
+-  res.status(503).json({ error: "LOTTERY_PURCHASE_REQUIRES_BOUNDED_PRICE" });
++/**
++ * [F-06] Ticket purchase with a wallet-signed ceiling.
++ *
++ * The deployed `buy_lottery_ticket` escrows a compiled constant, so the wallet
++ * must be able to refuse a charge it did not see: the player signs
++ * `max_price_lamports`, the program checks `price <= max_price`, and the local
++ * intent in `frontend/src/lib/transactionIntent.ts` compares the same bytes
++ * before the wallet opens. A ceiling below the on-chain price is refused here
++ * (fail fast) and again in the program (`PriceAboveMaximum`).
++ */
++r.post("/ticket/buy", requireCircuitOpen, requireWalletLimits("lottery_buy"), requireIdempotency, async (req, res) => {
++  try {
++    // The wallet-proof middleware for this route selects `buyer`
++    // (aof_backend/src/security/walletProof.ts), so the body field is `buyer`.
++    const user = pk(req.body.buyer);
++    const roundId = u64(req.body.roundId, "roundId");
++    const ceiling = LOTTERY_TICKET_PRICE_LAMPORTS;
++    const maxPrice = req.body.maxPriceLamports === undefined
++      ? ceiling
++      : u64(req.body.maxPriceLamports, "maxPriceLamports");
++    if (maxPrice.lt(ceiling)) throw new Error("PRICE_ABOVE_MAXIMUM");
++    const [lotteryRound] = lotteryRoundPda(roundId);
++    const round: any = await (program.account as any).lotteryRound.fetch(lotteryRound);
++    if (round.drawn) return res.status(409).json({ error: "LOTTERY_ROUND_CLOSED" });
++    if (round.drawCommitted) return res.status(409).json({ error: "LOTTERY_SALES_CLOSED" });
++    const ticketNumber = round.ticketsSold as BN;
++    const [lotteryTicket] = lotteryTicketPda(roundId, ticketNumber);
++    const [ticketCounter] = lotteryTicketCounterPda(roundId, user);
++    const ix = await (program.methods as any)
++      .buyLotteryTicket(maxPrice)
++      .accounts({
++        config: configPda()[0],
++        buyer: user,
++        lotteryRound,
++        lotteryTicket,
++        ticketCounter,
++        systemProgram: SystemProgram.programId,
++      })
++      .instruction();
++    const tx = await coSign([ix], user);
++    res.json({
++      tx,
++      roundId: roundId.toString(),
++      ticketNumber: ticketNumber.toString(),
++      priceLamports: LOTTERY_TICKET_PRICE_LAMPORTS.toString(),
++      maxPriceLamports: maxPrice.toString(),
++    });
++  } catch (e: any) {
++    res.status(e.status || 400).json({ error: e.message });
++  }
+ });
+ 
+ /** Operator closes sales and commits the draw to a Switchboard pool slot. */

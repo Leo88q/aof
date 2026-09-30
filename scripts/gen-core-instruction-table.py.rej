@@ -1,0 +1,71 @@
+@@ -41,6 +41,25 @@
+     "recipient", "renter", "owner", "creator", "fulfiller",
+     # signer slots that name the player in claim_lottery_prize / referral_bind
+     "winner", "referred",
++    # transfer_tool signs as `sender`; the recipient is a counterparty and does
++    # not have to be the connected wallet.
++    "sender",
++}
++
++# Instructions whose handler reads `ctx.remaining_accounts`: the account list in
++# the IDL is only the fixed prefix, and the trailing accounts are supplied by the
++# caller (the backend). They are NOT free-form: the guard still has to see them
++# validated, which is why this flag is only set for instructions whose handler
++# checks every trailing account against on-chain state
++# (`aof-core/src/instructions/rebirth_reset.rs`). The check below re-reads the
++# Rust source so the table cannot silently claim a fixed list.
++VARIABLE_ACCOUNTS = {
++    "reset_for_rebirth": "pairs",
++}
++# Where each flag was verified: (file, marker of the validation the handler
++# performs on the trailing accounts).
++VARIABLE_ACCOUNTS_EVIDENCE = {
++    "reset_for_rebirth": ("aof-core/src/instructions/rebirth_reset.rs", "ctx.remaining_accounts"),
+ }
+ 
+ HEADER = """/**
+@@ -77,6 +96,12 @@
+   readonly signerIndexes: readonly number[];
+   /** Authority-signed only: a player wallet must never be asked to sign it. */
+   readonly authorityOnly: boolean;
++  /**
++   * Trailing accounts the IDL cannot describe: `"pairs"` means the caller adds
++   * `(mint, token_account)` couples after the fixed prefix. The caller's intent
++   * validator must check every one of them; `null` means the list is exact.
++   */
++  readonly trailingAccounts: "pairs" | null;
+ };
+ 
+ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
+@@ -101,7 +126,21 @@
+ """
+ 
+ 
++def verify_variable_accounts() -> None:
++    """Fail loudly when the table claims trailing accounts the source lacks."""
++    for name, (path, marker) in VARIABLE_ACCOUNTS_EVIDENCE.items():
++        if name not in VARIABLE_ACCOUNTS:
++            raise SystemExit(f"{name} has trailing-account evidence but no entry")
++        source = open(path, encoding="utf-8").read()
++        if marker not in source:
++            raise SystemExit(
++                f"{path} no longer contains {marker!r}: "
++                f"{name} must lose trailingAccounts in VARIABLE_ACCOUNTS"
++            )
++
++
+ def render() -> str:
++    verify_variable_accounts()
+     idl = json.load(open(IDL, encoding="utf-8"))
+     lines = [HEADER.rstrip("\n")]
+     for ix in idl["instructions"]:
+@@ -115,6 +154,9 @@
+         lines.append("    actorIndexes: [" + ", ".join(str(i) for i in actors) + "],")
+         lines.append("    signerIndexes: [" + ", ".join(str(i) for i in signers) + "],")
+         lines.append(f'    authorityOnly: {"true" if ix["name"] in AUTHORITY_ONLY else "false"},')
++        trailing = VARIABLE_ACCOUNTS.get(ix["name"])
++        rendered = "null" if trailing is None else f'"{trailing}"'
++        lines.append(f'    trailingAccounts: {rendered},')
+         lines.append("  },")
+     return "\n".join(lines) + "\n\n" + FOOTER
+ 

@@ -1,0 +1,71 @@
+@@ -389,9 +389,17 @@
+     /require!\(false, QuestError::Paused\)/);
+   // Legacy helpers are gone, so nothing can be wired back to them.
+   assert.doesNotMatch(stripComments(core('randomness.rs')), /fn (hash_secret|get_slot_hash|derive_entropy)/);
+-  // Rebirth is not a randomness mechanic and stays disabled on its own.
+-  assert.match(fnBody(read('programs/aof-rebirth/src/instructions/do_rebirth.rs'), 'handler'),
+-    /require!\(\s*false\s*,\s*\w+::FeatureDisabled\s*\)/);
++  // Rebirth is not a randomness mechanic. [§3.4] Он включён: сброс прогресса
++  // существует одной инструкцией, а сам ребёрт не подписывается игроком без
++  // бэкенда — иначе бонус начислялся бы без сброса.
++  const rebirthHandler = fnBody(read('programs/aof-rebirth/src/instructions/do_rebirth.rs'), 'handler');
++  assert.doesNotMatch(rebirthHandler, /require!\(\s*false/,
++    'ребёрт снова выключен заглушкой');
++  assert.match(read('programs/aof-rebirth/src/instructions/do_rebirth.rs'),
++    /address = rebirth_config\.authority @ RebirthError::Unauthorized/,
++    'ребёрт обязан требовать подпись authority, иначе бонус достижим без сброса');
++  assert.match(read('aof-core/src/instructions/rebirth_reset.rs'), /is_resource_mint/,
++    'сброс обязан отвергать неканонические минты');
+ });
+ 
+ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account decoding, no deprecated sysvars', () => {
+@@ -407,10 +415,48 @@
+   // audited exception for raw invoke_signed: Switchboard ships no Anchor CPI
+   // crate for this toolchain. Every raw CPI there targets the trusted program.
+   const VRF = { aof_core: 'aof-core/src/vrf.rs', aof_quests: 'programs/aof-quests/src/vrf.rs' };
++  // [§3.4] reset_for_rebirth — единственное место, где список аккаунтов задаёт
++  // бэкенд: излишков у игрока может быть 0..16 пар (mint, token_account), и
++  // фиксированная структура их не выражает. Это не «невалидированный
++  // remaining_accounts»: каждая пара проходит чётность, лимит, канонический
++  // ресурсный минт, вывод канонического ATA из (игрок, минт), проверку
++  // программы-владельца и точной длины SPL token account, официальную
++  // распаковку и сверку владельца/минта/остатка — и только потом CPI burn.
++  // Anchor тут не подходит: `Account<'info, T>` строится только из
++  // `&'info AccountInfo<'info>`, а `Context::remaining_accounts` даёт
++  // `&'c [AccountInfo<'info>]` с независимым 'c (см. комментарий в файле).
++  const REMAINING_ACCOUNTS = 'aof-core/src/instructions/rebirth_reset.rs';
++  {
++    const raw = read(REMAINING_ACCOUNTS);
++    const body = stripComments(withoutInlineTests(raw));
++    const guards = [
++      [/require!\(\s*pairs\.len\(\) % 2 == 0/, 'чётность пар'],
++      [/pair_count <= REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS/, 'лимит пар'],
++      [/is_resource_mint\(/, 'канонический ресурсный минт'],
++      [/get_associated_token_address\(&user_key, &mint_info\.key\(\)\)/, 'адрес ATA выводится из игрока и минта'],
++      [/NonCanonicalTokenAccount/, 'не-ATA аккаунт отвергается'],
++      [/require_keys_eq!\(\s*\*token_info\.owner,\s*anchor_spl::token::spl_token::ID/, 'владелец — классический Token program'],
++      [/TokenState::LEN/, 'точная длина SPL token account'],
++      [/TokenState::unpack\(&data\[\.\.\]\)/, 'официальная распаковка вместо байтовых смещений'],
++      [/require_keys_eq!\(data_owner, user_key/, 'владелец в данных — игрок'],
++      [/require_keys_eq!\(data_mint, mint_info\.key\(\)/, 'минт в данных — минт пары'],
++      [/require!\(amount > 0/, 'ненулевой остаток'],
++    ];
++    for (const [re, why] of guards) assert.match(body, re, `${REMAINING_ACCOUNTS}: ${why} обязателен до сжигания`);
++    // CPI идёт строго после всех проверок пары.
++    for (const check of ['get_associated_token_address(', 'TokenState::unpack(', 'require!(amount > 0']) {
++      assert.ok(body.indexOf(check) < body.indexOf('token::burn('), `проверка ${check} обязана быть до CPI burn`);
++    }
++    assert.equal([...body.matchAll(/remaining_accounts/g)].length, 1, 'remaining_accounts читается один раз и только как pairs');
++  }
+   for (const [program, { code }] of Object.entries(sources)) {
+     const vrf = VRF[program] ? stripComments(withoutInlineTests(read(VRF[program]))) : null;
+     for (const [re, why] of banned) {
+-      const scope = vrf && /raw invoke/.test(why) ? code.replace(vrf, '') : code;
++      let scope = code;
++      if (vrf && /raw invoke/.test(why)) scope = scope.replace(vrf, '');
++      if (/unvalidated remaining_accounts/.test(why) && program === 'aof_core') {
++        scope = scope.replace(stripComments(withoutInlineTests(read(REMAINING_ACCOUNTS))), '');
++      }
+       assert.doesNotMatch(scope, re, `${program}: ${why}`);
+     }
+   }

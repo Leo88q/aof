@@ -1,0 +1,91 @@
+@@ -0,0 +1,90 @@
++import type { Language } from './translations';
++
++/**
++ * Коллекционеры (Historics/Medallion). Все числа — правила контракта:
++ * lock 3 дня, 0.01 SOL за снятие из газ-бака, скидка на минт-комиссию
++ * 7–10% без перка, 5–8% с медальоном, 3–6% с историком, 1–3% с обоими,
++ * кап реферального бонуса 5 → +5 за медальон, +25 за историка.
++ */
++type Copy = {
++  sticker: string; title: string; meta: string; sub: string;
++  have: string; haveHint: string; mint: string; kind: string; kindHistorian: string; kindMedallion: string;
++  check: string; checking: string; none: string; unknown: string; invalid: string; noWallet: string;
++  stake: string; unstake: string; staking: string; unstaking: string;
++  stakedTitle: (mint: string) => string; lockedFor: (left: string) => string; unlocked: string; byAnother: string;
++  perks: string; lockNote: string; feeNote: string; tankNote: string;
++  stakeDone: string; unstakeDone: string; uncertain: string;
++};
++
++export const collectorCopy: Record<Language, Copy> = {
++  ru: {
++    sticker: 'КОЛЛЕКЦИОНЕРЫ', title: 'Историки и Медальоны', meta: 'ПЕРКИ СТЕЙКИНГА', sub: 'NFT на 3 дня даёт скидку на комиссию минта',
++    have: 'В коллекции', haveHint: 'подтверждённый счётчик Player', mint: 'Адрес NFT', kind: 'Вид', kindHistorian: 'Историк', kindMedallion: 'Медальон',
++    check: 'Проверить', checking: 'Читаем позицию…', none: 'Подтверждено: этот NFT не в коллекции.', unknown: 'Позицию не удалось прочитать из сети — не считаем её пустой.', invalid: 'Это не похоже на адрес NFT.', noWallet: 'Подключите кошелёк.',
++    stake: 'Поставить в коллекцию', unstake: 'Вернуть NFT', staking: 'Ставим…', unstaking: 'Возвращаем…',
++    stakedTitle: m => `В коллекции: ${m}`, lockedFor: left => `NFT в хранилище, снять можно через ${left}.`, unlocked: 'Блокировка прошла — NFT можно вернуть.', byAnother: 'Этот NFT держит другой кошелёк.',
++    perks: 'Скидка на комиссию минта: 7–10% без перка, 5–8% с медальоном, 3–6% с историком, 1–3% с обоими. Кап реферального бонуса: 5 без перка, +5 за медальон, +25 за историка.',
++    lockNote: 'Правило контракта: один NFT за вызов, блокировка 3 дня, минт должен быть в списке, который ведёт оператор.', feeNote: 'Возврат NFT стоит 0.01 SOL из газ-бака.', tankNote: 'Проверьте баланс газ-бака перед возвратом.',
++    stakeDone: 'NFT принят в коллекцию — счётчик перка обновится после подтверждения.', unstakeDone: 'NFT возвращён из коллекции.', uncertain: 'Транзакция не подтверждена. Проверьте историю кошелька — повтор может сработать дважды.',
++  },
++  en: {
++    sticker: 'COLLECTORS', title: 'Historians and Medallions', meta: 'STAKING PERKS', sub: 'An NFT locked for 3 days cuts the mint fee',
++    have: 'In the collection', haveHint: 'verified Player counter', mint: 'NFT address', kind: 'Kind', kindHistorian: 'Historian', kindMedallion: 'Medallion',
++    check: 'Check', checking: 'Reading the position…', none: 'Confirmed: this NFT is not in the collection.', unknown: 'The position could not be read from the network — we do not treat it as empty.', invalid: 'This does not look like an NFT address.', noWallet: 'Connect a wallet.',
++    stake: 'Add to the collection', unstake: 'Return the NFT', staking: 'Staking…', unstaking: 'Returning…',
++    stakedTitle: m => `In the collection: ${m}`, lockedFor: left => `The NFT is in the vault; it can be returned in ${left}.`, unlocked: 'The lock has passed — the NFT can be returned.', byAnother: 'Another wallet holds this NFT.',
++    perks: 'Mint fee discount: 7–10% without a perk, 5–8% with a medallion, 3–6% with a historian, 1–3% with both. Referral bonus cap: 5 without a perk, +5 for a medallion, +25 for a historian.',
++    lockNote: 'Contract rule: one NFT per call, a 3-day lock, and the mint must be on the operator-run list.', feeNote: 'Returning the NFT costs 0.01 SOL from the gas tank.', tankNote: 'Check the gas tank balance before returning.',
++    stakeDone: 'The NFT is accepted — the perk counter updates after confirmation.', unstakeDone: 'The NFT has been returned from the collection.', uncertain: 'The transaction is unconfirmed. Check your wallet history — retrying can act twice.',
++  },
++  pt: {
++    sticker: 'COLECIONADORES', title: 'Historiadores e Medalhões', meta: 'BENEFÍCIOS DE STAKING', sub: 'Um NFT travado por 3 dias reduz a taxa de cunhagem',
++    have: 'Na coleção', haveHint: 'contador verificado do Player', mint: 'Endereço do NFT', kind: 'Tipo', kindHistorian: 'Historiador', kindMedallion: 'Medalhão',
++    check: 'Verificar', checking: 'Lendo a posição…', none: 'Confirmado: este NFT não está na coleção.', unknown: 'A posição não foi lida da rede — não a tratamos como vazia.', invalid: 'Isto não parece um endereço de NFT.', noWallet: 'Conecte a carteira.',
++    stake: 'Adicionar à coleção', unstake: 'Devolver o NFT', staking: 'Colocando…', unstaking: 'Devolvendo…',
++    stakedTitle: m => `Na coleção: ${m}`, lockedFor: left => `O NFT está no cofre; pode ser devolvido em ${left}.`, unlocked: 'A trava passou — o NFT pode ser devolvido.', byAnother: 'Outra carteira detém este NFT.',
++    perks: 'Desconto na taxa de cunhagem: 7–10% sem benefício, 5–8% com medalhão, 3–6% com historiador, 1–3% com ambos. Limite do bónus de referência: 5 sem benefício, +5 por medalhão, +25 por historiador.',
++    lockNote: 'Regra do contrato: um NFT por chamada, trava de 3 dias e o mint tem de estar na lista gerida pelo operador.', feeNote: 'Devolver o NFT custa 0,01 SOL do tanque de gás.', tankNote: 'Verifique o saldo do tanque antes de devolver.',
++    stakeDone: 'NFT aceite na coleção — o contador atualiza após a confirmação.', unstakeDone: 'NFT devolvido da coleção.', uncertain: 'Transação não confirmada. Verifique o histórico da carteira — repetir pode agir duas vezes.',
++  },
++  es: {
++    sticker: 'COLECCIONISTAS', title: 'Historiadores y Medallones', meta: 'VENTAJAS DE STAKING', sub: 'Un NFT bloqueado 3 días reduce la comisión de acuñación',
++    have: 'En la colección', haveHint: 'contador verificado del Player', mint: 'Dirección del NFT', kind: 'Tipo', kindHistorian: 'Historiador', kindMedallion: 'Medallón',
++    check: 'Comprobar', checking: 'Leyendo la posición…', none: 'Confirmado: este NFT no está en la colección.', unknown: 'No se pudo leer la posición de la red — no la tratamos como vacía.', invalid: 'Esto no parece una dirección de NFT.', noWallet: 'Conecta una cartera.',
++    stake: 'Añadir a la colección', unstake: 'Devolver el NFT', staking: 'Colocando…', unstaking: 'Devolviendo…',
++    stakedTitle: m => `En la colección: ${m}`, lockedFor: left => `El NFT está en la cámara; puede devolverse en ${left}.`, unlocked: 'El bloqueo terminó — el NFT puede devolverse.', byAnother: 'Otra cartera posee este NFT.',
++    perks: 'Descuento en la comisión de acuñación: 7–10% sin ventaja, 5–8% con medallón, 3–6% con historiador, 1–3% con ambos. Límite del bono de referidos: 5 sin ventaja, +5 por medallón, +25 por historiador.',
++    lockNote: 'Regla del contrato: un NFT por llamada, bloqueo de 3 días y el mint debe estar en la lista que mantiene el operador.', feeNote: 'Devolver el NFT cuesta 0,01 SOL del depósito de gas.', tankNote: 'Comprueba el saldo del depósito antes de devolver.',
++    stakeDone: 'NFT aceptado en la colección — el contador se actualiza tras la confirmación.', unstakeDone: 'NFT devuelto de la colección.', uncertain: 'Transacción sin confirmar. Revisa el historial de la cartera — reintentar puede actuar dos veces.',
++  },
++  vi: {
++    sticker: 'NHÀ SƯU TẦM', title: 'Sử gia và Huy chương', meta: 'ƯU ĐÃI STAKING', sub: 'NFT khoá 3 ngày giúp giảm phí đúc',
++    have: 'Trong bộ sưu tập', haveHint: 'bộ đếm Player đã xác minh', mint: 'Địa chỉ NFT', kind: 'Loại', kindHistorian: 'Sử gia', kindMedallion: 'Huy chương',
++    check: 'Kiểm tra', checking: 'Đang đọc vị trí…', none: 'Đã xác nhận: NFT này không nằm trong bộ sưu tập.', unknown: 'Không đọc được vị trí từ mạng — chúng tôi không coi là trống.', invalid: 'Đây không giống địa chỉ NFT.', noWallet: 'Kết nối ví.',
++    stake: 'Đưa vào bộ sưu tập', unstake: 'Trả lại NFT', staking: 'Đang đặt…', unstaking: 'Đang trả lại…',
++    stakedTitle: m => `Trong bộ sưu tập: ${m}`, lockedFor: left => `NFT đang trong kho; có thể trả lại sau ${left}.`, unlocked: 'Đã hết khoá — có thể trả lại NFT.', byAnother: 'Ví khác đang giữ NFT này.',
++    perks: 'Giảm phí đúc: 7–10% khi không có ưu đãi, 5–8% với huy chương, 3–6% với sử gia, 1–3% khi có cả hai. Mức thưởng giới thiệu: 5 khi không có, +5 cho huy chương, +25 cho sử gia.',
++    lockNote: 'Quy tắc hợp đồng: một NFT mỗi lần, khoá 3 ngày, mint phải nằm trong danh sách do người vận hành quản lý.', feeNote: 'Trả lại NFT tốn 0,01 SOL từ bình gas.', tankNote: 'Kiểm tra số dư bình gas trước khi trả lại.',
++    stakeDone: 'NFT đã được nhận — bộ đếm cập nhật sau khi xác nhận.', unstakeDone: 'NFT đã được trả lại.', uncertain: 'Giao dịch chưa xác nhận. Kiểm tra lịch sử ví — thử lại có thể thực hiện hai lần.',
++  },
++  id: {
++    sticker: 'KOLEKTOR', title: 'Sejarawan dan Medali', meta: 'MANFAAT STAKING', sub: 'NFT terkunci 3 hari menurunkan biaya cetak',
++    have: 'Di koleksi', haveHint: 'penghitung Player terverifikasi', mint: 'Alamat NFT', kind: 'Jenis', kindHistorian: 'Sejarawan', kindMedallion: 'Medali',
++    check: 'Periksa', checking: 'Membaca posisi…', none: 'Terkonfirmasi: NFT ini tidak ada di koleksi.', unknown: 'Posisi tidak terbaca dari jaringan — kami tidak menganggapnya kosong.', invalid: 'Ini bukan alamat NFT.', noWallet: 'Hubungkan dompet.',
++    stake: 'Masukkan ke koleksi', unstake: 'Kembalikan NFT', staking: 'Memasukkan…', unstaking: 'Mengembalikan…',
++    stakedTitle: m => `Di koleksi: ${m}`, lockedFor: left => `NFT ada di brankas; bisa dikembalikan dalam ${left}.`, unlocked: 'Kunci sudah lewat — NFT bisa dikembalikan.', byAnother: 'Dompet lain memegang NFT ini.',
++    perks: 'Diskon biaya cetak: 7–10% tanpa manfaat, 5–8% dengan medali, 3–6% dengan sejarawan, 1–3% dengan keduanya. Batas bonus rujukan: 5 tanpa manfaat, +5 untuk medali, +25 untuk sejarawan.',
++    lockNote: 'Aturan kontrak: satu NFT per panggilan, kunci 3 hari, dan mint harus ada di daftar yang dikelola operator.', feeNote: 'Mengembalikan NFT memakai 0,01 SOL dari tangki gas.', tankNote: 'Periksa saldo tangki gas sebelum mengembalikan.',
++    stakeDone: 'NFT diterima — penghitung diperbarui setelah konfirmasi.', unstakeDone: 'NFT dikembalikan dari koleksi.', uncertain: 'Transaksi belum terkonfirmasi. Periksa riwayat dompet — mengulang bisa terjadi dua kali.',
++  },
++  fil: {
++    sticker: 'MGA KOLEKTOR', title: 'Mga Mananalaysay at Medalyon', meta: 'BENEPISYO SA STAKING', sub: 'Ang NFT na nakakandado ng 3 araw ay nagpapababa ng bayad sa paggawa',
++    have: 'Sa koleksyon', haveHint: 'beripikadong counter ng Player', mint: 'Address ng NFT', kind: 'Uri', kindHistorian: 'Mananalaysay', kindMedallion: 'Medalyon',
++    check: 'Suriin', checking: 'Binabasa ang posisyon…', none: 'Nakumpirma: wala sa koleksyon ang NFT na ito.', unknown: 'Hindi nabasa mula sa network ang posisyon — hindi namin ito itinuturing na walang laman.', invalid: 'Hindi ito mukhang address ng NFT.', noWallet: 'Ikonekta ang wallet.',
++    stake: 'Ilagay sa koleksyon', unstake: 'Ibalik ang NFT', staking: 'Inilalagay…', unstaking: 'Ibinabalik…',
++    stakedTitle: m => `Sa koleksyon: ${m}`, lockedFor: left => `Nasa vault ang NFT; maibabalik sa ${left}.`, unlocked: 'Tapos na ang kandado — maibabalik na ang NFT.', byAnother: 'Ibang wallet ang may hawak ng NFT na ito.',
++    perks: 'Diskwento sa bayad sa paggawa: 7–10% na walang benepisyo, 5–8% sa medalyon, 3–6% sa mananalaysay, 1–3% sa dalawa. Takda ng bonus sa referral: 5 na walang benepisyo, +5 sa medalyon, +25 sa mananalaysay.',
++    lockNote: 'Panuntunan ng kontrata: isang NFT bawat tawag, 3 araw na kandado, at kailangang nasa listahan ng operator ang mint.', feeNote: 'Ang pagbabalik ng NFT ay 0,01 SOL mula sa tangke ng gas.', tankNote: 'Suriin ang balanse ng tangke bago magbalik.',
++    stakeDone: 'Tinanggap ang NFT — mag-a-update ang counter pagkatapos ng kumpirmasyon.', unstakeDone: 'Naibalik ang NFT mula sa koleksyon.', uncertain: 'Hindi nakumpirma ang transaksyon. Tingnan ang kasaysayan ng wallet — maaaring doble kapag inulit.',
++  },
++};

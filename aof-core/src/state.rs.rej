@@ -1,0 +1,28 @@
+@@ -647,6 +647,27 @@
+     pub mint: Pubkey,
+ }
+ 
++/// [AUDIT orderbook price unit] v2 order: the price is quoted for a WHOLE
++/// resource (`amount_remaining` stays in atomic SPL units) and every lamport
++/// amount is rounded up, so the escrow matches the quote the player signed.
++/// Buy orders additionally track `escrow_lamports` — the lamports still held
++/// for this order — so a cancel returns exactly what is left instead of
++/// recomputing a rounded amount.
++#[account]
++#[derive(InitSpace)]
++pub struct ResourceOrderV2 {
++    pub maker: Pubkey,
++    pub kind: u8, // ResourceKind as u8
++    pub is_buy: bool,
++    /// Lamports per one whole resource unit (10^9 atoms), not per atom.
++    pub price_lamports_per_whole: u64,
++    pub amount_remaining: u64,
++    pub mint: Pubkey,
++    /// Lamports escrowed for this buy order (0 for sell orders).
++    pub escrow_lamports: u64,
++    pub bump: u8,
++}
++
+ // ----- Крафт под заказ -----
+ 
+ #[account]

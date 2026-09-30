@@ -1,0 +1,86 @@
+@@ -11,6 +11,7 @@
+ import { RARITY_META, rarityKey } from "../../lib/toolMeta";
+ import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
+ import { ArtPlate } from "../../components/visual/ArtPlate";
++import { PackPlate } from "../../components/visual/PackPlate";
+ import { useFlash } from "../../lib/marketUtils";
+ import type { PackOpenIntent } from "../../lib/transactionIntent";
+ import { actionErrorFeedback, LocalTxFeedbackError } from "../../lib/txResponseFeedback";
+@@ -50,6 +51,9 @@
+   const [configFailed, setConfigFailed] = useState(false);
+   const [busy, setBusy] = useState<string | null>(null);
+   const [opening, setOpening] = useState<Opening | null>(null);
++  // Размер последней открытой капсулы: витрина должна показывать ту капсулу,
++  // которую игрок действительно открыл, а не условную иконку.
++  const [lastPack, setLastPack] = useState<"small" | "medium" | "big" | null>(null);
+   const [pending, setPending] = useState<Pending[] | null>(null);
+   const [pendingAddress, setPendingAddress] = useState<string | null>(null);
+   const [pendingFailed, setPendingFailed] = useState(false);
+@@ -112,6 +116,7 @@
+     ++pollGeneration.current;
+     if (poll.current) { clearInterval(poll.current); poll.current = null; }
+     setOpening(null);
++    setLastPack(null);
+   }, [address]);
+   const visiblePending = address && pendingAddress === address ? pending : null;
+   useEffect(() => {
+@@ -209,8 +214,15 @@
+         <Card className="text-center py-5">
+           {opening.state === "pending" && (
+             <>
+-              <motion.img src={UI_ICONS.packs} alt="" className="w-16 h-16 mx-auto object-contain"
+-                animate={{ rotate: [0, -8, 8, 0] }} transition={{ repeat: Infinity, duration: 1.2 }} />
++              {/* Витрина размера, пока оракул считает: раньше здесь дрожала
++                  одна и та же иконка, и по картинке нельзя было понять,
++                  какую капсулу открываешь. */}
++              {lastPack && (
++                <motion.div className="w-20 mx-auto"
++                  animate={{ rotate: [0, -4, 4, 0] }} transition={{ repeat: Infinity, duration: 1.6 }}>
++                  <PackPlate packId={lastPack} size="100%" alt="" />
++                </motion.div>
++              )}
+               <p className="text-parchment font-semibold mt-3">{copy.waiting} {Math.floor(waitingMs / 1000)} {copy.seconds}</p>
+               {waitingMs > SELF_SETTLE_AFTER_MS && (
+                 <button onClick={() => selfSettle(opening.packCommit)} disabled={busy === opening.packCommit}
+@@ -234,7 +246,14 @@
+             </>
+           )}
+           {opening.state === "settled" && !opening.tool && <p className="text-parchment text-sm">{copy.settledUnknown}</p>}
+-          {opening.state === "refunded" && <p className="text-parchment text-sm">{copy.refunded}</p>}
++          {opening.state === "refunded" && (
++            <>
++              {/* Возврат: капсула показана раскрытой и пустой — честная
++                  картинка вместо прежней строки текста без визуала. */}
++              {lastPack && <div className="w-20 mx-auto"><PackPlate packId={lastPack} state="opened" size="100%" alt="" /></div>}
++              <p className="text-parchment text-sm mt-3">{copy.refunded}</p>
++            </>
++          )}
+         </Card>
+       )}
+ 
+@@ -243,12 +262,20 @@
+           const cfg = configs?.[pack.id];
+           return (
+             <Card key={pack.id}>
+-              <div className="flex flex-wrap items-center justify-between gap-2">
+-                <div>
+-                  <p className="text-parchment font-bold">{copy[pack.id]}</p>
+-                  <p className="text-straw text-xs">{cfg ? `${(Number(cfg.priceLamports) / 1e9).toLocaleString(language, { maximumFractionDigits: 4 })} ◎` : configFailed ? copy.configError : configs === null ? copy.configLoading : copy.unconfigured}</p>
++              <div className="flex flex-wrap items-start justify-between gap-3">
++                <div className="flex items-start gap-3 min-w-0">
++                  {/* Витрина размера: до 2026-09-30 карточек капсул не было —
++                      только строка цены и кнопка, без картинки и описания. */}
++                  <span className="shrink-0">
++                    <PackPlate packId={pack.id} size={72} alt={copy.illustration} />
++                  </span>
++                  <div className="min-w-0">
++                    <p className="text-parchment font-bold">{copy[pack.id]}</p>
++                    <p className="text-straw text-[11px] leading-relaxed mt-1">{copy.about[pack.id]}</p>
++                    <p className="text-straw text-xs mt-1">{cfg ? `${(Number(cfg.priceLamports) / 1e9).toLocaleString(language, { maximumFractionDigits: 4 })} ◎` : configFailed ? copy.configError : configs === null ? copy.configLoading : copy.unconfigured}</p>
++                  </div>
+                 </div>
+-                <button onClick={() => open(pack)} disabled={!cfg || !address || busy !== null}
++                <button onClick={() => { setLastPack(pack.id); open(pack); }} disabled={!cfg || !address || busy !== null}
+                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white text-sm font-bold disabled:opacity-40">
+                   {busy === pack.id ? "…" : copy.open}
+                 </button>
