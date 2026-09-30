@@ -187,80 +187,23 @@ jobs:
           set -o pipefail
           cargo test --locked --workspace --lib 2>&1 | tee /tmp/unit-tests.log
 
+      - name: Annotation helper self-test
+        # Сам помощник тоже должен быть проверен: если он сломается, красный
+        # прогон снова станет неотличим от «красного без причины».
+        run: python3 scripts/ci-annotate-cargo-log.py --self-test
+
       - name: Mirror unit-test output into check annotations
         if: failure()
         # results-receiver.actions.githubusercontent.com is unreachable from
-        # some environments, so a red run there is undiagnosable. The compiler
-        # and assertion output is repeated as check-run annotations, which are
-        # readable through the API.
-        #
-        # Every annotation carries `file=`/`line=` taken from rustc's `-->`
-        # line plus rustc's own `note:` lines (they name the invariant type and
-        # which lifetime must outlive which), so a failure can be diagnosed
-        # with `gh api repos/OWNER/REPO/check-runs/<id>/annotations` even when
-        # the job log itself cannot be downloaded.
-        run: |
-          python3 - <<'PY'
-          import os, re
-
-          path = "/tmp/unit-tests.log"
-          if not os.path.exists(path):
-              raise SystemExit(0)
-          raw = open(path, encoding="utf-8", errors="replace").read()
-          text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", raw)          # ANSI colour
-          lines = text.splitlines()
-
-
-          def esc(line):
-              return line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")[:900]
-
-
-          def block(start):
-              """The error line plus rustc's own notes, as one annotation."""
-              chunk = [lines[start].strip()]
-              for j in range(start + 1, min(start + 40, len(lines))):
-                  s = lines[j].strip()
-                  if re.match(r"^error(\[|:)", s):        # next error
-                      break
-                  if re.match(r"^(note|help):", s) or s.startswith("= note:"):
-                      chunk.append(s)
-                  if len(chunk) >= 5:
-                      break
-              return "\n".join(chunk)
-
-
-          # Compile errors first, each paired with its own source location.
-          # GitHub keeps only ~10 annotations per step, so stop early.
-          emitted = 0
-          for i, line in enumerate(lines):
-              stripped = line.strip()
-              if not re.match(r"^error(\[|:)", stripped):
-                  continue
-              if emitted >= 8:
-                  break
-              loc = ""
-              for j in range(i + 1, min(i + 9, len(lines))):
-                  if lines[j].strip().startswith("-->"):
-                      loc = lines[j].strip()[3:].strip()
-                      break
-              spot = re.match(r"([^\s:]+):(\d+):(\d+)", loc)
-              if spot:
-                  print("::error file=%s,line=%s::%s" % (spot.group(1), spot.group(2), esc(block(i))))
-              else:
-                  print("::error file=.github::" + esc(block(i)))
-              emitted += 1
-
-          # Then test failures: assertion values and the failing test names.
-          tails = [l.strip() for l in lines
-                   if re.match(r"^(failures:|test result:|assertion|thread )", l.strip())
-                   or "panicked at" in l or l.strip().startswith("left:")
-                   or l.strip().startswith("right:")]
-          for line in tails[: max(0, 10 - emitted)]:
-              print("::error file=.github::" + esc(line))
-          if not emitted and not tails:
-              for line in lines[-40:]:
-                  print("::error file=.github::" + esc(line))
-          PY
+        # some environments, so the job log cannot be downloaded and a red run
+        # there is undiagnosable. The diagnostics are republished as check-run
+        # annotations, which ARE readable through the API:
+        #   gh api repos/OWNER/REPO/check-runs/<id>/annotations
+        # Each annotation carries `file=`/`line=` from rustc's `-->` plus the
+        # lines that explain the failure (`has type`, `must outlive`,
+        # `requirement occurs ... invariant`) -- the part that matters for
+        # `AccountInfo`/`Signer` lifetime problems.
+        run: python3 scripts/ci-annotate-cargo-log.py /tmp/unit-tests.log
 
       - name: Rust advisory audit (advisory, non-blocking)
         # [AUDIT F-31] anchor-lang 0.30.1 / solana-program 1.18.26 are an EOL
