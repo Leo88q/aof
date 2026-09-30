@@ -110,7 +110,6 @@ pub fn handler<'info>(
         //     только «не тот адрес».
         require_keys_eq!(data_owner, user_key, AofError::Unauthorized);
         require_keys_eq!(data_mint, mint_info.key(), AofError::InvalidResourceKind);
-        require!(amount > 0, AofError::ZeroAmount);
 
         // (4) И только канонический ATA игрока: адрес выводится из
         //     (владелец, token program, минт), поэтому совпадение адресов
@@ -123,7 +122,12 @@ pub fn handler<'info>(
             AofError::NonCanonicalTokenAccount
         );
 
-        // (5) Только теперь — сжигание.
+        // (5) Сжигать нечего, если остаток нулевой. Проверка идёт последней из
+        //     отказов, чтобы «пустой» счёт не подменял собой более точную
+        //     причину (чужой, не тот минт, не ATA).
+        require!(amount > 0, AofError::ZeroAmount);
+
+        // (6) Только теперь — сжигание.
         token::burn(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
