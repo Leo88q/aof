@@ -869,6 +869,11 @@ jobs:
           # working game. Must never turn mining on before the payout mints
           # exist, never touch mainnet, and never POST in a dry run.
           python3 scripts/test-devnet-bringup.py
+          # Read-only probe that both the bringup report and the owner's
+          # "what is on right now" question come from: it must never claim
+          # "enabled" for a mechanic whose accounts are absent, and its
+          # base58/discriminator filters must match Anchor's layout.
+          python3 scripts/test-devnet-program-probe.py
 
       - name: Self-test - wallet proof
         run: |
