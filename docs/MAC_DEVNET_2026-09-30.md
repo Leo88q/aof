@@ -56,6 +56,26 @@ cd aof && git checkout arena/01a0efab-aof
 bash scripts/dev-local.sh sync
 ```
 
+### 1.1 Что уже проверено в этой ветке (CI, 2026-09-30)
+
+* `Anchor build (on-chain programs)` — **зелёный**: все шесть программ
+  собираются. До этого шаг падал на «lifetime may not live long enough» в
+  `reset_for_rebirth`; исправлено явными проверками вместо
+  `Account::try_from` из `remaining_accounts` и явным `'info` в сигнатуре
+  (подробности — `docs/UNBLOCK_PLAN_2026-09-30.md`, §0.1-бис).
+* `Anchor test (local validator)` — набор впервые прогнан на локальном
+  валидаторе: 47 passing, 1 failing, и единственный провал был в тесте
+  перерождения (порядок кодов отказа: `NonCanonicalTokenAccount`/`ZeroAmount`
+  вместо `Unauthorized`/`InvalidResourceKind`/`NonCanonicalTokenAccount`).
+  Порядок отказов исправлен; ожидаемый результат — 48 passing.
+* Локально без сети зелёные: 151 readiness-тест, python-гейты
+  (`test-p0-security`, `check-idl-drift`, генератор таблицы инструкций),
+  security-скрипты (`check-hidden-unicode`, `program-registry`,
+  `agent-config-lock`, `agent-skills`, `upstream-watch`, `audit-gate`).
+
+Поэтому шаги «сборка/тесты» ниже — проверка вашей машины, а не способ узнать,
+компилируется ли код: он компилируется.
+
 ---
 
 ## 2. Ключи программ: почему адреса придётся сменить и как это делается
