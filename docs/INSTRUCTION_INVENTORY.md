@@ -46,13 +46,13 @@
 
 | Инструкция | Роль | Заметка |
 |---|---|---|
-| aof_core.purchase_season_pass | gameplay | Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
-| aof_quests.achievement_unlock | gameplay | Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора. |
-| aof_quests.challenge_contribute | gameplay | Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации. |
-| aof_quests.drum_commit | gameplay | Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint. |
-| aof_quests.potato_spin_commit | gameplay | Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза. |
-| aof_session_keys.session_check_and_spend | gameplay | Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
-| aof_session_keys.session_create | gameplay | Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
+| aof_core.purchase_season_pass | gameplay | disabled / product decision pending — Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
+| aof_quests.achievement_unlock | gameplay | disabled / product decision pending — Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора. |
+| aof_quests.challenge_contribute | gameplay | disabled / product decision pending — Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации. |
+| aof_quests.drum_commit | gameplay | disabled / product decision pending — Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint. |
+| aof_quests.potato_spin_commit | gameplay | disabled / product decision pending — Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза. |
+| aof_session_keys.session_check_and_spend | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
+| aof_session_keys.session_create | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
 
 ## Без найденных call sites (23)
 
@@ -75,13 +75,13 @@
 | aof_core.sync_tool_owner | gameplay | active | validator, readiness | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
 | aof_quests.init_potato_bank | initialization | active | — | Изолированная казна Potato V2, изначально на паузе. |
 | aof_quests.init_quest_config | initialization | active | — | QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет. |
-| aof_quests.potato_spin_commit | gameplay | disabled-on-chain | readiness | Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза. |
+| aof_quests.potato_spin_commit | gameplay | disabled-on-chain | readiness | disabled / product decision pending — Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза. |
 | aof_quests.potato_spin_expire | gameplay | active | — | Permissionless: возврат за спин Potato V2; достижим только после включения potato_spin_commit. |
 | aof_quests.potato_spin_reveal | gameplay | active | — | Расчёт спина Potato V2 (работает и при паузе банка); достижим только после включения potato_spin_commit. |
 | aof_quests.quest_init | admin | active | — | Оператор создаёт квест; клиента для этого пока нет (инструмент оператора). |
 | aof_quests.set_potato_bank_paused | emergency | active | — | Пауза будущих коммитов Potato V2; расчёты и возвраты остаются доступны. |
-| aof_session_keys.session_check_and_spend | gameplay | disabled-on-chain | selfTests, rust | Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
-| aof_session_keys.session_create | gameplay | disabled-on-chain | readiness | Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
+| aof_session_keys.session_check_and_spend | gameplay | disabled-on-chain | selfTests, rust | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
+| aof_session_keys.session_create | gameplay | disabled-on-chain | readiness | disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
 | aof_session_keys.session_pause | gameplay | active | selfTests | Пауза сессии владельцем (пользовательская защита). |
 | aof_session_keys.session_revoke | gameplay | active | selfTests | Отзыв сессии владельцем (пользовательская защита). |
 

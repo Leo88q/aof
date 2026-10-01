@@ -3470,7 +3470,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL.",
+      "note": "disabled / product decision pending — Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL.",
       "evidence": null,
       "callSites": {
         "frontend": {
@@ -7573,7 +7573,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора.",
+      "note": "disabled / product decision pending — Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -7648,7 +7648,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации.",
+      "note": "disabled / product decision pending — Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -7728,7 +7728,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint.",
+      "note": "disabled / product decision pending — Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -7956,7 +7956,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза.",
+      "note": "disabled / product decision pending — Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза.",
       "evidence": null,
       "callSites": {},
       "registries": [],
@@ -8734,7 +8734,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции.",
+      "note": "disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции.",
       "evidence": null,
       "callSites": {},
       "registries": [],
@@ -8777,7 +8777,7 @@
       "role": "gameplay",
       "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам.",
+      "note": "disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам.",
       "evidence": null,
       "callSites": {},
       "registries": [],

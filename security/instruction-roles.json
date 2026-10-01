@@ -300,7 +300,7 @@
       "purchase_season_pass": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
+        "note": "disabled / product decision pending — Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
       },
       "referral_bind": {
         "role": "gameplay",
@@ -694,7 +694,7 @@
       "achievement_unlock": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
+        "note": "disabled / product decision pending — Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
       },
       "cancel_pending_authority": {
         "role": "admin",
@@ -704,7 +704,7 @@
       "challenge_contribute": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
+        "note": "disabled / product decision pending — Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
       },
       "challenge_init": {
         "role": "admin",
@@ -714,7 +714,7 @@
       "drum_commit": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint."
+        "note": "disabled / product decision pending — Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint."
       },
       "drum_expire": {
         "role": "gameplay",
@@ -739,7 +739,7 @@
       "potato_spin_commit": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
+        "note": "disabled / product decision pending — Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
       },
       "potato_spin_expire": {
         "role": "gameplay",
@@ -850,12 +850,12 @@
       "session_check_and_spend": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции."
+        "note": "disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции."
       },
       "session_create": {
         "role": "gameplay",
         "status": "disabled-on-chain",
-        "note": "Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
+        "note": "disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
       },
       "session_pause": {
         "role": "gameplay",

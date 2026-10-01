@@ -681,19 +681,6 @@
   ],
   "accounts": [
     {
-      "name": "HotLimitOrder",
-      "discriminator": [
-        197,
-        198,
-        219,
-        217,
-        218,
-        149,
-        161,
-        23
-      ]
-    },
-    {
       "name": "HotMarketPool",
       "discriminator": [
         179,
@@ -784,32 +771,6 @@
         5,
         151,
         237
-      ]
-    },
-    {
-      "name": "LimitOrderMatched",
-      "discriminator": [
-        11,
-        163,
-        116,
-        110,
-        238,
-        93,
-        229,
-        28
-      ]
-    },
-    {
-      "name": "LimitOrderPlaced",
-      "discriminator": [
-        104,
-        46,
-        231,
-        29,
-        78,
-        174,
-        107,
-        112
       ]
     },
     {
@@ -935,46 +896,6 @@
           },
           {
             "name": "Gem"
-          }
-        ]
-      }
-    },
-    {
-      "name": "HotLimitOrder",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "rarity",
-            "type": "u8"
-          },
-          {
-            "name": "currency",
-            "type": {
-              "defined": {
-                "name": "Currency"
-              }
-            }
-          },
-          {
-            "name": "is_buy",
-            "type": "bool"
-          },
-          {
-            "name": "limit_price",
-            "type": "u64"
-          },
-          {
-            "name": "amount_escrowed",
-            "type": "u64"
-          },
-          {
-            "name": "active",
-            "type": "bool"
           }
         ]
       }
@@ -1158,50 +1079,6 @@
           },
           {
             "name": "price",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LimitOrderMatched",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "rarity",
-            "type": "u8"
-          },
-          {
-            "name": "price",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LimitOrderPlaced",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "rarity",
-            "type": "u8"
-          },
-          {
-            "name": "is_buy",
-            "type": "bool"
-          },
-          {
-            "name": "limit_price",
             "type": "u64"
           }
         ]

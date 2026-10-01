@@ -32,7 +32,7 @@
         "tests/readiness/instruction-inventory.test.cjs"
       ],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
+      "decision": "keep — disabled / product decision pending: Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
     },
     {
       "program": "aof_quests",
@@ -62,7 +62,7 @@
         "tests/readiness/dead-code-evidence.test.cjs"
       ],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
+      "decision": "keep — disabled / product decision pending: Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
     },
     {
       "program": "aof_quests",
@@ -92,7 +92,7 @@
         "tests/readiness/dead-code-evidence.test.cjs"
       ],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
+      "decision": "keep — disabled / product decision pending: Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
     },
     {
       "program": "aof_quests",
@@ -126,7 +126,7 @@
         "tests/readiness/vrf-tx-size.test.cjs"
       ],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint."
+      "decision": "keep — disabled / product decision pending: Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint."
     },
     {
       "program": "aof_quests",
@@ -154,7 +154,7 @@
         "tests/readiness/dead-code-evidence.test.cjs"
       ],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
+      "decision": "keep — disabled / product decision pending: Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
     },
     {
       "program": "aof_session_keys",
@@ -180,7 +180,7 @@
       "platformConsumers": null,
       "tests": [],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции."
+      "decision": "keep — disabled / product decision pending: Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции."
     },
     {
       "program": "aof_session_keys",
@@ -208,7 +208,7 @@
         "tests/readiness/dead-code-evidence.test.cjs"
       ],
       "adminOrSecurityNeed": false,
-      "decision": "keep — не доказано мёртвой: Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
+      "decision": "keep — disabled / product decision pending: Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
     }
   ]
 }

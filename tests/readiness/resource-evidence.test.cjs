@@ -118,11 +118,11 @@ test('устаревший markdown и отсутствие evidence — оши�
   });
 });
 
-test('инвентарь клиентов сохранён в репозитории (требование шага A)', () => {
+test('инвентарь клиентов воспроизводим (требование шага A, замечание владельца)', () => {
   const inventory = read(CLIENT_INVENTORY);
-  for (const needle of ['git ls-files frontend game', 'find frontend -maxdepth 6 -type f | sort', 'find game -maxdepth 8 -type f | sort']) {
-    assert.ok(inventory.includes(needle), `в ${CLIENT_INVENTORY} нет команды: ${needle}`);
-  }
+  assert.ok(inventory.includes('git ls-files -- frontend game'), `в ${CLIENT_INVENTORY} нет команды-источника`);
   assert.ok(inventory.includes('frontend/src/pages/farm'), 'инвентарь должен перечислять реальные файлы frontend');
   assert.ok(inventory.includes('game/godot/products/'), 'инвентарь должен перечислять реальные файлы game');
+  assert.doesNotMatch(inventory, /find frontend -maxdepth|find game -maxdepth/, 'find-дамп больше не источник истины');
+  assert.match(inventory, /sha256: [0-9a-f]{64}/);
 });

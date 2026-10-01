@@ -104,7 +104,9 @@ export function buildEvidence() {
       else if (i.role === 'migration' || /^migrate_/.test(i.name)) decision = `remove — pre-genesis миграция (${guard.code ?? guard.kind}); deployment не существовал`;
       else if (unbuildable) decision = 'remove — by construction: парной инструкции (матчинг/расчёт) в программе нет';
       else if (!hasLiveCalls && i.role === 'deprecated') decision = 'remove — deprecated, потребителей нет';
-      else decision = `keep — не доказано мёртвой: ${(i.note ?? '').slice(0, 140)}`;
+      // Владелец: отсутствие player call site не делает инструкцию мёртвой. Такие
+      // инструкции остаются как «disabled / product decision pending» до его решения.
+      else decision = `keep — disabled / product decision pending: ${(i.note ?? '').replace(/^disabled \/ product decision pending — /, '').slice(0, 140)}`;
       return {
         program: i.program,
         name: i.name,

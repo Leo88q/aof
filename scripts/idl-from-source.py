@@ -225,6 +225,8 @@ def main() -> int:
     ap.add_argument("--events", default="", help="event types (discriminator + type entry)")
     ap.add_argument("--remove-types", default="")
     ap.add_argument("--remove-instructions", default="", help="comma-separated instruction names to drop")
+    ap.add_argument("--prune-orphans", action="store_true",
+                    help="drop accounts/types/events whose names no longer appear in the program source")
     ap.add_argument("--errors", action="store_true")
     args = ap.parse_args()
 
@@ -261,6 +263,22 @@ def main() -> int:
             idl[key] = [t for t in idl.get(key, []) if t["name"] != name]
             if len(idl[key]) != before:
                 print(f"removed {key[:-1]} {name}")
+    if args.prune_orphans:
+        import os as _os
+        text = ""
+        for root, _dirs, files in _os.walk(path):
+            for f in files:
+                if f.endswith(".rs"):
+                    text += open(_os.path.join(root, f), encoding="utf-8").read()
+        # Удаляются только записи, имени которых больше нет ни в одном исходнике
+        # программы. Общий тип, который всё ещё используют другие инструкции,
+        # остаётся: критерий — не «использовался удалённой инструкцией», а
+        # «не встречается в коде вообще».
+        for key in ("accounts", "types", "events"):
+            before = len(idl.get(key, []))
+            idl[key] = [t for t in idl.get(key, []) if t["name"] in text]
+            if len(idl[key]) != before:
+                print(f"pruned {key}: {before - len(idl[key])} entrie(s)")
     if args.errors:
         idl["errors"] = error_entries(src)
         print(f"errors: {len(idl['errors'])}")

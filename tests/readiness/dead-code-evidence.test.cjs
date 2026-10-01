@@ -43,7 +43,7 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 7 отключённых инструкций, к удалению 0', () => {
+test('репозиторий проходит гейт: 7 отключённых инструкций, к удалению 0 (все — product decision pending)', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /7 инструкций, к удалению 0/);
@@ -58,7 +58,7 @@ test('удаляются только доказанные категории, �
   assert.deepEqual(remove, []);
   for (const name of ['aof_quests.potato_spin_commit', 'aof_session_keys.session_create', 'aof_core.purchase_season_pass']) {
     const entry = byName.get(name);
-    assert.match(entry.decision, /^keep — не доказано мёртвой: .+/, `${name}: keep обязан нести причину`);
+    assert.match(entry.decision, /^keep — disabled \/ product decision pending: .+/, `${name}: keep обязан нести статус и причину`);
     assert.ok(entry.guard.code, `${name}: guard должен быть подтверждён кодом`);
   }
 });
