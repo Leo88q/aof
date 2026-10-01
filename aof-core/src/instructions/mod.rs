@@ -55,6 +55,8 @@ pub mod marketplace;
 pub mod auction;
 pub mod offer;
 pub mod rental;
+// [Этап 8] Делегированные действия арендатора: mining/collect/repair по активной аренде.
+pub mod rental_delegation;
 pub mod orderbook;
 pub mod craft_order;
 pub mod season;

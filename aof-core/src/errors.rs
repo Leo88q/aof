@@ -302,4 +302,13 @@ pub enum AofError {
     // [transfer_tool] appended: existing codes must not move.
     #[msg("Recipient token account already holds a tool of this mint")]
     AlreadyOwnsTool,
+    // [rental delegation] appended: existing codes must not move. Арендатор
+    // получает право на mining/collect/repair только через активную запись
+    // аренды; эти коды описывают отказы такого делегирования.
+    #[msg("Signer is not the renter of the active rental for this tool")]
+    RentalDelegationMissing,
+    #[msg("Rental has expired; the delegated right is gone")]
+    RentalExpired,
+    #[msg("Mining session must end before the rental does")]
+    RentalSessionTooLong,
 }

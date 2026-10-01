@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 121 | 4 | 89 (74%) | 12 | 1 |
+| aof_core | 124 | 4 | 92 (74%) | 12 | 1 |
 | aof_market | 14 | 1 | 4 (29%) | 2 | 1 |
 | aof_quests | 19 | 4 | 0 (0%) | 7 | 6 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **171** | **11** | **95** (56%) | **25** | **8** |
+| **всего** | **174** | **11** | **98** (56%) | **25** | **8** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -31,7 +31,7 @@
 
 | Роль | aof_core | aof_market | aof_quests | aof_rebirth | aof_liquidity | aof_session_keys | всего |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| gameplay | 77 | 4 | 9 | 1 | 2 | 4 | 97 |
+| gameplay | 80 | 4 | 9 | 1 | 2 | 4 | 100 |
 | admin | 21 | 5 | 7 | 3 | 3 | 1 | 40 |
 | emergency | 6 | 1 | 1 | 0 | 0 | 0 | 8 |
 | migration | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
@@ -159,11 +159,14 @@
 | aof_core | purchase_season_pass | gameplay | disabled-on-chain | 0 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 1 |  |
 | aof_core | referral_bind | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | referral_upgrade | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | 0 | 1 |  |
-| aof_core | rental_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 |  |
+| aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
+| aof_core | rental_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
 | aof_core | rental_revoke | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
 | aof_core | rental_start | deprecated | disabled-on-chain | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 1 | 0 |  |
 | aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 2 | 0 | 2 | 0 | 0 | 0 |  |
+| aof_core | start_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | repair_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | reroll | gameplay | active | 2 | 1 | 1 | 0 | 2 | 0 | 1 | 4 | 5 | 1 | ✓ |
 | aof_core | reroll_random_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 0 | ✓ |
 | aof_core | reroll_random_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |  |
@@ -201,7 +204,7 @@
 | aof_core | set_roles | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | emergency_stop | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | set_cashout_frozen | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | rental_start_bounded | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 |  |
+| aof_core | rental_start_bounded | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
 | aof_core | rental_delist | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | auction_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | vrf_pool_add ~ | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |

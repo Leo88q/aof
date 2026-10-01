@@ -1226,6 +1226,150 @@ pub struct Repair<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+// =========================================================================
+// Делегированные действия арендатора (Этап 8).
+//
+// Арендованный инструмент лежит в `rental_vault` листинга, а не в общем
+// stake-vault: `rental_list` требует `!tool.staked`, `stake` — подписи
+// владельца. Поэтому обычные `start_mining`/`collect_mining`/`repair` для
+// арендатора недостижимы, и право даёт **активная запись аренды**:
+// `RentalAgreement.renter == подписант == ToolData.operator`, инструмент — в
+// эскроу листинга. Контексты намеренно отдельные: у самих себя
+// (`start_mining` и т.д.) аккаунт-списки остаются неизменными, а лишний
+// «пустой» аккаунт соглашения не появляется на стейк-пути.
+//
+// Общая проверка — одна на все три инструкции:
+// `instructions::tool_ownership::assert_rental_delegation`.
+// =========================================================================
+
+#[derive(Accounts)]
+pub struct StartMiningDelegated<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    /// Арендатор: он же `operator` инструмента и `renter` соглашения.
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool.is_mining @ AofError::AlreadyMining,
+    )]
+    pub tool: Account<'info, ToolData>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = PLAYER_SPACE,
+        seeds = [PLAYER_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub player: Account<'info, Player>,
+    #[account(seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    pub rental_listing: Account<'info, RentalListing>,
+    #[account(seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    pub rental_agreement: Account<'info, RentalAgreement>,
+    /// Эскроу аренды: `owner` токен-аккаунта — PDA листинга, а не арендатор.
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive,
+        constraint = rental_vault.amount == 1 @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CollectMiningDelegated<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = tool.is_mining @ AofError::NotMining,
+    )]
+    pub tool: Account<'info, ToolData>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        seeds = [PLAYER_SEED, user.key().as_ref()],
+        bump,
+        constraint = player.owner == user.key() @ AofError::Unauthorized,
+    )]
+    pub player: Account<'info, Player>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    /// CHECK: auth PDA, canonical mint authority for resource emissions.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub payout_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = payout_token.mint == payout_mint.key(),
+        constraint = payout_token.owner == user.key()
+    )]
+    pub payout_token: Account<'info, TokenAccount>,
+    #[account(seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    pub rental_listing: Account<'info, RentalListing>,
+    #[account(seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    pub rental_agreement: Account<'info, RentalAgreement>,
+    /// Read-only: награда платится из emission, токен инструмента не двигается.
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+#[instruction(amount: u8)]
+pub struct RepairDelegated<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    /// Арендатор: ремонтирует своими ресурсами (`user_stone`/`user_wood` — его).
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+    )]
+    pub tool: Account<'info, ToolData>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(mut, address = config.stone_mint)]
+    pub stone_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
+    pub user_stone: Account<'info, TokenAccount>,
+    #[account(mut, address = config.wood_mint)]
+    pub wood_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
+    pub user_wood: Account<'info, TokenAccount>,
+    #[account(seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    pub rental_listing: Account<'info, RentalListing>,
+    #[account(seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    pub rental_agreement: Account<'info, RentalAgreement>,
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive,
+        constraint = rental_vault.amount == 1 @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
 #[derive(Accounts)]
 pub struct BurnNft<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
@@ -3985,6 +4129,19 @@ pub mod aof_core {
 
     pub fn repair(ctx: Context<Repair>, amount: u8) -> Result<()> {
         instructions::repair::handler(ctx, amount)
+    }
+
+    /// Делегированные действия арендатора: право даёт активная запись аренды.
+    pub fn start_mining_delegated(ctx: Context<StartMiningDelegated>, hours: u8) -> Result<()> {
+        instructions::rental_delegation::start_handler(ctx, hours)
+    }
+
+    pub fn collect_mining_delegated(ctx: Context<CollectMiningDelegated>) -> Result<()> {
+        instructions::rental_delegation::collect_handler(ctx)
+    }
+
+    pub fn repair_delegated(ctx: Context<RepairDelegated>, amount: u8) -> Result<()> {
+        instructions::rental_delegation::repair_handler(ctx, amount)
     }
 
     pub fn burn_nft(ctx: Context<BurnNft>) -> Result<()> {

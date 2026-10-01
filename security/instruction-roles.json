@@ -349,6 +349,21 @@
         "status": "active",
         "note": "Ремонт инструмента ресурсами."
       },
+      "collect_mining_delegated": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор добычи арендатором по активной записи аренды (RentalAgreement); награда уходит арендатору."
+      },
+      "repair_delegated": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Ремонт арендованного инструмента арендатором за свои ресурсы, пока аренда активна."
+      },
+      "start_mining_delegated": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск добычи арендатором по активной аренде; сессия обязана завершиться до конца аренды."
+      },
       "reroll": {
         "role": "gameplay",
         "status": "active",

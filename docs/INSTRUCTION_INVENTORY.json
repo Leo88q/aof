@@ -21,9 +21,9 @@
     }
   ],
   "totals": {
-    "instructions": 171,
+    "instructions": 174,
     "byRole": {
-      "gameplay": 97,
+      "gameplay": 100,
       "admin": 40,
       "emergency": 8,
       "migration": 2,
@@ -33,16 +33,16 @@
       "candidate-dead-code": 2
     },
     "disabledOnChain": 11,
-    "validatorTested": 95,
+    "validatorTested": 98,
     "sharedNames": 23,
     "withoutAnyCallSite": 25,
     "withoutCallSiteAndTest": 8
   },
   "programs": {
     "aof_core": {
-      "instructions": 121,
+      "instructions": 124,
       "byRole": {
-        "gameplay": 77,
+        "gameplay": 80,
         "admin": 21,
         "emergency": 6,
         "migration": 2,
@@ -52,7 +52,7 @@
         "candidate-dead-code": 0
       },
       "disabledOnChain": 4,
-      "validatorTested": 89,
+      "validatorTested": 92,
       "sharedNames": 7,
       "withoutAnyCallSite": 12,
       "withoutCallSiteAndTest": 1
@@ -961,7 +961,7 @@
         "kind": "delegate",
         "path": "instructions::collect_mining::handler",
         "file": "aof-core/src/instructions/collect_mining.rs",
-        "line": 43
+        "line": 45
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -2490,7 +2490,7 @@
         "kind": "inline",
         "path": null,
         "file": "aof-core/src/lib.rs",
-        "line": 4111
+        "line": 4268
       },
       "disabledOnChain": true,
       "role": "deprecated",
@@ -3705,7 +3705,7 @@
         "kind": "delegate",
         "path": "instructions::rental::end_handler",
         "file": "aof-core/src/instructions/rental.rs",
-        "line": 162
+        "line": 179
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -3737,10 +3737,11 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_extended.ts"
+            "tests/aof_extended.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "rust": {
@@ -3767,7 +3768,7 @@
         "kind": "delegate",
         "path": "instructions::rental::list_handler",
         "file": "aof-core/src/instructions/rental.rs",
-        "line": 34
+        "line": 51
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -3792,11 +3793,12 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 2,
+          "calls": 3,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
-            "tests/aof_extended.ts"
+            "tests/aof_extended.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         }
       },
@@ -3816,7 +3818,7 @@
         "kind": "delegate",
         "path": "instructions::rental::revoke_handler",
         "file": "aof-core/src/instructions/rental.rs",
-        "line": 184
+        "line": 202
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -3871,7 +3873,7 @@
         "kind": "inline",
         "path": null,
         "file": "aof-core/src/lib.rs",
-        "line": 4153
+        "line": 4310
       },
       "disabledOnChain": true,
       "role": "deprecated",
@@ -3978,6 +3980,138 @@
       },
       "summary": {
         "callSiteCount": 8,
+        "validatorTested": true,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "start_mining_delegated",
+      "camel": "startMiningDelegated",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::rental_delegation::start_handler",
+        "file": "aof-core/src/instructions/rental_delegation.rs",
+        "line": 50
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Запуск добычи арендатором по активной аренде; сессия обязана завершиться до конца аренды.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/tools.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_tool_ownership.ts"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 1,
+        "validatorTested": true,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "collect_mining_delegated",
+      "camel": "collectMiningDelegated",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::rental_delegation::collect_handler",
+        "file": "aof-core/src/instructions/rental_delegation.rs",
+        "line": 108
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Сбор добычи арендатором по активной записи аренды (RentalAgreement); награда уходит арендатору.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/tools.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_tool_ownership.ts"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 1,
+        "validatorTested": true,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "repair_delegated",
+      "camel": "repairDelegated",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::rental_delegation::repair_handler",
+        "file": "aof-core/src/instructions/rental_delegation.rs",
+        "line": 209
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Ремонт арендованного инструмента арендатором за свои ресурсы, пока аренда активна.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/tools.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_tool_ownership.ts"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6069,7 +6203,7 @@
         "kind": "delegate",
         "path": "instructions::rental::start_handler",
         "file": "aof-core/src/instructions/rental.rs",
-        "line": 89
+        "line": 106
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6092,11 +6226,12 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 2,
+          "calls": 3,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
-            "tests/aof_extended.ts"
+            "tests/aof_extended.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         }
       },
@@ -6116,7 +6251,7 @@
         "kind": "delegate",
         "path": "instructions::rental::delist_handler",
         "file": "aof-core/src/instructions/rental.rs",
-        "line": 239
+        "line": 258
       },
       "disabledOnChain": false,
       "role": "gameplay",

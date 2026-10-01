@@ -17,7 +17,9 @@ use crate::instructions::tool_ownership::assert_token_in_escrow;
 // registry in `state::mint_for_kind`.
 //
 // Canonical tool -> resource mapping for all five current types.
-fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
+// `pub(crate)`: та же функция используется делегированным сбором арендатора,
+// чтобы формулы и маршрутизация ресурсов не разошлись между путями.
+pub(crate) fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
     // Accept only the current five ToolData ids.
     let canonical = crate::state::canonical_tool_type(tool_type)?;
     match canonical {
@@ -31,7 +33,7 @@ fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
 }
 
 // Use the same checked calculation in settlement and host regression tests.
-fn mining_reward_amount(hours: u8, rarity: Rarity) -> Result<u64> {
+pub(crate) fn mining_reward_amount(hours: u8, rarity: Rarity) -> Result<u64> {
     (hours as u64)
         .checked_mul(BASE_RATE_MINING)
         .and_then(|base| base.checked_mul(RESOURCE_UNIT))
