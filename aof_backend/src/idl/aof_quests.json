@@ -1,10 +1,10 @@
 {
-  "address": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
+  "address": "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc",
   "metadata": {
     "name": "aof_quests",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "NeuroForge \u2014 Quests, Achievements, Challenges, Quantum Drum"
+    "description": "NeuroForge — Quests, Achievements, Challenges, Quantum Drum"
   },
   "instructions": [
     {

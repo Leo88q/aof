@@ -43,7 +43,7 @@ import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 process.env.SWITCHBOARD_CLUSTER = "devnet";
 process.env.RPC_URL = process.env.DEVNET_RPC_URL || "https://api.devnet.solana.com";
-process.env.PROGRAM_ID ||= "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+process.env.PROGRAM_ID ||= "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
 process.env.TREASURY_PUBKEY ||= "11111111111111111111111111111111";
 process.env.AUTHORITY_MODE = "read-only";
 // [AOF-H1] read-only forbids a hot key in env; a local dev .env may carry one.

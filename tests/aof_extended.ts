@@ -22,7 +22,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const idlJson = JSON.parse(fs.readFileSync(process.cwd() + "/target/idl/aof_core.json", "utf8"));
-  if (!idlJson.address) idlJson.address = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+  if (!idlJson.address) idlJson.address = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
   const program: any = new anchor.Program(idlJson as any, provider);
   const pid = program.programId as PublicKey;
   const authority = provider.wallet.publicKey;
@@ -560,7 +560,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   it("rebirth: полный сброс одной транзакцией — прогресс и излишки, без частичных состояний", async () => {
     const rebirthIdlPath = process.cwd() + "/target/idl/aof_rebirth.json";
     const rebirthIdl = JSON.parse(fs.readFileSync(rebirthIdlPath, "utf8"));
-    if (!rebirthIdl.address) rebirthIdl.address = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb";
+    if (!rebirthIdl.address) rebirthIdl.address = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF";
     const rebirth: any = new anchor.Program(rebirthIdl as any, provider);
     const rebirthPid = rebirth.programId as PublicKey;
     const rebirthPda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, rebirthPid)[0];

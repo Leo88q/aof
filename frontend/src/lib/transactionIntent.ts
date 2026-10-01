@@ -2,10 +2,10 @@ import { PublicKey } from "@solana/web3.js";
 import { positiveU64 } from "./amounts";
 import { coreInstructionSpec } from "./coreInstructions";
 
-export const CORE_PROGRAM_ID = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+export const CORE_PROGRAM_ID = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
 /** aof-rebirth: постоянный бонус и запись поколения. Идентификатор совпадает
  * с остальными гвардами (Anchor.toml / txGuard AOF_PROGRAMS). */
-export const REBIRTH_PROGRAM_ID = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb";
+export const REBIRTH_PROGRAM_ID = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF";
 /** `do_rebirth` — байты взяты из aof_backend/src/idl/aof_rebirth.json; тест
  * `readiness/rebirth-reset.test.cjs` сверяет их с IDL, чтобы константа не
  * разъехалась с программой молча. */

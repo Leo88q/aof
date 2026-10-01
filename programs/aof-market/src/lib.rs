@@ -12,7 +12,7 @@ pub use state::*;
 pub use errors::*;
 pub use events::*;
 
-declare_id!("4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo");
+declare_id!("A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY");
 
 #[derive(Accounts)]
 pub struct InitConfig<'info> {

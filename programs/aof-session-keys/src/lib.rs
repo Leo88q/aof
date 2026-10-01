@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5");
+declare_id!("9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5");
 
 pub const CONFIG_SEED: &[u8] = b"sk_config";
 pub const SESSION_SEED: &[u8] = b"session";
