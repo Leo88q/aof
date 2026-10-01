@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "note": "Evidence для удаления мёртвого кода: каждая отключённая инструкция с call sites, тестами и решением.",
+  "instructions": [
+    {
+      "program": "aof_core",
+      "name": "marketplace_buy",
+      "camel": "marketplaceBuy",
+      "role": "deprecated",
+      "replacedBy": "marketplace_buy_bounded",
+      "guard": {
+        "kind": "err!",
+        "code": "FeatureDisabled",
+        "line": "err!(AofError::FeatureDisabled)"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 2,
+        "files": [
+          "frontend/src/lib/transactionIntent.ts",
+          "frontend/src/pages/market/ListingPage.tsx"
+        ]
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/aof_core.ts",
+        "tests/readiness/dead-code-evidence.test.cjs",
+        "tests/readiness/instruction-inventory.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "remove — заменена активной marketplace_buy_bounded"
+    },
+    {
+      "program": "aof_core",
+      "name": "migrate_tool",
+      "camel": "migrateTool",
+      "role": "migration",
+      "replacedBy": null,
+      "guard": {
+        "kind": "require!(false)",
+        "code": "FeatureDisabled",
+        "line": "require!(false, AofError::FeatureDisabled);"
+      },
+      "backendCallSites": {
+        "calls": 1,
+        "mentions": 0,
+        "files": [
+          "aof_backend/src/routes/admin.ts"
+        ]
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs",
+        "tests/readiness/security-checklist.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "remove — pre-genesis миграция (FeatureDisabled); deployment не существовал"
+    },
+    {
+      "program": "aof_core",
+      "name": "purchase_season_pass",
+      "camel": "purchaseSeasonPass",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "require!(false)",
+        "code": "SeasonPremiumRequired",
+        "line": "require!(false, AofError::SeasonPremiumRequired);"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 1,
+        "files": [
+          "frontend/src/lib/transactionIntent.ts"
+        ]
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/aof_extended.ts",
+        "tests/readiness/dead-code-evidence.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
+    },
+    {
+      "program": "aof_core",
+      "name": "rental_start",
+      "camel": "rentalStart",
+      "role": "deprecated",
+      "replacedBy": "rental_start_bounded",
+      "guard": {
+        "kind": "err!",
+        "code": "FeatureDisabled",
+        "line": "err!(AofError::FeatureDisabled)"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": {
+        "calls": 0,
+        "mentions": 1,
+        "files": [
+          "watchtower/src/event-normalizer.ts"
+        ]
+      },
+      "tests": [
+        "tests/aof_core.ts",
+        "tests/readiness/dead-code-evidence.test.cjs",
+        "tests/readiness/instruction-inventory.test.cjs",
+        "tests/readiness/security-checklist.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "remove — заменена активной rental_start_bounded"
+    },
+    {
+      "program": "aof_market",
+      "name": "place_limit_order",
+      "camel": "placeLimitOrder",
+      "role": "candidate-dead-code",
+      "replacedBy": null,
+      "guard": {
+        "kind": "err!",
+        "code": "TradingDisabled",
+        "line": "err!(MarketError::TradingDisabled)"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs",
+        "tests/readiness/instruction-inventory.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "remove — by construction: парной инструкции (матчинг/расчёт) в программе нет"
+    },
+    {
+      "program": "aof_quests",
+      "name": "achievement_unlock",
+      "camel": "achievementUnlock",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "err!",
+        "code": "FeatureDisabled",
+        "line": "return err!(QuestError::FeatureDisabled);"
+      },
+      "backendCallSites": {
+        "calls": 1,
+        "mentions": 0,
+        "files": [
+          "aof_backend/src/routes/quests.ts"
+        ]
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
+    },
+    {
+      "program": "aof_quests",
+      "name": "challenge_contribute",
+      "camel": "challengeContribute",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "err!",
+        "code": "FeatureDisabled",
+        "line": "return err!(QuestError::FeatureDisabled);"
+      },
+      "backendCallSites": {
+        "calls": 1,
+        "mentions": 0,
+        "files": [
+          "aof_backend/src/routes/challenges.ts"
+        ]
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
+    },
+    {
+      "program": "aof_quests",
+      "name": "drum_commit",
+      "camel": "drumCommit",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "require!(false)",
+        "code": "Paused",
+        "line": "require!(false, QuestError::Paused);"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 2,
+        "files": [
+          "aof_backend/src/lib/pda.ts",
+          "aof_backend/src/lib/vrfSettlement.ts"
+        ]
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/readiness/devnet-release-guards.test.cjs",
+        "tests/readiness/security-checklist.test.cjs",
+        "tests/readiness/vrf-tx-size.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint."
+    },
+    {
+      "program": "aof_quests",
+      "name": "potato_spin_commit",
+      "camel": "potatoSpinCommit",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "require!(false)",
+        "code": "FeatureDisabled",
+        "line": "require!(false, QuestError::FeatureDisabled);"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
+    },
+    {
+      "program": "aof_session_keys",
+      "name": "session_check_and_spend",
+      "camel": "sessionCheckAndSpend",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "require!(false)",
+        "code": "AtomicBindingRequired",
+        "line": "require!(false, SkError::AtomicBindingRequired);"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции."
+    },
+    {
+      "program": "aof_session_keys",
+      "name": "session_create",
+      "camel": "sessionCreate",
+      "role": "gameplay",
+      "replacedBy": null,
+      "guard": {
+        "kind": "require!(false)",
+        "code": "AtomicBindingRequired",
+        "line": "require!(false, SkError::AtomicBindingRequired);"
+      },
+      "backendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "frontendCallSites": {
+        "calls": 0,
+        "mentions": 0,
+        "files": []
+      },
+      "platformConsumers": null,
+      "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs"
+      ],
+      "adminOrSecurityNeed": false,
+      "decision": "keep — не доказано мёртвой: Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
+    }
+  ]
+}
