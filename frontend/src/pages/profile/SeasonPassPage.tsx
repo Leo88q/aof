@@ -11,6 +11,7 @@ import { seasonPassCopy } from '../../i18n/seasonPassCopy';
 import { Card } from '../../components/ui/Card';
 import { UI_ICONS } from '../../lib/visualAssets';
 import { useTreasury, useFlash } from '../../lib/marketUtils';
+import { fetchSeasonPassQuote, lamportsToSol, type SeasonPassQuote } from '../../lib/seasonPassQuote';
 import { NoticeMsg } from '../../components/visual/NoticeMsg';
 
 // No paid offer before both reward tracks and enforceable VIP benefits pass devnet.
@@ -32,6 +33,10 @@ export function SeasonPassPage() {
   const pendingKey = user && seasonId !== null ? `${user}:${seasonId}` : null;
   const paymentBlocked = pendingKey !== null && paymentBlockedFor === pendingKey;
   const [theme, setTheme] = useState<VipTheme>('copper');
+  // Live-котировка сетевых расходов: пропуск стоит 0 игровых токенов, но rent
+  // аккаунта и комиссию сети платит игрок — цифры показываем до подписи.
+  const [quote, setQuote] = useState<SeasonPassQuote | null>(null);
+  const [quoteFailed, setQuoteFailed] = useState(false);
   useEffect(() => {
     setTheme(readVipTheme(user, seasonId ?? -1, snapshot?.isVip === true) ?? 'copper');
   }, [user, seasonId, snapshot?.isVip]);
@@ -71,13 +76,25 @@ export function SeasonPassPage() {
     }
   }
 
-  // Бесплатная ветка: пропуска ещё нет — игрок создаёт его сам, своей
-  // транзакцией и за свой rent. Оператор не платит за аккаунт игрока.
-  const canInitFree = Boolean(seasonId !== null && user && reading?.owner === user &&
+  // Пропуска ещё нет — игрок создаёт его сам, своей транзакцией и за свой rent.
+  // Оператор не платит за аккаунт игрока; «бесплатно» здесь означает только
+  // нулевую цену пропуска в игровых токенах, сетевые расходы несёт игрок.
+  const canInitPass = Boolean(seasonId !== null && user && reading?.owner === user &&
     snapshot?.seasonActive && !snapshot.pass && !busy);
+  const showInitPass = Boolean(snapshot?.seasonActive && !snapshot.pass && user && reading?.owner === user);
 
-  async function initFreePass() {
-    if (!canInitFree || !user || seasonId === null) return;
+  useEffect(() => {
+    if (!showInitPass) { setQuote(null); setQuoteFailed(false); return; }
+    let alive = true;
+    setQuoteFailed(false);
+    fetchSeasonPassQuote()
+      .then((q) => { if (alive) setQuote(q); })
+      .catch(() => { if (alive) { setQuote(null); setQuoteFailed(true); } });
+    return () => { alive = false; };
+  }, [showInitPass]);
+
+  async function initPass() {
+    if (!canInitPass || !user || seasonId === null) return;
     setBusy(true);
     try {
       flash(c.preparing);
@@ -139,10 +156,17 @@ export function SeasonPassPage() {
         </div>
       </Card>}
       {snapshot?.seasonActive && !snapshot.pass && user && reading?.owner === user && <>
-        <p className="text-straw text-xs" role="note">{c.freeInitNote}</p>
-        <button type="button" onClick={initFreePass} disabled={!canInitFree}
+        <p className="text-straw text-xs" role="note">{c.initPassNote}</p>
+        {quote && <div className="text-straw text-xs space-y-1" role="note" aria-label={c.quoteTitle}>
+          <p>{c.quoteTitle}</p>
+          <p>{c.quoteRent(lamportsToSol(quote.rentLamports), String(quote.rentLamports))}</p>
+          <p>{c.quoteFee(lamportsToSol(quote.baseFeeLamports), String(quote.baseFeeLamports),
+            quote.priorityMicroLamports === null ? '—' : String(quote.priorityMicroLamports))}</p>
+        </div>}
+        {quoteFailed && <p className="text-straw text-xs" role="note">{c.quoteUnavailable}</p>}
+        <button type="button" onClick={initPass} disabled={!canInitPass}
           className="w-full py-3.5 px-3 rounded-2xl bg-soil-800 border border-gold/40 text-parchment font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
-          {c.freeInit}
+          {c.initPass}
         </button>
       </>}
       {snapshot?.seasonActive && !snapshot.passPremium && !paymentBlocked && <>

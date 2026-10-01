@@ -44,14 +44,14 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 16 active-player, 9 active-internal, 2 candidate-dead, 0 dead', () => {
+test('репозиторий проходит гейт: 25 active-player, 0 active-internal, 2 candidate-dead, 0 dead', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /27 ресурсов/);
   const evidence = JSON.parse(read(EVIDENCE));
   const byStatus = (status) => evidence.resources.filter((r) => r.status === status).map((r) => r.kind).sort();
-  assert.equal(byStatus('active-player').length, 16);
-  assert.equal(byStatus('active-internal').length, 9);
+  assert.equal(byStatus('active-player').length, 25);
+  assert.equal(byStatus('active-internal').length, 0);
   assert.equal(byStatus('candidate-dead').length, 2);
   assert.equal(byStatus('dead').length, 0);
   assert.deepEqual(byStatus('candidate-dead'), ['AmberQuartz', 'SoulCore']);
@@ -84,7 +84,7 @@ test('источники и стоки подтверждены обработч
     const r = byKind.get(kind);
     assert.equal(r.flow.playerSource.length + r.flow.playerSink.length, 0, `${kind}: в коде нет ни выдачи, ни траты`);
     assert.ok(r.frontend.length > 0, `${kind}: при этом присутствует во фронтенд-каталоге`);
-    assert.ok(r.flow.flags.admin_mintable && r.flow.flags.player_claimable, `${kind}: generic-пути открыты для любого kind`);
+    assert.ok(r.flow.flags.has_admin_source && r.flow.flags.generic_claim_output, `${kind}: generic-пути открыты для любого kind`);
   }
 });
 
@@ -105,21 +105,60 @@ test('dynamic dispatch посчитан: generic-пути, таблица инс
 test('флаги каждого ресурса согласованы со списками, а статус — с флагами', () => {
   const evidence = JSON.parse(read(EVIDENCE));
   for (const r of evidence.resources) {
+    const playerHeld = r.flow.playerSource.length > 0 || r.flow.playerSink.length > 0
+      || r.flow.craftInput.length > 0 || r.flow.craftOutput.length > 0;
     assert.deepEqual(r.flow.flags, {
+      player_held: playerHeld,
+      ui_visible: r.frontend.length > 0,
+      tradable: r.flow.tradable.length > 0,
       has_player_source: r.flow.playerSource.length > 0,
       has_player_sink: r.flow.playerSink.length > 0,
-      tradable: r.flow.tradable.length > 0,
-      craft_input: r.flow.craftInput.length > 0,
-      craft_output: r.flow.craftOutput.length > 0,
-      admin_mintable: r.flow.adminMint.length > 0,
-      player_claimable: r.flow.playerClaim.length > 0,
-      ui_visible: r.frontend.length > 0,
+      has_admin_source: r.flow.adminMint.length > 0,
+      recipe_input: r.flow.craftInput.length > 0,
+      recipe_output: r.flow.craftOutput.length > 0,
+      mining_output: r.flow.miningOutput.length > 0,
+      generic_claim_output: r.flow.playerClaim.length > 0,
+      internal_only: !playerHeld && r.flow.projectSink.length > 0,
     }, `${r.kind}: флаги разошлись со списками`);
-    if (r.status === 'active-player') assert.ok(r.flow.flags.has_player_source, `${r.kind}: active-player без источника`);
+    // Статус описывает природу ресурса: player_held => active-player, независимо от того,
+    // есть ли у ресурса источник и сток (решение владельца от 2026-10-01).
+    if (r.flow.flags.player_held) assert.equal(r.status, 'active-player', `${r.kind}: ресурс бывает балансом игрока, статус обязан быть active-player`);
+    if (r.status === 'active-internal') assert.ok(r.flow.flags.internal_only, `${r.kind}: active-internal без internal_only`);
     if (r.status === 'candidate-dead') {
-      assert.ok(!r.flow.flags.has_player_source && !r.flow.flags.has_player_sink
-        && !r.flow.flags.craft_input && !r.flow.flags.craft_output, `${r.kind}: candidate-dead с тратой или источником`);
+      assert.ok(!r.flow.flags.player_held, `${r.kind}: candidate-dead, но ресурс бывает балансом игрока`);
+      assert.ok(r.frontend.length > 0 || r.flow.tradable.length > 0 || r.onchainRefs.length > 0,
+        `${r.kind}: candidate-dead без записи в каталоге/реестре`);
     }
+    const issue = r.economyIssue ?? null;
+    const sink = r.flow.flags.has_player_sink || r.flow.flags.recipe_input;
+    const source = r.flow.flags.has_player_source || r.flow.flags.recipe_output;
+    const expectedIssue = sink && !source ? 'missing_source' : (!sink && source ? 'missing_sink' : null);
+    assert.equal(issue, expectedIssue, `${r.kind}: economy_issue разошёлся со связностью источника/стока`);
+  }
+});
+
+test('отсутствие источника/стока не понижает player-ресурс (коррекция владельца 2026-10-01)', () => {
+  const evidence = JSON.parse(read(EVIDENCE));
+  const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
+  const data = byKind.get('Data');
+  assert.equal(data.status, 'active-player', 'Data лежит в ATA игрока и сжигается стоимостью трипа — это player-ресурс');
+  assert.equal(data.flow.flags.player_held, true);
+  assert.equal(data.flow.flags.has_player_sink, true);
+  assert.equal(data.flow.flags.has_player_source, false);
+  assert.equal(data.economyIssue, 'missing_source', 'разрыв экономики — отдельная ось, а не смена статуса');
+  const fluid = byKind.get('BioFluid');
+  assert.equal(fluid.status, 'active-player', 'BioFluid выходит из рецепта в ATA игрока');
+  assert.equal(fluid.flow.flags.has_player_source, true);
+  assert.equal(fluid.flow.flags.has_player_sink, false);
+  assert.equal(fluid.economyIssue, 'missing_sink');
+  for (const kind of ['BlueCore', 'PurpleCore', 'RedCore', 'ClearQuartz', 'RoseQuartz', 'BioChip', 'Compute', 'Mind']) {
+    assert.equal(byKind.get(kind).status, 'active-player', `${kind}: рецепт/топливо жжёт его с token account игрока`);
+  }
+  for (const kind of ['AmberQuartz', 'SoulCore']) {
+    const r = byKind.get(kind);
+    assert.equal(r.status, 'candidate-dead', `${kind}: нет подтверждённого product flow, удаление не разрешено`);
+    assert.equal(r.flow.flags.player_held, false);
+    assert.equal(r.economyIssue, null, `${kind}: не экономический разрыв, а не подтверждённый поток`);
   }
 });
 

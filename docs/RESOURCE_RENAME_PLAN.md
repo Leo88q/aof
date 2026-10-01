@@ -29,37 +29,42 @@
 `stone_mint → silicon_mint` — прямо), варианты enum не переставлять, layout-report обязателен только
 если поле удаляется или меняет порядок (в этом плане таких изменений нет).
 
-## IDL: имена вариантов ResourceKind
+## Полная таблица соответствий (27 строк)
 
-| # | Канон (после) | В IDL сейчас | Минт сейчас | Минт после | Классификация |
-|---|---|---|---|---|---|
-| 0 | Data | Food | `config.food_mint` | `config.data_mint` | active-internal |
-| 1 | Circuit | Wood | `config.wood_mint` | `config.circuit_mint` | active-player |
-| 2 | Silicon | Stone | `config.stone_mint` | `config.silicon_mint` | active-player |
-| 3 | Neuron | Seeds | `material_mints.seeds` | `material_mints.neuron` | active-player |
-| 4 | Synapse | Wheat | `material_mints.wheat` | `material_mints.synapse` | active-player |
-| 5 | Signal | Flour | `material_mints.flour` | `material_mints.signal` | active-player |
-| 6 | Model | Bread | `material_mints.bread` | `material_mints.model` | active-player |
-| 7 | Power | Water | `material_mints.water` | `material_mints.power` | active-player |
-| 8 | Compute | Coal | `material_mints.coal` | `material_mints.compute` | active-internal |
-| 9 | Dataset | Meat | `material_mints.meat` | `material_mints.dataset` | active-player |
-| 10 | BlueCore | StoneBlue | `material_mints.stone_blue` | `material_mints.blue_core` | active-internal |
-| 11 | PurpleCore | StonePurple | `material_mints.stone_purple` | `material_mints.purple_core` | active-internal |
-| 12 | RedCore | StoneRed | `material_mints.stone_red` | `material_mints.red_core` | active-internal |
-| 13 | ClearQuartz | SandWhite | `material_mints.sand_white` | `material_mints.clear_quartz` | active-internal |
-| 14 | RoseQuartz | SandPink | `material_mints.sand_pink` | `material_mints.rose_quartz` | active-internal |
-| 15 | AmberQuartz | SandYellow | `material_mints.sand_yellow` | `material_mints.amber_quartz` | candidate-dead |
-| 16 | QuantumBit | GemBlue | `material_mints.gem_blue` | `material_mints.quantum_bit` | active-player |
-| 17 | NeuralChip | GemOrange | `material_mints.gem_orange` | `material_mints.neural_chip` | active-player |
-| 18 | PhotonBit | GemWhite | `material_mints.gem_white` | `material_mints.photon_bit` | active-player |
-| 19 | BioChip | GemGreen | `material_mints.gem_green` | `material_mints.bio_chip` | active-internal |
-| 20 | CryoFluid | FlaskBlue | `material_mints.flask_blue` | `material_mints.cryo_fluid` | active-player |
-| 21 | VoltFluid | FlaskYellow | `material_mints.flask_yellow` | `material_mints.volt_fluid` | active-player |
-| 22 | BioFluid | FlaskGreen | `material_mints.flask_green` | `material_mints.bio_fluid` | active-player |
-| 23 | NanoFluid | FlaskPink | `material_mints.flask_pink` | `material_mints.nano_fluid` | active-player |
-| 24 | QuantumFluid | FlaskPurple | `material_mints.flask_purple` | `material_mints.quantum_fluid` | active-player |
-| 25 | SoulCore | LoveHeart | `material_mints.love_heart` | `material_mints.soul_core` | candidate-dead |
-| 26 | Mind | Potato | `config.potato_mint` | `config.mind_mint` | active-internal |
+Ни один идентификатор не остаётся алиасом: старые имена удаляются из active code целиком.
+`Old Rust/IDL/backend name` перечисляет все старые написания ресурса, которые существуют в коде
+(поле структуры, вариант IDL, ключи backend-карт). Тип поля и порядок берутся из `state.rs`;
+переименование поля не меняет ни тип, ни место в структуре, ни дискриминанты enum.
+
+| Index | Old Rust/IDL/backend name | Canonical ResourceKind | Field type | Order unchanged |
+|---:|---|---|---|---:|
+| 0 | `food_mint`, `Food` | Data (`config.data_mint`) | Pubkey | yes (rename only) |
+| 1 | `wood_mint`, `Wood` | Circuit (`config.circuit_mint`) | Pubkey | yes (rename only) |
+| 2 | `stone_mint`, `Stone` | Silicon (`config.silicon_mint`) | Pubkey | yes (rename only) |
+| 3 | `seeds`, `Seeds` | Neuron (`material_mints.neuron`) | Pubkey | yes (rename only) |
+| 4 | `wheat`, `Wheat` | Synapse (`material_mints.synapse`) | Pubkey | yes (rename only) |
+| 5 | `flour`, `Flour` | Signal (`material_mints.signal`) | Pubkey | yes (rename only) |
+| 6 | `bread`, `Bread` | Model (`material_mints.model`) | Pubkey | yes (rename only) |
+| 7 | `water`, `Water` | Power (`material_mints.power`) | Pubkey | yes (rename only) |
+| 8 | `coal`, `Coal` | Compute (`material_mints.compute`) | Pubkey | yes (rename only) |
+| 9 | `meat`, `Meat` | Dataset (`material_mints.dataset`) | Pubkey | yes (rename only) |
+| 10 | `stone_blue`, `StoneBlue`, `stoneBlue` | BlueCore (`material_mints.blue_core`) | Pubkey | yes (rename only) |
+| 11 | `stone_purple`, `StonePurple`, `stonePurple` | PurpleCore (`material_mints.purple_core`) | Pubkey | yes (rename only) |
+| 12 | `stone_red`, `StoneRed`, `stoneRed` | RedCore (`material_mints.red_core`) | Pubkey | yes (rename only) |
+| 13 | `sand_white`, `SandWhite`, `sandWhite` | ClearQuartz (`material_mints.clear_quartz`) | Pubkey | yes (rename only) |
+| 14 | `sand_pink`, `SandPink`, `sandPink` | RoseQuartz (`material_mints.rose_quartz`) | Pubkey | yes (rename only) |
+| 15 | `sand_yellow`, `SandYellow`, `sandYellow` | AmberQuartz (`material_mints.amber_quartz`) | Pubkey | yes (rename only) |
+| 16 | `gem_blue`, `GemBlue`, `gemBlue` | QuantumBit (`material_mints.quantum_bit`) | Pubkey | yes (rename only) |
+| 17 | `gem_orange`, `GemOrange`, `gemOrange` | NeuralChip (`material_mints.neural_chip`) | Pubkey | yes (rename only) |
+| 18 | `gem_white`, `GemWhite`, `gemWhite` | PhotonBit (`material_mints.photon_bit`) | Pubkey | yes (rename only) |
+| 19 | `gem_green`, `GemGreen`, `gemGreen` | BioChip (`material_mints.bio_chip`) | Pubkey | yes (rename only) |
+| 20 | `flask_blue`, `FlaskBlue`, `flaskBlue` | CryoFluid (`material_mints.cryo_fluid`) | Pubkey | yes (rename only) |
+| 21 | `flask_yellow`, `FlaskYellow`, `flaskYellow` | VoltFluid (`material_mints.volt_fluid`) | Pubkey | yes (rename only) |
+| 22 | `flask_green`, `FlaskGreen`, `flaskGreen` | BioFluid (`material_mints.bio_fluid`) | Pubkey | yes (rename only) |
+| 23 | `flask_pink`, `FlaskPink`, `flaskPink` | NanoFluid (`material_mints.nano_fluid`) | Pubkey | yes (rename only) |
+| 24 | `flask_purple`, `FlaskPurple`, `flaskPurple` | QuantumFluid (`material_mints.quantum_fluid`) | Pubkey | yes (rename only) |
+| 25 | `love_heart`, `LoveHeart`, `loveHeart` | SoulCore (`material_mints.soul_core`) | Pubkey | yes (rename only) |
+| 26 | `potato_mint`, `Potato` | Mind (`config.mind_mint`) | Pubkey | yes (rename only) |
 
 Минт-поля к переименованию (27):
 
@@ -121,8 +126,8 @@ Legacy-ключи backend-карт (16):
 
 ## Классификация на момент утверждения
 
-* active-player (16): Circuit, Silicon, Neuron, Synapse, Signal, Model, Power, Dataset, QuantumBit, NeuralChip, PhotonBit, CryoFluid, VoltFluid, BioFluid, NanoFluid, QuantumFluid;
-* active-internal (9): Data, Compute, BlueCore, PurpleCore, RedCore, ClearQuartz, RoseQuartz, BioChip, Mind;
+* active-player (25): Data, Circuit, Silicon, Neuron, Synapse, Signal, Model, Power, Compute, Dataset, BlueCore, PurpleCore, RedCore, ClearQuartz, RoseQuartz, QuantumBit, NeuralChip, PhotonBit, BioChip, CryoFluid, VoltFluid, BioFluid, NanoFluid, QuantumFluid, Mind;
+* active-internal (0): ;
 * candidate-dead (2): AmberQuartz, SoulCore.
 
 Статусы выведены из кода (`docs/RESOURCE_EVIDENCE.md`), а не назначены руками; удаление кандидатов

@@ -271,6 +271,15 @@ const REFUND_PATH_RE = /(expire|refund|reimburse)/i;
  * него выдаёт проект, а ордербук лишь передаёт уже выпущенное.
  */
 export function flowAnalysis(resource, chain, dispatch, generic, craftArms, fieldToKind, frontendCount) {
+  // Две независимые оси, которые нельзя смешивать (решение владельца):
+  //  * `player_held` — бывает ли ресурс балансом игрока (его ATA): выдача игроку,
+  //    сжигание с его token account, вход/выход рецепта. Источник и сток при этом
+  //    могут отсутствовать — это отдельный экономический дефект, а не признак
+  //    «internal»;
+  //  * `internal_only` — ресурс существует только как protocol counter/internal
+  //    state и никогда не является балансом игрока.
+  // Generic-пути (`mint_resource`, `mint_resource_once`) открыты для всех 27 kinds
+  // и потому не делают ресурс player-held: право на claim выдаёт проект.
   const genericSet = new Set([...generic.admin, ...generic.claim]);
   const playerSource = chain.onchainSource.filter((entry) => !genericSet.has(entry) && !REFUND_PATH_RE.test(entry));
   if (dispatch.miningKinds.has(resource.kind)) playerSource.push(...dispatch.miningFiles);
@@ -286,6 +295,7 @@ export function flowAnalysis(resource, chain, dispatch, generic, craftArms, fiel
   const tradable = resource.legacyField && [...dispatch.orderbookFields.values()].includes(resource.legacyField)
     ? [dispatch.orderbook] : [];
   const dedupe = (list) => [...new Set(list)].sort();
+  const miningOutput = dispatch.miningKinds.has(resource.kind) ? dispatch.miningFiles : [];
   const flow = {
     playerSource: dedupe(playerSource),
     playerSink: dedupe(playerSink),
@@ -294,18 +304,24 @@ export function flowAnalysis(resource, chain, dispatch, generic, craftArms, fiel
     craftInput: dedupe(craftInput),
     craftOutput: dedupe(craftOutput),
     tradable,
+    miningOutput: dedupe(miningOutput),
     adminMint: generic.admin,
     playerClaim: generic.claim,
   };
+  const playerHeld = playerSource.length > 0 || playerSink.length > 0
+    || flow.craftInput.length > 0 || flow.craftOutput.length > 0;
   flow.flags = {
+    player_held: playerHeld,
+    ui_visible: frontendCount > 0,
+    tradable: flow.tradable.length > 0,
     has_player_source: flow.playerSource.length > 0,
     has_player_sink: flow.playerSink.length > 0,
-    tradable: flow.tradable.length > 0,
-    craft_input: flow.craftInput.length > 0,
-    craft_output: flow.craftOutput.length > 0,
-    admin_mintable: flow.adminMint.length > 0,
-    player_claimable: flow.playerClaim.length > 0,
-    ui_visible: frontendCount > 0,
+    has_admin_source: flow.adminMint.length > 0,
+    recipe_input: flow.craftInput.length > 0,
+    recipe_output: flow.craftOutput.length > 0,
+    mining_output: flow.miningOutput.length > 0,
+    generic_claim_output: flow.playerClaim.length > 0,
+    internal_only: !playerHeld && flow.projectSink.length > 0,
   };
   return flow;
 }
@@ -399,26 +415,41 @@ export function buildEvidence() {
  * Классификация: взаимоисключающие статусы, выведенные из кода, без ручных
  * allowlist'ов и без «курируемых» переопределений (требование владельца).
  *
- *  * `active-player`   — у ресурса есть ПУТЬ ПОЛУЧЕНИЯ ИГРОКОМ: on-chain источник,
- *    не требующий операторской подписи (майнинг, сбор, крафт, сезонная награда), то есть
- *    игрок реально может добыть ресурс своими действиями;
- *  * `active-internal` — ресурс участвует в экономике (тратится игроком, вход/выход рецепта,
- *    стоимость трипа, топливо), но получить его игрок не может: только операторская выдача
- *    или claim с проектного права;
- *  * `candidate-dead`  — ни источника, ни стока, ни рецепта, ни траты: остались только
- *    UI-каталог, строка в индексе ордербука и generic admin/claim-пути, которые открыты для
- *    всех 27 ресурсов и потому не различают ресурсы;
- *  * `dead`            — нет даже клиентского каталога и generic-путей (сейчас таких нет).
+ * Решение владельца от 2026-10-01: статус описывает ПРИРОДУ ресурса, а не
+ * экономическую связность — отсутствие источника/стока не понижает player-ресурс.
  *
- * `historical` в прежней схеме был синонимом «нигде»; он больше не нужен: если ресурс нигде
- * не встречается, это `dead`.
+ *  * `active-player`   — ресурс является балансом игрока или участвует в его
+ *    экономике: хранится в ATA игрока, сжигается из него, входит/выходит рецептом,
+ *    выдаётся игроку. Источник и сток при этом независимы (`economy_issue`);
+ *  * `active-internal` — ресурс НИКОГДА не является балансом игрока: только
+ *    protocol counter/internal state (`internal_only`);
+ *  * `candidate-dead`  — подтверждённого product flow нет: остались type/registry/
+ *    catalog entry (UI-каталог, индекс ордербука, таблицы `mint_for_kind`/
+ *    `expected_resource_mint`) и generic-пути, открытые для всех 27 kinds;
+ *  * `dead`            — нет даже записи в каталоге/реестре; удаление возможно
+ *    только с отдельного разрешения владельца (гейт его не выдаёт).
  */
 export function classify(resource) {
   const f = resource.flow.flags;
-  if (f.has_player_source) return 'active-player';
-  if (f.has_player_sink || f.craft_input || f.craft_output || (resource.projectSink ?? []).length > 0) return 'active-internal';
-  if (f.ui_visible || f.tradable) return 'candidate-dead';
+  if (f.player_held) return 'active-player';
+  if (f.internal_only) return 'active-internal';
+  if (f.ui_visible || f.tradable || f.has_admin_source || f.generic_claim_output
+    || (resource.onchainRefs ?? []).length > 0) return 'candidate-dead';
   return 'dead';
+}
+
+/**
+ * Экономический разрыв — отдельная ось от статуса (решение владельца).
+ * Наличие generic admin-минта НЕ закрывает `missing_source`: технически выпустить
+ * можно любой kind, но это проектная выдача, а не путь получения игроком.
+ */
+export function economyIssue(resource) {
+  const f = resource.flow.flags;
+  const sink = f.has_player_sink || f.recipe_input;
+  const source = f.has_player_source || f.recipe_output;
+  if (sink && !source) return 'missing_source';
+  if (source && !sink) return 'missing_sink';
+  return null;
 }
 
 /** Согласованность flags со списками и статуса с flags: гейт не даёт поднять статус руками. */
@@ -426,37 +457,50 @@ export function flowErrors(resource) {
   const errors = [];
   const f = resource.flow?.flags;
   if (!f) { errors.push(`${resource.kind}: нет flow-анализа (dynamic dispatch не посчитан)`); return errors; }
+  const playerHeld = resource.flow.playerSource.length > 0 || resource.flow.playerSink.length > 0
+    || resource.flow.craftInput.length > 0 || resource.flow.craftOutput.length > 0;
   const expected = {
+    player_held: playerHeld,
+    ui_visible: resource.frontend.length > 0,
+    tradable: resource.flow.tradable.length > 0,
     has_player_source: resource.flow.playerSource.length > 0,
     has_player_sink: resource.flow.playerSink.length > 0,
-    tradable: resource.flow.tradable.length > 0,
-    craft_input: resource.flow.craftInput.length > 0,
-    craft_output: resource.flow.craftOutput.length > 0,
-    admin_mintable: resource.flow.adminMint.length > 0,
-    player_claimable: resource.flow.playerClaim.length > 0,
-    ui_visible: resource.frontend.length > 0,
+    has_admin_source: resource.flow.adminMint.length > 0,
+    recipe_input: resource.flow.craftInput.length > 0,
+    recipe_output: resource.flow.craftOutput.length > 0,
+    mining_output: resource.flow.miningOutput.length > 0,
+    generic_claim_output: resource.flow.playerClaim.length > 0,
+    internal_only: !playerHeld && resource.flow.projectSink.length > 0,
   };
   for (const [flag, value] of Object.entries(expected)) {
     if (f[flag] !== value) errors.push(`${resource.kind}: flag ${flag}=${f[flag]}, а по спискам ${value}`);
   }
   const status = classify(resource);
   if (resource.status !== status) errors.push(`${resource.kind}: статус ${resource.status}, а evidence даёт ${status}`);
-  if (status === 'active-player' && !f.has_player_source) errors.push(`${resource.kind}: active-player без источника для игрока`);
-  if (status === 'candidate-dead' && (f.has_player_sink || f.craft_input || f.craft_output)) {
-    errors.push(`${resource.kind}: candidate-dead, но ресурс тратится игроком`);
+  if (status === 'active-internal' && f.player_held) errors.push(`${resource.kind}: active-internal, но ресурс бывает балансом игрока`);
+  if (status === 'active-player' && f.internal_only) errors.push(`${resource.kind}: active-player и internal_only одновременно`);
+  if (resource.economyIssue !== undefined && resource.economyIssue !== economyIssue(resource)) {
+    errors.push(`${resource.kind}: economyIssue ${resource.economyIssue}, а код даёт ${economyIssue(resource)}`);
   }
   return errors;
 }
 
-/** Пояснения к спорным статусам: только предварительные, без права менять классификацию. */
-export const PRELIMINARY_NOTES = {
-  Data: 'internal-only предварительно: тратится как стоимость трипа (TRIP_COST_FOOD), источника для игрока нет; удаление запрещено до утверждения канона',
-  Dataset: 'internal-only предварительно: тратится в exploration (TRIP_COST_MEAT) и одновременно выдаётся как mining-награда инструментов data_harvester/quantum_transmitter — generic-путь, требует решения владельца',
-  Compute: 'internal-only предварительно: топливо печи (start_baking, fuel_kind=1), источника для игрока нет',
-  Mind: 'internal-only предварительно: оплачивает craft/reroll как potato-стоимость; удаление запрещено до подтверждения',
-  AmberQuartz: 'candidate-dead: ни источника, ни стока, ни рецепта; есть только UI-каталог, индекс ордербука и generic admin/claim-выдача',
-  SoulCore: 'candidate-dead: то же, что AmberQuartz; удаление запрещено до утверждения владельцем',
-};
+/** Пояснение к ресурсу выводится из флагов/статуса, а не назначается руками. */
+export function statusNote(resource) {
+  const f = resource.flow.flags;
+  if (resource.status === 'active-player' && economyIssue(resource) === 'missing_source') {
+    return 'баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap';
+  }
+  if (resource.status === 'active-player' && economyIssue(resource) === 'missing_sink') {
+    return 'баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap';
+  }
+  if (resource.status === 'active-player') return 'ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account';
+  if (resource.status === 'active-internal') return 'никогда не является балансом игрока: только protocol state';
+  if (resource.status === 'candidate-dead') {
+    return 'подтверждённого product flow нет: только каталог/реестр (UI, индекс ордербука, mint_for_kind) и generic-пути, открытые для всех kinds; удаление — только с разрешения владельца';
+  }
+  return 'нет ни каталога, ни реестра, ни generic-путей';
+}
 
 const STATUS_ORDER = ['active-player', 'active-internal', 'candidate-dead', 'dead'];
 const countStatuses = (rows) => STATUS_ORDER
@@ -486,14 +530,20 @@ export function toMarkdown(evidence) {
     '  умеет выпустить ЛЮБОЙ kind: эти пути отмечены флагами `admin_mintable`/`player_claimable`',
     '  и сами по себе не делают ресурс доступным игроку по его действию.',
     '',
-    'Статусы (взаимоисключающие): `active-player` (есть путь получения игроком), `active-internal`',
-    '(участвует в экономике, но получить может только проект), `candidate-dead` (только UI/каталог и',
-    'generic-пути), `dead` (нигде). Отдельно — флаги `has_player_source`, `has_player_sink`, `tradable`,',
-    '`craft_input`, `craft_output`, `admin_mintable`, `player_claimable`, `ui_visible`.',
+    'Статусы (взаимоисключающие, описывают природу ресурса, а не связность): `active-player`',
+    '(ресурс бывает балансом игрока и/или входит в его экономику — в том числе когда источника',
+    'пока нет), `active-internal` (никогда не баланс игрока, только protocol state), `candidate-dead`',
+    '(подтверждённого product flow нет — остались каталог/реестр и generic-пути), `dead` (нет и записи',
+    'в реестре; удаление — только с разрешения владельца).',
+    '',
+    'Флаги (по одному признаку каждый): `player_held`, `ui_visible`, `tradable`, `has_player_source`,',
+    '`has_player_sink`, `has_admin_source`, `recipe_input`, `recipe_output`, `mining_output`,',
+    '`generic_claim_output`, `internal_only`. Экономическая связность — отдельная ось `economy_issue`',
+    '(`missing_source`/`missing_sink`), она НЕ понижает player-ресурс до internal.',
     '',
     'Сырые инвентари клиентов: `docs/CLIENT_INVENTORY.txt` (воспроизводимо из `git ls-files -- frontend game`).',
     '',
-    '| Canonical ID | Display name | Frontend | Recipe | Asset | Backend | Game | playerSource | playerSink | tradable | craft in/out | admin/claim | Статус |',
+    '| Canonical ID | Display name | Frontend | Recipe | Asset | Backend | Game | playerSource | playerSink | tradable | admin/claim | Статус | economy_issue |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
   ];
   const mark = (v) => (v ? '✅' : '—');
@@ -502,8 +552,8 @@ export function toMarkdown(evidence) {
     lines.push(`| ${r.kind} | ${r.display} | ${mark(r.coverage.frontend)} | ${mark(r.coverage.recipe)} | `
       + `${mark(r.coverage.asset)} | ${mark(r.coverage.backend)} | ${mark(r.coverage.game)} | `
       + `${r.flow.playerSource.length} | ${r.flow.playerSink.length} | ${mark(f.tradable)} | `
-      + `${[f.craft_input ? 'in' : '', f.craft_output ? 'out' : ''].filter(Boolean).join('/') || '—'} | `
-      + `${[f.admin_mintable ? 'admin' : '', f.player_claimable ? 'claim' : ''].filter(Boolean).join('/') || '—'} | ${r.status} |`);
+      + `${[f.has_admin_source ? 'admin' : '', f.generic_claim_output ? 'claim' : ''].filter(Boolean).join('/') || '—'} | `
+      + `${r.status} | ${r.economyIssue ?? '—'} |`);
   }
   lines.push('', `Итог: ${countStatuses(rows)}.`, '');
   if (evidence.productGaps) {
@@ -518,14 +568,11 @@ export function toMarkdown(evidence) {
       `  player claim — ${g.genericIssuance.playerClaim ? 'да' : 'нет'} (поэтому отсутствие литерала`,
       `  \`ResourceKind::X\` в файле само по себе не доказывает отсутствие источника).`, '');
   }
-  const notes = Object.entries(evidence.preliminaryNotes ?? {});
-  if (notes.length) {
-    lines.push('## Предварительные пояснения (не меняют классификацию)', '',
-      'Это комментарии к автоматически выведенному статусу, а не решение владельца о каноне.', '',
-      '| Ресурс | Пояснение |', '|---|---|');
-    for (const [kind, note] of notes) lines.push(`| ${kind} | ${note} |`);
-    lines.push('');
-  }
+  lines.push('## Пояснения к статусам', '',
+    'Пояснение выводится из флагов (см. `statusNote` в `scripts/resource-usage.mjs`), а не назначается руками.', '',
+    '| Ресурс | Статус | economy_issue | Пояснение |', '|---|---|---|---|');
+  for (const r of rows) lines.push(`| ${r.kind} | ${r.status} | ${r.economyIssue ?? '—'} | ${statusNote(r)} |`);
+  lines.push('');
   lines.push('## Детали', '');
   for (const r of rows) {
     lines.push(`### ${r.kind} — ${r.status}`, '',
@@ -538,6 +585,7 @@ export function toMarkdown(evidence) {
       `* on-chain sink (литерал): ${r.onchainSink.join(', ') || '—'}`,
       `* любой kind (generic): ${r.anyKindPath.length ? r.anyKindPath.join(', ') : '—'}`,
       `* путь игрока (источник): ${r.flow.playerSource.join(', ') || '—'}`,
+      `* майнинг-выдача: ${r.flow.miningOutput.join(', ') || '—'}`,
       `* проектный сток (VRF/refund): ${r.flow.projectSink.join(', ') || '—'}`,
       `* рецепты: вход ${r.flow.craftInput.join(', ') || '—'}; выход ${r.flow.craftOutput.join(', ') || '—'}`,
       `* флаги: ${Object.entries(r.flow.flags).map(([k, v]) => `${k}=${v}`).join(', ')}`, '');
@@ -547,8 +595,8 @@ export function toMarkdown(evidence) {
 
 function main() {
   const evidence = buildEvidence();
-  evidence.resources = evidence.resources.map((r) => ({ ...r, status: classify(r) }));
-  evidence.preliminaryNotes = PRELIMINARY_NOTES;
+  evidence.resources = evidence.resources.map((r) => ({ ...r, status: classify(r), economyIssue: economyIssue(r) }));
+  evidence.statusSemantics = 'active-player = ресурс бывает балансом игрока; active-internal = только protocol state; absence of source/sink — это economy_issue, а не смена статуса';
   const json = `${JSON.stringify(evidence, null, 2)}\n`;
   const md = toMarkdown(evidence);
   const problems = evidence.resources.flatMap(flowErrors);
@@ -572,7 +620,13 @@ function main() {
         const saved = byKind.get(found.kind);
         if (!saved) { errors.push(`${found.kind}: нет evidence`); continue; }
         if (saved.status !== found.status) errors.push(`${found.kind}: статус ${saved.status}, а evidence даёт ${found.status}`);
+        if (saved.economyIssue !== undefined && saved.economyIssue !== economyIssue(found)) {
+          errors.push(`${found.kind}: economy_issue ${saved.economyIssue}, а код даёт ${economyIssue(found)}`);
+        }
         if (!saved.flow?.flags) errors.push(`${found.kind}: в evidence нет flow-флагов`);
+        for (const flag of ['player_held', 'internal_only', 'has_admin_source', 'recipe_input', 'recipe_output', 'mining_output', 'generic_claim_output']) {
+          if (saved.flow?.flags && !(flag in saved.flow.flags)) errors.push(`${found.kind}: в evidence нет флага ${flag}`);
+        }
       }
       if (evidence.resources.length !== committed.resources.length) errors.push(`в evidence ${committed.resources.length} ресурсов, в enum — ${evidence.resources.length}`);
       for (const key of ['adminMint', 'playerClaim', 'miningFiles', 'recipes']) {

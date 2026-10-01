@@ -136,7 +136,7 @@
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | mint_resource | gameplay | active | 2 | 2 | 0 | 0 | 0 | 0 | 3 | 2 | 5 | 0 | ✓ |
+| aof_core | mint_resource | gameplay | active | 2 | 2 | 0 | 0 | 0 | 0 | 3 | 2 | 6 | 0 | ✓ |
 | aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 6 | 1 | 4 | 1 | ✓ |
 | aof_core | offer_accept | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | offer_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
@@ -172,7 +172,7 @@
 | aof_core | start_baking | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | start_exploration_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | start_milling | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 3 | 0 | 2 | 0 | ✓ |
+| aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 3 | 0 | 3 | 0 | ✓ |
 | aof_core | sweep_gas_fees | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
 | aof_core | unstake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | upgrade_exploration_tier | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |

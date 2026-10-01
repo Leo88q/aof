@@ -29,7 +29,7 @@ function run(args, cwd = root) {
 
 function makeRoot() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aof-rename-'));
-  for (const rel of ['aof_backend/src/idl', 'docs', 'scripts/resource-rename-plan.mjs']) {
+  for (const rel of ['aof_backend/src/idl', 'docs', 'scripts/resource-rename-plan.mjs', 'aof-core/src']) {
     const from = path.join(root, rel);
     fs.cpSync(from, path.join(tmp, rel), { recursive: true });
   }
@@ -56,7 +56,13 @@ test('у каждого из 27 ресурсов ровно один канон�
   for (const resource of manifest.resources) {
     const before = idlNames[resource.id];
     assert.ok(before && before !== resource.kind, `${resource.kind}: ожидался legacy-IDL-вариант`);
-    assert.ok(plan.includes(`| ${resource.kind} | ${before} |`), `${resource.kind}: в плане нет перехода ${before} → ${resource.kind}`);
+    // Строка таблицы соответствий: все старые имена, → канонический kind и целевое поле.
+    const line = plan.split('\n').find((l) => l.startsWith(`| ${resource.id} |`));
+    assert.ok(line, `${resource.kind}: нет строки ${resource.id} в таблице соответствий`);
+    assert.ok(line.includes(`\`${before}\``), `${resource.kind}: в строке нет legacy-IDL-имени ${before}`);
+    assert.ok(line.includes(`\`${resource.mintSource.split('.')[1]}\``), `${resource.kind}: в строке нет старого поля ${resource.mintSource}`);
+    assert.ok(line.includes(`${resource.kind} (`), `${resource.kind}: в строке нет канонической цели`);
+    assert.ok(line.includes(`| ${resource.fieldType ?? 'Pubkey'} |`), `${resource.kind}: в строке нет типа поля`);
     assert.ok(plan.includes(`\`${resource.mintSource}\` → \``), `${resource.kind}: нет переименования минт-поля`);
   }
   for (const entry of manifest.drift.filter((d) => d.type === 'backend-legacy-name')) {

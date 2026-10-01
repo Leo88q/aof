@@ -47,6 +47,20 @@ export function legacyNames(resource, idlNames) {
   return [...names].sort();
 }
 
+/** Типы полей `Config`/`MaterialMints` из state.rs — для колонки «Field type» (rename их не меняет). */
+export function parseMintFieldTypes() {
+  const src = read('aof-core/src/state.rs');
+  const types = new Map();
+  for (const name of ['Config', 'MaterialMints']) {
+    const block = new RegExp(`pub struct ${name}\\s*\\{([\\s\\S]*?)\\n\\}`).exec(src)?.[1] ?? '';
+    for (const line of block.split('\n')) {
+      const m = /pub\s+(\w+)\s*:\s*([A-Za-z0-9_<>:]+)/.exec(line.trim());
+      if (m) types.set(`${name}.${m[1]}`, m[2]);
+    }
+  }
+  return types;
+}
+
 export function buildPlan() {
   const manifest = JSON.parse(read('docs/RESOURCE_MANIFEST.json'));
   const drift = manifest.drift ?? [];
@@ -54,10 +68,14 @@ export function buildPlan() {
   const idl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
   const idlNames = (idl.types.find((t) => t.name === 'ResourceKind')?.type.variants ?? []).map((v) => v.name);
   const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
+  const fieldTypes = parseMintFieldTypes();
   const backendDrift = drift.filter((d) => d.type === 'backend-legacy-name');
   const rows = manifest.resources.map((r) => {
     const flow = byKind.get(r.kind) ?? { status: 'unknown', flow: { flags: {} } };
+    const [holder, before] = String(r.mintSource ?? '').split('.');
+    const after = targetMintField(r).split('.')[1];
     return {
+      index: r.id,
       kind: r.kind,
       display: r.display,
       apiName: r.apiName,
@@ -66,14 +84,35 @@ export function buildPlan() {
       backendBefore: backendDrift.filter((d) => d.kind === r.kind).map((d) => ({ key: d.name, file: d.file })),
       mintBefore: r.mintSource,
       mintAfter: targetMintField(r),
+      fieldHolder: holder,
+      fieldBefore: before ?? null,
+      fieldAfter: after,
+      fieldType: fieldTypes.get(`${holder === 'config' ? 'Config' : 'MaterialMints'}.${before}`) ?? '?',
+      // Rename не трогает ни порядок вариантов, ни порядок полей структуры.
+      orderUnchanged: true,
       status: flow.status,
       flags: flow.flow?.flags ?? {},
     };
   });
+  // Условие владельца: mapping — биекция. Один старый идентификатор → ровно один
+  // канонический, и никакие два старых поля не ведут в одно каноническое.
+  const seenOld = new Map();
+  const seenNew = new Map();
+  const collisions = [];
+  for (const row of rows) {
+    for (const old of [row.fieldBefore, row.idlBefore, ...row.backendBefore.map((b) => b.key)].filter(Boolean)) {
+      if (seenOld.has(old)) collisions.push({ old, kinds: [seenOld.get(old), row.kind] });
+      else seenOld.set(old, row.kind);
+    }
+    if (seenNew.has(row.fieldAfter)) collisions.push({ new: row.fieldAfter, kinds: [seenNew.get(row.fieldAfter), row.kind] });
+    else seenNew.set(row.fieldAfter, row.kind);
+  }
   return {
     schemaVersion: 1,
     state: drift.length === 0 ? 'done' : 'not-started',
     drift,
+    bijection: collisions.length === 0,
+    collisions,
     rows,
   };
 }
@@ -117,13 +156,20 @@ export function toMarkdown(plan) {
     '`stone_mint → silicon_mint` — прямо), варианты enum не переставлять, layout-report обязателен только',
     'если поле удаляется или меняет порядок (в этом плане таких изменений нет).',
     '',
-    '## IDL: имена вариантов ResourceKind',
+    '## Полная таблица соответствий (27 строк)',
     '',
-    '| # | Канон (после) | В IDL сейчас | Минт сейчас | Минт после | Классификация |',
-    '|---|---|---|---|---|---|',
+    'Ни один идентификатор не остаётся алиасом: старые имена удаляются из active code целиком.',
+    '`Old Rust/IDL/backend name` перечисляет все старые написания ресурса, которые существуют в коде',
+    '(поле структуры, вариант IDL, ключи backend-карт). Тип поля и порядок берутся из `state.rs`;',
+    'переименование поля не меняет ни тип, ни место в структуре, ни дискриминанты enum.',
+    '',
+    '| Index | Old Rust/IDL/backend name | Canonical ResourceKind | Field type | Order unchanged |',
+    '|---:|---|---|---|---:|',
   ];
   for (const r of plan.rows) {
-    lines.push(`| ${plan.rows.indexOf(r)} | ${r.kind} | ${r.idlBefore ?? '—'} | \`${r.mintBefore}\` | \`${r.mintAfter}\` | ${r.status} |`);
+    const olds = [r.fieldBefore, r.idlBefore, ...r.backendBefore.map((b) => b.key)].filter(Boolean);
+    const oldText = olds.map((o) => `\`${o}\``).join(', ');
+    lines.push(`| ${r.index} | ${oldText} | ${r.kind} (\`${r.fieldHolder}.${r.fieldAfter}\`) | ${r.fieldType} | yes (rename only) |`);
   }
   lines.push('', `Минт-поля к переименованию (${mintFields.length}):`, '');
   for (const r of mintFields) lines.push(`* \`${r.mintBefore}\` → \`${r.mintAfter}\` (${r.kind})`);
@@ -171,11 +217,21 @@ export function check() {
   if (read(PLAN) !== toMarkdown(plan)) errors.push(`${PLAN} устарел: node scripts/resource-rename-plan.mjs --write`);
   const text = read(PLAN);
   for (const row of plan.rows) {
-    if (!text.includes(`| ${row.kind} |`)) errors.push(`${row.kind}: нет строки в плане`);
+    if (!text.includes(`| ${row.index} |`) || !text.includes(`| ${row.kind} (`)) {
+      errors.push(`${row.kind}: нет строки в таблице соответствий`);
+    }
+    if (!text.includes(`| ${row.fieldType} | yes (rename only) |`)) {
+      errors.push(`${row.kind}: в строке не зафиксирован тип поля и неизменность порядка`);
+    }
     if (row.mintBefore && !text.includes(`\`${row.mintBefore}\` → \`${row.mintAfter}\``)) {
       errors.push(`${row.kind}: нет переименования минт-поля ${row.mintBefore} → ${row.mintAfter}`);
     }
   }
+  if (!plan.bijection) {
+    for (const c of plan.collisions) errors.push(`mapping не биекция: ${JSON.stringify(c)}`);
+  }
+  if (plan.rows.some((r) => r.fieldType === '?')) errors.push('у части минт-полей не определён тип — план не готов к утверждению');
+  if (plan.rows.some((r) => !r.orderUnchanged)) errors.push('план не фиксирует неизменность порядка полей');
   if (plan.state !== 'not-started' && plan.state !== 'done') errors.push(`неизвестное состояние плана: ${plan.state}`);
   if (plan.state === 'not-started' && !text.includes('требуется утверждение владельцем')) {
     errors.push('план обязан явно требовать утверждения владельца, пока drift не пуст');

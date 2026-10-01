@@ -1,0 +1,3742 @@
+{
+  "schemaVersion": 1,
+  "source": "source-level baseline; Anchor-generated confirmation pending (anchor build + git diff -- idls/)",
+  "note": "Переименование полей допустимо только при неизменных typeSequence/size; имена инструкций, ошибок и дискриминанты меняться не должны.",
+  "resourceKind": [
+    "Data",
+    "Circuit",
+    "Silicon",
+    "Neuron",
+    "Synapse",
+    "Signal",
+    "Model",
+    "Power",
+    "Compute",
+    "Dataset",
+    "BlueCore",
+    "PurpleCore",
+    "RedCore",
+    "ClearQuartz",
+    "RoseQuartz",
+    "AmberQuartz",
+    "QuantumBit",
+    "NeuralChip",
+    "PhotonBit",
+    "BioChip",
+    "CryoFluid",
+    "VoltFluid",
+    "BioFluid",
+    "NanoFluid",
+    "QuantumFluid",
+    "SoulCore",
+    "Mind"
+  ],
+  "resourceKindCount": 27,
+  "programs": [
+    {
+      "name": "aof_core",
+      "crate": "aof-core",
+      "instructions": [
+        {
+          "name": "initialize",
+          "discriminator": "afaf6d1f0d989bed"
+        },
+        {
+          "name": "set_fees",
+          "discriminator": "89b2313a00f5f2be"
+        },
+        {
+          "name": "set_paused",
+          "discriminator": "5b3c7dc0b0e1a6da"
+        },
+        {
+          "name": "set_resource_mints",
+          "discriminator": "6fb3ca61c2328813"
+        },
+        {
+          "name": "init_craft_economy",
+          "discriminator": "3f69d27043b3b086"
+        },
+        {
+          "name": "set_pending_authority",
+          "discriminator": "af47a7df319066c1"
+        },
+        {
+          "name": "accept_authority",
+          "discriminator": "6b56c65b210c6ba0"
+        },
+        {
+          "name": "cancel_pending_authority",
+          "discriminator": "9b34f5e155493aee"
+        },
+        {
+          "name": "set_mining_enabled",
+          "discriminator": "f0edcd754f077d74"
+        },
+        {
+          "name": "migrate_config_v2",
+          "discriminator": "152758acfecd1e8d"
+        },
+        {
+          "name": "set_roles",
+          "discriminator": "775681a13717fa0c"
+        },
+        {
+          "name": "emergency_stop",
+          "discriminator": "b38fc8896cf5f823"
+        },
+        {
+          "name": "set_cashout_frozen",
+          "discriminator": "bcc926f8b83f9889"
+        },
+        {
+          "name": "init_vault_guard",
+          "discriminator": "140c4e6b05a93d65"
+        },
+        {
+          "name": "set_vault_guard",
+          "discriminator": "bc922db5e7b73035"
+        },
+        {
+          "name": "set_supply_cap",
+          "discriminator": "1ae5aed50c3bdc47"
+        },
+        {
+          "name": "register_collector_mint",
+          "discriminator": "e68558237394ac80"
+        },
+        {
+          "name": "revoke_collector_mint",
+          "discriminator": "2d973b779ff06556"
+        },
+        {
+          "name": "refund_lottery_round",
+          "discriminator": "8657d3737aedd9cc"
+        },
+        {
+          "name": "set_craft_economy",
+          "discriminator": "78d4cdf3ca2f89e2"
+        },
+        {
+          "name": "init_rarity_counter",
+          "discriminator": "816906f9a448712f"
+        },
+        {
+          "name": "init_material_mints",
+          "discriminator": "1df657e7e824c0a9"
+        },
+        {
+          "name": "plant_seeds",
+          "discriminator": "9d2171d0a4310ae5"
+        },
+        {
+          "name": "harvest_wheat",
+          "discriminator": "aadb4ce04bc1b16c"
+        },
+        {
+          "name": "start_milling",
+          "discriminator": "0cb78d367b396905"
+        },
+        {
+          "name": "collect_flour",
+          "discriminator": "4bdb4080121690ea"
+        },
+        {
+          "name": "start_baking",
+          "discriminator": "61b3b5f01c68becd"
+        },
+        {
+          "name": "collect_bread",
+          "discriminator": "2212354399dc043d"
+        },
+        {
+          "name": "weather_crank",
+          "discriminator": "741f6580acd57790"
+        },
+        {
+          "name": "collect_well_water",
+          "discriminator": "9ed806d43fa42218"
+        },
+        {
+          "name": "craft_recipe",
+          "discriminator": "b8ce7b94bd7ca800"
+        },
+        {
+          "name": "deposit_gas",
+          "discriminator": "a4df1417326ba86c"
+        },
+        {
+          "name": "withdraw_gas",
+          "discriminator": "233c96c4e26e362d"
+        },
+        {
+          "name": "sweep_gas_fees",
+          "discriminator": "72031bd079dc8b07"
+        },
+        {
+          "name": "init_issuance_cap",
+          "discriminator": "076e4a39e3886ed6"
+        },
+        {
+          "name": "set_issuance_cap",
+          "discriminator": "e3864e557ac6713b"
+        },
+        {
+          "name": "mint_resource",
+          "discriminator": "0276855bdcb0d669"
+        },
+        {
+          "name": "mint_resource_once",
+          "discriminator": "70105572ec04438b"
+        },
+        {
+          "name": "burn_resource",
+          "discriminator": "fc3604234ae0bb13"
+        },
+        {
+          "name": "mint_tool",
+          "discriminator": "09ca1f4d38e30e28"
+        },
+        {
+          "name": "burn_tool",
+          "discriminator": "950377bb81cf2e1b"
+        },
+        {
+          "name": "transfer_tool",
+          "discriminator": "7185da1dda3a3818"
+        },
+        {
+          "name": "sync_tool_owner",
+          "discriminator": "56fff9e673db7b60"
+        },
+        {
+          "name": "craft",
+          "discriminator": "a1e9b1d6f36da1e0"
+        },
+        {
+          "name": "reroll",
+          "discriminator": "13fb1a6c7144c28e"
+        },
+        {
+          "name": "stake",
+          "discriminator": "ceb0ca12c8d1b36c"
+        },
+        {
+          "name": "unstake",
+          "discriminator": "5a5f6b2acd7c32e1"
+        },
+        {
+          "name": "start_mining",
+          "discriminator": "6c1c45433678f5c4"
+        },
+        {
+          "name": "collect_mining",
+          "discriminator": "21927ec6d54fa9d2"
+        },
+        {
+          "name": "repair",
+          "discriminator": "61e630178085c9c0"
+        },
+        {
+          "name": "start_mining_delegated",
+          "discriminator": "687c6f2c21ea869f"
+        },
+        {
+          "name": "collect_mining_delegated",
+          "discriminator": "9bf027919b40bdd8"
+        },
+        {
+          "name": "repair_delegated",
+          "discriminator": "aee96434e464bf85"
+        },
+        {
+          "name": "burn_nft",
+          "discriminator": "770db711c2f3261f"
+        },
+        {
+          "name": "pay_out",
+          "discriminator": "7a070e7747bca622"
+        },
+        {
+          "name": "collector_stake",
+          "discriminator": "babc1dfca3be4446"
+        },
+        {
+          "name": "collector_unstake",
+          "discriminator": "792de2ac1bb42dfe"
+        },
+        {
+          "name": "adjust_player_capacity",
+          "discriminator": "cfe830f842939a9e"
+        },
+        {
+          "name": "init_pack_config",
+          "discriminator": "0c09c259c8c8f354"
+        },
+        {
+          "name": "set_pack_config",
+          "discriminator": "b837db1c49e1a9f1"
+        },
+        {
+          "name": "pack_open_commit",
+          "discriminator": "7718ae51bc924c28"
+        },
+        {
+          "name": "pack_open_reveal",
+          "discriminator": "dc33a3ec8516553d"
+        },
+        {
+          "name": "pack_open_expire",
+          "discriminator": "087e83c20cca9f1d"
+        },
+        {
+          "name": "init_reroll_config",
+          "discriminator": "27bc804eb123fe02"
+        },
+        {
+          "name": "set_reroll_config",
+          "discriminator": "26aee5b2c5d92ec0"
+        },
+        {
+          "name": "reroll_random_commit",
+          "discriminator": "74201852095e7aec"
+        },
+        {
+          "name": "reroll_random_reveal",
+          "discriminator": "7b3cf993d3b13521"
+        },
+        {
+          "name": "start_exploration_commit",
+          "discriminator": "3a9195ddd1090cad"
+        },
+        {
+          "name": "explore_reveal",
+          "discriminator": "107950387dfed8d7"
+        },
+        {
+          "name": "upgrade_exploration_tier",
+          "discriminator": "244dd9d3fcb01e6c"
+        },
+        {
+          "name": "referral_bind",
+          "discriminator": "5e61b20768594255"
+        },
+        {
+          "name": "referral_upgrade",
+          "discriminator": "0d67bd52d6446a0f"
+        },
+        {
+          "name": "pay_out_with_referral",
+          "discriminator": "fac6868c20083005"
+        },
+        {
+          "name": "forge_attempt_commit",
+          "discriminator": "59bf5022266835fc"
+        },
+        {
+          "name": "forge_attempt_reveal",
+          "discriminator": "06d233be79374023"
+        },
+        {
+          "name": "forge_attempt_expire",
+          "discriminator": "ce761fa463b91b3d"
+        },
+        {
+          "name": "init_lottery_round",
+          "discriminator": "d0fa47978a4da046"
+        },
+        {
+          "name": "buy_lottery_ticket",
+          "discriminator": "580ad4d174f4d6ff"
+        },
+        {
+          "name": "draw_lottery",
+          "discriminator": "11bc7c4d5a226113"
+        },
+        {
+          "name": "commit_lottery_draw",
+          "discriminator": "21919bd8af0fb38a"
+        },
+        {
+          "name": "claim_lottery_prize",
+          "discriminator": "3438918ea9611c74"
+        },
+        {
+          "name": "marketplace_list",
+          "discriminator": "7ec592db0bf968a8"
+        },
+        {
+          "name": "marketplace_buy_bounded",
+          "discriminator": "db0107fb5abda730"
+        },
+        {
+          "name": "marketplace_cancel",
+          "discriminator": "248e4284bbc62f86"
+        },
+        {
+          "name": "auction_create",
+          "discriminator": "7f3a0a5e37b92a33"
+        },
+        {
+          "name": "auction_bid",
+          "discriminator": "53ec564badaaebc9"
+        },
+        {
+          "name": "auction_cancel",
+          "discriminator": "fc56fb12fb144773"
+        },
+        {
+          "name": "auction_settle",
+          "discriminator": "7d0358020106171a"
+        },
+        {
+          "name": "offer_create",
+          "discriminator": "777b53a53682ca96"
+        },
+        {
+          "name": "offer_accept",
+          "discriminator": "da01273635438e22"
+        },
+        {
+          "name": "offer_cancel",
+          "discriminator": "f373cef826f17a35"
+        },
+        {
+          "name": "rental_list",
+          "discriminator": "75d35b2e7bb48b92"
+        },
+        {
+          "name": "rental_start_bounded",
+          "discriminator": "fe35d25b7af50904"
+        },
+        {
+          "name": "rental_delist",
+          "discriminator": "b3cb557f931b6848"
+        },
+        {
+          "name": "rental_end",
+          "discriminator": "a47ccb463481ba42"
+        },
+        {
+          "name": "rental_revoke",
+          "discriminator": "669c6fc18b6a2c2e"
+        },
+        {
+          "name": "place_buy_order",
+          "discriminator": "2ffdf1d6a7cc0b27"
+        },
+        {
+          "name": "place_sell_order",
+          "discriminator": "feb1b468abc24f56"
+        },
+        {
+          "name": "cancel_buy_order",
+          "discriminator": "a8c7aff2e6fa1b64"
+        },
+        {
+          "name": "cancel_sell_order",
+          "discriminator": "23316a265b7f9d14"
+        },
+        {
+          "name": "match_resource_orders",
+          "discriminator": "9f5bd7a81cbbebd3"
+        },
+        {
+          "name": "place_buy_order_v2",
+          "discriminator": "f7daa0f507e7a07c"
+        },
+        {
+          "name": "place_sell_order_v2",
+          "discriminator": "514530b99b74d49e"
+        },
+        {
+          "name": "cancel_buy_order_v2",
+          "discriminator": "d17a2eaf22c4cb98"
+        },
+        {
+          "name": "cancel_sell_order_v2",
+          "discriminator": "6f884c9fb0ff7231"
+        },
+        {
+          "name": "match_resource_orders_v2",
+          "discriminator": "7dab549066ff0edc"
+        },
+        {
+          "name": "reset_for_rebirth",
+          "discriminator": "ffb57bae6bf1df63"
+        },
+        {
+          "name": "craft_order_create",
+          "discriminator": "ce18385547068961"
+        },
+        {
+          "name": "craft_order_fulfill",
+          "discriminator": "fb5a5f30f95e91cc"
+        },
+        {
+          "name": "craft_order_cancel",
+          "discriminator": "4821a70c68b2fe90"
+        },
+        {
+          "name": "init_season",
+          "discriminator": "b32f65c57261ae62"
+        },
+        {
+          "name": "purchase_season_pass",
+          "discriminator": "e99549466caef647"
+        },
+        {
+          "name": "init_season_pass",
+          "discriminator": "ef8f9ccc8ac420d7"
+        },
+        {
+          "name": "grant_season_xp",
+          "discriminator": "a4ae39331932c2fa"
+        },
+        {
+          "name": "claim_season_reward",
+          "discriminator": "816091819acb1d96"
+        },
+        {
+          "name": "vrf_pool_add",
+          "discriminator": "ea8f3de6d43908ea"
+        },
+        {
+          "name": "vrf_pool_set_retired",
+          "discriminator": "913ce5944af7d5c8"
+        },
+        {
+          "name": "vrf_slot_recover",
+          "discriminator": "046c43dc5384f16c"
+        },
+        {
+          "name": "reroll_random_expire",
+          "discriminator": "a5763fd28674a7fa"
+        },
+        {
+          "name": "explore_expire",
+          "discriminator": "5ffe4761a2f56db4"
+        },
+        {
+          "name": "expire_lottery_draw",
+          "discriminator": "c2f3497444bdeba6"
+        },
+        {
+          "name": "refund_lottery_ticket",
+          "discriminator": "6f047deef4163663"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "Config",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "treasury",
+              "type": "Pubkey"
+            },
+            {
+              "name": "food_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "wood_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "stone_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seeds_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "water_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "potato_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "craft_fee",
+              "type": "u64"
+            },
+            {
+              "name": "unstake_fee",
+              "type": "u64"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "mining_enabled",
+              "type": "bool"
+            },
+            {
+              "name": "pending_authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "authority_updated_at",
+              "type": "i64"
+            },
+            {
+              "name": "operator",
+              "type": "Pubkey"
+            },
+            {
+              "name": "guardian",
+              "type": "Pubkey"
+            },
+            {
+              "name": "cashout_frozen",
+              "type": "bool"
+            },
+            {
+              "name": "reserved",
+              "type": "[u8; 32]"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "u64",
+            "bool",
+            "u8",
+            "bool",
+            "Pubkey",
+            "i64",
+            "Pubkey",
+            "Pubkey",
+            "bool",
+            "[u8; 32]"
+          ],
+          "size": 420
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "Player",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "cooldown_until",
+              "type": "i64"
+            },
+            {
+              "name": "has_tent",
+              "type": "bool"
+            },
+            {
+              "name": "villagers",
+              "type": "u32"
+            },
+            {
+              "name": "villagers_available",
+              "type": "u32"
+            },
+            {
+              "name": "historian_count",
+              "type": "u8"
+            },
+            {
+              "name": "medallion_count",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "i64",
+            "bool",
+            "u32",
+            "u32",
+            "u8",
+            "u8"
+          ],
+          "size": 59
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ToolData",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "tool_type",
+              "type": "String"
+            },
+            {
+              "name": "rarity",
+              "type": "Rarity"
+            },
+            {
+              "name": "durability",
+              "type": "u8"
+            },
+            {
+              "name": "is_mining",
+              "type": "bool"
+            },
+            {
+              "name": "mining_end",
+              "type": "i64"
+            },
+            {
+              "name": "last_mined_hours",
+              "type": "u8"
+            },
+            {
+              "name": "staked",
+              "type": "bool"
+            },
+            {
+              "name": "unlock_at",
+              "type": "i64"
+            },
+            {
+              "name": "operator",
+              "type": "Pubkey"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "String",
+            "Rarity",
+            "u8",
+            "bool",
+            "i64",
+            "u8",
+            "bool",
+            "i64",
+            "Pubkey"
+          ],
+          "size": null
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "GasTank",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "balance_micros",
+              "type": "u64"
+            },
+            {
+              "name": "cooldown_until",
+              "type": "i64"
+            },
+            {
+              "name": "dust_lamports",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "i64",
+            "u64"
+          ],
+          "size": 64
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "RarityCounter",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "rarity",
+              "type": "u8"
+            },
+            {
+              "name": "minted_count",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "u8",
+            "u64"
+          ],
+          "size": 17
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "CraftEconomy",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "wood_base",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "stone_base",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "food_base",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "seeds_base",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "water_base",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "potato_base",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "wood_mult",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "stone_mult",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "food_mult",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "seeds_mult",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "water_mult",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "potato_mult",
+              "type": "[u64; 4]"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "[u64; 4]",
+            "u8"
+          ],
+          "size": 393
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "StakedCollector",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "kind",
+              "type": "CollectorKind"
+            },
+            {
+              "name": "unlock_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "CollectorKind",
+            "i64"
+          ],
+          "size": null
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "CollectorAllowEntry",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "kind",
+              "type": "CollectorKind"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "CollectorKind",
+            "u8"
+          ],
+          "size": null
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "PackConfig",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "pack_type",
+              "type": "u8"
+            },
+            {
+              "name": "price_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "odds_bps",
+              "type": "[u16; 5]"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "u8",
+            "u64",
+            "[u16; 5]",
+            "u8"
+          ],
+          "size": 28
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "PackCommit",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "nonce",
+              "type": "u64"
+            },
+            {
+              "name": "pack_type",
+              "type": "u8"
+            },
+            {
+              "name": "odds_bps",
+              "type": "[u16; 5]"
+            },
+            {
+              "name": "paid_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "deposit_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "u8",
+            "[u16; 5]",
+            "u64",
+            "u64",
+            "Pubkey",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": 124
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "RerollConfig",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "odds_bps",
+              "type": "[u16; 5]"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "[u16; 5]",
+            "u8"
+          ],
+          "size": 19
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "RerollCommit",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "nonce",
+              "type": "u64"
+            },
+            {
+              "name": "burn_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "burned_tool_type",
+              "type": "String"
+            },
+            {
+              "name": "burned_rarity",
+              "type": "Rarity"
+            },
+            {
+              "name": "burned_durability",
+              "type": "u8"
+            },
+            {
+              "name": "odds_bps",
+              "type": "[u16; 5]"
+            },
+            {
+              "name": "fee_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "deposit_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "Pubkey",
+            "String",
+            "Rarity",
+            "u8",
+            "[u16; 5]",
+            "u64",
+            "u64",
+            "Pubkey",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": null
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ExplorationState",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "tier",
+              "type": "u8"
+            },
+            {
+              "name": "last_trip_at",
+              "type": "i64"
+            },
+            {
+              "name": "trips_today",
+              "type": "u8"
+            },
+            {
+              "name": "day_start",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "i64",
+            "u8",
+            "i64"
+          ],
+          "size": 58
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ExplorationCommit",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "tool_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "tier",
+              "type": "u8"
+            },
+            {
+              "name": "food_burned",
+              "type": "u64"
+            },
+            {
+              "name": "wood_burned",
+              "type": "u64"
+            },
+            {
+              "name": "stone_burned",
+              "type": "u64"
+            },
+            {
+              "name": "meat_burned",
+              "type": "u64"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u8",
+            "u64",
+            "u64",
+            "u64",
+            "u64",
+            "Pubkey",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": 154
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ReferralLink",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "referred",
+              "type": "Pubkey"
+            },
+            {
+              "name": "referrer",
+              "type": "Pubkey"
+            },
+            {
+              "name": "tier",
+              "type": "u8"
+            },
+            {
+              "name": "bound_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u8",
+            "i64"
+          ],
+          "size": 81
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ReferrerStats",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "referrer",
+              "type": "Pubkey"
+            },
+            {
+              "name": "active_count",
+              "type": "u32"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32"
+          ],
+          "size": 44
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "EnchantSlot",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "tool_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "slot_type",
+              "type": "u8"
+            },
+            {
+              "name": "level",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "u8"
+          ],
+          "size": 42
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ForgeCommit",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "tool_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "slot_type",
+              "type": "u8"
+            },
+            {
+              "name": "level_before",
+              "type": "u8"
+            },
+            {
+              "name": "use_protector",
+              "type": "bool"
+            },
+            {
+              "name": "paid_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "wood_burned",
+              "type": "u64"
+            },
+            {
+              "name": "stone_burned",
+              "type": "u64"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u8",
+            "u8",
+            "bool",
+            "u64",
+            "u64",
+            "u64",
+            "Pubkey",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": 148
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "LotteryRound",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "round_id",
+              "type": "u64"
+            },
+            {
+              "name": "pool_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "tickets_sold",
+              "type": "u64"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "drawn",
+              "type": "bool"
+            },
+            {
+              "name": "winning_ticket",
+              "type": "u64"
+            },
+            {
+              "name": "claimed",
+              "type": "bool"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "created_at",
+              "type": "i64"
+            },
+            {
+              "name": "draw_committed",
+              "type": "bool"
+            },
+            {
+              "name": "draw_commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            }
+          ],
+          "typeSequence": [
+            "u64",
+            "u64",
+            "u64",
+            "u64",
+            "bool",
+            "u64",
+            "bool",
+            "u8",
+            "i64",
+            "bool",
+            "u64",
+            "Pubkey"
+          ],
+          "size": 100
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "LotteryTicket",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "round_id",
+              "type": "u64"
+            },
+            {
+              "name": "ticket_number",
+              "type": "u64"
+            },
+            {
+              "name": "buyer",
+              "type": "Pubkey"
+            }
+          ],
+          "typeSequence": [
+            "u64",
+            "u64",
+            "Pubkey"
+          ],
+          "size": 56
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "LotteryTicketCounter",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "buyer",
+              "type": "Pubkey"
+            },
+            {
+              "name": "round_id",
+              "type": "u64"
+            },
+            {
+              "name": "count",
+              "type": "u8"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "u8",
+            "u8"
+          ],
+          "size": 50
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "VrfSlot",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "index",
+              "type": "u32"
+            },
+            {
+              "name": "lock",
+              "type": "Pubkey"
+            },
+            {
+              "name": "locked_at_slot",
+              "type": "u64"
+            },
+            {
+              "name": "retired",
+              "type": "bool"
+            },
+            {
+              "name": "commits",
+              "type": "u64"
+            },
+            {
+              "name": "reveals",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "Pubkey",
+            "u64",
+            "bool",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": 102
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "Listing",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "seller",
+              "type": "Pubkey"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "price_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "bool"
+          ],
+          "size": 81
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "Auction",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "seller",
+              "type": "Pubkey"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "min_bid",
+              "type": "u64"
+            },
+            {
+              "name": "current_bid",
+              "type": "u64"
+            },
+            {
+              "name": "current_bidder",
+              "type": "Pubkey"
+            },
+            {
+              "name": "end_time",
+              "type": "i64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "u64",
+            "Pubkey",
+            "i64",
+            "bool"
+          ],
+          "size": 129
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "Offer",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "buyer",
+              "type": "Pubkey"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "price_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "bool"
+          ],
+          "size": 81
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "RentalListing",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "owner_split_bps",
+              "type": "u16"
+            },
+            {
+              "name": "min_duration",
+              "type": "i64"
+            },
+            {
+              "name": "max_duration",
+              "type": "i64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            },
+            {
+              "name": "price_per_hour_lamports",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u16",
+            "i64",
+            "i64",
+            "bool",
+            "u64"
+          ],
+          "size": 99
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "RentalAgreement",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "renter",
+              "type": "Pubkey"
+            },
+            {
+              "name": "start",
+              "type": "i64"
+            },
+            {
+              "name": "end",
+              "type": "i64"
+            },
+            {
+              "name": "revoke_requested_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "i64",
+            "i64",
+            "i64"
+          ],
+          "size": 128
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ResourceOrder",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "maker",
+              "type": "Pubkey"
+            },
+            {
+              "name": "kind",
+              "type": "u8"
+            },
+            {
+              "name": "is_buy",
+              "type": "bool"
+            },
+            {
+              "name": "price_lamports_per_unit",
+              "type": "u64"
+            },
+            {
+              "name": "amount_remaining",
+              "type": "u64"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "bool",
+            "u64",
+            "u64",
+            "Pubkey"
+          ],
+          "size": 90
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ResourceOrderV2",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "maker",
+              "type": "Pubkey"
+            },
+            {
+              "name": "kind",
+              "type": "u8"
+            },
+            {
+              "name": "is_buy",
+              "type": "bool"
+            },
+            {
+              "name": "price_lamports_per_whole",
+              "type": "u64"
+            },
+            {
+              "name": "amount_remaining",
+              "type": "u64"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "escrow_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "bool",
+            "u64",
+            "u64",
+            "Pubkey",
+            "u64",
+            "u8"
+          ],
+          "size": 99
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "CraftOrder",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "creator",
+              "type": "Pubkey"
+            },
+            {
+              "name": "wood_needed",
+              "type": "u64"
+            },
+            {
+              "name": "stone_needed",
+              "type": "u64"
+            },
+            {
+              "name": "premium_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "u64",
+            "u64",
+            "bool"
+          ],
+          "size": 65
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "Season",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "season_id",
+              "type": "u32"
+            },
+            {
+              "name": "start_time",
+              "type": "i64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "u32",
+            "i64",
+            "u8"
+          ],
+          "size": 21
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "SeasonPass",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "season_id",
+              "type": "u32"
+            },
+            {
+              "name": "xp",
+              "type": "u32"
+            },
+            {
+              "name": "premium",
+              "type": "bool"
+            },
+            {
+              "name": "claimed_bitmap",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "u32",
+            "bool",
+            "u64"
+          ],
+          "size": 57
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "MaterialMints",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "seeds",
+              "type": "Pubkey"
+            },
+            {
+              "name": "wheat",
+              "type": "Pubkey"
+            },
+            {
+              "name": "flour",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bread",
+              "type": "Pubkey"
+            },
+            {
+              "name": "water",
+              "type": "Pubkey"
+            },
+            {
+              "name": "coal",
+              "type": "Pubkey"
+            },
+            {
+              "name": "meat",
+              "type": "Pubkey"
+            },
+            {
+              "name": "stone_blue",
+              "type": "Pubkey"
+            },
+            {
+              "name": "stone_purple",
+              "type": "Pubkey"
+            },
+            {
+              "name": "stone_red",
+              "type": "Pubkey"
+            },
+            {
+              "name": "sand_white",
+              "type": "Pubkey"
+            },
+            {
+              "name": "sand_pink",
+              "type": "Pubkey"
+            },
+            {
+              "name": "sand_yellow",
+              "type": "Pubkey"
+            },
+            {
+              "name": "gem_blue",
+              "type": "Pubkey"
+            },
+            {
+              "name": "gem_orange",
+              "type": "Pubkey"
+            },
+            {
+              "name": "gem_white",
+              "type": "Pubkey"
+            },
+            {
+              "name": "gem_green",
+              "type": "Pubkey"
+            },
+            {
+              "name": "flask_blue",
+              "type": "Pubkey"
+            },
+            {
+              "name": "flask_yellow",
+              "type": "Pubkey"
+            },
+            {
+              "name": "flask_green",
+              "type": "Pubkey"
+            },
+            {
+              "name": "flask_pink",
+              "type": "Pubkey"
+            },
+            {
+              "name": "flask_purple",
+              "type": "Pubkey"
+            },
+            {
+              "name": "love_heart",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "max_supply",
+              "type": "[u64; RESOURCE_KIND_COUNT]"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "u8",
+            "[u64; RESOURCE_KIND_COUNT]"
+          ],
+          "size": null
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "VaultGuard",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "epoch_slots",
+              "type": "u64"
+            },
+            {
+              "name": "cap_per_epoch",
+              "type": "u64"
+            },
+            {
+              "name": "max_per_tx",
+              "type": "u64"
+            },
+            {
+              "name": "epoch_start_slot",
+              "type": "u64"
+            },
+            {
+              "name": "withdrawn_in_epoch",
+              "type": "u64"
+            },
+            {
+              "name": "lifetime_withdrawn",
+              "type": "u128"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "u64",
+            "u64",
+            "u64",
+            "u64",
+            "u128",
+            "u8"
+          ],
+          "size": 97
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "EnergyAccount",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "current",
+              "type": "u8"
+            },
+            {
+              "name": "last_regen_at",
+              "type": "i64"
+            },
+            {
+              "name": "cap",
+              "type": "u8"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "i64",
+            "u8",
+            "u8"
+          ],
+          "size": 51
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "FarmTile",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "state",
+              "type": "u8"
+            },
+            {
+              "name": "planted_at",
+              "type": "i64"
+            },
+            {
+              "name": "ready_at",
+              "type": "i64"
+            },
+            {
+              "name": "seeds_amount",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "i64",
+            "i64",
+            "u64",
+            "u8"
+          ],
+          "size": 66
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "WeatherState",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "day_id",
+              "type": "u32"
+            },
+            {
+              "name": "weather",
+              "type": "u8"
+            },
+            {
+              "name": "updated_at",
+              "type": "i64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "u32",
+            "u8",
+            "i64",
+            "u8"
+          ],
+          "size": 22
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "WellState",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "water_buffer",
+              "type": "u64"
+            },
+            {
+              "name": "last_collected_at",
+              "type": "i64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u64",
+            "i64",
+            "u8"
+          ],
+          "size": 57
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "MillState",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "in_progress",
+              "type": "bool"
+            },
+            {
+              "name": "ready_at",
+              "type": "i64"
+            },
+            {
+              "name": "output_flour",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "bool",
+            "i64",
+            "u64",
+            "u8"
+          ],
+          "size": 58
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "OvenState",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "in_progress",
+              "type": "bool"
+            },
+            {
+              "name": "ready_at",
+              "type": "i64"
+            },
+            {
+              "name": "output_bread",
+              "type": "u64"
+            },
+            {
+              "name": "fuel_kind",
+              "type": "u8"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "bool",
+            "i64",
+            "u64",
+            "u8",
+            "u8"
+          ],
+          "size": 59
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "IssuanceCap",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "kind",
+              "type": "u8"
+            },
+            {
+              "name": "epoch_slots",
+              "type": "u64"
+            },
+            {
+              "name": "cap_per_epoch",
+              "type": "u64"
+            },
+            {
+              "name": "epoch_start_slot",
+              "type": "u64"
+            },
+            {
+              "name": "minted_in_epoch",
+              "type": "u64"
+            },
+            {
+              "name": "lifetime_minted",
+              "type": "u128"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "u8",
+            "u64",
+            "u64",
+            "u64",
+            "u64",
+            "u128",
+            "u8"
+          ],
+          "size": 58
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "RewardReceipt",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "reward_id",
+              "type": "[u8; 32]"
+            },
+            {
+              "name": "recipient",
+              "type": "Pubkey"
+            },
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "gross_amount",
+              "type": "u64"
+            },
+            {
+              "name": "claimed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "[u8; 32]",
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": 121
+        }
+      ],
+      "errors": [
+        {
+          "file": "aof-core/src/errors.rs",
+          "name": "AofError",
+          "variants": [
+            "Unauthorized",
+            "MathOverflow",
+            "InsufficientBalance",
+            "ZeroAmount",
+            "Paused",
+            "InvalidResourceKind",
+            "InvalidRarityForCraft",
+            "NotToolOwner",
+            "InsufficientDurability",
+            "ToolIsMining",
+            "MiningNotComplete",
+            "InvalidMiningHours",
+            "DurabilityExceedsMax",
+            "InvalidStakeState",
+            "NotStaked",
+            "AlreadyStaked",
+            "AlreadyMining",
+            "NotMining",
+            "LockNotExpired",
+            "CooldownNotExpired",
+            "CannotRerollLegendary",
+            "RerollMismatchedRarity",
+            "AlreadyInitialized",
+            "VaultInsufficient",
+            "InvalidLockSeconds",
+            "ToolTypeTooLong",
+            "RentExemptionFailed",
+            "RarityCounterMismatch",
+            "NoExcessToSweep",
+            "InvalidMint",
+            "NoIdleVillagers",
+            "HoursExceedRarityCap",
+            "NotCollectorOwner",
+            "CollectorNotConfigured",
+            "CommitMismatch",
+            "CommitExpired",
+            "InvalidOddsWeights",
+            "ExplorationCooldown",
+            "ExplorationDailyLimitReached",
+            "ExplorationMaxTier",
+            "ReferralAlreadyBound",
+            "ReferralCapReached",
+            "InvalidReferral",
+            "ReferralMaxTier",
+            "EnchantMaxLevel",
+            "AuctionEnded",
+            "AuctionNotEnded",
+            "BidTooLow",
+            "NotActive",
+            "InvalidRentalDuration",
+            "RentalGraceNotExpired",
+            "NotToolOperator",
+            "OrdersDoNotCross",
+            "OrderExhausted",
+            "LotteryRoundClosed",
+            "LotteryNotDrawn",
+            "NotWinningTicket",
+            "LotteryDailyLimitReached",
+            "SeasonRewardAlreadyClaimed",
+            "SeasonPremiumRequired",
+            "SeasonInsufficientXp",
+            "SeasonEnded",
+            "LotteryDrawNotCommitted",
+            "LotteryDrawAlreadyCommitted",
+            "InvalidHash",
+            "EnergyDepleted",
+            "InsufficientEnergy",
+            "FarmTileBusy",
+            "FarmTileNotReady",
+            "FarmTileEmpty",
+            "ToolBusy",
+            "MillInProgress",
+            "MillNotReady",
+            "OvenInProgress",
+            "OvenNotReady",
+            "InvalidBatchSize",
+            "InvalidFuelKind",
+            "MaterialNotRegistered",
+            "WeatherAlreadyUpdated",
+            "WellEmpty",
+            "RecipeNotFound",
+            "FortuneBoostExpired",
+            "FortuneBoostAlreadyActive",
+            "LoveHeartNotTransferable",
+            "InvalidAmount",
+            "DurabilityOverflow",
+            "InvalidWeatherSeed",
+            "InvalidReveal",
+            "AlreadyRevealed",
+            "InvalidFlaskType",
+            "EnergyCapExceeded",
+            "InvalidToolType",
+            "InvalidProgramData",
+            "FeatureDisabled",
+            "CommitNotExpired",
+            "PriceLimitExceeded",
+            "QuoteExpired",
+            "IssuanceCapNotConfigured",
+            "IssuanceCapExceeded",
+            "InvalidIssuanceCapParams",
+            "SupplyCapExceeded",
+            "VaultGuardNotConfigured",
+            "VaultGuardLimitExceeded",
+            "NotAResourceMint",
+            "InvalidVaultGuardParams",
+            "NoPendingAuthority",
+            "NotPendingAuthority",
+            "MiningDisabled",
+            "CollectorMintNotAllowed",
+            "InvalidCapacityDelta",
+            "StillActive",
+            "LotteryAlreadyDrawn",
+            "LotteryRoundNotExpired",
+            "RandomnessDisabled",
+            "EmptyCraftOrder",
+            "InvalidExplorationTier",
+            "FeeTooHigh",
+            "SeasonNotStarted",
+            "SeasonPassAlreadyPremium",
+            "CashoutFrozen",
+            "InvalidRole",
+            "NonCanonicalTokenAccount",
+            "InvalidRandomnessAccount",
+            "RandomnessNotFresh",
+            "RandomnessNotRevealed",
+            "RandomnessCommitMissing",
+            "VrfSlotBusy",
+            "VrfSlotRetired",
+            "VrfSlotNotHeld",
+            "RevealWindowClosed",
+            "PriceAboveMaximum",
+            "LotterySalesClosed",
+            "LotterySalesOpen",
+            "LotteryRoundNotEmpty",
+            "InsufficientOrderEscrow",
+            "RebirthBurnLimitExceeded",
+            "SeasonMismatch",
+            "AlreadyOwnsTool",
+            "RentalDelegationMissing",
+            "RentalExpired",
+            "RentalSessionTooLong",
+            "SeasonPassNotInitialized"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aof_liquidity",
+      "crate": "programs/aof-liquidity",
+      "instructions": [
+        {
+          "name": "set_pending_authority",
+          "discriminator": "af47a7df319066c1"
+        },
+        {
+          "name": "accept_authority",
+          "discriminator": "6b56c65b210c6ba0"
+        },
+        {
+          "name": "cancel_pending_authority",
+          "discriminator": "9b34f5e155493aee"
+        },
+        {
+          "name": "init_lp_config",
+          "discriminator": "c7e830b93c7602b0"
+        },
+        {
+          "name": "lp_deposit",
+          "discriminator": "1b4dd2450c2b9410"
+        },
+        {
+          "name": "lp_withdraw",
+          "discriminator": "cdce82aaad330ba9"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "programs/aof-liquidity/src/state/lp_config.rs",
+          "name": "LpConfig",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "mascot_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "pending_authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "authority_updated_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "Pubkey",
+            "bool",
+            "Pubkey",
+            "i64"
+          ],
+          "size": 114
+        },
+        {
+          "file": "programs/aof-liquidity/src/state/lp_pool.rs",
+          "name": "LpPool",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "rarity",
+              "type": "u8"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "total_shares",
+              "type": "u64"
+            },
+            {
+              "name": "mascot_reserve",
+              "type": "u64"
+            },
+            {
+              "name": "accumulated_fees",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "u8",
+            "u8",
+            "u64",
+            "u64",
+            "u64"
+          ],
+          "size": 34
+        },
+        {
+          "file": "programs/aof-liquidity/src/state/lp_position.rs",
+          "name": "LpPosition",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "rarity",
+              "type": "u8"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "shares",
+              "type": "u64"
+            },
+            {
+              "name": "deposited_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "u8",
+            "u64",
+            "i64"
+          ],
+          "size": 58
+        }
+      ],
+      "errors": [
+        {
+          "file": "programs/aof-liquidity/src/errors.rs",
+          "name": "LiquidityError",
+          "variants": [
+            "Paused",
+            "Unauthorized",
+            "InvalidRarity",
+            "NotEnoughShares",
+            "ZeroAmount",
+            "MathOverflow",
+            "NoPendingAuthority",
+            "NotPendingAuthority",
+            "InvalidInput"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aof_market",
+      "crate": "programs/aof-market",
+      "instructions": [
+        {
+          "name": "init_market_config",
+          "discriminator": "686e402105455bef"
+        },
+        {
+          "name": "set_pending_authority",
+          "discriminator": "af47a7df319066c1"
+        },
+        {
+          "name": "accept_authority",
+          "discriminator": "6b56c65b210c6ba0"
+        },
+        {
+          "name": "cancel_pending_authority",
+          "discriminator": "9b34f5e155493aee"
+        },
+        {
+          "name": "set_fees",
+          "discriminator": "89b2313a00f5f2be"
+        },
+        {
+          "name": "set_paused",
+          "discriminator": "5b3c7dc0b0e1a6da"
+        },
+        {
+          "name": "init_pool",
+          "discriminator": "74e9c7cc739fab24"
+        },
+        {
+          "name": "hot_market_buy",
+          "discriminator": "aa1e6a8144ff5448"
+        },
+        {
+          "name": "hot_market_sell_into_queue",
+          "discriminator": "370ed9dc164e8cfe"
+        },
+        {
+          "name": "start_market_event",
+          "discriminator": "549253f981470612"
+        },
+        {
+          "name": "crank_market",
+          "discriminator": "24e09c374af88785"
+        },
+        {
+          "name": "hot_market_skip",
+          "discriminator": "a9b65e6bac59f1e6"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "programs/aof-market/src/state.rs",
+          "name": "MarketConfig",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "treasury",
+              "type": "Pubkey"
+            },
+            {
+              "name": "core_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "gem_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "fee_bps",
+              "type": "u16"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "pending_authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "authority_updated_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "u16",
+            "bool",
+            "u8",
+            "Pubkey",
+            "i64"
+          ],
+          "size": 180
+        },
+        {
+          "file": "programs/aof-market/src/state.rs",
+          "name": "HotMarketPool",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "rarity",
+              "type": "u8"
+            },
+            {
+              "name": "target_price_core",
+              "type": "u64"
+            },
+            {
+              "name": "target_price_gem",
+              "type": "u64"
+            },
+            {
+              "name": "target_rate_per_hour",
+              "type": "u64"
+            },
+            {
+              "name": "decay_bps_per_hour",
+              "type": "u16"
+            },
+            {
+              "name": "growth_bps_per_sale",
+              "type": "u16"
+            },
+            {
+              "name": "sold_since_start",
+              "type": "u64"
+            },
+            {
+              "name": "purchases_in_window",
+              "type": "u64"
+            },
+            {
+              "name": "start_ts",
+              "type": "i64"
+            },
+            {
+              "name": "last_trade_ts",
+              "type": "i64"
+            },
+            {
+              "name": "hot_window_end_ts",
+              "type": "i64"
+            },
+            {
+              "name": "hot_multiplier_bps",
+              "type": "u16"
+            },
+            {
+              "name": "fee_bps",
+              "type": "u16"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "u8",
+            "u64",
+            "u64",
+            "u64",
+            "u16",
+            "u16",
+            "u64",
+            "u64",
+            "i64",
+            "i64",
+            "i64",
+            "u16",
+            "u16",
+            "bool",
+            "u8"
+          ],
+          "size": 83
+        }
+      ],
+      "errors": [
+        {
+          "file": "programs/aof-market/src/errors.rs",
+          "name": "MarketError",
+          "variants": [
+            "Unauthorized",
+            "Paused",
+            "MathOverflow",
+            "ZeroPrice",
+            "InvalidFee",
+            "InvalidRate",
+            "ZeroAmount",
+            "SlippageExceeded",
+            "InvalidWindowDuration",
+            "InsufficientReserve",
+            "NoPendingAuthority",
+            "NotPendingAuthority",
+            "InvalidInput",
+            "InvalidCurrencyMint"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aof_quests",
+      "crate": "programs/aof-quests",
+      "instructions": [
+        {
+          "name": "init_potato_bank",
+          "discriminator": "93a8b2e7026b1251"
+        },
+        {
+          "name": "set_potato_bank_paused",
+          "discriminator": "c73a68978a0c8286"
+        },
+        {
+          "name": "potato_spin_commit",
+          "discriminator": "c505ff9eddcf6d1f"
+        },
+        {
+          "name": "potato_spin_reveal",
+          "discriminator": "d6eb90141cd2404e"
+        },
+        {
+          "name": "potato_spin_expire",
+          "discriminator": "188d22e09f324177"
+        },
+        {
+          "name": "set_pending_authority",
+          "discriminator": "af47a7df319066c1"
+        },
+        {
+          "name": "accept_authority",
+          "discriminator": "6b56c65b210c6ba0"
+        },
+        {
+          "name": "cancel_pending_authority",
+          "discriminator": "9b34f5e155493aee"
+        },
+        {
+          "name": "init_quest_config",
+          "discriminator": "2810465dcb24b737"
+        },
+        {
+          "name": "quest_init",
+          "discriminator": "05136b79525b3578"
+        },
+        {
+          "name": "quest_claim_reward",
+          "discriminator": "3b93b0f08fc8c437"
+        },
+        {
+          "name": "achievement_unlock",
+          "discriminator": "f75915e642dbae2c"
+        },
+        {
+          "name": "challenge_init",
+          "discriminator": "6ae23f619c8049ec"
+        },
+        {
+          "name": "challenge_contribute",
+          "discriminator": "0a068de30bc8204a"
+        },
+        {
+          "name": "drum_commit",
+          "discriminator": "2be289aa1d5291c7"
+        },
+        {
+          "name": "drum_reveal",
+          "discriminator": "0cf95f87d6f61f77"
+        },
+        {
+          "name": "drum_expire",
+          "discriminator": "9381d255cb22f519"
+        },
+        {
+          "name": "vrf_pool_add",
+          "discriminator": "ea8f3de6d43908ea"
+        },
+        {
+          "name": "vrf_pool_set_retired",
+          "discriminator": "913ce5944af7d5c8"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "programs/aof-quests/src/state/achievement.rs",
+          "name": "AchievementRecord",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "achievement_id",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "unlocked_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "u8",
+            "i64"
+          ],
+          "size": 53
+        },
+        {
+          "file": "programs/aof-quests/src/state/challenge.rs",
+          "name": "ChallengeRound",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "week_number",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "medals_pool",
+              "type": "u64"
+            },
+            {
+              "name": "contributed_total",
+              "type": "u64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "u32",
+            "u8",
+            "u64",
+            "u64",
+            "bool"
+          ],
+          "size": 30
+        },
+        {
+          "file": "programs/aof-quests/src/state/challenge.rs",
+          "name": "ChallengeContribution",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "week_number",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "medals",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "u8",
+            "u64"
+          ],
+          "size": 53
+        },
+        {
+          "file": "programs/aof-quests/src/state/drum.rs",
+          "name": "DrumCommit",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "created_at",
+              "type": "i64"
+            },
+            {
+              "name": "cost",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "Pubkey",
+            "u64",
+            "u64",
+            "i64",
+            "u64"
+          ],
+          "size": 105
+        },
+        {
+          "file": "programs/aof-quests/src/state/drum.rs",
+          "name": "VrfSlot",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "index",
+              "type": "u32"
+            },
+            {
+              "name": "lock",
+              "type": "Pubkey"
+            },
+            {
+              "name": "locked_at_slot",
+              "type": "u64"
+            },
+            {
+              "name": "retired",
+              "type": "bool"
+            },
+            {
+              "name": "commits",
+              "type": "u64"
+            },
+            {
+              "name": "reveals",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "Pubkey",
+            "u64",
+            "bool",
+            "u64",
+            "u64",
+            "u8"
+          ],
+          "size": 102
+        },
+        {
+          "file": "programs/aof-quests/src/state/potato_bank.rs",
+          "name": "PotatoCommit",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "randomness",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seed_slot",
+              "type": "u64"
+            },
+            {
+              "name": "commit_slot",
+              "type": "u64"
+            },
+            {
+              "name": "created_at",
+              "type": "i64"
+            },
+            {
+              "name": "cost",
+              "type": "u64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "Pubkey",
+            "u64",
+            "u64",
+            "i64",
+            "u64"
+          ],
+          "size": 105
+        },
+        {
+          "file": "programs/aof-quests/src/state/potato_bank.rs",
+          "name": "PotatoBank",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "vault",
+              "type": "Pubkey"
+            },
+            {
+              "name": "reserved_atoms",
+              "type": "u64"
+            },
+            {
+              "name": "open_spins",
+              "type": "u32"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "u32",
+            "bool",
+            "u8"
+          ],
+          "size": 86
+        },
+        {
+          "file": "programs/aof-quests/src/state/quest_config.rs",
+          "name": "QuestConfig",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "mascot_mint",
+              "type": "Pubkey"
+            },
+            {
+              "name": "treasury_mascot",
+              "type": "Pubkey"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "pending_authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "authority_updated_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "Pubkey",
+            "Pubkey",
+            "bool",
+            "Pubkey",
+            "i64"
+          ],
+          "size": 146
+        },
+        {
+          "file": "programs/aof-quests/src/state/quest_progress.rs",
+          "name": "QuestProgress",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "quest_id",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "completed",
+              "type": "bool"
+            },
+            {
+              "name": "claimed",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "u8",
+            "bool",
+            "bool"
+          ],
+          "size": 47
+        },
+        {
+          "file": "programs/aof-quests/src/state/quest_template.rs",
+          "name": "QuestTemplate",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "quest_id",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "reward_mascot",
+              "type": "u64"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "u32",
+            "u8",
+            "u64",
+            "bool"
+          ],
+          "size": 22
+        }
+      ],
+      "errors": [
+        {
+          "file": "programs/aof-quests/src/errors.rs",
+          "name": "QuestError",
+          "variants": [
+            "Paused",
+            "Unauthorized",
+            "QuestNotActive",
+            "QuestNotCompleted",
+            "AlreadyClaimed",
+            "AlreadyUnlocked",
+            "ChallengeNotActive",
+            "InvalidHash",
+            "CommitExpired",
+            "MathOverflow",
+            "FeatureDisabled",
+            "NoPendingAuthority",
+            "NotPendingAuthority",
+            "InvalidInput",
+            "InvalidData",
+            "AlreadyInitialized",
+            "InvalidRandomnessAccount",
+            "RandomnessNotFresh",
+            "RandomnessNotRevealed",
+            "VrfSlotBusy",
+            "VrfSlotRetired",
+            "VrfSlotNotHeld",
+            "RevealWindowClosed",
+            "CommitNotExpired",
+            "TreasuryTooLow",
+            "PotatoBankPaused",
+            "PotatoBankInsolvent",
+            "InvalidPotatoMint"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aof_rebirth",
+      "crate": "programs/aof-rebirth",
+      "instructions": [
+        {
+          "name": "set_pending_authority",
+          "discriminator": "af47a7df319066c1"
+        },
+        {
+          "name": "accept_authority",
+          "discriminator": "6b56c65b210c6ba0"
+        },
+        {
+          "name": "cancel_pending_authority",
+          "discriminator": "9b34f5e155493aee"
+        },
+        {
+          "name": "init_rebirth_config",
+          "discriminator": "e5272ed1bd1361f2"
+        },
+        {
+          "name": "do_rebirth",
+          "discriminator": "4c0b36c6c548150d"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "programs/aof-rebirth/src/state/rebirth_config.rs",
+          "name": "RebirthConfig",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "bonus_per_rebirth_bps",
+              "type": "u16"
+            },
+            {
+              "name": "max_bonus_bps",
+              "type": "u16"
+            },
+            {
+              "name": "max_rebirths",
+              "type": "u8"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            },
+            {
+              "name": "treasury",
+              "type": "Pubkey"
+            },
+            {
+              "name": "rebirth_cost_lamports",
+              "type": "u64"
+            },
+            {
+              "name": "cooldown_seconds",
+              "type": "i64"
+            },
+            {
+              "name": "pending_authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "authority_updated_at",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "u16",
+            "u16",
+            "u8",
+            "bool",
+            "Pubkey",
+            "u64",
+            "i64",
+            "Pubkey",
+            "i64"
+          ],
+          "size": 135
+        },
+        {
+          "file": "programs/aof-rebirth/src/state/rebirth_record.rs",
+          "name": "RebirthRecord",
+          "initSpace": false,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "generation",
+              "type": "u16"
+            },
+            {
+              "name": "rebirth_count",
+              "type": "u8"
+            },
+            {
+              "name": "permanent_bonus_bps",
+              "type": "u16"
+            },
+            {
+              "name": "last_rebirth_ts",
+              "type": "i64"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u8",
+            "u16",
+            "u8",
+            "u16",
+            "i64"
+          ],
+          "size": 54
+        }
+      ],
+      "errors": [
+        {
+          "file": "programs/aof-rebirth/src/errors.rs",
+          "name": "RebirthError",
+          "variants": [
+            "Paused",
+            "Unauthorized",
+            "MaxRebirthsReached",
+            "BonusCapReached",
+            "NotEligible",
+            "MathOverflow",
+            "CooldownActive",
+            "FeatureDisabled",
+            "NoPendingAuthority",
+            "NotPendingAuthority",
+            "InvalidInput"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aof_session_keys",
+      "crate": "programs/aof-session-keys",
+      "instructions": [
+        {
+          "name": "init_config",
+          "discriminator": "17eb73e8a86001e7"
+        },
+        {
+          "name": "trust_snapshot_update",
+          "discriminator": "27bf4dfe086d816a"
+        },
+        {
+          "name": "session_create",
+          "discriminator": "f75e981f07f33ae3"
+        },
+        {
+          "name": "session_revoke",
+          "discriminator": "d9ce1759b53775ad"
+        },
+        {
+          "name": "session_pause",
+          "discriminator": "3539c8df324e0886"
+        },
+        {
+          "name": "session_check_and_spend",
+          "discriminator": "1ba3099fb0f4ea6d"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "programs/aof-session-keys/src/lib.rs",
+          "name": "SkConfig",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "oracle_authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "u8"
+          ],
+          "size": 73
+        },
+        {
+          "file": "programs/aof-session-keys/src/lib.rs",
+          "name": "TrustSnapshot",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "score",
+              "type": "u16"
+            },
+            {
+              "name": "tier",
+              "type": "u8"
+            },
+            {
+              "name": "computed_epoch",
+              "type": "u64"
+            },
+            {
+              "name": "oracle_authority",
+              "type": "Pubkey"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u16",
+            "u8",
+            "u64",
+            "Pubkey"
+          ],
+          "size": 83
+        },
+        {
+          "file": "programs/aof-session-keys/src/lib.rs",
+          "name": "SessionToken",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "session_signer",
+              "type": "Pubkey"
+            },
+            {
+              "name": "target_program",
+              "type": "Pubkey"
+            },
+            {
+              "name": "allowed_ixs",
+              "type": "u64"
+            },
+            {
+              "name": "max_amount_per_tx",
+              "type": "u64"
+            },
+            {
+              "name": "spent_today",
+              "type": "u64"
+            },
+            {
+              "name": "day_start",
+              "type": "i64"
+            },
+            {
+              "name": "valid_until",
+              "type": "i64"
+            },
+            {
+              "name": "revoked",
+              "type": "bool"
+            },
+            {
+              "name": "paused",
+              "type": "bool"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "Pubkey",
+            "Pubkey",
+            "u64",
+            "u64",
+            "u64",
+            "i64",
+            "i64",
+            "bool",
+            "bool"
+          ],
+          "size": 146
+        }
+      ],
+      "errors": [
+        {
+          "file": "programs/aof-session-keys/src/lib.rs",
+          "name": "SkError",
+          "variants": [
+            "Unauthorized",
+            "ForbiddenIxRequested",
+            "ExceedsTrustCap",
+            "SessionExpired",
+            "SessionRevoked",
+            "IxNotAllowed",
+            "AmountExceedsLimit",
+            "InvalidTtl",
+            "MathOverflow",
+            "AtomicBindingRequired"
+          ]
+        }
+      ]
+    }
+  ]
+}
