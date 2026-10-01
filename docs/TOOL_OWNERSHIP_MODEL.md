@@ -149,6 +149,39 @@ ownership. Программные адреса и keypair'ы сохраняют�
 * **durability и rarity** следуют за токеном: они часть `ToolData`, а `ToolData`
   привязан к mint через PDA `[TOOL_SEED, mint]`.
 
+## Validator-покрытие (написано, но НЕ выполнено)
+
+Файл `tests/aof_tool_ownership.ts` (подключён в `Anchor.toml` сразу после
+`tests/aof_core.ts`, чей `before()` создаёт `Config`, `MaterialMints` и mint'ы
+ресурсов). 15 сценариев:
+
+| # | Сценарий | Где в тесте | Статус |
+|---|---|---|---|
+| 1 | `transfer_tool` двигает токен и кэш одной транзакцией | «transfer_tool двигает токен и кэш…» | pending |
+| 2 | обычный SPL-перевод не создаёт второго владельца: кэш отстаёт, прежний держатель теряет `transfer_tool` | «raw SPL transfer рассинхронизирует кэш…» | pending |
+| 3 | без `sync` новый держатель не может `burn_nft` (`NotToolOwner`) | там же | pending |
+| 4 | `sync_tool_owner` восстанавливает кэш и права | «sync_tool_owner восстанавливает кэш…» | pending |
+| 5 | посторонний (без токена) не может вызвать `sync_tool_owner` | «посторонний не может вызвать sync_tool_owner» | pending |
+| 6 | `sync` с чужим mint отклонён | «sync отклоняет чужой mint…» | pending |
+| 7 | `sync` при нулевом балансе отклонён | там же | pending |
+| 8 | `sync` с чужим token account отклонён | там же | pending |
+| 9 | свободный инструмент не запускает майнинг (нет токена в эскроу) | «майнинг требует токен в эскроу…» | pending |
+| 10 | застейканный (токен в vault) — майнинг стартует | там же | pending |
+| 11 | эскроу нельзя вывести обычным SPL-переводом | там же | pending |
+| 12 | `repair` после перевода: прежний владелец получает `ZeroAmount` | «repair после raw transfer…» | pending |
+| 13 | `repair` без `sync`: новый держатель получает `NotToolOperator` | там же | pending |
+| 14 | `collect_mining` принимает только vault-токен (`NotToolOwner`) | «collect_mining требует token account эскроу…» | pending |
+| 15 | `stake` после перевода: сначала `sync`, затем стейк | «stake после raw transfer…» | pending |
+
+⚠️ **Это не доказательство.** В песочнице агента нет
+`cargo`/`anchor`/`solana-test-validator`, поэтому `anchor build` не выполнялся и
+ни один из 15 сценариев **не запускался**. Корректная формулировка статуса:
+«validator regression test написан, execution pending». Проверено только то, что
+проверяемо статически: типы (`tsc --noEmit`) и соответствие имён аккаунтов IDL.
+Не покрыто этими сценариями: положительный путь `repair` для застейканного
+инструмента (нужен ресурсный баланс и снятая durability) и `collect_mining` на
+завершённой сессии (нужен сдвиг времени валидатора).
+
 ## Открытый остаток
 
 * `offer_accept` проверяет `seller_token.owner == seller`, но **не** проверяет
