@@ -108,3 +108,23 @@ test('оценщик не хранит ставку за байт: цифры re
   assert.match(source, /getMinimumBalanceForRentExemption/);
   assert.match(source, /getFeeForMessage/);
 });
+
+test('эксперимент жизненного цикла — только на локальном валидаторе: защита в коде и процедура в документе', () => {
+  const estimator = read(ESTIMATOR);
+  // публичные кластеры, на которых analyze-history обязан отказывать, включают канонический devnet
+  assert.match(estimator, /PUBLIC_GENESIS = \{\s+"devnet": DEVNET_GENESIS,/);
+  assert.match(estimator, /"mainnet-beta": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"/);
+  assert.match(estimator, /LOCAL_HOSTS = \("127\.0\.0\.1", "localhost", "::1"\)/);
+  assert.match(estimator, /def require_local_validator\(/);
+  // проверка идёт ДО чтения истории
+  const handler = estimator.slice(estimator.indexOf('def cmd_analyze_history('));
+  assert.ok(handler.indexOf('require_local_validator(') < handler.indexOf('fetch_history('), 'история читается раньше проверки локальности');
+  const doc = read('docs/DEVNET_DEPLOY_COSTS.md');
+  for (const needle of ['analyze-history', 'solana-test-validator', 'Только локальный валидатор', 'set-upgrade-authority', 'is not upgradeable',
+    'solana program close', 'не используются']) {
+    assert.ok(doc.includes(needle), `в описании эксперимента нет «${needle}»`);
+  }
+  // процедура не трогает репозиторные ключи
+  const procedure = doc.slice(doc.indexOf('## 8. Эксперимент'));
+  assert.doesNotMatch(procedure, /solana\/keys\/|target\/deploy\/[a-z_]+-keypair/, 'эксперимент не должен использовать ключи репозитория');
+});

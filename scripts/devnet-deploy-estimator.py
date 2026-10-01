@@ -18,6 +18,7 @@ program.rs`, строки 1414–1423) говорят обратное: без `
     buffers       «осиротевшие» buffer-аккаунты оператора (ничего не закрывает)
     verify-layout размеры метаданных Program/ProgramData/Buffer на живом RPC
     verify-deployed  что реально лежит в сети после деплоя
+    analyze-history  ТОЛЬКО локальный валидатор: измеренный пик/итог оттока плательщика и сверка с моделью
 
 Модель стоимости (проверена по исходникам, см. docs/DEVNET_DEPLOY_COSTS.md):
 
@@ -65,6 +66,13 @@ SYSTEM_PROGRAM = "11111111111111111111111111111111"
 # scripts/verify-address-registry.cjs (его сверяет tests/readiness).
 DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 DEFAULT_RPC = "https://api.devnet.solana.com"
+# Публичные кластеры, на которых эксперимент с жизненным циклом запрещён: он только для локального валидатора.
+PUBLIC_GENESIS = {
+    "devnet": DEVNET_GENESIS,
+    "mainnet-beta": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+    "testnet": "4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY",
+}
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
 LAMPORTS_PER_SOL = 1_000_000_000
 
 # --- раскладка аккаунтов upgradeable-загрузчика ------------------------------
@@ -977,6 +985,153 @@ def cmd_verify_deployed(args: argparse.Namespace, rpc_factory: Callable[..., Any
     return EXIT_OK
 
 
+# --- измерение на локальном валидаторе ----------------------------------------
+def require_local_validator(rpc: Any, url: str) -> str:
+    """Эксперимент с жизненным циклом — только на локальном валидаторе: по адресу И по genesis."""
+    host = urllib.parse.urlsplit(url).hostname
+    if host not in LOCAL_HOSTS:
+        raise EstimatorError(f"analyze-history работает только с локальным валидатором (127.0.0.1/localhost), а не с {redact_url(url)}: "
+                             "эксперимент с буферами не выполняется на публичных сетях", EXIT_CLUSTER)
+    genesis = rpc.call("getGenesisHash", [])
+    for name, known in PUBLIC_GENESIS.items():
+        if genesis == known:
+            raise EstimatorError(f"RPC на локальном адресе отвечает genesis публичной сети {name} (проброшенный порт/прокси?): "
+                                 "ни одного чтения истории", EXIT_CLUSTER)
+    return str(genesis)
+
+
+@dataclass
+class HistoryTx:
+    signature: str
+    slot: int
+    fee: int
+    pre: int    # баланс плательщика до транзакции
+    post: int   # после
+
+
+@dataclass
+class HistoryReport:
+    start_balance: int
+    transactions: List[HistoryTx]
+    peak_outflow: int
+    peak_signature: str
+    final_outflow: int
+    fees: int
+
+    @property
+    def transient_peak(self) -> int:
+        return self.peak_outflow - self.final_outflow
+
+    @property
+    def locked(self) -> int:
+        """Отток минус комиссии: то, что действительно лежит в созданных аккаунтах."""
+        return self.final_outflow - self.fees
+
+
+def fetch_history(rpc: Any, payer: str, commitment: str, after_signature: Optional[str] = None,
+                  limit: int = 1000) -> List[HistoryTx]:
+    """Транзакции, ОПЛАЧЕННЫЕ плательщиком (он — первый ключ), по порядку выполнения. Airdrop платит фаусет — не попадает."""
+    rows = rpc.call("getSignaturesForAddress", [payer, {"limit": limit, "commitment": commitment}])
+    if not isinstance(rows, list):
+        raise EstimatorError("RPC вернул getSignaturesForAddress не списком", EXIT_RPC)
+    ordered = [r for r in reversed(rows) if isinstance(r, dict) and r.get("err") is None]
+    if after_signature is not None:
+        known = [r["signature"] for r in ordered]
+        if after_signature not in known:
+            raise EstimatorError(f"подпись {after_signature} не найдена в истории плательщика", EXIT_USAGE)
+        ordered = ordered[known.index(after_signature) + 1:]
+    result: List[HistoryTx] = []
+    for row in ordered:
+        tx = rpc.call("getTransaction", [row["signature"], {"encoding": "json", "commitment": commitment, "maxSupportedTransactionVersion": 0}])
+        if not isinstance(tx, dict) or not isinstance(tx.get("meta"), dict):
+            raise EstimatorError(f"RPC не вернул транзакцию {row['signature']}", EXIT_RPC)
+        keys = tx["transaction"]["message"]["accountKeys"]
+        if not keys or keys[0] != payer:
+            continue  # плательщик участвовал, но не платил (airdrop, входящий перевод)
+        meta = tx["meta"]
+        result.append(HistoryTx(signature=row["signature"], slot=int(row["slot"]), fee=_as_lamports(meta["fee"], "комиссия"),
+                                pre=_as_lamports(meta["preBalances"][0], "баланс до"), post=_as_lamports(meta["postBalances"][0], "баланс после")))
+    return result
+
+
+def analyze_outflow(txs: Sequence[HistoryTx]) -> HistoryReport:
+    """Накопленный отток по границам транзакций: пик, итог, комиссии. Внутри транзакции баланс виден только по итогу."""
+    if not txs:
+        raise EstimatorError("в истории плательщика нет оплаченных им транзакций — нечего измерять", EXIT_USAGE)
+    start = txs[0].pre
+    peak, peak_sig = 0, txs[0].signature
+    for tx in txs:
+        outflow = start - tx.post
+        if outflow > peak:
+            peak, peak_sig = outflow, tx.signature
+    return HistoryReport(start_balance=start, transactions=list(txs), peak_outflow=peak, peak_signature=peak_sig,
+                         final_outflow=start - txs[-1].post, fees=sum(t.fee for t in txs))
+
+
+def compare_with_model(report: HistoryReport, plans: Sequence[ProgramPlan]) -> List[Tuple[str, bool, bool, str]]:
+    """Сверка измерения с моделью: (проверка, совпало, критична ли, пояснение).
+
+    Критичны только две: сколько действительно заблокировано и нет ли переходного пика. Комиссии справочные:
+    они зависят от размера чанка записи и повторных отправок, то есть от версии CLI, и их расхождение не опровергает модель rent.
+    """
+    permanent = sum(p.permanent for p in plans)
+    modelled_fees = sum(p.fees for p in plans)
+    modelled_txs = sum(p.write_transactions + 2 for p in plans)  # create_buffer + Write×N + deploy
+    return [
+        ("заблокировано в аккаунтах (итоговый отток − комиссии) = rent(Program)+rent(ProgramData) всех программ",
+         report.locked == permanent, True, f"измерено {report.locked}, модель {permanent} lamports"),
+        ("переходный пик сверх итога = 0 (буфер возвращается плательщику до оплаты ProgramData)",
+         report.transient_peak == 0, True, f"измерено {report.transient_peak} lamports"),
+        ("комиссии равны модели (справочно: зависят от чанка записи/повторов)",
+         report.fees == modelled_fees, False,
+         f"измерено {report.fees}, модель {modelled_fees} lamports; транзакций {len(report.transactions)}, в модели {modelled_txs}"),
+    ]
+
+
+def cmd_analyze_history(args: argparse.Namespace, rpc_factory: Callable[..., Any], out: Any) -> int:
+    rpc = rpc_factory(args.rpc, timeout=args.timeout)
+    genesis = require_local_validator(rpc, args.rpc)
+    pubkey_bytes(args.payer)
+    report = analyze_outflow(fetch_history(rpc, args.payer, args.commitment, args.after_signature, args.max_transactions))
+    out.write(f"Локальный валидатор (genesis {genesis[:12]}…); плательщик {args.payer}; оплаченных транзакций: {len(report.transactions)}\n")
+    out.write(f"Баланс на старте окна: {fmt_sol(report.start_balance, 9)} SOL\n\n")
+    out.write(f"{'подпись':<14} {'слот':>8} {'комиссия':>10} {'баланс после, SOL':>20} {'накопл. отток, SOL':>20}\n")
+    for tx in report.transactions:
+        out.write(f"{tx.signature[:12]:<14} {tx.slot:>8} {tx.fee:>10} {fmt_sol(tx.post, 9):>20} {fmt_sol(report.start_balance - tx.post, 9):>20}\n")
+    out.write(f"\nПик накопленного оттока: {fmt_sol(report.peak_outflow, 9)} SOL (транзакция {report.peak_signature[:12]})\n")
+    out.write(f"Итоговый отток:          {fmt_sol(report.final_outflow, 9)} SOL, из них комиссии {fmt_sol(report.fees, 9)} SOL\n")
+    out.write(f"Переходный пик сверх итога: {fmt_sol(report.transient_peak, 9)} SOL; заблокировано в аккаунтах: {fmt_sol(report.locked, 9)} SOL\n")
+    out.write("Пик виден только по границам транзакций: внутри одной транзакции (например, deploy) баланс известен лишь по итогу.\n")
+    if not args.program:
+        return EXIT_OK
+    quotes = RpcQuotes(rpc, args.commitment)
+    chunk = args.write_chunk_bytes or write_chunk_size()
+    plans = []
+    for text in args.program:
+        spec = parse_program_arg(text)
+        plans.append(_plan_with_max_len(spec, args.max_len or spec.size, quotes, chunk))
+    out.write("\nСверка с моделью (rent и комиссии — по ответам ЭТОГО локального валидатора):\n")
+    verdict = True
+    for name, passed, critical, detail in compare_with_model(report, plans):
+        verdict = verdict and (passed or not critical)
+        mark = "✓" if passed else ("✗" if critical else "⚠")
+        out.write(f"  {mark} {name}: {detail}\n")
+    out.write("\nМОДЕЛЬ ПОДТВЕРЖДЕНА на этом валидаторе.\n" if verdict
+              else "\nМОДЕЛЬ НЕ ПОДТВЕРЖДЕНА: расхождение выше — не доверяйте таблице оценщика, пока причина не найдена.\n")
+    return EXIT_OK if verdict else EXIT_VERIFY
+
+
+def _plan_with_max_len(spec: ProgramSpec, max_len: int, quotes: Any, chunk: int) -> ProgramPlan:
+    check_capacity(spec.name, spec.size, max_len)
+    programdata_len = PROGRAMDATA_METADATA_SIZE + max_len
+    programdata_rent = quotes.rent(programdata_len)
+    return ProgramPlan(spec=spec, max_len=max_len, headroom_bytes=max_len - spec.size, programdata_len=programdata_len,
+                       program_rent=quotes.rent(PROGRAM_SIZE), programdata_rent=programdata_rent,
+                       buffer_len=BUFFER_METADATA_SIZE + spec.size, buffer_funding=programdata_rent,
+                       write_transactions=-(-spec.size // chunk), fee_create=quotes.fee(SIGNATURES_CREATE_BUFFER),
+                       fee_write=quotes.fee(SIGNATURES_WRITE), fee_deploy=quotes.fee(SIGNATURES_DEPLOY))
+
+
 # --- CLI ---------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1032,6 +1187,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_layout.add_argument("--program-id", help="адрес существующей upgradeable-программы")
     p_layout.add_argument("--buffer", help="адрес существующего Buffer")
 
+    p_history = sub.add_parser("analyze-history", help="измерение на ЛОКАЛЬНОМ валидаторе: пик/итог оттока и сверка с моделью")
+    common(p_history)
+    p_history.add_argument("--payer", required=True, help="адрес плательщика (throwaway-ключ локального эксперимента)")
+    p_history.add_argument("--after-signature", help="начать окно после этой подписи (исключая её)")
+    p_history.add_argument("--max-transactions", type=int, default=1000)
+    p_history.add_argument("--program", action="append", metavar="ИМЯ:АДРЕС:SO", help="сверить окно с моделью для этих программ")
+    p_history.add_argument("--max-len", type=int, default=0, help="max_len, с которым программы деплоились (по умолчанию размер .so)")
+    p_history.add_argument("--write-chunk-bytes", type=int, default=0)
+
     p_deployed = sub.add_parser("verify-deployed", help="проверка после деплоя")
     common(p_deployed)
     p_deployed.add_argument("--program", action="append", required=True, metavar="ИМЯ:АДРЕС:SO")
@@ -1063,6 +1227,8 @@ def main(argv: Optional[Sequence[str]] = None, rpc_factory: Callable[..., Any] =
             return cmd_verify_layout(args, rpc_factory, out)
         if args.command == "verify-deployed":
             return cmd_verify_deployed(args, rpc_factory, out)
+        if args.command == "analyze-history":
+            return cmd_analyze_history(args, rpc_factory, out)
     except EstimatorError as exc:
         err.write(f"ОТКАЗ: {exc}\n")
         return exc.code

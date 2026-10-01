@@ -29,6 +29,8 @@ from typing import Any, Callable, Dict, List, Optional
 LOADER = "BPFLoaderUpgradeab1e11111111111111111111111"
 DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
+TESTNET_GENESIS = "4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY"
+LOCAL_GENESIS = "LocalValidatorGenesis1111111111111111111111111"
 ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
@@ -121,6 +123,7 @@ class MockRpc:
                  accounts: Optional[Dict[str, Dict[str, Any]]] = None,
                  chain_dir: Optional[pathlib.Path] = None,
                  buffers: Optional[List[Dict[str, Any]]] = None,
+                 history: Optional[List[Dict[str, Any]]] = None,
                  rent_fn: Optional[Callable[[int], int]] = None,
                  broken: Optional[Dict[str, str]] = None) -> None:
         self.lamports_per_byte = lamports_per_byte
@@ -130,6 +133,8 @@ class MockRpc:
         self.accounts = dict(accounts or {})
         self.chain_dir = chain_dir
         self.buffers = list(buffers or [])
+        # история транзакций плательщика (локальный валидатор): [{signature, slot, fee, accountKeys, pre, post, err}], старые первыми
+        self.history = list(history or [])
         self.rent_fn = rent_fn
         self.broken = dict(broken or {})  # метод -> http500 | badjson | error | noresult | null
         self.requests: List[Dict[str, Any]] = []
@@ -197,6 +202,17 @@ class MockRpc:
             return {"context": {"slot": 1}, "value": {
                 "lamports": info["lamports"], "owner": info["owner"], "executable": info["executable"],
                 "rentEpoch": 0, "space": len(data), "data": [base64.b64encode(sliced).decode(), "base64"]}}
+        if method == "getSignaturesForAddress":
+            rows = [{"signature": t["signature"], "slot": t["slot"], "err": t.get("err"), "memo": None, "blockTime": None}
+                    for t in reversed(self.history)]  # RPC отдаёт новые первыми
+            return rows
+        if method == "getTransaction":
+            for t in self.history:
+                if t["signature"] == params[0]:
+                    return {"slot": t["slot"], "blockTime": None,
+                            "transaction": {"signatures": [t["signature"]], "message": {"accountKeys": t["accountKeys"]}},
+                            "meta": {"err": t.get("err"), "fee": t["fee"], "preBalances": t["pre"], "postBalances": t["post"]}}
+            return None
         if method == "getProgramAccounts":
             config = params[1] if len(params) > 1 else {}
             authority = None

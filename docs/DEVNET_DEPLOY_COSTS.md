@@ -185,15 +185,62 @@ PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/deploy-devnet.sh
 Проверено в песочнице (офлайн, поддельный JSON-RPC-узел `scripts/devnet_mock_rpc.py` разбирает настоящие
 сообщения `getFeeForMessage`): арифметика модели на независимых формулах, отказ по каждой политике и каждому виду
 сбоя RPC, агрегатный баланс (граница в 1 lamport), порядок событий, идемпотентность и возобновление `deploy-devnet.sh`,
-проверка после деплоя, отказ при чужом кластере, отсутствие путей «закрыть/создать ключ/менять authority» в скрипте.
+проверка после деплоя, отказ при чужом кластере, отсутствие путей «закрыть/создать ключ/менять authority» в скрипте,
+а также логика измерения `analyze-history` на синтетической истории, построенной по модели (§8).
 
 **Не проверено в песочнице** (нет `solana`, `anchor`, `cargo`, сети до RPC) и остаётся на машине владельца:
 
 * живая таблица `compare`/`plan` на devnet-RPC (реальная ставка за байт на момент деплоя);
 * реальные размеры `.so`, их SHA-256, соответствие keypair адресам (`rotate-program-ids.mjs --check` проверяет
   только текст репозитория и печатает `[ключа нет]`);
-* эксперимент «жизненный цикл buffer» на local validator: payer до/после `write-buffer`, после `deploy`, минимум баланса в ходе
-  деплоя (`getTransaction` → `preBalances/postBalances` плательщика), закрытие буфера, поведение `extend` и отказ у
-  программы без authority. Модель выше выведена из исходников `v4.2.1`; эксперимент — независимая проверка. Запускать
-  его **только** на локальном валидаторе (`solana-test-validator` во временном ledger), не на публичной сети;
+* **эксперимент «жизненный цикл buffer» на локальном валидаторе (§8)**: готовые команды и инструмент измерения есть, но
+  запуск требует `solana-test-validator`. Модель выше выведена из исходников `v4.2.1`; эксперимент — независимая проверка;
 * `solana program deploy` на живой сети: по условиям задачи в песочнице не выполнялся и не будет без отдельного разрешения владельца.
+
+## 8. Эксперимент на локальном валидаторе (процедура для владельца)
+
+Цель — независимо подтвердить модель из §2 на настоящем загрузчике: сколько реально заблокировано после деплоя, есть ли
+переходный пик сверх итога, исчезает ли буфер, что делает `extend` и почему он отказывает у программы без authority.
+**Только локальный валидатор.** `analyze-history` отказывает, если RPC не на `127.0.0.1`/`localhost` **или** если он отвечает
+genesis devnet/testnet/mainnet (проброшенный порт, прокси). Все ключи ниже — одноразовые, во временном каталоге; ключи
+репозитория (`solana/keys`, `target/deploy/*-keypair.json`) не используются, а `--reset` не нужен (каталог ledger новый).
+
+```bash
+WORK="$(mktemp -d)"; RPC=http://127.0.0.1:18899
+solana-test-validator --ledger "$WORK/ledger" --rpc-port 18899 --faucet-port 19900 --quiet &
+VALIDATOR_PID=$!                                   # дождитесь: solana cluster-version --url $RPC
+solana-keygen new --no-bip39-passphrase --silent -o "$WORK/payer.json"
+PAYER="$(solana address -k "$WORK/payer.json")"
+solana airdrop 500 --url "$RPC" --keypair "$WORK/payer.json"
+solana-keygen new --no-bip39-passphrase --silent -o "$WORK/prog.json"        # одноразовый Program ID, не из реестра
+PROG="$(solana address -k "$WORK/prog.json")"
+SO=target/deploy/aof_rebirth.so                    # самая маленькая; затем повторите с aof_core
+MAXLEN="$(python3 scripts/devnet-deploy-estimator.py max-len --so "$SO" --policy headroom --headroom-percent 25)"
+
+# 1. прямой деплой и сверка измерения с моделью (rent и комиссии — по ответам ЭТОГО валидатора)
+solana program deploy "$SO" --program-id "$WORK/prog.json" --max-len "$MAXLEN" --keypair "$WORK/payer.json" --url "$RPC"
+python3 scripts/devnet-deploy-estimator.py analyze-history --rpc "$RPC" --payer "$PAYER" \
+        --program "aof_rebirth:$PROG:$SO" --max-len "$MAXLEN"          # ждём: «МОДЕЛЬ ПОДТВЕРЖДЕНА», переходный пик 0
+python3 scripts/devnet-deploy-estimator.py verify-layout --rpc "$RPC" --program-id "$PROG"   # 36 / 45 на живых аккаунтах
+
+# 2. buffer: создать, увидеть, убедиться, что он не засчитывается, закрыть вручную (только здесь, на локальном валидаторе)
+solana program write-buffer "$SO" --keypair "$WORK/payer.json" --url "$RPC"                  # печатает «Buffer: <ADDR>»
+python3 scripts/devnet-deploy-estimator.py buffers --rpc "$RPC" --authority "$PAYER"
+python3 scripts/devnet-deploy-estimator.py verify-layout --rpc "$RPC" --buffer <ADDR>        # ELF на смещении 37
+solana program close <ADDR> --keypair "$WORK/payer.json" --url "$RPC"                        # lamports возвращаются плательщику
+
+# 3. extend: платит плательщик ровно max(0, rent(новая длина) − lamports ProgramData); минимум 10 KiB при SIMD-0431
+solana program extend "$PROG" 20480 --keypair "$WORK/payer.json" --url "$RPC"
+
+# 4. программа без upgrade authority не расширяется
+solana program set-upgrade-authority "$PROG" --final --keypair "$WORK/payer.json" --url "$RPC"
+solana program extend "$PROG" 20480 --keypair "$WORK/payer.json" --url "$RPC"                # ожидаем отказ «is not upgradeable»
+
+kill "$VALIDATOR_PID"; rm -rf "$WORK"
+```
+
+Что записать в отчёт: вывод `analyze-history` (таблица оттока, пик, итог, три строки сверки), версию `solana --version`, значение
+`lamports_per_byte`, которое показал `compare` на этом валидаторе, и результат каждого шага 2–4. Ограничение метода: баланс виден
+**по границам транзакций**; то, что внутри deploy-транзакции буфер возвращается до оплаты ProgramData, подтверждает исходник
+загрузчика (`bpf_loader/src/lib.rs:287`), а не это измерение. Расхождение комиссий с моделью — справочное (`⚠`): оно зависит от
+размера чанка записи и повторных отправок; критичны только «заблокировано» и «переходный пик».

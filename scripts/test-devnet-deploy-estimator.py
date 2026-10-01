@@ -688,6 +688,132 @@ class Verification(unittest.TestCase):
         self.assertIn("нет", out)
 
 
+class LocalHistory(unittest.TestCase):
+    """analyze-history: измерение на локальном валидаторе и сверка с моделью (на синтетической истории по модели)."""
+
+    RATE, FEE = 6960, 5000
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.size = 30_000
+        self.spec = make_specs(self.tmp.name, {"aof_rebirth": self.size})[0]
+        self.arg = f"{self.spec.name}:{self.spec.address}:{self.spec.so_path}"
+        self.start = 100 * SOL
+
+    def model_history(self, max_len=None, extra_dip=0, drop_return=False):
+        """Транзакции плательщика ровно по модели: create_buffer, Write×N, deploy с возвратом буфера."""
+        max_len = max_len or self.size
+        rent = lambda n: (128 + n) * self.RATE  # noqa: E731
+        buffer_funding = rent(45 + max_len)
+        writes = -(-self.size // 1012)
+        balance = self.start
+        txs = []
+
+        def add(label, fee, delta):
+            nonlocal balance
+            pre = balance
+            balance = balance - fee - delta
+            txs.append({"signature": f"{label}{len(txs):04d}".ljust(20, "x"), "slot": 10 + len(txs), "fee": fee,
+                        "accountKeys": [PAYER, "OtherAccount111111111111111111111111111111"], "pre": [pre, 0], "post": [balance, delta]})
+
+        # airdrop: платит фаусет (первый ключ — не плательщик): в измерение не попадает
+        txs.append({"signature": "airdrop".ljust(20, "x"), "slot": 1, "fee": 0, "accountKeys": ["Faucet11111111111111111111111111111111111", PAYER],
+                    "pre": [10**12, 0], "post": [10**12 - self.start, self.start]})
+        add("createbuf", 2 * self.FEE, buffer_funding + extra_dip)
+        for _ in range(writes):
+            add("write", self.FEE, 0)
+        if extra_dip:
+            add("giveback", self.FEE, -extra_dip)
+        returned = 0 if drop_return else buffer_funding
+        add("deploy", 2 * self.FEE, rent(36) + rent(45 + max_len) - returned)
+        return txs
+
+    def run_analysis(self, rpc, *extra, program=True):
+        argv = ["analyze-history", "--payer", PAYER] + (["--program", self.arg] if program else []) + list(extra)
+        return run_main(argv, rpc.url)
+
+    def test_model_is_confirmed_on_a_faithful_history(self):
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, lamports_per_signature=self.FEE, genesis=mockrpc.LOCAL_GENESIS,
+                             history=self.model_history()) as rpc:
+            code, out, err = self.run_analysis(rpc)
+        self.assertEqual(code, 0, err + out)
+        self.assertIn("МОДЕЛЬ ПОДТВЕРЖДЕНА", out)
+        self.assertIn("Переходный пик сверх итога: 0.000000000 SOL", out)
+        self.assertNotIn("airdrop", out, "airdrop платит фаусет — в окно плательщика не входит")
+        expected_locked = (128 + 36) * self.RATE + (128 + 45 + self.size) * self.RATE
+        self.assertIn(f"измерено {expected_locked}, модель {expected_locked}", out)
+        self.assertIn("✓ переходный пик сверх итога = 0", out)
+
+    def test_headroom_max_len_is_compared_against_the_matching_rent(self):
+        history = self.model_history(max_len=int(self.size * 1.25))
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, lamports_per_signature=self.FEE, genesis=mockrpc.LOCAL_GENESIS, history=history) as rpc:
+            code, out, _ = self.run_analysis(rpc, "--max-len", str(int(self.size * 1.25)))
+            self.assertEqual(code, 0, out)
+            code, out, _ = self.run_analysis(rpc)  # а с max_len по умолчанию (= размер) эта же история обязана НЕ сойтись
+        self.assertEqual(code, est.EXIT_VERIFY, out)
+        self.assertIn("МОДЕЛЬ НЕ ПОДТВЕРЖДЕНА", out)
+
+    def test_a_transient_dip_above_the_final_outflow_is_detected(self):
+        history = self.model_history(extra_dip=3 * SOL)
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, lamports_per_signature=self.FEE, genesis=mockrpc.LOCAL_GENESIS, history=history) as rpc:
+            code, out, _ = self.run_analysis(rpc)
+        self.assertEqual(code, est.EXIT_VERIFY, out)
+        self.assertIn("✗ переходный пик сверх итога = 0", out)
+        measured = int(re.search(r"буфер возвращается плательщику до оплаты ProgramData\): измерено (\d+) lamports", out).group(1))
+        # пик превышает итог на ~3 SOL (за вычетом платежей, сделанных уже после пика), а не на ноль
+        self.assertGreater(measured, 2_990_000_000)
+        self.assertLess(measured, 3_000_000_000)
+
+    def test_a_buffer_that_is_not_returned_shows_up_as_extra_locked_lamports(self):
+        history = self.model_history(drop_return=True)
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, lamports_per_signature=self.FEE, genesis=mockrpc.LOCAL_GENESIS, history=history) as rpc:
+            code, out, _ = self.run_analysis(rpc)
+        self.assertEqual(code, est.EXIT_VERIFY, out)
+        self.assertIn("✗ заблокировано в аккаунтах", out)
+
+    def test_fee_difference_is_informational_only(self):
+        # модель считает комиссию 7000/подпись, а на «цепочке» были 5000: rent сошёлся, значит вердикт — «подтверждена»
+        history = self.model_history()
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, lamports_per_signature=7000, genesis=mockrpc.LOCAL_GENESIS, history=history) as rpc:
+            code, out, _ = self.run_analysis(rpc)
+        self.assertEqual(code, 0, out)
+        self.assertIn("⚠ комиссии равны модели", out)
+        self.assertIn("МОДЕЛЬ ПОДТВЕРЖДЕНА", out)
+
+    def test_only_a_local_validator_is_accepted(self):
+        code, _, err = run_main(["analyze-history", "--payer", PAYER], "https://api.devnet.solana.com")
+        self.assertEqual(code, est.EXIT_CLUSTER)
+        self.assertIn("только с локальным валидатором", err)
+        for genesis in (mockrpc.DEVNET_GENESIS, mockrpc.MAINNET_GENESIS, mockrpc.TESTNET_GENESIS):
+            with mockrpc.MockRpc(genesis=genesis, history=self.model_history()) as rpc:  # локальный адрес, публичный genesis: проброшенный порт
+                code, _, err = self.run_analysis(rpc, program=False)
+                self.assertEqual(code, est.EXIT_CLUSTER, genesis)
+                self.assertIn("публичной сети", err)
+                self.assertEqual(rpc.methods(), ["getGenesisHash"], "до проверки genesis история не читается")
+
+    def test_window_can_start_after_a_signature_and_empty_history_is_refused(self):
+        history = self.model_history()
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, genesis=mockrpc.LOCAL_GENESIS, history=history) as rpc:
+            first_paid = history[1]["signature"]
+            code, out, _ = self.run_analysis(rpc, "--after-signature", first_paid, program=False)
+            self.assertEqual(code, 0)
+            self.assertNotIn(first_paid[:12], out)
+            code, _, err = self.run_analysis(rpc, "--after-signature", "no-such-signature", program=False)
+            self.assertEqual(code, est.EXIT_USAGE)
+        with mockrpc.MockRpc(genesis=mockrpc.LOCAL_GENESIS, history=[]) as rpc:
+            code, _, err = self.run_analysis(rpc, program=False)
+        self.assertEqual(code, est.EXIT_USAGE)
+        self.assertIn("нечего измерять", err)
+
+    def test_the_command_only_reads(self):
+        with mockrpc.MockRpc(lamports_per_byte=self.RATE, genesis=mockrpc.LOCAL_GENESIS, history=self.model_history()) as rpc:
+            self.run_analysis(rpc)
+            used = set(rpc.methods())
+        self.assertTrue(used <= {"getGenesisHash", "getSignaturesForAddress", "getTransaction", "getMinimumBalanceForRentExemption",
+                                 "getLatestBlockhash", "getFeeForMessage"}, used)
+
+
 class CommandLine(unittest.TestCase):
     """Скрипт как процесс: именно так его зовёт deploy-devnet.sh."""
 
