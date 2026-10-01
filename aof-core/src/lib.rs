@@ -1131,6 +1131,14 @@ pub struct StartMining<'info> {
         bump
     )]
     pub player: Account<'info, Player>,
+    /// CHECK: общий program vault (`[VAULT_SEED]`) — эскроу застейканного инструмента.
+    #[account(seeds = [VAULT_SEED], bump)]
+    pub vault: UncheckedAccount<'info>,
+    /// Токен-аккаунт vault'а: майнинг разрешён только пока сам токен лежит в
+    /// эскроу. Раньше инструкция доверяла флагу `ToolData.staked` и не смотрела
+    /// на токен вообще, поэтому «стейк» был утверждением программы о себе.
+    #[account(mut, constraint = vault_token.owner == vault.key() @ AofError::NotToolOwner, constraint = vault_token.mint == mint.key() @ AofError::InvalidMint)]
+    pub vault_token: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1172,6 +1180,13 @@ pub struct CollectMining<'info> {
         constraint = payout_token.owner == user.key()
     )]
     pub payout_token: Account<'info, TokenAccount>,
+    /// CHECK: общий program vault (`[VAULT_SEED]`) — эскроу застейканного инструмента.
+    #[account(seeds = [VAULT_SEED], bump)]
+    pub vault: UncheckedAccount<'info>,
+    /// См. `StartMining`: награда выплачивается только пока токен действительно
+    /// лежит в эскроу, а не помечен застейканным в кэше.
+    #[account(mut, constraint = vault_token.owner == vault.key() @ AofError::NotToolOwner, constraint = vault_token.mint == mint.key() @ AofError::InvalidMint)]
+    pub vault_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1200,6 +1215,14 @@ pub struct Repair<'info> {
     pub wood_mint: Account<'info, Mint>,
     #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
     pub user_wood: Account<'info, TokenAccount>,
+    /// Где реально лежит supply-1 токен ремонтируемого инструмента: личный ATA
+    /// владельца (idle) либо общий program vault (инструмент застейкан).
+    ///
+    /// Раньше `repair` авторизовался только по кэшу `ToolData.owner/operator` и не
+    /// смотрел на токен: владелец, уже переведший инструмент обычным SPL-переводом,
+    /// мог продолжать его чинить. Теперь право ремонта доказывает сам токен.
+    #[account(constraint = tool_token.mint == mint.key() @ AofError::InvalidMint)]
+    pub tool_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 

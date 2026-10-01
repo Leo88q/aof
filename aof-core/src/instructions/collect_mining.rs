@@ -6,6 +6,7 @@ use crate::state::*;
 use crate::events::MiningCollected;
 use crate::CollectMining;
 use crate::ResourceKind;
+use crate::instructions::tool_ownership::assert_token_in_escrow;
 
 // Mining is settled in the same instruction that closes the session. The
 // previous flow reset ToolData first and asked a backend worker to calculate
@@ -46,6 +47,17 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
 
     let now = Clock::get()?.unix_timestamp;
     require!(now >= ctx.accounts.tool.mining_end, AofError::MiningNotComplete);
+
+    // Token-primary ownership: награда выплачивается только пока supply-1 токен
+    // инструмента действительно лежит в эскроу программы. Флаг `tool.staked` из
+    // контекста — не доказательство: он лишь кэш, который мог разойтись с
+    // фактическим держателем токена. См. `instructions::tool_ownership`.
+    assert_token_in_escrow(
+        &ctx.accounts.tool,
+        &ctx.accounts.mint,
+        &ctx.accounts.vault_token,
+        &ctx.accounts.vault.key(),
+    )?;
 
     let hours = ctx.accounts.tool.last_mined_hours;
     require!(hours > 0, AofError::InvalidAmount);
