@@ -34,6 +34,9 @@ jobs:
       # [SECURITY #116/#128] апстрим-дозор (offline): у каждой зависимости есть
       # pin в lock-файле, источник advisory и запись в реестре форков/движков.
       - run: node scripts/security/upstream-watch.mjs --check
+      # Каждая инструкция из IDL обязана быть классифицирована (роль/статус/заметка), а статус «отключена»
+      # обязан совпадать с кодом: новая неклассифицированная инструкция роняет этот шаг.
+      - run: node scripts/instruction-inventory.mjs --check
       - run: node --test tests/readiness/*.test.cjs
       # [SECURITY_CHECKLIST #66] blocking audit of shipped (runtime) dependencies
       - run: node scripts/audit-gate.mjs
