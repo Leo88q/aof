@@ -255,11 +255,20 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
       mind: { mind: {} },
     };
 
+    // [PAYER] ATA игрока — его аккаунт и его подпись: создаётся лениво в ЕГО
+    // транзакции (owner = fee payer = payer ATA), authority только авторизует
+    // минт. ATA казны — инфраструктура проекта: проект оплачивает её сам и
+    // только если её ещё нет, вне транзакции игрока.
+    const treasuryAtaInfo = await connection.getAccountInfo(treasuryAta, "confirmed");
+    if (!treasuryAtaInfo) {
+      await authorityOnly([
+        createAssociatedTokenAccountIdempotentInstruction(
+          AUTHORITY_PUBKEY, treasuryAta, cfg.treasury, mintPk,
+        ),
+      ]);
+    }
     const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, userAta, owner, mintPk
-    );
-    const createTreasuryAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, treasuryAta, cfg.treasury, mintPk
+      owner, userAta, owner, mintPk
     );
 
     const ix = await (program.methods as any)
@@ -279,8 +288,8 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
       })
       .instruction();
 
-    const sig = await authorityOnly([createTreasuryAtaIx, createAtaIx, ix]);
-    res.json({ sig });
+    const tx = await coSign([createAtaIx, ix], owner);
+    res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
@@ -384,6 +393,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
     
     const allResources = [...baseResources, ...materialResources];
     const instructions: any[] = [];
+    const treasurySetup: any[] = [];
     let mintedCount = 0;
     let skippedCount = 0;
     
@@ -398,15 +408,17 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
         const userAta = getAssociatedTokenAddressSync(mintPk, user, true);
         const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
         
-        // Проверяем существуют ли ATA, если нет — создаём их authority-плательщиком.
+        // [PAYER] ATA игрока — его аккаунт: создаётся лениво в его транзакции,
+        // платит и подписывает игрок. ATA казны — инфраструктура проекта: её
+        // проект оплачивает сам, вне транзакции игрока.
         const [userInfo, treasuryInfo] = await Promise.all([
-          connection.getAccountInfo(userAta),
-          connection.getAccountInfo(treasuryAta),
+          connection.getAccountInfo(userAta, "confirmed"),
+          connection.getAccountInfo(treasuryAta, "confirmed"),
         ]);
         if (!userInfo) {
           instructions.push(
             createAssociatedTokenAccountIdempotentInstruction(
-              AUTHORITY_PUBKEY,
+              user,
               userAta,
               user,
               mintPk,
@@ -414,7 +426,7 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
           );
         }
         if (!treasuryInfo) {
-          instructions.push(
+          treasurySetup.push(
             createAssociatedTokenAccountIdempotentInstruction(
               AUTHORITY_PUBKEY,
               treasuryAta,
@@ -457,20 +469,24 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
       return res.status(400).json({ error: "No valid mints to process" });
     }
     
-    // Батчим инструкции по 10 (лимит Solana)
+    // ATA казны проект создаёт сам: это инфраструктура, а не аккаунт игрока.
+    if (treasurySetup.length) await authorityOnly(treasurySetup);
+
+    // Инструкции минта игроку отдаём частично подписанной транзакцией: у
+    // игрока появляется обязанность создать свой ATA и подписать её. Батчим
+    // по 10 (лимит Solana) — каждая пачка подписывается игроком отдельно.
     const BATCH_SIZE = 10;
-    const signatures = [];
+    const txs: string[] = [];
     
     for (let i = 0; i < instructions.length; i += BATCH_SIZE) {
       const batch = instructions.slice(i, i + BATCH_SIZE);
-      const sig = await authorityOnly(batch);
-      signatures.push(sig);
+      txs.push(await coSign(batch, user));
     }
     
     res.json({
       success: true,
       message: `Granted ${mintedCount} resources (${skippedCount} skipped - no mints)`,
-      signatures,
+      txs,
       resources: allResources.map(r => ({
         name: r.name,
         amount: r.amount,
@@ -501,13 +517,20 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
     const [auth] = authPda();
     const [materialMints] = materialMintsPda();
     
-    // Идемпотентно создаём ATA игрока и казны.
+    // [PAYER] ATA игрока оплачивает и подписывает игрок (в его транзакции);
+    // ATA казны — инфраструктура проекта, её проект создаёт сам и только если
+    // её ещё нет.
+    const treasuryAtaInfo = await connection.getAccountInfo(treasuryAta, "confirmed");
+    if (!treasuryAtaInfo) {
+      await authorityOnly([
+        createAssociatedTokenAccountIdempotentInstruction(
+          AUTHORITY_PUBKEY, treasuryAta, treasury, mintPk,
+        ),
+      ]);
+    }
     const instructions: any[] = [
       createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY_PUBKEY, userAta, user, mintPk,
-      ),
-      createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY_PUBKEY, treasuryAta, treasury, mintPk,
+        user, userAta, user, mintPk,
       ),
     ];
     
@@ -530,9 +553,9 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
       .instruction();
     
     instructions.push(ix);
-    const sig = await authorityOnly(instructions);
+    const tx = await coSign(instructions, user);
     
-    res.json({ success: true, signature: sig, amount });
+    res.json({ success: true, tx, amount });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

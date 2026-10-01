@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '../../lib/api';
 import { handleTxResponse } from '../../lib/txFlow';
+import type { SeasonPassInitIntent } from '../../lib/transactionIntent';
 import { useVipStatus } from '../../lib/useVipStatus';
 import { readActiveSeason } from '../../lib/currentSeasonReadings';
 import { chooseVipTheme, readVipTheme, type VipTheme } from '../../lib/vipTheme';
@@ -70,6 +71,28 @@ export function SeasonPassPage() {
     }
   }
 
+  // Бесплатная ветка: пропуска ещё нет — игрок создаёт его сам, своей
+  // транзакцией и за свой rent. Оператор не платит за аккаунт игрока.
+  const canInitFree = Boolean(seasonId !== null && user && reading?.owner === user &&
+    snapshot?.seasonActive && !snapshot.pass && !busy);
+
+  async function initFreePass() {
+    if (!canInitFree || !user || seasonId === null) return;
+    setBusy(true);
+    try {
+      flash(c.preparing);
+      const resp = await api.season.passInit({ player: user, seasonId });
+      const intent: SeasonPassInitIntent = { kind: 'seasonPassInit', user, seasonId };
+      const result = await handleTxResponse(resp, intent);
+      flash(result.success ? c.submitted : result.signature ? c.pending : c.failed);
+      refresh();
+    } catch {
+      flash(c.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const status = !user ? c.connect : !reading || reading.kind === 'loading' ? c.verifying
     : reading.kind === 'error' || !snapshot ? c.unavailable
     : snapshot.isVip ? c.active : snapshot.passPremium ? c.expired
@@ -115,6 +138,13 @@ export function SeasonPassPage() {
             </div>)}
         </div>
       </Card>}
+      {snapshot?.seasonActive && !snapshot.pass && user && reading?.owner === user && <>
+        <p className="text-straw text-xs" role="note">{c.freeInitNote}</p>
+        <button type="button" onClick={initFreePass} disabled={!canInitFree}
+          className="w-full py-3.5 px-3 rounded-2xl bg-soil-800 border border-gold/40 text-parchment font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
+          {c.freeInit}
+        </button>
+      </>}
       {snapshot?.seasonActive && !snapshot.passPremium && !paymentBlocked && <>
         {!treasury && <p className="text-straw text-xs" role="status">{c.missingTreasury}</p>}
         <button type="button" onClick={buy} disabled={!canBuy}

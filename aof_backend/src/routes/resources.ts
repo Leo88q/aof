@@ -3,7 +3,7 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
+import { connection, program } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { fetchOne } from "../lib/decode";
@@ -88,14 +88,19 @@ r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
       })
       .instruction();
 
-    const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, tokenAccount, owner, mint,
-    );
-    const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, treasuryToken, treasury, mint,
-    );
-    const sig = await authorityOnly([createTreasuryAta, createUserAta, ix]);
-    res.json({ sig });
+    // [PAYER] ATA игрока — его аккаунт: создаётся лениво в ЕГО транзакции, payer
+    // = кошелёк игрока, подпись игрока; authority добавляет только авторизацию
+    // минта. ATA казны — инфраструктура проекта: её rent проект платит сам и
+    // вне транзакции игрока (и только если её ещё нет).
+    const treasuryInfo = await connection.getAccountInfo(treasuryToken, "confirmed");
+    if (!treasuryInfo) {
+      await authorityOnly([
+        createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, treasuryToken, treasury, mint),
+      ]);
+    }
+    const createUserAta = createAssociatedTokenAccountIdempotentInstruction(owner, tokenAccount, owner, mint);
+    const tx = await coSign([createUserAta, ix], owner);
+    res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

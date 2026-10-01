@@ -4,7 +4,7 @@ type Copy = {
   intro: string; title: string; unverified: string; verifying: string; unavailable: string; connect: string;
   active: string; expired: string; notActive: string; notOwned: string;
   progress: string; season: string; xp: string; claimed: string; track: string;
-  paid: string; free: string; purchase: string; preparing: string; submitted: string;
+  paid: string; free: string; purchase: string; freeInit: string; freeInitNote: string; preparing: string; submitted: string;
   pending: string; failed: string; missingTreasury: string;
   themeTitle: string; themeNote: string; copper: string; orchid: string;
 };
@@ -16,7 +16,7 @@ export const seasonPassCopy: Record<Language, Copy> = {
     verifying: 'Проверяем сезон и пропуск в сети…', unavailable: 'Не удалось проверить сезон и пропуск. Статус и возможность покупки неизвестны.', connect: 'Подключите кошелёк для проверки пропуска.',
     active: 'VIP подтверждён для текущего сезона.', expired: 'Премиум-пропуск был куплен, но сезон уже завершён.', notActive: 'Этот сезон сейчас не активен. Покупка недоступна.', notOwned: 'Премиум-пропуск для этого сезона ещё не куплен.',
     progress: 'Прогресс сезона', season: 'Эпоха', xp: 'Опыт', claimed: 'Получено наград', track: 'Премиум-ветка', paid: 'куплена', free: 'не куплена',
-    purchase: 'Купить Premium за 0,15 SOL', preparing: 'Подготавливаем покупку…', submitted: 'Покупка подтверждена. Обновляем статус…',
+    purchase: 'Купить Premium за 0,15 SOL', freeInit: 'Активировать бесплатный пропуск', freeInitNote: 'Бесплатную ветку создаёт ваша транзакция: вы платите только rent своего аккаунта-пропуска, оплата за сам пропуск не требуется.', preparing: 'Подготавливаем покупку…', submitted: 'Покупка подтверждена. Обновляем статус…',
     pending: 'Статус платежа неизвестен. Не оплачивайте повторно до проверки транзакции.', failed: 'Покупку не удалось подтвердить. Проверьте кошелёк и попробуйте позже.', missingTreasury: 'Адрес казны недоступен. Покупка заблокирована.',
     themeTitle: 'Внешний вид VIP', themeNote: 'Два варианта оформления только на время активного сезона. Выбор сохраняется в этом браузере; награды и доходность не меняются.', copper: 'Медь', orchid: 'Орхидея',
   },
@@ -26,7 +26,7 @@ export const seasonPassCopy: Record<Language, Copy> = {
     verifying: 'Checking the season and your pass on-chain…', unavailable: 'Unable to verify the season or pass. Status and purchase availability are unknown.', connect: 'Connect your wallet to check your pass.',
     active: 'VIP is confirmed for this season.', expired: 'You bought Premium, but this season has ended.', notActive: 'This season is not active. Purchases are unavailable.', notOwned: 'You have not bought Premium for this season.',
     progress: 'Season progress', season: 'Season', xp: 'Experience', claimed: 'Rewards claimed', track: 'Premium track', paid: 'purchased', free: 'not purchased',
-    purchase: 'Buy Premium for 0.15 SOL', preparing: 'Preparing your purchase…', submitted: 'Purchase confirmed. Refreshing your status…',
+    purchase: 'Buy Premium for 0.15 SOL', freeInit: 'Activate the free pass', freeInitNote: 'The free track is created by your own transaction: you only pay the rent of your pass account; there is no pass payment.', preparing: 'Preparing your purchase…', submitted: 'Purchase confirmed. Refreshing your status…',
     pending: 'Payment status is unknown. Do not pay again until you verify the transaction.', failed: 'Could not confirm the purchase. Check your wallet and try again later.', missingTreasury: 'Treasury address unavailable. Purchasing is disabled.',
     themeTitle: 'VIP appearance', themeNote: 'Two visual styles while the season is active. This browser remembers your choice; rewards and yields do not change.', copper: 'Copper', orchid: 'Orchid',
   },
@@ -36,7 +36,7 @@ export const seasonPassCopy: Record<Language, Copy> = {
     verifying: 'A verificar a temporada e o passe na rede…', unavailable: 'Não foi possível verificar a temporada ou o passe. O estado e a possibilidade de compra são desconhecidos.', connect: 'Liga a carteira para verificar o passe.',
     active: 'VIP confirmado para esta temporada.', expired: 'Compraste o Premium, mas a temporada terminou.', notActive: 'Esta temporada não está ativa. As compras estão indisponíveis.', notOwned: 'Ainda não compraste o Premium desta temporada.',
     progress: 'Progresso da temporada', season: 'Temporada', xp: 'Experiência', claimed: 'Recompensas recebidas', track: 'Trilho Premium', paid: 'comprado', free: 'não comprado',
-    purchase: 'Comprar Premium por 0,15 SOL', preparing: 'A preparar a compra…', submitted: 'Compra confirmada. A atualizar o estado…',
+    purchase: 'Comprar Premium por 0,15 SOL', freeInit: 'Ativar o passe gratuito', freeInitNote: 'O trilho gratuito é criado pela tua transação: pagas apenas a renda da tua conta de passe; não há pagamento pelo passe.', preparing: 'A preparar a compra…', submitted: 'Compra confirmada. A atualizar o estado…',
     pending: 'O estado do pagamento é desconhecido. Não pagues novamente antes de verificar a transação.', failed: 'Não foi possível confirmar a compra. Verifica a carteira e tenta mais tarde.', missingTreasury: 'Endereço da tesouraria indisponível. Compra bloqueada.',
     themeTitle: 'Aparência VIP', themeNote: 'Dois estilos visuais durante a temporada ativa. A escolha fica neste navegador; prémios e rendimentos não mudam.', copper: 'Cobre', orchid: 'Orquídea',
   },
@@ -46,7 +46,7 @@ export const seasonPassCopy: Record<Language, Copy> = {
     verifying: 'Verificando la temporada y tu pase en la cadena…', unavailable: 'No se pudo verificar la temporada ni el pase. Se desconocen el estado y la disponibilidad de compra.', connect: 'Conecta tu cartera para comprobar el pase.',
     active: 'VIP confirmado para esta temporada.', expired: 'Compraste Premium, pero la temporada ya terminó.', notActive: 'Esta temporada no está activa. No se puede comprar.', notOwned: 'Aún no has comprado Premium para esta temporada.',
     progress: 'Progreso de temporada', season: 'Temporada', xp: 'Experiencia', claimed: 'Recompensas recibidas', track: 'Ruta Premium', paid: 'comprada', free: 'sin comprar',
-    purchase: 'Comprar Premium por 0,15 SOL', preparing: 'Preparando la compra…', submitted: 'Compra confirmada. Actualizando el estado…',
+    purchase: 'Comprar Premium por 0,15 SOL', freeInit: 'Activar el pase gratuito', freeInitNote: 'La ruta gratuita la crea tu propia transacción: solo pagas la renta de tu cuenta de pase, sin pago por el pase.', preparing: 'Preparando la compra…', submitted: 'Compra confirmada. Actualizando el estado…',
     pending: 'Se desconoce el estado del pago. No vuelvas a pagar sin verificar la transacción.', failed: 'No se pudo confirmar la compra. Revisa tu cartera e inténtalo más tarde.', missingTreasury: 'La dirección de tesorería no está disponible. Compra bloqueada.',
     themeTitle: 'Aspecto VIP', themeNote: 'Dos estilos visuales durante la temporada activa. La elección se guarda en este navegador; los premios y rendimientos no cambian.', copper: 'Cobre', orchid: 'Orquídea',
   },
@@ -56,7 +56,7 @@ export const seasonPassCopy: Record<Language, Copy> = {
     verifying: 'Đang kiểm tra mùa giải và thẻ trên chuỗi…', unavailable: 'Không thể xác minh mùa giải hoặc thẻ. Chưa rõ trạng thái và khả năng mua.', connect: 'Kết nối ví để kiểm tra thẻ.',
     active: 'Đã xác nhận VIP cho mùa giải này.', expired: 'Bạn đã mua Premium nhưng mùa giải đã kết thúc.', notActive: 'Mùa giải này hiện không hoạt động. Không thể mua.', notOwned: 'Bạn chưa mua Premium cho mùa giải này.',
     progress: 'Tiến độ mùa giải', season: 'Mùa giải', xp: 'Kinh nghiệm', claimed: 'Phần thưởng đã nhận', track: 'Nhánh Premium', paid: 'đã mua', free: 'chưa mua',
-    purchase: 'Mua Premium với giá 0,15 SOL', preparing: 'Đang chuẩn bị giao dịch…', submitted: 'Đã xác nhận mua. Đang cập nhật trạng thái…',
+    purchase: 'Mua Premium với giá 0,15 SOL', freeInit: 'Kích hoạt thẻ miễn phí', freeInitNote: 'Nhánh miễn phí do giao dịch của bạn tạo: bạn chỉ trả tiền thuê tài khoản thẻ, không phải trả tiền mua thẻ.', preparing: 'Đang chuẩn bị giao dịch…', submitted: 'Đã xác nhận mua. Đang cập nhật trạng thái…',
     pending: 'Chưa rõ trạng thái thanh toán. Đừng trả tiền lần nữa trước khi kiểm tra giao dịch.', failed: 'Không thể xác nhận giao dịch. Kiểm tra ví và thử lại sau.', missingTreasury: 'Không có địa chỉ ngân quỹ. Đã khóa chức năng mua.',
     themeTitle: 'Giao diện VIP', themeNote: 'Hai kiểu hiển thị khi mùa giải đang hoạt động. Lựa chọn lưu trên trình duyệt này; phần thưởng và lợi nhuận không đổi.', copper: 'Đồng', orchid: 'Hoa lan',
   },
