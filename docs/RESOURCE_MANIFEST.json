@@ -1,0 +1,606 @@
+{
+  "schemaVersion": 1,
+  "note": "Канонический манифест ресурсов. Переименование (пункт 12 плана) делается только по нему; drift обязан опустеть.",
+  "drift": [
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "AmberQuartz",
+      "name": "sandYellow"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "BioChip",
+      "name": "gemGreen"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "BioFluid",
+      "name": "flaskGreen"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "BlueCore",
+      "name": "stoneBlue"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "ClearQuartz",
+      "name": "sandWhite"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "CryoFluid",
+      "name": "flaskBlue"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "NanoFluid",
+      "name": "flaskPink"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "NeuralChip",
+      "name": "gemOrange"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "PhotonBit",
+      "name": "gemWhite"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "PurpleCore",
+      "name": "stonePurple"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "QuantumBit",
+      "name": "gemBlue"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "QuantumFluid",
+      "name": "flaskPurple"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "RedCore",
+      "name": "stoneRed"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "RoseQuartz",
+      "name": "sandPink"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "SoulCore",
+      "name": "loveHeart"
+    },
+    {
+      "type": "backend-legacy-name",
+      "file": "aof_backend/src/routes/resources.ts",
+      "kind": "VoltFluid",
+      "name": "flaskYellow"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 0,
+      "kind": "Data",
+      "actual": "Food"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 1,
+      "kind": "Circuit",
+      "actual": "Wood"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 10,
+      "kind": "BlueCore",
+      "actual": "StoneBlue"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 11,
+      "kind": "PurpleCore",
+      "actual": "StonePurple"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 12,
+      "kind": "RedCore",
+      "actual": "StoneRed"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 13,
+      "kind": "ClearQuartz",
+      "actual": "SandWhite"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 14,
+      "kind": "RoseQuartz",
+      "actual": "SandPink"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 15,
+      "kind": "AmberQuartz",
+      "actual": "SandYellow"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 16,
+      "kind": "QuantumBit",
+      "actual": "GemBlue"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 17,
+      "kind": "NeuralChip",
+      "actual": "GemOrange"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 18,
+      "kind": "PhotonBit",
+      "actual": "GemWhite"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 19,
+      "kind": "BioChip",
+      "actual": "GemGreen"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 2,
+      "kind": "Silicon",
+      "actual": "Stone"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 20,
+      "kind": "CryoFluid",
+      "actual": "FlaskBlue"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 21,
+      "kind": "VoltFluid",
+      "actual": "FlaskYellow"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 22,
+      "kind": "BioFluid",
+      "actual": "FlaskGreen"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 23,
+      "kind": "NanoFluid",
+      "actual": "FlaskPink"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 24,
+      "kind": "QuantumFluid",
+      "actual": "FlaskPurple"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 25,
+      "kind": "SoulCore",
+      "actual": "LoveHeart"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 26,
+      "kind": "Mind",
+      "actual": "Potato"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 3,
+      "kind": "Neuron",
+      "actual": "Seeds"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 4,
+      "kind": "Synapse",
+      "actual": "Wheat"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 5,
+      "kind": "Signal",
+      "actual": "Flour"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 6,
+      "kind": "Model",
+      "actual": "Bread"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 7,
+      "kind": "Power",
+      "actual": "Water"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 8,
+      "kind": "Compute",
+      "actual": "Coal"
+    },
+    {
+      "type": "idl-variant-name",
+      "id": 9,
+      "kind": "Dataset",
+      "actual": "Meat"
+    }
+  ],
+  "resources": [
+    {
+      "id": 0,
+      "kind": "Data",
+      "apiName": "data",
+      "display": "Data",
+      "mintSource": "config.food_mint",
+      "legacyField": "food_mint",
+      "legacyAliases": [
+        "food"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 1,
+      "kind": "Circuit",
+      "apiName": "circuit",
+      "display": "Circuit",
+      "mintSource": "config.wood_mint",
+      "legacyField": "wood_mint",
+      "legacyAliases": [
+        "wood"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 2,
+      "kind": "Silicon",
+      "apiName": "silicon",
+      "display": "Silicon",
+      "mintSource": "config.stone_mint",
+      "legacyField": "stone_mint",
+      "legacyAliases": [
+        "stone"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 3,
+      "kind": "Neuron",
+      "apiName": "neuron",
+      "display": "Neuron",
+      "mintSource": "material_mints.seeds",
+      "legacyField": "seeds",
+      "legacyAliases": [
+        "seeds"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 4,
+      "kind": "Synapse",
+      "apiName": "synapse",
+      "display": "Synapse",
+      "mintSource": "material_mints.wheat",
+      "legacyField": "wheat",
+      "legacyAliases": [
+        "wheat"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 5,
+      "kind": "Signal",
+      "apiName": "signal",
+      "display": "Signal",
+      "mintSource": "material_mints.flour",
+      "legacyField": "flour",
+      "legacyAliases": [
+        "flour"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 6,
+      "kind": "Model",
+      "apiName": "model",
+      "display": "Model",
+      "mintSource": "material_mints.bread",
+      "legacyField": "bread",
+      "legacyAliases": [
+        "bread"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 7,
+      "kind": "Power",
+      "apiName": "power",
+      "display": "Power",
+      "mintSource": "material_mints.water",
+      "legacyField": "water",
+      "legacyAliases": [
+        "water"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 8,
+      "kind": "Compute",
+      "apiName": "compute",
+      "display": "Compute",
+      "mintSource": "material_mints.coal",
+      "legacyField": "coal",
+      "legacyAliases": [
+        "coal"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 9,
+      "kind": "Dataset",
+      "apiName": "dataset",
+      "display": "Dataset",
+      "mintSource": "material_mints.meat",
+      "legacyField": "meat",
+      "legacyAliases": [
+        "meat"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 10,
+      "kind": "BlueCore",
+      "apiName": "blueCore",
+      "display": "Blue Core",
+      "mintSource": "material_mints.stone_blue",
+      "legacyField": "stone_blue",
+      "legacyAliases": [
+        "stone_blue",
+        "stoneBlue"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 11,
+      "kind": "PurpleCore",
+      "apiName": "purpleCore",
+      "display": "Purple Core",
+      "mintSource": "material_mints.stone_purple",
+      "legacyField": "stone_purple",
+      "legacyAliases": [
+        "stone_purple",
+        "stonePurple"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 12,
+      "kind": "RedCore",
+      "apiName": "redCore",
+      "display": "Red Core",
+      "mintSource": "material_mints.stone_red",
+      "legacyField": "stone_red",
+      "legacyAliases": [
+        "stone_red",
+        "stoneRed"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 13,
+      "kind": "ClearQuartz",
+      "apiName": "clearQuartz",
+      "display": "Clear Quartz",
+      "mintSource": "material_mints.sand_white",
+      "legacyField": "sand_white",
+      "legacyAliases": [
+        "sand_white",
+        "sandWhite"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 14,
+      "kind": "RoseQuartz",
+      "apiName": "roseQuartz",
+      "display": "Rose Quartz",
+      "mintSource": "material_mints.sand_pink",
+      "legacyField": "sand_pink",
+      "legacyAliases": [
+        "sand_pink",
+        "sandPink"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 15,
+      "kind": "AmberQuartz",
+      "apiName": "amberQuartz",
+      "display": "Amber Quartz",
+      "mintSource": "material_mints.sand_yellow",
+      "legacyField": "sand_yellow",
+      "legacyAliases": [
+        "sand_yellow",
+        "sandYellow"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 16,
+      "kind": "QuantumBit",
+      "apiName": "quantumBit",
+      "display": "Quantum Bit",
+      "mintSource": "material_mints.gem_blue",
+      "legacyField": "gem_blue",
+      "legacyAliases": [
+        "gem_blue",
+        "gemBlue"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 17,
+      "kind": "NeuralChip",
+      "apiName": "neuralChip",
+      "display": "Neural Chip",
+      "mintSource": "material_mints.gem_orange",
+      "legacyField": "gem_orange",
+      "legacyAliases": [
+        "gem_orange",
+        "gemOrange"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 18,
+      "kind": "PhotonBit",
+      "apiName": "photonBit",
+      "display": "Photon Bit",
+      "mintSource": "material_mints.gem_white",
+      "legacyField": "gem_white",
+      "legacyAliases": [
+        "gem_white",
+        "gemWhite"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 19,
+      "kind": "BioChip",
+      "apiName": "bioChip",
+      "display": "Bio Chip",
+      "mintSource": "material_mints.gem_green",
+      "legacyField": "gem_green",
+      "legacyAliases": [
+        "gem_green",
+        "gemGreen"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 20,
+      "kind": "CryoFluid",
+      "apiName": "cryoFluid",
+      "display": "Cryo Fluid",
+      "mintSource": "material_mints.flask_blue",
+      "legacyField": "flask_blue",
+      "legacyAliases": [
+        "flask_blue",
+        "flaskBlue"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 21,
+      "kind": "VoltFluid",
+      "apiName": "voltFluid",
+      "display": "Volt Fluid",
+      "mintSource": "material_mints.flask_yellow",
+      "legacyField": "flask_yellow",
+      "legacyAliases": [
+        "flask_yellow",
+        "flaskYellow"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 22,
+      "kind": "BioFluid",
+      "apiName": "bioFluid",
+      "display": "Bio Fluid",
+      "mintSource": "material_mints.flask_green",
+      "legacyField": "flask_green",
+      "legacyAliases": [
+        "flask_green",
+        "flaskGreen"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 23,
+      "kind": "NanoFluid",
+      "apiName": "nanoFluid",
+      "display": "Nano Fluid",
+      "mintSource": "material_mints.flask_pink",
+      "legacyField": "flask_pink",
+      "legacyAliases": [
+        "flask_pink",
+        "flaskPink"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 24,
+      "kind": "QuantumFluid",
+      "apiName": "quantumFluid",
+      "display": "Quantum Fluid",
+      "mintSource": "material_mints.flask_purple",
+      "legacyField": "flask_purple",
+      "legacyAliases": [
+        "flask_purple",
+        "flaskPurple"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 25,
+      "kind": "SoulCore",
+      "apiName": "soulCore",
+      "display": "Soul Core",
+      "mintSource": "material_mints.love_heart",
+      "legacyField": "love_heart",
+      "legacyAliases": [
+        "love_heart",
+        "loveHeart"
+      ],
+      "status": "rename-pending"
+    },
+    {
+      "id": 26,
+      "kind": "Mind",
+      "apiName": "mind",
+      "display": "Mind",
+      "mintSource": "config.potato_mint",
+      "legacyField": "potato_mint",
+      "legacyAliases": [
+        "potato"
+      ],
+      "status": "rename-pending"
+    }
+  ]
+}
