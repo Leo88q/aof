@@ -15,6 +15,8 @@ import {
   vaultPda,
   materialMintsPda,
   vaultGuardPda,
+  rentalListingPda,
+  rentalAgreementPda,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { simulateTransaction } from "../security/txSimulator";
@@ -242,6 +244,30 @@ r.post("/repair-quote", async (req, res) => {
   }
 });
 
+/**
+ * Где сейчас лежит инструмент и каким путём его можно авторизовать.
+ *
+ * Стейк-путь (`startMining`/`collectMining`/`repair`) требует токен в общем
+ * vault программы; арендатор арендованным инструментом владеть не может —
+ * токен лежит в эскроу листинга, поэтому для него существуют делегированные
+ * инструкции (`*Delegated`), где право доказывает активная запись аренды.
+ * Возвращаем `null`, если у вызывающего нет ни стейка, ни аренды: тогда
+ * инструкцию строить нельзя, и маршрут обязан ответить ошибкой, а не собрать
+ * заведомо невалидную транзакцию.
+ */
+async function toolCustody(user: PublicKey, mint: PublicKey, toolData: any) {
+  if (toolData?.staked) return { kind: "staked" as const };
+  const [rentalListing] = rentalListingPda(mint);
+  const [rentalAgreement] = rentalAgreementPda(mint);
+  const agreement: any = await fetchOne("rentalAgreement", rentalAgreement);
+  const renter = agreement?.renter;
+  if (renter && String(renter) === String(user)) {
+    const rentalVault = getAssociatedTokenAddressSync(mint, rentalListing, true);
+    return { kind: "delegated" as const, rentalListing, rentalAgreement, rentalVault };
+  }
+  return null;
+}
+
 r.post("/repair", async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -263,29 +289,48 @@ r.post("/repair", async (req, res) => {
     const woodMint = new PublicKey(cfg.woodMint);
     const userStone = getAssociatedTokenAddressSync(stoneMint, user);
     const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    // Token-primary ownership: программа проверяет, где реально лежит supply-1
-    // токен инструмента. Отдаём именно это место, а не «канонический ATA по
-    // умолчанию»: у застейканного инструмента токен лежит в vault программы.
+    // Token-primary ownership: программа сама проверяет, где лежит supply-1
+    // токен. Стейк-путь берёт токен из общего vault, делегированный — из эскроу
+    // листинга аренды; свободный инструмент чинит владелец со своего ATA.
     const toolData: any = await fetchOne("toolData", tool);
+    const custody = await toolCustody(user, mint, toolData);
     const [vault] = vaultPda();
     const ownerToolAta = getAssociatedTokenAddressSync(mint, user, true);
     const vaultToolAta = getAssociatedTokenAddressSync(mint, vault, true);
     const toolToken = toolData?.staked ? vaultToolAta : ownerToolAta;
-    const repairIx = await (program.methods as any)
-      .repair(amount)
-      .accounts({
-        config,
-        user,
-        tool,
-        mint,
-        stoneMint,
-        userStone,
-        woodMint,
-        userWood,
-        toolToken,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
+    const repairIx = custody?.kind === "delegated"
+      ? await (program.methods as any)
+          .repairDelegated(amount)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            stoneMint,
+            userStone,
+            woodMint,
+            userWood,
+            rentalListing: custody.rentalListing,
+            rentalAgreement: custody.rentalAgreement,
+            rentalVault: custody.rentalVault,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction()
+      : await (program.methods as any)
+          .repair(amount)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            stoneMint,
+            userStone,
+            woodMint,
+            userWood,
+            toolToken,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction();
 
     const createStoneAta = createAssociatedTokenAccountIdempotentInstruction(
       user, userStone, user, stoneMint,
@@ -387,21 +432,41 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
     const [player] = playerPda(user);
     const [vault] = vaultPda();
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
-    const ix = await (program.methods as any)
-      .startMining(hours)
-      .accounts({
-        config,
-        user,
-        tool,
-        mint,
-        player,
-        // Token-primary ownership: майнинг разрешён только пока токен инструмента
-        // действительно лежит в эскроу программы (стейк обязателен для майнинга).
-        vault,
-        vaultToken,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const toolData: any = await fetchOne("toolData", tool);
+    const custody = await toolCustody(user, mint, toolData);
+    if (!custody) {
+      return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
+    }
+    const ix = custody.kind === "delegated"
+      ? await (program.methods as any)
+          .startMiningDelegated(hours)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            rentalListing: custody.rentalListing,
+            rentalAgreement: custody.rentalAgreement,
+            rentalVault: custody.rentalVault,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction()
+      : await (program.methods as any)
+          .startMining(hours)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            // Token-primary ownership: майнинг разрешён только пока токен
+            // инструмента действительно лежит в эскроу программы.
+            vault,
+            vaultToken,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
 
     const tx = await coSign([ix], user);
     res.json({ tx });
@@ -444,24 +509,47 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
     const payoutToken = getAssociatedTokenAddressSync(payoutMint, user);
     const [vault] = vaultPda();
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
-    const ix = await (program.methods as any)
-      .collectMining()
-      .accounts({
-        config,
-        user,
-        tool,
-        mint,
-        player,
-        materialMints,
-        auth,
-        payoutMint,
-        payoutToken,
-        // См. start-mining: награда выплачивается только при токене в эскроу.
-        vault,
-        vaultToken,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
+    const custody = await toolCustody(user, mint, toolData);
+    if (!custody) {
+      return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
+    }
+    const ix = custody.kind === "delegated"
+      ? await (program.methods as any)
+          .collectMiningDelegated()
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            materialMints,
+            auth,
+            payoutMint,
+            payoutToken,
+            rentalListing: custody.rentalListing,
+            rentalAgreement: custody.rentalAgreement,
+            rentalVault: custody.rentalVault,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction()
+      : await (program.methods as any)
+          .collectMining()
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            materialMints,
+            auth,
+            payoutMint,
+            payoutToken,
+            // См. start-mining: награда выплачивается только при токене в эскроу.
+            vault,
+            vaultToken,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction();
 
     // The ATA creation and the settlement are one wallet-signed transaction.
     const createPayoutAta = createAssociatedTokenAccountIdempotentInstruction(
