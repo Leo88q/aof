@@ -865,6 +865,10 @@ jobs:
           # never a .so whose declare_id! was rewritten (CI builds use
           # throwaway ids, so those binaries must not reach devnet).
           python3 scripts/test-deploy-devnet.py
+          # Deploy cost estimator: rent and fees come only from RPC answers (no
+          # per-byte rate in the code), max_len is an explicit policy, and the
+          # balance gate is computed over ALL programs before the first tx.
+          python3 scripts/test-devnet-deploy-estimator.py
           # Bringup runbook: one command from "no programs on devnet" to a
           # working game. Must never turn mining on before the payout mints
           # exist, never touch mainnet, and never POST in a dry run.
