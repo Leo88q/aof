@@ -61,6 +61,14 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
   const anchorErrorName = (error: any): string | null =>
     error?.error?.errorCode?.name ?? error?.error?.errorCode?.code ?? null;
 
+  /** Ждёт конкретный код Anchor — иначе тест падает с фактическим кодом. */
+  async function expectAnchorError(promise: Promise<any>, expected: string) {
+    let failed: any = null;
+    try { await promise; } catch (error) { failed = error; }
+    expect(failed, `ожидалась ошибка ${expected}`).to.not.equal(null);
+    expect(anchorErrorName(failed), `ожидалась ${expected}`).to.equal(expected);
+  }
+
   async function airdrop(kp: Keypair, sol = 5) {
     const sig = await connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL);
     await connection.confirmTransaction(sig, "confirmed");
@@ -478,5 +486,234 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     await stake(attacker);
     expect((await tool(mint)).staked).to.equal(true);
     expect((await balance(vaultToken)).toString()).to.equal("1");
+  });
+  // =====================================================================
+  // Делегированные действия арендатора (Этап 8).
+  //
+  // Арендованный инструмент лежит в rental_vault листинга, поэтому обычные
+  // start_mining/collect_mining/repair для арендатора недостижимы: право даёт
+  // активная запись аренды (RentalAgreement.renter == operator == подписант).
+  // =====================================================================
+
+  const DAY = new BN(24 * 3600);
+  const PRICE_PER_HOUR = new BN(1_000);
+
+  /** Листинг + активная аренда: инструмент переходит в эскроу листинга. */
+  async function listedAndRented(ownerKp: Keypair, renterKp: Keypair) {
+    const { mint, tokenAccount: ownerToken } = await mintTool(ownerKp.publicKey);
+    const tool = toolPda(mint);
+    const rentalListing = pda([B("rental_listing"), mint.toBuffer()]);
+    const rentalAgreement = pda([B("rental_agreement"), mint.toBuffer()]);
+    const rentalVault = await ensureAta(mint, rentalListing);
+
+    await core.methods
+      .rentalList(9_000, DAY, DAY, PRICE_PER_HOUR)
+      .accounts({
+        config: coreConfig, owner: ownerKp.publicKey, mint, tool, rentalListing,
+        ownerToken, rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([ownerKp])
+      .rpc();
+    await core.methods
+      .rentalStartBounded(DAY, PRICE_PER_HOUR.muln(24))
+      .accounts({
+        config: coreConfig, renter: renterKp.publicKey, mint, tool, rentalListing,
+        owner: ownerKp.publicKey, treasury: authority, rentalAgreement, rentalVault,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([renterKp])
+      .rpc();
+
+    return { mint, tool, rentalListing, rentalAgreement, rentalVault };
+  }
+
+  const delegatedStart = (
+    who: Keypair, setup: Awaited<ReturnType<typeof listedAndRented>>, hours: number,
+  ) =>
+    core.methods
+      .startMiningDelegated(hours)
+      .accounts({
+        config: coreConfig, user: who.publicKey, tool: setup.tool, mint: setup.mint,
+        player: playerPda(who.publicKey), rentalListing: setup.rentalListing,
+        rentalAgreement: setup.rentalAgreement, rentalVault: setup.rentalVault,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([who])
+      .rpc();
+
+  it("делегированный майнинг: арендатор может, владелец и посторонний — нет", async () => {
+    const renter = Keypair.generate();
+    await airdrop(renter, 5);
+    const setup = await listedAndRented(owner, renter);
+
+    // Владелец и посторонний не операторы: proof не проходит.
+    await expectAnchorError(delegatedStart(owner, setup, 4), "NotToolOperator");
+    await expectAnchorError(delegatedStart(attacker, setup, 4), "NotToolOperator");
+
+    await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
+    try {
+      await delegatedStart(renter, setup, 4);
+      const mined = await tool(setup.mint);
+      expect(mined.isMining, "сессия обязана стартовать у арендатора").to.equal(true);
+      expect(mined.lastMinedHours).to.equal(4);
+      // Сессия короче аренды: mining_end внутри agreement.end.
+      const agreement = await core.account.rentalAgreement.fetch(setup.rentalAgreement);
+      expect(mined.miningEnd.toNumber()).to.be.lessThanOrEqual(agreement.end.toNumber());
+      // Инструмент остался в эскроу листинга — арендатор токеном не владеет.
+      expect((await balance(setup.rentalVault)).toString()).to.equal("1");
+      // Токена у арендатора нет вовсе: он не владелец, только operator.
+      expect(await connection.getAccountInfo(ata(setup.mint, renter.publicKey))).to.equal(null);
+
+      // Повторный старт запрещён, пока сессия не закрыта.
+      await expectAnchorError(delegatedStart(renter, setup, 1), "AlreadyMining");
+    } finally {
+      await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
+    }
+  });
+
+  it("делегированный сбор: сессия должна завершиться, посторонний не собирает", async () => {
+    const renter = Keypair.generate();
+    await airdrop(renter, 5);
+    const setup = await listedAndRented(owner, renter);
+    await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
+    try {
+      await delegatedStart(renter, setup, 1);
+      // plasma_cutter выдаёт ResourceKind::Circuit → config.wood_mint.
+      const cfg: any = await core.account.config.fetch(coreConfig);
+      const payoutMint = new PublicKey(cfg.woodMint);
+      // payout_token в контексте — существующий ATA: создаём его заранее, иначе
+      // транзакция упадёт на разборе аккаунтов раньше проверки сессии.
+      const renterPayout = await ensureAta(payoutMint, renter.publicKey);
+      // Постороннему нужен профиль игрока (а с ним ATA выплаты), иначе
+      // транзакция упадёт на разборе аккаунтов, не дойдя до проверки оператора.
+      await giveResource("wood", payoutMint, attacker.publicKey, 1);
+
+      const collect = (who: Keypair) => core.methods
+        .collectMiningDelegated()
+        .accounts({
+          config: coreConfig, user: who.publicKey, tool: setup.tool, mint: setup.mint,
+          player: playerPda(who.publicKey), materialMints, auth: authPda,
+          payoutMint, payoutToken: ata(payoutMint, who.publicKey), // создан выше
+          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
+          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([who])
+        .rpc();
+
+      // Арендатор авторизован (делегирование), но сессия ещё не истекла.
+      await expectAnchorError(collect(renter), "MiningNotComplete");
+      // Посторонний до proof'а не доходит: он не оператор инструмента.
+      await expectAnchorError(collect(attacker), "NotToolOperator");
+      // Награды не появилось, сессия не тронута.
+      expect((await tool(setup.mint)).isMining).to.equal(true);
+      expect((await balance(renterPayout)).toString(), "награды ещё нет").to.equal("0");
+    } finally {
+      await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
+    }
+  });
+
+  it("rental_end арендатором гасит брошенную сессию и возвращает operator владельцу", async () => {
+    const renter = Keypair.generate();
+    await airdrop(renter, 5);
+    const setup = await listedAndRented(owner, renter);
+    await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
+    let mined: any = null;
+    try {
+      await delegatedStart(renter, setup, 4);
+      mined = await tool(setup.mint);
+      expect(mined.isMining).to.equal(true);
+    } finally {
+      await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
+    }
+
+    // Арендатор вправе завершить аренду в любой момент; незавершённая сессия
+    // не должна оставаться висеть на инструменте (иначе после делиста
+    // владелец навсегда упрётся в AlreadyMining).
+    await core.methods
+      .rentalEnd()
+      .accounts({
+        config: coreConfig, caller: renter.publicKey, mint: setup.mint, tool: setup.tool,
+        rentalAgreement: setup.rentalAgreement, renterRefund: renter.publicKey,
+      })
+      .signers([renter])
+      .rpc();
+
+    const after = await tool(setup.mint);
+    expect(after.isMining, "брошенная сессия гасится").to.equal(false);
+    expect(after.miningEnd.toNumber()).to.equal(0);
+    expect(after.lastMinedHours).to.equal(0);
+    expect(after.operator.toBase58(), "operator возвращается владельцу").to.equal(owner.publicKey.toBase58());
+    expect(await connection.getAccountInfo(setup.rentalAgreement)).to.equal(null);
+  });
+
+  it("repair_delegated авторизует арендатора, обычный repair ему недоступен", async () => {
+    const renter = Keypair.generate();
+    await airdrop(renter, 5);
+    const setup = await listedAndRented(owner, renter);
+    const cfg: any = await core.account.config.fetch(coreConfig);
+    const stoneMint = new PublicKey(cfg.stoneMint);
+    const woodMint = new PublicKey(cfg.woodMint);
+    const renterStone = await giveResource("stone", stoneMint, renter.publicKey, 5);
+    const renterWood = await giveResource("wood", woodMint, renter.publicKey, 5);
+
+    // Свежий инструмент уже на MAX_DURABILITY, поэтому успешный ремонт здесь
+    // недостижим; DurabilityOverflow доказывает, что proof пройден и обработчик
+    // дошёл до проверки durability (до балансов и сжигания).
+    await expectAnchorError(
+      core.methods
+        .repairDelegated(1)
+        .accounts({
+          config: coreConfig, user: renter.publicKey, tool: setup.tool, mint: setup.mint,
+          stoneMint, userStone: renterStone, woodMint, userWood: renterWood,
+          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
+          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([renter])
+        .rpc(),
+      "DurabilityOverflow",
+    );
+
+    // Владелец делегированным путём не проходит: он не renter соглашения.
+    await expectAnchorError(
+      core.methods
+        .repairDelegated(1)
+        .accounts({
+          config: coreConfig, user: owner.publicKey, tool: setup.tool, mint: setup.mint,
+          stoneMint, userStone: await ensureAta(stoneMint, owner.publicKey),
+          woodMint, userWood: await ensureAta(woodMint, owner.publicKey),
+          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
+          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([owner])
+        .rpc(),
+      "NotToolOperator",
+    );
+
+    // Обычный repair арендатору недоступен по построению: он не owner.
+    await expectAnchorError(
+      core.methods
+        .repair(1)
+        .accounts({
+          config: coreConfig, user: renter.publicKey, tool: setup.tool, mint: setup.mint,
+          stoneMint, userStone: renterStone, woodMint, userWood: renterWood,
+          toolToken: ata(setup.mint, renter.publicKey), tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([renter])
+        .rpc(),
+      "NotToolOwner",
+    );
+  });
+
+  // Требует прогрева времени валидатора (локально недоступно): сессия, которая
+  // не помещается в остаток аренды, обязана упасть с RentalSessionTooLong, а
+  // завершённая делегированная сессия — выплатить награду арендатору.
+  it.skip("сессия длиннее аренды отклоняется, а завершённая платит арендатору (нужен сдвиг времени)", async () => {
+    const renter = Keypair.generate();
+    await airdrop(renter, 5);
+    const setup = await listedAndRented(owner, renter);
+    // После 24h аренды остаётся меньше 8h: startMiningDelegated(8) обязан упасть.
+    await expectAnchorError(delegatedStart(renter, setup, 8), "RentalSessionTooLong");
+    // …а после mining_end награда должна уйти арендатору (не владельцу).
   });
 });
