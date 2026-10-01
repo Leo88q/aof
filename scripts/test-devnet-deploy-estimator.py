@@ -41,13 +41,13 @@ spec = importlib.util.spec_from_file_location("devnet_deploy_estimator", SCRIPT)
 est = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(est)
 
-PAYER = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb"
+PAYER = "FHQd3FrsR73ieA9KcR87ULrbkPgKBPJEvNkXKm8oF4nF"
 ADDRESSES = {
-    "aof_core": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
-    "aof_market": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
-    "aof_quests": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
-    "aof_liquidity": "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
-    "aof_sessions": "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+    "aof_core": "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx",
+    "aof_market": "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY",
+    "aof_quests": "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc",
+    "aof_liquidity": "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S",
+    "aof_sessions": "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5",
 }
 SOL = 1_000_000_000
 # Независимая от оценщика формула rent: проверяем, что он её не подсовывает сам.
