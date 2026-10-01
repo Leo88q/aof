@@ -106,12 +106,12 @@
 | aof_core | claim_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | collect_bread | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 3 | 0 |  |
 | aof_core | collect_flour | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
-| aof_core | collect_mining | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 4 | 0 | ✓ |
+| aof_core | collect_mining | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 3 | 0 | ✓ |
 | aof_core | collect_well_water | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 1 |  |
 | aof_core | collector_stake | gameplay | active | 1 | 0 | 3 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
 | aof_core | collector_unstake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | commit_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
-| aof_core | craft | gameplay | active | 5 | 0 | 14 | 1 | 3 | 0 | 0 | 2 | 7 | 0 |  |
+| aof_core | craft | gameplay | active | 5 | 1 | 14 | 1 | 3 | 0 | 0 | 2 | 6 | 0 |  |
 | aof_core | craft_order_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_fulfill | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -135,7 +135,7 @@
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | mint_resource | gameplay | active | 2 | 2 | 0 | 0 | 0 | 0 | 3 | 2 | 3 | 0 | ✓ |
+| aof_core | mint_resource | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 3 | 2 | 3 | 0 | ✓ |
 | aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 5 | 1 | 4 | 1 | ✓ |
 | aof_core | offer_accept | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | offer_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
@@ -154,7 +154,7 @@
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
 | aof_core | rental_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
 | aof_core | rental_revoke | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
-| aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 2 | 0 | 2 | 0 | 0 | 0 |  |
+| aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 2 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | start_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | repair_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -168,7 +168,7 @@
 | aof_core | set_reroll_config | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_core | set_resource_mints | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | stake | gameplay | active | 1 | 0 | 3 | 0 | 1 | 0 | 2 | 1 | 1 | 0 |  |
-| aof_core | start_baking | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | start_baking | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | start_exploration_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | start_milling | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 2 | 0 | 2 | 0 | ✓ |

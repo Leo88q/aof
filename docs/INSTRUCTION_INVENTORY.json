@@ -1010,11 +1010,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 3,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/devnet-release-guards.test.cjs",
-            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -1311,6 +1310,13 @@
             "aof_backend/src/routes/tools.ts"
           ]
         },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-usage.mjs"
+          ]
+        },
         "frontend": {
           "calls": 0,
           "mentions": 14,
@@ -1358,12 +1364,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 7,
+          "mentions": 6,
           "files": [
             "tests/readiness/bringup-entrypoints.test.cjs",
             "tests/readiness/mechanic-configs.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
-            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/rng-economy.test.cjs",
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
@@ -1371,7 +1376,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 23,
+        "callSiteCount": 24,
         "validatorTested": false,
         "anyTest": true
       }
@@ -2694,10 +2699,9 @@
         },
         "adminScripts": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "scripts/check-mint-writable.py",
-            "scripts/resource-usage.mjs"
+            "scripts/check-mint-writable.py"
           ]
         }
       },
@@ -2737,7 +2741,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -3832,6 +3836,13 @@
             "tests/aof_extended.ts",
             "tests/aof_tool_ownership.ts"
           ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/resource-evidence.test.cjs"
+          ]
         }
       },
       "summary": {
@@ -4607,6 +4618,13 @@
           "mentions": 0,
           "files": [
             "tests/aof_core.ts"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/resource-evidence.test.cjs"
           ]
         }
       },
