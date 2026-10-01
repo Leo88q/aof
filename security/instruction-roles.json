@@ -1,0 +1,886 @@
+{
+  "schemaVersion": 1,
+  "$comment": "Ручная классификация инструкций (по коду и данным scripts/instruction-inventory.mjs). Каждая инструкция из IDL обязана иметь запись: новая без записи роняет node scripts/instruction-inventory.mjs --check. role: gameplay | admin | emergency | migration | initialization | compatibility | deprecated | candidate-dead-code; status: active | disabled-on-chain (проверяется по коду: первая команда обработчика — require!(false)/err!). deprecated требует replacedBy; candidate-dead-code требует evidence и не допускает call sites. Роль не разрешает удаление: удалять инструкции можно только после доказательства отсутствия всех call sites и теста на замещающий путь, по решению владельца.",
+  "roles": [
+    "gameplay",
+    "admin",
+    "emergency",
+    "migration",
+    "initialization",
+    "compatibility",
+    "deprecated",
+    "candidate-dead-code"
+  ],
+  "statuses": [
+    "active",
+    "disabled-on-chain"
+  ],
+  "programs": {
+    "aof_core": {
+      "adjust_player_capacity": {
+        "role": "admin",
+        "status": "active",
+        "note": "Оператор меняет вместимость фермы игрока (дельта, палатка)."
+      },
+      "auction_bid": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Ставка в аукционе инструмента."
+      },
+      "auction_create": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Выставление инструмента на аукцион."
+      },
+      "auction_settle": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Завершение аукциона и расчёт сторон."
+      },
+      "burn_nft": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сжигание NFT-инструмента игроком."
+      },
+      "burn_resource": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сжигание ресурса (расход в крафте и механиках)."
+      },
+      "burn_tool": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сжигание инструмента; клиентского call site нет, покрыт validator-тестом — перед любой правкой проверить продуктовый путь."
+      },
+      "buy_lottery_ticket": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Покупка билета лотереи."
+      },
+      "cancel_buy_order": {
+        "role": "compatibility",
+        "status": "active",
+        "note": "Отмена ордера v1; нужна, чтобы снять ранее выставленные v1-ордера (v2 заменил размещение)."
+      },
+      "cancel_sell_order": {
+        "role": "compatibility",
+        "status": "active",
+        "note": "Отмена ордера v1; нужна, чтобы снять ранее выставленные v1-ордера (v2 заменил размещение)."
+      },
+      "claim_lottery_prize": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Получение приза лотереи победителем."
+      },
+      "claim_season_reward": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Получение сезонной награды (выпуск ограничен IssuanceCap)."
+      },
+      "collect_bread": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор готового хлеба с пекарни."
+      },
+      "collect_flour": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор готовой муки с мельницы."
+      },
+      "collect_mining": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор добычи инструментом; работает только при включённом mining_enabled."
+      },
+      "collect_well_water": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор воды из колодца (ставка зависит от погоды дня)."
+      },
+      "collector_stake": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Стейк коллекционного NFT (Historian/Medallion) из allowlist."
+      },
+      "collector_unstake": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Снятие стейка коллекционного NFT."
+      },
+      "commit_lottery_draw": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Commit розыгрыша лотереи через VRF (Switchboard)."
+      },
+      "craft": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Крафт инструмента по рецепту (bonding curve)."
+      },
+      "craft_order_cancel": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена заказа на крафт."
+      },
+      "craft_order_create": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Создание заказа на крафт."
+      },
+      "craft_order_fulfill": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Исполнение заказа на крафт."
+      },
+      "craft_recipe": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Крафт ресурса по рецепту."
+      },
+      "deposit_gas": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Пополнение газ-бака игрока."
+      },
+      "draw_lottery": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal розыгрыша лотереи с подписью оракула."
+      },
+      "explore_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal экспедиции с подписью оракула."
+      },
+      "forge_attempt_commit": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Commit попытки кузницы (VRF)."
+      },
+      "forge_attempt_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal попытки кузницы."
+      },
+      "forge_attempt_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за попытку кузницы без reveal."
+      },
+      "grant_season_xp": {
+        "role": "admin",
+        "status": "active",
+        "note": "Начисление сезонного XP ключом оператора (backend)."
+      },
+      "harvest_wheat": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор урожая пшеницы."
+      },
+      "init_craft_economy": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Одноразовая инициализация CraftEconomy (bringup шаг 5)."
+      },
+      "init_lottery_round": {
+        "role": "admin",
+        "status": "active",
+        "note": "Оператор открывает раунд лотереи (bringup создаёт раунд 1, далее — по расписанию)."
+      },
+      "init_material_mints": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Одноразовый реестр материальных минтов (initMintsV2.ts)."
+      },
+      "init_pack_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Конфиг пака на тип: small/medium/big, одноразово (bringup)."
+      },
+      "init_rarity_counter": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Счётчик минтов редкости 1..4, одноразово на редкость (bringup)."
+      },
+      "init_reroll_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Конфиг фьюза редкости (bringup)."
+      },
+      "init_season": {
+        "role": "admin",
+        "status": "active",
+        "note": "Оператор открывает сезон (bringup создаёт сезон 1, 42-дневное окно ставит программа)."
+      },
+      "initialize": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Создаёт Config/auth/vault и привязывает authority к upgrade authority (bringup шаг 5)."
+      },
+      "marketplace_buy": {
+        "role": "deprecated",
+        "status": "disabled-on-chain",
+        "note": "Всегда FeatureDisabled: заменена marketplace_buy_bounded (с max_price и сроком); остаётся ради стабильности IDL.",
+        "replacedBy": "marketplace_buy_bounded"
+      },
+      "marketplace_cancel": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Снятие листинга."
+      },
+      "marketplace_list": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Листинг инструмента на маркетплейсе."
+      },
+      "match_resource_orders": {
+        "role": "compatibility",
+        "status": "active",
+        "note": "Матчинг ордербука v1; новый код использует match_resource_orders_v2 (цена за целый ресурс, эскроу с округлением вверх). Обработчик активен."
+      },
+      "migrate_tool": {
+        "role": "migration",
+        "status": "disabled-on-chain",
+        "note": "Легаси-миграция инструментов завершена и отключена: минт шёл в vault без шага выдачи игроку."
+      },
+      "mint_resource": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Выпуск ресурса ключом backend (награды, добыча); ограничен IssuanceCap."
+      },
+      "mint_tool": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Выпуск инструмента игроку (SPL supply=1, ToolData отдельно)."
+      },
+      "offer_accept": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Принятие оффера."
+      },
+      "offer_cancel": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена оффера."
+      },
+      "offer_create": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Создание оффера на инструмент."
+      },
+      "pack_open_commit": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Commit открытия пака (VRF)."
+      },
+      "pack_open_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal открытия пака."
+      },
+      "pack_open_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за пак без reveal."
+      },
+      "pay_out": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Вывод (cashout) игроку; подчиняется заморозке выводов."
+      },
+      "pay_out_with_referral": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Вывод с реферальной долей."
+      },
+      "place_buy_order": {
+        "role": "compatibility",
+        "status": "active",
+        "note": "Размещение ордера v1; новый код использует place_buy_order_v2. Обработчик активен — ждёт решения владельца."
+      },
+      "place_sell_order": {
+        "role": "compatibility",
+        "status": "active",
+        "note": "Размещение ордера v1; новый код использует place_sell_order_v2. Обработчик активен — ждёт решения владельца."
+      },
+      "plant_seeds": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Посадка семян."
+      },
+      "purchase_season_pass": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
+      },
+      "referral_bind": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Привязка реферера."
+      },
+      "referral_upgrade": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Повышение реферального уровня."
+      },
+      "rental_end": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Завершение аренды."
+      },
+      "rental_list": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Выставление инструмента в аренду."
+      },
+      "rental_revoke": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Досрочный отзыв аренды владельцем."
+      },
+      "rental_start": {
+        "role": "deprecated",
+        "status": "disabled-on-chain",
+        "note": "Всегда FeatureDisabled: заменена rental_start_bounded (с потолком комиссии); остаётся ради стабильности IDL.",
+        "replacedBy": "rental_start_bounded"
+      },
+      "repair": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Ремонт инструмента ресурсами."
+      },
+      "reroll": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Детерминированный реролл типа инструмента (конфиг реролла)."
+      },
+      "reroll_random_commit": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Commit случайного реролла (VRF)."
+      },
+      "reroll_random_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal случайного реролла."
+      },
+      "set_craft_economy": {
+        "role": "admin",
+        "status": "active",
+        "note": "Параметры bonding curve крафта."
+      },
+      "set_fees": {
+        "role": "admin",
+        "status": "active",
+        "note": "Комиссии крафта и unstake (имя общее с aof_market)."
+      },
+      "set_pack_config": {
+        "role": "admin",
+        "status": "active",
+        "note": "Цены и шансы пака."
+      },
+      "set_paused": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Глобальная пауза игры (имя общее с aof_market)."
+      },
+      "set_reroll_config": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шансы реролла."
+      },
+      "set_resource_mints": {
+        "role": "admin",
+        "status": "active",
+        "note": "Адреса ресурсных минтов Config."
+      },
+      "stake": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Стейк инструмента на срок."
+      },
+      "start_baking": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск выпечки."
+      },
+      "start_exploration_commit": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Commit старта экспедиции (VRF)."
+      },
+      "start_milling": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск помола."
+      },
+      "start_mining": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск добычи инструментом."
+      },
+      "sweep_gas_fees": {
+        "role": "admin",
+        "status": "active",
+        "note": "Вывод накопленных комиссий газ-бака в казну."
+      },
+      "unstake": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Снятие стейка инструмента."
+      },
+      "upgrade_exploration_tier": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Повышение уровня экспедиций."
+      },
+      "weather_crank": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless раз в сутки: значение погоды дня."
+      },
+      "withdraw_gas": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Вывод остатка газ-бака игроком."
+      },
+      "mint_resource_once": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Идемпотентный выпуск ресурса по reward_id (защита от двойной выплаты)."
+      },
+      "marketplace_buy_bounded": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Покупка с потолком цены и сроком действия."
+      },
+      "init_issuance_cap": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Потолок выпуска ресурса: создаётся один раз на вид (npm run caps:init)."
+      },
+      "set_issuance_cap": {
+        "role": "admin",
+        "status": "active",
+        "note": "Изменение потолка выпуска ресурса; не сбрасывает счётчик эпохи."
+      },
+      "set_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
+      },
+      "accept_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
+      },
+      "cancel_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Отмена ротации authority (имя общее у всех шести программ)."
+      },
+      "set_mining_enabled": {
+        "role": "emergency",
+        "status": "active",
+        "note": "On-chain kill-switch добычи (F-27); bringup включает его последним, после выплатных минтов."
+      },
+      "init_vault_guard": {
+        "role": "initialization",
+        "status": "active",
+        "note": "VaultGuard на mint: лимит вывода из vault (F-01)."
+      },
+      "set_vault_guard": {
+        "role": "admin",
+        "status": "active",
+        "note": "Изменение лимитов VaultGuard."
+      },
+      "set_supply_cap": {
+        "role": "admin",
+        "status": "active",
+        "note": "Потолок общего предложения материала (F-03)."
+      },
+      "register_collector_mint": {
+        "role": "admin",
+        "status": "active",
+        "note": "Добавление mint'а в allowlist коллекционеров (F-16)."
+      },
+      "revoke_collector_mint": {
+        "role": "admin",
+        "status": "active",
+        "note": "Исключение mint'а из allowlist коллекционеров (F-16)."
+      },
+      "refund_lottery_round": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Восстановление: возврат билетов раунда, который не удалось разыграть (аудит F-23)."
+      },
+      "migrate_config_v2": {
+        "role": "migration",
+        "status": "active",
+        "note": "Одноразовый перевод Config на раскладку v2 (роли operator/guardian)."
+      },
+      "set_roles": {
+        "role": "admin",
+        "status": "active",
+        "note": "Назначение operator и guardian."
+      },
+      "emergency_stop": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Guardian: пауза игры и/или заморозка выводов одним действием."
+      },
+      "set_cashout_frozen": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Заморозка/разморозка выводов (operator/guardian)."
+      },
+      "rental_start_bounded": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Старт аренды с потолком суммарной комиссии."
+      },
+      "rental_delist": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Снятие инструмента с аренды."
+      },
+      "auction_cancel": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена аукциона владельцем."
+      },
+      "vrf_pool_add": {
+        "role": "admin",
+        "status": "active",
+        "note": "Добавление randomness-аккаунта Switchboard в пул (имя общее с aof_quests)."
+      },
+      "vrf_pool_set_retired": {
+        "role": "admin",
+        "status": "active",
+        "note": "Вывод randomness-аккаунта из пула (имя общее с aof_quests)."
+      },
+      "vrf_slot_recover": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Оператор снимает блокировку слота VRF, чей держатель исчез."
+      },
+      "reroll_random_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за случайный реролл без reveal."
+      },
+      "explore_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за экспедицию, которую оракул не раскрыл."
+      },
+      "expire_lottery_draw": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: переоткрыть раунд, чей розыгрыш оракул не раскрыл (путь восстановления VRF)."
+      },
+      "refund_lottery_ticket": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Возврат билета при неразыгранном раунде."
+      },
+      "place_buy_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Размещение покупки v2: цена за целый ресурс, эскроу с округлением вверх."
+      },
+      "place_sell_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Размещение продажи v2."
+      },
+      "cancel_buy_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена покупки v2."
+      },
+      "cancel_sell_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена продажи v2."
+      },
+      "match_resource_orders_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Матчинг ордербука ресурсов v2."
+      },
+      "reset_for_rebirth": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Полный сброс прогресса; вызывается в одной транзакции с aof_rebirth::do_rebirth."
+      },
+      "transfer_tool": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Канонический перенос инструмента (NFT и ToolData.owner одним действием); зовётся из aof_market по CPI."
+      }
+    },
+    "aof_market": {
+      "cancel_limit_order": {
+        "role": "candidate-dead-code",
+        "status": "active",
+        "note": "Снимает лимитный ордер и возвращает эскроу; place_limit_order отключена, поэтому ордера не создаются.",
+        "evidence": "Нет call sites в backend/frontend/game/скриптах (статический поиск, scripts/instruction-inventory.mjs); place_limit_order всегда TradingDisabled, программа ещё ни разу не развёрнута. Удалять только по решению владельца."
+      },
+      "crank_market": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: обновление параметров пула по времени (hot market)."
+      },
+      "hot_market_buy": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Покупка у пула горячего рынка."
+      },
+      "hot_market_sell_into_queue": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Продажа в очередь пула горячего рынка."
+      },
+      "hot_market_skip": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Событие пропуска (только emit, без изменения состояния)."
+      },
+      "init_market_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Config рынка и выбор валют пула (необратим; bringup шаг 7)."
+      },
+      "init_pool": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Пул редкости (bringup шаг 7)."
+      },
+      "place_limit_order": {
+        "role": "candidate-dead-code",
+        "status": "disabled-on-chain",
+        "note": "Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL.",
+        "evidence": "Нет call sites в backend/frontend/game/скриптах (статический поиск); обработчик всегда возвращает TradingDisabled; matching/settlement-инструкции не существует. Удалять только по решению владельца."
+      },
+      "set_fees": {
+        "role": "admin",
+        "status": "active",
+        "note": "Комиссия рынка в bps (имя общее с aof_core)."
+      },
+      "set_paused": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Пауза рынка (имя общее с aof_core)."
+      },
+      "start_market_event": {
+        "role": "admin",
+        "status": "active",
+        "note": "Оператор запускает рыночное событие с множителем цены."
+      },
+      "set_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
+      },
+      "accept_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
+      },
+      "cancel_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Отмена ротации authority (имя общее у всех шести программ)."
+      }
+    },
+    "aof_quests": {
+      "accept_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
+      },
+      "achievement_unlock": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
+      },
+      "cancel_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Отмена ротации authority (имя общее у всех шести программ)."
+      },
+      "challenge_contribute": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
+      },
+      "challenge_init": {
+        "role": "admin",
+        "status": "active",
+        "note": "Оператор открывает недельный челлендж; вклад (challenge_contribute) пока отключён."
+      },
+      "drum_commit": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint."
+      },
+      "drum_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за спин барабана без reveal."
+      },
+      "drum_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal спина барабана с подписью оракула."
+      },
+      "init_potato_bank": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Изолированная казна Potato V2, изначально на паузе."
+      },
+      "init_quest_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет."
+      },
+      "potato_spin_commit": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
+      },
+      "potato_spin_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за спин Potato V2; достижим только после включения potato_spin_commit."
+      },
+      "potato_spin_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Расчёт спина Potato V2 (работает и при паузе банка); достижим только после включения potato_spin_commit."
+      },
+      "quest_claim_reward": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Получение награды за квест."
+      },
+      "quest_init": {
+        "role": "admin",
+        "status": "active",
+        "note": "Оператор создаёт квест; клиента для этого пока нет (инструмент оператора)."
+      },
+      "set_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
+      },
+      "set_potato_bank_paused": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Пауза будущих коммитов Potato V2; расчёты и возвраты остаются доступны."
+      },
+      "vrf_pool_add": {
+        "role": "admin",
+        "status": "active",
+        "note": "Добавление randomness-аккаунта Switchboard в пул (имя общее с aof_core)."
+      },
+      "vrf_pool_set_retired": {
+        "role": "admin",
+        "status": "active",
+        "note": "Вывод randomness-аккаунта из пула (имя общее с aof_core)."
+      }
+    },
+    "aof_rebirth": {
+      "do_rebirth": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Возрождение (престиж): плата, кулдаун, бонус; в одной транзакции с aof_core::reset_for_rebirth."
+      },
+      "init_rebirth_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "RebirthConfig: бонус, лимит, казна, цена, кулдаун."
+      },
+      "set_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
+      },
+      "accept_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
+      },
+      "cancel_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Отмена ротации authority (имя общее у всех шести программ)."
+      }
+    },
+    "aof_liquidity": {
+      "init_lp_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "LpConfig и mint маскота."
+      },
+      "lp_deposit": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Вклад в пул ликвидности редкости."
+      },
+      "lp_withdraw": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Вывод из пула ликвидности по долям."
+      },
+      "set_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
+      },
+      "accept_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
+      },
+      "cancel_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Отмена ротации authority (имя общее у всех шести программ)."
+      }
+    },
+    "aof_session_keys": {
+      "init_config": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Config сессионных ключей, привязан к upgrade authority."
+      },
+      "session_check_and_spend": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции."
+      },
+      "session_create": {
+        "role": "gameplay",
+        "status": "disabled-on-chain",
+        "note": "Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
+      },
+      "session_pause": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Пауза сессии владельцем (пользовательская защита)."
+      },
+      "session_revoke": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отзыв сессии владельцем (пользовательская защита)."
+      },
+      "trust_snapshot_update": {
+        "role": "admin",
+        "status": "active",
+        "note": "Атрибуция доверительного уровня игрока (оператор/оракул); эпоха не откатывается."
+      }
+    }
+  }
+}

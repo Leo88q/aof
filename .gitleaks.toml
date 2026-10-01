@@ -12,3 +12,13 @@ id = "base58-private-key-assignment"
 description = "Potential base58 private key assigned to a secret field"
 regex = '''(?i)(?:private[_-]?key|secret[_-]?key|mnemonic)\s*["']?\s*[:=]\s*["']?([1-9A-HJ-NP-Za-km-z]{87,88})\b'''
 secretGroup = 1
+
+# Публичный ID программы — не секрет. Правило generic-api-key срабатывает на `aof_session_keys = "<ID>"` только потому, что
+# в ИМЕНИ программы есть «key». Разрешён ровно текущий адрес, а не «любой base58 длиной 32–44»: 32-байтный seed выглядит как
+# адрес, и широкое исключение пропустило бы утёкший seed. tests/readiness/gitleaks-allowlist.test.cjs держит этот список
+# равным адресам реестра: после смены Program ID тест потребует обновить исключение.
+[allowlist]
+description = "public Solana program ID whose identifier contains the word key"
+regexes = [
+  '''^6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5$''',
+]
