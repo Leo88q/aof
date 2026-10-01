@@ -152,8 +152,13 @@ CLEAN_DEEP=1 bash scripts/dev-local.sh clean
 
 ```bash
 cd /Users/zlata/LeoGamesStudio/aof
-AOF_DEPLOY_TARGET=devnet bash scripts/devnet-bringup.sh
+# сначала посмотрите стоимость по живому RPC и выберите ёмкость программ (docs/DEVNET_DEPLOY_COSTS.md):
+python3 scripts/devnet-deploy-estimator.py compare --from-registry --artifacts target/deploy
+PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet bash scripts/devnet-bringup.sh
 ```
+
+`PROGRAM_MAX_LEN_POLICY` обязателен (`exact`, `headroom` + `PROGRAM_MAX_LEN_HEADROOM_PERCENT=1..99` или `legacy-2x`): без него
+скрипт отказывает до первой команды. Сухой прогон печатает таблицу и отказывает, если SOL на ключе не хватает на **все** программы сразу.
 
 Затем деплой и включение (нужен запущенный backend в hot-режиме — им
 подписываются минты, потолки и тумблер добычи):
@@ -165,7 +170,7 @@ cd /Users/zlata/LeoGamesStudio/aof && bash scripts/dev-local.sh up     # под�
 
 # терминал 2
 cd /Users/zlata/LeoGamesStudio/aof
-ADMIN_TOKEN=<из aof_backend/.env> AOF_DEPLOY_TARGET=devnet bash scripts/devnet-bringup.sh --apply
+ADMIN_TOKEN=<из aof_backend/.env> PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet bash scripts/devnet-bringup.sh --apply
 ```
 
 Одной командой весь путь (включая ключи, тесты, сборку, деплой и итоговый
