@@ -18,7 +18,7 @@ import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
 
-process.env.PROGRAM_ID ||= "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+process.env.PROGRAM_ID ||= "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
 process.env.TREASURY_PUBKEY ||= "11111111111111111111111111111111";
 process.env.AUTHORITY_MODE = "read-only";
 delete process.env.AUTHORITY_SECRET_KEY;

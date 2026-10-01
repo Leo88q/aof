@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/aof_core.json`.
  */
 export type AofCore = {
-  "address": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
+  "address": "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx",
   "metadata": {
     "name": "aofCore",
     "version": "0.1.0",

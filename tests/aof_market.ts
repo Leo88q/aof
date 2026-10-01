@@ -30,8 +30,8 @@ import {
 import { expect } from "chai";
 import fs from "fs";
 
-const MARKET_ID = new PublicKey("4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo");
-const CORE_ID = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const MARKET_ID = new PublicKey("A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY");
+const CORE_ID = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
 describe("aof-market: горячий рынок покупает и продаёт инструмент вместе с владением", () => {
   const provider = anchor.AnchorProvider.env();

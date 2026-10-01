@@ -7,7 +7,7 @@ import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 import { confirmSignature } from "../src/lib/confirmation";
 const user = Keypair.generate();
 const other = Keypair.generate().publicKey;
-const core = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const core = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 function transaction(...ix: TransactionInstruction[]) {
   return new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }).add(...ix);
 }

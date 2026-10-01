@@ -57,7 +57,7 @@ test('#98/#116/#128 реестр программ, апстримов и клю�
   for (const p of registry.programs.filter((p) => p.status === 'active' && p.valueBearing)) {
     assert.ok(p.upgradeAuthorityPlan, `${p.name}: активная ценная программа без плана по upgrade authority`);
   }
-  assert.ok(read('Anchor.toml').includes('HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq'), 'канонический program id должен остаться в Anchor.toml');
+  assert.ok(read('Anchor.toml').includes('okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx'), 'канонический program id должен остаться в Anchor.toml');
 });
 
 test('#98/#116 апстрим-дозор: пиннинг, advisory-источники, еженедельный workflow', () => {

@@ -64,7 +64,7 @@ const median = (values: number[]) => {
 describe("aof-core: compute units per instruction (SECURITY_CHECKLIST #27)", () => {
   const provider = anchor.AnchorProvider.env();
   const idl = JSON.parse(fs.readFileSync(process.cwd() + "/target/idl/aof_core.json", "utf8"));
-  const programId = new PublicKey(idl.address ?? "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+  const programId = new PublicKey(idl.address ?? "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
   it("every instruction the suites exercised stays well inside the default compute limit", async () => {
     const connection = provider.connection;

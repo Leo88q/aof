@@ -52,12 +52,12 @@ const SAFE_PROGRAMS = new Set([
 // guard must not treat an arbitrary program as safe merely because simulation
 // succeeded: simulation proves execution, not user intent.
 const AOF_PROGRAMS = [
-  "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5", // session keys
-  "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv", // liquidity
-  "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb", // rebirth
-  "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU", // quests
-  "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo", // market
-  "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq", // core
+  "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5", // session keys
+  "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S", // liquidity
+  "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF", // rebirth
+  "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc", // quests
+  "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY", // market
+  "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx", // core
 ];
 
 // [F-06] Switchboard On-Demand (mainnet, devnet). The game programs CPI it to

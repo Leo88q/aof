@@ -21,7 +21,7 @@ import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 
 const user = Keypair.generate();
 const other = Keypair.generate().publicKey;
-const core = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const core = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 const auth = PublicKey.findProgramAddressSync([Buffer.from("auth")], core)[0];
 const coreIx = () => new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) });
 const transaction = (...ix: TransactionInstruction[]) =>
