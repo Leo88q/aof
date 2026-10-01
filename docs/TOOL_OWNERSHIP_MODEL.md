@@ -152,13 +152,27 @@ ownership. Программные адреса и keypair'ы сохраняют�
   списывается с инструмента;
 * `repair_delegated(amount)` — арендатор чинит **своими** ресурсами.
 
-Единый proof — `tool_ownership::assert_rental_delegation` (одна реализация, две
-обёртки): `RentalAgreement.mint == RentalListing.mint == ToolData.mint`,
+Единый proof — `tool_ownership::check_rental_delegation` (одна реализация, две
+обёртки: `assert_active_rental_delegation` для старта сессии и
+`assert_rental_collect_right` для сбора): `RentalAgreement.mint == RentalListing.mint == ToolData.mint`,
 `agreement.renter == подписант == tool.operator`, владелец в `ToolData` и в
 записях совпадает, листинг активен, инструмент не в стейке, и — для старта —
 `now < agreement.end`. Токен обязан лежать в `rental_vault` листинга
 (`assert_token_in_escrow`): `token_account.owner == operator` для аренды
 **неверно**, арендатор токеном не владеет.
+
+### Порядок проверок (важно для ожиданий в тестах)
+
+Гейт `operator` продублирован в констрейнтах контекста
+(`constraint = tool.operator == user.key() @ NotToolOperator`) и срабатывает
+**до** обработчика. Поэтому в делегированных инструкциях владелец и посторонний
+получают `NotToolOperator` независимо от состояния сессии, листинга и vault.
+
+Внутри обработчика авторизация идёт раньше бизнес-проверок: `mining_enabled` →
+proof аренды → эскроу → (`hours`/`durability` для старта; `now >= mining_end`
+для сбора). Так отказ по правам не зависит от значений `hours` или от того,
+завершилась ли сессия; арендатор на незавершённой сессии получает
+`MiningNotComplete`, а не отказ авторизации.
 
 ### Семантика награды (закрывает открытый вопрос о pending rewards)
 
@@ -217,14 +231,14 @@ ownership. Программные адреса и keypair'ы сохраняют�
 | 9 | свободный инструмент не запускает майнинг (нет токена в эскроу) | «майнинг требует токен в эскроу…» | pending |
 | 10 | застейканный (токен в vault) — майнинг стартует | там же | pending |
 | 11 | эскроу нельзя вывести обычным SPL-переводом | там же | pending |
-| 12 | `repair` после перевода: прежний владелец получает `ZeroAmount` | «repair после raw transfer…» | pending |
-| 13 | `repair` без `sync`: новый держатель получает `NotToolOperator` | там же | pending |
+| 12 | `repair` после перевода: прежний владелец получает `ZeroAmount` (idle-проверка `amount == 1`) | «repair после raw transfer…» | pending |
+| 13 | `repair` без `sync`: новый держатель получает `NotToolOperator` (констрейнт `tool.operator`) | там же | pending |
 | 14 | `collect_mining` принимает только vault-токен (`NotToolOwner`) | «collect_mining требует token account эскроу…» | pending |
-| 15 | `stake` после перевода: сначала `sync`, затем стейк | «stake после raw transfer…» | pending |
-| 16 | делегированный майнинг: арендатор может, владелец и посторонний — нет; сессия короче аренды; повторный старт — `AlreadyMining` | «делегированный майнинг…» | pending |
-| 17 | делегированный сбор: сессия должна завершиться (`MiningNotComplete`), посторонний не собирает (`NotToolOperator`), токена у арендатора нет | «делегированный сбор…» | pending |
+| 15 | `stake` после перевода: без `sync` — `NotToolOwner` (констрейнт `tool.owner` раньше `operator`), после `sync` — успех | «stake после raw transfer…» | pending |
+| 16 | делегированный майнинг: арендатор может, владелец и посторонний получают `NotToolOperator`; `mining_end <= agreement.end`; повторный старт — `AlreadyMining` | «делегированный майнинг…» | pending |
+| 17 | делегированный сбор: посторонний — `NotToolOperator` раньше любых проверок состояния, арендатор на незавершённой сессии — `MiningNotComplete`, токена у арендатора нет | «делегированный сбор…» | pending |
 | 18 | `rental_end` арендатором гасит брошенную сессию и возвращает `operator` владельцу | «rental_end арендатором гасит…» | pending |
-| 19 | `repair_delegated` авторизует арендатора, обычный `repair` ему недоступен | «repair_delegated авторизует…» | pending |
+| 19 | `repair_delegated`: proof арендатора пройден (упирается в `DurabilityOverflow` свежего инструмента), владелец — `NotToolOperator`, обычный `repair` арендатору — `NotToolOwner` | «repair_delegated авторизует…» | pending |
 | 20 | `RentalSessionTooLong` (сессия длиннее остатка аренды) | `it.skip` — нужен сдвиг времени валидатора | **заблокировано локально** |
 | 21 | завершённая делегированная сессия платит арендатору | `it.skip` — нужен сдвиг времени валидатора | **заблокировано локально** |
 

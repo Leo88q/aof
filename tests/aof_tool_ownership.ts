@@ -16,6 +16,10 @@
  *
  * Запускается после tests/aof_core.ts (чей before() создаёт Config и auth-PDA).
  * Команда: anchor test --skip-build
+ *
+ * Нумерация сценариев [n] совпадает с таблицей в docs/TOOL_OWNERSHIP_MODEL.md:
+ * 1–15 — token-primary владение и sync, 16–19 — делегированные действия
+ * арендатора, 20–21 — сценарии со сдвигом времени валидатора (`it.skip`).
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
@@ -164,7 +168,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect(mm, "MaterialMints не инициализирован: запустите tests/aof_core.ts перед этим файлом").to.not.equal(null);
   });
 
-  // 1 + 10: канонический путь атомарно двигает и токен, и кэш.
+  // [1]: канонический путь атомарно двигает и токен, и кэш.
   it("transfer_tool двигает токен и кэш одной транзакцией", async () => {
     const { mint } = await mintTool(owner.publicKey);
     await ensureAta(mint, attacker.publicKey);
@@ -188,7 +192,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect((await balance(ata(mint, owner.publicKey))).toString()).to.equal("0");
   });
 
-  // 15: обычный перевод не создаёт второй авторитетной записи — он лишь
+  // [2, 3]: обычный перевод не создаёт второй авторитетной записи — он лишь
   // рассинхронизирует кэш, и до sync инструмент «заморожен» для обоих.
   it("raw SPL transfer рассинхронизирует кэш: старый владелец теряет инструмент, новый ещё не получил", async () => {
     const { mint } = await mintTool(owner.publicKey);
@@ -235,7 +239,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect(anchorErrorName(failed)).to.equal("NotToolOwner");
   });
 
-  // 5: sync восстанавливает согласованность и доступ.
+  // [4]: sync восстанавливает согласованность и доступ.
   it("sync_tool_owner восстанавливает кэш после обычного перевода", async () => {
     const { mint } = await mintTool(owner.publicKey);
     await rawTransfer(mint, owner, attacker);
@@ -260,7 +264,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect((await balance(ata(mint, attacker.publicKey))).toString()).to.equal("0");
   });
 
-  // 6: посторонний не должен уметь сбросить кэш (иначе он уводит operator).
+  // [5]: посторонний не должен уметь сбросить кэш (иначе он уводит operator).
   it("посторонний не может вызвать sync_tool_owner", async () => {
     const { mint } = await mintTool(owner.publicKey);
     const bystander = Keypair.generate();
@@ -274,7 +278,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect((await tool(mint)).owner.toBase58()).to.equal(owner.publicKey.toBase58());
   });
 
-  // 7–9: доказательство владения проверяет сам токен, а не его подобие.
+  // [6–8]: доказательство владения проверяет сам токен, а не его подобие.
   it("sync отклоняет чужой mint, нулевой баланс и чужой token account", async () => {
     const { mint } = await mintTool(owner.publicKey);
     await rawTransfer(mint, owner, attacker);
@@ -312,7 +316,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect(failed, "чужой token account не должен доказывать владение").to.not.equal(null);
   });
 
-  // 13 + 14: майнинг авторизуется токеном в эскроу, а не кэшем; сам эскроу
+  // [9–11]: майнинг авторизуется токеном в эскроу, а не кэшем; сам эскроу
   // нельзя опустошить обычным SPL-переводом.
   it("майнинг требует токен в эскроу, а эскроу нельзя вывести обычным переводом", async () => {
     const { mint, tokenAccount } = await mintTool(owner.publicKey);
@@ -376,7 +380,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
       await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
     }
   });
-  // 12: repair после обычного перевода. Право ремонта доказывает токен, а не
+  // [12, 13]: repair после обычного перевода. Право ремонта доказывает токен, а не
   // запись в кэше, поэтому прежний владелец чинить инструмент больше не может.
   it("repair после raw transfer: прежний владелец теряет инструмент, новый получает его лишь через sync", async () => {
     const { mint } = await mintTool(owner.publicKey);
@@ -419,7 +423,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect((await tool(mint)).durability).to.equal(20);
   });
 
-  // 14: collect_mining принимает только тот vault-токен, который принадлежит
+  // [14]: collect_mining принимает только тот vault-токен, который принадлежит
   // эскроу программы. Личный ATA владельца как источник награды не годится.
   it("collect_mining требует token account эскроу, а не личный ATA владельца", async () => {
     const { mint } = await mintTool(owner.publicKey);
@@ -438,27 +442,44 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     const payoutMint = await createMint(connection, setupPayer, setupPayer.publicKey, null, 9);
     const payoutToken = await ensureAta(payoutMint, owner.publicKey);
 
-    let failed: any = null;
+    // Сессию надо действительно начать: иначе раньше проверки эскроу сработает
+    // констрейнт `tool.is_mining` (NotMining) и до подмены vault_token дело не дойдёт.
+    await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
     try {
       await core.methods
-        .collectMining()
+        .startMining(1)
         .accounts({
           config: coreConfig, user: owner.publicKey, tool: toolPda(mint), mint,
-          player: playerPda(owner.publicKey), materialMints, auth: authPda,
-          payoutMint, payoutToken, vault: vaultPda,
-          // Подмена: вместо эскроу подсунут личный ATA владельца.
-          vaultToken: ata(mint, owner.publicKey),
-          tokenProgram: TOKEN_PROGRAM_ID,
+          player: playerPda(owner.publicKey), vault: vaultPda, vaultToken,
+          systemProgram: SystemProgram.programId,
         })
         .signers([owner])
         .rpc();
-    } catch (error) { failed = error; }
-    expect(failed, "collect с личным ATA вместо эскроу недопустим").to.not.equal(null);
-    expect(anchorErrorName(failed)).to.equal("NotToolOwner");
-    expect((await balance(vaultToken)).toString()).to.equal("1", "эскроу не тронут");
+
+      let failed: any = null;
+      try {
+        await core.methods
+          .collectMining()
+          .accounts({
+            config: coreConfig, user: owner.publicKey, tool: toolPda(mint), mint,
+            player: playerPda(owner.publicKey), materialMints, auth: authPda,
+            payoutMint, payoutToken, vault: vaultPda,
+            // Подмена: вместо эскроу подсунут личный ATA владельца.
+            vaultToken: ata(mint, owner.publicKey),
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .signers([owner])
+          .rpc();
+      } catch (error) { failed = error; }
+      expect(failed, "collect с личным ATA вместо эскроу недопустим").to.not.equal(null);
+      expect(anchorErrorName(failed)).to.equal("NotToolOwner");
+      expect((await balance(vaultToken)).toString()).to.equal("1", "эскроу не тронут");
+    } finally {
+      await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
+    }
   });
 
-  // 15: stake после обычного перевода — тоже ценное действие, и оно требует
+  // [15]: stake после обычного перевода — тоже ценное действие, и оно требует
   // свежего кэша: сначала sync, потом стейк.
   it("stake после raw transfer доступен новому держателю только после sync", async () => {
     const { mint } = await mintTool(owner.publicKey);
@@ -479,7 +500,9 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     let failed: any = null;
     try { await stake(attacker); } catch (error) { failed = error; }
     expect(failed, "без sync новый держатель не стейкает").to.not.equal(null);
-    expect(anchorErrorName(failed)).to.equal("NotToolOperator");
+    // Констрейнты Stake идут в порядке полей: `tool.owner == user` раньше
+    // `tool.operator == user`, поэтому отказ приходит по owner.
+    expect(anchorErrorName(failed)).to.equal("NotToolOwner");
     expect((await tool(mint)).staked).to.equal(false);
 
     await syncOwner(attacker, mint);
@@ -493,15 +516,29 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
   // Арендованный инструмент лежит в rental_vault листинга, поэтому обычные
   // start_mining/collect_mining/repair для арендатора недостижимы: право даёт
   // активная запись аренды (RentalAgreement.renter == operator == подписант).
+  // Гейт operator стоит и в констрейнтах контекста (`tool.operator == user`),
+  // поэтому посторонний отклоняется до обработчика — NotToolOperator; цепочка
+  // проверок в обработчике (listing/agreement/owner/срок) — вторая линия.
   // =====================================================================
 
   const DAY = new BN(24 * 3600);
-  const PRICE_PER_HOUR = new BN(1_000);
+  const PRICE_PER_HOUR = new BN(1_000_000);
 
-  /** Листинг + активная аренда: инструмент переходит в эскроу листинга. */
+  /**
+   * Требует валидатора с управляемым временем (например `solana-test-validator`
+   * с вахтой по слоту/времени и RPC-хуком). В этой песочнице недоступно: тесты,
+   * которым нужно «перемотать» часы, помечены `it.skip` ниже.
+   */
+  async function warpTimeTo(_unixTimestamp: number): Promise<void> {
+    throw new Error(
+      "warpTimeTo недоступен: нужен валидатор с управляемым Clock (сценарий помечен it.skip)",
+    );
+  }
+
+  /** Листинг + активная аренда: токен переходит в эскроу листинга. */
   async function listedAndRented(ownerKp: Keypair, renterKp: Keypair) {
     const { mint, tokenAccount: ownerToken } = await mintTool(ownerKp.publicKey);
-    const tool = toolPda(mint);
+    const toolKey = toolPda(mint);
     const rentalListing = pda([B("rental_listing"), mint.toBuffer()]);
     const rentalAgreement = pda([B("rental_agreement"), mint.toBuffer()]);
     const rentalVault = await ensureAta(mint, rentalListing);
@@ -509,7 +546,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     await core.methods
       .rentalList(9_000, DAY, DAY, PRICE_PER_HOUR)
       .accounts({
-        config: coreConfig, owner: ownerKp.publicKey, mint, tool, rentalListing,
+        config: coreConfig, owner: ownerKp.publicKey, mint, tool: toolKey, rentalListing,
         ownerToken, rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -518,14 +555,17 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     await core.methods
       .rentalStartBounded(DAY, PRICE_PER_HOUR.muln(24))
       .accounts({
-        config: coreConfig, renter: renterKp.publicKey, mint, tool, rentalListing,
+        config: coreConfig, renter: renterKp.publicKey, mint, tool: toolKey, rentalListing,
         owner: ownerKp.publicKey, treasury: authority, rentalAgreement, rentalVault,
         systemProgram: SystemProgram.programId,
       })
       .signers([renterKp])
       .rpc();
 
-    return { mint, tool, rentalListing, rentalAgreement, rentalVault };
+    expect((await balance(rentalVault)).toString(), "токен обязан уйти в эскроу листинга").to.equal("1");
+    const rented = await core.account.toolData.fetch(toolKey);
+    expect(rented.operator.toBase58()).to.equal(renterKp.publicKey.toBase58());
+    return { mint, tool: toolKey, rentalListing, rentalAgreement, rentalVault };
   }
 
   const delegatedStart = (
@@ -542,17 +582,45 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
       .signers([who])
       .rpc();
 
+  /** Со сбором коллизий нет: `payout_mint` берётся из Config по типу инструмента. */
+  async function payoutFor(setup: Awaited<ReturnType<typeof listedAndRented>>, who: Keypair) {
+    const cfg: any = await core.account.config.fetch(coreConfig);
+    const payoutMint = new PublicKey(cfg.woodMint); // plasma_cutter → ResourceKind::Circuit
+    return { payoutMint, payoutToken: await ensureAta(payoutMint, who.publicKey) };
+  }
+
+  const delegatedCollect = (
+    who: Keypair,
+    setup: Awaited<ReturnType<typeof listedAndRented>>,
+    payoutMint: PublicKey,
+    payoutToken: PublicKey,
+  ) =>
+    core.methods
+      .collectMiningDelegated()
+      .accounts({
+        config: coreConfig, user: who.publicKey, tool: setup.tool, mint: setup.mint,
+        player: playerPda(who.publicKey), materialMints, auth: authPda,
+        payoutMint, payoutToken, rentalListing: setup.rentalListing,
+        rentalAgreement: setup.rentalAgreement, rentalVault: setup.rentalVault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([who])
+      .rpc();
+
+  // [16]: арендатор — единственный, кто может запустить сессию; владелец и
+  // посторонний делегирования не имеют.
   it("делегированный майнинг: арендатор может, владелец и посторонний — нет", async () => {
     const renter = Keypair.generate();
     await airdrop(renter, 5);
     const setup = await listedAndRented(owner, renter);
 
-    // Владелец и посторонний не операторы: proof не проходит.
-    await expectAnchorError(delegatedStart(owner, setup, 4), "NotToolOperator");
-    await expectAnchorError(delegatedStart(attacker, setup, 4), "NotToolOperator");
-
     await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
     try {
+      // Соглашение знает только одного арендатора: остальные падают на
+      // констрейнте operator, до кода обработчика.
+      await expectAnchorError(delegatedStart(owner, setup, 4), "NotToolOperator");
+      await expectAnchorError(delegatedStart(attacker, setup, 4), "NotToolOperator");
+
       await delegatedStart(renter, setup, 4);
       const mined = await tool(setup.mint);
       expect(mined.isMining, "сессия обязана стартовать у арендатора").to.equal(true);
@@ -572,6 +640,8 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     }
   });
 
+  // [17]: сбор авторизуется тем же proof'ом, но сессию нельзя собрать раньше
+  // её конца; посторонний отклоняется до всякой логики награды.
   it("делегированный сбор: сессия должна завершиться, посторонний не собирает", async () => {
     const renter = Keypair.generate();
     await airdrop(renter, 5);
@@ -579,32 +649,22 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
     try {
       await delegatedStart(renter, setup, 1);
-      // plasma_cutter выдаёт ResourceKind::Circuit → config.wood_mint.
-      const cfg: any = await core.account.config.fetch(coreConfig);
-      const payoutMint = new PublicKey(cfg.woodMint);
-      // payout_token в контексте — существующий ATA: создаём его заранее, иначе
-      // транзакция упадёт на разборе аккаунтов раньше проверки сессии.
-      const renterPayout = await ensureAta(payoutMint, renter.publicKey);
+      const { payoutMint, payoutToken: renterPayout } = await payoutFor(setup, renter);
       // Постороннему нужен профиль игрока (а с ним ATA выплаты), иначе
       // транзакция упадёт на разборе аккаунтов, не дойдя до проверки оператора.
       await giveResource("wood", payoutMint, attacker.publicKey, 1);
+      const attackerPayout = ata(payoutMint, attacker.publicKey);
 
-      const collect = (who: Keypair) => core.methods
-        .collectMiningDelegated()
-        .accounts({
-          config: coreConfig, user: who.publicKey, tool: setup.tool, mint: setup.mint,
-          player: playerPda(who.publicKey), materialMints, auth: authPda,
-          payoutMint, payoutToken: ata(payoutMint, who.publicKey), // создан выше
-          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
-          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([who])
-        .rpc();
-
-      // Арендатор авторизован (делегирование), но сессия ещё не истекла.
-      await expectAnchorError(collect(renter), "MiningNotComplete");
-      // Посторонний до proof'а не доходит: он не оператор инструмента.
-      await expectAnchorError(collect(attacker), "NotToolOperator");
+      // Посторонний: отказ по правам, хотя сессия тоже ещё не завершена.
+      await expectAnchorError(
+        delegatedCollect(attacker, setup, payoutMint, attackerPayout),
+        "NotToolOperator",
+      );
+      // Арендатор: права есть, но сессия ещё идёт.
+      await expectAnchorError(
+        delegatedCollect(renter, setup, payoutMint, renterPayout),
+        "MiningNotComplete",
+      );
       // Награды не появилось, сессия не тронута.
       expect((await tool(setup.mint)).isMining).to.equal(true);
       expect((await balance(renterPayout)).toString(), "награды ещё нет").to.equal("0");
@@ -613,23 +673,21 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     }
   });
 
+  // [18]: арендатор вправе завершить аренду в любой момент, и брошенная сессия не
+  // должна оставаться висеть на инструменте — иначе после делиста владелец
+  // навсегда упрётся в AlreadyMining.
   it("rental_end арендатором гасит брошенную сессию и возвращает operator владельцу", async () => {
     const renter = Keypair.generate();
     await airdrop(renter, 5);
     const setup = await listedAndRented(owner, renter);
     await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
-    let mined: any = null;
     try {
       await delegatedStart(renter, setup, 4);
-      mined = await tool(setup.mint);
-      expect(mined.isMining).to.equal(true);
+      expect((await tool(setup.mint)).isMining).to.equal(true);
     } finally {
       await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
     }
 
-    // Арендатор вправе завершить аренду в любой момент; незавершённая сессия
-    // не должна оставаться висеть на инструменте (иначе после делиста
-    // владелец навсегда упрётся в AlreadyMining).
     await core.methods
       .rentalEnd()
       .accounts({
@@ -647,6 +705,8 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     expect(await connection.getAccountInfo(setup.rentalAgreement)).to.equal(null);
   });
 
+  // [19]: ремонт арендованного инструмента арендатор делает своим путём и своими
+  // ресурсами; обычный repair ему недоступен, владелец делегированным — тоже.
   it("repair_delegated авторизует арендатора, обычный repair ему недоступен", async () => {
     const renter = Keypair.generate();
     await airdrop(renter, 5);
@@ -656,37 +716,32 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     const woodMint = new PublicKey(cfg.woodMint);
     const renterStone = await giveResource("stone", stoneMint, renter.publicKey, 5);
     const renterWood = await giveResource("wood", woodMint, renter.publicKey, 5);
+    const ownerStone = await ensureAta(stoneMint, owner.publicKey);
+    const ownerWood = await ensureAta(woodMint, owner.publicKey);
+
+    const repairDelegated = (who: Keypair, stone: PublicKey, wood: PublicKey) =>
+      core.methods
+        .repairDelegated(1)
+        .accounts({
+          config: coreConfig, user: who.publicKey, tool: setup.tool, mint: setup.mint,
+          stoneMint, userStone: stone, woodMint, userWood: wood,
+          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
+          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([who])
+        .rpc();
 
     // Свежий инструмент уже на MAX_DURABILITY, поэтому успешный ремонт здесь
     // недостижим; DurabilityOverflow доказывает, что proof пройден и обработчик
     // дошёл до проверки durability (до балансов и сжигания).
     await expectAnchorError(
-      core.methods
-        .repairDelegated(1)
-        .accounts({
-          config: coreConfig, user: renter.publicKey, tool: setup.tool, mint: setup.mint,
-          stoneMint, userStone: renterStone, woodMint, userWood: renterWood,
-          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
-          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([renter])
-        .rpc(),
+      repairDelegated(renter, renterStone, renterWood),
       "DurabilityOverflow",
     );
 
-    // Владелец делегированным путём не проходит: он не renter соглашения.
+    // Владелец делегированным путём не проходит: он не operator.
     await expectAnchorError(
-      core.methods
-        .repairDelegated(1)
-        .accounts({
-          config: coreConfig, user: owner.publicKey, tool: setup.tool, mint: setup.mint,
-          stoneMint, userStone: await ensureAta(stoneMint, owner.publicKey),
-          woodMint, userWood: await ensureAta(woodMint, owner.publicKey),
-          rentalListing: setup.rentalListing, rentalAgreement: setup.rentalAgreement,
-          rentalVault: setup.rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([owner])
-        .rpc(),
+      repairDelegated(owner, ownerStone, ownerWood),
       "NotToolOperator",
     );
 
@@ -705,15 +760,39 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     );
   });
 
-  // Требует прогрева времени валидатора (локально недоступно): сессия, которая
-  // не помещается в остаток аренды, обязана упасть с RentalSessionTooLong, а
-  // завершённая делегированная сессия — выплатить награду арендатору.
+  // [20, 21]: требуют прогрева времени валидатора. Оба сценария написаны и
+  // помечены skip, чтобы не выдавать их за выполненную проверку: в песочнице
+  // агента нет ни `anchor`, ни валидатора с управляемым Clock.
   it.skip("сессия длиннее аренды отклоняется, а завершённая платит арендатору (нужен сдвиг времени)", async () => {
     const renter = Keypair.generate();
     await airdrop(renter, 5);
     const setup = await listedAndRented(owner, renter);
-    // После 24h аренды остаётся меньше 8h: startMiningDelegated(8) обязан упасть.
-    await expectAnchorError(delegatedStart(renter, setup, 8), "RentalSessionTooLong");
-    // …а после mining_end награда должна уйти арендатору (не владельцу).
+    const { payoutMint, payoutToken: renterPayout } = await payoutFor(setup, renter);
+    await giveResource("wood", payoutMint, attacker.publicKey, 1);
+    const attackerPayout = ata(payoutMint, attacker.publicKey);
+    const agreement = await core.account.rentalAgreement.fetch(setup.rentalAgreement);
+
+    await core.methods.setMiningEnabled(true).accounts({ config: coreConfig, authority }).rpc();
+    try {
+      // 20: до конца аренды остаётся час — сессия на 8h в аренду не помещается.
+      // (Проверка выполняется в обработчике: констрейнты operator уже пройдены.)
+      await warpTimeTo(agreement.end.toNumber() - 3_600);
+      await expectAnchorError(delegatedStart(renter, setup, 8), "RentalSessionTooLong");
+
+      // 21: сессия, начатая внутри аренды, собирается уже после её конца —
+      // и платит арендатору, а не владельцу; посторонний отклоняется.
+      await delegatedStart(renter, setup, 1);
+      await warpTimeTo(agreement.end.toNumber() + 3_600);
+      await expectAnchorError(
+        delegatedCollect(attacker, setup, payoutMint, attackerPayout),
+        "NotToolOperator",
+      );
+      const before = await balance(renterPayout);
+      await delegatedCollect(renter, setup, payoutMint, renterPayout);
+      expect((await balance(renterPayout)) > before, "награда ушла арендатору").to.equal(true);
+      expect((await tool(setup.mint)).isMining).to.equal(false);
+    } finally {
+      await core.methods.setMiningEnabled(false).accounts({ config: coreConfig, authority }).rpc();
+    }
   });
 });

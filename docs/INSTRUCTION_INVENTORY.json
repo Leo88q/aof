@@ -4038,7 +4038,7 @@
         "kind": "delegate",
         "path": "instructions::rental_delegation::collect_handler",
         "file": "aof-core/src/instructions/rental_delegation.rs",
-        "line": 108
+        "line": 111
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -4082,7 +4082,7 @@
         "kind": "delegate",
         "path": "instructions::rental_delegation::repair_handler",
         "file": "aof-core/src/instructions/rental_delegation.rs",
-        "line": 209
+        "line": 214
       },
       "disabledOnChain": false,
       "role": "gameplay",

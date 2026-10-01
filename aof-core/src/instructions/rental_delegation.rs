@@ -49,16 +49,9 @@ use crate::{CollectMiningDelegated, RepairDelegated, StartMiningDelegated};
 /// длительность сессии ограничена остатком аренды.
 pub fn start_handler(ctx: Context<StartMiningDelegated>, hours: u8) -> Result<()> {
     require!(ctx.accounts.config.mining_enabled, AofError::MiningDisabled);
-    require!(hours > 0, AofError::ZeroAmount);
-    require!(
-        hours <= ctx.accounts.tool.durability,
-        AofError::InsufficientDurability
-    );
-    require!(
-        hours <= ctx.accounts.tool.rarity.max_hours(),
-        AofError::HoursExceedRarityCap
-    );
 
+    // Авторизация раньше бизнес-проверок: отказ по правам не должен зависеть от
+    // значения `hours` или остатка durability.
     let now = Clock::get()?.unix_timestamp;
     assert_active_rental_delegation(
         &ctx.accounts.tool,
@@ -76,6 +69,16 @@ pub fn start_handler(ctx: Context<StartMiningDelegated>, hours: u8) -> Result<()
         &ctx.accounts.rental_vault,
         &ctx.accounts.rental_listing.key(),
     )?;
+
+    require!(hours > 0, AofError::ZeroAmount);
+    require!(
+        hours <= ctx.accounts.tool.durability,
+        AofError::InsufficientDurability
+    );
+    require!(
+        hours <= ctx.accounts.tool.rarity.max_hours(),
+        AofError::HoursExceedRarityCap
+    );
 
     let end = now
         .checked_add((hours as i64) * 3600)
@@ -108,9 +111,9 @@ pub fn start_handler(ctx: Context<StartMiningDelegated>, hours: u8) -> Result<()
 pub fn collect_handler(ctx: Context<CollectMiningDelegated>) -> Result<()> {
     require!(ctx.accounts.config.mining_enabled, AofError::MiningDisabled);
 
+    // Авторизация раньше состояния сессии: посторонний обязан получить
+    // NotToolOperator, а не «сессия ещё не завершена».
     let now = Clock::get()?.unix_timestamp;
-    require!(now >= ctx.accounts.tool.mining_end, AofError::MiningNotComplete);
-
     assert_rental_collect_right(
         &ctx.accounts.tool,
         &ctx.accounts.mint,
@@ -127,6 +130,8 @@ pub fn collect_handler(ctx: Context<CollectMiningDelegated>) -> Result<()> {
         &ctx.accounts.rental_vault,
         &ctx.accounts.rental_listing.key(),
     )?;
+
+    require!(now >= ctx.accounts.tool.mining_end, AofError::MiningNotComplete);
 
     let hours = ctx.accounts.tool.last_mined_hours;
     require!(hours > 0, AofError::InvalidAmount);
