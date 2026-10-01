@@ -892,7 +892,11 @@ jobs:
           # original self-test only modeled replay in memory).
           npm run test:wallet-proof-middleware 2>&1 | tee -a /tmp/backend-build.log
           # [AUDIT 2026-09-23 AOF-H1] authority key custody gate matrix.
-          npm run test:authority-gate 2>&1 | tee -a /tmp/backend-build.log
+          npm run test:authority-gate 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          # Bootstrap preflight: GET /admin/config/bootstrap-preflight must work BEFORE
+          # deploy/Config exist (GET /mining answers 400 then), stay ops-token only,
+          # reveal no secrets and fail closed on an RPC error.
+          npm run test:bootstrap-preflight 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Self-test - reward receipts and bounded purchases
