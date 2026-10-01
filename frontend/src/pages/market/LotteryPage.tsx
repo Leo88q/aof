@@ -224,7 +224,7 @@ export function LotteryPage() {
               {canClaim(ticket) && <button type="button" disabled={busy || !!pending} onClick={() => act('claim', ticket)}
                 className="px-3 py-2 rounded-xl bg-sprout-500 text-white text-xs disabled:opacity-40 max-w-full [overflow-wrap:anywhere]">{c.claim}</button>}
               {!activeRound?.drawn && canRefund && <button type="button" disabled={busy || !!pending} onClick={() => act('refund', ticket)}
-                className="px-3 py-2 rounded-xl bg-wheat-600 text-white text-xs disabled:opacity-40 max-w-full [overflow-wrap:anywhere]">{c.refund}</button>}
+                className="px-3 py-2 rounded-xl bg-accent-600 text-white text-xs disabled:opacity-40 max-w-full [overflow-wrap:anywhere]">{c.refund}</button>}
             </li>)}
           </ul>
           {!activeRound?.drawn && !canRefund && <p className="text-straw text-xs mt-2">{c.refundWaiting}</p>}

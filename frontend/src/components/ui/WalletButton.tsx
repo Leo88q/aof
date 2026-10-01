@@ -37,7 +37,7 @@ export function WalletButton() {
       onClick={() => (connected ? void handleClick() : setShowNotice(true))}
       whileTap={{ scale: 0.95 }}
       className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors max-w-full ${
-        connected ? 'bg-sprout-600 text-white' : 'bg-wheat-600 text-soil-950'}`}
+        connected ? 'bg-sprout-600 text-white' : 'bg-accent-600 text-soil-950'}`}
     >
       {connecting ? copy.connecting : connected ? <span className="inline-flex items-center gap-1.5 min-w-0 max-w-full">
         <ResourceGlyph icon={isVip ? UI_ICONS.rewardCore : UI_ICONS.noticeSuccess} alt="" className="w-4 h-4 shrink-0" />
@@ -51,7 +51,7 @@ export function WalletButton() {
       onCancel={() => setShowNotice(false)}
       onContinue={() => { setShowNotice(false); void handleClick(); }}
     />}
-    {offerPhantom && <a href={phantomBrowseLink()} className="text-[11px] leading-tight text-wheat-500 underline underline-offset-2">
+    {offerPhantom && <a href={phantomBrowseLink()} className="text-[11px] leading-tight text-accent-500 underline underline-offset-2">
       {copy.phantom}
     </a>}
   </div>;

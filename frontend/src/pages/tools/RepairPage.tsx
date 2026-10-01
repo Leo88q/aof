@@ -40,14 +40,14 @@ export function RepairPage() {
   const [toolsLoading, setToolsLoading] = useState(false);
   const toolsRequest = useRef(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [mints, setMints] = useState({ wood: "", stone: "" });
+  const [mints, setMints] = useState({ circuit: "", silicon: "" });
   const [amount, setAmount] = useState(1);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [receipt, setReceipt] = useState<{ address: string; silicon: number; circuit: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [txStatus, flash] = useFlash(language);
-  // /tools/repair checks Config's woodMint/stoneMint; do not rely on an
+  // /tools/repair checks Config's circuitMint/siliconMint; do not rely on an
   // unrelated material registry or let a failed Config read enable repair.
   const [repairState, setRepairState] = useState<"checking" | "ready" | "disabled" | "unknown">("checking");
 
@@ -58,8 +58,8 @@ export function RepairPage() {
     api.query.config()
       .then((c: any) => {
         if (!active) return;
-        setMints({ wood: c?.woodMint || "", stone: c?.stoneMint || "" });
-        setRepairState(unset(c?.woodMint) || unset(c?.stoneMint) ? "disabled" : "ready");
+        setMints({ circuit: c?.circuitMint || "", silicon: c?.siliconMint || "" });
+        setRepairState(unset(c?.circuitMint) || unset(c?.siliconMint) ? "disabled" : "ready");
       })
       .catch(() => { if (active) setRepairState("unknown"); });
     return () => { active = false; };
@@ -135,7 +135,7 @@ export function RepairPage() {
     if (repairState !== "ready") return flash(`❌ ${copy.disabled}`);
     if (!address) return flash(`❌ ${copy.connect}`);
     if (!tool) return flash(`❌ ${copy.choose}`);
-    if (!mints.stone || !mints.wood) return flash(`❌ ${copy.mintsMissing}`);
+    if (!mints.silicon || !mints.circuit) return flash(`❌ ${copy.mintsMissing}`);
     if (amt <= 0) return flash(`❌ ${copy.full}`);
     if (!quoteForSelection) return flash(`❌ ${copy.quoteUnavailable}`);
     const confirmedQuote = quoteForSelection;
@@ -215,7 +215,7 @@ export function RepairPage() {
               const rk = rarityKey(t.rarity);
               return (
                 <button key={t.mint} type="button" onClick={() => { setSelected(t.mint); setReceipt(null); }}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs ${selected === t.mint ? "border-wheat-500 bg-wheat-500/10 text-parchment" : "border-straw/15 bg-soil-800/60 text-straw"}`}>
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs ${selected === t.mint ? "border-accent-500 bg-accent-500/10 text-parchment" : "border-straw/15 bg-soil-800/60 text-straw"}`}>
                   <ArtPlate src={toolPlate(t.toolType, rk)} alt="" size={28} />
                   <span style={{ color: RARITY_META[rk]?.color }}>{toolName(language, t.toolType)} · {rarityLabel(t.rarity)}</span>
                   <span>· {validDurability(t.durability) ?? '—'}/{MAX_DURABILITY}</span>
@@ -237,7 +237,7 @@ export function RepairPage() {
                   </p>
                   <p className="text-straw text-xs">
                     {durability === null ? copy.durabilityUnknown : `${copy.durability} ${durability} / ${MAX_DURABILITY}`}
-                    {critical && <span className="text-wheat-500 font-semibold">{copy.critical}</span>}
+                    {critical && <span className="text-accent-500 font-semibold">{copy.critical}</span>}
                   </p>
                 </div>
               </div>
@@ -278,8 +278,8 @@ export function RepairPage() {
                 ) : <p role="status" className="text-straw text-xs text-center">{durability === null ? copy.durabilityUnknown : maxRepair === 0 ? copy.full : repairState === "checking" ? copy.checking : repairState !== "ready" ? copy.disabled : quoteLoading ? copy.quoteLoading : copy.quoteUnavailable}</p>}
               </div>
 
-              <button type="button" onClick={doRepair} disabled={repairState !== "ready" || !mints.stone || maxRepair === 0 || durability === null || !quoteForSelection || busy}
-                className="w-full mt-4 py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+              <button type="button" onClick={doRepair} disabled={repairState !== "ready" || !mints.silicon || maxRepair === 0 || durability === null || !quoteForSelection || busy}
+                className="w-full mt-4 py-2.5 rounded-xl bg-accent-600 text-white font-semibold text-sm disabled:opacity-40">
                 {repairState === "ready"
                   ? copy.repair.replace('{amount}', String(amt))
                   : repairState === "checking" ? copy.checking : copy.disabled}

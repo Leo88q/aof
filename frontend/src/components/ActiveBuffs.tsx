@@ -32,7 +32,7 @@ export function ActiveBuffs() {
       <h4 className="text-parchment text-sm font-bold mb-2 flex items-center gap-1.5"><ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-4 h-4" /> {text.buffs}</h4>
       <div className="space-y-2">
         {perks.historian > 0 && (
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-wheat-500/10 border border-wheat-500/30">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-accent-500/10 border border-accent-500/30">
             <ResourceGlyph icon={UI_ICONS.catalog} alt="" className="w-6 h-6" />
             <div className="flex-1 text-parchment text-xs font-bold">{text.historian}</div>
             <div className="text-straw text-xs">×{perks.historian}</div>

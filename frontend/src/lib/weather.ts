@@ -10,7 +10,7 @@ import type { Language } from "../i18n/translations";
  *
  * Источники (не менять по отдельности):
  *  - aof-core/src/constants.rs: WEATHER_BLACKOUT/NOMINAL/SURGE/FRENZY = 0..3,
- *    WELL_RATE_* = 0/5/15/20 ресурса в час;
+ *    GRID_RATE_* = 0/5/15/20 ресурса в час;
  *  - aof-core/src/state.rs: weather_for_day() — детерминированное расписание
  *    дня (10% блэкаут, 50% номинал, 30% скачок, 10% френзи) и структура
  *    WeatherState { day_id, weather, updated_at };
@@ -30,10 +30,10 @@ export type WeatherKey = "drought" | "sunny" | "rain" | "festival";
 
 /** Индекс WeatherState.weather -> тип, код эффекта (как в бэкенде) и ставка. */
 export const WEATHER_BY_INDEX: Record<number, { type: WeatherKey; effect: string; rate: number }> = {
-  0: { type: "drought", effect: "well_water_rate_zero", rate: 0 },
-  1: { type: "sunny", effect: "well_water_rate_5_per_hour", rate: 5 },
-  2: { type: "rain", effect: "well_water_rate_15_per_hour", rate: 15 },
-  3: { type: "festival", effect: "well_water_rate_20_per_hour", rate: 20 },
+  0: { type: "drought", effect: "grid_power_rate_zero", rate: 0 },
+  1: { type: "sunny", effect: "grid_power_rate_5_per_hour", rate: 5 },
+  2: { type: "rain", effect: "grid_power_rate_15_per_hour", rate: 15 },
+  3: { type: "festival", effect: "grid_power_rate_20_per_hour", rate: 20 },
 };
 
 /** Only effects with an on-chain-defined rate get a human-readable label.

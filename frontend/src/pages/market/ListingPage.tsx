@@ -273,7 +273,7 @@ export function ListingPage() {
           return (
             <motion.div key={row.pubkey || row.mint} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}>
-              <Card className={`border ${mine ? "border-wheat-600/40" : "border-straw/10"}`}>
+              <Card className={`border ${mine ? "border-accent-600/40" : "border-straw/10"}`}>
                 <div className="flex flex-wrap items-center gap-3 min-w-0">
                   <ArtPlate src={rarity ? toolPlate(row.tool?.toolType, rarity) : undefined} alt={name} size={56} className="shrink-0" />
                   <div className="flex-1 min-w-[120px] break-words">
@@ -286,7 +286,7 @@ export function ListingPage() {
                     </p>
                   </div>
                   <div className="min-w-0 flex flex-wrap items-center gap-2 sm:block sm:text-right">
-                    <div className="text-wheat-500 font-bold break-all">{formatPrice(row.priceLamports)}</div>
+                    <div className="text-accent-500 font-bold break-all">{formatPrice(row.priceLamports)}</div>
                     {mine ? (
                       <button type="button" onClick={() => cancel(row)} disabled={busy}
                         className="sm:mt-1 text-xs px-3 py-1 rounded-lg bg-soil-700 border border-straw/20 text-straw disabled:opacity-50">{copy.cancel}</button>
@@ -326,12 +326,12 @@ export function ListingPage() {
             return (
               <button key={tool.mint} type="button" onClick={() => setSelection({ address: address!, mint: tool.mint })}
                 aria-pressed={selectedMint === tool.mint}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left min-w-0 ${selectedMint === tool.mint ? "border-wheat-500 bg-wheat-500/10" : "border-straw/15 bg-soil-800/60"}`}>
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left min-w-0 ${selectedMint === tool.mint ? "border-accent-500 bg-accent-500/10" : "border-straw/15 bg-soil-800/60"}`}>
                 <ArtPlate src={rarity ? toolPlate(tool.toolType, rarity) : undefined} alt={name} size={36} className="shrink-0" />
                 <span className="flex-1 min-w-0 text-sm text-parchment break-words">
                   {name} <span className={`text-xs ${rarity ? RARITY_COLOR[rarity] : 'text-straw'}`}>({rarityLabel(rarity)})</span>
                 </span>
-                {selectedMint === tool.mint && <span className="text-wheat-500 shrink-0" aria-hidden="true">✓</span>}
+                {selectedMint === tool.mint && <span className="text-accent-500 shrink-0" aria-hidden="true">✓</span>}
               </button>
             );
           })}
@@ -344,7 +344,7 @@ export function ListingPage() {
           {priceSol.length > 0 && !validPrice && <p className="text-gold-400 text-xs">{copy.invalidPrice}</p>}
           <button type="button" onClick={createListing}
             disabled={!address || listings === null || !selectableTools?.some(tool => tool.mint === selectedMint) || !validPrice || busy}
-            className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40 break-words">
+            className="w-full py-2.5 rounded-xl bg-accent-600 text-white font-semibold text-sm disabled:opacity-40 break-words">
             {copy.list}
           </button>
         </motion.div>}

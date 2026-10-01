@@ -53,7 +53,7 @@ const bodies = {
   recipes: siteRecipes.ru,
   trade: siteTrade.ru,
   investors: siteInvestors.ru,
-  potato: siteMind.ru,
+  mind: siteMind.ru,
   lore: siteLore.ru,
   glossary: siteGlossary.ru,
   docs: siteDocs.ru,
@@ -71,7 +71,7 @@ const routes: readonly (readonly [PageId, UIKey])[] = [
   ['seasons', 'progressGroup'], ['trust', 'progressGroup'],
   ['resources', 'learnGroup'], ['guide', 'playGroup'], ['strategies', 'playGroup'], ['quests', 'playGroup'],
   ['recipes', 'craftGroup'], ['trade', 'economyGroup'], ['investors', 'economyGroup'],
-  ['potato', 'economyGroup'], ['lore', 'learnGroup'], ['glossary', 'learnGroup'],
+  ['mind', 'economyGroup'], ['lore', 'learnGroup'], ['glossary', 'learnGroup'],
   ['docs', 'learnGroup'], ['faq', 'learnGroup'], ['roadmap', 'learnGroup'], ['rules', 'learnGroup'],
 ];
 

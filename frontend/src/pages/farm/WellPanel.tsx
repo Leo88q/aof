@@ -43,7 +43,7 @@ export function WellPanel() {
   // Снимок канонической погоды: им питаются и ставка колодца, и барограф.
   const [snapshot, setSnapshot] = useState<any>(null);
   const [well, setWell] = useState<any>(null);
-  const [waterMint, setWaterMint] = useState("");
+  const [powerMint, setPowerMint] = useState("");
   const [collecting, setCollecting] = useState(false);
   const [cranking, setCranking] = useState(false);
   const [message, setMessage] = useState<{ language: typeof language; text: string } | null>(null);
@@ -53,17 +53,17 @@ export function WellPanel() {
     // /weather/current и /query/weather-state читают один и тот же WeatherState PDA.
     // Берём первый: он же питает чип нагрузки в шапке, поэтому панель и шапка
     // больше не показывают разные состояния одного аккаунта.
-    const [snap, wellState, mint] = await Promise.all([
+    const [snap, gridState, mint] = await Promise.all([
       fetchWeatherSnapshot(),
-      api.query.wellState(walletAddr).catch(() => null),
+      api.query.gridState(walletAddr).catch(() => null),
       getMintAsync("POWER"),
     ]);
     // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
     // чип нагрузки в шапке всегда показывают одно и то же состояние.
     setSnapshot(snap ?? null);
     setWeather(snap ? { weather: snap.weatherIndex } : null);
-    setWell(wellState);
-    setWaterMint(mint);
+    setWell(gridState);
+    setPowerMint(mint);
   }
 
   useEffect(() => {
@@ -94,10 +94,10 @@ export function WellPanel() {
   }
 
   async function collect() {
-    if (!walletAddr || !waterMint || collecting || !weather) return;
+    if (!walletAddr || !powerMint || collecting || !weather) return;
     setCollecting(true);
     try {
-      const response = await api.chain.collectWellWater({ user: walletAddr, waterMint });
+      const response = await api.chain.collectPower({ user: walletAddr, powerMint });
       const result = await handleTxResponse(response);
       setMessage({ language, text: result.success ? copy.collectionSubmitted : (result.error || copy.failed) });
       if (result.success) await loadState();
@@ -158,7 +158,7 @@ export function WellPanel() {
             {!well && <p className="text-straw text-[10px] mt-2">{copy.noStation}</p>}
           </div>
 
-          <button onClick={collect} disabled={!waterMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-water-600 to-wheat-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
+          <button onClick={collect} disabled={!powerMint || collecting} className="w-full py-2.5 rounded-lg bg-gradient-to-r from-info-600 to-accent-600 text-parchment font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition">
             {collecting ? copy.processing : !well ? copy.create : copy.collect}
           </button>
         </>

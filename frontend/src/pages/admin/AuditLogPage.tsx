@@ -128,7 +128,7 @@ export function AuditLogPage() {
                       }`}>
                         {log.result === "success" ? text.success : log.result === "fail" ? text.failure : text.unknown}
                       </span>
-                      <span className="text-wheat-500 font-bold text-sm [overflow-wrap:anywhere]">{log.action}</span>
+                      <span className="text-accent-500 font-bold text-sm [overflow-wrap:anywhere]">{log.action}</span>
                     </div>
                     <p className="text-straw text-xs">
                       {new Date(log.timestamp).toLocaleString(language)}
@@ -151,7 +151,7 @@ export function AuditLogPage() {
                         href={`https://explorer.solana.com/tx/${log.txSig}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-water-400 font-mono hover:underline"
+                        className="text-info-400 font-mono hover:underline"
                       >
                         {log.txSig.slice(0, 16)}...
                       </a>

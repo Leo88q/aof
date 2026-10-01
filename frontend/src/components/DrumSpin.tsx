@@ -139,7 +139,7 @@ export function DrumSpin() {
 
       {status && <div className="text-center text-straw text-sm"><NoticeMsg text={status} /></div>}
 
-      <div className="relative flex flex-col items-center justify-center py-8 bg-gradient-to-b from-soil-800 to-soil-900 rounded-2xl border-2 border-wheat-600/30">
+      <div className="relative flex flex-col items-center justify-center py-8 bg-gradient-to-b from-soil-800 to-soil-900 rounded-2xl border-2 border-accent-600/30">
         <ResourceGlyph icon={UI_ICONS.rewardTrophy} alt="" className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 drop-shadow-lg" />
 
         <motion.div

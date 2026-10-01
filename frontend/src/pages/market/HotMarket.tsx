@@ -168,7 +168,7 @@ export function HotMarket() {
             aria-selected={rarity === index}
             onClick={() => setRarity(index)}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${rarity === index
-              ? "bg-wheat-600/20 border-wheat-600/50 text-parchment"
+              ? "bg-accent-600/20 border-accent-600/50 text-parchment"
               : "bg-soil-850 border-straw/15 text-straw hover:text-parchment"}`}
           >
             <span className={RARITY_COLOR[key]}>{toolsCopy[language].collectionPage.rarities[index]}</span>
@@ -185,7 +185,7 @@ export function HotMarket() {
                 onClick={() => { setCurrency(value); setMaxPrice(""); setMinPrice(""); }}
                 aria-pressed={currency === value}
                 className={`px-3 py-1 rounded-lg text-[11px] font-semibold border ${currency === value
-                  ? "bg-wheat-600/20 border-wheat-600/50 text-parchment"
+                  ? "bg-accent-600/20 border-accent-600/50 text-parchment"
                   : "bg-soil-850 border-straw/15 text-straw"}`}
               >
                 {value.toUpperCase()}
@@ -225,7 +225,7 @@ export function HotMarket() {
                   <button
                     onClick={() => void buy(item)}
                     disabled={busy || poolState !== "ready"}
-                    className="px-3 py-1 rounded-lg text-[11px] font-semibold bg-wheat-600/20 border border-wheat-600/40 text-parchment disabled:opacity-40"
+                    className="px-3 py-1 rounded-lg text-[11px] font-semibold bg-accent-600/20 border border-accent-600/40 text-parchment disabled:opacity-40"
                   >
                     {t.buy}
                   </button>
@@ -265,7 +265,7 @@ export function HotMarket() {
                     onClick={() => setSelected(item.mint === selected ? null : item.mint)}
                     aria-pressed={selected === item.mint}
                     className={`px-3 py-1 rounded-lg text-[11px] font-semibold border ${selected === item.mint
-                      ? "bg-wheat-600/30 border-wheat-600/60 text-parchment"
+                      ? "bg-accent-600/30 border-accent-600/60 text-parchment"
                       : "bg-soil-850 border-straw/15 text-straw"}`}
                   >
                     {selected === item.mint ? "✓" : t.sell}
@@ -286,7 +286,7 @@ export function HotMarket() {
               <button
                 onClick={() => void sell()}
                 disabled={busy || !selected || poolState !== "ready"}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-wheat-600/20 border border-wheat-600/40 text-parchment disabled:opacity-40"
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent-600/20 border border-accent-600/40 text-parchment disabled:opacity-40"
               >
                 {t.sell}
               </button>

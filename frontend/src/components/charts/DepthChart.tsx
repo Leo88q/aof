@@ -29,7 +29,7 @@ export function DepthChart({ bids, asks, language }: Props) {
       {levels.slice(0, 4).map((level, i) => (
         <motion.div key={`${side}-${i}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className="relative flex justify-between gap-2 items-center px-2 py-1 rounded-lg overflow-hidden min-w-0">
-          <div className={`absolute inset-y-0 ${side === 'sell' ? 'right-0 bg-wheat-700/30' : 'left-0 bg-sprout-600/30'} rounded-lg`}
+          <div className={`absolute inset-y-0 ${side === 'sell' ? 'right-0 bg-accent-700/30' : 'left-0 bg-sprout-600/30'} rounded-lg`}
             style={{ width: `${Number(level.volume * 100n / max)}%` }} />
           <span className="text-parchment text-xs relative z-10 break-all min-w-0">{priceSolPerResource(level.price, language)} SOL</span>
           <span className="text-straw text-xs relative z-10 shrink-0">Σ {formatResourceUnits(level.volume)}</span>

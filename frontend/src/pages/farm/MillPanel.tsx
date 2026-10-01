@@ -13,17 +13,17 @@ import { getMintAsync } from "../../lib/mints";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
-// Must match aof-core/src/instructions/start_milling.rs and constants.rs.
-const MILL_SIZES = {
-  small:  { batchSize: 1, wheat: 6,  stone: 1, flour: 3,  time: 3600, icon: UI_ICONS.mill, sizeCls: "w-4 h-4" },
-  medium: { batchSize: 2, wheat: 18, stone: 2, flour: 10, time: 10800, icon: UI_ICONS.mill, sizeCls: "w-5 h-5" },
-  large:  { batchSize: 3, wheat: 40, stone: 4, flour: 24, time: 21600, icon: UI_ICONS.mill, sizeCls: "w-6 h-6" },
+// Must match aof-core/src/instructions/start_signal_processing.rs and constants.rs.
+const SIGNAL_SIZES = {
+  small:  { batchSize: 1, synapse: 6,  silicon: 1, signal: 3,  time: 3600, icon: UI_ICONS.mill, sizeCls: "w-4 h-4" },
+  medium: { batchSize: 2, synapse: 18, silicon: 2, signal: 10, time: 10800, icon: UI_ICONS.mill, sizeCls: "w-5 h-5" },
+  large:  { batchSize: 3, synapse: 40, silicon: 4, signal: 24, time: 21600, icon: UI_ICONS.mill, sizeCls: "w-6 h-6" },
 };
 
-interface MillState {
+interface SignalState {
   active: boolean;
   readyAt: number;  // timestamp в ms
-  flourReady: number;
+  signalReady: number;
 }
 
 export function MillPanel() {
@@ -32,9 +32,9 @@ export function MillPanel() {
   const resources = homeResourceNames[language];
   const toast = useToast();
   const walletAddr = useWalletStr();
-  const [size, setSize] = useState<keyof typeof MILL_SIZES>("small");
+  const [size, setSize] = useState<keyof typeof SIGNAL_SIZES>("small");
   const [milling, setMilling] = useState(false);
-  const [millState, setMillState] = useState<MillState | null>(null);
+  const [signalState, setSignalState] = useState<SignalState | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [readStatus, setReadStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const requestSeq = useRef(0);
@@ -45,25 +45,25 @@ export function MillPanel() {
     inFlight.current = walletAddr;
     const request = ++requestSeq.current;
     try {
-      const state: any = await api.query.millState(walletAddr);
+      const state: any = await api.query.signalState(walletAddr);
       if (request !== requestSeq.current) return;
       if (!state?.inProgress) {
-        setMillState(null);
+        setSignalState(null);
         setTimeLeft(0);
       } else {
         const readyAt = Number(state.readyAt) * 1000;
-        const result = Number(state.outputFlour);
+        const result = Number(state.outputSignal);
         if (!Number.isFinite(readyAt) || readyAt <= 0 || !Number.isFinite(result) || result < 0) {
           throw new Error('Invalid on-chain process state');
         }
-        setMillState({ active: true, readyAt, flourReady: result });
+        setSignalState({ active: true, readyAt, signalReady: result });
         setTimeLeft(Math.max(0, Math.floor((readyAt - Date.now()) / 1000)));
       }
       setReadStatus('ready');
     } catch {
       if (request !== requestSeq.current) return;
       // Missing PDA returns null. A failed RPC does not prove the mill is empty.
-      setMillState(null);
+      setSignalState(null);
       setReadStatus('unavailable');
     } finally {
       if (request === requestSeq.current) inFlight.current = null;
@@ -71,7 +71,7 @@ export function MillPanel() {
   }, [walletAddr]);
 
   useEffect(() => {
-    setMillState(null);
+    setSignalState(null);
     setReadStatus('loading');
     if (walletAddr) loadState();
     const interval = walletAddr ? setInterval(loadState, 5000) : null;
@@ -79,35 +79,35 @@ export function MillPanel() {
   }, [walletAddr, loadState]);
 
   useEffect(() => {
-    if (!millState?.active || !millState.readyAt) return;
+    if (!signalState?.active || !signalState.readyAt) return;
     const interval = setInterval(() => {
-      setTimeLeft(Math.max(0, Math.floor((millState.readyAt - Date.now()) / 1000)));
+      setTimeLeft(Math.max(0, Math.floor((signalState.readyAt - Date.now()) / 1000)));
     }, 1000);
     return () => clearInterval(interval);
-  }, [millState]);
+  }, [signalState]);
 
-  async function startMilling() {
+  async function startSignalProcessing() {
     if (!walletAddr) return;
-    const m = MILL_SIZES[size];
+    const m = SIGNAL_SIZES[size];
     setMilling(true);
     try {
-      const [wheatMint, stoneMint] = await Promise.all([
+      const [synapseMint, siliconMint] = await Promise.all([
         getMintAsync("SYNAPSE"),
         getMintAsync("SILICON"),
       ]);
-      if (!wheatMint || !stoneMint) {
+      if (!synapseMint || !siliconMint) {
         toast.show(copy.missingMints, "error", language);
         return;
       }
-      const resp = await api.chain.startMilling({
+      const resp = await api.chain.startSignalProcessing({
         user: walletAddr,
         batchSize: m.batchSize,
-        wheatMint,
-        stoneMint,
+        synapseMint,
+        siliconMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(copy.mill.started(m.wheat, m.flour), "success", language);
+        toast.show(copy.mill.started(m.synapse, m.signal), "success", language);
         await loadState();
       } else {
         toast.show(`${r.error || copy.failed}`, "error", language);
@@ -119,19 +119,19 @@ export function MillPanel() {
     }
   }
 
-  async function collectFlour() {
-    if (!walletAddr || !millState) return;
+  async function collectSignal() {
+    if (!walletAddr || !signalState) return;
     setMilling(true);
     try {
-      const flourMint = await getMintAsync("SIGNAL");
-      if (!flourMint) { toast.show(copy.missingResultMint, "error", language); return; }
-      const resp = await api.chain.collectFlour({
+      const signalMint = await getMintAsync("SIGNAL");
+      if (!signalMint) { toast.show(copy.missingResultMint, "error", language); return; }
+      const resp = await api.chain.collectSignal({
         user: walletAddr,
-        flourMint,
+        signalMint,
       });
       const r = await handleTxResponse(resp);
       if (r.success) {
-        toast.show(`🥣 ${copy.mill.collected(millState.flourReady)}`, "success", language);
+        toast.show(`🥣 ${copy.mill.collected(signalState.signalReady)}`, "success", language);
         await loadState();
       } else {
         toast.show(`${r.error || copy.failed}`, "error", language);
@@ -143,8 +143,8 @@ export function MillPanel() {
     }
   }
 
-  const m = MILL_SIZES[size];
-  const isReady = readStatus === 'ready' && timeLeft === 0 && millState?.active;
+  const m = SIGNAL_SIZES[size];
+  const isReady = readStatus === 'ready' && timeLeft === 0 && signalState?.active;
 
   const formatTime = (sec: number) => {
     const mm = Math.floor(sec / 60);
@@ -165,44 +165,44 @@ export function MillPanel() {
       <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-5 h-5" /> {copy.mill.title}</h3>
       {readStatus === 'loading' && <p role="status" className="text-straw text-sm text-center py-4">{copy.loading}</p>}
       {readStatus === 'unavailable' && <p role="alert" className="text-straw text-sm text-center py-4">{copy.unavailable}</p>}
-      {readStatus === 'ready' && !millState && (
+      {readStatus === 'ready' && !signalState && (
         <>
           <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(MILL_SIZES) as Array<keyof typeof MILL_SIZES>).map((key) => (
+            {(Object.keys(SIGNAL_SIZES) as Array<keyof typeof SIGNAL_SIZES>).map((key) => (
               <button type="button" key={key} aria-pressed={size === key} onClick={() => setSize(key)}
                 className={`min-w-0 p-2 rounded-lg text-center transition [overflow-wrap:anywhere] ${size === key
                   ? "bg-gold-600/30 border-2 border-gold-500" : "bg-soil-700/50 border border-straw/20 hover:border-gold-500"}`}>
-                <ResourceGlyph icon={MILL_SIZES[key].icon} alt="" className={MILL_SIZES[key].sizeCls} />
+                <ResourceGlyph icon={SIGNAL_SIZES[key].icon} alt="" className={SIGNAL_SIZES[key].sizeCls} />
                 <div className="text-[10px] text-parchment font-bold">{copy.sizes[key]}</div>
               </button>
             ))}
           </div>
           <div className="bg-soil-800/50 rounded-lg p-3 space-y-1 text-xs">
-            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources.synapse}:</span><span className="text-parchment inline-flex items-center gap-1">{m.wheat} <ResourceGlyph icon={resourceIcon("SYNAPSE") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
-            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources.silicon}:</span><span className="text-parchment inline-flex items-center gap-1">{m.stone} <ResourceGlyph icon={resourceIcon("SILICON") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
-            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.output}:</span><span className="text-wheat-500 font-bold inline-flex items-center gap-1">{m.flour} <ResourceGlyph icon={resourceIcon("SIGNAL") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources.synapse}:</span><span className="text-parchment inline-flex items-center gap-1">{m.synapse} <ResourceGlyph icon={resourceIcon("SYNAPSE") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{resources.silicon}:</span><span className="text-parchment inline-flex items-center gap-1">{m.silicon} <ResourceGlyph icon={resourceIcon("SILICON") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
+            <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.output}:</span><span className="text-accent-500 font-bold inline-flex items-center gap-1">{m.signal} <ResourceGlyph icon={resourceIcon("SIGNAL") || ""} alt="" className="w-3.5 h-3.5" /></span></div>
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.energy}:</span><span className="text-parchment">2</span></div>
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.duration}:</span><span className="text-parchment">{copy.hours(m.time / 3600)}</span></div>
           </div>
-          <button type="button" onClick={startMilling} disabled={milling}
+          <button type="button" onClick={startSignalProcessing} disabled={milling}
             className="w-full py-2 rounded-lg bg-gold-600 text-parchment font-bold text-sm disabled:opacity-50 [overflow-wrap:anywhere]">
             {milling ? copy.mill.starting : copy.mill.start}
           </button>
         </>
       )}
-      {readStatus === 'ready' && millState && (
+      {readStatus === 'ready' && signalState && (
         <div className="bg-soil-800/50 rounded-lg p-4 space-y-3">
           <div className="text-center">
             <ResourceGlyph icon={UI_ICONS.mill} alt="" className="w-10 h-10 mx-auto animate-spin" />
             {timeLeft > 0 ? <>
               <p className="text-parchment font-bold">{copy.mill.running}</p>
-              <p className="text-wheat-500 text-2xl font-bold">{formatTime(timeLeft)}</p>
+              <p className="text-accent-500 text-2xl font-bold">{formatTime(timeLeft)}</p>
             </> : <>
               <p className="text-parchment font-bold">{copy.mill.ready}</p>
-              <p className="text-wheat-500 text-2xl font-bold">{millState.flourReady} <ResourceGlyph icon={resourceIcon("SIGNAL")} alt="" className="inline-block w-5 h-5 align-text-bottom" /></p>
+              <p className="text-accent-500 text-2xl font-bold">{signalState.signalReady} <ResourceGlyph icon={resourceIcon("SIGNAL")} alt="" className="inline-block w-5 h-5 align-text-bottom" /></p>
             </>}
           </div>
-          {isReady && <button type="button" onClick={collectFlour} disabled={milling} className="btn btn-primary">
+          {isReady && <button type="button" onClick={collectSignal} disabled={milling} className="btn btn-primary">
             {milling ? copy.mill.starting : copy.mill.collect}
           </button>}
         </div>

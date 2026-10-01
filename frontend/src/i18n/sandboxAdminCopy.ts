@@ -2,7 +2,7 @@ import type { Language } from './translations';
 
 type Copy = { title: string; paused: string; explanation: string; apiNote: string };
 
-/** Admin-only, unmounted page. V1/V2 are legacy synthetic POTATO/SEEDS models. */
+/** Admin-only, unmounted page. V1/V2 are legacy synthetic MIND/NEURON models. */
 export const sandboxAdminCopy: Record<Language, Copy> = {
   ru: {
     title: 'Экономическая симуляция', paused: 'Устаревшая модель не отображается',

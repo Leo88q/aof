@@ -28,7 +28,7 @@ export function OnboardingWizard({ onComplete }: Props) {
         <span className="sr-only" aria-live="polite">{copy.progress(currentStep + 1, copy.steps.length)}</span>
         <div className="flex gap-2 mb-8" aria-hidden="true">
           {copy.steps.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all ${i <= currentStep ? "w-8 bg-wheat-500" : "w-4 bg-soil-700"}`} />
+            <div key={i} className={`h-1.5 rounded-full transition-all ${i <= currentStep ? "w-8 bg-accent-500" : "w-4 bg-soil-700"}`} />
           ))}
         </div>
 
@@ -37,12 +37,12 @@ export function OnboardingWizard({ onComplete }: Props) {
             <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="mb-6 flex justify-center">
               <ResourceGlyph icon={UI_ICONS.npcOracle} alt="" className="w-10 h-10" />
             </motion.div>
-            <h2 className="text-wheat-500 font-semibold mb-3">{copy.speaker}</h2>
+            <h2 className="text-accent-500 font-semibold mb-3">{copy.speaker}</h2>
             <p className="text-parchment text-lg leading-relaxed [overflow-wrap:anywhere]">{step.text}</p>
           </motion.div>
         </AnimatePresence>
 
-        <button type="button" onClick={next} className="mt-10 max-w-full px-8 py-4 rounded-3xl bg-wheat-600 text-soil-950 font-bold text-lg active:scale-95 transition-transform shadow-glow [overflow-wrap:anywhere]">
+        <button type="button" onClick={next} className="mt-10 max-w-full px-8 py-4 rounded-3xl bg-accent-600 text-soil-950 font-bold text-lg active:scale-95 transition-transform shadow-glow [overflow-wrap:anywhere]">
           {step.action}
         </button>
         <button type="button" onClick={onComplete} className="mt-4 text-straw text-sm">{copy.skip}</button>

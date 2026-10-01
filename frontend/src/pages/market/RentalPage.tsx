@@ -179,7 +179,7 @@ export function RentalPage() {
           return (
             <motion.div key={l.pubkey || l.mint} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}>
-              <Card className={`border ${mine ? "border-wheat-600/40" : "border-straw/10"}`}>
+              <Card className={`border ${mine ? "border-accent-600/40" : "border-straw/10"}`}>
                 <div className="flex flex-wrap items-center gap-3">
                   <ArtPlate src={toolPlate(l.tool?.toolType, rk)} alt={toolName(language, l.tool?.toolType)} size={56} />
                   <div className="flex-1 min-w-0">
@@ -198,7 +198,7 @@ export function RentalPage() {
                       </span>
                     </p>
                     {priceH > 0 && (
-                      <p className="text-xs text-wheat-500 font-semibold">{fmtSol(priceH, language)} ◎ {copy.perHour}</p>
+                      <p className="text-xs text-accent-500 font-semibold">{fmtSol(priceH, language)} ◎ {copy.perHour}</p>
                     )}
                   </div>
                 </div>
@@ -252,12 +252,12 @@ export function RentalPage() {
               const rk = rarityKey(t.rarity);
               return (
                 <button key={t.mint} onClick={() => setSelMint(t.mint)}
-                  className={`w-full flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border text-left ${selMint === t.mint ? "border-wheat-500 bg-wheat-500/10" : "border-straw/15 bg-soil-800/60"}`}>
+                  className={`w-full flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border text-left ${selMint === t.mint ? "border-accent-500 bg-accent-500/10" : "border-straw/15 bg-soil-800/60"}`}>
                   <ArtPlate src={toolPlate(t.toolType, rk)} alt={toolName(language, t.toolType)} size={36} />
                   <span className="flex-1 min-w-0 text-sm text-parchment break-words">
                     {toolName(language, t.toolType)} <span className={`text-xs ${RARITY_COLOR[rk] ?? "text-straw"}`}>({rarityLabel(rk)})</span>
                   </span>
-                  {selMint === t.mint && <span className="text-wheat-500">✓</span>}
+                  {selMint === t.mint && <span className="text-accent-500">✓</span>}
                 </button>
               );
             })}
@@ -284,7 +284,7 @@ export function RentalPage() {
               </div>
             </div>
             <button onClick={createRental} disabled={!selMint}
-              className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+              className="w-full py-2.5 rounded-xl bg-accent-600 text-white font-semibold text-sm disabled:opacity-40">
               {copy.list}
             </button>
           </motion.div>

@@ -148,7 +148,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {!tool.staked && !tool.isMining && (
         <div className="mt-3">
           <button onClick={() => run("stake")} disabled={busy}
-            className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+            className="w-full py-2.5 rounded-xl bg-accent-600 text-white font-semibold text-sm disabled:opacity-40">
             {copy.stake}
           </button>
           <p className="text-straw text-xs mt-1.5 text-center">{copy.stakeHint}</p>
@@ -194,7 +194,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
                 <span>{hasMiningEnd ? label : copy.timerUnknown}</span>
               </div>
               <div className="relative h-3 rounded-full bg-soil-800 overflow-hidden">
-                <div className="absolute inset-y-0 left-0 rounded-full bg-wheat-600/40"
+                <div className="absolute inset-y-0 left-0 rounded-full bg-accent-600/40"
                   style={{ width: `${progress * 100}%` }} />
                 <span className="absolute text-xs" style={{ left: `calc(${progress * 100}% - 8px)`, top: -3 }}><ResourceGlyph icon={UI_ICONS.inbox} alt="" className="w-4 h-4" /></span>
               </div>
