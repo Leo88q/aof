@@ -7,7 +7,8 @@ emergency/security-аккаунты и admin-синглтоны. Gasless-онб�
 остатка.
 
 Матрица и гейт: `docs/PAYER_MATRIX.md`, `security/payer-policy.json`, `scripts/payer-audit.mjs`.
-Текущее состояние (после шага B): **90 init-аккаунтов, 86 ok, 5 долгов**.
+Текущее состояние (после коммитов 4–6): **89 init-аккаунтов, долг 0**. Все правки — исходники,
+не прошедшие `anchor build`; статус «source-aligned manually; generated validation pending».
 
 Этот документ — обязательная спецификация следующих трёх коммитов: каждая правка перечисляет, что
 именно меняется в коде, что это делает с IDL и что обязано быть проверено. Все изменения контекстов
@@ -147,9 +148,10 @@ payer = кошелёк игрока, подписывает игрок; backend 
   коммита 4 в коммит 5: его исправляет та же подпись игрока, что и чек награды, и дробить один
   контекст на два коммита значило бы дважды переписывать один вертикальный срез.
 
-**Что осталось до закрытия пункта 10:** коммиты 5 и 6, 10 payer acceptance-тестов
-(`tests/aof_payer_funding.ts`, pending validator), обнуление долга в `payer-audit`, отчёт из 10
-пунктов в PR.
+**Что осталось до закрытия пункта 10:** только внешняя валидация — `anchor build`,
+`anchor test --skip-build` (10 payer acceptance-тестов `tests/aof_payer_funding.ts` и
+обновлённые `tests/aof_core.ts`/`tests/aof_extended.ts`), затем отчёт из 10 пунктов (уже
+написан в теле PR #32) можно считать подтверждённым кодом.
 
 **Коммит 5 (player-claimed rewards and season initialization) — исходники готовы, pending compilation.**
 

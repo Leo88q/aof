@@ -221,3 +221,9 @@ test('клиент: бесплатный сезонный пропуск соз�
   assert.match(season, /coSign\(\[ix\], player\)/, 'fee payer — игрок');
   assert.match(season, /res\.json\(\{ tx \}\)/, 'authority не подписывает init вовсе');
 });
+
+test('приёмочные payer-тесты подключены к Anchor.toml (иначе они не запустятся)', () => {
+  const anchor = read('Anchor.toml');
+  assert.match(anchor, /tests\/aof_payer_funding\.ts/,
+    'Anchor.toml [scripts] test обязан запускать tests/aof_payer_funding.ts');
+});
