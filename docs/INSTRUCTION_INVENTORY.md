@@ -117,7 +117,7 @@
 | aof_core | collector_stake | gameplay | active | 1 | 0 | 3 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
 | aof_core | collector_unstake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | commit_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
-| aof_core | craft | gameplay | active | 5 | 0 | 14 | 1 | 3 | 0 | 0 | 2 | 5 | 0 |  |
+| aof_core | craft | gameplay | active | 5 | 0 | 14 | 1 | 3 | 0 | 0 | 2 | 6 | 0 |  |
 | aof_core | craft_order_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_fulfill | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -128,7 +128,7 @@
 | aof_core | forge_attempt_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | forge_attempt_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 0 |  |
 | aof_core | forge_attempt_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
-| aof_core | grant_season_xp | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
+| aof_core | grant_season_xp | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
 | aof_core | harvest_wheat | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | init_craft_economy | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_lottery_round | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -142,9 +142,9 @@
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | migrate_tool | migration | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | ✓ |
-| aof_core | mint_resource | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 3 | 2 | 2 | 0 | ✓ |
-| aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 5 | 1 | 3 | 1 | ✓ |
+| aof_core | migrate_tool | migration | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | ✓ |
+| aof_core | mint_resource | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 3 | 2 | 3 | 0 | ✓ |
+| aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 5 | 1 | 4 | 1 | ✓ |
 | aof_core | offer_accept | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | offer_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | offer_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -180,13 +180,13 @@
 | aof_core | start_baking | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | start_exploration_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | start_milling | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 2 | 0 | 1 | 0 | ✓ |
+| aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 2 | 0 | 2 | 0 | ✓ |
 | aof_core | sweep_gas_fees | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
 | aof_core | unstake | gameplay | active | 1 | 0 | 3 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | upgrade_exploration_tier | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | weather_crank | gameplay | active | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
 | aof_core | withdraw_gas | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 2 | 0 | 2 | 1 |  |
-| aof_core | mint_resource_once | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 2 | 2 | 0 |  |
+| aof_core | mint_resource_once | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 2 | 3 | 0 |  |
 | aof_core | marketplace_buy_bounded | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 0 |  |
 | aof_core | init_issuance_cap | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | set_issuance_cap | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |

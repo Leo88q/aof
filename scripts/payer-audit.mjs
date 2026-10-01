@@ -35,7 +35,7 @@ const POLICY_FILE = 'security/payer-policy.json';
 const OUT_JSON = 'docs/PAYER_MATRIX.json';
 const OUT_MD = 'docs/PAYER_MATRIX.md';
 export const OWNERS = ['player', 'global'];
-export const PAYERS = ['player', 'operator', 'cranker-deposit'];
+export const PAYERS = ['player', 'operator', 'cranker-deposit', 'service'];
 export const STATUSES = ['ok', 'debt'];
 
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -150,8 +150,13 @@ export function scanProgram(program) {
         const space = lookup(attr, 'space');
         const payerField = payer ? byName.get(payer) : null;
         const payerAttr = payerField ? accountAttr(payerField) : '';
-        const operatorGated = /config\.(operator|authority)|\.(operator|authority)\b[^,]*==|authority_gate|upgrade_authority/.test(payerAttr)
-          || /^(authority|operator|admin|crank)/.test(payer || '') ;
+        // Самооплата: аккаунт привязан к ключу самого плательщика
+        // (`seeds` содержат `<payer>.key()`), значит подписант платит за свой
+        // же аккаунт, даже если поле названо `authority` (конвенция
+        // aof-session-keys: `authority` — кошелёк владельца сессии).
+        const selfPaid = Boolean(payer && /^\w+$/.test(payer) && seeds && seeds.includes(`${payer}.key()`));
+        const operatorGated = !selfPaid && (/config\.(operator|authority)|\.(operator|authority)\b[^,]*==|authority_gate|upgrade_authority/.test(payerAttr)
+          || /^(authority|operator|admin|crank)/.test(payer || ''));
         const seedUsesUser = seeds ? PLAYER_SEED_HINT.test(seeds) : false;
         const typeName = /Account<[^,]+,\s*(\w+)>/.exec(field.type)?.[1] || field.type;
         rows.push({
@@ -208,6 +213,7 @@ export function check({ rows, policy }) {
     if (row.requiredPayer === 'player' && operatorPays && row.status !== 'debt') errors.push(`${k}: по политике платит игрок, а в коде — оператор/authority (payer = ${row.payer}); это скрытая субсидия — исправьте или пометьте debt`);
     if (row.requiredPayer === 'player' && !operatorPays && row.status === 'debt') errors.push(`${k}: помечено debt, но в коде платит не оператор — исправлено? Пометьте ok`);
     if (row.requiredPayer === 'operator' && !operatorPays) errors.push(`${k}: по политике платит оператор (глобальная инфраструктура), а в коде payer = ${row.payer} — проверьте`);
+    if (row.requiredPayer === 'service' && operatorPays) errors.push(`${k}: объявлено service (отдельный сервис проекта), а в коде платит authority/operator — это уже субсидия оператора`);
     if (row.requiredPayer === 'cranker-deposit' && (!row.settlement || !row.refund)) errors.push(`${k}: для cranker-deposit нужны settlement и refund`);
   }
   for (const k of Object.keys(policy.entries || {})) if (!seen.has(k)) errors.push(`${POLICY_FILE}: запись ${k} устарела — такой инициализации в коде нет`);

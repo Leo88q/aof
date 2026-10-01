@@ -1355,10 +1355,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 5,
+          "mentions": 6,
           "files": [
             "tests/readiness/bringup-entrypoints.test.cjs",
             "tests/readiness/mechanic-configs.test.cjs",
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/rng-economy.test.cjs",
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
@@ -1980,8 +1981,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -2752,8 +2754,9 @@
       "tests": {
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -2826,9 +2829,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -2903,9 +2907,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/nft-standards.test.cjs",
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
@@ -4919,8 +4924,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -5283,9 +5289,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
+            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
