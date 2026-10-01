@@ -24,7 +24,7 @@ anchor test --skip-build || echo "anchor test failed, попробуй anchor te
 echo ""
 echo "=== 3. Backend self-tests (aof_backend) ==="
 cd aof_backend
-for t in test:wallet-proof test:authority-gate test:resource-registry test:security-invariants test:audit-security test:admin-auth test:fraud-signals test:reward-receipts test:fraud-hold test:chain-indexer test:vrf test:vrf-settlement test:read-cache; do
+for t in test:wallet-proof test:authority-gate test:bootstrap-preflight test:resource-registry test:security-invariants test:audit-security test:admin-auth test:fraud-signals test:reward-receipts test:fraud-hold test:chain-indexer test:vrf test:vrf-settlement test:read-cache; do
   echo "--- $t ---"
   npm run $t 2>&1 | tail -n 20 || echo "failed: $t"
 done
