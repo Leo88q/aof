@@ -13,7 +13,11 @@
     },
     {
       "file": "frontend/src/lib/coreInstructions.ts",
-      "distinctInstructions": 121
+      "distinctInstructions": 122
+    },
+    {
+      "file": "frontend/src/lib/transactionIntent.ts",
+      "distinctInstructions": 21
     },
     {
       "file": "scripts/gen-core-instruction-table.py",
@@ -21,9 +25,9 @@
     }
   ],
   "totals": {
-    "instructions": 169,
+    "instructions": 170,
     "byRole": {
-      "gameplay": 100,
+      "gameplay": 101,
       "admin": 40,
       "emergency": 8,
       "migration": 1,
@@ -33,16 +37,16 @@
       "candidate-dead-code": 0
     },
     "disabledOnChain": 7,
-    "validatorTested": 97,
+    "validatorTested": 98,
     "sharedNames": 23,
-    "withoutAnyCallSite": 23,
+    "withoutAnyCallSite": 24,
     "withoutCallSiteAndTest": 7
   },
   "programs": {
     "aof_core": {
-      "instructions": 121,
+      "instructions": 122,
       "byRole": {
-        "gameplay": 80,
+        "gameplay": 81,
         "admin": 21,
         "emergency": 6,
         "migration": 1,
@@ -52,9 +56,9 @@
         "candidate-dead-code": 0
       },
       "disabledOnChain": 1,
-      "validatorTested": 91,
+      "validatorTested": 92,
       "sharedNames": 7,
-      "withoutAnyCallSite": 12,
+      "withoutAnyCallSite": 13,
       "withoutCallSiteAndTest": 1
     },
     "aof_market": {
@@ -553,17 +557,11 @@
           "files": [
             "aof_backend/src/routes/lottery.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [
         "aof_backend/src/routes/lottery.ts"
@@ -585,7 +583,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -724,15 +722,15 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "frontend/src/i18n/siteDocs.ts",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/i18n/siteDocs.ts"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [
         "aof_backend/src/routes/lottery.ts"
@@ -761,7 +759,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -776,7 +774,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 77
+        "line": 99
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1107,16 +1105,16 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "frontend/src/components/CollectorsPanel.tsx",
-            "frontend/src/components/ui/FeatureDisabledNotice.tsx",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/components/ui/FeatureDisabledNotice.tsx"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -1143,7 +1141,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -1176,15 +1174,15 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "frontend/src/components/CollectorsPanel.tsx",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/components/CollectorsPanel.tsx"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -1212,7 +1210,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -1627,24 +1625,25 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "frontend/src/components/GasTankPanel.tsx",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/components/GasTankPanel.tsx"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 3,
+          "calls": 4,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
             "tests/aof_extended.ts",
+            "tests/aof_payer_funding.ts",
             "tests/aof_vrf_localnet.ts"
           ]
         },
@@ -1665,7 +1664,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -1963,7 +1962,7 @@
         "kind": "delegate",
         "path": "instructions::season::grant_xp_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 64
+        "line": 84
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -1982,6 +1981,7 @@
       },
       "registries": [
         "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts",
         "scripts/gen-core-instruction-table.py"
       ],
       "bringup": [
@@ -1997,9 +1997,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/payer-audit.test.cjs",
+            "tests/readiness/payer-reward-claim.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -2414,10 +2415,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_extended.ts"
+            "tests/aof_extended.ts",
+            "tests/aof_payer_funding.ts"
           ]
         },
         "readiness": {
@@ -2774,13 +2776,6 @@
             "aof_backend/src/routes/tools.ts"
           ]
         },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
-        },
         "platform": {
           "calls": 0,
           "mentions": 2,
@@ -2792,6 +2787,7 @@
       },
       "registries": [
         "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts",
         "scripts/gen-core-instruction-table.py"
       ],
       "bringup": [
@@ -2799,12 +2795,13 @@
       ],
       "tests": {
         "validator": {
-          "calls": 5,
+          "calls": 6,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
             "tests/aof_extended.ts",
             "tests/aof_market.ts",
+            "tests/aof_payer_funding.ts",
             "tests/aof_tool_ownership.ts",
             "tests/aof_vrf_localnet.ts"
           ]
@@ -2818,10 +2815,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 5,
+          "mentions": 4,
           "files": [
             "tests/readiness/nft-standards.test.cjs",
-            "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/payer-tool-mint.test.cjs",
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
@@ -2836,7 +2832,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 5,
+        "callSiteCount": 4,
         "validatorTested": true,
         "anyTest": true
       }
@@ -3473,7 +3469,7 @@
         "kind": "delegate",
         "path": "instructions::season::purchase_pass_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 20
+        "line": 40
       },
       "disabledOnChain": true,
       "role": "gameplay",
@@ -3481,17 +3477,10 @@
       "replacedBy": null,
       "note": "disabled / product decision pending — Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL.",
       "evidence": null,
-      "callSites": {
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
-        }
-      },
+      "callSites": {},
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -3518,7 +3507,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 0,
         "validatorTested": true,
         "anyTest": true
       }
@@ -4534,11 +4523,10 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "frontend/src/components/CollectorsPanel.tsx",
-            "frontend/src/components/ToolMiningCard.tsx",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/components/ToolMiningCard.tsx"
           ]
         },
         "platform": {
@@ -4550,7 +4538,8 @@
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -4578,7 +4567,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 5,
+        "callSiteCount": 4,
         "validatorTested": true,
         "anyTest": true
       }
@@ -4799,10 +4788,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 2,
+          "calls": 3,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
+            "tests/aof_payer_funding.ts",
             "tests/aof_tool_ownership.ts"
           ]
         },
@@ -4911,16 +4901,16 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "frontend/src/components/CollectorsPanel.tsx",
-            "frontend/src/components/ToolMiningCard.tsx",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/components/ToolMiningCard.tsx"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -4947,7 +4937,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -5074,15 +5064,15 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "frontend/src/components/GasTankPanel.tsx",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/components/GasTankPanel.tsx"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -5111,7 +5101,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -5152,15 +5142,17 @@
       },
       "registries": [
         "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts",
         "scripts/gen-core-instruction-table.py"
       ],
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_payer_funding.ts"
           ]
         },
         "selfTests": {
@@ -5173,10 +5165,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
+            "tests/readiness/payer-reward-claim.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -6553,15 +6546,15 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "frontend/src/i18n/siteDocs.ts",
-            "frontend/src/lib/transactionIntent.ts"
+            "frontend/src/i18n/siteDocs.ts"
           ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [
         "aof_backend/src/routes/lottery.ts"
@@ -6597,7 +6590,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6627,17 +6620,11 @@
           "files": [
             "aof_backend/src/routes/orderbook.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -6650,7 +6637,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6680,17 +6667,11 @@
           "files": [
             "aof_backend/src/routes/orderbook.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -6703,7 +6684,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6733,17 +6714,11 @@
           "files": [
             "aof_backend/src/routes/orderbook.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -6756,7 +6731,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6786,17 +6761,11 @@
           "files": [
             "aof_backend/src/routes/orderbook.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -6809,7 +6778,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6839,17 +6808,11 @@
           "files": [
             "aof_backend/src/routes/orderbook.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [],
       "tests": {
@@ -6862,7 +6825,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6899,17 +6862,11 @@
           "files": [
             "scripts/check-idl-drift.py"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
       "registries": [
         "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts",
         "scripts/gen-core-instruction-table.py"
       ],
       "bringup": [],
@@ -6938,7 +6895,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -7038,6 +6995,64 @@
       },
       "summary": {
         "callSiteCount": 0,
+        "validatorTested": true,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "init_season_pass",
+      "camel": "initSeasonPass",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::season::init_pass_handler",
+        "file": "aof-core/src/instructions/season.rs",
+        "line": 23
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "[PAYER] Создание сезонного пропуска игроком: подписывает и оплачивает сам игрок, операторская выдача XP (grant_season_xp) его больше не создаёт. После создания PurchaseSeasonPass апгрейдит пропуск до premium-трека.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/season.ts"
+          ]
+        }
+      },
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
+      ],
+      "bringup": [
+        "aof_backend/src/routes/season.ts"
+      ],
+      "tests": {
+        "validator": {
+          "calls": 2,
+          "mentions": 0,
+          "files": [
+            "tests/aof_extended.ts",
+            "tests/aof_payer_funding.ts"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 2,
+          "files": [
+            "tests/readiness/payer-audit.test.cjs",
+            "tests/readiness/payer-reward-claim.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }
@@ -8276,16 +8291,11 @@
           "files": [
             "aof_backend/src/routes/rebirth.ts"
           ]
-        },
-        "frontend": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts"
-          ]
         }
       },
-      "registries": [],
+      "registries": [
+        "frontend/src/lib/transactionIntent.ts"
+      ],
       "bringup": [],
       "tests": {
         "validator": {
@@ -8314,7 +8324,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 1,
         "validatorTested": true,
         "anyTest": true
       }

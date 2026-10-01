@@ -29,6 +29,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/inbox/list", subject: "inbox_list", field: "user" },
   { path: "/inbox/read", subject: "inbox_read", field: "user" },
   { path: "/inbox/claim", subject: "inbox_claim", field: "user" },
+  { path: "/inbox/claim/confirm", subject: "inbox_claim_confirm", field: "user" },
   { path: "/inbox/archive", subject: "inbox_archive", field: "user" },
   { path: "/alerts/create", subject: "alerts_create", field: "user" },
   { path: "/alerts/", subject: "alerts_delete", field: "user" },
@@ -68,6 +69,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/rental/start", subject: "rental_start_bounded", field: "renter" },
   { path: "/rental/end", subject: "rental_end", field: "caller" },
   { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
+  { path: "/season/pass/init", subject: "season_pass_init", field: "player" },
   { path: "/rental/delist", subject: "rental_delist", field: "caller" },
   { path: "/orderbook/v2/buy/place", subject: "orderbook_v2_buy_place", field: "maker" },
   { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
@@ -459,6 +461,8 @@ export const api = {
   season: {
     init: (v: any) => post("/season/init", v),
     passPurchase: (v: any) => post("/season/pass/purchase", v),
+    // [PAYER] Пропуск создаёт сам игрок: его подпись и его rent.
+    passInit: (v: any) => post("/season/pass/init", v),
     xpGrant: (v: any) => post("/season/xp/grant", v),
     rewardClaim: (v: any) => post("/season/reward/claim", v),
     // Роут vipStatus смонтирован на /season и слушает /:user — путь без
@@ -541,6 +545,9 @@ export const api = {
     list: (user: string) => post("/inbox/list", { user }),
     read: (v: any) => post("/inbox/read", v),
     claim: (v: any) => post("/inbox/claim", v),
+    // [PAYER] Claim отправляет кошелёк игрока; доказательство выплаты —
+    // on-chain RewardReceipt, поэтому подпись подтверждается отдельно.
+    confirmClaim: (v: any) => post("/inbox/claim/confirm", v),
   },
 
   compendium: {

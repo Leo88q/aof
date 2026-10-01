@@ -53,11 +53,11 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn, withPolicy = true) => { const tmp = makeRoot(withPolicy); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 89 инициализаций, 3 долга (коммит 4 закрыл MintResource.player и MintTool.tool_data)', () => {
+test('репозиторий проходит гейт: 89 инициализаций, долг 0 (коммиты 4–5 закрыли все пять)', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /89 инициализаций классифицированы/);
-  assert.match(result.out, /долг \(платит оператор вместо игрока\): 3/);
+  assert.match(result.out, /долг \(платит оператор вместо игрока\): 0/);
 });
 
 test('политика и матрица покрывают одни и те же 89 аккаунтов', () => {
@@ -71,11 +71,19 @@ test('политика и матрица покрывают одни и те ж�
   // вернулся бы незамеченным.
   assert.equal(policy.entries['aof_core.MintResource.player'], undefined);
   const debt = matrix.rows.filter((r) => r.status === 'debt').map((r) => `${r.program}.${r.instruction}.${r.account}`);
-  assert.deepEqual(debt, [
-    'aof_core.GrantSeasonXp.season_pass',
-    'aof_core.MintResourceOnce.player',
-    'aof_core.MintResourceOnce.reward_receipt',
-  ]);
+  assert.deepEqual(debt, [], 'долгов плательщиков быть не должно');
+  // Коммит 5: выдача XP больше не создаёт пропуск, а claim оплачивает игрок.
+  assert.equal(policy.entries['aof_core.GrantSeasonXp.season_pass'], undefined,
+    'init_if_needed в grant_season_xp вернулся бы как устаревшая запись политики');
+  assert.equal(policy.entries['aof_core.InitSeasonPass.season_pass'].payer, 'player');
+  assert.equal(policy.entries['aof_core.MintResourceOnce.player'].payer, 'player');
+  assert.equal(policy.entries['aof_core.MintResourceOnce.reward_receipt'].payer, 'player');
+  const byKey = new Map(matrix.rows.map((r) => [`${r.program}.${r.instruction}.${r.account}`, r]));
+  for (const key of ['aof_core.MintResourceOnce.player', 'aof_core.MintResourceOnce.reward_receipt', 'aof_core.InitSeasonPass.season_pass']) {
+    const row = byKey.get(key);
+    assert.ok(row, `${key}: строка матрицы пропала`);
+    assert.equal(row.payerIsOperatorOrAuthority, false, `${key}: платит оператор`);
+  }
   for (const row of matrix.rows) {
     assert.ok(row.owner && row.requiredPayer && row.status, `${row.program}.${row.instruction}.${row.account}: не классифицирован`);
     if (row.requiredPayer === 'cranker-deposit') assert.ok(row.settlement && row.refund, 'cranker-deposit без settlement/refund');
@@ -98,17 +106,21 @@ test('код, вернувший оператору оплату аккаунт�
 });
 
 test('запись политики для аккаунта, который больше не создаётся, — ошибка', () => {
-  withRoot((tmp) => {
-    editJson(tmp, POLICY, (p) => {
-      p.entries['aof_core.MintResource.player'] = {
-        owner: 'player', payer: 'player', status: 'ok', reason: 'вернули init_if_needed оператора в обход гейта',
-      };
-      return p;
+  // Коммит 4 убрал init у MintResource.player, коммит 5 — у GrantSeasonXp.
+  // Возврат любого из них обязан ловиться как устаревшая запись политики.
+  for (const key of ['aof_core.MintResource.player', 'aof_core.GrantSeasonXp.season_pass']) {
+    withRoot((tmp) => {
+      editJson(tmp, POLICY, (p) => {
+        p.entries[key] = {
+          owner: 'player', payer: 'player', status: 'ok', reason: 'вернули init_if_needed оператора в обход гейта',
+        };
+        return p;
+      });
+      const result = run(['--check', '--root', tmp]);
+      assert.equal(result.code, 1, result.out);
+      assert.match(result.out, /устарела/);
     });
-    const result = run(['--check', '--root', tmp]);
-    assert.equal(result.code, 1, result.out);
-    assert.match(result.out, /устарела/);
-  });
+  }
 });
 
 test('правка политики ломает гейт ожидаемым сообщением', () => {

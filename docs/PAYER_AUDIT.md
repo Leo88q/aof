@@ -31,32 +31,29 @@ prepaid-механики субсидией не являются.
 | Инфраструктура проекта (`requiredPayer: operator`) | 24 |
 | Prepaid, возмещается поселенцу (`requiredPayer: cranker-deposit`) | 15 |
 | Отдельный сервис проекта (`requiredPayer: service`, oracle) | 1 |
-| **Долг: платит оператор, а должен игрок** | **3** |
+| **Долг: платит оператор, а должен игрок** | **0** |
 
 Фактически кошелёк оператора/authority платит за глобальную инфраструктуру и за 3 оставшихся
 долга (см. ниже).
 
-## Долг до деплоя (3 записи, `status: debt`)
+## Долг до деплоя: закрыт (0 записей `status: debt`)
 
-Коммит 4 (ветка `arena/01a0f648-aof`) закрыл два долга из пяти — на уровне исходников:
+Все пять долгов закрыты на уровне исходников (коммиты 4–5; статус
+**source-aligned manually; generated validation pending** — `anchor build` и validator не запускались):
 
-| Было | Стало |
+| Аккаунт | Как закрыт |
 |---|---|
-| `MintResource.player` — `init_if_needed, payer = authority` создавал профиль игрока за счёт оператора | профиль в этой инструкции не создаётся: `player` — опциональный read-only PDA, handler читает его как `Option<Player>`, а сама выдача идёт по базовым перкам. Профиль создаётся действием игрока |
-| `MintTool.tool_data` — `init_if_needed, payer = authority` | в контексте появился `payer: Signer` с констрейнтом `payer.key() == recipient.key()`; `ToolData` и ATA получателя оплачивает и подписывает получатель, authority только авторизует минт (частично подписанная транзакция) |
+| `MintResource.player` | `init_if_needed, payer = authority` убран целиком: профиль в операторской выдаче не создаётся, handler читает его как `Option<Player>` и работает по базовым перкам |
+| `MintTool.tool_data` | добавлен `payer: Signer` с констрейнтом `payer == recipient`; ToolData и ATA получателя оплачивает он, authority только авторизует |
+| `MintResourceOnce.player` | claim игрока: `payer: Signer` с констрейнтом `payer == token_account.owner`, профиль — `init_if_needed, payer = payer` |
+| `MintResourceOnce.reward_receipt` | `init, payer = payer`: чек награды — доказательство игрока и оплачивается им |
+| `GrantSeasonXp.season_pass` | `init_if_needed` удалён; пропуск создаёт сам игрок в новой `init_season_pass` (`init, payer = player`), выдача XP меняет только существующий |
 
-Остаются три записи, все в операторских выдачах наград/сезона (закрываются коммитами 5–6):
+Гейт (`node scripts/payer-audit.mjs --check`) больше не видит ни одной субсидии оператора, и
+`tests/readiness/payer-audit.test.cjs` проверяет это число. Возврат `init_if_needed`/`payer = authority`
+на любой из этих аккаунтов ловится как устаревшая запись политики или скрытая субсидия.
 
-| Аккаунт | Платит сейчас | Почему это долг |
-|---|---|---|
-| `GrantSeasonXp.season_pass` (aof_core) | `authority` | сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия. План: отдельный `init_season_pass` игроком, `grant_season_xp` меняет только существующий |
-| `MintResourceOnce.player` (aof_core) | `authority` | профиль игрока создаётся за счёт оператора на выдаче награды. План: награда — claim игрока (`player: Signer`, `payer = player`) |
-| `MintResourceOnce.reward_receipt` (aof_core) | `authority` | чек награды игрока (proof выплаты) оплачивает оператор; должен оплачивать игрок в своей claim-транзакции |
-
-Правки не внесены: они меняют набор подписантов, а значит IDL и вызовы клиентов, и требуют
-`anchor build` + validator'а, которых в песочнице нет. После решения владельца каждая правка
-делается отдельным коммитом с `scripts/idl-sync-ts.py` и `check-idl-drift.py`.
-Статус исходников: **source-aligned manually; generated validation pending**.
+Приёмочные проверки поведения (10) — `tests/aof_payer_funding.ts`; в песочнице они **не запускались**.
 
 ## Почему prepaid-пути — не субсидия (доказательства)
 
@@ -98,8 +95,9 @@ prepaid-механики субсидией не являются.
 
 Решение владельца: ATA в message транзакции игрока, payer = кошелёк игрока, подпись игрока,
 authority подписывает только authorization-инструкции; ленивое/идемпотентное создание; quote без
-rent уже существующего ATA; асинхронные награды — player claim. Закрывается коммитами 5 (claim) и 6
-(остальные роуты), проверка — `tests/readiness/ata-funding.test.cjs`.
+rent уже существующего ATA; асинхронные награды — player claim. Коммит 5 уже перевёл на эту схему
+`/inbox/claim` (ATA игрока создаётся в его транзакции, ATA казны проект оплачивает отдельно и только
+если её нет). Коммит 6 закрывает остальные роуты; проверка — `tests/readiness/ata-funding.test.cjs`.
 
 ## Как перезапустить проверку
 

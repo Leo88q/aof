@@ -309,4 +309,9 @@ pub enum AofError {
     RentalExpired,
     #[msg("Mining session must end before the rental does")]
     RentalSessionTooLong,
+    // [PAYER claim/season] appended: existing codes must not move. Пропуск
+    // сезона создаёт только сам игрок (`init_season_pass`), а выдача XP его не
+    // создаёт и не оплачивает.
+    #[msg("Season pass is not initialized; the player must call init_season_pass first")]
+    SeasonPassNotInitialized,
 }

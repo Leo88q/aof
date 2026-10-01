@@ -20,10 +20,8 @@
       },
       "frontendCallSites": {
         "calls": 0,
-        "mentions": 1,
-        "files": [
-          "frontend/src/lib/transactionIntent.ts"
-        ]
+        "mentions": 0,
+        "files": []
       },
       "platformConsumers": null,
       "tests": [

@@ -370,6 +370,14 @@ pub struct SeasonPassPurchased {
     pub season_id: u32,
 }
 
+/// [PAYER] Пропуск создаёт сам игрок (`init_season_pass`), поэтому создание —
+/// отдельное наблюдаемое событие, не связанное с оплатой проекта.
+#[event]
+pub struct SeasonPassInitialized {
+    pub owner: Pubkey,
+    pub season_id: u32,
+}
+
 #[event]
 pub struct SeasonRewardClaimed {
     pub owner: Pubkey,

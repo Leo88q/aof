@@ -114,7 +114,36 @@ export interface ToolMintIntent {
   readonly rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
 }
 
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent | ToolMintIntent;
+/**
+ * [PAYER] Claim награды из инбокса: `Player` и `RewardReceipt` — аккаунты
+ * игрока, поэтому платит и подписывает он, а authority добавляет только
+ * авторизацию минта. Кошелёк принимает ровно одну `mint_resource_once` со
+ * своим ATA/профилем/чеком и ровно одно ленивое создание своего ATA; сумма,
+ * вид ресурса и reward_id сверяются с локальным интентом байт в байт.
+ */
+export interface RewardClaimIntent {
+  readonly kind: "rewardClaim";
+  readonly user: string;
+  readonly mint: string;
+  readonly resourceKind: number;
+  readonly amountAtoms: string;
+  /** Кошелёк казны проекта: из него выводится ATA, куда уходит комиссия минта. */
+  readonly treasury: string;
+  /** sha256("AOF_INBOX_REWARD_V1\0" + id) в hex — id письма, а не серверный PDA. */
+  readonly rewardId: string;
+}
+
+/**
+ * [PAYER] Создание сезонного пропуска — действие игрока: подпись и rent его.
+ * Кошелёк подписывает ровно одну `init_season_pass` этого сезона.
+ */
+export interface SeasonPassInitIntent {
+  readonly kind: "seasonPassInit";
+  readonly user: string;
+  readonly seasonId: number;
+}
+
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent | ToolMintIntent | RewardClaimIntent | SeasonPassInitIntent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
@@ -122,7 +151,10 @@ export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 4
 export function expectedSigners(intent: TransactionIntent | undefined): number {
   // packOpen и rebirth co-sign-ятся оператором: без его подписи транзакция не
   // собирается, поэтому кошелёк разрешает вторую подпись.
-  return intent?.kind === "packOpen" || intent?.kind === "rebirth" || intent?.kind === "toolMint" ? 2 : 1;
+  // Игрок + authority: ко-подписанные игровые операции. Остальное подписывает
+  // только кошелёк игрока.
+  return intent?.kind === "packOpen" || intent?.kind === "rebirth" || intent?.kind === "toolMint"
+    || intent?.kind === "rewardClaim" ? 2 : 1;
 }
 type Instruction = { programId: string; keys: PublicKey[]; data: Uint8Array };
 
@@ -202,6 +234,8 @@ export function validateTransactionIntent(
   if (intent.kind === "orderbookV2") return validateOrderbookV2Intent(instructions, intent, user);
   if (intent.kind === "rebirth") return validateRebirthIntent(instructions, intent, user);
   if (intent.kind === "toolMint") return validateToolMintIntent(instructions, intent, user);
+  if (intent.kind === "rewardClaim") return validateRewardClaimIntent(instructions, intent, user);
+  if (intent.kind === "seasonPassInit") return validateSeasonPassInitIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -409,6 +443,106 @@ function validateToolMintIntent(instructions: Instruction[], intent: ToolMintInt
     }
   }
   if (mints !== 1) throw new Error("Missing tool mint");
+}
+
+const REWARD_RECEIPT_SEED = "reward_receipt";
+
+/** sha256("AOF_INBOX_REWARD_V1\0" + id) — тот же домен, что у backend. */
+function hexBytes(hex: string): Uint8Array {
+  if (typeof hex !== "string" || hex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(hex)) {
+    throw new Error("Reward id must be hex");
+  }
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i += 1) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+/**
+ * [PAYER] Награда — claim игрока: ровно один `mint_resource_once`, где payer и
+ * владелец ATA — подключённый кошелёк, профиль и чек лежат на его PDA, и ровно
+ * одно идемпотентное создание его ATA (ленивое, за его счёт). Любая третья
+ * инструкция, чужой получатель, другой вид ресурса, сумма или reward_id
+ * отменяют подпись.
+ */
+function validateRewardClaimIntent(instructions: Instruction[], intent: RewardClaimIntent, user: PublicKey): void {
+  const mint = new PublicKey(intent.mint);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the reward claim intent");
+  if (!Number.isInteger(intent.resourceKind) || intent.resourceKind < 0 || intent.resourceKind > 26) {
+    throw new Error("Invalid resource kind");
+  }
+  positiveU64(intent.amountAtoms);
+  const rewardId = hexBytes(intent.rewardId);
+  if (rewardId.length !== 32) throw new Error("Reward id must be 32 bytes");
+  const tokenAccount = ata(mint, user);
+  const programId = new PublicKey(CORE_PROGRAM_ID);
+  const playerProfile = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("player"), user.toBytes()], programId,
+  )[0];
+  const rewardReceipt = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(REWARD_RECEIPT_SEED), user.toBytes(), rewardId], programId,
+  )[0];
+  const issuanceCap = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("issuance_cap"), Uint8Array.of(intent.resourceKind)], programId,
+  )[0];
+  const treasuryToken = ata(mint, new PublicKey(intent.treasury));
+  // Конкретный ключ оператора проверяет сама программа (`authority == config.operator`),
+  // поэтому он берётся из транзакции, а не из ответа backend.
+  const authority = instructions.find((ix) => coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID)?.name === "mint_resource_once")?.keys[2];
+  if (!authority) throw new Error("Missing reward claim authority");
+  const expected = [pda("config"), pda("material_mints"), authority, pda("auth"), mint, tokenAccount,
+    treasuryToken, user, playerProfile, issuanceCap, TOKEN, rewardReceipt, new PublicKey(SYSTEM)];
+  const amount = new Uint8Array(8);
+  new DataView(amount.buffer).setBigUint64(0, BigInt(intent.amountAtoms), true);
+  let mints = 0, atas = 0;
+  for (const ix of instructions) {
+    const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+    if (spec?.name === "mint_resource_once") {
+      mints += 1;
+      if (mints !== 1 || !keysEqual(ix.keys, expected)) throw new Error("Unexpected reward claim accounts");
+      if (ix.data.length !== 8 + 1 + 8 + 32 || ix.data[8] !== intent.resourceKind) {
+        throw new Error("Reward claim payload differs from user intent");
+      }
+      for (let i = 0; i < 8; i += 1) if (ix.data[9 + i] !== amount[i]) throw new Error("Reward amount differs from user intent");
+      for (let i = 0; i < 32; i += 1) if (ix.data[17 + i] !== rewardId[i]) throw new Error("Reward id differs from user intent");
+    } else if (ix.programId === ATA.toBase58()) {
+      atas += 1;
+      if (atas !== 1 || ix.data.length !== 1 || ix.data[0] !== 1 ||
+          !keysEqual(ix.keys, [user, tokenAccount, user, mint, new PublicKey(SYSTEM), TOKEN])) {
+        throw new Error("Unexpected rent destination");
+      }
+    } else if (ix.programId !== COMPUTE) {
+      throw new Error("Extra instruction is outside the reward claim intent");
+    }
+  }
+  if (mints !== 1) throw new Error("Missing reward claim");
+}
+
+/**
+ * [PAYER] Пропуск создаёт сам игрок: ровно одна `init_season_pass` с его
+ * подписью и его rent. Операторская выдача XP (`grant_season_xp`) в кошелёк
+ * игрока не попадает.
+ */
+function validateSeasonPassInitIntent(instructions: Instruction[], intent: SeasonPassInitIntent, user: PublicKey): void {
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the season pass intent");
+  if (!Number.isInteger(intent.seasonId) || intent.seasonId < 0 || intent.seasonId > 0xffffffff) {
+    throw new Error("Invalid season id");
+  }
+  const seasonId = new Uint8Array(4);
+  new DataView(seasonId.buffer).setUint32(0, intent.seasonId, true);
+  const programId = new PublicKey(CORE_PROGRAM_ID);
+  const season = PublicKey.findProgramAddressSync([new TextEncoder().encode("season"), seasonId], programId)[0];
+  const seasonPass = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("season_pass"), user.toBytes(), seasonId], programId,
+  )[0];
+  if (instructions.length !== 1) throw new Error("Season pass init must be a single instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (spec?.name !== "init_season_pass" || ix.data.length !== 12 ||
+      !keysEqual(ix.keys, [pda("config"), user, season, seasonPass, new PublicKey(SYSTEM)])) {
+    throw new Error("Unexpected season pass init transaction");
+  }
+  const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+  if (view.getUint32(8, true) !== intent.seasonId) throw new Error("Season id differs from user intent");
 }
 
 function validateOrderbookV2Intent(instructions: Instruction[], intent: OrderbookV2Intent, user: PublicKey): void {

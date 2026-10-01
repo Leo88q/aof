@@ -284,16 +284,29 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const before = await lamports(user.publicKey);
     await expectError(purchase(), "SeasonPremiumRequired");
     expect(await lamports(user.publicKey)).to.equal(before);
-    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null); // init_if_needed rolled back
+    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
 
     const grant = (signer: Keypair | null, amount: number) => {
       const call = program.methods.grantSeasonXp(amount).accounts({
         config: configPda, authority: signer ? signer.publicKey : authority, user: user.publicKey, season, seasonPass,
-        systemProgram: SystemProgram.programId,
       });
       return signer ? call.signers([signer]).rpc() : call.rpc();
     };
     const stranger = Keypair.generate(); await airdrop(stranger);
+    // [PAYER] Операторская выдача больше не создаёт пропуск: пока игрок его не
+    // создал сам, mint отклоняется понятной ошибкой (и не платит за игрока).
+    await expectError(grant(null, 1_500), "SeasonPassNotInitialized");
+    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
+    const passBefore = await lamports(user.publicKey);
+    await program.methods.initSeasonPass(seasonId).accounts({
+      config: configPda, player: user.publicKey, season, seasonPass, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc();
+    // [PAYER] rent пропуска списан с игрока, а не с authority.
+    expect(await lamports(user.publicKey)).to.be.lessThan(passBefore);
+    expect((await program.account.seasonPass.fetch(seasonPass)).owner.toBase58()).to.equal(user.publicKey.toBase58());
+    await expectError(program.methods.initSeasonPass(seasonId).accounts({
+      config: configPda, player: user.publicKey, season, seasonPass, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc(), "already in use");
     await expectError(grant(stranger, 1_000_000), "Unauthorized");
     await grant(null, 1_500);
     expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(1_500);
@@ -595,9 +608,13 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     // Прогресс: жители/палатка появляются от минта ресурса, XP — от оператора.
     const woodAta = await giveResource("wood", woodMint, user.publicKey, 3);
     const stoneAta = await giveResource("stone", stoneMint, user.publicKey, 2);
+    // [PAYER] Пропуск создаёт сам игрок (его подпись и его rent), затем
+    // оператор начисляет XP — без создания чужого аккаунта.
+    await program.methods.initSeasonPass(seasonId).accounts({
+      config: configPda, player: user.publicKey, season, seasonPass, systemProgram: SystemProgram.programId,
+    }).signers([user]).rpc();
     await program.methods.grantSeasonXp(4_000).accounts({
       config: configPda, authority, user: user.publicKey, season, seasonPass,
-      systemProgram: SystemProgram.programId,
     }).rpc();
 
     const playerBefore = await program.account.player.fetch(player);

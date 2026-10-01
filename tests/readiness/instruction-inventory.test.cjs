@@ -45,20 +45,20 @@ const edit = (tmp, rel, fn) => { const p = path.join(tmp, rel); fs.writeFileSync
 const editJson = (tmp, rel, fn) => edit(tmp, rel, (text) => `${JSON.stringify(fn(JSON.parse(text)), null, 2)}\n`);
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 169 инструкций, все классифицированы, файлы свежие', () => {
+test('репозиторий проходит гейт: 170 инструкций, все классифицированы, файлы свежие', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /169 инструкций, все классифицированы/);
+  assert.match(result.out, /170 инструкций, все классифицированы/);
 });
 
 test('счётчики по программам совпадают с IDL, а у каждой инструкции есть обработчик', () => {
   const inventory = JSON.parse(read('docs/INSTRUCTION_INVENTORY.json'));
-  const expected = { aof_core: 121, aof_market: 12, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
+  const expected = { aof_core: 122, aof_market: 12, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
   for (const [name, count] of Object.entries(expected)) {
     assert.equal(JSON.parse(read(`aof_backend/src/idl/${name}.json`)).instructions.length, count, `IDL ${name}`);
     assert.equal(inventory.programs[name].instructions, count, `инвентарь ${name}`);
   }
-  assert.equal(inventory.totals.instructions, 169);
+  assert.equal(inventory.totals.instructions, 170);
   for (const ix of inventory.instructions) {
     assert.ok(ix.handler.file, `${ix.program}.${ix.name}: не найден обработчик (${ix.handler.path})`);
     assert.ok(ix.role && ix.status && ix.note, `${ix.program}.${ix.name}: нет классификации`);
@@ -234,7 +234,7 @@ test('--compare-cu сверяет статический охват с CU-отч
       '| MintTool | 4 | 41000 | 38000 | 20.5% |', '| SetFees | 1 | 9000 | 9000 | 4.5% |', '| NotInIdl | 1 | 100 | 100 | 0.1% |'].join('\n'));
     let result = run(['--compare-cu', report]);
     assert.equal(result.code, 0, result.out);
-    assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 121 в IDL aof_core/);
+    assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 122 в IDL aof_core/);
     assert.match(result.out, /В отчёте, но не в IDL \(1\): NotInIdl/);
     assert.match(result.out, /Не затронуты ни тестами, ни CU-отчётом/);
     fs.appendFileSync(report, '\n| Craft | 1 | 160001 | 160001 | 80% |\n');

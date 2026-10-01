@@ -2807,7 +2807,6 @@ export type AofCore = {
         },
         {
           "name": "seasonPass",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -2836,11 +2835,8 @@ export type AofCore = {
                 "account": "Season"
               }
             ]
-          }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
+          },
+          "writable": true
         }
       ],
       "args": [
@@ -8554,10 +8550,48 @@ export type AofCore = {
       ],
       "accounts": [
         {
-          "name": "config"
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
-          "name": "materialMints"
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "authority",
@@ -8565,7 +8599,20 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "auth"
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "mint",
@@ -8578,6 +8625,11 @@ export type AofCore = {
         {
           "name": "treasuryToken",
           "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "player",
@@ -11006,6 +11058,61 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "initSeasonPass",
+      "discriminator": [
+        239,
+        143,
+        156,
+        204,
+        138,
+        196,
+        32,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "season"
+        },
+        {
+          "name": "seasonPass",
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seasonId",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -12544,6 +12651,19 @@ export type AofCore = {
         124,
         77
       ]
+    },
+    {
+      "name": "seasonPassInitialized",
+      "discriminator": [
+        200,
+        106,
+        51,
+        0,
+        35,
+        241,
+        250,
+        231
+      ]
     }
   ],
   "errors": [
@@ -13251,6 +13371,11 @@ export type AofCore = {
       "code": 6140,
       "name": "rentalSessionTooLong",
       "msg": "Mining session must end before the rental does"
+    },
+    {
+      "code": 6141,
+      "name": "seasonPassNotInitialized",
+      "msg": "Season pass is not initialized; the player must call init_season_pass first"
     }
   ],
   "types": [
@@ -16889,6 +17014,22 @@ export type AofCore = {
           {
             "name": "to",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seasonPassInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "seasonId",
+            "type": "u32"
           }
         ]
       }

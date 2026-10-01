@@ -593,11 +593,17 @@ pub struct MintResourceOnce<'info> {
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
     #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
     pub treasury_token: Box<Account<'info, TokenAccount>>,
-    /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
-    /// создаём с нулевыми перками — mint_resource не должен блокироваться
-    /// отсутствием профиля.
+    /// [PAYER] Получатель награды и единственный плательщик этой инструкции:
+    /// `RewardReceipt` — доказательство игрока, а `Player` — его профиль, поэтому
+    /// и rent, и подпись его. Authority больше не оплачивает аккаунты игрока и
+    /// остаётся только авторизацией минта; для claim'а `payer.key()` обязан
+    /// совпасть с владельцем ATA-получателя.
+    #[account(mut, constraint = payer.key() == token_account.owner @ AofError::Unauthorized)]
+    pub payer: Signer<'info>,
+    /// Профиль игрока: создаётся вместе с его подписью и за его счёт
+    /// (`init_if_needed`, чтобы выдача работала и для нового кошелька).
     #[account(
-        init_if_needed, payer = authority, space = PLAYER_SPACE,
+        init_if_needed, payer = payer, space = PLAYER_SPACE,
         seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
     )]
     pub player: Box<Account<'info, Player>>,
@@ -609,7 +615,8 @@ pub struct MintResourceOnce<'info> {
     /// in one global namespace: a receipt minted for wallet A permanently
     /// blocked the same reward ID for wallet B (a cross-wallet DoS that looked
     /// like "reward already claimed"). The recipient is now part of the seed.
-    #[account(init, payer = authority, space = 8 + RewardReceipt::INIT_SPACE,
+    /// [PAYER] `init`, но платит игрок: чек — его доказательство выплаты.
+    #[account(init, payer = payer, space = 8 + RewardReceipt::INIT_SPACE,
         seeds = [b"reward_receipt", token_account.owner.as_ref(), reward_id.as_ref()], bump)]
     pub reward_receipt: Box<Account<'info, RewardReceipt>>,
     pub system_program: Program<'info, System>,
@@ -3728,19 +3735,45 @@ pub struct PurchaseSeasonPass<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// [PAYER] Выдача XP больше не создаёт пропуск: пропуск — платный аккаунт
+/// игрока, а `init_if_needed, payer = authority` означал бесплатную выдачу за
+/// счёт проекта. Создание выделено в `InitSeasonPass` (подписывает и платит
+/// игрок), а здесь authority только увеличивает XP уже существующего пропуска.
 #[derive(Accounts)]
 pub struct GrantSeasonXp<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub authority: Signer<'info>,
-    /// CHECK: игрок, которому начисляется XP
+    /// CHECK: игрок, которому начисляется XP (не подписант: XP считает оператор)
     pub user: UncheckedAccount<'info>,
     #[account(seeds = [SEASON_SEED, &season.season_id.to_le_bytes()], bump = season.bump)]
     pub season: Account<'info, Season>,
     #[account(
-        init_if_needed, payer = authority, space = SEASON_PASS_SPACE,
-        seeds = [SEASON_PASS_SEED, user.key().as_ref(), &season.season_id.to_le_bytes()], bump
+        mut,
+        seeds = [SEASON_PASS_SEED, user.key().as_ref(), &season.season_id.to_le_bytes()], bump,
+        constraint = season_pass.season_id == season.season_id @ AofError::SeasonMismatch,
+        constraint = season_pass.owner == user.key() @ AofError::Unauthorized,
+    )]
+    pub season_pass: Account<'info, SeasonPass>,
+}
+
+/// [PAYER] Отдельное создание сезонного пропуска: подписывает и оплачивает
+/// только сам игрок, поэтому операторский `grant_season_xp` не может выдать
+/// платный аккаунт бесплатно. `PurchaseSeasonPass` дальше только апгрейдит
+/// существующий пропуск до premium-трека.
+#[derive(Accounts)]
+#[instruction(season_id: u32)]
+pub struct InitSeasonPass<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub player: Signer<'info>,
+    #[account(seeds = [SEASON_SEED, &season_id.to_le_bytes()], bump = season.bump)]
+    pub season: Account<'info, Season>,
+    #[account(
+        init, payer = player, space = SEASON_PASS_SPACE,
+        seeds = [SEASON_PASS_SEED, player.key().as_ref(), &season_id.to_le_bytes()], bump
     )]
     pub season_pass: Account<'info, SeasonPass>,
     pub system_program: Program<'info, System>,
@@ -4351,6 +4384,11 @@ pub mod aof_core {
     pub fn purchase_season_pass(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
         instructions::season::purchase_pass_handler(ctx)
     }
+    /// [PAYER] Создание пропуска игроком: его подпись и его rent.
+    pub fn init_season_pass(ctx: Context<InitSeasonPass>, season_id: u32) -> Result<()> {
+        instructions::season::init_pass_handler(ctx, season_id)
+    }
+    /// Операторская выдача XP: только существующий пропуск, без создания.
     pub fn grant_season_xp(ctx: Context<GrantSeasonXp>, amount: u32) -> Result<()> {
         instructions::season::grant_xp_handler(ctx, amount)
     }

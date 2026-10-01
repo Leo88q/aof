@@ -151,6 +151,34 @@ payer = кошелёк игрока, подписывает игрок; backend 
 (`tests/aof_payer_funding.ts`, pending validator), обнуление долга в `payer-audit`, отчёт из 10
 пунктов в PR.
 
+**Коммит 5 (player-claimed rewards and season initialization) — исходники готовы, pending compilation.**
+
+* `MintResourceOnce`: добавлен `payer: Signer` с констрейнтом `payer.key() == token_account.owner`;
+  `player` (профиль) и `reward_receipt` теперь `payer = player` — чек награды и профиль игрока
+  оплачивает получатель, authority только авторизует минт.
+* `GrantSeasonXp`: `init_if_needed, payer = authority` удалён, добавлены констрейнты
+  `season_pass.owner == user` и `season_id == season.season_id`, а handler требует существующий
+  пропуск (`AofError::SeasonPassNotInitialized`, вариант добавлен в конец enum, чтобы не сдвигать коды).
+* Новая инструкция `InitSeasonPass` (`player: Signer`, `init, payer = player`) + событие
+  `SeasonPassInitialized`; `PurchaseSeasonPass` остаётся апгрейдом существующего пропуска.
+* Backend: `/inbox/claim` строит частично подписанную транзакцию (`payer: ownerPk`,
+  `coSign([createUserAta, ix], ownerPk)`), ATA казны оплачивает проект отдельно и только если её нет,
+  а подтверждение приходит в новый `/inbox/claim/confirm` — по on-chain `RewardReceipt`, не по словам
+  клиента. Повторный claim до подписи выдаёт свежую транзакцию (иначе истёкший блокхаш навсегда
+  блокировал бы награду); от двойной выплаты защищает сам чек.
+* Backend: `/season/xp/grant` проверяет существование пропуска и возвращает
+  `409 SEASON_PASS_NOT_INITIALIZED`; новый `/season/pass/init` отдаёт игроку `{ tx }` (authority не нужен).
+* Frontend: интенты `rewardClaim` и `seasonPassInit` (точные аккаунты, сумма, вид ресурса, reward_id,
+  сезон), `api.inbox.confirmClaim`, `api.season.passInit`, двухшаговый claim в `InboxHome`.
+* Тесты: `tests/readiness/payer-reward-claim.test.cjs` (7); обновлены валидаторные
+  `tests/aof_core.ts` (payer + подпись игрока, дельта lamports) и `tests/aof_extended.ts`
+  (`init_season_pass`, `SeasonPassNotInitialized`); добавлен `tests/aof_payer_funding.ts` —
+  10 приёмочных payer-тестов (8 и 9 помечены skip: нужен VRF-стенд и warp окна refund; те же
+  свойства уже проверяются в `tests/aof_vrf_localnet.ts`).
+* Долг плательщиков по гейту: **0** (было 5). Остаётся коммит 6 — backend перестаёт оплачивать ATA
+  игрока в остальных роутах (`resources.ts`, `admin.ts`, `hotMarket.ts`); этот слой гейт
+  `payer-audit` не видит, он закрывается `tests/readiness/ata-funding.test.cjs`.
+
 ## Payer acceptance tests (обязательный минимум, 10)
 
 1. игрок платит за `Player`/профиль; 2. игрок платит за `ToolData`; 3. игрок платит за

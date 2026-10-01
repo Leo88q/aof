@@ -2801,7 +2801,6 @@
         },
         {
           "name": "season_pass",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -2830,11 +2829,8 @@
                 "account": "Season"
               }
             ]
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          },
+          "writable": true
         }
       ],
       "args": [
@@ -8548,10 +8544,48 @@
       ],
       "accounts": [
         {
-          "name": "config"
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
-          "name": "material_mints"
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "authority",
@@ -8559,7 +8593,20 @@
           "signer": true
         },
         {
-          "name": "auth"
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "mint",
@@ -8572,6 +8619,11 @@
         {
           "name": "treasury_token",
           "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "player",
@@ -11000,6 +11052,61 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "init_season_pass",
+      "discriminator": [
+        239,
+        143,
+        156,
+        204,
+        138,
+        196,
+        32,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "season"
+        },
+        {
+          "name": "season_pass",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -12538,6 +12645,19 @@
         124,
         77
       ]
+    },
+    {
+      "name": "SeasonPassInitialized",
+      "discriminator": [
+        200,
+        106,
+        51,
+        0,
+        35,
+        241,
+        250,
+        231
+      ]
     }
   ],
   "errors": [
@@ -13245,6 +13365,11 @@
       "code": 6140,
       "name": "RentalSessionTooLong",
       "msg": "Mining session must end before the rental does"
+    },
+    {
+      "code": 6141,
+      "name": "SeasonPassNotInitialized",
+      "msg": "Season pass is not initialized; the player must call init_season_pass first"
     }
   ],
   "types": [
@@ -16883,6 +17008,22 @@
           {
             "name": "to",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonPassInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "season_id",
+            "type": "u32"
           }
         ]
       }

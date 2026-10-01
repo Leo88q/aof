@@ -212,6 +212,11 @@
         "status": "active",
         "note": "Оператор открывает сезон (bringup создаёт сезон 1, 42-дневное окно ставит программа)."
       },
+      "init_season_pass": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "[PAYER] Создание сезонного пропуска игроком: подписывает и оплачивает сам игрок, операторская выдача XP (grant_season_xp) его больше не создаёт. После создания PurchaseSeasonPass апгрейдит пропуск до premium-трека."
+      },
       "initialize": {
         "role": "initialization",
         "status": "active",

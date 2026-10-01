@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 121 | 1 | 91 (75%) | 12 | 1 |
+| aof_core | 122 | 1 | 92 (75%) | 13 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 7 | 6 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **169** | **7** | **97** (57%) | **23** | **7** |
+| **всего** | **170** | **7** | **98** (58%) | **24** | **7** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -31,7 +31,7 @@
 
 | Роль | aof_core | aof_market | aof_quests | aof_rebirth | aof_liquidity | aof_session_keys | всего |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| gameplay | 80 | 4 | 9 | 1 | 2 | 4 | 100 |
+| gameplay | 81 | 4 | 9 | 1 | 2 | 4 | 101 |
 | admin | 21 | 5 | 7 | 3 | 3 | 1 | 40 |
 | emergency | 6 | 1 | 1 | 0 | 0 | 0 | 8 |
 | migration | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -54,7 +54,7 @@
 | aof_session_keys.session_check_and_spend | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
 | aof_session_keys.session_create | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
 
-## Без найденных call sites (23)
+## Без найденных call sites (24)
 
 Не «мёртвый код», а список мест для ручной проверки. «Тесты» — есть ли хоть одно покрытие (validator / самотест / readiness / Rust).
 Инструкции с общими именами (23: ротация authority, set_fees, set_paused, vrf_pool_*) исключены: по тексту нельзя определить, какой программе принадлежит упоминание.
@@ -65,6 +65,7 @@
 | aof_core.match_resource_orders | compatibility | active | validator, readiness, rust | Матчинг ордербука v1; новый код использует match_resource_orders_v2 (цена за целый ресурс, эскроу с округлением вверх). Обработчик активен. |
 | aof_core.place_buy_order | compatibility | active | validator, readiness | Размещение ордера v1; новый код использует place_buy_order_v2. Обработчик активен — ждёт решения владельца. |
 | aof_core.place_sell_order | compatibility | active | validator, readiness | Размещение ордера v1; новый код использует place_sell_order_v2. Обработчик активен — ждёт решения владельца. |
+| aof_core.purchase_season_pass | gameplay | disabled-on-chain | validator, readiness, rust | disabled / product decision pending — Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
 | aof_core.set_reroll_config | admin | active | readiness | Шансы реролла. |
 | aof_core.refund_lottery_round | emergency | active | — | Восстановление: возврат билетов раунда, который не удалось разыграть (аудит F-23). |
 | aof_core.migrate_config_v2 | migration | active | rust | Одноразовый перевод Config на раскладку v2 (роли operator/guardian). |
@@ -99,30 +100,30 @@
 | aof_core | burn_nft | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | burn_resource | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
 | aof_core | burn_tool | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
-| aof_core | buy_lottery_ticket | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 0 | 0 | ✓ |
+| aof_core | buy_lottery_ticket | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 | ✓ |
 | aof_core | cancel_buy_order | compatibility | active | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_core | cancel_sell_order | compatibility | active | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
-| aof_core | claim_lottery_prize | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
+| aof_core | claim_lottery_prize | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
 | aof_core | claim_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | collect_bread | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 3 | 0 |  |
 | aof_core | collect_flour | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
 | aof_core | collect_mining | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 3 | 0 | ✓ |
 | aof_core | collect_well_water | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 1 |  |
-| aof_core | collector_stake | gameplay | active | 1 | 0 | 3 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
-| aof_core | collector_unstake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
+| aof_core | collector_stake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
+| aof_core | collector_unstake | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | commit_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_core | craft | gameplay | active | 5 | 1 | 14 | 1 | 3 | 0 | 0 | 2 | 6 | 0 |  |
 | aof_core | craft_order_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_fulfill | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_recipe | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
-| aof_core | deposit_gas | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 3 | 0 | 2 | 1 |  |
+| aof_core | deposit_gas | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 4 | 0 | 2 | 1 |  |
 | aof_core | draw_lottery | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 0 |  |
 | aof_core | explore_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 3 | 0 |  |
 | aof_core | forge_attempt_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | forge_attempt_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 0 |  |
 | aof_core | forge_attempt_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
-| aof_core | grant_season_xp | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
+| aof_core | grant_season_xp | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 3 | 0 | ✓ |
 | aof_core | harvest_wheat | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
 | aof_core | init_craft_economy | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_lottery_round | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -130,13 +131,13 @@
 | aof_core | init_pack_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_rarity_counter | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_reroll_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
-| aof_core | init_season | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
+| aof_core | init_season | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 | ✓ |
 | aof_core | initialize | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | mint_resource | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 3 | 2 | 4 | 0 | ✓ |
-| aof_core | mint_tool | gameplay | active | 2 | 0 | 1 | 0 | 2 | 0 | 5 | 1 | 5 | 1 | ✓ |
+| aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 6 | 1 | 4 | 1 | ✓ |
 | aof_core | offer_accept | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | offer_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | offer_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -148,7 +149,7 @@
 | aof_core | place_buy_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | place_sell_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | plant_seeds | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | purchase_season_pass | gameplay | disabled-on-chain | 0 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
+| aof_core | purchase_season_pass | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | referral_bind | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | referral_upgrade | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
@@ -167,17 +168,17 @@
 | aof_core | set_paused ~ | emergency | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | set_reroll_config | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_core | set_resource_mints | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
-| aof_core | stake | gameplay | active | 1 | 0 | 3 | 0 | 1 | 0 | 2 | 1 | 1 | 0 |  |
+| aof_core | stake | gameplay | active | 1 | 0 | 2 | 0 | 1 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | start_baking | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | start_exploration_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | start_milling | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 2 | 0 | 2 | 0 | ✓ |
+| aof_core | start_mining | gameplay | active | 1 | 1 | 0 | 0 | 1 | 0 | 3 | 0 | 2 | 0 | ✓ |
 | aof_core | sweep_gas_fees | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
-| aof_core | unstake | gameplay | active | 1 | 0 | 3 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
+| aof_core | unstake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | upgrade_exploration_tier | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | weather_crank | gameplay | active | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
-| aof_core | withdraw_gas | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 2 | 0 | 2 | 1 |  |
-| aof_core | mint_resource_once | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 2 | 3 | 0 |  |
+| aof_core | withdraw_gas | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 0 | 2 | 1 |  |
+| aof_core | mint_resource_once | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 4 | 0 |  |
 | aof_core | marketplace_buy_bounded | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | init_issuance_cap | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | set_issuance_cap | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
@@ -204,15 +205,16 @@
 | aof_core | reroll_random_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | explore_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | expire_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
-| aof_core | refund_lottery_ticket | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 1 | 1 | ✓ |
-| aof_core | place_buy_order_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | place_sell_order_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | cancel_buy_order_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | cancel_sell_order_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | match_resource_orders_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | reset_for_rebirth | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
+| aof_core | refund_lottery_ticket | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 1 | ✓ |
+| aof_core | place_buy_order_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | place_sell_order_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | cancel_buy_order_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | cancel_sell_order_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | match_resource_orders_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | reset_for_rebirth | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | transfer_tool | gameplay | active | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | 0 |  |
 | aof_core | sync_tool_owner | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
+| aof_core | init_season_pass | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 0 | ✓ |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_market | hot_market_sell_into_queue | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
@@ -244,7 +246,7 @@
 | aof_quests | set_potato_bank_paused | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | vrf_pool_add ~ | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | vrf_pool_set_retired ~ | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
-| aof_rebirth | do_rebirth | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 2 | 3 | 0 |  |
+| aof_rebirth | do_rebirth | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 3 | 0 |  |
 | aof_rebirth | init_rebirth_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_rebirth | set_pending_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_rebirth | accept_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |

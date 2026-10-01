@@ -3,15 +3,7 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **89**; нарушают принцип (долг до деплоя): **3**.
-
-## Долг: платит оператор, а должен игрок
-
-| Инструкция | Аккаунт | Тип | Платит сейчас | Должен | Причина |
-|---|---|---|---|---|---|
-| aof_core.GrantSeasonXp | season_pass | SeasonPass | authority | player | сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия |
-| aof_core.MintResourceOnce | player | Player | authority | player | то же, что MintResource.player: профиль игрока создаётся за счёт оператора на выдаче награды |
-| aof_core.MintResourceOnce | reward_receipt | RewardReceipt | authority | player | чек награды игрока (proof выплаты) оплачивает оператор; должен оплачивать игрок в своей claim-транзакции |
+Инициализаций аккаунтов: **89**; нарушают принцип (долг до деплоя): **0**.
 
 ## Все инициализации
 
@@ -30,7 +22,6 @@
 | aof_core | ExploreReveal | user_wood | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
 | aof_core | ForgeAttemptCommit | enchant_slot | EnchantSlot | init_if_needed | user | player | player | ok | — | — |
 | aof_core | ForgeAttemptCommit | forge_commit | ForgeCommit | init | user | player | player | ok | — | — |
-| aof_core | GrantSeasonXp | season_pass | SeasonPass | init_if_needed | authority (оператор) | player | player | debt | — | — |
 | aof_core | HarvestWheat | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | InitCraftEconomy | craft_economy | CraftEconomy | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | Initialize | config | Config | init | authority (оператор) | global | operator | ok | — | — |
@@ -41,10 +32,11 @@
 | aof_core | InitRarityCounter | rarity_counter | RarityCounter | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | InitRerollConfig | reroll_config | RerollConfig | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | InitSeason | season | Season | init | authority (оператор) | global | operator | ok | — | — |
+| aof_core | InitSeasonPass | season_pass | SeasonPass | init | player | player | player | ok | — | — |
 | aof_core | InitVaultGuard | vault_guard | VaultGuard | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | MarketplaceList | listing | Listing | init | seller | player | player | ok | — | — |
-| aof_core | MintResourceOnce | player | Player | init_if_needed | authority (оператор) | player | player | debt | — | — |
-| aof_core | MintResourceOnce | reward_receipt | RewardReceipt | init | authority (оператор) | player | player | debt | — | — |
+| aof_core | MintResourceOnce | player | Player | init_if_needed | payer | player | player | ok | — | — |
+| aof_core | MintResourceOnce | reward_receipt | RewardReceipt | init | payer | player | player | ok | — | — |
 | aof_core | MintTool | tool_data | ToolData | init_if_needed | payer | player | player | ok | — | — |
 | aof_core | OfferCreateCtx | offer | Offer | init | buyer | player | player | ok | — | — |
 | aof_core | PackOpenCommit | pack_commit | PackCommit | init | user | player | player | ok | — | — |

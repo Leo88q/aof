@@ -84,12 +84,6 @@
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     },
-    "aof_core.GrantSeasonXp.season_pass": {
-      "owner": "player",
-      "payer": "player",
-      "status": "debt",
-      "reason": "сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия"
-    },
     "aof_core.HarvestWheat.energy_account": {
       "owner": "player",
       "payer": "player",
@@ -144,6 +138,12 @@
       "status": "ok",
       "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
     },
+    "aof_core.InitSeasonPass.season_pass": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "сезонный пропуск создаёт сам игрок (`init_season_pass`): его подпись, его rent. Операторская выдача XP (`grant_season_xp`) больше не создаёт и не оплачивает чужой аккаунт"
+    },
     "aof_core.InitVaultGuard.vault_guard": {
       "owner": "global",
       "payer": "operator",
@@ -165,14 +165,14 @@
     "aof_core.MintResourceOnce.player": {
       "owner": "player",
       "payer": "player",
-      "status": "debt",
-      "reason": "то же, что MintResource.player: профиль игрока создаётся за счёт оператора на выдаче награды"
+      "status": "ok",
+      "reason": "профиль игрока создаётся в его claim-транзакции: появился `payer: Signer` с констрейнтом `payer == token_account.owner`, и `init_if_needed` платит `payer`"
     },
     "aof_core.MintResourceOnce.reward_receipt": {
       "owner": "player",
       "payer": "player",
-      "status": "debt",
-      "reason": "чек награды игрока (proof выплаты) оплачивает оператор; должен оплачивать игрок в своей claim-транзакции"
+      "status": "ok",
+      "reason": "чек награды — доказательство игрока: `init, payer = payer`, где `payer` — подписант-получатель"
     },
     "aof_core.MintTool.tool_data": {
       "owner": "player",

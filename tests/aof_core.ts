@@ -267,9 +267,12 @@ describe("aof-core: security & core flows", () => {
     const ata = await ensureAta(potatoMint, user.publicKey);
     const treasAta = await ensureAta(potatoMint, authority);
     const cap = issuanceCapPda("potato");
+    // [PAYER] mint_resource_once теперь требует подпись игрока-получателя
+    // (`payer == token_account.owner`): Player и RewardReceipt оплачивает он,
+    // а не кошелёк оператора.
     const mintAccounts = {
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: cap, mint: potatoMint,
-      tokenAccount: ata, treasuryToken: treasAta, player: playerPda(user.publicKey),
+      tokenAccount: ata, treasuryToken: treasAta, payer: user.publicKey, player: playerPda(user.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId };
     const setCap = (epoch: BN, limit: BN) => program.methods.setIssuanceCap({ potato: {} }, epoch, limit)
       .accounts({ config: configPda, authority, issuanceCap: cap }).rpc();
@@ -309,7 +312,7 @@ describe("aof-core: security & core flows", () => {
     // [AUDIT F-28] the tombstone is namespaced by (recipient, reward_id).
     const receipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(rewardId)]);
     await expectError(program.methods.mintResourceOnce({ potato: {} }, new BN(1), rewardId)
-      .accounts({ ...mintAccounts, rewardReceipt: receipt }).rpc(), "IssuanceCapExceeded");
+      .accounts({ ...mintAccounts, rewardReceipt: receipt }).signers([user]).rpc(), "IssuanceCapExceeded");
     expect(await provider.connection.getAccountInfo(receipt)).to.equal(null);
     // cap = 0 is an explicit halt switch (distinct error from exhaustion).
     await setCap(longEpoch, new BN(0));
@@ -332,18 +335,22 @@ describe("aof-core: security & core flows", () => {
     // [AUDIT F-28] (recipient, reward_id), not reward_id alone.
     const rewardReceipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(rewardId)]);
     const gross = UNIT.muln(2);
+    // [PAYER] Claim награды подписывает получатель: он же платит за свой
+    // профиль и чек, authority только авторизует минт.
     const accounts = {
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("wood"),
-      mint: woodMint, tokenAccount: userWood, treasuryToken: treasuryWood, player: playerPda(user.publicKey),
+      mint: woodMint, tokenAccount: userWood, treasuryToken: treasuryWood, payer: user.publicKey,
+      player: playerPda(user.publicKey),
       rewardReceipt, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     };
     await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId)
-      .accounts({ ...accounts, authority: stranger.publicKey }).signers([stranger]).rpc(), "Unauthorized");
+      .accounts({ ...accounts, authority: stranger.publicKey }).signers([stranger, user]).rpc(), "Unauthorized");
     await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId)
-      .accounts({ ...accounts, mint: stoneMint, tokenAccount: userStone, treasuryToken: treasuryStone }).rpc(), "InvalidResourceKind");
+      .accounts({ ...accounts, mint: stoneMint, tokenAccount: userStone, treasuryToken: treasuryStone })
+      .signers([user]).rpc(), "InvalidResourceKind");
     expect(await provider.connection.getAccountInfo(rewardReceipt)).to.equal(null);
     const pauseSig = await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
-    await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).rpc(), "Paused");
+    await expectError(program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).signers([user]).rpc(), "Paused");
     await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
     // set_paused must leave an on-chain event trail (Watchtower PausedToggled).
     {
@@ -355,7 +362,10 @@ describe("aof-core: security & core flows", () => {
       expect((ev as any).data.authority.toBase58()).to.equal(authority.toBase58());
     }
     const before = (await balance(userWood)).add(await balance(treasuryWood));
-    await program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).rpc();
+    const userLamportsBefore = await balance(user.publicKey);
+    await program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts(accounts).signers([user]).rpc();
+    // [PAYER] весь rent профиля и чека списан с игрока, а не с оператора.
+    expect(await balance(user.publicKey)).to.be.lessThan(userLamportsBefore);
     const receipt = await program.account.rewardReceipt.fetch(rewardReceipt);
     expect(receipt.recipient.toBase58()).to.equal(user.publicKey.toBase58());
     expect(receipt.mint.toBase58()).to.equal(woodMint.toBase58());
@@ -368,7 +378,7 @@ describe("aof-core: security & core flows", () => {
     {
       let rejected = false;
       try {
-        await program.methods.mintResourceOnce({ wood: {} }, gross.addn(1), rewardId).accounts(accounts).rpc();
+        await program.methods.mintResourceOnce({ wood: {} }, gross.addn(1), rewardId).accounts(accounts).signers([user]).rpc();
       } catch (error: any) {
         const log = `${error.message} ${(error.logs || []).join(" ")}`;
         expect(log).to.match(/already in use|already initialized|custom program error: 0x0/i);
@@ -379,8 +389,9 @@ describe("aof-core: security & core flows", () => {
       const strangerBefore = await balance(otherWood);
       const strangerReceipt = pda([B("reward_receipt"), stranger.publicKey.toBuffer(), Buffer.from(rewardId)]);
       await program.methods.mintResourceOnce({ wood: {} }, gross, rewardId).accounts({
-        ...accounts, tokenAccount: otherWood, player: playerPda(stranger.publicKey), rewardReceipt: strangerReceipt,
-      }).rpc();
+        ...accounts, tokenAccount: otherWood, payer: stranger.publicKey,
+        player: playerPda(stranger.publicKey), rewardReceipt: strangerReceipt,
+      }).signers([stranger]).rpc();
       expect((await program.account.rewardReceipt.fetch(strangerReceipt)).recipient.toBase58())
         .to.equal(stranger.publicKey.toBase58());
       expect((await balance(otherWood)).gt(strangerBefore)).to.equal(true);
@@ -389,7 +400,7 @@ describe("aof-core: security & core flows", () => {
       const freshId = Array.from(crypto.randomBytes(32));
       const freshReceipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(freshId)]);
       await program.methods.mintResourceOnce({ wood: {} }, UNIT, freshId)
-        .accounts({ ...accounts, rewardReceipt: freshReceipt }).rpc();
+        .accounts({ ...accounts, rewardReceipt: freshReceipt }).signers([user]).rpc();
     }
     // Two different signed messages for one logical reward: exactly one mint.
     const concurrentId = Array.from(crypto.randomBytes(32));

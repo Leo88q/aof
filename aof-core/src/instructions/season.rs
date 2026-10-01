@@ -3,7 +3,7 @@ use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, MintTo};
 use crate::constants::*;
 use crate::state::*;
-use crate::{InitSeason, PurchaseSeasonPass, GrantSeasonXp, ClaimSeasonReward};
+use crate::{InitSeason, InitSeasonPass, PurchaseSeasonPass, GrantSeasonXp, ClaimSeasonReward};
 use crate::ResourceKind;
 use crate::errors::*;
 use crate::events::*;
@@ -14,6 +14,26 @@ pub fn init_season_handler(ctx: Context<InitSeason>, season_id: u32) -> Result<(
     s.start_time = Clock::get()?.unix_timestamp;
     s.bump = ctx.bumps.season;
     emit!(SeasonInitialized { season_id, start_time: s.start_time });
+    Ok(())
+}
+
+/// [PAYER] Создание пропуска — действие игрока: его подпись и его rent.
+/// Отдельная инструкция нужна, чтобы операторская выдача XP (`grant_season_xp`)
+/// не создавала и не оплачивала аккаунт игрока за счёт проекта.
+pub fn init_pass_handler(ctx: Context<InitSeasonPass>, season_id: u32) -> Result<()> {
+    require!(ctx.accounts.season.season_id == season_id, AofError::SeasonMismatch);
+    let now = Clock::get()?.unix_timestamp;
+    let start = ctx.accounts.season.start_time;
+    require!(now >= start, AofError::SeasonNotStarted);
+    let end = start.checked_add(SEASON_LENGTH_SECONDS).ok_or(AofError::MathOverflow)?;
+    require!(now < end, AofError::SeasonEnded);
+    let p = &mut ctx.accounts.season_pass;
+    p.owner = ctx.accounts.player.key();
+    p.season_id = season_id;
+    p.xp = 0;
+    p.premium = false;
+    p.claimed_bitmap = 0;
+    emit!(SeasonPassInitialized { owner: p.owner, season_id });
     Ok(())
 }
 
@@ -62,13 +82,15 @@ pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
 /// только фиксирует результат"), не завязано на конкретные gameplay-
 /// инструкции напрямую, чтобы не раздувать их Accounts-структуры.
 pub fn grant_xp_handler(ctx: Context<GrantSeasonXp>, amount: u32) -> Result<()> {
+    // [PAYER] Пропуск обязан существовать: его создаёт игрок
+    // (`init_season_pass`), а не операторская выдача. `init_if_needed` убран —
+    // проект больше не платит rent за аккаунт игрока, а отсутствие пропуска
+    // даёт понятную ошибку вместо тихой бесплатной выдачи.
+    require!(
+        ctx.accounts.season_pass.owner != Pubkey::default(),
+        AofError::SeasonPassNotInitialized
+    );
     let p = &mut ctx.accounts.season_pass;
-    if p.owner == Pubkey::default() {
-        p.owner = ctx.accounts.user.key();
-        p.season_id = ctx.accounts.season.season_id;
-        p.premium = false;
-        p.claimed_bitmap = 0;
-    }
     p.xp = p.xp.saturating_add(amount);
     emit!(SeasonXpGranted { owner: p.owner, season_id: p.season_id, amount, total_xp: p.xp });
     Ok(())

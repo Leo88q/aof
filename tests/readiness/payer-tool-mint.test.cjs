@@ -111,7 +111,8 @@ test('кошелёк игрока подписывает минт инструм
   const src = read('frontend/src/lib/transactionIntent.ts');
   assert.match(src, /export interface ToolMintIntent/, 'интент описан рядом с остальными');
   assert.match(src, /intent\.kind === "toolMint"\) return validateToolMintIntent/, 'интент подключён к валидации');
-  assert.match(src, /intent\?\.kind === "toolMint" \? 2 : 1/, 'в транзакции две подписи: игрок и authority');
+  assert.match(src, /intent\?\.kind === "toolMint"\s*\n?\s*\|\| intent\?\.kind === "rewardClaim" \? 2 : 1/,
+    'в транзакции две подписи: игрок и authority');
   const body = src.slice(src.indexOf('function validateToolMintIntent'), src.indexOf('function validateOrderbookV2Intent'));
   assert.match(body, /keysEqual\(ix\.keys, expected\)/, 'аккаунты сверяются позиционно');
   assert.match(body, /ix\.data\[12 \+ toolType\.length\] !== RARITY\[intent\.rarity\]/, 'редкость из payload сверяется с интентом');

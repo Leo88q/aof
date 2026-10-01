@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
+import { handleTxResponse } from "../../lib/txFlow";
+import type { RewardClaimIntent } from "../../lib/transactionIntent";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { inboxReadCopy, inboxUiCopy } from "../../i18n/inboxReadCopy";
 import { farmOverviewCopy } from "../../i18n/farmOverviewCopy";
@@ -77,26 +79,59 @@ export function InboxHome() {
       }).catch(() => { /* The message remains unread if confirmation fails. */ });
   }
 
+  function markClaimed(letter: any) {
+    setClaimStatus('confirmed');
+    setLetters(ls => ls.map(l => l.id === letter.id ? { ...l, claimed: true, read: true } : l));
+    setOpened((current: any) => current?.id === letter.id ? { ...current, claimed: true } : current);
+  }
+
   async function claimReward(letter: any) {
     if (!letter?.dbId || !user || claimBusy) return;
     setClaimBusy(true);
     setClaimStatus('preparing');
     try {
-      // The server reads canonical mints and confirms authority-only issuance;
-      // no wallet transaction is returned to the player to sign here.
+      // [PAYER] Награда — claim игрока: сервер отдаёт частично подписанную
+      // транзакцию, где плательщик и подписант — кошелёк игрока (Player и
+      // RewardReceipt оплачивает он, authority добавляет только авторизацию).
+      // Кошелёк проверяет состав транзакции по локальному интенту, подписывает
+      // её и отправляет сам; доказательство выплаты — on-chain RewardReceipt,
+      // поэтому подпись подтверждается отдельным запросом.
       const res: any = await api.inbox.claim({ id: letter.dbId, user });
       if (ownerRef.current !== user) return;
       if (res?.pending) {
         setClaimStatus('pending');
-      } else if (res?.item?.id === letter.dbId && res.item.user === user &&
-                 res.item.claimed === true && res.item.claimState === 'confirmed' &&
-                 ((typeof res.onchainSig === 'string' && res.onchainSig.length > 0) ||
-                  (typeof res.recoveredFromReceipt === 'string' && res.recoveredFromReceipt.length > 0))) {
-        setClaimStatus('confirmed');
-        setLetters(ls => ls.map(l => l.id === letter.id ? { ...l, claimed: true, read: true } : l));
-        setOpened((current: any) => current?.id === letter.id ? { ...current, claimed: true } : current);
-      } else {
+        return;
+      }
+      if (res?.item?.id === letter.dbId && res.item.user === user && res.item.claimed === true &&
+          (res.item.claimState === 'confirmed' || typeof res.recoveredFromReceipt === 'string')) {
+        markClaimed(letter);
+        return;
+      }
+      if (!res?.tx || !res?.quote) {
         setClaimStatus('unknown');
+        return;
+      }
+      const intent: RewardClaimIntent = {
+        kind: 'rewardClaim',
+        user,
+        mint: res.quote.mint,
+        resourceKind: res.quote.resourceKind,
+        amountAtoms: res.quote.amount,
+        treasury: res.quote.treasury,
+        rewardId: res.quote.rewardId,
+      };
+      const sent = await handleTxResponse(res, intent);
+      if (ownerRef.current !== user) return;
+      if (!sent.success || !sent.signature) {
+        setClaimStatus('unknown');
+        return;
+      }
+      const confirmed: any = await api.inbox.confirmClaim({ id: letter.dbId, user, signature: sent.signature });
+      if (ownerRef.current !== user) return;
+      if (confirmed?.item?.claimState === 'confirmed' || typeof confirmed?.onchainSig === 'string') {
+        markClaimed(letter);
+      } else {
+        setClaimStatus('pending');
       }
     } catch {
       if (ownerRef.current === user) setClaimStatus('unknown');

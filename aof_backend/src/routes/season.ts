@@ -3,11 +3,12 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
+import { connection, program } from "../provider";
 import { authPda, configPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
-import { authorityOnly, pk } from "../lib/tx";
+import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireAdmin } from "../middleware/adminAuth";
 import { requireNoFraudHold } from "../security/fraudHold";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -42,6 +43,38 @@ r.post("/pass/purchase", (_req, res) => {
   res.status(503).json({ error: "SEASON_PASS_PAID_TRACK_NOT_READY" });
 });
 
+/**
+ * [PAYER] Создание сезонного пропуска — действие игрока: его подпись и его
+ * rent. Операторская выдача XP (`/xp/grant`) пропуск больше не создаёт, иначе
+ * платный аккаунт игрока появлялся бы за счёт проекта.
+ */
+r.post("/pass/init", requireWalletProof("season_pass_init", "player"), async (req, res) => {
+  try {
+    const player = pk(req.body.player);
+    const seasonId = Number(req.body.seasonId);
+    const [config] = configPda();
+    const [season] = seasonPda(seasonId);
+    const [seasonPass] = seasonPassPda(player, seasonId);
+
+    const ix = await (program.methods as any)
+      .initSeasonPass(seasonId)
+      .accounts({
+        config,
+        player,
+        season,
+        seasonPass,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    // Инструкция player-funded и player-signed: authority здесь не нужен.
+    const tx = await coSign([ix], player);
+    res.json({ tx });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 r.post("/xp/grant", requireAdmin, async (req, res) => {
   try {
     const user = pk(req.body.user);
@@ -51,6 +84,17 @@ r.post("/xp/grant", requireAdmin, async (req, res) => {
     const [season] = seasonPda(seasonId);
     const [seasonPass] = seasonPassPda(user, seasonId);
 
+    // [PAYER] Пропуск обязан существовать: его создаёт сам игрок
+    // (`init_season_pass`). Операторская выдача не создаёт и не оплачивает
+    // аккаунт игрока, поэтому отсутствие пропуска — понятная ошибка клиенту.
+    const passInfo = await connection.getAccountInfo(seasonPass, "confirmed");
+    if (!passInfo) {
+      return res.status(409).json({
+        error: "SEASON_PASS_NOT_INITIALIZED",
+        hint: "player must call POST /season/pass/init first",
+      });
+    }
+
     const ix = await (program.methods as any)
       .grantSeasonXp(amount)
       .accounts({
@@ -59,7 +103,6 @@ r.post("/xp/grant", requireAdmin, async (req, res) => {
         user,
         season,
         seasonPass,
-        systemProgram: SystemProgram.programId,
       })
       .instruction();
 
