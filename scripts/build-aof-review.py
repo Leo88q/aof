@@ -23,11 +23,11 @@ reviews = [
  ('pub struct SessionCheckAndSpend', 'patched-awaiting-runtime', 'authority теперь Signer; добавлен негативный Anchor try_accounts тест; spending по-прежнему отключён.', 'Без авторизации можно резервировать чужой spending budget; атомарная привязка CPI всё ещё отсутствует.'),
  ('pub struct TrustSnapshotUpdate', 'review-required', 'Oracle signer/has_one, system owner субъекта, identity constraint, monotonic epoch; overwrite score является авторизованным обновлением, не reset budget.', 'Компрометация oracle меняет trust tier и будущие лимиты; signer владельца не заменяет oracle governance.'),
  ('pub struct SessionCreate', 'patched-awaiting-runtime', 'init вместо init_if_needed; исправлен SESSION_SPACE с 130 на 146; создание остаётся disabled.', 'Повторное создание не должно сбрасывать spent_today/revocation.'),
- ('pub struct TrustSnapshotUpdate', 'patched-awaiting-runtime', 'Владелец user проверяется через owner=System; stored trust.user связан с seed; oracle подписывает обновление.', 'Чужой snapshot не должен увеличивать лимит игрока.'),
- ('pub struct SessionCheckAndSpend', 'patched-awaiting-runtime', 'Signer authority + seeds + stored authority/session_signer constraints; негативные тесты подмены.', 'Подмена namespace может использовать чужой лимит.'),
+ ('pub struct TrustSnapshotUpdate', 'patched-awaiting-runtime', 'Владелец user проверяется через owner=System; stored trust.user связан с PDA; oracle подписывает обновление.', 'Чужой snapshot не должен увеличивать лимит игрока.'),
+ ('pub struct SessionCheckAndSpend', 'patched-awaiting-runtime', 'Signer authority + PDA-адреса + stored authority/session_signer constraints; негативные тесты подмены.', 'Подмена namespace может использовать чужой лимит.'),
  ('pub fn session_revoke', 'present-awaiting-runtime', 'SessionRevokedEvent уже присутствовал; source regression запрещает удаление.', 'Необнаруженная ревокация позволяет off-chain ботам продолжать попытки расхода.'),
  ('pub fn session_pause', 'present-awaiting-runtime', 'SessionPausedEvent уже присутствовал.', 'Невидимый pause мешает security monitoring и остановке бота.'),
- ('pub struct DrumReveal', 'patched-awaiting-runtime', 'user явно address=drum_commit.user; seeds, stored relation, authority signer и close сохраняются.', 'Подмена получателя или повторный reveal выводят prize treasury.'),
+ ('pub struct DrumReveal', 'patched-awaiting-runtime', 'user явно address=drum_commit.user; PDA-производные адреса, stored relation, authority signer и close сохраняются.', 'Подмена получателя или повторный reveal выводят prize treasury.'),
 ]
 findings = []
 for f, (needle, status, reason, consequence) in zip(base['findings'], reviews):

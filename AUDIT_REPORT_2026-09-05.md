@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # 📋 ОТЧЁТ АУДИТА ПРОЕКТА "AGE OF FARMING"
 
 **Дата:** 2026-09-05 · **Ветка:** main (root `dafaf11`, aof_backend `139c58ac9`) · **Аудитор:** Claude (Fable 5.1)

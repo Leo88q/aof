@@ -1,3 +1,4 @@
+<!-- HISTORICAL — pre-canonical devnet setup note; retained as an audit record, not a deployment instruction. -->
 # Devnet Potato: mint creation and payment gates
 
 **Status: NOT configured; no Potato payments are open.** Potato is a separate external SPL mint; the legacy `aof_core::Config.potato_mint` is the in-game **MIND** mint. Never reuse MIND or reassign historical quest/drum commitments to Potato. This procedure is devnet-only. Never share a seed phrase, keypair JSON or private key in chat or Git.

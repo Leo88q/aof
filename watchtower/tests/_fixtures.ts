@@ -8,7 +8,7 @@ export const CORE = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
 export const MARKET = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo";
 export const QUESTS = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU";
 export const W = { alice: kp("alice"), bob: kp("bob"), authority: kp("authority"), treasury: kp("treasury") };
-export const M = { potato: kp("potato-mint"), wood: kp("wood-mint"), tool1: kp("tool-1"), tool2: kp("tool-2"), mascot: kp("mascot") };
+export const M = { mind: kp("mind-mint"), circuit: kp("circuit-mint"), tool1: kp("tool-1"), tool2: kp("tool-2"), mascot: kp("mascot") };
 const t0 = Date.parse("2026-09-20T10:00:00Z");
 const row = (n: number, programId: string, eventType: string, data: Record<string, unknown>, o: { wallet?: string | null; mint?: string | null; amount?: string | null } = {}) => ({
   signature: sig(n), eventIndex: 0, slot: BigInt(400_000_000 + n), blockTime: new Date(t0 + n * 60_000), programId, eventType,
@@ -17,10 +17,10 @@ const row = (n: number, programId: string, eventType: string, data: Record<strin
 
 export const EVENTS = [
   row(1, CORE, "ToolMinted", { to: W.alice, mint: M.tool1, toolType: 2, rarity: 1 }, { wallet: W.alice, mint: M.tool1 }),
-  row(2, CORE, "MiningCollected", { user: W.alice, toolMint: M.tool1, resourceMint: M.wood, hours: 4, amount: "8000000000", durabilityAfter: 96 }, { wallet: W.alice, mint: M.wood, amount: "8000000000" }),
+  row(2, CORE, "MiningCollected", { user: W.alice, toolMint: M.tool1, resourceMint: M.circuit, hours: 4, amount: "8000000000", durabilityAfter: 96 }, { wallet: W.alice, mint: M.circuit, amount: "8000000000" }),
   row(3, CORE, "ListingSold", { seller: W.alice, buyer: W.bob, mint: M.tool1, priceLamports: "250000000" }, { wallet: W.alice, mint: M.tool1, amount: "250000000" }),
-  row(4, CORE, "ResourceIssued", { kind: 26, mint: M.potato, recipient: W.bob, gross: "5000000000", fee: "400000000", mintedInEpoch: "5000000000", capPerEpoch: "1000000000000", epochStartSlot: "399999000", slot: "400000004" }, { mint: M.potato, amount: "5000000000" }),
-  row(5, CORE, "ToolCrafted", { user: W.bob, burnedMint: M.tool1, mintedMint: M.tool2, rarity: 2, woodCost: "3000000000", stoneCost: "1000000000", mintedCountAfter: 17 }, { wallet: W.bob, mint: M.tool2 }),
+  row(4, CORE, "ResourceIssued", { kind: 26, mint: M.mind, recipient: W.bob, gross: "5000000000", fee: "400000000", mintedInEpoch: "5000000000", capPerEpoch: "1000000000000", epochStartSlot: "399999000", slot: "400000004" }, { mint: M.mind, amount: "5000000000" }),
+  row(5, CORE, "ToolCrafted", { user: W.bob, burnedMint: M.tool1, mintedMint: M.tool2, rarity: 2, circuitCost: "3000000000", siliconCost: "1000000000", mintedCountAfter: 17 }, { wallet: W.bob, mint: M.tool2 }),
   row(6, CORE, "IssuanceCapChanged", { kind: 26, epochSlots: "216000", capPerEpoch: "0", mintedInEpoch: "5000000000", slot: "400000006" }, { mint: null }),
   row(7, MARKET, "HotMarketBought", { buyer: W.bob, rarity: 1, currency: "core", price: "120000000", soldSinceStart: 3 }, { wallet: W.bob, amount: "120000000" }),
   row(8, QUESTS, "QuestRewardClaimed", { user: W.alice, questId: 7, rewardMascot: M.mascot }, { wallet: W.alice, mint: M.mascot }),
@@ -30,7 +30,7 @@ export const EVENTS = [
   row(12, CORE, "AuctionCreated", { seller: W.alice, mint: M.tool2, minBid: "1", endTime: "1790000000" }, { wallet: W.alice }), // intentionally ignored
   row(13, CORE, "Staked", { user: W.alice, mint: M.tool2 }, { wallet: W.alice, mint: M.tool2 }),
   row(14, CORE, "PausedToggled", { paused: true, authority: W.authority, slot: "400000014" }, { wallet: W.authority }),
-  row(15, CORE, "ResourceMintsUpdated", { previous: [M.wood, M.wood, M.wood, M.wood, M.wood, M.potato], current: [M.wood, M.wood, M.wood, M.wood, M.wood, M.tool2], authority: W.authority, slot: "400000015" }, { wallet: W.authority }),
+  row(15, CORE, "ResourceMintsUpdated", { previous: [M.circuit, M.circuit, M.circuit, M.circuit, M.circuit, M.mind], current: [M.circuit, M.circuit, M.circuit, M.circuit, M.circuit, M.tool2], authority: W.authority, slot: "400000015" }, { wallet: W.authority }),
 ];
 
 export const TXS = [

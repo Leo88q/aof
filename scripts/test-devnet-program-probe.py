@@ -70,12 +70,12 @@ def account_blob(account_name: str, size: int = 64) -> bytes:
     return probe.discriminator(account_name) + bytes(size)
 
 
-def config_blob(*, mining: bool, wood: str = CONFIG_DEFAULTS, stone: str = CONFIG_DEFAULTS,
+def config_blob(*, mining: bool, circuit: str = CONFIG_DEFAULTS, silicon: str = CONFIG_DEFAULTS,
                 paused: bool = False) -> bytes:
     data = bytearray(account_blob("Config", CONFIG_LEN - 8))
     data[probe.CONFIG_PAUSED_OFFSET] = 1 if paused else 0
     data[probe.CONFIG_MINING_OFFSET] = 1 if mining else 0
-    for offset, address in ((probe.CONFIG_WOOD_MINT_OFFSET, wood), (probe.CONFIG_STONE_MINT_OFFSET, stone)):
+    for offset, address in ((probe.CONFIG_CIRCUIT_MINT_OFFSET, circuit), (probe.CONFIG_SILICON_MINT_OFFSET, silicon)):
         raw = b58_decode(address)
         data[offset:offset + len(raw)] = raw
     return bytes(data)
@@ -165,7 +165,7 @@ def scenario_configured_partially() -> None:
     check("mining_enabled=False" in rows["Добыча инструментов"]["evidence"],
           "причина выключенной добычи берётся из Config, а не из общего текста")
     check("bringup" in rows["Добыча инструментов"]["action"], "у выключенной добычи есть действие включения")
-    check(rows["Ремонт инструментов"]["state"] == "выключено", "без адресов wood/stone ремонта нет")
+    check(rows["Ремонт инструментов"]["state"] == "выключено", "без адресов circuit/silicon ремонта нет")
     check("11111111" in rows["Ремонт инструментов"]["evidence"], "в доказательстве видны реальные адреса")
     check(rows["Ресурсы и крафт"]["state"] == "выключено", "нет ни одного MaterialMints")
     check(rows["Коллекционеры (allowlist)"]["state"] == "выключено", "allowlist пуст")
@@ -196,11 +196,11 @@ def scenario_configured_partially() -> None:
 
 def scenario_everything_on() -> None:
     print("3. всё включено")
-    wood = "Wood11111111111111111111111111111111111111"
-    stone = "Stone1111111111111111111111111111111111"
+    circuit = "Wood11111111111111111111111111111111111111"
+    silicon = "Stone1111111111111111111111111111111111"
     accounts = {
         "aof_core": [
-            config_blob(mining=True, wood=wood, stone=stone),
+            config_blob(mining=True, circuit=circuit, silicon=silicon),
             account_blob("MaterialMints"),
             account_blob("CraftEconomy"),
             account_blob("RarityCounter"),
@@ -259,10 +259,10 @@ def scenario_everything_on() -> None:
 
 def scenario_contract_blocked_rows() -> None:
     print("3.5 механики, которым нужна новая инструкция")
-    rows = rows_for(FakeRpc({"aof_core": [config_blob(mining=True, wood="Wood11111111111111111111111111111111111111",
-                                                      stone="Stone1111111111111111111111111111111111")]}))
+    rows = rows_for(FakeRpc({"aof_core": [config_blob(mining=True, circuit="Wood11111111111111111111111111111111111111",
+                                                      silicon="Stone1111111111111111111111111111111111")]}))
     for title, instruction in (("Фляги: применение", "use_flask"),
-                               ("Обмен ресурсов на энергию", "exchange_food_energy"),
+                               ("Обмен ресурсов на энергию", "exchange_data_energy"),
                                ("Награда за лук (устаревший предмет)", "bow_reward_commit")):
         row = rows[title]
         check(row["state"] == "выключено", f"{title}: инструкции нет в IDL — механика не может быть включена")

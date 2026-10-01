@@ -14,37 +14,37 @@ function makeAccounts(): {
   ) as Record<string, any>;
   return {
     config: {
-      foodMint: addresses.DATA,
-      woodMint: addresses.CIRCUIT,
-      stoneMint: addresses.SILICON,
-      potatoMint: addresses.MIND,
-      seedsMint: addresses.NEURON,
-      waterMint: addresses.POWER,
+      dataMint: addresses.DATA,
+      circuitMint: addresses.CIRCUIT,
+      siliconMint: addresses.SILICON,
+      mindMint: addresses.MIND,
+      neuronMint: addresses.NEURON,
+      powerMint: addresses.POWER,
     },
     material: {
-      seeds: addresses.NEURON,
-      wheat: addresses.SYNAPSE,
-      flour: addresses.SIGNAL,
-      bread: addresses.MODEL,
-      water: addresses.POWER,
-      coal: addresses.COMPUTE,
-      meat: addresses.DATASET,
-      stone_blue: addresses.BLUE_CORE,
-      stone_purple: addresses.PURPLE_CORE,
-      stone_red: addresses.RED_CORE,
-      sand_white: addresses.CLEAR_QUARTZ,
-      sand_pink: addresses.ROSE_QUARTZ,
-      sand_yellow: addresses.AMBER_QUARTZ,
-      gem_blue: addresses.QUANTUM_BIT,
-      gem_orange: addresses.NEURAL_CHIP,
-      gem_white: addresses.PHOTON_BIT,
-      gem_green: addresses.BIO_CHIP,
-      flask_blue: addresses.CRYO_FLUID,
-      flask_yellow: addresses.VOLT_FLUID,
-      flask_green: addresses.BIO_FLUID,
-      flask_pink: addresses.NANO_FLUID,
-      flask_purple: addresses.QUANTUM_FLUID,
-      love_heart: addresses.SOUL_CORE,
+      neuron: addresses.NEURON,
+      synapse: addresses.SYNAPSE,
+      signal: addresses.SIGNAL,
+      model: addresses.MODEL,
+      power: addresses.POWER,
+      compute: addresses.COMPUTE,
+      dataset: addresses.DATASET,
+      blueCore: addresses.BLUE_CORE,
+      purpleCore: addresses.PURPLE_CORE,
+      redCore: addresses.RED_CORE,
+      clearQuartz: addresses.CLEAR_QUARTZ,
+      roseQuartz: addresses.ROSE_QUARTZ,
+      amberQuartz: addresses.AMBER_QUARTZ,
+      quantumBit: addresses.QUANTUM_BIT,
+      neuralChip: addresses.NEURAL_CHIP,
+      photonBit: addresses.PHOTON_BIT,
+      bioChip: addresses.BIO_CHIP,
+      cryoFluid: addresses.CRYO_FLUID,
+      voltFluid: addresses.VOLT_FLUID,
+      bioFluid: addresses.BIO_FLUID,
+      nanoFluid: addresses.NANO_FLUID,
+      quantumFluid: addresses.QUANTUM_FLUID,
+      soulCore: addresses.SOUL_CORE,
     },
   };
 }
@@ -58,19 +58,19 @@ function main(): void {
 
   const missing = buildCanonicalResourceMints(
     valid.config,
-    { ...valid.material, love_heart: undefined },
+    { ...valid.material, soulCore: undefined },
   );
   assert.ok(missing.errors.some((error) => error === "SOUL_CORE:missing_or_default"));
   assert.equal(missing.mints, null);
 
   const duplicate = buildCanonicalResourceMints(
     valid.config,
-    { ...valid.material, wheat: (valid.material as any).seeds },
+    { ...valid.material, synapse: (valid.material as any).neuron },
   );
   assert.ok(duplicate.errors.some((error) => error === "SYNAPSE:duplicate_of_NEURON"));
 
   const mismatchedAlias = buildCanonicalResourceMints(
-    { ...valid.config, waterMint: Keypair.generate().publicKey },
+    { ...valid.config, powerMint: Keypair.generate().publicKey },
     valid.material,
   );
   assert.ok(mismatchedAlias.errors.some((error) => error === "POWER:config_material_mismatch"));

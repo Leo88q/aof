@@ -275,7 +275,7 @@ test('#111 нулевые и пылевые значения: guard-ы на пу
   // (см. SECURITY_CHECKLIST_ATTACKS_2026-09-28.md §«Следующие шаги»).
   const valuePaths = [
     'burn_resource', 'mint_resource', 'deposit_gas', 'craft_order', 'marketplace', 'offer',
-    'orderbook', 'collect_mining', 'collect_bread', 'collect_flour', 'collect_well_water',
+    'orderbook', 'collect_mining', 'collect_model', 'collect_signal', 'collect_power',
     'lottery', 'pay_out', 'withdraw_gas', 'exploration',
     // #111-хвост: sweep — единственный путь, двигающий lamports, и он же
     // раньше не имел явного guard-а на нулевую сумму.
@@ -408,7 +408,7 @@ test('#123/#124/#125/#126 OPSEC: контрагенты, поддержка, п�
     /независимому каналу/i,
     /не пишет первой/i,
     /duress|принуждени/i,
-    /WaterPlum|Contagious Interview/,
+    /PowerPlum|Contagious Interview/,
     /DarkSword/,
   ]) {
     assert.match(doc, anchor, `OPSEC-документ обязан покрывать: ${anchor}`);

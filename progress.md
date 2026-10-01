@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Age of Farming — Прогресс разработки
 
 **Обновлено: 2026-09-01 (Блоки L + B + D + G + J + K + E завершены)**

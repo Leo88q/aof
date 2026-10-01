@@ -97,8 +97,8 @@
         "burnedMint": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
         "mintedMint": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh",
         "rarity": 2,
-        "woodCost": "3000000000",
-        "stoneCost": "1000000000",
+        "circuitCost": "3000000000",
+        "siliconCost": "1000000000",
         "mintedCountAfter": 17
       }
     },

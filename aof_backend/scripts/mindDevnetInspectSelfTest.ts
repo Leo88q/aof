@@ -10,8 +10,8 @@ import questsIdl from '../src/idl/aof_quests.json';
 
 async function runInspector(server: Server, mint: string) {
   const port = (server.address() as { port: number }).port;
-  const child = spawn(process.execPath, [require.resolve('ts-node/dist/bin.js'), '--project', 'tsconfig.json', '--transpile-only', 'scripts/potatoDevnetInspect.ts'], {
-    cwd: process.cwd(), env: { ...process.env, POTATO_DEVNET_MINT: mint, DEVNET_RPC_URL: `http://127.0.0.1:${port}` },
+  const child = spawn(process.execPath, [require.resolve('ts-node/dist/bin.js'), '--project', 'tsconfig.json', '--transpile-only', 'scripts/mindDevnetInspect.ts'], {
+    cwd: process.cwd(), env: { ...process.env, MIND_DEVNET_MINT: mint, DEVNET_RPC_URL: `http://127.0.0.1:${port}` },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let stdout = '', stderr = '';
@@ -49,14 +49,14 @@ async function main() {
   // IDL field naming errors that a wrong-genesis test cannot exercise.
   const mint = new PublicKey('So11111111111111111111111111111111111111112');
   const core = new PublicKey(coreIdl.address), quests = new PublicKey(questsIdl.address);
-  const bank = PublicKey.findProgramAddressSync([Buffer.from('potato_bank')], quests)[0];
+  const bank = PublicKey.findProgramAddressSync([Buffer.from('mind_bank')], quests)[0];
   const vault = getAssociatedTokenAddressSync(mint, bank, true);
   const coreCoder = new BorshAccountsCoder(coreIdl as any);
   const questCoder = new BorshAccountsCoder(questsIdl as any);
   const zero = PublicKey.default;
   const coreData = await coreCoder.encode('Config', {
-    authority: zero, treasury: zero, food_mint: zero, wood_mint: zero, stone_mint: zero,
-    seeds_mint: zero, water_mint: zero, potato_mint: zero,
+    authority: zero, treasury: zero, data_mint: zero, circuit_mint: zero, silicon_mint: zero,
+    neuron_mint: zero, power_mint: zero, mind_mint: zero,
     craft_fee: new BN(0), unstake_fee: new BN(0), paused: false, bump: 0,
     mining_enabled: false, pending_authority: zero, authority_updated_at: new BN(0),
     operator: zero, guardian: zero, cashout_frozen: false, reserved: Array(32).fill(0),
@@ -76,22 +76,22 @@ async function main() {
     data: [data.toString('base64'), 'base64'], executable: false,
     lamports: 2_000_000, owner: owner.toBase58(), rentEpoch: 0,
   });
-  let paused = true, mindIsPotato = false, openSpins = 0;
+  let paused = true, bankMintCollidesWithMind = false, openSpins = 0;
   const coreWithMindCollision = Buffer.from(coreData);
   // Config's historical MIND field follows seven 32-byte pubkeys and the
   // eight-byte account discriminator. The test additionally checks the
-  // inspector's on-chain MIND/Potato distinctness gate.
+  // inspector's on-chain core/external MIND mint distinctness gate.
   mint.toBuffer().copy(coreWithMindCollision, 8 + 7 * 32);
   const mock = createServer(async (req, res) => {
     let input = '';
     for await (const chunk of req) input += String(chunk);
     const request = JSON.parse(input);
-    const bankData = await questCoder.encode('PotatoBank', {
+    const bankData = await questCoder.encode('MindBank', {
       mint, vault, reserved_atoms: new BN(openSpins * 50_000_000_000), open_spins: openSpins, paused, bump: 255,
     } as any);
     const result = request.method === 'getGenesisHash' ? 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG' :
       { context: { slot: 1 }, value: [
-        account(core, mindIsPotato ? coreWithMindCollision : coreData), account(quests, questData), account(TOKEN_PROGRAM_ID, mintData),
+        account(core, bankMintCollidesWithMind ? coreWithMindCollision : coreData), account(quests, questData), account(TOKEN_PROGRAM_ID, mintData),
         account(quests, bankData), account(TOKEN_PROGRAM_ID, vaultData),
       ] };
     res.setHeader('content-type', 'application/json');
@@ -101,16 +101,16 @@ async function main() {
   await once(mock, 'listening');
   try {
     for (const scenario of [
-      { paused: true, mindIsPotato: false, openSpins: 0, blockers: [] },
-      { paused: false, mindIsPotato: false, openSpins: 0, blockers: ['potato_bank_not_paused_for_preflight'] },
-      { paused: true, mindIsPotato: true, openSpins: 0, blockers: ['potato_must_be_distinct_from_mind'] },
-      { paused: true, mindIsPotato: false, openSpins: 1, blockers: ['potato_vault_below_existing_reserve_plus_one_maximum_prize'] },
+      { paused: true, bankMintCollidesWithMind: false, openSpins: 0, blockers: [] },
+      { paused: false, bankMintCollidesWithMind: false, openSpins: 0, blockers: ['mind_bank_not_paused_for_preflight'] },
+      { paused: true, bankMintCollidesWithMind: true, openSpins: 0, blockers: ['mind_must_be_distinct_from_mind'] },
+      { paused: true, bankMintCollidesWithMind: false, openSpins: 1, blockers: ['mind_vault_below_existing_reserve_plus_one_maximum_prize'] },
     ]) {
-      ({ paused, mindIsPotato, openSpins } = scenario);
+      ({ paused, bankMintCollidesWithMind, openSpins } = scenario);
       const { status, report } = await runInspector(mock, mint.toBase58());
       assert.equal(report.observations.bank?.mint, mint.toBase58());
       assert.equal(report.observations.vaultAtoms, '55000000000');
-      assert.equal(report.observations.mindMint, (mindIsPotato ? mint : zero).toBase58());
+      assert.equal(report.observations.mindMint, (bankMintCollidesWithMind ? mint : zero).toBase58());
       assert.equal(report.observations.bank?.paused, paused);
       assert.equal(report.observations.bank?.openSpins, String(openSpins));
       assert.equal(status, scenario.blockers.length ? 1 : 0);
@@ -118,6 +118,6 @@ async function main() {
       assert.equal(report.status, scenario.blockers.length ? 'BLOCKED' : 'MINT_AND_CUSTODY_OBSERVED_NOT_PAYMENT_READY');
     }
   } finally { mock.close(); }
-  console.log('Potato inspector: foreign genesis, bank custody, MIND collision, reserves and pause checked without signing');
+  console.log('MIND inspector: foreign genesis, bank custody, MIND collision, reserves and pause checked without signing');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

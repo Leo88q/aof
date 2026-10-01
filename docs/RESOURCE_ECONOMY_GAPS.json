@@ -1,0 +1,989 @@
+{
+  "schemaVersion": 1,
+  "note": "Экономические разрывы (economy_issue) — отдельная ось от статуса ресурса; pre-deployment product blockers, а не основание менять классификацию. Наличие generic admin-минта/claim не закрывает missing_player_source.",
+  "renameBlocking": false,
+  "blockers": {
+    "missingSource": [
+      "Data",
+      "Compute",
+      "BlueCore",
+      "PurpleCore",
+      "RedCore",
+      "ClearQuartz",
+      "RoseQuartz",
+      "BioChip",
+      "Mind"
+    ],
+    "missingSink": [
+      "Model",
+      "PhotonBit",
+      "CryoFluid",
+      "VoltFluid",
+      "BioFluid",
+      "NanoFluid",
+      "QuantumFluid"
+    ]
+  },
+  "recipeView": {
+    "craftInputsWithoutPlayerSource": [
+      "BioChip",
+      "BlueCore",
+      "ClearQuartz",
+      "Data",
+      "PurpleCore",
+      "RedCore",
+      "RoseQuartz"
+    ],
+    "craftOutputsNeverConsumed": [
+      "BioFluid",
+      "CryoFluid",
+      "NanoFluid",
+      "PhotonBit",
+      "QuantumFluid",
+      "VoltFluid"
+    ],
+    "genericIssuance": {
+      "admin": true,
+      "playerClaim": true
+    }
+  },
+  "resources": [
+    {
+      "kind": "Data",
+      "display": "Data",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft.rs#handler",
+        "craft_recipe.rs#handler",
+        "exploration.rs#upgrade_tier_handler",
+        "recipe 3 (вход)",
+        "recipe 6 (вход)",
+        "referral.rs#upgrade_handler"
+      ],
+      "recipes": [
+        "recipe 3: вход",
+        "recipe 6: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "Circuit",
+      "display": "Circuit",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_mining.rs#handler",
+        "rental_delegation.rs#handler",
+        "season.rs#claim_reward_handler"
+      ],
+      "sinks": [
+        "craft.rs#handler",
+        "craft_recipe.rs#handler",
+        "exploration.rs#upgrade_tier_handler",
+        "forge.rs#commit_handler",
+        "recipe 5 (вход)",
+        "referral.rs#upgrade_handler",
+        "rental_delegation.rs#repair_handler",
+        "repair.rs#handler",
+        "start_model_training.rs#handler"
+      ],
+      "recipes": [
+        "recipe 5: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Silicon",
+      "display": "Silicon",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_mining.rs#handler",
+        "rental_delegation.rs#handler"
+      ],
+      "sinks": [
+        "craft.rs#handler",
+        "craft_recipe.rs#handler",
+        "exploration.rs#upgrade_tier_handler",
+        "forge.rs#commit_handler",
+        "recipe 4 (вход)",
+        "referral.rs#upgrade_handler",
+        "rental_delegation.rs#repair_handler",
+        "repair.rs#handler",
+        "start_signal_processing.rs#handler"
+      ],
+      "recipes": [
+        "recipe 4: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Neuron",
+      "display": "Neuron",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_mining.rs#handler",
+        "rental_delegation.rs#handler"
+      ],
+      "sinks": [
+        "craft.rs#handler",
+        "craft_recipe.rs#handler",
+        "plant_neuron.rs#handler",
+        "recipe 5 (вход)"
+      ],
+      "recipes": [
+        "recipe 5: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Synapse",
+      "display": "Synapse",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "harvest_synapse.rs#handler"
+      ],
+      "sinks": [
+        "start_signal_processing.rs#handler"
+      ],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Signal",
+      "display": "Signal",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_signal.rs#handler"
+      ],
+      "sinks": [
+        "start_model_training.rs#handler"
+      ],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Model",
+      "display": "Model",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_model.rs#handler"
+      ],
+      "sinks": [],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "Power",
+      "display": "Power",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_power.rs#handler"
+      ],
+      "sinks": [
+        "craft.rs#handler",
+        "start_model_training.rs#handler"
+      ],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Compute",
+      "display": "Compute",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "start_model_training.rs#handler"
+      ],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "Dataset",
+      "display": "Dataset",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "collect_mining.rs#handler",
+        "rental_delegation.rs#handler"
+      ],
+      "sinks": [
+        "exploration.rs#start_commit_handler"
+      ],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "BlueCore",
+      "display": "Blue Core",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 0 (вход)"
+      ],
+      "recipes": [
+        "recipe 0: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "PurpleCore",
+      "display": "Purple Core",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 7 (вход)"
+      ],
+      "recipes": [
+        "recipe 7: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "RedCore",
+      "display": "Red Core",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 1 (вход)"
+      ],
+      "recipes": [
+        "recipe 1: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "ClearQuartz",
+      "display": "Clear Quartz",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 2 (вход)"
+      ],
+      "recipes": [
+        "recipe 2: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "RoseQuartz",
+      "display": "Rose Quartz",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 6 (вход)"
+      ],
+      "recipes": [
+        "recipe 6: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "AmberQuartz",
+      "display": "Amber Quartz",
+      "status": "candidate-dead",
+      "playerHeld": false,
+      "sources": [],
+      "sinks": [],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "QuantumBit",
+      "display": "Quantum Bit",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 0 (выход)"
+      ],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 3 (вход)"
+      ],
+      "recipes": [
+        "recipe 0: выход",
+        "recipe 3: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "NeuralChip",
+      "display": "Neural Chip",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 1 (выход)"
+      ],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 4 (вход)"
+      ],
+      "recipes": [
+        "recipe 1: выход",
+        "recipe 4: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "PhotonBit",
+      "display": "Photon Bit",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 2 (выход)"
+      ],
+      "sinks": [],
+      "recipes": [
+        "recipe 2: выход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "BioChip",
+      "display": "Bio Chip",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 7 (вход)"
+      ],
+      "recipes": [
+        "recipe 7: вход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    },
+    {
+      "kind": "CryoFluid",
+      "display": "Cryo Fluid",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 3 (выход)"
+      ],
+      "sinks": [],
+      "recipes": [
+        "recipe 3: выход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "VoltFluid",
+      "display": "Volt Fluid",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 4 (выход)"
+      ],
+      "sinks": [],
+      "recipes": [
+        "recipe 4: выход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "BioFluid",
+      "display": "Bio Fluid",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 5 (выход)"
+      ],
+      "sinks": [],
+      "recipes": [
+        "recipe 5: выход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "NanoFluid",
+      "display": "Nano Fluid",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 6 (выход)"
+      ],
+      "sinks": [],
+      "recipes": [
+        "recipe 6: выход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "QuantumFluid",
+      "display": "Quantum Fluid",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 7 (выход)"
+      ],
+      "sinks": [],
+      "recipes": [
+        "recipe 7: выход"
+      ],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+    },
+    {
+      "kind": "SoulCore",
+      "display": "Soul Core",
+      "status": "candidate-dead",
+      "playerHeld": false,
+      "sources": [],
+      "sinks": [],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": null,
+      "blocker": null
+    },
+    {
+      "kind": "Mind",
+      "display": "Mind",
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [],
+      "sinks": [
+        "craft.rs#handler",
+        "reroll.rs#handler"
+      ],
+      "recipes": [],
+      "genericPaths": [
+        "admin_config.rs#set_supply_cap",
+        "burn_resource.rs#handler",
+        "issuance_cap.rs#init_handler",
+        "issuance_cap.rs#set_handler",
+        "mint_resource.rs#handler",
+        "lib.rs#burn_resource",
+        "lib.rs#init_issuance_cap",
+        "lib.rs#mint_resource",
+        "lib.rs#set_issuance_cap",
+        "lib.rs#set_supply_cap",
+        "mint_resource_once.rs#handler",
+        "lib.rs#mint_resource_once"
+      ],
+      "genericPathsShort": [
+        "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
+        "claim: lib.rs, mint_resource_once.rs"
+      ],
+      "gap": "missing_source",
+      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+    }
+  ]
+}

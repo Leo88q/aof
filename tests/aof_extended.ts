@@ -39,7 +39,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   const UNIT = new BN(1_000_000_000); // RESOURCE_UNIT (9 decimals)
 
   let setupPayer: Keypair;
-  let woodMint: PublicKey, stoneMint: PublicKey, foodMint: PublicKey;
+  let circuitMint: PublicKey, siliconMint: PublicKey, dataMint: PublicKey;
 
   // ResourceKind variants in enum order (seed = variant index), lowerCamel for
   // Anchor's JS enum encoding, from the IDL the suite runs against.
@@ -59,10 +59,17 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   async function ensureAta(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
     const ata = getAssociatedTokenAddressSync(mint, owner, true);
     if (await provider.connection.getAccountInfo(ata)) return ata;
-    await provider.sendAndConfirm(new Transaction().add(
-      createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint)
-    ), [setupPayer]);
+    const tx = new Transaction().add(createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint));
+    tx.feePayer = setupPayer.publicKey;
+    await provider.sendAndConfirm(tx, [setupPayer], { commitment: "confirmed", preflightCommitment: "confirmed" });
     return ata;
+  }
+
+  async function sendWithPayer(builder: any, payer: Keypair) {
+    const tx = await builder.transaction();
+    tx.feePayer = payer.publicKey;
+    tx.recentBlockhash = (await provider.connection.getLatestBlockhash("confirmed")).blockhash;
+    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
   }
 
   // Admin faucet (mint_resource keeps a 7–10% treasury fee, so the user gets
@@ -80,10 +87,10 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   async function mintTool(to: PublicKey, toolType = "plasma_cutter") {
     const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
     const tokenAccount = await ensureAta(mint, to);
-    await program.methods.mintTool(toolType, { common: {} }).accounts({
+    await sendWithPayer(program.methods.mintTool(toolType, { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: to,
-      toolData: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-    }).rpc();
+      payer: setupPayer.publicKey, toolData: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }), setupPayer);
     return { mint, tokenAccount };
   }
 
@@ -105,10 +112,10 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     setupPayer = Keypair.generate();
     await airdrop(setupPayer, 20);
     const cfg = await program.account.config.fetch(configPda);
-    foodMint = cfg.foodMint;
-    woodMint = cfg.woodMint;
-    stoneMint = cfg.stoneMint;
-    expect(woodMint && !woodMint.equals(PublicKey.default), "aof_core.ts must set the resource mints first").to.equal(true);
+    dataMint = cfg.dataMint;
+    circuitMint = cfg.circuitMint;
+    siliconMint = cfg.siliconMint;
+    expect(circuitMint && !circuitMint.equals(PublicKey.default), "aof_core.ts must set the resource mints first").to.equal(true);
   });
 
   // ========== REFERRAL ==========
@@ -123,7 +130,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     }).signers([who]).rpc();
 
     await expectError(bind(referrer, referred), "AccountNotInitialized"); // referrer is not a player yet
-    await giveResource("wood", woodMint, referrer.publicKey, 1);          // creates the referrer's Player PDA
+    await giveResource("circuit", circuitMint, referrer.publicKey, 1);          // creates the referrer's Player PDA
     await expectError(bind(referrer, referrer), "InvalidReferral");
     await bind(referrer, referred);
     const link = await program.account.referralLink.fetch(linkOf(referred));
@@ -134,27 +141,27 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
 
     // The link is permanent: another referrer cannot take the player over.
     const other = Keypair.generate(); await airdrop(other);
-    await giveResource("wood", woodMint, other.publicKey, 1);
+    await giveResource("circuit", circuitMint, other.publicKey, 1);
     await expectError(bind(other, referred));
     expect((await program.account.referralLink.fetch(linkOf(referred))).referrer.toBase58()).to.equal(referrer.publicKey.toBase58());
 
-    // Tier 1 costs 1 000 wood + 1 000 stone + 500 food, burned from the player.
-    const userWood = await ensureAta(woodMint, referred.publicKey);
-    const userStone = await ensureAta(stoneMint, referred.publicKey);
-    const userFood = await ensureAta(foodMint, referred.publicKey);
+    // Tier 1 costs 1 000 Circuit + 1 000 Silicon + 500 Data, burned from the player.
+    const userCircuit = await ensureAta(circuitMint, referred.publicKey);
+    const userSilicon = await ensureAta(siliconMint, referred.publicKey);
+    const userData = await ensureAta(dataMint, referred.publicKey);
     const upgrade = () => program.methods.referralUpgrade().accounts({
       config: configPda, user: referred.publicKey, referralLink: linkOf(referred),
-      woodMint, userWood, stoneMint, userStone, foodMint, userFood, tokenProgram: TOKEN_PROGRAM_ID,
+      circuitMint, userCircuit, siliconMint, userSilicon, dataMint, userData, tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([referred]).rpc();
     await expectError(upgrade(), "InsufficientBalance");
-    await giveResource("wood", woodMint, referred.publicKey, 1_200);
-    await giveResource("stone", stoneMint, referred.publicKey, 1_200);
-    await giveResource("food", foodMint, referred.publicKey, 600);
-    const [w0, s0, f0] = [await balance(userWood), await balance(userStone), await balance(userFood)];
+    await giveResource("circuit", circuitMint, referred.publicKey, 1_200);
+    await giveResource("silicon", siliconMint, referred.publicKey, 1_200);
+    await giveResource("data", dataMint, referred.publicKey, 600);
+    const [w0, s0, f0] = [await balance(userCircuit), await balance(userSilicon), await balance(userData)];
     await upgrade();
-    expect(w0.sub(await balance(userWood)).toString()).to.equal(UNIT.muln(1_000).toString());
-    expect(s0.sub(await balance(userStone)).toString()).to.equal(UNIT.muln(1_000).toString());
-    expect(f0.sub(await balance(userFood)).toString()).to.equal(UNIT.muln(500).toString());
+    expect(w0.sub(await balance(userCircuit)).toString()).to.equal(UNIT.muln(1_000).toString());
+    expect(s0.sub(await balance(userSilicon)).toString()).to.equal(UNIT.muln(1_000).toString());
+    expect(f0.sub(await balance(userData)).toString()).to.equal(UNIT.muln(500).toString());
     expect((await program.account.referralLink.fetch(linkOf(referred))).tier).to.equal(1);
   });
 
@@ -284,31 +291,44 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const before = await lamports(user.publicKey);
     await expectError(purchase(), "SeasonPremiumRequired");
     expect(await lamports(user.publicKey)).to.equal(before);
-    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null); // init_if_needed rolled back
+    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
 
     const grant = (signer: Keypair | null, amount: number) => {
       const call = program.methods.grantSeasonXp(amount).accounts({
         config: configPda, authority: signer ? signer.publicKey : authority, user: user.publicKey, season, seasonPass,
-        systemProgram: SystemProgram.programId,
       });
       return signer ? call.signers([signer]).rpc() : call.rpc();
     };
     const stranger = Keypair.generate(); await airdrop(stranger);
+    // [PAYER] Операторская выдача больше не создаёт пропуск: пока игрок его не
+    // создал сам, mint отклоняется понятной ошибкой (и не платит за игрока).
+    await expectError(grant(null, 1_500), "SeasonPassNotInitialized");
+    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
+    const passBefore = await lamports(user.publicKey);
+    await sendWithPayer(program.methods.initSeasonPass(seasonId).accounts({
+      config: configPda, player: user.publicKey, season, seasonPass, systemProgram: SystemProgram.programId,
+    }), user);
+    // [PAYER] rent пропуска списан с игрока, а не с authority.
+    expect(await lamports(user.publicKey)).to.be.lessThan(passBefore);
+    expect((await program.account.seasonPass.fetch(seasonPass)).owner.toBase58()).to.equal(user.publicKey.toBase58());
+    await expectError(sendWithPayer(program.methods.initSeasonPass(seasonId).accounts({
+      config: configPda, player: user.publicKey, season, seasonPass, systemProgram: SystemProgram.programId,
+    }), user), "already in use");
     await expectError(grant(stranger, 1_000_000), "Unauthorized");
     await grant(null, 1_500);
     expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(1_500);
     expect((await program.account.seasonPass.fetch(seasonPass)).premium).to.equal(false);
 
-    const userWood = await ensureAta(woodMint, user.publicKey);
+    const userCircuit = await ensureAta(circuitMint, user.publicKey);
     const claim = (level: number, premiumTrack: boolean) => program.methods.claimSeasonReward(level, premiumTrack).accounts({
-      config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, woodMint, userWood, auth: authPda,
+      config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, circuitMint, userCircuit, auth: authPda,
       tokenProgram: TOKEN_PROGRAM_ID,
     }).rpc();
-    const woodBefore = await balance(userWood);
+    const circuitBefore = await balance(userCircuit);
     await expectError(claim(1, true), "SeasonPremiumRequired");
-    expect((await balance(userWood)).toString()).to.equal(woodBefore.toString());
+    expect((await balance(userCircuit)).toString()).to.equal(circuitBefore.toString());
     await claim(1, false);
-    expect((await balance(userWood)).sub(woodBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
+    expect((await balance(userCircuit)).sub(circuitBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
     await expectError(claim(1, false), "SeasonRewardAlreadyClaimed");
     await expectError(claim(2, false), "SeasonInsufficientXp"); // 1 500 XP < 2 000
     expect((await program.account.seasonPass.fetch(seasonPass)).claimedBitmap.toString()).to.equal("1");
@@ -378,9 +398,9 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const stranger = Keypair.generate(); await airdrop(stranger);
     const craftOrder = pda([B("craft_order"), creator.publicKey.toBuffer()]);
     const PREMIUM = 10_000_000;
-    const WOOD = UNIT.muln(10);
-    const STONE = UNIT.muln(5);
-    const create = () => program.methods.craftOrderCreate(WOOD, STONE, new BN(PREMIUM)).accounts({
+    const CIRCUIT = UNIT.muln(10);
+    const SILICON = UNIT.muln(5);
+    const create = () => program.methods.craftOrderCreate(CIRCUIT, SILICON, new BN(PREMIUM)).accounts({
       config: configPda, creator: creator.publicKey, craftOrder, systemProgram: SystemProgram.programId,
     }).signers([creator]).rpc();
     await create();
@@ -388,24 +408,24 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const orderRent = await provider.connection.getMinimumBalanceForRentExemption(orderInfo.data.length);
     expect(orderInfo.lamports - orderRent).to.equal(PREMIUM);
 
-    const creatorWood = await ensureAta(woodMint, creator.publicKey);
-    const creatorStone = await ensureAta(stoneMint, creator.publicKey);
-    const fulfillerWood = await giveResource("wood", woodMint, fulfiller.publicKey, 20);
-    const fulfillerStone = await giveResource("stone", stoneMint, fulfiller.publicKey, 20);
-    const [cw0, cs0, fw0, fs0] = [await balance(creatorWood), await balance(creatorStone), await balance(fulfillerWood), await balance(fulfillerStone)];
+    const creatorCircuit = await ensureAta(circuitMint, creator.publicKey);
+    const creatorSilicon = await ensureAta(siliconMint, creator.publicKey);
+    const fulfillerCircuit = await giveResource("circuit", circuitMint, fulfiller.publicKey, 20);
+    const fulfillerSilicon = await giveResource("silicon", siliconMint, fulfiller.publicKey, 20);
+    const [cw0, cs0, fw0, fs0] = [await balance(creatorCircuit), await balance(creatorSilicon), await balance(fulfillerCircuit), await balance(fulfillerSilicon)];
     const fulfillerBefore = await lamports(fulfiller.publicKey);
     const creatorBefore = await lamports(creator.publicKey);
     await program.methods.craftOrderFulfill().accounts({
       config: configPda, fulfiller: fulfiller.publicKey, craftOrder, creatorRefund: creator.publicKey, treasury: authority,
-      woodMint, fulfillerWood, creatorWood, stoneMint, fulfillerStone, creatorStone, tokenProgram: TOKEN_PROGRAM_ID,
+      circuitMint, fulfillerCircuit, creatorCircuit, siliconMint, fulfillerSilicon, creatorSilicon, tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([fulfiller]).rpc();
     const fee = Math.floor(PREMIUM * 200 / 10_000); // CRAFT_ORDER_FEE_BPS
     expect(await lamports(fulfiller.publicKey) - fulfillerBefore).to.equal(PREMIUM - fee);
     expect(await lamports(creator.publicKey) - creatorBefore).to.equal(orderRent); // the closed order's rent
-    expect((await balance(creatorWood)).sub(cw0).toString()).to.equal(WOOD.toString());
-    expect((await balance(creatorStone)).sub(cs0).toString()).to.equal(STONE.toString());
-    expect(fw0.sub(await balance(fulfillerWood)).toString()).to.equal(WOOD.toString());
-    expect(fs0.sub(await balance(fulfillerStone)).toString()).to.equal(STONE.toString());
+    expect((await balance(creatorCircuit)).sub(cw0).toString()).to.equal(CIRCUIT.toString());
+    expect((await balance(creatorSilicon)).sub(cs0).toString()).to.equal(SILICON.toString());
+    expect(fw0.sub(await balance(fulfillerCircuit)).toString()).to.equal(CIRCUIT.toString());
+    expect(fs0.sub(await balance(fulfillerSilicon)).toString()).to.equal(SILICON.toString());
     expect(await provider.connection.getAccountInfo(craftOrder)).to.equal(null);
 
     // A second order: a stranger cannot cancel it; the creator gets everything back.
@@ -423,19 +443,19 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   // ========== BURN ==========
   it("burn: resource burns check amount, kind and balance and shrink the supply; a tool burn closes the NFT and its data", async () => {
     const user = Keypair.generate(); await airdrop(user);
-    const userWood = await giveResource("wood", woodMint, user.publicKey, 10);
+    const userCircuit = await giveResource("circuit", circuitMint, user.publicKey, 10);
     const burn = (kind: any, amount: BN) => program.methods.burnResource(kind, amount).accounts({
-      config: configPda, materialMints: materialMintsPda, user: user.publicKey, mint: woodMint, tokenAccount: userWood,
+      config: configPda, materialMints: materialMintsPda, user: user.publicKey, mint: circuitMint, tokenAccount: userCircuit,
       tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([user]).rpc();
-    const supply = async () => new BN((await provider.connection.getTokenSupply(woodMint)).value.amount);
-    const bal0 = await balance(userWood);
+    const supply = async () => new BN((await provider.connection.getTokenSupply(circuitMint)).value.amount);
+    const bal0 = await balance(userCircuit);
     const supply0 = await supply();
-    await expectError(burn({ wood: {} }, new BN(0)), "ZeroAmount");
-    await expectError(burn({ stone: {} }, UNIT), "InvalidResourceKind");
-    await expectError(burn({ wood: {} }, bal0.addn(1)), "InsufficientBalance");
-    await burn({ wood: {} }, UNIT.muln(3));
-    expect(bal0.sub(await balance(userWood)).toString()).to.equal(UNIT.muln(3).toString());
+    await expectError(burn({ circuit: {} }, new BN(0)), "ZeroAmount");
+    await expectError(burn({ silicon: {} }, UNIT), "InvalidResourceKind");
+    await expectError(burn({ circuit: {} }, bal0.addn(1)), "InsufficientBalance");
+    await burn({ circuit: {} }, UNIT.muln(3));
+    expect(bal0.sub(await balance(userCircuit)).toString()).to.equal(UNIT.muln(3).toString());
     expect(supply0.sub(await supply()).toString()).to.equal(UNIT.muln(3).toString());
 
     const { mint, tokenAccount } = await mintTool(user.publicKey);
@@ -455,19 +475,23 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const owner = Keypair.generate(); await airdrop(owner);
     const stranger = Keypair.generate(); await airdrop(stranger);
     const { mint } = await mintTool(owner.publicKey, "silicon_extractor");
-    const ownerStone = await giveResource("stone", stoneMint, owner.publicKey, 50);
-    const ownerWood = await giveResource("wood", woodMint, owner.publicKey, 50);
-    const repair = (signer: Keypair, amount: number, userStone: PublicKey, userWood: PublicKey) => program.methods.repair(amount).accounts({
-      config: configPda, user: signer.publicKey, tool: toolPda(mint), mint, stoneMint, userStone, woodMint, userWood,
+    const ownerSilicon = await giveResource("silicon", siliconMint, owner.publicKey, 50);
+    const ownerCircuit = await giveResource("circuit", circuitMint, owner.publicKey, 50);
+    // Token-primary ownership: repair проверяет, где реально лежит supply-1 токен.
+    // Инструмент свободен, поэтому это личный ATA того, кого ремонтируют.
+    const toolTokenFor = (who: PublicKey) => getAssociatedTokenAddressSync(mint, who, true);
+    const repair = (signer: Keypair, amount: number, userSilicon: PublicKey, userCircuit: PublicKey) => program.methods.repair(amount).accounts({
+      config: configPda, user: signer.publicKey, tool: toolPda(mint), mint, siliconMint, userSilicon, circuitMint, userCircuit,
+      toolToken: toolTokenFor(signer.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([signer]).rpc();
-    const [stone0, wood0] = [await balance(ownerStone), await balance(ownerWood)];
+    const [stone0, wood0] = [await balance(ownerSilicon), await balance(ownerCircuit)];
     expect((await program.account.toolData.fetch(toolPda(mint))).durability).to.equal(20); // MAX_DURABILITY
-    await expectError(repair(owner, 1, ownerStone, ownerWood), "DurabilityOverflow");
-    await expectError(repair(owner, 0, ownerStone, ownerWood), "InvalidAmount");
-    await expectError(repair(stranger, 1, await ensureAta(stoneMint, stranger.publicKey), await ensureAta(woodMint, stranger.publicKey)), "NotToolOperator");
-    expect((await balance(ownerStone)).toString()).to.equal(stone0.toString());
-    expect((await balance(ownerWood)).toString()).to.equal(wood0.toString());
+    await expectError(repair(owner, 1, ownerSilicon, ownerCircuit), "DurabilityOverflow");
+    await expectError(repair(owner, 0, ownerSilicon, ownerCircuit), "InvalidAmount");
+    await expectError(repair(stranger, 1, await ensureAta(siliconMint, stranger.publicKey), await ensureAta(circuitMint, stranger.publicKey)), "NotToolOperator");
+    expect((await balance(ownerSilicon)).toString()).to.equal(stone0.toString());
+    expect((await balance(ownerCircuit)).toString()).to.equal(wood0.toString());
   });
 
   // ========== GAS TANK ==========
@@ -589,22 +613,26 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const rebirthRecord = rebirthPda([B("rebirth_record"), user.publicKey.toBuffer()]);
 
     // Прогресс: жители/палатка появляются от минта ресурса, XP — от оператора.
-    const woodAta = await giveResource("wood", woodMint, user.publicKey, 3);
-    const stoneAta = await giveResource("stone", stoneMint, user.publicKey, 2);
+    const circuitAta = await giveResource("circuit", circuitMint, user.publicKey, 3);
+    const siliconAta = await giveResource("silicon", siliconMint, user.publicKey, 2);
+    // [PAYER] Пропуск создаёт сам игрок (его подпись и его rent), затем
+    // оператор начисляет XP — без создания чужого аккаунта.
+    await sendWithPayer(program.methods.initSeasonPass(seasonId).accounts({
+      config: configPda, player: user.publicKey, season, seasonPass, systemProgram: SystemProgram.programId,
+    }), user);
     await program.methods.grantSeasonXp(4_000).accounts({
       config: configPda, authority, user: user.publicKey, season, seasonPass,
-      systemProgram: SystemProgram.programId,
     }).rpc();
 
     const playerBefore = await program.account.player.fetch(player);
     expect(playerBefore.villagers > 0, "минт ресурса обязан создать прогресс игрока").to.equal(true);
-    const woodBefore = await balance(woodAta), stoneBefore = await balance(stoneAta);
-    expect(woodBefore.gtn(0) && stoneBefore.gtn(0)).to.equal(true);
+    const circuitBefore = await balance(circuitAta), siliconBefore = await balance(siliconAta);
+    expect(circuitBefore.gtn(0) && siliconBefore.gtn(0)).to.equal(true);
     expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(4_000);
 
-    const surplus = [woodMint, stoneMint].flatMap((mint, index) => [
+    const surplus = [circuitMint, siliconMint].flatMap((mint, index) => [
       { pubkey: mint, isSigner: false, isWritable: true },
-      { pubkey: index === 0 ? woodAta : stoneAta, isSigner: false, isWritable: true },
+      { pubkey: index === 0 ? circuitAta : siliconAta, isSigner: false, isWritable: true },
     ]);
     // Подпись игрока обязательна: сжигание идёт от его имени (burn authority —
     // владелец токен-аккаунта), а подпись бэкенда гарантирует полный список.
@@ -622,21 +650,21 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     }).remainingAccounts(surplus).signers([stranger, user]).rpc(), "Unauthorized");
 
     // Любая чужая пара обязана уронить всю инструкцию, а не «сработать частично».
-    const strangerAta = await ensureAta(woodMint, stranger.publicKey);
+    const strangerAta = await ensureAta(circuitMint, stranger.publicKey);
     await expectError(reset([
-      { pubkey: woodMint, isSigner: false, isWritable: true },
+      { pubkey: circuitMint, isSigner: false, isWritable: true },
       { pubkey: strangerAta, isSigner: false, isWritable: true },
     ]), "Unauthorized");
     await expectError(reset([
-      { pubkey: woodMint, isSigner: false, isWritable: true },
-      { pubkey: stoneAta, isSigner: false, isWritable: true },
+      { pubkey: circuitMint, isSigner: false, isWritable: true },
+      { pubkey: siliconAta, isSigner: false, isWritable: true },
     ]), "InvalidResourceKind");
     // Не-канонический токен-аккаунт того же минта и владельца: программа
     // принимает только ATA, иначе сжигание ушло бы не из того места.
     const manualKeypair = Keypair.generate();
-    const manual = await createTokenAccount(provider.connection, setupPayer, woodMint, user.publicKey, manualKeypair);
+    const manual = await createTokenAccount(provider.connection, setupPayer, circuitMint, user.publicKey, manualKeypair);
     await expectError(reset([
-      { pubkey: woodMint, isSigner: false, isWritable: true },
+      { pubkey: circuitMint, isSigner: false, isWritable: true },
       { pubkey: manual, isSigner: false, isWritable: true },
     ]), "NonCanonicalTokenAccount");
 
@@ -662,8 +690,8 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     expect(passAfter.xp).to.equal(0);
     expect(passAfter.claimedBitmap.toString()).to.equal("0");
     expect(passAfter.premium).to.equal(false);
-    expect((await balance(woodAta)).toString()).to.equal("0");
-    expect((await balance(stoneAta)).toString()).to.equal("0");
+    expect((await balance(circuitAta)).toString()).to.equal("0");
+    expect((await balance(siliconAta)).toString()).to.equal("0");
     expect(playerAfter.historianCount).to.equal(playerBefore.historianCount);
     expect(playerAfter.medallionCount).to.equal(playerBefore.medallionCount);
     const record = await rebirth.account.rebirthRecord.fetch(rebirthRecord);
@@ -676,13 +704,13 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     expect(treasuryAfter - treasuryBefore).to.be.greaterThan(costLamports - 100_000);
 
     // Непарный список аккаунтов отвергается целиком, а не «как получится».
-    await expectError(reset([{ pubkey: woodMint, isSigner: false, isWritable: true }]), "InvalidAmount");
+    await expectError(reset([{ pubkey: circuitMint, isSigner: false, isWritable: true }]), "InvalidAmount");
 
     // Кулдаун: снова набираем прогресс и пробуем вторую транзакцию «сброс +
     // ребёрт». Она обязана упасть на кулдауне ЦЕЛИКОМ: если бы сброс успел
     // примениться, игрок остался бы без ресурсов и XP, но без бонуса.
-    const secondWood = await giveResource("wood", woodMint, user.publicKey, 1);
-    const secondStone = await giveResource("stone", stoneMint, user.publicKey, 1);
+    const secondCircuit = await giveResource("circuit", circuitMint, user.publicKey, 1);
+    const secondSilicon = await giveResource("silicon", siliconMint, user.publicKey, 1);
     await program.methods.grantSeasonXp(1_000).accounts({
       config: configPda, authority, user: user.publicKey, season, seasonPass,
       systemProgram: SystemProgram.programId,
@@ -697,18 +725,18 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     expect(villagersBefore).to.be.greaterThan(0);
     expect((await program.account.player.fetch(player)).hasTent).to.equal(true);
     // Комиссию минта забирает казна, поэтому сверяем с фактическим остатком.
-    const woodSecond = await balance(secondWood), stoneSecond = await balance(secondStone);
+    const circuitSecond = await balance(secondCircuit), siliconSecond = await balance(secondSilicon);
     expect(xpBefore).to.equal(1_000);
-    expect(woodSecond.gtn(0) && stoneSecond.gtn(0), "перед второй попыткой у игрока обязаны быть излишки").to.equal(true);
+    expect(circuitSecond.gtn(0) && siliconSecond.gtn(0), "перед второй попыткой у игрока обязаны быть излишки").to.equal(true);
     const second = new Transaction().add(
       await program.methods.resetForRebirth(seasonId).accounts({
         config: configPda, operator: authority, user: user.publicKey, player, season, seasonPass,
         materialMints: materialMintsPda, tokenProgram: TOKEN_PROGRAM_ID,
       }).remainingAccounts([
-        { pubkey: woodMint, isSigner: false, isWritable: true },
-        { pubkey: secondWood, isSigner: false, isWritable: true },
-        { pubkey: stoneMint, isSigner: false, isWritable: true },
-        { pubkey: secondStone, isSigner: false, isWritable: true },
+        { pubkey: circuitMint, isSigner: false, isWritable: true },
+        { pubkey: secondCircuit, isSigner: false, isWritable: true },
+        { pubkey: siliconMint, isSigner: false, isWritable: true },
+        { pubkey: secondSilicon, isSigner: false, isWritable: true },
       ]).instruction(),
       await rebirth.methods.doRebirth().accounts({
         rebirthConfig, authority, rebirthRecord, user: user.publicKey, treasury: authority,
@@ -722,8 +750,8 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     expect((await program.account.seasonPass.fetch(seasonPass)).xp).to.equal(xpBefore);
     expect((await program.account.player.fetch(player)).villagers).to.equal(villagersBefore);
     expect((await program.account.player.fetch(player)).hasTent).to.equal(true);
-    expect((await balance(secondWood)).toString()).to.equal(woodSecond.toString());
-    expect((await balance(secondStone)).toString()).to.equal(stoneSecond.toString());
+    expect((await balance(secondCircuit)).toString()).to.equal(circuitSecond.toString());
+    expect((await balance(secondSilicon)).toString()).to.equal(siliconSecond.toString());
   });
 
 });

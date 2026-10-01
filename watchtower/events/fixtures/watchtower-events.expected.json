@@ -297,8 +297,8 @@
       "attributes": {
         "burned": "HeqABeydDDPPkKi9FDK2qwJqpb91r863dayQPU9ChsAX",
         "rarity": "2",
-        "woodCost": "3000000000",
-        "stoneCost": "1000000000",
+        "circuitCost": "3000000000",
+        "siliconCost": "1000000000",
         "mintedCountAfter": "17"
       }
     },
@@ -694,23 +694,23 @@
       "attributes": {
         "setting": "resource_mints",
         "changed": [
-          "potato"
+          "mind"
         ],
         "previous": {
-          "food": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "wood": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "stone": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "seeds": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "water": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "potato": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA"
+          "data": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "circuit": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "silicon": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "neuron": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "power": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "mind": "E4V1aEpTacCC1VBvEhLrE4cyBHLSwYWqQ9p3KKLFRxwA"
         },
         "current": {
-          "food": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "wood": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "stone": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "seeds": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "water": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
-          "potato": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh"
+          "data": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "circuit": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "silicon": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "neuron": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "power": "625EMcHiYNUh8K6yN6Sp3RsoBxDCN4mHEu6RexrkpRDG",
+          "mind": "4GuC92rH8MNwDHTrV2TJZC1bbQEnjgRVjyurGGP5HRrh"
         }
       }
     }

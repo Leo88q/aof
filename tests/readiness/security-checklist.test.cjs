@@ -160,7 +160,7 @@ test('#1 #22 every init / init_if_needed is a PDA with payer, space and the Syst
         // as the only mint authority, 0 decimals and no freeze authority.
         const mint = /\bmint::authority\s*=/.test(f.attrs);
         if (mint) {
-          assert.match(f.attrs, /\bseeds\s*=/, `${where}: mint init on a keypair account (no seeds)`);
+          assert.ok(f.attrs.includes("seeds = ["), `${where}: mint init on a keypair account (no PDA seeds)`);
           assert.match(f.attrs, /\bbump\b/, `${where}: mint init without bump`);
           assert.match(f.attrs, /\bmint::decimals\s*=\s*0\b/, `${where}: NFT mint must have 0 decimals`);
           assert.match(f.attrs, /\bmint::authority\s*=\s*auth\b/, `${where}: NFT mint authority must be the auth PDA`);
@@ -209,7 +209,7 @@ test('#2 #16 every unchecked account is documented and bound to something', () =
   // queue; Switchboard itself checks queue membership and records it on the
   // randomness account, where every reveal context then binds it.
   const SWITCHBOARD_COMMIT_ORACLE = new Set(['PackOpenCommit', 'RerollRandomCommit', 'StartExplorationCommit',
-    'ForgeAttemptCommit', 'CommitLotteryDraw', 'DrumCommitCtx', 'PotatoSpinCommit']);
+    'ForgeAttemptCommit', 'CommitLotteryDraw', 'DrumCommitCtx', 'MindSpinCommit']);
   let unchecked = 0;
   for (const [program, { structs }] of Object.entries(sources)) {
     for (const [name, fields] of structs) {
@@ -283,13 +283,13 @@ test('F-A #4 System Program transfers only ever debit a signing wallet', () => {
 
 test('F-F #11 every enabled resource-minting path checks the supply cap before minting', () => {
   // 1-of-1 tool NFTs: supply 0 -> 1 is enforced by the account constraints.
-  const TOOL_NFT = ['craft.rs', 'reroll.rs', 'mint_tool.rs', 'migrate_tool.rs',
+  const TOOL_NFT = ['craft.rs', 'reroll.rs', 'mint_tool.rs',
     // [F-06] VRF settlements mint exactly one unit of a fresh PDA mint.
     'settlement.rs', 'pack_open_reveal.rs', 'reroll_random.rs'];
   const DISABLED = [];
   const dir = path.join(root, 'aof-core/src/instructions');
   const minting = fs.readdirSync(dir).filter((f) => /\bmint_to\(/.test(stripComments(fs.readFileSync(path.join(dir, f), 'utf8'))));
-  assert.ok(minting.includes('harvest_wheat.rs'), 'harvest_wheat no longer mints?');
+  assert.ok(minting.includes('harvest_synapse.rs'), 'harvest_synapse no longer mints?');
   for (const file of minting) {
     const src = stripComments(fs.readFileSync(path.join(dir, file), 'utf8'));
     if (TOOL_NFT.includes(file)) continue;
@@ -335,7 +335,7 @@ test('F-I #11 every freshly minted tool NFT must be unfreezable', () => {
   // [F-06] The pack / random-reroll NFTs are no longer caller-supplied mints:
   // they are PDA mints created by the settling instruction (checked by the
   // #1 #22 init test: 0 decimals, auth PDA authority, no freeze authority).
-  assert.equal(blocks.length, 4, 'MintTool, MigrateTool, Craft, Reroll');
+  assert.equal(blocks.length, 3, 'MintTool, Craft, Reroll (MigrateTool removed in plan item 12, step B)');
   for (const attrs of blocks) {
     const mint = /(\w+)\.supply == 0/.exec(attrs)[1];
     assert.ok(attrs.includes(`${mint}.freeze_authority.is_none()`), `${mint}: freeze authority not rejected`);
@@ -383,7 +383,7 @@ test('#8 #10 #17 F-06 randomness settles only through the program-owned Switchbo
     assert.doesNotMatch(body, /slot_hashes|hash_secret|derive_entropy|secret/, `${file}::${fn}: legacy commit-reveal`);
     assert.doesNotMatch(body, /require!\(\s*false/, `${file}::${fn} is still hard-disabled`);
   }
-  // New Potato payments are intentionally blocked until a decimals-aware
+  // New MIND payments are intentionally blocked until a decimals-aware
   // contract is deployed. Existing reveal/refund still use Switchboard.
   assert.match(fnBody(read('programs/aof-quests/src/instructions/drum/drum_commit.rs'), 'handler'),
     /require!\(false, QuestError::Paused\)/);
@@ -476,7 +476,6 @@ test('#18 no unbounded per-call input: collection arguments are allowlisted and 
     ['aof_core::mint_tool.tool_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::craft.tool_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::reroll.new_type', 'canonicalised to TOOL_KINDS'],
-    ['aof_core::migrate_tool.tool_type', 'tool_type.len() <= 32'],
   ]);
   let args = 0;
   for (const [program, { dir }] of Object.entries(sources)) {
@@ -497,7 +496,6 @@ test('#18 no unbounded per-call input: collection arguments are allowlisted and 
   for (const f of ['craft.rs', 'reroll.rs', 'mint_tool.rs']) {
     assert.match(stripComments(core(`instructions/${f}`)), /canonical_tool_type\(|is_valid_tool_type\(/, f);
   }
-  assert.match(stripComments(core('instructions/migrate_tool.rs')), /tool_type\.len\(\)\s*<=\s*32/);
 });
 
 test('#20 critical admin mutations stay observable (emit an event)', () => {
@@ -602,19 +600,28 @@ test('F-C set_fees has hard ceilings', () => {
 });
 
 test('F-D the well prices every second at its own day, not at the cached weather', () => {
-  const body = fnBody(core('instructions/collect_well_water.rs'), 'handler');
+  const body = fnBody(core('instructions/collect_power.rs'), 'handler');
   assert.doesNotMatch(body, /weather_state\.weather/);
-  assert.match(body, /well_accrual\(/);
+  assert.match(body, /grid_accrual\(/);
   assert.match(fnBody(core('instructions/weather_crank.rs'), 'handler'), /weather_for_day\(/);
 });
 
-test('season passes are sold once and only inside their season; migrate_tool stays disabled', () => {
+test('season passes are sold once and only inside their season', () => {
   const pass = fnBody(core('instructions/season.rs'), 'purchase_pass_handler');
   for (const guard of ['SeasonNotStarted', 'SeasonEnded', 'SeasonPassAlreadyPremium', 'SEASON_LENGTH_SECONDS']) {
     assert.ok(pass.includes(guard), guard);
   }
   assert.ok(pass.indexOf('SeasonPassAlreadyPremium') < pass.indexOf('system_program::transfer'), 'guards before payment');
-  assert.match(fnBody(core('instructions/migrate_tool.rs'), 'handler'), /require!\(\s*false\s*,\s*AofError::FeatureDisabled\s*\)/);
+});
+
+test('migrate_tool is gone from the program, the IDL and the clients (plan item 12, step B)', () => {
+  // Pre-genesis migration that never had a deployment: removed rather than kept disabled.
+  assert.equal(fs.existsSync(path.join(root, 'aof-core/src/instructions/migrate_tool.rs')), false, 'модуль migrate_tool должен быть удалён');
+  const idl = JSON.parse(fs.readFileSync(path.join(root, 'aof_backend/src/idl/aof_core.json'), 'utf8'));
+  assert.equal(idl.instructions.some((i) => i.name === 'migrateTool'), false, 'IDL всё ещё объявляет migrateTool');
+  const roles = JSON.parse(fs.readFileSync(path.join(root, 'security/instruction-roles.json'), 'utf8'));
+  const flat = JSON.stringify(roles);
+  assert.equal(flat.includes('migrate_tool'), false, 'роли всё ещё описывают migrate_tool');
 });
 
 test('F-C routine operations need the operator; rule changes need the admin', () => {
@@ -650,8 +657,8 @@ test('F-C the cash-out freeze covers every path where value leaves the game - an
   for (const ctx of CASHOUT) assert.match(configAttrs(ctx), /!config\.cashout_frozen/, `${ctx} pays value out`);
   // Players' own exits and gameplay keep working during a freeze.
   const UNAFFECTED = ['WithdrawGas', 'Unstake', 'CollectorUnstake', 'MarketplaceCancel', 'OfferCancelCtx', 'RentalEndCtx',
-    'CancelBuyOrder', 'CancelSellOrder', 'CraftOrderCancelCtx', 'HarvestWheat', 'CollectMining', 'CollectFlour',
-    'CollectBread', 'CollectWellWater', 'Craft', 'Stake', 'StartMining',
+    'CancelBuyOrder', 'CancelSellOrder', 'CraftOrderCancelCtx', 'HarvestSynapse', 'CollectMining', 'CollectSignal',
+    'CollectModel', 'CollectPower', 'Craft', 'Stake', 'StartMining',
     // [F-06] settling or refunding an already-paid commit is not a cash-out.
     'PackOpenReveal', 'PackOpenExpire', 'RerollRandomReveal', 'RerollRandomExpire', 'ExploreReveal', 'ExploreExpire',
     'ForgeAttemptReveal', 'ForgeAttemptExpire', 'DrawLottery', 'ExpireLotteryDraw', 'RefundLotteryTicket'];
@@ -685,7 +692,12 @@ test('F-H rentals escrow the NFT, need custody and a signed fee ceiling, keep th
   assert.ok(start.indexOf('PriceLimitExceeded') < start.indexOf('system_program::transfer'), 'fee ceiling before payment');
   assert.match(fnBody(rental, 'rental_fee_split'), /min\(RENTAL_MAX_OWNER_SPLIT_BPS\)/, 'legacy 100% splits are clamped');
   assert.match(fnBody(rental, 'revoke_handler'), /rental_refund\(/, 'early revocation refunds the unused time');
-  assert.match(fnBody(core('lib.rs'), 'rental_start'), /err!\(AofError::FeatureDisabled\)/, 'unbounded rental_start stays fail-closed');
+  // [Шаг B п.12] неограниченные дискриминаторы удалены из программы целиком:
+  // потолок комиссии и срок теперь обязательные аргументы bounded-версий.
+  const lib = core('lib.rs');
+  assert.doesNotMatch(lib, /pub fn \w*marketplace_buy\(|pub fn rental_start\(/, 'легаси-заглушки должны быть удалены');
+  assert.match(lib, /pub fn marketplace_buy_bounded\(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expires_at: i64\)/);
+  assert.match(lib, /pub fn rental_start_bounded\(ctx: Context<RentalStartCtx>, duration_seconds: i64, max_total_fee: u64\)/);
 });
 
 test('F-G auctions: bid floor, real increments, bounded duration, cancel without bids', () => {
@@ -703,7 +715,7 @@ test('F-G auctions: bid floor, real increments, bounded duration, cancel without
 
 test('#33 third-party payout destinations must be canonical ATAs', () => {
   const fields = [['AuctionSettleCtx', 'winner_token'], ['MatchResourceOrders', 'buyer_token'],
-    ['CraftOrderFulfillCtx', 'creator_wood'], ['CraftOrderFulfillCtx', 'creator_stone']];
+    ['CraftOrderFulfillCtx', 'creator_circuit'], ['CraftOrderFulfillCtx', 'creator_silicon']];
   for (const [ctx, field] of fields) {
     const f = (sources.aof_core.structs.get(ctx) || []).find((x) => x.name === field);
     assert.ok(f, `${ctx}.${field} not found`);

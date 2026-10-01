@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Проверка безопасности по чек-листу Anchor (30 пунктов) — 2026-09-25
 
 > **Обновление 2026-09-26.** Открытые вопросы F-C, F-D, F-G и F-H обсуждены и закрыты. Мелочи из раздела 3 тоже закрыты: сезонный пропуск, `offer_accept`, `migrate_tool`. Также добавлены разделение ролей и заморозка вывода. Решения, статус, порядок развёртывания и план по VRF (пункт 10) — в `SECURITY_OPEN_ISSUES_PROPOSALS_2026-09-26.md`.

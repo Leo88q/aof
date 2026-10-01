@@ -21,6 +21,11 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 const code = (rel: string) => read(rel)
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+const RESOURCE_MANIFEST = JSON.parse(read('../docs/RESOURCE_MANIFEST.json'));
+const resourceKeyForApi = (apiName: string) => apiName
+  .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+  .replace(/[-\s]+/g, '_')
+  .toUpperCase();
 
 test("лаборатория не показывает выдуманный SOL-газ", () => {
   const dash = read("src/pages/farm/FarmDashboard.tsx");
@@ -323,7 +328,7 @@ test("барабан показывает локализованные стат�
 test("барабан удачи называет ресурс канонически", () => {
   const drum = read("src/components/DrumSpin.tsx");
   assert.ok(!/MASCOT/.test(drum), "легаси-термин MASCOT вернулся в интерфейс");
-  assert.doesNotMatch(drum, /resourceIcon\("MIND"\)|[} ] MIND</, "MIND is not Potato");
+  assert.doesNotMatch(drum, /resourceIcon\("MIND"\)|[} ] MIND</, "MIND is not offered by the legacy drum UI");
   assert.match(drum, /copy\.unavailable/);
   assert.ok(!/🔻/.test(drum), "эмодзи-стрелка вернулась на барабан");
   // ↩️ допустим только как префикс flash-сообщения — его разбирает NoticeMsg.
@@ -337,7 +342,7 @@ test("UI узнаёт реальные fail-closed коды бэкенда", () 
   const pattern = new RegExp(literal![1]);
   // Коды взяты из aof_backend/src/routes/* как есть — с суффиксами _UNTIL_...
   for (const code of [
-    "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_POTATO_REWARD_IS_DEPLOYED",
+    "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_MIND_REWARD_IS_DEPLOYED",
     "QUEST_PROGRESS_UNAVAILABLE_UNTIL_CANONICAL_INDEXING_IS_DEPLOYED",
     "REPAIR_RESOURCES_NOT_CONFIGURED",
     "MINING_DISABLED_ONCHAIN",
@@ -652,13 +657,13 @@ test("инструментальная палитра описывает все 
 });
 
 test("состояния статусов берут цвета из палитры A, а не из молчаливых классов", () => {
-  // Разметка звала text-gold-400, bg-ember-500 и text-water-400 — таких ступеней
+  // Разметка звала text-gold-400, bg-ember-500 и text-info-400 — таких ступеней
   // в палитре не было, и статусные окна рендерились нейтральными.
   const cfg = read("tailwind.config.js");
   for (const step of ["gold", "ember"]) {
     assert.match(cfg, new RegExp(`${step}: \\{[^}]*DEFAULT: "#`), `${step}: нужна ступенчатая палитра с DEFAULT`);
   }
-  assert.match(cfg, /water: \{ 400: "#/, "water-400 вызывается из разметки и обязан существовать");
+  assert.match(cfg, /info: \{ 400: "#/, "info-400 вызывается из разметки и обязан существовать");
   const walk = (dir: string): string[] => {
     const out: string[] = [];
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
@@ -671,14 +676,14 @@ test("состояния статусов берут цвета из палит�
   const missing: string[] = [];
   for (const file of walk("src")) {
     const text = read(file);
-    for (const m of text.matchAll(/\b(?:text|bg|border|from|to|via)-(gold|ember|water|sprout|wheat|soil|nf)-([a-z0-9]+)\b/g)) {
+    for (const m of text.matchAll(/\b(?:text|bg|border|from|to|via)-(gold|ember|info|sprout|soil|nf)-([a-z0-9]+)\b/g)) {
       const token = m[0];
       const family = m[1];
       const step = m[2];
       const allowed =
         family === "gold" || family === "ember"
           ? ["300", "400", "500", "600", "700", "900", "DEFAULT"].includes(step)
-          : family === "water"
+          : family === "info"
             ? ["400", "500", "600"].includes(step)
             : family === "sprout"
               ? ["500", "600", "700"].includes(step)
@@ -1277,7 +1282,7 @@ test('сетевая станция и барограф переводят ре�
   const chart = code('src/ui/forge/devices.tsx');
   assert.match(panel, /fetchWeatherSnapshot\(\)/);
   assert.match(panel, /api\.chain\.weatherCrank/);
-  assert.match(panel, /api\.chain\.collectWellWater/);
+  assert.match(panel, /api\.chain\.collectPower/);
   assert.match(panel, /wellCopy\[language\]/);
   assert.match(panel, /!weather \|\| !w/);
   assert.match(recorder, /known = forecast\.filter/);
@@ -1296,25 +1301,25 @@ test('сетевая станция и барограф переводят ре�
   }
 });
 
-test('культивация переводит первые действия и не показывает вечную загрузку без кошелька', async () => {
+test('нейронная лаборатория переводит действия и не показывает вечную загрузку без кошелька', async () => {
   const { languages } = await import('../src/i18n/translations');
-  const { plantingCopy } = await import('../src/i18n/plantingCopy');
-  const panel = code('src/pages/farm/PlantingPanel.tsx');
-  assert.match(panel, /plantingCopy\[language\]/);
+  const { neuralLabCopy } = await import('../src/i18n/neuralLabCopy');
+  const panel = code('src/pages/farm/NeuralLabPanel.tsx');
+  assert.match(panel, /neuralLabCopy\[language\]/);
   assert.ok(panel.indexOf('if (!walletAddr) {\n    return (') < panel.indexOf('if (loading) {\n    return ('), 'disconnected visitor must see a prompt before the loading branch');
   assert.match(panel, /loadError \? \(/);
   assert.match(panel, /setLoadError\(true\)/);
-  assert.match(panel, /!loadError && selectedPlot !== null/);
-  assert.match(panel, /copy\.planted\(seedsAmount, selectedPlot \+ 1\)/);
-  assert.match(panel, /copy\.harvested\(tileIndex \+ 1\)/);
+  assert.match(panel, /!loadError && selectedCell !== null/);
+  assert.match(panel, /copy\.started\(neuronAmount, selectedCell \+ 1\)/);
+  assert.match(panel, /copy\.collected\(tileIndex \+ 1\)/);
   for (const language of languages) {
-    const copy = plantingCopy[language];
-    assert.deepEqual(Object.keys(copy).sort(), Object.keys(plantingCopy.ru).sort(), `${language}: cultivation fields`);
+    const copy = neuralLabCopy[language];
+    assert.deepEqual(Object.keys(copy).sort(), Object.keys(neuralLabCopy.ru).sort(), `${language}: neural laboratory fields`);
     const values = [...Object.values(copy).filter(v => typeof v === 'string'),
-      copy.well(1), copy.plantIn(1), copy.plantButton(3), copy.planted(3, 1), copy.harvested(1)];
+      copy.tile(1), copy.activateIn(1), copy.startButton(3), copy.started(3, 1), copy.collected(1)];
     for (const value of values) {
-      assert.ok(value.trim(), `${language}: missing cultivation label`);
-      if (language !== 'ru') assert.doesNotMatch(value, /[\u0400-\u04ff]/, `${language}: untranslated cultivation label`);
+      assert.ok(value.trim(), `${language}: missing lab label`);
+      if (language !== 'ru') assert.doesNotMatch(value, /[\u0400-\u04ff]/, `${language}: untranslated lab label`);
     }
   }
 });
@@ -1379,19 +1384,19 @@ test('сепарация и обучение имеют полный перев�
 
 test('выбор топлива обучения показывает и передаёт ровно тот рецепт, который использует контракт', () => {
   const source = code('src/pages/farm/OvenPanel.tsx');
-  const core = read('../aof-core/src/instructions/start_baking.rs');
-  assert.match(core, /fuel_kind == 0[\s\S]*?OVEN_WOOD_COST\[idx\], OVEN_BREAD_WOOD\[idx\]/);
-  assert.match(core, /OVEN_COAL_COST\[idx\], OVEN_BREAD_COAL\[idx\]/);
-  const wood = core.match(/OVEN_BREAD_WOOD: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT\]/);
-  const coal = core.match(/OVEN_BREAD_COAL: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT\]/);
-  assert.ok(wood && coal);
-  const numbers = [...source.matchAll(/bread: (\d+),\s+breadCoal: (\d+)/g)].map(m => [Number(m[1]), Number(m[2])]);
-  assert.deepEqual(numbers, wood.slice(1).map((w, i) => [Number(w), Number(coal[i + 1])]));
+  const core = read('../aof-core/src/instructions/start_model_training.rs');
+  assert.match(core, /fuel_kind == 0[\s\S]*?MODEL_CIRCUIT_COST\[idx\], MODEL_CIRCUIT_OUTPUT\[idx\]/);
+  assert.match(core, /MODEL_COMPUTE_COST\[idx\], MODEL_COMPUTE_OUTPUT\[idx\]/);
+  const circuit = core.match(/MODEL_CIRCUIT_OUTPUT: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT\]/);
+  const compute = core.match(/MODEL_COMPUTE_OUTPUT: \[u64; 3\] = \[(\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT, (\d+) \* RESOURCE_UNIT\]/);
+  assert.ok(circuit && compute);
+  const numbers = [...source.matchAll(/model: (\d+),\s+modelCompute: (\d+)/g)].map(m => [Number(m[1]), Number(m[2])]);
+  assert.deepEqual(numbers, circuit.slice(1).map((w, i) => [Number(w), Number(compute[i + 1])]));
   assert.match(source, /const fuelKind = FUEL_KIND\[fuel\]/);
-  assert.match(source, /const resultAmount = fuel === 'wood' \? m\.bread : m\.breadCoal/);
-  assert.match(source, /fuel === 'wood' \? m\.wood : m\.coal/);
+  assert.match(source, /const resultAmount = fuel === 'circuit' \? m\.model : m\.modelCompute/);
+  assert.match(source, /fuel === 'circuit' \? m\.circuit : m\.compute/);
   assert.match(source, /<input type="radio" name="training-fuel" checked=\{fuel === option\}/);
-  assert.match(source, /api\.chain\.startBaking\(\{[\s\S]*?fuelKind/);
+  assert.match(source, /api\.chain\.startModelTraining\(\{[\s\S]*?fuelKind/);
 });
 
 
@@ -1492,20 +1497,21 @@ test("крафт и ремонт переводятся, а цена берёт�
   const { repairCopy } = await import("../src/i18n/repairCopy.ts");
   const costs = { circuit: 3, silicon: 2, data: 4, neuron: 5, power: 6, mind: 7 };
   assert.deepEqual(readCraftQuote(costs), costs);
-  assert.equal(readCraftQuote({ wood: 3, stone: 2, food: 4, seeds: 5, water: 6, potato: 7 }), null,
-    "устаревшие поля wood/stone нельзя считать бесплатной ковкой");
+  const historicalAliases = Object.fromEntries(RESOURCE_MANIFEST.resources.map((resource: any) => [resource.legacyAliases[0], 1]));
+  assert.equal(readCraftQuote(historicalAliases), null, "исторические поля не разрешаются как текущие цены");
   assert.equal(readCraftQuote({ ...costs, neuron: undefined }), null);
   assert.equal(readCraftQuote({ ...costs, silicon: NaN }), null);
   assert.equal(readCraftQuote({ ...costs, data: -1 }), null);
   const chainBalances = { source: "onchain", CIRCUIT: 3, SILICON: 2, DATA: 4, NEURON: 5, POWER: 6, MIND: 7 };
   assert.deepEqual(readCraftBalances(chainBalances), costs);
-  assert.equal(readCraftBalances({ source: "onchain", wood: 3, stone: 2 }), null);
+  const retiredBalances = Object.fromEntries(Object.keys(historicalAliases).map(key => [key, 3]));
+  assert.equal(readCraftBalances({ source: "onchain", ...retiredBalances }), null);
   assert.equal(readCraftBalances({ ...chainBalances, source: "local" }), null);
   assert.equal(readCraftBalances({ ...chainBalances, MIND: undefined }), null);
   const minted = Object.fromEntries(CRAFT_RESOURCES.map(({chain}) => [chain, "a".repeat(32)]));
   assert.deepEqual(readCraftMints({ initialized: true, mints: minted }),
     Object.fromEntries(CRAFT_RESOURCES.map(({key}) => [key, "a".repeat(32)])));
-  assert.equal(readCraftMints({ initialized: true, mints: {WOOD: "a".repeat(32)} }), null);
+  assert.equal(readCraftMints({ initialized: true, mints: {CIRCUIT: "a".repeat(32)} }), null);
 
   const backend = read("../aof_backend/src/routes/tools.ts");
   assert.match(backend, /res\.json\(\{ circuit, silicon, data, neuron, power, mind, minted, privilege \}\)/,
@@ -1566,17 +1572,14 @@ test("кладовая и гель различают подтверждённы
 test("рецепты мастерской совпадают с инструкцией сети и не расходуют неизвестный баланс", async () => {
   const { WORKSHOP_RECIPES, canCraftRecipe } = await import("../src/lib/workshopRecipes.ts");
   const { readEconomyBalances, ALL_BALANCE_KEYS } = await import("../src/lib/economyBalances.ts");
-  const mintToKey: Record<string, string> = {
-    'mm.stone_blue': 'BLUE_CORE', 'mm.stone_red': 'RED_CORE', 'mm.sand_white': 'CLEAR_QUARTZ',
-    'mm.gem_blue': 'QUANTUM_BIT', 'cfg.food_mint': 'DATA', 'mm.gem_orange': 'NEURAL_CHIP',
-    'cfg.stone_mint': 'SILICON', 'cfg.wood_mint': 'CIRCUIT', 'mm.seeds': 'NEURON',
-    'mm.sand_pink': 'ROSE_QUARTZ', 'mm.stone_purple': 'PURPLE_CORE', 'mm.gem_green': 'BIO_CHIP',
-  };
-  const kindToKey: Record<string, string> = {
-    QuantumBit: 'QUANTUM_BIT', NeuralChip: 'NEURAL_CHIP', PhotonBit: 'PHOTON_BIT',
-    CryoFluid: 'CRYO_FLUID', VoltFluid: 'VOLT_FLUID', BioFluid: 'BIO_FLUID',
-    NanoFluid: 'NANO_FLUID', QuantumFluid: 'QUANTUM_FLUID',
-  };
+  const mintToKey: Record<string, string> = Object.fromEntries(RESOURCE_MANIFEST.resources.map((resource: any) => [
+    resource.mintSource.replace(/^config\./, 'cfg.').replace(/^material_mints\./, 'mm.'),
+    resourceKeyForApi(resource.apiName),
+  ]));
+  const kindToKey: Record<string, string> = Object.fromEntries(RESOURCE_MANIFEST.resources.map((resource: any) => [
+    resource.kind,
+    resourceKeyForApi(resource.apiName),
+  ]));
   const rust = read('../aof-core/src/instructions/craft_recipe.rs');
   const blocks = rust.split(/\n {8}\/\/ \d+ =/).slice(1);
   const network = blocks.map(block => {
@@ -1881,7 +1884,7 @@ test('экспедиция переведена и не выдаёт закры�
   assert.ok(!/[А-Яа-яЁё]/.test(page), 'все видимые тексты берутся из словаря');
   const constants = read('../aof-core/src/constants.rs');
   for (const [resource, symbol, amount] of [
-    ['data', 'FOOD', 75], ['circuit', 'WOOD', 35], ['silicon', 'STONE', 35], ['dataset', 'MEAT', 50],
+    ['data', 'DATA', 75], ['circuit', 'CIRCUIT', 35], ['silicon', 'SILICON', 35], ['dataset', 'DATASET', 50],
   ] as const) {
     assert.match(page, new RegExp(`id: '${resource}', symbol: '[A-Z]+', amount: ${amount}`));
     assert.match(constants, new RegExp(`TRIP_COST_${symbol}: u64 = ${amount} \\* RESOURCE_UNIT`));
@@ -2676,19 +2679,17 @@ test('страница MIND переведена на семь языков и �
   const page = code('src/site/pages/ContentPage.tsx');
   const extras = code('src/site/pages/ExtraSections.tsx');
   const css = code('src/site/styles/site.css');
-  assert.match(layout, /localizedRoutes = new Set<string>\(\[[^\]]*'potato'/);
-  assert.match(layout, /id === 'potato' \? siteMind\[language\]/);
-  assert.match(page, /id === 'potato' \? siteMind\[language\]/);
-  assert.match(extras, /id === 'potato'[\s\S]*?const copy = siteMind\[language\]/);
+  assert.match(layout, /localizedRoutes = new Set<string>\(\[[^\]]*'mind'/);
+  assert.match(layout, /id === 'mind' \? siteMind\[language\]/);
+  assert.match(page, /id === 'mind' \? siteMind\[language\]/);
+  assert.match(extras, /id === 'mind'[\s\S]*?const copy = siteMind\[language\]/);
   assert.match(extras, /copy\.checks\.map\(\(check\) =>/);
   assert.match(extras, /copy\.voices\.map\(\(voice\) =>/);
   assert.match(extras, /copy\.safety\.map\(\(item\) =>/);
   assert.match(extras, /copy\.voicesNotice/);
-  assert.ok(!existsSync(new URL('../src/site/content/potato.ts', import.meta.url)));
-  assert.ok(!code('src/site/content/game.ts').includes("'./potato'"));
-  assert.equal(pages.find(p => p.id === 'potato')?.lead, siteMind.ru.lead);
+  assert.equal(pages.find(p => p.id === 'mind')?.lead, siteMind.ru.lead);
   assert.match(css, /site-mind-origin > \*, \.site-mind-grid > \*, \.site-mind-stories > \* \{ min-width: 0; overflow-wrap: anywhere/);
-  assert.match(read('../aof-core/src/lib.rs'), /potato_mint/);
+  assert.match(read('../aof-core/src/lib.rs'), /mind_mint/);
   for (const lang of languages) {
     const copy = siteMind[lang];
     assert.equal(copy.paragraphs.length, 2, lang);
@@ -3045,7 +3046,7 @@ test('four cryogenic gallery slides translate as one block and use canonical res
   assert.match(cryo, /name: names\.soulCore/);
   assert.match(cryo, /label=\{c\.energyDemo\}/);
   assert.match(cryo, /label=\{c\.energyUnknown\}/);
-  assert.ok(!/SPROUT|EMBER|GOLD|WATER|SKR|REWARD|ЖИДК/.test(cryo), 'legacy sample names must not return to the translated gallery');
+  assert.ok(!/SPROUT|EMBER|GOLD|POWER|SKR|REWARD|ЖИДК/.test(cryo), 'legacy sample names must not return to the translated gallery');
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     const copy = galleryCryoCopy[language];
     assert.deepEqual(Object.keys(copy.slides).sort(), [...cryoIds].sort(), `${language}: missing cryo slide`);
@@ -3194,7 +3195,7 @@ test('five gel-gallery slides use localized real inventory categories, not retir
   assert.match(source, /gelIds\.includes\(id as GelId\)/);
   assert.match(source, /name: economyDetailCopy\[language\]\.lanes\[key\]/);
   assert.match(source, /title: economyDetailCopy\[language\]\.categories\[key\]/);
-  assert.ok(!/SPROUT|EMBER|GOLD|WATER|MIND|SKR/.test(gel), 'retired resource names must not imply inventory');
+  assert.ok(!/SPROUT|EMBER|GOLD|POWER|MIND|SKR/.test(gel), 'retired resource names must not imply inventory');
   for (const key of gelIds) assert.match(gel, new RegExp(`\\.\\.\\.galleryGelCopy\\.ru\\.slides\\["${key}"\\]`));
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     assert.deepEqual(Object.keys(galleryGelCopy[language].slides).sort(), [...gelIds].sort());
@@ -3448,7 +3449,7 @@ test('long translated errors and support codes wrap inside the toast viewport', 
   assert.match(notice, /<span className="min-w-0 \[overflow-wrap:anywhere\]">\{n\.text\}<\/span>/);
 });
 
-test('27 visual assets take canonical names from the seven-language resource catalog without losing historical recipe aliases', async () => {
+test('27 visual assets use canonical IDs only; retired resource aliases are rejected', async () => {
   const { RESOURCES, PLAYABLE_RESOURCES, SPECIAL_RESOURCES, TOOL_NFTS, resourceVisual } = await import('../src/lib/visualAssets.ts');
   const { homeResourceNames } = await import('../src/i18n/homeDetail.ts');
   assert.equal(PLAYABLE_RESOURCES.length, 26);
@@ -3459,16 +3460,20 @@ test('27 visual assets take canonical names from the seven-language resource cat
     const id = r.id as keyof typeof homeResourceNames.ru;
     assert.equal(r.name, homeResourceNames.ru[id]);
     assert.equal(r.en, homeResourceNames.en[id]);
-    assert.equal(resourceVisual(r.name)?.id, r.id, `Russian recipe lookup: ${r.id}`);
     assert.equal(resourceVisual(r.id)?.plate, r.plate);
+    assert.equal(resourceVisual(r.name), undefined, `localized display is not an input alias: ${r.id}`);
   }
-  for (const [alias, id] of Object.entries({
-    'Фотон-бит': 'photonBit', 'Био-чип': 'bioChip', 'Ядро души': 'soulCore', 'Голубое ядро': 'blueCore',
-    FOOD: 'data', FLASK_GREEN: 'bioFluid',
-  })) assert.equal(resourceVisual(alias)?.id, id, `${alias}: old lookup broke`);
+  const historical = JSON.parse(read('../docs/RESOURCE_MANIFEST.json'));
+  const retiredKeys = historical.resources.flatMap((resource: any) => resource.legacyAliases.map((alias: string) => alias.toUpperCase()));
+  for (const retired of [...retiredKeys, 'Фотон-бит', 'Био-чип', 'Ядро души', 'Голубое ядро']) {
+    assert.equal(resourceVisual(retired), undefined, `${retired}: historical identifiers must not resolve`);
+  }
+  for (const canonical of ['DATA', 'CIRCUIT', 'SILICON', 'NEURON', 'SYNAPSE', 'SIGNAL', 'MODEL', 'POWER']) {
+    assert.ok(resourceVisual(canonical), `${canonical}: canonical on-chain key must resolve`);
+  }
   assert.equal(TOOL_NFTS.length, 5);
   assert.ok(TOOL_NFTS.every(tool => tool.id && tool.base));
-  assert.ok(!/[А-Яа-яЁё]/.test(code('src/lib/visualAssets.ts').split('export const PLAYABLE_RESOURCES:')[1].split('const LEGACY_RESOURCE_ID')[0]));
+  assert.ok(!/[А-Яа-яЁё]/.test(code('src/lib/visualAssets.ts').split('export const PLAYABLE_RESOURCES:')[1].split('export const SPECIAL_RESOURCES')[0]));
 });
 
 test('exact amount validation and confirmation failures are translated without altering payment results', async () => {
@@ -3679,13 +3684,15 @@ test('the dormant rating form and countdown have complete locale copy without ch
 
 });
 
-test('dead trust tier labels were removed, while legacy resource names still resolve by ID', async () => {
+test('dead trust tier labels were removed; canonical resource IDs remain strict', async () => {
   const trust = code('src/components/ui/TrustRing.tsx');
   assert.ok(!/label: "[А-Яа-яЁё]/.test(trust));
   assert.ok(!/meta\.label/.test(trust));
   const { resourceVisual } = await import('../src/lib/visualAssets.ts');
-  assert.equal(resourceVisual('Фотон-бит')?.id, 'photonBit');
-  assert.equal(resourceVisual('Био-чип')?.id, 'bioChip');
+  assert.equal(resourceVisual('photonBit')?.id, 'photonBit');
+  assert.equal(resourceVisual('bioChip')?.id, 'bioChip');
+  assert.equal(resourceVisual('Фотон-бит'), undefined);
+  assert.equal(resourceVisual('Био-чип'), undefined);
 });
 
 test('nested navigation uses stable typed IDs and changes title with the selected locale', async () => {
@@ -3806,8 +3813,8 @@ test('obsolete admin economy simulation is disclosed, never presented as a live 
   const v1 = code('../aof_backend/src/lib/economySimulator.ts');
   const v2 = code('../aof_backend/src/lib/economySimulatorV2.ts');
   const routes = code('../aof_backend/src/routes/sandbox.ts');
-  assert.match(v1, /"SEEDS" \| "WHEAT"/);
-  assert.match(v1, /POTATO|potatoSupply/);
+  assert.match(v1, /"NEURON" \| "SYNAPSE"/);
+  assert.match(v1, /mindSupply/);
   assert.match(v2, /"FLASK_ENERGY" \| "FLASK_GROWTH"/);
   assert.match(v2, /"rebirth" \| "quest"/);
   assert.match(routes, /r\.post\("\/run", requireAdmin/);
@@ -3974,7 +3981,7 @@ test('exploration and tool-action catches never display arbitrary provider prose
 });
 
 test('farm actions and capsule purchase catches localize known codes without echoing RPC prose', async () => {
-  for (const file of ['PlantingPanel', 'MillPanel', 'OvenPanel', 'WellPanel']) {
+  for (const file of ['NeuralLabPanel', 'MillPanel', 'OvenPanel', 'WellPanel']) {
     const source = code(`src/pages/farm/${file}.tsx`);
     assert.equal((source.match(/actionErrorFeedback\(e, language, walletRuntimeCopy\[language\]\.unconfirmedResponse\)/g) || []).length, 2, file);
     assert.ok(!/e\?\.message \|\| copy\.(networkError|failed)/.test(source), `${file}: raw provider message`);
@@ -4125,7 +4132,7 @@ test('farm toasts are tied to the locale that produced their text', () => {
   assert.match(source, /show: \(message: string, type: "success" \| "error" \| "info", language: Language\)/);
   assert.match(source, /set\(\{ message, type, visible: true, messageLanguage: language \}\)/);
   assert.match(source, /visible && messageLanguage === language/);
-  for (const [file, expected] of [['PlantingPanel', 9], ['MillPanel', 8], ['OvenPanel', 8]] as const) {
+  for (const [file, expected] of [['NeuralLabPanel', 9], ['MillPanel', 8], ['OvenPanel', 8]] as const) {
     const panel = code(`src/pages/farm/${file}.tsx`);
     const calls = panel.match(/toast\.show\([^\n]+?\);/g) ?? [];
     assert.equal(calls.length, expected, file);
@@ -4197,19 +4204,18 @@ test('Filipino player navigation, install-adjacent labels, and instrument exampl
   assert.ok(JSON.stringify(legalStorageCopy.fil).includes('Pang-andar'));
 });
 
-test('Russian source inventory has no legal drafts; historic resource aliases remain input-only', async () => {
+test('Russian source inventory has no resource-alias literals; legal release gate remains closed', async () => {
   const report = JSON.parse(execFileSync(process.execPath, ['scripts/i18n-audit.mjs', '--json', '--all'],
     { cwd: root, encoding: 'utf8' }));
-  assert.equal(report.rawRussianLiterals, 4);
-  assert.equal(report.files, 1);
-  assert.deepEqual(report.retainedOriginals, { legacyAliases: 4 });
+  assert.equal(report.rawRussianLiterals, 0);
+  assert.equal(report.files, 0);
+  assert.deepEqual(report.retainedOriginals, { legacyAliases: 0 });
   assert.equal(report.unreviewedCandidates, 0);
   assert.equal(report.protectedSourcesIntact, true);
-  assert.ok(report.sample.every((entry: { category: string }) => entry.category === 'legacy-input-alias'));
+  assert.deepEqual(report.sample, []);
   const { resourceVisual } = await import('../src/lib/visualAssets.ts');
-  for (const [alias, id] of Object.entries({ 'Фотон-бит': 'photonBit', 'Био-чип': 'bioChip',
-    'Ядро души': 'soulCore', 'Голубое ядро': 'blueCore' })) {
-    assert.equal(resourceVisual(alias)?.id, id, `${alias}: legacy input stopped resolving`);
+  for (const retired of ['Фотон-бит', 'Био-чип', 'Ядро души', 'Голубое ядро']) {
+    assert.equal(resourceVisual(retired), undefined, `${retired}: legacy input alias must not resolve`);
   }
   assert.match(read('src/legal/operator.json'), /"approved": false/, 'do not waive the legal release gate');
 });

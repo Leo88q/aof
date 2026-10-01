@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # PROMPT_AUDIT_FULL_STACK_V2 — глубокий аудит экосистемы перед прод-релизом
 ### (безопасность · монетизация · экономика · функционал)
 

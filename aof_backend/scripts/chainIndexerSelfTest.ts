@@ -101,27 +101,27 @@ async function main() {
   assert.deepEqual(decoder.decode([`Program ${CORE} invoke [1]`, "Program log: hello", `Program ${CORE} success`]), []);
 
   // --- 4. Supply deltas from token balances ---------------------------------
-  const potato = Keypair.generate().publicKey.toBase58();
-  const wood = Keypair.generate().publicKey.toBase58();
+  const mind = Keypair.generate().publicKey.toBase58();
+  const circuit = Keypair.generate().publicKey.toBase58();
   const tb = (mint: string, amount: string) => ({ mint, uiTokenAmount: { amount } });
-  // transfer 100 potato A->B (no supply change), mint 50 wood to C, burn 30 potato from D
-  const pre = [tb(potato, "100"), tb(potato, "0"), tb(wood, "10"), tb(potato, "30")];
-  const post = [tb(potato, "0"), tb(potato, "100"), tb(wood, "60"), tb(potato, "0")];
+  // transfer 100 mind A->B (no supply change), mint 50 circuit to C, burn 30 mind from D
+  const pre = [tb(mind, "100"), tb(mind, "0"), tb(circuit, "10"), tb(mind, "30")];
+  const post = [tb(mind, "0"), tb(mind, "100"), tb(circuit, "60"), tb(mind, "0")];
   const deltas = mintDeltas(pre, post).sort((a, b) => a.mint.localeCompare(b.mint));
-  assert.deepEqual(deltas, [{ mint: potato, delta: -30n }, { mint: wood, delta: 50n }].sort((a, b) => a.mint.localeCompare(b.mint)));
-  assert.deepEqual(mintDeltas(pre, post, new Set([wood])), [{ mint: wood, delta: 50n }]);
+  assert.deepEqual(deltas, [{ mint: mind, delta: -30n }, { mint: circuit, delta: 50n }].sort((a, b) => a.mint.localeCompare(b.mint)));
+  assert.deepEqual(mintDeltas(pre, post, new Set([circuit])), [{ mint: circuit, delta: 50n }]);
   // Newly created ATA appears only in post; closed ATA only in pre.
-  assert.deepEqual(mintDeltas([], [tb(wood, "7")]), [{ mint: wood, delta: 7n }]);
-  assert.deepEqual(mintDeltas([tb(wood, "7")], []), [{ mint: wood, delta: -7n }]);
+  assert.deepEqual(mintDeltas([], [tb(circuit, "7")]), [{ mint: circuit, delta: 7n }]);
+  assert.deepEqual(mintDeltas([tb(circuit, "7")], []), [{ mint: circuit, delta: -7n }]);
   assert.deepEqual(mintDeltas(null, undefined), []);
   // u64 max does not overflow
-  assert.deepEqual(mintDeltas([], [tb(wood, "18446744073709551615")]), [{ mint: wood, delta: 18446744073709551615n }]);
+  assert.deepEqual(mintDeltas([], [tb(circuit, "18446744073709551615")]), [{ mint: circuit, delta: 18446744073709551615n }]);
 
   // --- 5. touchedPrograms + normalize ---------------------------------------
   const keys = [user.toBase58(), CORE, "11111111111111111111111111111111", MARKET];
   assert.deepEqual(touchedPrograms(keys, [1, 2, 3, 1], new Set([CORE, MARKET, QUESTS])).sort(), [CORE, MARKET].sort());
-  assert.deepEqual(normalize({ a: new BN("99"), b: user, c: { food: {} }, d: [1n, "x"], e: Buffer.from([1, 2]) }),
-    { a: "99", b: user.toBase58(), c: { food: {} }, d: ["1", "x"], e: "0102" });
+  assert.deepEqual(normalize({ a: new BN("99"), b: user, c: { data: {} }, d: [1n, "x"], e: Buffer.from([1, 2]) }),
+    { a: "99", b: user.toBase58(), c: { data: {} }, d: ["1", "x"], e: "0102" });
 
   // --- 6. Wallet hash is salted and stable ----------------------------------
   assert.equal(hashWallet("W", "s1"), hashWallet("W", "s1"));

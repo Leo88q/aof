@@ -85,15 +85,16 @@ jobs:
             echo "Включение — одна команда (нужны ключ оператора, SOL и запущенный backend):"
             echo
             echo '```sh'
-            echo "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон"
-            echo "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить"
+            echo "PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон"
+            echo "PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить"
+            echo "# PROGRAM_MAX_LEN_POLICY обязателен (exact | headroom + PROGRAM_MAX_LEN_HEADROOM_PERCENT | legacy-2x): docs/DEVNET_DEPLOY_COSTS.md"
             echo '```'
             echo
             echo "Включается тем же деплоем (код уже в ветке, нужна только новая сборка):"
             echo "ордербук с ценой за целый ресурс, потолок цены в лотерее, полный сброс при"
             echo "перерождении. Осталось работой по контракту: пул горячего рынка (нужна"
             echo "кросс-программная смена владельца ToolData), сессионные ключи (атомарная"
-            echo "привязка резерва к целевой инструкции), платный сезон-пропуск V2, Potato V2."
+            echo "привязка резерва к целевой инструкции), платный сезон-пропуск V2, MIND spin V2."
             echo "Обмен «инструмент в SOL» одним действием уже работает через листинги и офферы"
             echo "aof_core. Разбор: docs/UNBLOCK_PLAN_2026-09-30.md §3."
           } > /tmp/devnet-report.md
