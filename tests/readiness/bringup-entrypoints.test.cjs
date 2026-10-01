@@ -16,6 +16,7 @@ const ENTRYPOINTS = [
   'scripts/build-local.sh',
   'scripts/verify-programs.sh',
   'scripts/devnet-program-probe.py',
+  'scripts/devnet-deploy-estimator.py',
   'scripts/check-idl-drift.py',
   'scripts/verify-address-registry.cjs',
 ];

@@ -32,6 +32,9 @@ import tempfile
 import unittest
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import devnet_mock_rpc as mockrpc  # noqa: E402
+
 REPO = HERE.parent
 SCRIPT = HERE / "devnet-bringup.sh"
 REGISTRY = json.loads((REPO / "watchtower" / "addresses.json").read_text(encoding="utf-8"))
@@ -44,9 +47,25 @@ printf 'solana %s\\n' "$*" >> "$MOCK_CALLS"
 case "$1" in
   address) cat "$3";;
   balance) echo "${MOCK_BALANCE:-3} SOL";;
-  account) exit ${MOCK_ACCOUNT_CODE:-1};;
+  --version) echo "solana-cli 4.2.1 (src:mock; feat:0, client:Agave)";;
+  account)
+    [ -f "$MOCK_CHAIN/$2.json" ] && exit 0
+    exit ${MOCK_ACCOUNT_CODE:-1};;
   *) [ "$1" = "program" ] && [ "$2" = "deploy" ] || exit 1
      echo "@@deploy $*" >> "$MOCK_CALLS"
+     shift 2; maxlen=""; progid=""; payer=""; so=""
+     while [ $# -gt 0 ]; do
+       case "$1" in
+         --url) shift 2;;
+         --keypair) payer="$(cat "$2")"; shift 2;;
+         --program-id) progid="$(cat "$2")"; shift 2;;
+         --max-len) maxlen="$2"; shift 2;;
+         *) so="$1"; shift;;
+       esac
+     done
+     # как настоящий CLI: без --max-len ёмкость равна размеру .so
+     [ -n "$maxlen" ] || maxlen="$(wc -c < "$so" | tr -d ' ')"
+     printf '{"max_len": %s, "so": "%s", "authority": "%s", "corrupt": false}\\n' "$maxlen" "$so" "$payer" > "$MOCK_CHAIN/$progid.json"
      exit 0;;
 esac
 """
@@ -204,6 +223,11 @@ class BringupScript(unittest.TestCase):
             (self.artifacts / f"{name}.so").write_bytes(self.elf(address))
             (self.artifacts / f"{name}-keypair.json").write_text(address, encoding="utf-8")
         (self.dir / "keypair.json").write_text(CORE_ADDRESS, encoding="utf-8")
+        self.chain = self.dir / "chain"
+        self.chain.mkdir()
+        rpc = mockrpc.MockRpc(balances={CORE_ADDRESS: 50 * 1_000_000_000}, chain_dir=self.chain)
+        self.rpc = rpc.__enter__()
+        self.addCleanup(rpc.__exit__, None, None, None)
         self.probe = self.dir / "probe.py"
         self.probe.write_text(
             "import sys\nprint('ЗОНД: программы проверены')\n", encoding="utf-8")
@@ -241,9 +265,13 @@ class BringupScript(unittest.TestCase):
             "MOCK_POOL_STATE": str(self.dir / "pools"),
             "PROBE": str(self.probe),
             "SKIP": "",
+            "RPC_URL": self.rpc.url,
+            "MOCK_CHAIN": str(self.chain),
+            "PROGRAM_MAX_LEN_POLICY": "exact",
         })
+        env.pop("PROGRAM_MAX_LEN_HEADROOM_PERCENT", None)
         env.update(env_overrides or {})
-        for key in ("AOF_DEPLOY_TARGET", "ADMIN_TOKEN", "SKIP", "COLLECTOR_MINTS"):
+        for key in ("AOF_DEPLOY_TARGET", "ADMIN_TOKEN", "SKIP", "COLLECTOR_MINTS", "PROGRAM_MAX_LEN_POLICY"):
             if env.get(key) == "":
                 env.pop(key, None)
         return subprocess.run(["bash", str(SCRIPT), *extra], capture_output=True, text=True,
@@ -279,6 +307,31 @@ class BringupScript(unittest.TestCase):
         self.assertEqual(done.returncode, 3)
         self.assertIn("devnet", done.stderr)
         self.assertEqual(self.log(), [])
+
+    def test_missing_max_len_policy_refuses_before_any_command(self):
+        done = self.run_script("--apply", env_overrides={"PROGRAM_MAX_LEN_POLICY": ""})
+        self.assertEqual(done.returncode, 3)
+        self.assertIn("PROGRAM_MAX_LEN_POLICY", done.stderr)
+        self.assertEqual(self.log(), [], "политика проверяется раньше любой команды")
+        self.assertEqual(self.rpc.requests, [], "и раньше любого обращения к RPC")
+
+    def test_policy_reaches_every_deploy_as_max_len(self):
+        done = self.run_script("--apply", env_overrides={
+            "COLLECTOR_MINTS": "",
+            "PROGRAM_MAX_LEN_POLICY": "headroom",
+            "PROGRAM_MAX_LEN_HEADROOM_PERCENT": "25",
+        })
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        deploys = self.deploys()
+        self.assertEqual(len(deploys), len(PROGRAMS))
+        for line in deploys:
+            self.assertRegex(line, r" --max-len 65 ", line)  # ceil(52 * 1.25) для 52-байтной фикстуры
+
+    def test_skip_deploy_does_not_need_a_policy(self):
+        done = self.run_script("--apply", env_overrides={
+            "PROGRAM_MAX_LEN_POLICY": "", "SKIP": "deploy", "COLLECTOR_MINTS": ""})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys(), [])
 
     def test_missing_operator_key_refuses(self):
         done = self.run_script(env_overrides={"AUTHORITY_KEYPAIR": str(self.dir / "nope.json")})

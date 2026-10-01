@@ -3,7 +3,7 @@
 #
 # Зачем этот скрипт. Читающий зонд (scripts/devnet-program-probe.py) показал:
 # по адресам aof_core, aof_market и aof_session_keys на девнете нет аккаунтов, а
-# aof_core — это 113 инструкций (добыча, инструменты, ресурсы, крафт, паки,
+# aof_core — это 120 инструкций (добыча, инструменты, ресурсы, крафт, паки,
 # рынок, газ-бак, коллекционеры). Пока программ нет в сети, любая механика
 # честно отвечает 503 «нет данных из сети» — переключатель этого не исправит.
 # Дальше деплоя включать нечего не потому, что «нельзя», а потому что нужен
@@ -18,7 +18,12 @@
 #   AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
 #
 # Обязательные условия (без них выход 3 и ни одной транзакции):
-#   * AOF_DEPLOY_TARGET=devnet — mainnet этим скриптом не включается;
+#   * AOF_DEPLOY_TARGET=devnet — mainnet этим скриптом не включается; RPC обязан
+#     отвечать genesis-хешем devnet;
+#   * PROGRAM_MAX_LEN_POLICY=exact|headroom|legacy-2x (для headroom ещё
+#     PROGRAM_MAX_LEN_HEADROOM_PERCENT=1..99) — явная ёмкость программ: без неё
+#     деплой отказывает (SKIP=deploy её не требует). Подробности и стоимость:
+#     docs/DEVNET_DEPLOY_COSTS.md;
 #   * ключ оператора AUTHORITY_KEYPAIR (по умолчанию
 #     solana/keys/aof-authority-devnet.json) и ≥ MIN_SOL SOL на нём;
 #   * ключи программ target/deploy/<name>-keypair.json, чьи pubkey равны
@@ -31,6 +36,8 @@
 #
 # Переменные окружения:
 #   RPC_URL, AUTHORITY_KEYPAIR, ARTIFACTS, BACKEND_URL, ADMIN_TOKEN, MIN_SOL,
+#   PROGRAM_MAX_LEN_POLICY, PROGRAM_MAX_LEN_HEADROOM_PERCENT,
+#   OPERATOR_RESERVE_SOL (по умолчанию MIN_SOL), DEPLOY_FEE_RESERVE_SOL (по умолчанию 0.1),
 #   COLLECTOR_MINTS,
 #   SKIP=build,deploy,config,mints,caps,craft,mechanics,market,mining,collectors,report
 #   SKIP_BUILD=1 — не собирать, взять готовые .so из target/deploy.
@@ -76,6 +83,7 @@ MIN_SOL="${MIN_SOL:-1}"
 SKIP="${SKIP:-}"
 COLLECTOR_MINTS="${COLLECTOR_MINTS:-}"
 PROBE="${PROBE:-scripts/devnet-program-probe.py}"
+ESTIMATOR="${ESTIMATOR:-scripts/devnet-deploy-estimator.py}"
 CRAFT_RARITY_COUNTERS="${CRAFT_RARITY_COUNTERS:-1,2,3,4}"
 SEASON_ID="${SEASON_ID:-1}"
 LOTTERY_ROUND_ID="${LOTTERY_ROUND_ID:-1}"
@@ -127,6 +135,14 @@ command -v curl >/dev/null || die "нет curl"
 [ -f "$AUTHORITY_KEYPAIR" ] || die \
   "нет ключа оператора: $AUTHORITY_KEYPAIR (файл кладётся на своей машине, в чат его присылать нельзя)"
 [ -f "$PROBE" ] || die "нет читающего зонда $PROBE"
+# Деплой требует явной политики ёмкости программ (PROGRAM_MAX_LEN_POLICY): проверяем её здесь, ДО backend и
+# до первой команды, чтобы отказ не нашёл вас посреди запуска. Без деплоя (SKIP=deploy) политика не нужна.
+if ! skipped deploy; then
+  command -v python3 >/dev/null || die "нет python3 (нужен оценщику стоимости деплоя)"
+  [ -f "$ESTIMATOR" ] || die "нет оценщика стоимости $ESTIMATOR"
+  POLICY_LABEL="$(python3 "$ESTIMATOR" check-policy 2>&1)" || die "политика max_len: ${POLICY_LABEL#ОТКАЗ: }"
+  ok "ёмкость программ (max-len): $POLICY_LABEL"
+fi
 NEED_BACKEND=0
 for s in mints caps market mining collectors; do skipped "$s" || NEED_BACKEND=1; done
 if [ "$NEED_BACKEND" = 1 ]; then
