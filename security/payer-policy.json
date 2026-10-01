@@ -450,12 +450,6 @@
       "status": "ok",
       "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
     },
-    "aof_market.PlaceLimitOrder.order": {
-      "owner": "player",
-      "payer": "player",
-      "status": "ok",
-      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
-    },
     "aof_quests.AchievementUnlock.achievement_record": {
       "owner": "player",
       "payer": "player",

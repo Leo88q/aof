@@ -43,20 +43,19 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 10 отключённых инструкций, к удалению 3', () => {
+test('репозиторий проходит гейт: 9 отключённых инструкций, к удалению 2', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /10 инструкций, к удалению 3/);
+  assert.match(result.out, /9 инструкций, к удалению 2/);
 });
 
 test('удаляются только доказанные категории, остальные — keep с причиной', () => {
   const evidence = JSON.parse(read(OUT_JSON));
   const byName = new Map(evidence.instructions.map((i) => [`${i.program}.${i.name}`, i]));
   const remove = evidence.instructions.filter((i) => /^remove/.test(i.decision)).map((i) => i.name).sort();
-  assert.deepEqual(remove, ['marketplace_buy', 'place_limit_order', 'rental_start']);
+  assert.deepEqual(remove, ['marketplace_buy', 'rental_start']);
   assert.match(byName.get('aof_core.rental_start').decision, /заменена активной rental_start_bounded/);
   assert.match(byName.get('aof_core.marketplace_buy').decision, /заменена активной marketplace_buy_bounded/);
-  assert.match(byName.get('aof_market.place_limit_order').decision, /by construction/);
   for (const name of ['aof_quests.potato_spin_commit', 'aof_session_keys.session_create', 'aof_core.purchase_season_pass']) {
     const entry = byName.get(name);
     assert.match(entry.decision, /^keep — не доказано мёртвой: .+/, `${name}: keep обязан нести причину`);

@@ -104,35 +104,6 @@
       "decision": "remove — заменена активной rental_start_bounded"
     },
     {
-      "program": "aof_market",
-      "name": "place_limit_order",
-      "camel": "placeLimitOrder",
-      "role": "candidate-dead-code",
-      "replacedBy": null,
-      "guard": {
-        "kind": "err!",
-        "code": "TradingDisabled",
-        "line": "err!(MarketError::TradingDisabled)"
-      },
-      "backendCallSites": {
-        "calls": 0,
-        "mentions": 0,
-        "files": []
-      },
-      "frontendCallSites": {
-        "calls": 0,
-        "mentions": 0,
-        "files": []
-      },
-      "platformConsumers": null,
-      "tests": [
-        "tests/readiness/dead-code-evidence.test.cjs",
-        "tests/readiness/instruction-inventory.test.cjs"
-      ],
-      "adminOrSecurityNeed": false,
-      "decision": "remove — by construction: парной инструкции (матчинг/расчёт) в программе нет"
-    },
-    {
       "program": "aof_quests",
       "name": "achievement_unlock",
       "camel": "achievementUnlock",

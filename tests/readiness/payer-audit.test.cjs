@@ -54,18 +54,18 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn, withPolicy = true) => { const tmp = makeRoot(withPolicy); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 91 инициализация, 5 долгов (MigrateTool удалён в шаге B)', () => {
+test('репозиторий проходит гейт: 90 инициализаций, 5 долгов (шаг B удалил две мёртвые инициализации)', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /91 инициализаций классифицированы/);
+  assert.match(result.out, /90 инициализаций классифицированы/);
   assert.match(result.out, /долг \(платит оператор вместо игрока\): 5/);
 });
 
-test('политика и матрица покрывают одни и те же 91 аккаунт', () => {
+test('политика и матрица покрывают одни и те же 90 аккаунтов', () => {
   const policy = JSON.parse(read(POLICY));
   const matrix = JSON.parse(read(MATRIX_JSON));
-  assert.equal(Object.keys(policy.entries).length, 91);
-  assert.equal(matrix.rows.length, 91);
+  assert.equal(Object.keys(policy.entries).length, 90);
+  assert.equal(matrix.rows.length, 90);
   const debt = matrix.rows.filter((r) => r.status === 'debt').map((r) => `${r.program}.${r.instruction}.${r.account}`);
   assert.deepEqual(debt, [
     'aof_core.GrantSeasonXp.season_pass',

@@ -636,12 +636,6 @@
       }
     },
     "aof_market": {
-      "cancel_limit_order": {
-        "role": "candidate-dead-code",
-        "status": "active",
-        "note": "Снимает лимитный ордер и возвращает эскроу; place_limit_order отключена, поэтому ордера не создаются.",
-        "evidence": "Нет call sites в backend/frontend/game/скриптах (статический поиск, scripts/instruction-inventory.mjs); place_limit_order всегда TradingDisabled, программа ещё ни разу не развёрнута. Удалять только по решению владельца."
-      },
       "crank_market": {
         "role": "gameplay",
         "status": "active",
@@ -671,12 +665,6 @@
         "role": "initialization",
         "status": "active",
         "note": "Пул редкости (bringup шаг 7)."
-      },
-      "place_limit_order": {
-        "role": "candidate-dead-code",
-        "status": "disabled-on-chain",
-        "note": "Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL.",
-        "evidence": "Нет call sites в backend/frontend/game/скриптах (статический поиск); обработчик всегда возвращает TradingDisabled; matching/settlement-инструкции не существует. Удалять только по решению владельца."
       },
       "set_fees": {
         "role": "admin",

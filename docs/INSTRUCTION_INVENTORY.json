@@ -21,7 +21,7 @@
     }
   ],
   "totals": {
-    "instructions": 173,
+    "instructions": 171,
     "byRole": {
       "gameplay": 100,
       "admin": 40,
@@ -30,12 +30,12 @@
       "initialization": 15,
       "compatibility": 5,
       "deprecated": 2,
-      "candidate-dead-code": 2
+      "candidate-dead-code": 0
     },
-    "disabledOnChain": 10,
+    "disabledOnChain": 9,
     "validatorTested": 98,
     "sharedNames": 23,
-    "withoutAnyCallSite": 25,
+    "withoutAnyCallSite": 23,
     "withoutCallSiteAndTest": 7
   },
   "programs": {
@@ -58,7 +58,7 @@
       "withoutCallSiteAndTest": 1
     },
     "aof_market": {
-      "instructions": 14,
+      "instructions": 12,
       "byRole": {
         "gameplay": 4,
         "admin": 5,
@@ -67,12 +67,12 @@
         "initialization": 2,
         "compatibility": 0,
         "deprecated": 0,
-        "candidate-dead-code": 2
+        "candidate-dead-code": 0
       },
-      "disabledOnChain": 1,
+      "disabledOnChain": 0,
       "validatorTested": 4,
       "sharedNames": 5,
-      "withoutAnyCallSite": 2,
+      "withoutAnyCallSite": 0,
       "withoutCallSiteAndTest": 0
     },
     "aof_quests": {
@@ -7134,42 +7134,6 @@
     },
     {
       "program": "aof_market",
-      "name": "cancel_limit_order",
-      "camel": "cancelLimitOrder",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "inline",
-        "path": null,
-        "file": "programs/aof-market/src/lib.rs",
-        "line": 656
-      },
-      "disabledOnChain": false,
-      "role": "candidate-dead-code",
-      "status": "active",
-      "replacedBy": null,
-      "note": "Снимает лимитный ордер и возвращает эскроу; place_limit_order отключена, поэтому ордера не создаются.",
-      "evidence": "Нет call sites в backend/frontend/game/скриптах (статический поиск, scripts/instruction-inventory.mjs); place_limit_order всегда TradingDisabled, программа ещё ни разу не развёрнута. Удалять только по решению владельца.",
-      "callSites": {},
-      "registries": [],
-      "bringup": [],
-      "tests": {
-        "selfTests": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "scripts/test-p0-security.py"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 0,
-        "validatorTested": false,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_market",
       "name": "crank_market",
       "camel": "crankMarket",
       "inIdl": true,
@@ -7178,7 +7142,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 616
+        "line": 571
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7216,7 +7180,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 416
+        "line": 371
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7277,7 +7241,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 514
+        "line": 469
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7337,7 +7301,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 634
+        "line": 589
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7386,7 +7350,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 301
+        "line": 256
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -7432,7 +7396,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 376
+        "line": 331
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -7470,42 +7434,6 @@
     },
     {
       "program": "aof_market",
-      "name": "place_limit_order",
-      "camel": "placeLimitOrder",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "inline",
-        "path": null,
-        "file": "programs/aof-market/src/lib.rs",
-        "line": 640
-      },
-      "disabledOnChain": true,
-      "role": "candidate-dead-code",
-      "status": "disabled-on-chain",
-      "replacedBy": null,
-      "note": "Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL.",
-      "evidence": "Нет call sites в backend/frontend/game/скриптах (статический поиск); обработчик всегда возвращает TradingDisabled; matching/settlement-инструкции не существует. Удалять только по решению владельца.",
-      "callSites": {},
-      "registries": [],
-      "bringup": [],
-      "tests": {
-        "readiness": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 0,
-        "validatorTested": false,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_market",
       "name": "set_fees",
       "camel": "setFees",
       "inIdl": true,
@@ -7514,7 +7442,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 363
+        "line": 318
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7545,7 +7473,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 370
+        "line": 325
       },
       "disabledOnChain": false,
       "role": "emergency",
@@ -7576,7 +7504,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 604
+        "line": 559
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7614,7 +7542,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 324
+        "line": 279
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7645,7 +7573,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 337
+        "line": 292
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7676,7 +7604,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 350
+        "line": 305
       },
       "disabledOnChain": false,
       "role": "admin",

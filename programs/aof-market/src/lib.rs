@@ -244,51 +244,6 @@ pub struct Skip<'info> {
     pub pool: Account<'info, HotMarketPool>,
 }
 
-#[derive(Accounts)]
-#[instruction(rarity: u8, currency: Currency, is_buy: bool, limit_price: u64, amount: u64)]
-pub struct PlaceLimitOrder<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ MarketError::Paused)]
-    pub config: Account<'info, MarketConfig>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    #[account(init, payer = maker, space = LIMIT_ORDER_SPACE, seeds = [LIMIT_ORDER_SEED, maker.key().as_ref(), &[rarity]], bump)]
-    pub order: Account<'info, HotLimitOrder>,
-    /// F-CURRENCY-01: та же привязка к каноническим минтам конфига, что и в
-    /// `HotMarketBuy`/`HotMarketSell`. Инструкция пока закрыта
-    /// (`MarketError::TradingDisabled`), но констрейнт держит её безопасной для
-    /// момента включения: ордер, номинированный в чужом минте, не создастся.
-    #[account(
-        mut,
-        constraint = (
-            (currency == Currency::Core && currency_mint.key() == config.core_mint)
-            || (currency == Currency::Gem && currency_mint.key() == config.gem_mint)
-        ) @ MarketError::InvalidCurrencyMint
-    )]
-    pub currency_mint: Account<'info, Mint>,
-    #[account(mut, constraint = maker_currency.mint == currency_mint.key(), constraint = maker_currency.owner == maker.key())]
-    pub maker_currency: Account<'info, TokenAccount>,
-    #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == currency_mint.key())]
-    pub order_vault: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(rarity: u8)]
-pub struct CancelLimitOrder<'info> {
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    #[account(mut, close = maker, seeds = [LIMIT_ORDER_SEED, maker.key().as_ref(), &[rarity]], bump, constraint = order.maker == maker.key() @ MarketError::Unauthorized)]
-    pub order: Account<'info, HotLimitOrder>,
-    #[account(mut)]
-    pub currency_mint: Account<'info, Mint>,
-    #[account(mut, constraint = order_vault.owner == order.key(), constraint = order_vault.mint == currency_mint.key())]
-    pub order_vault: Account<'info, TokenAccount>,
-    #[account(mut, constraint = maker_currency.mint == currency_mint.key(), constraint = maker_currency.owner == maker.key())]
-    pub maker_currency: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-}
-
 fn rarity_index_ok(r: u8) -> Result<()> {
     require!(r <= 3, MarketError::Unauthorized);
     Ok(())
@@ -637,57 +592,7 @@ pub mod aof_market {
         Ok(())
     }
 
-    pub fn place_limit_order(
-        ctx: Context<PlaceLimitOrder>,
-        rarity: u8,
-        currency: Currency,
-        is_buy: bool,
-        limit_price: u64,
-        amount: u64,
-    ) -> Result<()> {
-        // No matching/settlement instruction exists yet; accepting orders
-        // would create misleading or permanently locked positions.
-        // Argument names are preserved for IDL stability, so every argument is
-        // intentionally unused because the instruction is disabled.
-        let _ = (ctx, rarity, currency, is_buy, limit_price, amount);
-        err!(MarketError::TradingDisabled)
-    }
 
-    pub fn cancel_limit_order(ctx: Context<CancelLimitOrder>, rarity: u8) -> Result<()> {
-        rarity_index_ok(rarity)?;
-        require!(ctx.accounts.order.active, MarketError::OrderNotActive);
-        let maker_key = ctx.accounts.maker.key();
-        let is_buy = ctx.accounts.order.is_buy;
-        let limit_price = ctx.accounts.order.limit_price;
-        let amount_escrowed = ctx.accounts.order.amount_escrowed;
-        let bump = ctx.bumps.order;
-        // SW008: effects-before-interactions — flip the order state *before* the
-        // SPL CPI. Reload only the token accounts mutated by SPL below,
-        // NEVER the order (reload would discard this in-memory state change).
-        ctx.accounts.order.active = false;
-        let mut refunded: u64 = 0;
-        if is_buy {
-            let seeds: &[&[u8]] = &[LIMIT_ORDER_SEED, maker_key.as_ref(), &[rarity], &[bump]];
-            let refund = limit_price.checked_mul(amount_escrowed).ok_or(MarketError::MathOverflow)?;
-            token::transfer(
-                CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
-                    Transfer {
-                        from: ctx.accounts.order_vault.to_account_info(),
-                        to: ctx.accounts.maker_currency.to_account_info(),
-                        authority: ctx.accounts.order.to_account_info(),
-                    },
-                    &[seeds],
-                ),
-                refund,
-            )?;
-            ctx.accounts.order_vault.reload()?;
-            ctx.accounts.maker_currency.reload()?;
-            refunded = refund;
-        }
-        emit!(LimitOrderCancelled { maker: maker_key, rarity, refunded });
-        Ok(())
-    }
 }
 
 #[cfg(test)]

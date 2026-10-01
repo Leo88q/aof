@@ -20,10 +20,6 @@ pub enum MarketError {
     SlippageExceeded,
     #[msg("Hot window duration out of range")]
     InvalidWindowDuration,
-    #[msg("Order is not active")]
-    OrderNotActive,
-    #[msg("Market trading is disabled until canonical ToolData transfer is implemented")]
-    TradingDisabled,
     #[msg("Insufficient reserve in pool")]
     InsufficientReserve,
 

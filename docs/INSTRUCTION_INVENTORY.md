@@ -12,12 +12,12 @@
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
 | aof_core | 123 | 3 | 92 (75%) | 12 | 1 |
-| aof_market | 14 | 1 | 4 (29%) | 2 | 0 |
+| aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 7 | 6 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **173** | **10** | **98** (57%) | **25** | **7** |
+| **всего** | **171** | **9** | **98** (57%) | **23** | **7** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -38,9 +38,9 @@
 | initialization | 8 | 2 | 2 | 1 | 1 | 1 | 15 |
 | compatibility | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
 | deprecated | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| candidate-dead-code | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
+| candidate-dead-code | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-## Отключены в коде (10)
+## Отключены в коде (9)
 
 Первая команда обработчика — `require!(false, …)` или `err!(…)`: инструкция есть в IDL, но на цепи всегда отказывает.
 
@@ -49,7 +49,6 @@
 | aof_core.marketplace_buy | deprecated | Всегда FeatureDisabled: заменена marketplace_buy_bounded (с max_price и сроком); остаётся ради стабильности IDL. |
 | aof_core.purchase_season_pass | gameplay | Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
 | aof_core.rental_start | deprecated | Всегда FeatureDisabled: заменена rental_start_bounded (с потолком комиссии); остаётся ради стабильности IDL. |
-| aof_market.place_limit_order | candidate-dead-code | Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL. |
 | aof_quests.achievement_unlock | gameplay | Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора. |
 | aof_quests.challenge_contribute | gameplay | Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации. |
 | aof_quests.drum_commit | gameplay | Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint. |
@@ -57,7 +56,7 @@
 | aof_session_keys.session_check_and_spend | gameplay | Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
 | aof_session_keys.session_create | gameplay | Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
 
-## Без найденных call sites (25)
+## Без найденных call sites (23)
 
 Не «мёртвый код», а список мест для ручной проверки. «Тесты» — есть ли хоть одно покрытие (validator / самотест / readiness / Rust).
 Инструкции с общими именами (23: ротация authority, set_fees, set_paused, vrf_pool_*) исключены: по тексту нельзя определить, какой программе принадлежит упоминание.
@@ -76,8 +75,6 @@
 | aof_core.set_cashout_frozen | emergency | active | validator, readiness, rust | Заморозка/разморозка выводов (operator/guardian). |
 | aof_core.vrf_slot_recover | emergency | active | readiness | Оператор снимает блокировку слота VRF, чей держатель исчез. |
 | aof_core.sync_tool_owner | gameplay | active | validator, readiness | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
-| aof_market.cancel_limit_order | candidate-dead-code | active | selfTests | Снимает лимитный ордер и возвращает эскроу; place_limit_order отключена, поэтому ордера не создаются. |
-| aof_market.place_limit_order | candidate-dead-code | disabled-on-chain | readiness | Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL. |
 | aof_quests.init_potato_bank | initialization | active | — | Изолированная казна Potato V2, изначально на паузе. |
 | aof_quests.init_quest_config | initialization | active | — | QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет. |
 | aof_quests.potato_spin_commit | gameplay | disabled-on-chain | readiness | Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза. |
@@ -220,14 +217,12 @@
 | aof_core | reset_for_rebirth | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | transfer_tool | gameplay | active | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | 0 |  |
 | aof_core | sync_tool_owner | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
-| aof_market | cancel_limit_order | candidate-dead-code | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_market | hot_market_sell_into_queue | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
 | aof_market | hot_market_skip | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | ✓ |
 | aof_market | init_market_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_market | init_pool | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
-| aof_market | place_limit_order | candidate-dead-code | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_market | set_fees ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_market | set_paused ~ | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_market | start_market_event | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |

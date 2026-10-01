@@ -3,7 +3,7 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **91**; нарушают принцип (долг до деплоя): **5**.
+Инициализаций аккаунтов: **90**; нарушают принцип (долг до деплоя): **5**.
 
 ## Долг: платит оператор, а должен игрок
 
@@ -90,7 +90,6 @@
 | aof_liquidity | LpDeposit | pool_vault | TokenAccount | init_if_needed | user | global | player | ok | — | — |
 | aof_market | InitConfig | config | MarketConfig | init | authority (оператор) | global | operator | ok | — | — |
 | aof_market | InitPool | pool | HotMarketPool | init | authority (оператор) | global | operator | ok | — | — |
-| aof_market | PlaceLimitOrder | order | HotLimitOrder | init | maker | player | player | ok | — | — |
 | aof_quests | AchievementUnlock | achievement_record | AchievementRecord | init | user | player | player | ok | — | — |
 | aof_quests | ChallengeContribute | contribution | ChallengeContribution | init | user | player | player | ok | — | — |
 | aof_quests | ChallengeInit | challenge_round | ChallengeRound | init | authority (оператор) | global | operator | ok | — | — |

@@ -1422,26 +1422,6 @@
       "actualPayer": "operator"
     },
     {
-      "program": "aof_market",
-      "file": "programs/aof-market/src/lib.rs",
-      "instruction": "PlaceLimitOrder",
-      "account": "order",
-      "accountType": "HotLimitOrder",
-      "kind": "init",
-      "payer": "maker",
-      "payerIsOperatorOrAuthority": false,
-      "seeds": "[LIMIT_ORDER_SEED, maker.key().as_ref(), &[rarity]]",
-      "ownerHint": "player",
-      "space": "LIMIT_ORDER_SPACE",
-      "owner": "player",
-      "requiredPayer": "player",
-      "status": "ok",
-      "settlement": null,
-      "refund": null,
-      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта",
-      "actualPayer": "player-or-signer"
-    },
-    {
       "program": "aof_quests",
       "file": "programs/aof-quests/src/instructions/quests/achievement_unlock.rs",
       "instruction": "AchievementUnlock",

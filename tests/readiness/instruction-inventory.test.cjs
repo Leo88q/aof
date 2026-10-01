@@ -45,20 +45,20 @@ const edit = (tmp, rel, fn) => { const p = path.join(tmp, rel); fs.writeFileSync
 const editJson = (tmp, rel, fn) => edit(tmp, rel, (text) => `${JSON.stringify(fn(JSON.parse(text)), null, 2)}\n`);
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 173 инструкции, все классифицированы, файлы свежие', () => {
+test('репозиторий проходит гейт: 171 инструкция, все классифицированы, файлы свежие', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /173 инструкций, все классифицированы/);
+  assert.match(result.out, /171 инструкций, все классифицированы/);
 });
 
 test('счётчики по программам совпадают с IDL, а у каждой инструкции есть обработчик', () => {
   const inventory = JSON.parse(read('docs/INSTRUCTION_INVENTORY.json'));
-  const expected = { aof_core: 123, aof_market: 14, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
+  const expected = { aof_core: 123, aof_market: 12, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
   for (const [name, count] of Object.entries(expected)) {
     assert.equal(JSON.parse(read(`aof_backend/src/idl/${name}.json`)).instructions.length, count, `IDL ${name}`);
     assert.equal(inventory.programs[name].instructions, count, `инвентарь ${name}`);
   }
-  assert.equal(inventory.totals.instructions, 173);
+  assert.equal(inventory.totals.instructions, 171);
   for (const ix of inventory.instructions) {
     assert.ok(ix.handler.file, `${ix.program}.${ix.name}: не найден обработчик (${ix.handler.path})`);
     assert.ok(ix.role && ix.status && ix.note, `${ix.program}.${ix.name}: нет классификации`);
@@ -146,8 +146,12 @@ test('deprecated требует существующую замену; candidate
     assert.match(run(['--check', '--root', tmp]).out, /replacedBy 'does_not_exist' — такой инструкции нет в aof_core/);
   });
   withRoot((tmp) => {
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { delete roles.programs.aof_market.place_limit_order.evidence; return roles; });
-    assert.match(run(['--check', '--root', tmp]).out, /aof_market\.place_limit_order: candidate-dead-code требует evidence/);
+    // [шаг B] обе лимитки удалены; проверяем правило на живой инструкции без call sites
+    editJson(tmp, 'security/instruction-roles.json', (roles) => {
+      roles.programs.aof_core.burn_tool = { role: 'candidate-dead-code', status: 'active', note: 'временно переклассифицирована тестом' };
+      return roles;
+    });
+    assert.match(run(['--check', '--root', tmp]).out, /aof_core\.burn_tool: candidate-dead-code требует evidence/);
   });
   // «мёртвой» объявлена инструкция, у которой есть вызов в backend, — утверждение ложно
   withRoot((tmp) => {
@@ -233,12 +237,18 @@ test('--compare-cu сверяет статический охват с CU-отч
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('классификация удаления не разрешает: ни одна инструкция не удалена, а candidate-dead-code названы поимённо', () => {
+test('лимитные ордера удалены целиком, а удаление по-прежнему требует доказательств', () => {
   const roles = JSON.parse(read('security/instruction-roles.json'));
   const candidates = [];
   for (const [program, entries] of Object.entries(roles.programs)) {
     for (const [name, entry] of Object.entries(entries)) if (entry.role === 'candidate-dead-code') candidates.push(`${program}.${name}`);
   }
-  assert.deepEqual(candidates.sort(), ['aof_market.cancel_limit_order', 'aof_market.place_limit_order']);
+  // [шаг B] place_limit_order и cancel_limit_order удалены вместе с состоянием и событиями:
+  // ордера некому было создать (TradingDisabled), а парной инструкции матчинга нет вовсе.
+  assert.deepEqual(candidates, []);
+  const lib = fs.readFileSync(path.join(root, 'programs/aof-market/src/lib.rs'), 'utf8');
+  for (const needle of ['place_limit_order', 'cancel_limit_order', 'HotLimitOrder', 'LimitOrderCancelled']) {
+    assert.equal(lib.includes(needle), false, `aof-market всё ещё содержит ${needle}`);
+  }
   assert.match(roles.$comment, /удалять инструкции можно только после доказательства отсутствия всех call sites/);
 });
