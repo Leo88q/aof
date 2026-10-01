@@ -43,19 +43,19 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 9 отключённых инструкций, к удалению 2', () => {
+test('репозиторий проходит гейт: 7 отключённых инструкций, к удалению 0', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /9 инструкций, к удалению 2/);
+  assert.match(result.out, /7 инструкций, к удалению 0/);
 });
 
 test('удаляются только доказанные категории, остальные — keep с причиной', () => {
   const evidence = JSON.parse(read(OUT_JSON));
   const byName = new Map(evidence.instructions.map((i) => [`${i.program}.${i.name}`, i]));
   const remove = evidence.instructions.filter((i) => /^remove/.test(i.decision)).map((i) => i.name).sort();
-  assert.deepEqual(remove, ['marketplace_buy', 'rental_start']);
-  assert.match(byName.get('aof_core.rental_start').decision, /заменена активной rental_start_bounded/);
-  assert.match(byName.get('aof_core.marketplace_buy').decision, /заменена активной marketplace_buy_bounded/);
+  // Шаг B закрыл все доказанно мёртвое: migrate_tool, marketplace_buy, rental_start и
+  // place_limit_order удалены. Оставшиеся 7 — отключённые фичи, ждущие решения владельца.
+  assert.deepEqual(remove, []);
   for (const name of ['aof_quests.potato_spin_commit', 'aof_session_keys.session_create', 'aof_core.purchase_season_pass']) {
     const entry = byName.get(name);
     assert.match(entry.decision, /^keep — не доказано мёртвой: .+/, `${name}: keep обязан нести причину`);
@@ -68,18 +68,18 @@ test('call sites и тесты зафиксированы, а не выдума�
   const byName = new Map(evidence.instructions.map((i) => [`${i.program}.${i.name}`, i]));
   assert.deepEqual(byName.get('aof_quests.challenge_contribute').backendCallSites.files, ['aof_backend/src/routes/challenges.ts']);
   assert.deepEqual(byName.get('aof_quests.achievement_unlock').backendCallSites.files, ['aof_backend/src/routes/quests.ts']);
-  assert.ok(byName.get('aof_core.rental_start').tests.includes('tests/aof_core.ts'));
+  assert.ok(byName.get('aof_quests.drum_commit').tests.includes('tests/readiness/vrf-tx-size.test.cjs'));
 });
 
 test('потеря инструкции в инвентаре роняет гейт (evidence и код обязаны идти вместе)', () => {
   withRoot((tmp) => {
     editJson(tmp, 'docs/INSTRUCTION_INVENTORY.json', (inv) => {
-      inv.instructions = inv.instructions.filter((i) => i.name !== 'rental_start');
+      inv.instructions = inv.instructions.filter((i) => i.name !== 'drum_commit');
       return inv;
     });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1, result.out);
-    assert.match(result.out, /evidence ссылается на инструкции, которых больше нет в инвентаре: aof_core\.rental_start/);
+    assert.match(result.out, /evidence ссылается на инструкции, которых больше нет в инвентаре: aof_quests\.drum_commit/);
   });
   withRoot((tmp) => {
     editJson(tmp, 'docs/INSTRUCTION_INVENTORY.json', (inv) => {

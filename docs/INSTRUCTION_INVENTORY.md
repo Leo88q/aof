@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 123 | 3 | 92 (75%) | 12 | 1 |
+| aof_core | 121 | 1 | 91 (75%) | 12 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 7 | 6 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **171** | **9** | **98** (57%) | **23** | **7** |
+| **всего** | **169** | **7** | **97** (57%) | **23** | **7** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -37,18 +37,16 @@
 | migration | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | initialization | 8 | 2 | 2 | 1 | 1 | 1 | 15 |
 | compatibility | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| deprecated | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| deprecated | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | candidate-dead-code | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-## Отключены в коде (9)
+## Отключены в коде (7)
 
 Первая команда обработчика — `require!(false, …)` или `err!(…)`: инструкция есть в IDL, но на цепи всегда отказывает.
 
 | Инструкция | Роль | Заметка |
 |---|---|---|
-| aof_core.marketplace_buy | deprecated | Всегда FeatureDisabled: заменена marketplace_buy_bounded (с max_price и сроком); остаётся ради стабильности IDL. |
 | aof_core.purchase_season_pass | gameplay | Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
-| aof_core.rental_start | deprecated | Всегда FeatureDisabled: заменена rental_start_bounded (с потолком комиссии); остаётся ради стабильности IDL. |
 | aof_quests.achievement_unlock | gameplay | Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора. |
 | aof_quests.challenge_contribute | gameplay | Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации. |
 | aof_quests.drum_commit | gameplay | Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного Potato-mint. |
@@ -134,7 +132,6 @@
 | aof_core | init_reroll_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_season | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | initialize | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
-| aof_core | marketplace_buy | deprecated | disabled-on-chain | 0 | 0 | 2 | 0 | 0 | 0 | 1 | 2 | 2 | 0 |  |
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
@@ -157,7 +154,6 @@
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
 | aof_core | rental_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
 | aof_core | rental_revoke | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
-| aof_core | rental_start | deprecated | disabled-on-chain | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 2 | 0 | 2 | 0 | 0 | 0 |  |
 | aof_core | start_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -234,7 +230,7 @@
 | aof_quests | cancel_pending_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | challenge_contribute | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_quests | challenge_init | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
-| aof_quests | drum_commit | gameplay | disabled-on-chain | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 3 | 0 |  |
+| aof_quests | drum_commit | gameplay | disabled-on-chain | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 4 | 0 |  |
 | aof_quests | drum_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
 | aof_quests | drum_reveal | gameplay | active | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 3 | 0 |  |
 | aof_quests | init_potato_bank | initialization | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |

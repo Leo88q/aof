@@ -217,12 +217,6 @@
         "status": "active",
         "note": "Создаёт Config/auth/vault и привязывает authority к upgrade authority (bringup шаг 5)."
       },
-      "marketplace_buy": {
-        "role": "deprecated",
-        "status": "disabled-on-chain",
-        "note": "Всегда FeatureDisabled: заменена marketplace_buy_bounded (с max_price и сроком); остаётся ради стабильности IDL.",
-        "replacedBy": "marketplace_buy_bounded"
-      },
       "marketplace_cancel": {
         "role": "gameplay",
         "status": "active",
@@ -332,12 +326,6 @@
         "role": "gameplay",
         "status": "active",
         "note": "Досрочный отзыв аренды владельцем."
-      },
-      "rental_start": {
-        "role": "deprecated",
-        "status": "disabled-on-chain",
-        "note": "Всегда FeatureDisabled: заменена rental_start_bounded (с потолком комиссии); остаётся ради стабильности IDL.",
-        "replacedBy": "rental_start_bounded"
       },
       "repair": {
         "role": "gameplay",

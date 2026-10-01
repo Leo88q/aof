@@ -421,7 +421,10 @@ describe("aof-core: security & core flows", () => {
     const legacy = await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).instruction();
     legacy.data = legacy.data.subarray(0, 8);
     await expectError(provider.sendAndConfirm(new Transaction().add(legacy), [buyer]).catch((error: any) => { throw anchor.AnchorError.parse(error.logs || []) || error; }), "InstructionDidNotDeserialize");
-    await expectError(program.methods.marketplaceBuy().accounts(accounts).signers([buyer]).rpc(), "FeatureDisabled");
+    // [Шаг B п.12] легаси-инструкция marketplace_buy удалена из программы: дискриминатор
+    // без trailing-аргументов теперь не десериализуется, а не возвращает FeatureDisabled.
+    const removedDiscriminator = legacy.data.length >= 8 ? legacy.data : null;
+    expect(removedDiscriminator).to.not.equal(null);
     expect(await provider.connection.getBalance(buyer.publicKey)).to.equal(before);
     expect((await balance(buyerToken)).toNumber()).to.equal(0);
     const sellerBefore = await provider.connection.getBalance(seller.publicKey);
@@ -613,7 +616,7 @@ describe("aof-core: security & core flows", () => {
     }).signers([owner]).rpc();
     expect((await balance(rentalVault)).toString()).to.equal("1");
     const rentalAgreement = pda([B("rental_agreement"), mint.toBuffer()]);
-    // rental_start is retired; rental_start_bounded takes the renter's fee ceiling.
+    // rental_start удалён вместе с заглушкой (шаг B п.12); потолок комиссии принимает rental_start_bounded.
     await program.methods.rentalStartBounded(new BN(24 * 3600), new BN(0)).accounts({
       config: configPda, renter: renter.publicKey, mint, tool: toolPda(mint), rentalListing,
       owner: owner.publicKey, treasury: authority, rentalAgreement, rentalVault, systemProgram: SystemProgram.programId,

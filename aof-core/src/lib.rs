@@ -4221,11 +4221,10 @@ pub mod aof_core {
     pub fn marketplace_list(ctx: Context<MarketplaceList>, price_lamports: u64) -> Result<()> {
         instructions::marketplace::list_handler(ctx, price_lamports)
     }
-    // Keep the old discriminator fail-closed. A new discriminator is essential:
-    // an older deployed binary may ignore trailing args on the unbounded call.
-    pub fn marketplace_buy(ctx: Context<MarketplaceBuy>) -> Result<()> {
-        err!(AofError::FeatureDisabled)
-    }
+    // [Шаг B п.12] Старый неограниченный дискриминатор `marketplace_buy` удалён
+    // из программы: он был always-disabled, а развёртывания не существовало, так
+    // что fail-closed заглушка больше никого не защищает. Проверять цену обязан
+    // только `marketplace_buy_bounded` (max_price_lamports + expires_at).
     pub fn marketplace_buy_bounded(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expires_at: i64) -> Result<()> {
         instructions::marketplace::buy_handler(ctx, max_price_lamports, expires_at)
     }
@@ -4262,12 +4261,10 @@ pub mod aof_core {
     pub fn rental_list(ctx: Context<RentalListCtx>, owner_split_bps: u16, min_duration: i64, max_duration: i64, price_per_hour_lamports: u64) -> Result<()> {
         instructions::rental::list_handler(ctx, owner_split_bps, min_duration, max_duration, price_per_hour_lamports)
     }
-    // [SECURITY_CHECKLIST_REVIEW F-H] Rental terms can change now (delist and
-    // relist), so a renter must sign a fee ceiling: the old discriminator stays
-    // fail-closed, exactly like marketplace_buy.
-    pub fn rental_start(ctx: Context<RentalStartCtx>, duration_seconds: i64) -> Result<()> {
-        err!(AofError::FeatureDisabled)
-    }
+    // [SECURITY_CHECKLIST_REVIEW F-H] Условия аренды могут меняться (delist +
+    // relist), поэтому арендатор обязан подписать потолок комиссии. Старый
+    // `rental_start` (без потолка) удалён в шаге B п.12: он был always-disabled,
+    // развёртывания не было, и потолок проверяет только `rental_start_bounded`.
     pub fn rental_start_bounded(ctx: Context<RentalStartCtx>, duration_seconds: i64, max_total_fee: u64) -> Result<()> {
         instructions::rental::start_handler(ctx, duration_seconds, max_total_fee)
     }

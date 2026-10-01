@@ -692,7 +692,12 @@ test('F-H rentals escrow the NFT, need custody and a signed fee ceiling, keep th
   assert.ok(start.indexOf('PriceLimitExceeded') < start.indexOf('system_program::transfer'), 'fee ceiling before payment');
   assert.match(fnBody(rental, 'rental_fee_split'), /min\(RENTAL_MAX_OWNER_SPLIT_BPS\)/, 'legacy 100% splits are clamped');
   assert.match(fnBody(rental, 'revoke_handler'), /rental_refund\(/, 'early revocation refunds the unused time');
-  assert.match(fnBody(core('lib.rs'), 'rental_start'), /err!\(AofError::FeatureDisabled\)/, 'unbounded rental_start stays fail-closed');
+  // [Шаг B п.12] неограниченные дискриминаторы удалены из программы целиком:
+  // потолок комиссии и срок теперь обязательные аргументы bounded-версий.
+  const lib = core('lib.rs');
+  assert.doesNotMatch(lib, /pub fn \w*marketplace_buy\(|pub fn rental_start\(/, 'легаси-заглушки должны быть удалены');
+  assert.match(lib, /pub fn marketplace_buy_bounded\(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expires_at: i64\)/);
+  assert.match(lib, /pub fn rental_start_bounded\(ctx: Context<RentalStartCtx>, duration_seconds: i64, max_total_fee: u64\)/);
 });
 
 test('F-G auctions: bid floor, real increments, bounded duration, cancel without bids', () => {

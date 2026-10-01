@@ -43,13 +43,13 @@ ownership. Программные адреса и keypair'ы сохраняют�
 | `collect_mining` | `vault` (застейкан) | = user | = user | `vault` PDA | во время стейка нет | ✅ **добавлено**: эскроу-проверка `vault_token` |
 | `repair` | ATA владельца **или** `vault` | = user (в обработчике) | = user | нет / `vault` | да (idle) | ✅ **добавлено**: `tool_token` + два допустимых места |
 | `marketplace_list` | ATA → `listing_vault` | = seller | = seller | `listing` PDA | после листинга нет | ✅ token: `owner == seller`, `amount == 1` |
-| `marketplace_buy` | `listing_vault` | `operator == owner` | — | `listing` PDA | нет | ✅ эскроу листинга |
+| `marketplace_buy_bounded` | `listing_vault` | `operator == owner` | — | `listing` PDA | нет | ✅ эскроу листинга |
 | `marketplace_cancel` | `listing_vault` → ATA | `listing.seller` | — | `listing` PDA | нет | ✅ `listing.seller == seller` |
 | `auction_create` | ATA → `auction_vault` | = seller | = seller | `auction` PDA | после создания нет | ✅ token: `owner == seller`, `amount == 1` |
 | `auction_settle` | `auction_vault` | `operator == owner` | — | `auction` PDA | нет | ✅ эскроу аукциона + канонический ATA победителя |
 | `offer_accept` | ATA продавца | = seller | = seller | нет | да | ⚠️ token: `owner == seller`, **но `amount` не проверяется** |
 | `rental_list` | ATA → `rental_vault` | = owner | = owner | `rental_listing` PDA | после листинга нет | ✅ token: `owner == owner`, `amount == 1` |
-| `rental_start` | `rental_vault` | = `rental_listing.owner` | → renter | `rental_listing` PDA | нет | ✅ эскроу + `vault.amount == 1` |
+| `rental_start_bounded` | `rental_vault` | = `rental_listing.owner` | → renter | `rental_listing` PDA | нет | ✅ эскроу + `vault.amount == 1` |
 | `rental_end` / `rental_revoke` | `rental_vault` | — | = `agreement.renter` | `rental_listing` PDA | нет | ✅ запись аренды как proof делегирования |
 | `rental_delist` | `rental_vault` → ATA | `operator == owner` | — | `rental_listing` PDA | нет | ✅ запись листинга |
 | `start_mining_delegated` | `rental_vault` | = `agreement.owner` | = renter | `rental_listing` PDA | нет | ✅ **новое**: активная аренда + эскроу листинга + сессия внутри срока |

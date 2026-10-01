@@ -114,7 +114,7 @@ npm run reconcile:inbox
 
 ## 7. Совместимость второго этапа аудита
 
-После всех release gates — coordinated maintenance window для program + IDL + API + browser cache invalidation. В новом core 87 инструкций; добавлены `mint_resource_once` и `marketplace_buy_bounded`. Старый `marketplace_buy` остаётся по старому discriminator, но возвращает FeatureDisabled. **Не переименовывать bounded инструкцию обратно:** новый discriminator не даёт старому бинарнику молча игнорировать max price/deadline.
+После всех release gates — coordinated maintenance window для program + IDL + API + browser cache invalidation. В core 121 инструкция; `mint_resource_once` и `marketplace_buy_bounded` добавлены, а неограниченные заглушки `marketplace_buy` и `rental_start` удалены в шаге B пункта 12 (развёртывания не было, старых бинарников нет). **Не переименовывать bounded-инструкции обратно:** отдельный discriminator гарантирует, что аргументы с max price/deadline нельзя молча проигнорировать.
 
 Проверить на staging: старые клиенты больше не покупают unbounded; новая инструкция на старом бинарнике отклоняется; новая bounded покупка правильно отклоняет превышение цены/срока и проходит при корректном quote. Сверить generated IDL/verified build; текущие JSON/TS копии синхронизированы вручную и проверены static gate, это не доказательство deployed ABI.
 

@@ -22,10 +22,10 @@ market / hot market / auction / offer / rental / listing, и нужен ли т�
 | `mint_tool` | `owner = recipient`, `operator = recipient` | минт создаётся тут же, 1 единица идёт на ATA получателя (`token_account.owner == recipient`) |
 | `transfer_tool` | `owner/operator = recipient` | NFT переводится из ATA отправителя в ATA получателя в той же инструкции |
 | `sync_tool_owner` | `owner/operator = holder` | подписант держит `amount == 1` на своём ATA, mint канонический |
-| `marketplace_buy` | `owner/operator = buyer` | NFT переводится `listing_vault → buyer_token`, `buyer_token.owner == buyer` |
+| `marketplace_buy_bounded` | `owner/operator = buyer` | NFT переводится `listing_vault → buyer_token`, `buyer_token.owner == buyer`; неограниченный `marketplace_buy` удалён (шаг B п.12) |
 | `auction_settle` | `owner/operator = current_bidder` | NFT переводится `auction_vault → winner_token`; ставится **только** в ветке `amount > 0`, т.е. когда победитель есть |
 | `offer_accept` | `owner/operator = offer.buyer` | NFT переводится `seller_token → buyer_token`, `buyer_token.owner == offer.buyer` |
-| `rental_start` | `operator = renter` | право делегируется в рамках активной записи; NFT остаётся в эскроу |
+| `rental_start_bounded` | `operator = renter` | право делегируется в рамках активной записи; NFT остаётся в эскроу; неограниченный `rental_start` удалён (шаг B п.12) |
 | `rental_end` / `rental_revoke` | `operator = tool.owner` (кэш) | возврат делегирования после/при отзыве аренды |
 | ~~`migrate_tool`~~ | — | **удалена** (шаг B пункта 12): pre-genesis-миграция без развёртывания, минт шёл в vault без шага выдачи игроку |
 | `settlement::write_tool` (pack/reroll/forge/exploration) | `owner/operator = user` | вызывается только для свежесозданного mint'а в той же инструкции |
@@ -45,7 +45,7 @@ PDA программы, либо свежесозданного mint'а. Зна�
   PDA `[LISTING_SEED, mint]`). Пока листинг жив, обычный перевод невозможен.
 * **Угроза «листинг → перевод мимо эскроу»**: не существует (токен не у владельца).
 * **Угроза «stale листинг»**: PDA выводится из mint, поля `listing.mint` и
-  `tool.mint` сверяются; `marketplace_buy` дополнительно требует
+  `tool.mint` сверяются; `marketplace_buy_bounded` дополнительно требует
   `tool.operator == tool.owner` и `!staked && !is_mining`.
 * **Кто получает деньги**: `seller` привязан к `listing.seller` (`address =`),
   а не к текущему кэшу. Рассинхронизации «деньги ушли не тому» нет.
@@ -92,7 +92,7 @@ PDA программы, либо свежесозданного mint'а. Зна�
   «`token_account.owner == operator`» для аренды неверна: арендатор — operator,
   но токеном не владеет.
 * **Угроза «арендодатель увёл токен во время аренды»**: невозможна (эскроу).
-* **Угроза «stale аренда после перевода»**: невозможна: `rental_start` требует
+* **Угроза «stale аренда после перевода»**: невозможна: `rental_start_bounded` требует
   `tool.owner == rental_listing.owner` + NFT `amount == 1` в `rental_vault`, а
   пока NFT в эскроу — кэш не разъедется (см. инвариант выше). `rental_end` и
   `rental_revoke` возвращают `operator` текущему `tool.owner`, а не снимку в

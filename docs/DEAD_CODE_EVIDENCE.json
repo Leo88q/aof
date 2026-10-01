@@ -4,39 +4,6 @@
   "instructions": [
     {
       "program": "aof_core",
-      "name": "marketplace_buy",
-      "camel": "marketplaceBuy",
-      "role": "deprecated",
-      "replacedBy": "marketplace_buy_bounded",
-      "guard": {
-        "kind": "err!",
-        "code": "FeatureDisabled",
-        "line": "err!(AofError::FeatureDisabled)"
-      },
-      "backendCallSites": {
-        "calls": 0,
-        "mentions": 0,
-        "files": []
-      },
-      "frontendCallSites": {
-        "calls": 0,
-        "mentions": 2,
-        "files": [
-          "frontend/src/lib/transactionIntent.ts",
-          "frontend/src/pages/market/ListingPage.tsx"
-        ]
-      },
-      "platformConsumers": null,
-      "tests": [
-        "tests/aof_core.ts",
-        "tests/readiness/dead-code-evidence.test.cjs",
-        "tests/readiness/instruction-inventory.test.cjs"
-      ],
-      "adminOrSecurityNeed": false,
-      "decision": "remove — заменена активной marketplace_buy_bounded"
-    },
-    {
-      "program": "aof_core",
       "name": "purchase_season_pass",
       "camel": "purchaseSeasonPass",
       "role": "gameplay",
@@ -61,47 +28,11 @@
       "platformConsumers": null,
       "tests": [
         "tests/aof_extended.ts",
-        "tests/readiness/dead-code-evidence.test.cjs"
+        "tests/readiness/dead-code-evidence.test.cjs",
+        "tests/readiness/instruction-inventory.test.cjs"
       ],
       "adminOrSecurityNeed": false,
       "decision": "keep — не доказано мёртвой: Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL."
-    },
-    {
-      "program": "aof_core",
-      "name": "rental_start",
-      "camel": "rentalStart",
-      "role": "deprecated",
-      "replacedBy": "rental_start_bounded",
-      "guard": {
-        "kind": "err!",
-        "code": "FeatureDisabled",
-        "line": "err!(AofError::FeatureDisabled)"
-      },
-      "backendCallSites": {
-        "calls": 0,
-        "mentions": 0,
-        "files": []
-      },
-      "frontendCallSites": {
-        "calls": 0,
-        "mentions": 0,
-        "files": []
-      },
-      "platformConsumers": {
-        "calls": 0,
-        "mentions": 1,
-        "files": [
-          "watchtower/src/event-normalizer.ts"
-        ]
-      },
-      "tests": [
-        "tests/aof_core.ts",
-        "tests/readiness/dead-code-evidence.test.cjs",
-        "tests/readiness/instruction-inventory.test.cjs",
-        "tests/readiness/security-checklist.test.cjs"
-      ],
-      "adminOrSecurityNeed": false,
-      "decision": "remove — заменена активной rental_start_bounded"
     },
     {
       "program": "aof_quests",
@@ -189,6 +120,7 @@
       },
       "platformConsumers": null,
       "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs",
         "tests/readiness/devnet-release-guards.test.cjs",
         "tests/readiness/security-checklist.test.cjs",
         "tests/readiness/vrf-tx-size.test.cjs"

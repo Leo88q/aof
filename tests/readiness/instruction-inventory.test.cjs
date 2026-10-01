@@ -45,20 +45,20 @@ const edit = (tmp, rel, fn) => { const p = path.join(tmp, rel); fs.writeFileSync
 const editJson = (tmp, rel, fn) => edit(tmp, rel, (text) => `${JSON.stringify(fn(JSON.parse(text)), null, 2)}\n`);
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 171 инструкция, все классифицированы, файлы свежие', () => {
+test('репозиторий проходит гейт: 169 инструкций, все классифицированы, файлы свежие', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /171 инструкций, все классифицированы/);
+  assert.match(result.out, /169 инструкций, все классифицированы/);
 });
 
 test('счётчики по программам совпадают с IDL, а у каждой инструкции есть обработчик', () => {
   const inventory = JSON.parse(read('docs/INSTRUCTION_INVENTORY.json'));
-  const expected = { aof_core: 123, aof_market: 12, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
+  const expected = { aof_core: 121, aof_market: 12, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
   for (const [name, count] of Object.entries(expected)) {
     assert.equal(JSON.parse(read(`aof_backend/src/idl/${name}.json`)).instructions.length, count, `IDL ${name}`);
     assert.equal(inventory.programs[name].instructions, count, `инвентарь ${name}`);
   }
-  assert.equal(inventory.totals.instructions, 171);
+  assert.equal(inventory.totals.instructions, 169);
   for (const ix of inventory.instructions) {
     assert.ok(ix.handler.file, `${ix.program}.${ix.name}: не найден обработчик (${ix.handler.path})`);
     assert.ok(ix.role && ix.status && ix.note, `${ix.program}.${ix.name}: нет классификации`);
@@ -116,10 +116,11 @@ test('запись о несуществующей инструкции, неи�
 
 test('статус в классификации обязан совпадать с кодом: отключённое не может быть «active» и наоборот', () => {
   withRoot((tmp) => {
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.rental_start.status = 'active'; return roles; });
+    // [Шаг B п.12] rental_start удалён; берём живую отключённую инструкцию
+    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.purchase_season_pass.status = 'active'; return roles; });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
-    assert.match(result.out, /aof_core\.rental_start: код отключает инструкцию .* статус 'active'/);
+    assert.match(result.out, /aof_core\.purchase_season_pass: код отключает инструкцию .* статус 'active'/);
   });
   withRoot((tmp) => {
     editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.set_fees.status = 'disabled-on-chain'; return roles; });
@@ -129,20 +130,27 @@ test('статус в классификации обязан совпадать
   });
   withRoot((tmp) => {
     // инструкцию «включили» в коде: первая команда обработчика больше не отказ
-    edit(tmp, 'aof-core/src/lib.rs', (src) => src.replace(/pub fn rental_start\(ctx: Context<RentalStartCtx>, duration_seconds: i64\) -> Result<\(\)> \{\s*err!\(AofError::FeatureDisabled\)/, 'pub fn rental_start(ctx: Context<RentalStartCtx>, duration_seconds: i64) -> Result<()> {\n        let _x = 1;\n        Ok(())'));
+    edit(tmp, 'aof-core/src/instructions/season.rs', (src) => src.replace('    require!(false, AofError::SeasonPremiumRequired);\n', ''));
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
-    assert.match(result.out, /aof_core\.rental_start: в классификации инструкция отключена, но в коде этого не видно/);
+    assert.match(result.out, /aof_core\.purchase_season_pass: в классификации инструкция отключена, но в коде этого не видно/);
   });
 });
 
 test('deprecated требует существующую замену; candidate-dead-code требует evidence и не терпит call sites', () => {
   withRoot((tmp) => {
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { delete roles.programs.aof_core.marketplace_buy.replacedBy; return roles; });
-    assert.match(run(['--check', '--root', tmp]).out, /aof_core\.marketplace_buy: роль deprecated требует replacedBy/);
+    // [Шаг B п.12] deprecated-инструкций больше нет; правило проверяем на живой
+    editJson(tmp, 'security/instruction-roles.json', (roles) => {
+      roles.programs.aof_core.burn_tool = { role: 'deprecated', status: 'active', note: 'временно переклассифицирована тестом' };
+      return roles;
+    });
+    assert.match(run(['--check', '--root', tmp]).out, /aof_core\.burn_tool: роль deprecated требует replacedBy/);
   });
   withRoot((tmp) => {
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.marketplace_buy.replacedBy = 'does_not_exist'; return roles; });
+    editJson(tmp, 'security/instruction-roles.json', (roles) => {
+      roles.programs.aof_core.burn_tool = { role: 'deprecated', status: 'active', note: 'временно переклассифицирована тестом', replacedBy: 'does_not_exist' };
+      return roles;
+    });
     assert.match(run(['--check', '--root', tmp]).out, /replacedBy 'does_not_exist' — такой инструкции нет в aof_core/);
   });
   withRoot((tmp) => {
@@ -226,7 +234,7 @@ test('--compare-cu сверяет статический охват с CU-отч
       '| MintTool | 4 | 41000 | 38000 | 20.5% |', '| SetFees | 1 | 9000 | 9000 | 4.5% |', '| NotInIdl | 1 | 100 | 100 | 0.1% |'].join('\n'));
     let result = run(['--compare-cu', report]);
     assert.equal(result.code, 0, result.out);
-    assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 123 в IDL aof_core/);
+    assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 121 в IDL aof_core/);
     assert.match(result.out, /В отчёте, но не в IDL \(1\): NotInIdl/);
     assert.match(result.out, /Не затронуты ни тестами, ни CU-отчётом/);
     fs.appendFileSync(report, '\n| Craft | 1 | 160001 | 160001 | 80% |\n');

@@ -13,7 +13,7 @@
     },
     {
       "file": "frontend/src/lib/coreInstructions.ts",
-      "distinctInstructions": 123
+      "distinctInstructions": 121
     },
     {
       "file": "scripts/gen-core-instruction-table.py",
@@ -21,7 +21,7 @@
     }
   ],
   "totals": {
-    "instructions": 171,
+    "instructions": 169,
     "byRole": {
       "gameplay": 100,
       "admin": 40,
@@ -29,18 +29,18 @@
       "migration": 1,
       "initialization": 15,
       "compatibility": 5,
-      "deprecated": 2,
+      "deprecated": 0,
       "candidate-dead-code": 0
     },
-    "disabledOnChain": 9,
-    "validatorTested": 98,
+    "disabledOnChain": 7,
+    "validatorTested": 97,
     "sharedNames": 23,
     "withoutAnyCallSite": 23,
     "withoutCallSiteAndTest": 7
   },
   "programs": {
     "aof_core": {
-      "instructions": 123,
+      "instructions": 121,
       "byRole": {
         "gameplay": 80,
         "admin": 21,
@@ -48,11 +48,11 @@
         "migration": 1,
         "initialization": 8,
         "compatibility": 5,
-        "deprecated": 2,
+        "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 3,
-      "validatorTested": 92,
+      "disabledOnChain": 1,
+      "validatorTested": 91,
       "sharedNames": 7,
       "withoutAnyCallSite": 12,
       "withoutCallSiteAndTest": 1
@@ -2496,71 +2496,6 @@
     },
     {
       "program": "aof_core",
-      "name": "marketplace_buy",
-      "camel": "marketplaceBuy",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "inline",
-        "path": null,
-        "file": "aof-core/src/lib.rs",
-        "line": 4226
-      },
-      "disabledOnChain": true,
-      "role": "deprecated",
-      "status": "disabled-on-chain",
-      "replacedBy": "marketplace_buy_bounded",
-      "note": "Всегда FeatureDisabled: заменена marketplace_buy_bounded (с max_price и сроком); остаётся ради стабильности IDL.",
-      "evidence": null,
-      "callSites": {
-        "frontend": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "frontend/src/lib/transactionIntent.ts",
-            "frontend/src/pages/market/ListingPage.tsx"
-          ]
-        }
-      },
-      "registries": [
-        "aof_backend/src/security/walletProof.ts",
-        "frontend/src/lib/api.ts",
-        "frontend/src/lib/coreInstructions.ts"
-      ],
-      "bringup": [],
-      "tests": {
-        "validator": {
-          "calls": 1,
-          "mentions": 0,
-          "files": [
-            "tests/aof_core.ts"
-          ]
-        },
-        "selfTests": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "aof_backend/scripts/rewardReceiptSelfTest.ts",
-            "aof_backend/scripts/securityInvariantSelfTest.ts"
-          ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs",
-            "tests/readiness/security-checklist.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 2,
-        "validatorTested": true,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_core",
       "name": "marketplace_cancel",
       "camel": "marketplaceCancel",
       "inIdl": true,
@@ -3836,62 +3771,6 @@
       "summary": {
         "callSiteCount": 1,
         "validatorTested": true,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_core",
-      "name": "rental_start",
-      "camel": "rentalStart",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "inline",
-        "path": null,
-        "file": "aof-core/src/lib.rs",
-        "line": 4268
-      },
-      "disabledOnChain": true,
-      "role": "deprecated",
-      "status": "disabled-on-chain",
-      "replacedBy": "rental_start_bounded",
-      "note": "Всегда FeatureDisabled: заменена rental_start_bounded (с потолком комиссии); остаётся ради стабильности IDL.",
-      "evidence": null,
-      "callSites": {
-        "platform": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "watchtower/src/event-normalizer.ts"
-          ]
-        }
-      },
-      "registries": [
-        "aof_backend/src/security/walletProof.ts",
-        "frontend/src/lib/api.ts",
-        "frontend/src/lib/coreInstructions.ts"
-      ],
-      "bringup": [],
-      "tests": {
-        "selfTests": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "aof_backend/scripts/securityInvariantSelfTest.ts"
-          ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs",
-            "tests/readiness/security-checklist.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 1,
-        "validatorTested": false,
         "anyTest": true
       }
     },
@@ -5316,6 +5195,8 @@
         }
       },
       "registries": [
+        "aof_backend/src/security/walletProof.ts",
+        "frontend/src/lib/api.ts",
         "frontend/src/lib/coreInstructions.ts"
       ],
       "bringup": [],
@@ -5339,7 +5220,7 @@
           "calls": 0,
           "mentions": 1,
           "files": [
-            "tests/readiness/dead-code-evidence.test.cjs"
+            "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
@@ -6213,6 +6094,8 @@
         }
       },
       "registries": [
+        "aof_backend/src/security/walletProof.ts",
+        "frontend/src/lib/api.ts",
         "frontend/src/lib/coreInstructions.ts"
       ],
       "bringup": [],
@@ -6230,7 +6113,7 @@
           "calls": 0,
           "mentions": 1,
           "files": [
-            "tests/readiness/dead-code-evidence.test.cjs"
+            "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
@@ -7856,8 +7739,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
+            "tests/readiness/dead-code-evidence.test.cjs",
             "tests/readiness/devnet-release-guards.test.cjs",
             "tests/readiness/security-checklist.test.cjs",
             "tests/readiness/vrf-tx-size.test.cjs"
