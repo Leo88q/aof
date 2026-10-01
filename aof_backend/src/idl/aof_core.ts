@@ -4021,139 +4021,6 @@ export type AofCore = {
       "args": []
     },
     {
-      "name": "migrateTool",
-      "discriminator": [
-        178,
-        226,
-        104,
-        122,
-        30,
-        161,
-        143,
-        250
-      ],
-      "accounts": [
-        {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "migrationAuthority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "authority",
-          "signer": true,
-          "relations": [
-            "config"
-          ]
-        },
-        {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "vault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "mint",
-          "writable": true
-        },
-        {
-          "name": "vaultTokenAccount",
-          "writable": true
-        },
-        {
-          "name": "toolData",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "toolType",
-          "type": "string"
-        },
-        {
-          "name": "rarity",
-          "type": {
-            "defined": {
-              "name": "rarity"
-            }
-          }
-        },
-        {
-          "name": "durability",
-          "type": "u8"
-        }
-      ]
-    },
-    {
       "name": "mintResource",
       "discriminator": [
         2,
@@ -13000,583 +12867,593 @@ export type AofCore = {
     },
     {
       "code": 6023,
-      "name": "invalidMigrationAuthority",
-      "msg": "Invalid migration authority"
-    },
-    {
-      "code": 6024,
       "name": "vaultInsufficient",
       "msg": "Vault balance insufficient for payout"
     },
     {
-      "code": 6025,
+      "code": 6024,
       "name": "invalidLockSeconds",
       "msg": "Invalid lock seconds for stake"
     },
     {
-      "code": 6026,
+      "code": 6025,
       "name": "toolTypeTooLong",
       "msg": "Tool type string too long"
     },
     {
-      "code": 6027,
+      "code": 6026,
       "name": "rentExemptionFailed",
       "msg": "Rent exemption check failed"
     },
     {
-      "code": 6028,
+      "code": 6027,
       "name": "rarityCounterMismatch",
       "msg": "Rarity counter account does not match the tool's target rarity"
     },
     {
-      "code": 6029,
+      "code": 6028,
       "name": "noExcessToSweep",
       "msg": "No excess lamports available to sweep from gas tank"
     },
     {
-      "code": 6030,
+      "code": 6029,
       "name": "invalidMint",
       "msg": "Invalid mint address"
     },
     {
-      "code": 6031,
+      "code": 6030,
       "name": "noIdleVillagers",
       "msg": "No idle villagers available for mining"
     },
     {
-      "code": 6032,
+      "code": 6031,
       "name": "hoursExceedRarityCap",
       "msg": "Requested mining hours exceed max hours for this tool rarity"
     },
     {
-      "code": 6033,
+      "code": 6032,
       "name": "notCollectorOwner",
       "msg": "Signer does not own this staked collector"
     },
     {
-      "code": 6034,
+      "code": 6033,
       "name": "collectorNotConfigured",
       "msg": "Collector mint registry is not configured"
     },
     {
-      "code": 6035,
+      "code": 6034,
       "name": "commitMismatch",
       "msg": "Commit hash does not match revealed secret"
     },
     {
-      "code": 6036,
+      "code": 6035,
       "name": "commitExpired",
       "msg": "Commit has expired (SlotHashes window passed) \u2014 abort and refund"
     },
     {
-      "code": 6037,
+      "code": 6036,
       "name": "invalidOddsWeights",
       "msg": "Odds weights must sum to 10000 basis points"
     },
     {
-      "code": 6038,
+      "code": 6037,
       "name": "explorationCooldown",
       "msg": "Exploration cooldown has not expired"
     },
     {
-      "code": 6039,
+      "code": 6038,
       "name": "explorationDailyLimitReached",
       "msg": "Daily exploration trip limit reached"
     },
     {
-      "code": 6040,
+      "code": 6039,
       "name": "explorationMaxTier",
       "msg": "Exploration tier is already at maximum"
     },
     {
-      "code": 6041,
+      "code": 6040,
       "name": "referralAlreadyBound",
       "msg": "Referral link already exists for this user"
     },
     {
-      "code": 6042,
+      "code": 6041,
       "name": "referralCapReached",
       "msg": "Referrer has reached their active referral cap"
     },
     {
-      "code": 6043,
+      "code": 6042,
       "name": "invalidReferral",
       "msg": "A wallet cannot refer itself"
     },
     {
-      "code": 6044,
+      "code": 6043,
       "name": "referralMaxTier",
       "msg": "Referral tier is already at maximum"
     },
     {
-      "code": 6045,
+      "code": 6044,
       "name": "enchantMaxLevel",
       "msg": "Enchant slot is already at maximum level"
     },
     {
-      "code": 6046,
+      "code": 6045,
       "name": "auctionEnded",
       "msg": "Auction has already ended"
     },
     {
-      "code": 6047,
+      "code": 6046,
       "name": "auctionNotEnded",
       "msg": "Auction has not ended yet"
     },
     {
-      "code": 6048,
+      "code": 6047,
       "name": "bidTooLow",
       "msg": "Bid must exceed current highest bid"
     },
     {
-      "code": 6049,
+      "code": 6048,
       "name": "notActive",
       "msg": "Listing/Offer/Auction is not active"
     },
     {
-      "code": 6050,
+      "code": 6049,
       "name": "invalidRentalDuration",
       "msg": "Rental period out of allowed range"
     },
     {
-      "code": 6051,
+      "code": 6050,
       "name": "rentalGraceNotExpired",
       "msg": "Rental is still active \u2014 cannot revoke without grace period"
     },
     {
-      "code": 6052,
+      "code": 6051,
       "name": "notToolOperator",
       "msg": "Signer is not the current operator of this tool"
     },
     {
-      "code": 6053,
+      "code": 6052,
       "name": "ordersDoNotCross",
       "msg": "Order kinds/side do not cross (price/side mismatch)"
     },
     {
-      "code": 6054,
+      "code": 6053,
       "name": "orderExhausted",
       "msg": "Order has no remaining amount"
     },
     {
-      "code": 6055,
+      "code": 6054,
       "name": "lotteryRoundClosed",
       "msg": "Lottery round is already drawn or closed"
     },
     {
-      "code": 6056,
+      "code": 6055,
       "name": "lotteryNotDrawn",
       "msg": "Lottery round is not drawn yet"
     },
     {
-      "code": 6057,
+      "code": 6056,
       "name": "notWinningTicket",
       "msg": "Not the winning ticket for this round"
     },
     {
-      "code": 6058,
+      "code": 6057,
       "name": "lotteryDailyLimitReached",
       "msg": "Daily lottery ticket limit reached"
     },
     {
-      "code": 6059,
+      "code": 6058,
       "name": "seasonRewardAlreadyClaimed",
       "msg": "Season reward level already claimed"
     },
     {
-      "code": 6060,
+      "code": 6059,
       "name": "seasonPremiumRequired",
       "msg": "Season reward requires premium pass"
     },
     {
-      "code": 6061,
+      "code": 6060,
       "name": "seasonInsufficientXp",
       "msg": "Not enough XP for this season level"
     },
     {
-      "code": 6062,
+      "code": 6061,
       "name": "seasonEnded",
       "msg": "Season has ended"
     },
     {
-      "code": 6063,
+      "code": 6062,
       "name": "lotteryDrawNotCommitted",
       "msg": "Lottery draw has not been committed yet"
     },
     {
-      "code": 6064,
+      "code": 6063,
       "name": "lotteryDrawAlreadyCommitted",
       "msg": "Lottery draw is already committed"
     },
     {
-      "code": 6065,
+      "code": 6064,
       "name": "invalidHash",
       "msg": "Revealed secret does not match committed hash"
     },
     {
-      "code": 6066,
+      "code": 6065,
       "name": "energyDepleted",
       "msg": "Energy account depleted"
     },
     {
-      "code": 6067,
+      "code": 6066,
       "name": "insufficientEnergy",
       "msg": "Energy cost exceeds available balance"
     },
     {
-      "code": 6068,
+      "code": 6067,
       "name": "farmTileBusy",
       "msg": "Farm tile is busy (growing)"
     },
     {
-      "code": 6069,
+      "code": 6068,
       "name": "farmTileNotReady",
       "msg": "Farm tile is not ready for harvest"
     },
     {
-      "code": 6070,
+      "code": 6069,
       "name": "farmTileEmpty",
       "msg": "Farm tile is empty (nothing planted)"
     },
     {
-      "code": 6071,
+      "code": 6070,
       "name": "toolBusy",
       "msg": "Tool is busy (mining), cannot harvest"
     },
     {
-      "code": 6072,
+      "code": 6071,
       "name": "millInProgress",
       "msg": "Mill has active batch in progress"
     },
     {
-      "code": 6073,
+      "code": 6072,
       "name": "millNotReady",
       "msg": "Mill batch is not ready yet"
     },
     {
-      "code": 6074,
+      "code": 6073,
       "name": "ovenInProgress",
       "msg": "Oven has active batch in progress"
     },
     {
-      "code": 6075,
+      "code": 6074,
       "name": "ovenNotReady",
       "msg": "Oven batch is not ready yet"
     },
     {
-      "code": 6076,
+      "code": 6075,
       "name": "invalidBatchSize",
       "msg": "Invalid batch size (must be 1, 2, or 3)"
     },
     {
-      "code": 6077,
+      "code": 6076,
       "name": "invalidFuelKind",
       "msg": "Invalid fuel kind (must be 0=wood or 1=coal)"
     },
     {
-      "code": 6078,
+      "code": 6077,
       "name": "materialNotRegistered",
       "msg": "Material mint is not registered in MaterialMints PDA"
     },
     {
-      "code": 6079,
+      "code": 6078,
       "name": "weatherAlreadyUpdated",
       "msg": "Weather state already updated for this day"
     },
     {
-      "code": 6080,
+      "code": 6079,
       "name": "wellEmpty",
       "msg": "Well has no water to collect"
     },
     {
-      "code": 6081,
+      "code": 6080,
       "name": "recipeNotFound",
       "msg": "Recipe not found in RecipeConfig"
     },
     {
-      "code": 6082,
+      "code": 6081,
       "name": "fortuneBoostExpired",
       "msg": "Fortune boost has expired"
     },
     {
-      "code": 6083,
+      "code": 6082,
       "name": "fortuneBoostAlreadyActive",
       "msg": "Fortune boost is already active"
     },
     {
-      "code": 6084,
+      "code": 6083,
       "name": "loveHeartNotTransferable",
       "msg": "Love heart is not transferable"
     },
     {
-      "code": 6085,
+      "code": 6084,
       "name": "invalidAmount",
       "msg": "Invalid amount"
     },
     {
-      "code": 6086,
+      "code": 6085,
       "name": "durabilityOverflow",
       "msg": "Durability overflow"
     },
     {
-      "code": 6087,
+      "code": 6086,
       "name": "invalidWeatherSeed",
       "msg": "Invalid weather seed (must be derived from slot hash)"
     },
     {
-      "code": 6088,
+      "code": 6087,
       "name": "invalidReveal",
       "msg": "Invalid reveal: hash mismatch"
     },
     {
-      "code": 6089,
+      "code": 6088,
       "name": "alreadyRevealed",
       "msg": "Commit already revealed"
     },
     {
-      "code": 6090,
+      "code": 6089,
       "name": "invalidFlaskType",
       "msg": "Invalid flask type"
     },
     {
-      "code": 6091,
+      "code": 6090,
       "name": "energyCapExceeded",
       "msg": "Energy cap exceeded"
     },
     {
-      "code": 6092,
+      "code": 6091,
       "name": "invalidToolType",
       "msg": "Tool type is not valid for this instruction"
     },
     {
-      "code": 6093,
+      "code": 6092,
       "name": "invalidProgramData",
       "msg": "Program data does not contain a valid upgrade authority"
     },
     {
-      "code": 6094,
+      "code": 6093,
       "name": "featureDisabled",
       "msg": "Feature is disabled until its on-chain economic and recovery path is complete"
     },
     {
-      "code": 6095,
+      "code": 6094,
       "name": "commitNotExpired",
       "msg": "Commit is still inside its reveal window; it cannot be expired yet"
     },
     {
-      "code": 6096,
+      "code": 6095,
       "name": "priceLimitExceeded",
       "msg": "Listing price exceeds the signed maximum"
     },
     {
-      "code": 6097,
+      "code": 6096,
       "name": "quoteExpired",
       "msg": "Quote expired or its lifetime exceeds 300 seconds"
     },
     {
-      "code": 6098,
+      "code": 6097,
       "name": "issuanceCapNotConfigured",
       "msg": "Issuance cap for this resource is not configured"
     },
     {
-      "code": 6099,
+      "code": 6098,
       "name": "issuanceCapExceeded",
       "msg": "Issuance cap for this resource exceeded in the current epoch"
     },
     {
-      "code": 6100,
+      "code": 6099,
       "name": "invalidIssuanceCapParams",
       "msg": "Issuance cap parameters out of bounds"
     },
     {
-      "code": 6101,
+      "code": 6100,
       "name": "supplyCapExceeded",
       "msg": "Global supply cap for this resource would be exceeded"
     },
     {
-      "code": 6102,
+      "code": 6101,
       "name": "vaultGuardNotConfigured",
       "msg": "Vault withdrawal guard for this mint is not configured"
     },
     {
-      "code": 6103,
+      "code": 6102,
       "name": "vaultGuardLimitExceeded",
       "msg": "Vault withdrawal exceeds the per-transaction or per-epoch limit"
     },
     {
-      "code": 6104,
+      "code": 6103,
       "name": "notAResourceMint",
       "msg": "Mint is not a configured resource mint; pay_out cannot move it"
     },
     {
-      "code": 6105,
+      "code": 6104,
       "name": "invalidVaultGuardParams",
       "msg": "Vault withdrawal guard parameters out of bounds"
     },
     {
-      "code": 6106,
+      "code": 6105,
       "name": "noPendingAuthority",
       "msg": "No authority rotation is pending"
     },
     {
-      "code": 6107,
+      "code": 6106,
       "name": "notPendingAuthority",
       "msg": "Signer is not the pending authority"
     },
     {
-      "code": 6108,
+      "code": 6107,
       "name": "miningDisabled",
       "msg": "Mining is disabled by the on-chain config"
     },
     {
-      "code": 6109,
+      "code": 6108,
       "name": "collectorMintNotAllowed",
       "msg": "This NFT mint is not registered as a collector perk"
     },
     {
-      "code": 6110,
+      "code": 6109,
       "name": "invalidCapacityDelta",
       "msg": "Capacity delta is out of bounds"
     },
     {
-      "code": 6111,
+      "code": 6110,
       "name": "stillActive",
       "msg": "Listing or auction is still active"
     },
     {
-      "code": 6112,
+      "code": 6111,
       "name": "lotteryAlreadyDrawn",
       "msg": "Lottery round has already been drawn"
     },
     {
-      "code": 6113,
+      "code": 6112,
       "name": "lotteryRoundNotExpired",
       "msg": "Lottery round refund timeout has not elapsed yet"
     },
     {
-      "code": 6114,
+      "code": 6113,
       "name": "randomnessDisabled",
       "msg": "Randomness-dependent instruction is disabled until a VRF is integrated"
     },
     {
-      "code": 6115,
+      "code": 6114,
       "name": "emptyCraftOrder",
       "msg": "Craft order must require at least one resource"
     },
     {
-      "code": 6116,
+      "code": 6115,
       "name": "invalidExplorationTier",
       "msg": "Exploration tier is out of range"
     },
     {
-      "code": 6117,
+      "code": 6116,
       "name": "feeTooHigh",
       "msg": "Fee exceeds the hard ceiling"
     },
     {
-      "code": 6118,
+      "code": 6117,
       "name": "seasonNotStarted",
       "msg": "Season has not started yet"
     },
     {
-      "code": 6119,
+      "code": 6118,
       "name": "seasonPassAlreadyPremium",
       "msg": "Premium season pass already purchased"
     },
     {
-      "code": 6120,
+      "code": 6119,
       "name": "cashoutFrozen",
       "msg": "Cash-out is frozen: value cannot leave the game right now"
     },
     {
-      "code": 6121,
+      "code": 6120,
       "name": "invalidRole",
       "msg": "Role key must be set"
     },
     {
-      "code": 6122,
+      "code": 6121,
       "name": "nonCanonicalTokenAccount",
       "msg": "Destination must be the owner's canonical associated token account"
     },
     {
-      "code": 6123,
+      "code": 6122,
       "name": "invalidRandomnessAccount",
       "msg": "Not a Switchboard randomness account of the trusted program"
     },
     {
-      "code": 6124,
+      "code": 6123,
       "name": "randomnessNotFresh",
       "msg": "Randomness is not freshly committed (or already revealed)"
     },
     {
-      "code": 6125,
+      "code": 6124,
       "name": "randomnessNotRevealed",
       "msg": "Randomness has not been revealed in this slot"
     },
     {
-      "code": 6126,
+      "code": 6125,
       "name": "randomnessCommitMissing",
       "msg": "Switchboard randomness commit must precede this instruction in the same transaction"
     },
     {
-      "code": 6127,
+      "code": 6126,
       "name": "vrfSlotBusy",
       "msg": "VRF pool slot is busy with another commit"
     },
     {
-      "code": 6128,
+      "code": 6127,
       "name": "vrfSlotRetired",
       "msg": "VRF pool slot is retired"
     },
     {
-      "code": 6129,
+      "code": 6128,
       "name": "vrfSlotNotHeld",
       "msg": "VRF pool slot is not held by this commit"
     },
     {
-      "code": 6130,
+      "code": 6129,
       "name": "revealWindowClosed",
       "msg": "Reveal window has closed; the commit can only be refunded"
     },
     {
-      "code": 6131,
+      "code": 6130,
       "name": "priceAboveMaximum",
       "msg": "Price exceeds the caller's maximum"
     },
     {
-      "code": 6132,
+      "code": 6131,
       "name": "lotterySalesClosed",
       "msg": "Lottery ticket sales are closed"
     },
     {
-      "code": 6133,
+      "code": 6132,
       "name": "lotterySalesOpen",
       "msg": "Lottery sales window is still open"
     },
     {
-      "code": 6134,
+      "code": 6133,
       "name": "lotteryRoundNotEmpty",
       "msg": "Lottery round still holds funds"
     },
     {
-      "code": 6135,
+      "code": 6134,
       "name": "insufficientOrderEscrow",
       "msg": "Order escrow does not cover this fill"
     },
     {
-      "code": 6136,
+      "code": 6135,
       "name": "rebirthBurnLimitExceeded",
       "msg": "Rebirth reset received more resource accounts than one transaction may burn"
     },
     {
-      "code": 6137,
+      "code": 6136,
       "name": "seasonMismatch",
       "msg": "Season pass belongs to a different season"
     },
     {
-      "code": 6138,
+      "code": 6137,
       "name": "alreadyOwnsTool",
       "msg": "Recipient token account already holds a tool of this mint"
+    },
+    {
+      "code": 6138,
+      "name": "rentalDelegationMissing",
+      "msg": "Signer is not the renter of the active rental for this tool"
+    },
+    {
+      "code": 6139,
+      "name": "rentalExpired",
+      "msg": "Rental has expired; the delegated right is gone"
+    },
+    {
+      "code": 6140,
+      "name": "rentalSessionTooLong",
+      "msg": "Mining session must end before the rental does"
     }
   ],
   "types": [

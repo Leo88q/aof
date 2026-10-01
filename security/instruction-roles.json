@@ -238,11 +238,6 @@
         "status": "active",
         "note": "Матчинг ордербука v1; новый код использует match_resource_orders_v2 (цена за целый ресурс, эскроу с округлением вверх). Обработчик активен."
       },
-      "migrate_tool": {
-        "role": "migration",
-        "status": "disabled-on-chain",
-        "note": "Легаси-миграция инструментов завершена и отключена: минт шёл в vault без шага выдачи игроку."
-      },
       "mint_resource": {
         "role": "gameplay",
         "status": "active",

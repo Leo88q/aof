@@ -225,48 +225,6 @@ r.post("/rarity-counter/init", async (req, res) => {
   }
 });
 
-r.post("/migrate-tool", async (req, res) => {
-  try {
-    const mint = pk(req.body.mint);
-    const toolType = req.body.toolType;
-    const rarityMap: Record<string, any> = {
-      common: { common: {} },
-      uncommon: { uncommon: {} },
-      rare: { rare: {} },
-      epic: { epic: {} },
-      legendary: { legendary: {} },
-    };
-    const rarity = rarityMap[req.body.rarity];
-    const durability = Number(req.body.durability);
-    const [config] = configPda();
-    const [auth] = authPda();
-    const [vault] = vaultPda();
-    const [toolData] = toolPda(mint);
-    const vaultTokenAccount = getAssociatedTokenAddressSync(mint, vault, true);
-    const ix = await (program.methods as any)
-      .migrateTool(toolType, rarity, durability)
-      .accounts({
-        config,
-        migrationAuthority: AUTHORITY_PUBKEY,
-        authority: AUTHORITY_PUBKEY,
-        auth,
-        vault,
-        mint,
-        vaultTokenAccount,
-        toolData,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-
-
 // [FIXED] Тестовая выдача ресурса игроку — правильные аккаунты tokenAccount + treasuryToken + player + авто-создание ATA
 // Bulk manual minting is a devnet/staging tool. In production resources are
 // issued only through audited flows (inbox rewards with on-chain receipts).

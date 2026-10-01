@@ -21,7 +21,7 @@ AUTHORITY_ONLY = {
     "initialize", "set_fees", "set_paused", "set_resource_mints", "init_craft_economy",
     "set_craft_economy", "init_rarity_counter", "init_pack_config", "set_pack_config",
     "init_reroll_config", "set_reroll_config", "init_material_mints", "mint_resource",
-    "mint_resource_once", "mint_tool", "migrate_tool", "pay_out", "pay_out_with_referral",
+    "mint_resource_once", "mint_tool", "pay_out", "pay_out_with_referral",
     "sweep_gas_fees", "adjust_player_capacity", "grant_season_xp", "init_season",
     "init_issuance_cap", "set_issuance_cap", "set_pending_authority", "accept_authority",
     "cancel_pending_authority", "set_mining_enabled", "init_vault_guard", "set_vault_guard",

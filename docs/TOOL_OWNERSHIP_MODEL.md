@@ -8,8 +8,8 @@
 `freeze_authority = None`). Любой держатель может перевести его обычным
 `spl_token::transfer`, не обращаясь к программе. Программа такие переводы не
 видит и **не может** их запретить: freeze authority отсутствует намеренно, её
-требуют девять проверок `mint.freeze_authority.is_none()` (`mint_tool`, `craft`,
-`reroll`, `migrate_tool`, `marketplace_list`, `auction_create`, `offer_create`,
+требуют восемь проверок `mint.freeze_authority.is_none()` (`mint_tool`, `craft`,
+`reroll`, `marketplace_list`, `auction_create`, `offer_create`,
 `offer_accept`, `rental_list`).
 
 Поэтому:

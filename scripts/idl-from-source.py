@@ -224,6 +224,7 @@ def main() -> int:
     ap.add_argument("--accounts", default="", help="account types (discriminator + type entry)")
     ap.add_argument("--events", default="", help="event types (discriminator + type entry)")
     ap.add_argument("--remove-types", default="")
+    ap.add_argument("--remove-instructions", default="", help="comma-separated instruction names to drop")
     ap.add_argument("--errors", action="store_true")
     args = ap.parse_args()
 
@@ -247,6 +248,13 @@ def main() -> int:
         print(f"event {name}: {upsert(idl['types'], type_entry(name, src, enums))}")
     for name in names(args.types):
         print(f"type {name}: {upsert(idl['types'], type_entry(name, src, enums))}")
+    for name in names(args.remove_instructions):
+        before = len(idl["instructions"])
+        idl["instructions"] = [i for i in idl["instructions"] if i["name"] != name]
+        if len(idl["instructions"]) != before:
+            print(f"removed instruction {name}")
+        else:
+            print(f"instruction {name}: not present")
     for name in names(args.remove_types):
         for key in ("types", "events", "accounts"):
             before = len(idl.get(key, []))

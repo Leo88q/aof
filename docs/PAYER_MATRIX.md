@@ -3,14 +3,13 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **92**; нарушают принцип (долг до деплоя): **6**.
+Инициализаций аккаунтов: **91**; нарушают принцип (долг до деплоя): **5**.
 
 ## Долг: платит оператор, а должен игрок
 
 | Инструкция | Аккаунт | Тип | Платит сейчас | Должен | Причина |
 |---|---|---|---|---|---|
 | aof_core.GrantSeasonXp | season_pass | SeasonPass | authority | player | сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия |
-| aof_core.MigrateTool | tool_data | ToolData | migration_authority | player | мёртвый код (инструкция always-disabled, удаляется в пункте 12); живой механики за этим payer нет |
 | aof_core.MintResource | player | Player | authority | player | создаётся профиль игрока: rent платит кошелёк authority-оператора. Долг до деплоя: claim/выдача должны быть подписаны кошельком игрока, либо профиль создаётся его собственным действием |
 | aof_core.MintResourceOnce | player | Player | authority | player | то же, что MintResource.player: профиль игрока создаётся за счёт оператора на выдаче награды |
 | aof_core.MintResourceOnce | reward_receipt | RewardReceipt | authority | player | чек награды игрока (proof выплаты) оплачивает оператор; должен оплачивать игрок в своей claim-транзакции |
@@ -46,7 +45,6 @@
 | aof_core | InitSeason | season | Season | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | InitVaultGuard | vault_guard | VaultGuard | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | MarketplaceList | listing | Listing | init | seller | player | player | ok | — | — |
-| aof_core | MigrateTool | tool_data | ToolData | init_if_needed | migration_authority (оператор) | player | player | debt | — | — |
 | aof_core | MintResource | player | Player | init_if_needed | authority (оператор) | player | player | debt | — | — |
 | aof_core | MintResourceOnce | player | Player | init_if_needed | authority (оператор) | player | player | debt | — | — |
 | aof_core | MintResourceOnce | reward_receipt | RewardReceipt | init | authority (оператор) | player | player | debt | — | — |

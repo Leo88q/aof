@@ -277,7 +277,6 @@ export const api = {
     economyAlertResolve: (id: string) => post(`/admin/economy/alerts/${id}/resolve`, {}),
 
     rarityCounterInit: (v: any) => post("/admin/rarity-counter/init", v),
-    migrateTool: (v: any) => post("/admin/migrate-tool", v),
   },
 
   // === Газ-бак ===

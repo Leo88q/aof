@@ -162,12 +162,6 @@
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     },
-    "aof_core.MigrateTool.tool_data": {
-      "owner": "player",
-      "payer": "player",
-      "status": "debt",
-      "reason": "мёртвый код (инструкция always-disabled, удаляется в пункте 12); живой механики за этим payer нет"
-    },
     "aof_core.MintResource.player": {
       "owner": "player",
       "payer": "player",

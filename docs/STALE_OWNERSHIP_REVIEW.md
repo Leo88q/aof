@@ -27,7 +27,7 @@ market / hot market / auction / offer / rental / listing, и нужен ли т�
 | `offer_accept` | `owner/operator = offer.buyer` | NFT переводится `seller_token → buyer_token`, `buyer_token.owner == offer.buyer` |
 | `rental_start` | `operator = renter` | право делегируется в рамках активной записи; NFT остаётся в эскроу |
 | `rental_end` / `rental_revoke` | `operator = tool.owner` (кэш) | возврат делегирования после/при отзыве аренды |
-| `migrate_tool` | `owner/operator = vault` | инструкция **отключена** (`require!(false, FeatureDisabled)`) |
+| ~~`migrate_tool`~~ | — | **удалена** (шаг B пункта 12): pre-genesis-миграция без развёртывания, минт шёл в vault без шага выдачи игроку |
 | `settlement::write_tool` (pack/reroll/forge/exploration) | `owner/operator = user` | вызывается только для свежесозданного mint'а в той же инструкции |
 
 Следствие: **пока токен лежит в escrow программы (stake vault / listing vault /

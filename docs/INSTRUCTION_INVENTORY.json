@@ -13,45 +13,45 @@
     },
     {
       "file": "frontend/src/lib/coreInstructions.ts",
-      "distinctInstructions": 120
+      "distinctInstructions": 123
     },
     {
       "file": "scripts/gen-core-instruction-table.py",
-      "distinctInstructions": 43
+      "distinctInstructions": 42
     }
   ],
   "totals": {
-    "instructions": 174,
+    "instructions": 173,
     "byRole": {
       "gameplay": 100,
       "admin": 40,
       "emergency": 8,
-      "migration": 2,
+      "migration": 1,
       "initialization": 15,
       "compatibility": 5,
       "deprecated": 2,
       "candidate-dead-code": 2
     },
-    "disabledOnChain": 11,
+    "disabledOnChain": 10,
     "validatorTested": 98,
     "sharedNames": 23,
     "withoutAnyCallSite": 25,
-    "withoutCallSiteAndTest": 8
+    "withoutCallSiteAndTest": 7
   },
   "programs": {
     "aof_core": {
-      "instructions": 124,
+      "instructions": 123,
       "byRole": {
         "gameplay": 80,
         "admin": 21,
         "emergency": 6,
-        "migration": 2,
+        "migration": 1,
         "initialization": 8,
         "compatibility": 5,
         "deprecated": 2,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 4,
+      "disabledOnChain": 3,
       "validatorTested": 92,
       "sharedNames": 7,
       "withoutAnyCallSite": 12,
@@ -73,7 +73,7 @@
       "validatorTested": 4,
       "sharedNames": 5,
       "withoutAnyCallSite": 2,
-      "withoutCallSiteAndTest": 1
+      "withoutCallSiteAndTest": 0
     },
     "aof_quests": {
       "instructions": 19,
@@ -2504,7 +2504,7 @@
         "kind": "inline",
         "path": null,
         "file": "aof-core/src/lib.rs",
-        "line": 4268
+        "line": 4226
       },
       "disabledOnChain": true,
       "role": "deprecated",
@@ -2546,8 +2546,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/dead-code-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -2726,56 +2727,6 @@
       "summary": {
         "callSiteCount": 0,
         "validatorTested": true,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_core",
-      "name": "migrate_tool",
-      "camel": "migrateTool",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::migrate_tool::handler",
-        "file": "aof-core/src/instructions/migrate_tool.rs",
-        "line": 10
-      },
-      "disabledOnChain": true,
-      "role": "migration",
-      "status": "disabled-on-chain",
-      "replacedBy": null,
-      "note": "Легаси-миграция инструментов завершена и отключена: минт шёл в vault без шага выдачи игроку.",
-      "evidence": null,
-      "callSites": {
-        "backend": {
-          "calls": 1,
-          "mentions": 0,
-          "files": [
-            "aof_backend/src/routes/admin.ts"
-          ]
-        }
-      },
-      "registries": [
-        "frontend/src/lib/coreInstructions.ts",
-        "scripts/gen-core-instruction-table.py"
-      ],
-      "bringup": [
-        "aof_backend/src/routes/admin.ts"
-      ],
-      "tests": {
-        "readiness": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "tests/readiness/payer-audit.test.cjs",
-            "tests/readiness/security-checklist.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 1,
-        "validatorTested": false,
         "anyTest": true
       }
     },
@@ -3603,6 +3554,13 @@
             "tests/aof_extended.ts"
           ]
         },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
+          ]
+        },
         "rust": {
           "calls": 0,
           "mentions": 1,
@@ -3891,7 +3849,7 @@
         "kind": "inline",
         "path": null,
         "file": "aof-core/src/lib.rs",
-        "line": 4310
+        "line": 4268
       },
       "disabledOnChain": true,
       "role": "deprecated",
@@ -3924,8 +3882,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/dead-code-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -4029,7 +3988,9 @@
           ]
         }
       },
-      "registries": [],
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
       "bringup": [],
       "tests": {
         "validator": {
@@ -4073,7 +4034,9 @@
           ]
         }
       },
-      "registries": [],
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
       "bringup": [],
       "tests": {
         "validator": {
@@ -4117,7 +4080,9 @@
           ]
         }
       },
-      "registries": [],
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
       "bringup": [],
       "tests": {
         "validator": {
@@ -5369,6 +5334,13 @@
           "files": [
             "aof_backend/scripts/rewardReceiptSelfTest.ts"
           ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
+          ]
         }
       },
       "summary": {
@@ -6253,6 +6225,13 @@
             "tests/aof_extended.ts",
             "tests/aof_tool_ownership.ts"
           ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
+          ]
         }
       },
       "summary": {
@@ -7127,7 +7106,9 @@
       "note": "Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof.",
       "evidence": null,
       "callSites": {},
-      "registries": [],
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
       "bringup": [],
       "tests": {
         "validator": {
@@ -7135,6 +7116,13 @@
           "mentions": 0,
           "files": [
             "tests/aof_tool_ownership.ts"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
           ]
         }
       },
@@ -7501,11 +7489,19 @@
       "callSites": {},
       "registries": [],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 0,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     },
     {
@@ -7761,11 +7757,19 @@
       },
       "registries": [],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 1,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     },
     {
@@ -7828,11 +7832,19 @@
       },
       "registries": [],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/dead-code-evidence.test.cjs"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 1,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     },
     {
@@ -8122,8 +8134,9 @@
       "tests": {
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/dead-code-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -8942,8 +8955,9 @@
       "tests": {
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/dead-code-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }

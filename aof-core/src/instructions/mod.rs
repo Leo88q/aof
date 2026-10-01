@@ -24,7 +24,6 @@ pub mod mint_resource;
 pub mod burn_resource;
 pub mod mint_tool;
 pub mod burn_tool;
-pub mod migrate_tool;
 pub mod craft;
 pub mod reroll;
 pub mod stake;

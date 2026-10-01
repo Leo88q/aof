@@ -48,8 +48,6 @@ pub enum AofError {
     RerollMismatchedRarity,
     #[msg("Program already initialized")]
     AlreadyInitialized,
-    #[msg("Invalid migration authority")]
-    InvalidMigrationAuthority,
     #[msg("Vault balance insufficient for payout")]
     VaultInsufficient,
     #[msg("Invalid lock seconds for stake")]

@@ -35,7 +35,7 @@ C/U/R/E/L = Base / Enhanced / Quantum / Singularity / Transcendent.
 | Ремонт за юнит (CIRCUIT / SILICON) | 3.0/3.5 / 2.0/2.5 → 5.0/3.5 по редкости (кривая F-08: нетто-маржа растёт с редкостью) | `REPAIR_CIRCUIT_*/REPAIR_SILICON_*` |
 | Слоты зачарования | 0=Speed, 1=Durability, 2=EnergyEfficiency | `enchant_slot` PDA |
 | Стейкинг | перки из счётчиков Player-PDA: `historian_count`, `medallion_count` | `stake`/`unstake` |
-| Mint / сжигание / миграция | `mint_tool`, `burn_tool`, `migrate_tool` | aof-core |
+| Mint / сжигание | `mint_tool`, `burn_tool` | aof-core |
 
 Yield-таблица (net-маржа по F-08): Base +12 CIRCUIT/ч и +18 SILICON/ч → Transcendent +24 / +33.
 

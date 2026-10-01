@@ -37,37 +37,6 @@
     },
     {
       "program": "aof_core",
-      "name": "migrate_tool",
-      "camel": "migrateTool",
-      "role": "migration",
-      "replacedBy": null,
-      "guard": {
-        "kind": "require!(false)",
-        "code": "FeatureDisabled",
-        "line": "require!(false, AofError::FeatureDisabled);"
-      },
-      "backendCallSites": {
-        "calls": 1,
-        "mentions": 0,
-        "files": [
-          "aof_backend/src/routes/admin.ts"
-        ]
-      },
-      "frontendCallSites": {
-        "calls": 0,
-        "mentions": 0,
-        "files": []
-      },
-      "platformConsumers": null,
-      "tests": [
-        "tests/readiness/dead-code-evidence.test.cjs",
-        "tests/readiness/security-checklist.test.cjs"
-      ],
-      "adminOrSecurityNeed": false,
-      "decision": "remove — pre-genesis миграция (FeatureDisabled); deployment не существовал"
-    },
-    {
-      "program": "aof_core",
       "name": "purchase_season_pass",
       "camel": "purchaseSeasonPass",
       "role": "gameplay",
@@ -217,7 +186,9 @@
         "files": []
       },
       "platformConsumers": null,
-      "tests": [],
+      "tests": [
+        "tests/readiness/dead-code-evidence.test.cjs"
+      ],
       "adminOrSecurityNeed": false,
       "decision": "keep — не доказано мёртвой: Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
     },

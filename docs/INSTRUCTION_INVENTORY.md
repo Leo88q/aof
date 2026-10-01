@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 124 | 4 | 92 (74%) | 12 | 1 |
-| aof_market | 14 | 1 | 4 (29%) | 2 | 1 |
+| aof_core | 123 | 3 | 92 (75%) | 12 | 1 |
+| aof_market | 14 | 1 | 4 (29%) | 2 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 7 | 6 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **174** | **11** | **98** (56%) | **25** | **8** |
+| **всего** | **173** | **10** | **98** (57%) | **25** | **7** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -34,20 +34,19 @@
 | gameplay | 80 | 4 | 9 | 1 | 2 | 4 | 100 |
 | admin | 21 | 5 | 7 | 3 | 3 | 1 | 40 |
 | emergency | 6 | 1 | 1 | 0 | 0 | 0 | 8 |
-| migration | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| migration | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | initialization | 8 | 2 | 2 | 1 | 1 | 1 | 15 |
 | compatibility | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
 | deprecated | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | candidate-dead-code | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 
-## Отключены в коде (11)
+## Отключены в коде (10)
 
 Первая команда обработчика — `require!(false, …)` или `err!(…)`: инструкция есть в IDL, но на цепи всегда отказывает.
 
 | Инструкция | Роль | Заметка |
 |---|---|---|
 | aof_core.marketplace_buy | deprecated | Всегда FeatureDisabled: заменена marketplace_buy_bounded (с max_price и сроком); остаётся ради стабильности IDL. |
-| aof_core.migrate_tool | migration | Легаси-миграция инструментов завершена и отключена: минт шёл в vault без шага выдачи игроку. |
 | aof_core.purchase_season_pass | gameplay | Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
 | aof_core.rental_start | deprecated | Всегда FeatureDisabled: заменена rental_start_bounded (с потолком комиссии); остаётся ради стабильности IDL. |
 | aof_market.place_limit_order | candidate-dead-code | Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL. |
@@ -76,9 +75,9 @@
 | aof_core.emergency_stop | emergency | active | validator, readiness, rust | Guardian: пауза игры и/или заморозка выводов одним действием. |
 | aof_core.set_cashout_frozen | emergency | active | validator, readiness, rust | Заморозка/разморозка выводов (operator/guardian). |
 | aof_core.vrf_slot_recover | emergency | active | readiness | Оператор снимает блокировку слота VRF, чей держатель исчез. |
-| aof_core.sync_tool_owner | gameplay | active | validator | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
+| aof_core.sync_tool_owner | gameplay | active | validator, readiness | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
 | aof_market.cancel_limit_order | candidate-dead-code | active | selfTests | Снимает лимитный ордер и возвращает эскроу; place_limit_order отключена, поэтому ордера не создаются. |
-| aof_market.place_limit_order | candidate-dead-code | disabled-on-chain | — | Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL. |
+| aof_market.place_limit_order | candidate-dead-code | disabled-on-chain | readiness | Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL. |
 | aof_quests.init_potato_bank | initialization | active | — | Изолированная казна Potato V2, изначально на паузе. |
 | aof_quests.init_quest_config | initialization | active | — | QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет. |
 | aof_quests.potato_spin_commit | gameplay | disabled-on-chain | readiness | Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза. |
@@ -138,11 +137,10 @@
 | aof_core | init_reroll_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_season | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | initialize | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
-| aof_core | marketplace_buy | deprecated | disabled-on-chain | 0 | 0 | 2 | 0 | 0 | 0 | 1 | 2 | 1 | 0 |  |
+| aof_core | marketplace_buy | deprecated | disabled-on-chain | 0 | 0 | 2 | 0 | 0 | 0 | 1 | 2 | 2 | 0 |  |
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | migrate_tool | migration | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | ✓ |
 | aof_core | mint_resource | gameplay | active | 2 | 2 | 0 | 0 | 0 | 0 | 3 | 2 | 3 | 0 | ✓ |
 | aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 5 | 1 | 4 | 1 | ✓ |
 | aof_core | offer_accept | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -156,13 +154,13 @@
 | aof_core | place_buy_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | place_sell_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | plant_seeds | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | purchase_season_pass | gameplay | disabled-on-chain | 0 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 1 |  |
+| aof_core | purchase_season_pass | gameplay | disabled-on-chain | 0 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | referral_bind | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | referral_upgrade | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
 | aof_core | rental_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
 | aof_core | rental_revoke | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
-| aof_core | rental_start | deprecated | disabled-on-chain | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 1 | 0 |  |
+| aof_core | rental_start | deprecated | disabled-on-chain | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 2 | 0 | 2 | 0 | 0 | 0 |  |
 | aof_core | start_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -187,7 +185,7 @@
 | aof_core | weather_crank | gameplay | active | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
 | aof_core | withdraw_gas | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 2 | 0 | 2 | 1 |  |
 | aof_core | mint_resource_once | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 2 | 3 | 0 |  |
-| aof_core | marketplace_buy_bounded | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 0 |  |
+| aof_core | marketplace_buy_bounded | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | init_issuance_cap | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | set_issuance_cap | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | set_pending_authority ~ | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -204,7 +202,7 @@
 | aof_core | set_roles | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | emergency_stop | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | set_cashout_frozen | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | rental_start_bounded | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
+| aof_core | rental_start_bounded | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 1 | 0 |  |
 | aof_core | rental_delist | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | auction_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | vrf_pool_add ~ | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -221,7 +219,7 @@
 | aof_core | match_resource_orders_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | reset_for_rebirth | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | transfer_tool | gameplay | active | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | 0 |  |
-| aof_core | sync_tool_owner | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | sync_tool_owner | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_market | cancel_limit_order | candidate-dead-code | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
@@ -229,7 +227,7 @@
 | aof_market | hot_market_skip | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | ✓ |
 | aof_market | init_market_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_market | init_pool | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
-| aof_market | place_limit_order | candidate-dead-code | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
+| aof_market | place_limit_order | candidate-dead-code | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_market | set_fees ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_market | set_paused ~ | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_market | start_market_event | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
@@ -237,16 +235,16 @@
 | aof_market | accept_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_market | cancel_pending_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | accept_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
-| aof_quests | achievement_unlock | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
+| aof_quests | achievement_unlock | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_quests | cancel_pending_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
-| aof_quests | challenge_contribute | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
+| aof_quests | challenge_contribute | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_quests | challenge_init | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | drum_commit | gameplay | disabled-on-chain | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 3 | 0 |  |
 | aof_quests | drum_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
 | aof_quests | drum_reveal | gameplay | active | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 3 | 0 |  |
 | aof_quests | init_potato_bank | initialization | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | init_quest_config | initialization | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
-| aof_quests | potato_spin_commit | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
+| aof_quests | potato_spin_commit | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
 | aof_quests | potato_spin_expire | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | potato_spin_reveal | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_quests | quest_claim_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
@@ -268,7 +266,7 @@
 | aof_liquidity | cancel_pending_authority ~ | admin | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_session_keys | init_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 3 | 0 | ✓ |
 | aof_session_keys | session_check_and_spend | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 |  |
-| aof_session_keys | session_create | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
+| aof_session_keys | session_create | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
 | aof_session_keys | session_pause | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_session_keys | session_revoke | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_session_keys | trust_snapshot_update | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |

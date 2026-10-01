@@ -775,44 +775,6 @@ pub struct SyncToolOwner<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tool_type: String, rarity: Rarity, durability: u8)]
-pub struct MigrateTool<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
-    /// Migration signer is the configured core authority. Keeping this
-    /// relation in the account constraints avoids a stale hardcoded key.
-    #[account(mut, constraint = migration_authority.key() == config.authority @ AofError::InvalidMigrationAuthority)]
-    pub migration_authority: Signer<'info>,
-    pub authority: Signer<'info>,
-    /// CHECK: auth PDA
-    #[account(seeds = [AUTH_SEED], bump)]
-    pub auth: UncheckedAccount<'info>,
-    /// CHECK: vault PDA
-    #[account(seeds = [VAULT_SEED], bump)]
-    pub vault: UncheckedAccount<'info>,
-    #[account(
-        mut,
-        constraint = mint.decimals == 0 @ AofError::InvalidMint,
-        constraint = mint.supply == 0 @ AofError::InvalidMint,
-        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
-        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
-    )]
-    pub mint: Account<'info, Mint>,
-    #[account(mut, constraint = vault_token_account.mint == mint.key(), constraint = vault_token_account.owner == vault.key(), constraint = vault_token_account.amount == 0)]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    #[account(
-        init_if_needed,
-        payer = migration_authority,
-        space = TOOL_DATA_SPACE,
-        seeds = [TOOL_SEED, mint.key().as_ref()],
-        bump
-    )]
-    pub tool_data: Account<'info, ToolData>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
 #[instruction(tool_type: String, rarity: Rarity)]
 pub struct Craft<'info> {
     #[account(
@@ -4086,10 +4048,6 @@ pub mod aof_core {
 
     pub fn burn_tool(ctx: Context<BurnTool>) -> Result<()> {
         instructions::burn_tool::handler(ctx)
-    }
-
-    pub fn migrate_tool(ctx: Context<MigrateTool>, tool_type: String, rarity: Rarity, durability: u8) -> Result<()> {
-        instructions::migrate_tool::handler(ctx, tool_type, rarity, durability)
     }
 
     /// Канонический перенос инструмента (NFT + владение) одним действием.
