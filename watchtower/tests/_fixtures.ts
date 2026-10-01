@@ -4,9 +4,9 @@ import { createHash } from "node:crypto";
 
 const kp = (seed: string) => Keypair.fromSeed(createHash("sha256").update(seed).digest()).publicKey.toBase58();
 const sig = (n: number) => Buffer.from(createHash("sha512").update(`sig${n}`).digest()).toString("base64").replace(/[^1-9A-HJ-NP-Za-km-z]/g, "").padEnd(87, "1").slice(0, 87);
-export const CORE = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
-export const MARKET = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo";
-export const QUESTS = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU";
+export const CORE = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
+export const MARKET = "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY";
+export const QUESTS = "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc";
 export const W = { alice: kp("alice"), bob: kp("bob"), authority: kp("authority"), treasury: kp("treasury") };
 export const M = { mind: kp("mind-mint"), circuit: kp("circuit-mint"), tool1: kp("tool-1"), tool2: kp("tool-2"), mascot: kp("mascot") };
 const t0 = Date.parse("2026-09-20T10:00:00Z");

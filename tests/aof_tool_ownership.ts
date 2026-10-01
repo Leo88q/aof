@@ -32,7 +32,7 @@ import {
 import { expect } from "chai";
 import fs from "fs";
 
-const CORE_ID = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const CORE_ID = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
 describe("aof-core: token-primary ownership (кэш не авторизует, sync восстанавливает)", () => {
   const provider = anchor.AnchorProvider.env();

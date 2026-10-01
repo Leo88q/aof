@@ -11,7 +11,7 @@ pub use instructions::*;
 pub use state::*;
 pub use vrf::VrfRevealParams;
 
-declare_id!("4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU");
+declare_id!("2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc");
 
 #[program]
 pub mod aof_quests {

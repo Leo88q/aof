@@ -20,5 +20,5 @@ secretGroup = 1
 [allowlist]
 description = "public Solana program ID whose identifier contains the word key"
 regexes = [
-  '''^6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5$''',
+  '''^9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5$''',
 ]

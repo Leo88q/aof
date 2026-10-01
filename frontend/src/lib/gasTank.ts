@@ -97,6 +97,6 @@ export function unstakesAffordable(balanceMicros: bigint): bigint {
 export function gasTankPda(owner: string): PublicKey {
   return PublicKey.findProgramAddressSync(
     [new TextEncoder().encode("gastank"), new PublicKey(owner).toBytes()],
-    new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"),
+    new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx"),
   )[0];
 }

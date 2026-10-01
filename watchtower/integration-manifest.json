@@ -3,22 +3,22 @@
   "name": "Age of Farming",
   "network": "devnet",
   "programIds": [
-    "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq",
-    "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
-    "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
+    "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx",
+    "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY",
+    "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc"
   ],
   "programs": [
     {
       "name": "aof_core",
-      "programId": "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+      "programId": "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx"
     },
     {
       "name": "aof_market",
-      "programId": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
+      "programId": "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY"
     },
     {
       "name": "aof_quests",
-      "programId": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
+      "programId": "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc"
     }
   ],
   "mintAddresses": [],

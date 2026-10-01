@@ -11,7 +11,7 @@ import { PublicKey } from "@solana/web3.js";
 // Load .env first (src/config does the same), then force the read-only
 // posture and strip any hot key a local dev .env may carry — otherwise the
 // [AOF-H1] gate correctly refuses "read-only + AUTHORITY_SECRET_KEY".
-process.env.PROGRAM_ID ||= "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+process.env.PROGRAM_ID ||= "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
 process.env.TREASURY_PUBKEY ||= "11111111111111111111111111111111";
 process.env.AUTHORITY_MODE = "read-only";
 delete process.env.AUTHORITY_SECRET_KEY;

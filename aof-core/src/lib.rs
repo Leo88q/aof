@@ -18,7 +18,7 @@ pub use state::*;
 pub use constants::*;
 pub use errors::*;
 
-declare_id!("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+declare_id!("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
 // Canonical ResourceKind names and their order are the on-chain wire contract.
