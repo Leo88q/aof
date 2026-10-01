@@ -47,7 +47,7 @@ ADDRESSES = {
     "aof_market": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
     "aof_quests": "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
     "aof_liquidity": "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
-    "aof_session_keys": "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+    "aof_sessions": "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
 }
 SOL = 1_000_000_000
 # Независимая от оценщика формула rent: проверяем, что он её не подсовывает сам.
