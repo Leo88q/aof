@@ -2196,6 +2196,13 @@
           "files": [
             "aof_backend/src/routes/admin.ts"
           ]
+        },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-rename-plan.mjs"
+          ]
         }
       },
       "registries": [
@@ -2229,7 +2236,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
