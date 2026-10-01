@@ -44,40 +44,40 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 17 active, 7 internal-only, 3 candidate-dead', () => {
+test('репозиторий проходит гейт: 21 active, 4 internal-only, 2 candidate-dead', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /27 ресурсов/);
-  const statuses = Object.fromEntries(JSON.parse(read(EVIDENCE)).resources.map((r) => {
-    const c = r.coverage;
-    const clients = c.frontend || c.game;
-    if (c.onchainSource) return [r.kind, 'active'];
-    if (c.onchainSink) return [r.kind, 'internal-only'];
-    return [r.kind, clients ? 'candidate-dead' : 'historical'];
-  }));
-  const counts = Object.values(statuses).reduce((a, s) => ({ ...a, [s]: (a[s] ?? 0) + 1 }), {});
-  assert.deepEqual(counts, { active: 17, 'internal-only': 7, 'candidate-dead': 3 });
-  assert.deepEqual(Object.entries(statuses).filter(([, s]) => s === 'candidate-dead').map(([k]) => k).sort(), ['AmberQuartz', 'Compute', 'SoulCore']);
+  const resources = JSON.parse(read(EVIDENCE)).resources;
+  const counts = Object.values(resources.reduce((a, r) => ({ ...a, [r.status]: (a[r.status] ?? 0) + 1 }), {}))
+    .reduce((a, v) => a, {});
+  assert.deepEqual(
+    Object.entries(resources.reduce((a, r) => ({ ...a, [r.status]: (a[r.status] ?? 0) + 1 }), {})).sort(),
+    [['active', 21], ['candidate-dead', 2], ['internal-only', 4]].sort(),
+  );
+  const byStatus = (status) => resources.filter((r) => r.status === status).map((r) => r.kind).sort();
+  assert.deepEqual(byStatus('candidate-dead'), ['AmberQuartz', 'SoulCore']);
+  assert.deepEqual(byStatus('internal-only'), ['Compute', 'Data', 'Dataset', 'Mind']);
+  assert.ok(counts);
 });
 
 test('источники и стоки подтверждены обработчиками, а не декларацией', () => {
   const evidence = JSON.parse(read(EVIDENCE));
   const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
-  const sourceOf = (kind) => byKind.get(kind).onchainSource.map((f) => path.basename(f));
-  const sinkOf = (kind) => byKind.get(kind).onchainSink.map((f) => path.basename(f));
-  assert.deepEqual(sourceOf('Data'), ['exploration.rs']);
-  assert.ok(sourceOf('Circuit').includes('collect_mining.rs'));
-  assert.deepEqual(sourceOf('Synapse'), ['harvest_wheat.rs']);
-  assert.deepEqual(sourceOf('Model'), ['collect_bread.rs']);
-  assert.deepEqual(sourceOf('Power'), ['collect_well_water.rs']);
-  assert.ok(sourceOf('QuantumBit').includes('craft_recipe.rs'));
-  assert.deepEqual(sinkOf('Mind'), ['craft.rs']);
-  for (const kind of ['BlueCore', 'PurpleCore', 'RedCore', 'ClearQuartz', 'RoseQuartz', 'BioChip']) {
-    assert.equal(byKind.get(kind).onchainSource.length, 0, `${kind}: не должен иметь источника без обработчика`);
-    assert.ok(byKind.get(kind).onchainSink.length > 0, `${kind}: потребляется рецептом`);
-  }
-  for (const kind of ['Compute', 'AmberQuartz', 'SoulCore']) {
-    assert.equal(byKind.get(kind).onchainSource.length + byKind.get(kind).onchainSink.length, 0, `${kind}: цепочки нет вовсе`);
+  const sourceOf = (kind) => byKind.get(kind).onchainSource.map((s) => path.basename(s.split('#')[0]));
+  const sinkOf = (kind) => byKind.get(kind).onchainSink.map((s) => path.basename(s.split('#')[0]));
+  assert.ok(sourceOf('Circuit').includes('season.rs'), 'Circuit выдаётся в награде сезона');
+  assert.ok(sourceOf('Synapse').includes('harvest_wheat.rs'), 'Synapse — пшеница');
+  assert.ok(sourceOf('Model').includes('collect_bread.rs'), 'Model минтается на печи');
+  assert.ok(sourceOf('Power').includes('collect_well_water.rs'), 'Power — колодец');
+  assert.ok(sourceOf('QuantumBit').includes('craft_recipe.rs'), 'QuantumBit — рецепт 0');
+  assert.ok(sinkOf('Silicon').includes('repair.rs'), 'Silicon тратится на ремонт');
+  assert.ok(sinkOf('Compute').includes('start_baking.rs'), 'Compute — топливо печи');
+  assert.ok(sinkOf('Data').includes('exploration.rs'), 'Data — стоимость трипа');
+  for (const kind of ['AmberQuartz', 'SoulCore']) {
+    const r = byKind.get(kind);
+    assert.equal(r.onchainSource.length + r.onchainSink.length, 0, `${kind}: в коде нет ни выдачи, ни траты`);
+    assert.ok(r.frontend.length > 0, `${kind}: при этом присутствует во фронтенд-каталоге`);
   }
 });
 

@@ -75,24 +75,37 @@
         "frontend/public/assets/nfts/resources/dataset.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/exploration.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft.rs",
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+        "aof-core/src/instructions/referral.rs#upgrade_handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainRefs": [
-        {
-          "file": "aof-core/src/instructions/craft.rs",
-          "line": "mint: ctx.accounts.food_mint.to_account_info(),"
-        },
         {
           "file": "aof-core/src/instructions/exploration.rs",
           "line": "check_supply_cap(mm, ResourceKind::Data, ctx.accounts.food_mint.supply, food)?;"
         },
         {
+          "file": "aof-core/src/instructions/initialize.rs",
+          "line": "cfg.food_mint = Pubkey::default();"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "0 => config.food_mint,"
+        },
+        {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "food_mint: v1.food_mint,"
+          "line": "food_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "food_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -108,7 +121,7 @@
         "onchainSource": true,
         "onchainSink": true
       },
-      "status": "active"
+      "status": "internal-only"
     },
     {
       "kind": "Circuit",
@@ -147,7 +160,7 @@
         {
           "file": "frontend/src/lib/coreInstructions.ts",
           "variant": "wood_mint",
-          "line": "accounts: [\"config\", \"user\", \"tool\", \"mint\", \"stone_mint\", \"user_stone\", \"wood_mint\", \"user_wood\", \"token_program\"],"
+          "line": "accounts: [\"config\", \"user\", \"tool\", \"mint\", \"stone_mint\", \"user_stone\", \"wood_mint\", \"user_wood\", \"tool_token\", \"token_program\"],"
         }
       ],
       "game": [],
@@ -161,17 +174,22 @@
         "frontend/public/assets/nfts/resources/circuit.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/collect_mining.rs",
-        "aof-core/src/instructions/exploration.rs",
-        "aof-core/src/instructions/forge.rs",
-        "aof-core/src/instructions/season.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/forge.rs#expire_handler",
+        "aof-core/src/instructions/reroll.rs#handler",
+        "aof-core/src/instructions/season.rs#claim_reward_handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft.rs",
-        "aof-core/src/instructions/craft_recipe.rs",
-        "aof-core/src/instructions/forge.rs",
-        "aof-core/src/instructions/rental_delegation.rs",
-        "aof-core/src/instructions/repair.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+        "aof-core/src/instructions/forge.rs#commit_handler",
+        "aof-core/src/instructions/referral.rs#upgrade_handler",
+        "aof-core/src/instructions/rental_delegation.rs#repair_handler",
+        "aof-core/src/instructions/repair.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler",
+        "aof-core/src/instructions/start_baking.rs#handler"
       ],
       "onchainRefs": [
         {
@@ -179,36 +197,24 @@
           "line": "\"plasma_cutter\" => Some(ResourceKind::Circuit),"
         },
         {
-          "file": "aof-core/src/instructions/craft_order.rs",
-          "line": "from: ctx.accounts.fulfiller_wood.to_account_info(),"
-        },
-        {
-          "file": "aof-core/src/instructions/craft.rs",
-          "line": "mint: ctx.accounts.wood_mint.to_account_info(),"
-        },
-        {
           "file": "aof-core/src/instructions/exploration.rs",
           "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, reward)?;"
         },
         {
-          "file": "aof-core/src/instructions/forge.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, wood)?;"
+          "file": "aof-core/src/instructions/initialize.rs",
+          "line": "cfg.wood_mint = Pubkey::default();"
         },
         {
-          "file": "aof-core/src/instructions/rental_delegation.rs",
-          "line": "mint: ctx.accounts.wood_mint.to_account_info(),"
-        },
-        {
-          "file": "aof-core/src/instructions/repair.rs",
-          "line": "mint: ctx.accounts.wood_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "1 => config.wood_mint,"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "wood_mint: v1.wood_mint,"
+          "line": "wood_mint: Pubkey,"
         },
         {
-          "file": "aof-core/src/instructions/season.rs",
-          "line": "ResourceKind::Circuit,"
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "wood_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -281,17 +287,21 @@
         "frontend/public/assets/nfts/silicon-extractor.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/collect_mining.rs",
-        "aof-core/src/instructions/exploration.rs",
-        "aof-core/src/instructions/forge.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/forge.rs#expire_handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft.rs",
-        "aof-core/src/instructions/craft_recipe.rs",
-        "aof-core/src/instructions/forge.rs",
-        "aof-core/src/instructions/rental_delegation.rs",
-        "aof-core/src/instructions/repair.rs",
-        "aof-core/src/instructions/start_milling.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+        "aof-core/src/instructions/forge.rs#commit_handler",
+        "aof-core/src/instructions/referral.rs#upgrade_handler",
+        "aof-core/src/instructions/rental_delegation.rs#repair_handler",
+        "aof-core/src/instructions/repair.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler",
+        "aof-core/src/instructions/start_milling.rs#handler"
       ],
       "onchainRefs": [
         {
@@ -299,36 +309,24 @@
           "line": "\"silicon_extractor\" => Some(ResourceKind::Silicon),"
         },
         {
-          "file": "aof-core/src/instructions/craft_order.rs",
-          "line": "from: ctx.accounts.fulfiller_stone.to_account_info(),"
-        },
-        {
-          "file": "aof-core/src/instructions/craft.rs",
-          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
-        },
-        {
           "file": "aof-core/src/instructions/exploration.rs",
           "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, reward)?;"
         },
         {
-          "file": "aof-core/src/instructions/forge.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, stone)?;"
+          "file": "aof-core/src/instructions/initialize.rs",
+          "line": "cfg.stone_mint = Pubkey::default();"
         },
         {
-          "file": "aof-core/src/instructions/rental_delegation.rs",
-          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
-        },
-        {
-          "file": "aof-core/src/instructions/repair.rs",
-          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "2 => config.stone_mint,"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "stone_mint: v1.stone_mint,"
+          "line": "stone_mint: Pubkey,"
         },
         {
-          "file": "aof-core/src/instructions/start_milling.rs",
-          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "stone_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -398,12 +396,15 @@
         "frontend/public/assets/nfts/resources/neuron.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/collect_mining.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft.rs",
-        "aof-core/src/instructions/craft_recipe.rs",
-        "aof-core/src/instructions/plant_seeds.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/plant_seeds.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainRefs": [
         {
@@ -411,16 +412,20 @@
           "line": "\"neural_seeder\" => Some(ResourceKind::Neuron),"
         },
         {
-          "file": "aof-core/src/instructions/craft.rs",
-          "line": "mint: ctx.accounts.seeds_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.seeds = seeds;"
         },
         {
-          "file": "aof-core/src/instructions/plant_seeds.rs",
-          "line": "mint: ctx.accounts.seeds_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "3 => materials.seeds,"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "seeds_mint: v1.seeds_mint,"
+          "line": "seeds_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "seeds_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -492,19 +497,19 @@
         "frontend/public/assets/nfts/resources/synapse.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/harvest_wheat.rs"
+        "aof-core/src/instructions/harvest_wheat.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/start_milling.rs"
+        "aof-core/src/instructions/start_milling.rs#handler"
       ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/harvest_wheat.rs",
-          "line": "ResourceKind::Synapse,"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.wheat = wheat;"
         },
         {
-          "file": "aof-core/src/instructions/start_milling.rs",
-          "line": "mint: ctx.accounts.wheat_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "4 => materials.wheat,"
         }
       ],
       "anyKindPath": [
@@ -571,19 +576,19 @@
         "frontend/public/assets/nfts/resources/signal.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/collect_flour.rs"
+        "aof-core/src/instructions/collect_flour.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/start_baking.rs"
+        "aof-core/src/instructions/start_baking.rs#handler"
       ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/collect_flour.rs",
-          "line": "ResourceKind::Signal,"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.flour = flour;"
         },
         {
-          "file": "aof-core/src/instructions/start_baking.rs",
-          "line": "mint: ctx.accounts.flour_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "5 => materials.flour,"
         }
       ],
       "anyKindPath": [
@@ -651,13 +656,17 @@
         "frontend/public/assets/nfts/resources/model.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/collect_bread.rs"
+        "aof-core/src/instructions/collect_bread.rs#handler"
       ],
       "onchainSink": [],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/collect_bread.rs",
-          "line": "ResourceKind::Model,"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.bread = bread;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "6 => materials.bread,"
         }
       ],
       "anyKindPath": [
@@ -724,28 +733,31 @@
         "frontend/public/assets/nfts/resources/power.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/collect_well_water.rs"
+        "aof-core/src/instructions/collect_well_water.rs#handler",
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft.rs",
-        "aof-core/src/instructions/start_baking.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler",
+        "aof-core/src/instructions/start_baking.rs#handler"
       ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/collect_well_water.rs",
-          "line": "ResourceKind::Power,"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.water = water;"
         },
         {
-          "file": "aof-core/src/instructions/craft.rs",
-          "line": "mint: ctx.accounts.water_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "7 => materials.water,"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "water_mint: v1.water_mint,"
+          "line": "water_mint: Pubkey,"
         },
         {
-          "file": "aof-core/src/instructions/start_baking.rs",
-          "line": "mint: ctx.accounts.water_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "water_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -807,8 +819,19 @@
         "frontend/public/assets/nfts/resources/compute.jpg"
       ],
       "onchainSource": [],
-      "onchainSink": [],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/start_baking.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.coal = coal;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "8 => materials.coal,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -820,9 +843,9 @@
         "recipe": false,
         "asset": true,
         "onchainSource": false,
-        "onchainSink": false
+        "onchainSink": true
       },
-      "status": "candidate-dead"
+      "status": "internal-only"
     },
     {
       "kind": "Dataset",
@@ -869,11 +892,10 @@
         "frontend/public/assets/icons/dataset.png",
         "frontend/public/assets/nfts/resources/dataset.jpg"
       ],
-      "onchainSource": [
-        "aof-core/src/instructions/collect_mining.rs",
-        "aof-core/src/instructions/exploration.rs"
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/exploration.rs#start_commit_handler"
       ],
-      "onchainSink": [],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/collect_mining.rs",
@@ -882,6 +904,14 @@
         {
           "file": "aof-core/src/instructions/exploration.rs",
           "line": "check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.meat_mint.supply, meat)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.meat = meat;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "9 => materials.meat,"
         }
       ],
       "anyKindPath": [
@@ -894,10 +924,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": true,
-        "onchainSink": false
+        "onchainSource": false,
+        "onchainSink": true
       },
-      "status": "active"
+      "status": "internal-only"
     },
     {
       "kind": "BlueCore",
@@ -938,11 +968,22 @@
         "frontend/public/assets/icons/blue-core.png",
         "frontend/public/assets/nfts/resources/blue-core.jpg"
       ],
-      "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.stone_blue = stone_blue;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "10 => materials.stone_blue,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -953,10 +994,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
-      "status": "internal-only"
+      "status": "active"
     },
     {
       "kind": "PurpleCore",
@@ -997,11 +1038,22 @@
         "frontend/public/assets/icons/purple-core.png",
         "frontend/public/assets/nfts/resources/purple-core.jpg"
       ],
-      "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.stone_purple = stone_purple;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "11 => materials.stone_purple,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1012,10 +1064,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
-      "status": "internal-only"
+      "status": "active"
     },
     {
       "kind": "RedCore",
@@ -1056,11 +1108,22 @@
         "frontend/public/assets/icons/red-core.png",
         "frontend/public/assets/nfts/resources/red-core.jpg"
       ],
-      "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.stone_red = stone_red;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "12 => materials.stone_red,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1071,10 +1134,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
-      "status": "internal-only"
+      "status": "active"
     },
     {
       "kind": "ClearQuartz",
@@ -1115,11 +1178,22 @@
         "frontend/public/assets/icons/clear-quartz.png",
         "frontend/public/assets/nfts/resources/clear-quartz.jpg"
       ],
-      "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.sand_white = sand_white;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "13 => materials.sand_white,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1130,10 +1204,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
-      "status": "internal-only"
+      "status": "active"
     },
     {
       "kind": "RoseQuartz",
@@ -1174,11 +1248,22 @@
         "frontend/public/assets/icons/rose-quartz.png",
         "frontend/public/assets/nfts/resources/rose-quartz.jpg"
       ],
-      "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.sand_pink = sand_pink;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "14 => materials.sand_pink,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1189,10 +1274,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
-      "status": "internal-only"
+      "status": "active"
     },
     {
       "kind": "AmberQuartz",
@@ -1235,7 +1320,16 @@
       ],
       "onchainSource": [],
       "onchainSink": [],
-      "onchainRefs": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.sand_yellow = sand_yellow;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "15 => materials.sand_yellow,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1291,15 +1385,19 @@
         "frontend/public/assets/nfts/resources/quantum-bit.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::QuantumBit);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.gem_blue = gem_blue;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "16 => materials.gem_blue,"
         }
       ],
       "anyKindPath": [
@@ -1357,15 +1455,19 @@
         "frontend/public/assets/nfts/resources/neural-chip.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
       "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::NeuralChip);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.gem_orange = gem_orange;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "17 => materials.gem_orange,"
         }
       ],
       "anyKindPath": [
@@ -1423,13 +1525,19 @@
         "frontend/public/assets/nfts/resources/photon-bit.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::PhotonBit);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.gem_white = gem_white;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "18 => materials.gem_white,"
         }
       ],
       "anyKindPath": [
@@ -1443,7 +1551,7 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active"
     },
@@ -1486,11 +1594,22 @@
         "frontend/public/assets/icons/bio-chip.png",
         "frontend/public/assets/nfts/resources/bio-chip.jpg"
       ],
-      "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/craft_recipe.rs"
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainRefs": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.gem_green = gem_green;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "19 => materials.gem_green,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1501,10 +1620,10 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
-      "status": "internal-only"
+      "status": "active"
     },
     {
       "kind": "CryoFluid",
@@ -1546,13 +1665,19 @@
         "frontend/public/assets/nfts/resources/cryo-fluid.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::CryoFluid);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.flask_blue = flask_blue;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "20 => materials.flask_blue,"
         }
       ],
       "anyKindPath": [
@@ -1566,7 +1691,7 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active"
     },
@@ -1610,13 +1735,19 @@
         "frontend/public/assets/nfts/resources/volt-fluid.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::VoltFluid);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.flask_yellow = flask_yellow;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "21 => materials.flask_yellow,"
         }
       ],
       "anyKindPath": [
@@ -1630,7 +1761,7 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active"
     },
@@ -1674,13 +1805,19 @@
         "frontend/public/assets/nfts/resources/bio-fluid.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::BioFluid);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.flask_green = flask_green;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "22 => materials.flask_green,"
         }
       ],
       "anyKindPath": [
@@ -1694,7 +1831,7 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active"
     },
@@ -1738,13 +1875,19 @@
         "frontend/public/assets/nfts/resources/nano-fluid.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::NanoFluid);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.flask_pink = flask_pink;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "23 => materials.flask_pink,"
         }
       ],
       "anyKindPath": [
@@ -1758,7 +1901,7 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active"
     },
@@ -1802,13 +1945,19 @@
         "frontend/public/assets/nfts/resources/quantum-fluid.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/craft_recipe.rs"
+        "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft_recipe.rs",
-          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::QuantumFluid);"
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.flask_purple = flask_purple;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "24 => materials.flask_purple,"
         }
       ],
       "anyKindPath": [
@@ -1822,7 +1971,7 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active"
     },
@@ -1859,7 +2008,16 @@
       ],
       "onchainSource": [],
       "onchainSink": [],
-      "onchainRefs": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.love_heart = love_heart;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "25 => materials.love_heart,"
+        }
+      ],
       "anyKindPath": [
         "aof-core/src/instructions/craft_recipe.rs",
         "aof-core/src/instructions/mint_resource.rs"
@@ -1923,22 +2081,34 @@
         "frontend/public/assets/icons/mind.png",
         "frontend/public/assets/nfts/resources/mind.jpg"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
+      ],
       "onchainSink": [
-        "aof-core/src/instructions/craft.rs"
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
       ],
       "onchainRefs": [
         {
-          "file": "aof-core/src/instructions/craft.rs",
-          "line": "mint: ctx.accounts.potato_mint.to_account_info(),"
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "26 => config.potato_mint,"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "potato_mint: v1.potato_mint,"
+          "line": "potato_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "potato_mint: Pubkey,"
+        },
+        {
+          "file": "programs/aof-quests/src/instructions/drum/potato_bank.rs",
+          "line": "pub potato_mint: Account<'info, Mint>,"
         },
         {
           "file": "programs/aof-quests/src/instructions/drum/potato_spin.rs",
-          "line": "from: ctx.accounts.user_potato.to_account_info(),"
+          "line": "pub potato_mint: Box<Account<'info, Mint>>,"
         }
       ],
       "anyKindPath": [
@@ -1951,10 +2121,36 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "internal-only"
     }
-  ]
+  ],
+  "statuses": {
+    "Data": {
+      "status": "internal-only",
+      "note": "жжётся в exploration-трипе (TRIP_COST_FOOD); собственного источника для игрока нет — только authority-минт mint_resource и награды, поэтому источником не считается"
+    },
+    "Dataset": {
+      "status": "internal-only",
+      "note": "аналогично Data: TRIP_COST_MEAT в exploration, источник — только authority-минт"
+    },
+    "Compute": {
+      "status": "internal-only",
+      "note": "топливо печи (start_baking, fuel_kind=1), собственного источника для игрока нет"
+    },
+    "Mind": {
+      "status": "internal-only",
+      "note": "потребляется craft/reroll как potato-стоимость; mint_to в этих блоках выпускает NFT инструмента, а не Mind, поэтому источника нет"
+    },
+    "AmberQuartz": {
+      "status": "candidate-dead",
+      "note": "sand_yellow не упоминается ни в одном обработчике: только enum, MaterialMints, orderbook-маппинг и фронтенд-каталог"
+    },
+    "SoulCore": {
+      "status": "candidate-dead",
+      "note": "love_heart нигде не читается и не минтится: только enum, реестр минтов и фронтенд-каталог"
+    }
+  }
 }

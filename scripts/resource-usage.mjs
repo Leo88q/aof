@@ -105,46 +105,56 @@ export function lineRole(line) {
  * `anyKind` — файлы, которые умеют работать с произвольным kind-параметром.
  */
 export function onchainEvidence(resource, rustFiles) {
-  const enumNeedle = `ResourceKind::${resource.kind}`;
-  const field = resource.legacyField;
-  const enumRe = new RegExp(`(^|[^A-Za-z0-9_])${enumNeedle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-Za-z0-9_]|$)`);
-  // Слабое совпадение: поле минта как аргумент mint/from или сравнение с местом хранения.
-  const base = field ? field.replace(/_mint$/, '') : null;
-  const fieldRe = base
-    ? new RegExp(`((mint|from)\\s*:\\s*[\\w.]*${base}(_mint)?\\b|==\\s*(mm|materials|cfg)\\.${base}(_mint)?\\b)`)
-    : null;
-  const baseRe = base ? new RegExp(`(^|[^A-Za-z0-9_])${base}(_mint)?([^A-Za-z0-9_]|$)`) : null;
-  const sources = new Set();
-  const sinks = new Set();
+  // Ресурс в Rust узнаётся по enum-имени и по имени минт-поля (mm.stone_blue, cfg.food_mint).
+  // Роль определяется по блоку функции целиком: если внутри блока есть mint_to/mint_out! —
+  // это источник, если token::burn/burn_in!/TRIP_COST — сток. Разбор по функциям (а не по
+  // строкам) нужен потому, что вызовы вроде check_supply_cap(..., ResourceKind::Data, ...)
+  // и сам mint_to разнесены на десятки строк, а один файл содержит и траты, и награды.
+  const base = resource.legacyField && resource.legacyField.replace(/_mint$/, '');
+  // `mm.stone_blue` и `ctx.accounts.potato_mint` — оба пишутся как `base` + `_mint`/`_blue`,
+  // поэтому базовое имя ищется с разрешённым подчёркиванием внутри составного идентификатора.
+  // Базовое имя учитывается только как минт-идентификатор (`wheat_mint`) или как поле
+  // хранилища (`mm.wheat`, `config.food`): иначе обычные слова вроде `seeds` или `water`
+  // давали бы десятки ложных совпадений в переменных.
+  const re = base
+    ? new RegExp(`(^|[^A-Za-z0-9])ResourceKind::${resource.kind}([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9])${base}_mint([^A-Za-z0-9_]|$)|(mm|materials|config|cfg|roles)\\.${base}([^A-Za-z0-9_]|$)`)
+    : new RegExp(`(^|[^A-Za-z0-9])ResourceKind::${resource.kind}([^A-Za-z0-9_]|$)`);
+  const sources = new Map();
+  const sinks = new Map();
   const refs = new Map();
   const anyKind = new Set();
   for (const rel of rustFiles) {
     if (/(state|constants|errors|events)\.rs$/.test(rel) || /security_checklist_tests/.test(rel)) continue;
+    // `aof-core/src/lib.rs` — только обёртки инструкций и account-структуры: логика выдачи
+    // и трат живёт в `instructions/*.rs`, а констрейнт на адрес минта не делает ресурс
+    // доступным игроку.
+    if (rel === 'aof-core/src/lib.rs') continue;
     const text = read(rel);
     if (/pub enum ResourceKind/.test(text) || /fn mint_for_kind/.test(text) || /check_supply_cap\(\s*&?\w*,/.test(text)) anyKind.add(rel);
-    const lines = text.split('\n');
-    const hasEnum = enumRe.test(text);
-    const hasField = fieldRe ? fieldRe.test(text) : false;
-    if (!hasEnum && !hasField) continue;
-    if (hasEnum && /mint_out!|mint_to|check_supply_cap/.test(text)) sources.add(rel);
-    // Файл с одним-тремя ресурсами: если в нём есть burn и упоминание базового имени
-    // (coal_mint, potato_mint), это сток — даже когда вызов сидит за переменной.
-    const kindNames = new Set([...text.matchAll(/ResourceKind::(\w+)/g)].map((m) => m[1]));
-    if (kindNames.size <= 3 && baseRe && baseRe.test(text) && /burn_in!|token::burn/.test(text)) sinks.add(rel);
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-      const strong = enumRe.test(line);
-      const weak = fieldRe ? fieldRe.test(line) : false;
-      if (!strong && !weak) continue;
-      const lookahead = lines.slice(i + 1, i + 4).some((l) => /burn_in!|token::burn/.test(l));
-      const isSinkLine = /burn_in!|token::burn|TRIP_COST|stone_cost|wood_cost/.test(line) || (weak && lookahead);
-      if (isSinkLine) sinks.add(rel);
-      else if (!strong && !weak) continue;
-      else if (!refs.has(rel)) refs.set(rel, line.trim().slice(0, 120));
-      if (strong && /mint_out!|mint_to/.test(line)) sources.add(rel);
+    if (!re.test(text)) continue;
+    const blocks = text.split(/\n(?=\s*(?:pub )?fn )/);
+    let matched = false;
+    for (const block of blocks) {
+      if (!re.test(block)) continue;
+      matched = true;
+      const name = /^\s*(?:pub )?fn (\w+)/.exec(block)?.[1] ?? '?';
+      const emits = /mint_out!|mint_to/.test(block);
+      const burns = /burn_in!|token::burn|TRIP_COST/.test(block);
+      if (emits) sources.set(rel, name);
+      if (burns) sinks.set(rel, name);
+      if (!emits && !burns && !refs.has(rel)) {
+        refs.set(rel, block.split('\n').find((l) => re.test(l))?.trim().slice(0, 120) ?? '');
+      }
     }
+    if (!matched && !refs.has(rel)) refs.set(rel, '');
   }
-  return { onchainSource: [...sources].sort(), onchainSink: [...sinks].sort(), onchainRefs: [...refs.entries()].map(([file, line]) => ({ file, line })), anyKind: [...anyKind].sort() };
+  const toList = (m) => [...m.entries()].map(([file, fn]) => `${file}#${fn}`).sort();
+  return {
+    onchainSource: toList(sources),
+    onchainSink: toList(sinks),
+    onchainRefs: [...refs.entries()].map(([file, line]) => ({ file, line })),
+    anyKind: [...anyKind].sort(),
+  };
 }
 
 export function buildEvidence() {
@@ -198,21 +208,36 @@ export function buildEvidence() {
 }
 
 /** Статус выводится из покрытия, а не назначается руками (ручные статусы — только historical). */
-export function classify(resource) {
+export function classify(resource, curated) {
   const c = resource.coverage;
+  const hasChain = c.onchainSource || c.onchainSink;
+  if (curated) return curated.status;
   const clients = c.frontend || c.game;
-  if (!clients && !c.onchainSource && !c.onchainSink) return 'historical';
-  const chain = c.onchainSource || c.onchainSink;
-  if (!clients) return chain ? 'internal-only' : 'historical';
+  if (!hasChain) return clients ? 'candidate-dead' : 'historical';
+  if (!clients) return 'internal-only';
   // Клиентское присутствие есть. `active` — есть on-chain источник; `internal-only` —
   // ресурс только потребляется (вход рецепта) или известен лишь объявлением;
   // `candidate-dead` — клиентское присутствие без единой цепочки.
-  if (c.onchainSource) return 'active';
-  return c.onchainSink ? 'internal-only' : 'candidate-dead';
+  return c.onchainSource ? 'active' : 'internal-only';
 }
 
-export function toMarkdown(evidence) {
-  const rows = evidence.resources.map((r) => ({ ...r, status: r.status ?? classify(r) }));
+/** Противоречие между курируемым статусом и жёсткими сигналами кода. */
+export function curationErrors(resource, curated) {
+  const errors = [];
+  if (!curated) return errors;
+  if (!['active', 'internal-only', 'candidate-dead', 'historical'].includes(curated.status)) {
+    errors.push(`${resource.kind}: неизвестный статус ${curated.status}`);
+  }
+  const c = resource.coverage;
+  const hasChain = c.onchainSource || c.onchainSink;
+  if (curated.status === 'active' && !hasChain) errors.push(`${resource.kind}: active выставлен без единого on-chain сигнала`);
+  if (curated.status === 'historical' && hasChain) errors.push(`${resource.kind}: historical, но в цепочке ресурс используется`);
+  if (!curated.note || curated.note.length < 20) errors.push(`${resource.kind}: курируемый статус требует пояснения`);
+  return errors;
+}
+
+export function toMarkdown(evidence, curated = {}) {
+  const rows = evidence.resources.map((r) => ({ ...r, status: r.status ?? classify(r, curated[r.kind]) }));
   const lines = [
     '# Product evidence по ресурсам (шаг A пункта 12)',
     '',
@@ -221,9 +246,12 @@ export function toMarkdown(evidence) {
     '(`tests/readiness/resource-evidence.test.cjs`).',
     '',
     'Статусы: `active` (есть on-chain источник и клиентское присутствие), `internal-only` (в цепочке/backend,',
-    'но игроку недоступен — например, только вход рецепта или админский mint), `candidate-dead` (клиент без',
-    'цепочки), `historical` (нигде). `on-chain source` = явная эмиссия в обработчике; `any-kind` пути',
-    '(`mint_resource` под authority) игроку не доступны и источником не считаются.',
+    'но игроку недоступен: только вход рецепта, топливо или админский mint), `candidate-dead` (клиент без',
+    'цепочки), `historical` (нигде). `on-chain source`/`sink` — сигналы по блокам функций: в блоке есть',
+    '`mint_to`/`mint_out!` (источник) или `token::burn`/`burn_in!`/`TRIP_COST` (сток) и при этом упомянут',
+    'ресурс. Сигнал грубее семантики: блок `craft` одновременно жжёт входы и минтит NFT, поэтому статусы',
+    'пяти спорных ресурсов (Data, Dataset, Compute, AmberQuartz, SoulCore) зафиксированы курируемо в',
+    '`statuses` и проверяются гейтом на противоречие коду.',
     '',
     'Сырые инвентари клиентов, по которым построено покрытие: `docs/CLIENT_INVENTORY.txt`',
     '(`git ls-files frontend game`, `find frontend -maxdepth 6 -type f`, `find game -maxdepth 8 -type f`).',
@@ -237,6 +265,12 @@ export function toMarkdown(evidence) {
   }
   const counts = rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
   lines.push('', `Итог: ${Object.entries(counts).map(([k, v]) => `${k} — ${v}`).join(', ')}.`, '');
+  const curatedRows = rows.filter((r) => curated[r.kind]);
+  if (curatedRows.length) {
+    lines.push('## Курируемые статусы (спорные сигналы)', '', '| Ресурс | Статус | Почему |', '|---|---|---|');
+    for (const r of curatedRows) lines.push(`| ${r.kind} | ${r.status} | ${curated[r.kind].note} |`);
+    lines.push('');
+  }
   lines.push('## Детали', '');
   for (const r of rows) {
     lines.push(`### ${r.kind} — ${r.status}`, '',
@@ -254,14 +288,19 @@ export function toMarkdown(evidence) {
 
 function main() {
   const evidence = buildEvidence();
-  evidence.resources = evidence.resources.map((r) => ({ ...r, status: classify(r) }));
+  const committed = exists(OUT_JSON) ? JSON.parse(read(OUT_JSON)) : {};
+  const curated = committed.statuses ?? {};
+  evidence.resources = evidence.resources.map((r) => ({ ...r, status: classify(r, curated[r.kind]) }));
+  evidence.statuses = curated;
   const json = `${JSON.stringify(evidence, null, 2)}\n`;
-  const md = toMarkdown(evidence);
+  const md = toMarkdown(evidence, curated);
+  const contradictions = evidence.resources.flatMap((r) => curationErrors(r, curated[r.kind]));
   if (argv.includes('--write')) {
     fs.writeFileSync(path.join(ROOT, OUT_JSON), json);
     fs.writeFileSync(path.join(ROOT, OUT_MD), md);
-    const counts = evidence.resources.map((r) => classify(r)).reduce((a, s) => ({ ...a, [s]: (a[s] ?? 0) + 1 }), {});
+    const counts = evidence.resources.map((r) => classify(r, curated[r.kind])).reduce((a, s) => ({ ...a, [s]: (a[s] ?? 0) + 1 }), {});
     console.log(`product evidence записан: ${evidence.resources.length} ресурсов — ${Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(', ')}`);
+    for (const e of contradictions) console.error(`  ! ${e}`);
     return;
   }
   if (argv.includes('--check')) {
@@ -270,18 +309,19 @@ function main() {
     if (!exists(OUT_MD)) errors.push(`нет ${OUT_MD}: node scripts/resource-usage.mjs --write`);
     if (exists(OUT_JSON)) {
       const committed = JSON.parse(read(OUT_JSON));
-      if (read(OUT_MD) !== toMarkdown(evidence)) errors.push(`${OUT_MD} устарел: node scripts/resource-usage.mjs --write`);
+      if (read(OUT_MD) !== toMarkdown(evidence, committed.statuses ?? {})) errors.push(`${OUT_MD} устарел: node scripts/resource-usage.mjs --write`);
+      errors.push(...contradictions);
       const byKind = new Map(committed.resources.map((r) => [r.kind, r]));
       for (const found of evidence.resources) {
         const saved = byKind.get(found.kind);
         if (!saved) { errors.push(`${found.kind}: нет evidence`); continue; }
-        const computed = classify(found);
+        const computed = classify(found, curated[found.kind]);
         if (computed !== saved.status) errors.push(`${found.kind}: статус ${saved.status}, а evidence даёт ${computed}`);
       }
       if (evidence.resources.length !== committed.resources.length) errors.push(`в evidence ${committed.resources.length} ресурсов, в enum — ${evidence.resources.length}`);
     }
     if (errors.length) { console.error(`resource-usage: ${errors.length} проблем(а):`); for (const e of errors) console.error(`  - ${e}`); process.exit(1); }
-    const counts = evidence.resources.map((r) => classify(r)).reduce((a, s) => ({ ...a, [s]: (a[s] ?? 0) + 1 }), {});
+    const counts = evidence.resources.map((r) => classify(r, curated[r.kind])).reduce((a, s) => ({ ...a, [s]: (a[s] ?? 0) + 1 }), {});
     console.log(`resource-usage: ${evidence.resources.length} ресурсов — ${Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(', ')}`);
   }
 }
