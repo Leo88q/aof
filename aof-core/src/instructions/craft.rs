@@ -22,17 +22,17 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
     let minted = ctx.accounts.rarity_counter.minted_count;
     let econ = &*ctx.accounts.craft_economy;
 
-    let wood_cost = crate::economics::linear_cost(econ.wood_base[idx], econ.wood_mult[idx], minted)?;
-    let stone_cost = crate::economics::linear_cost(econ.stone_base[idx], econ.stone_mult[idx], minted)?;
-    let food_cost = crate::economics::linear_cost(econ.food_base[idx], econ.food_mult[idx], minted)?;
-    let seeds_cost = crate::economics::linear_cost(econ.seeds_base[idx], econ.seeds_mult[idx], minted)?;
-    let water_cost = crate::economics::linear_cost(econ.water_base[idx], econ.water_mult[idx], minted)?;
+    let circuit_cost = crate::economics::linear_cost(econ.circuit_base[idx], econ.circuit_mult[idx], minted)?;
+    let silicon_cost = crate::economics::linear_cost(econ.silicon_base[idx], econ.silicon_mult[idx], minted)?;
+    let data_cost = crate::economics::linear_cost(econ.data_base[idx], econ.data_mult[idx], minted)?;
+    let neuron_cost = crate::economics::linear_cost(econ.neuron_base[idx], econ.neuron_mult[idx], minted)?;
+    let power_cost = crate::economics::linear_cost(econ.power_base[idx], econ.power_mult[idx], minted)?;
     // SKR's canonical mint is not stored in Config/MaterialMints yet. Do not
     // accept an arbitrary caller-supplied mint as proof of eligibility: that
     // would let anyone manufacture the discount. The account remains in the
     // context for IDL compatibility, but the discount is fail-closed until a
     // canonical mint is configured.
-    let potato_cost = crate::economics::linear_cost(econ.potato_base[idx], econ.potato_mult[idx], minted)?;
+    let mind_cost = crate::economics::linear_cost(econ.mind_base[idx], econ.mind_mult[idx], minted)?;
 
     require!(
         ctx.accounts.gastank.balance_micros >= ctx.accounts.config.craft_fee,
@@ -46,87 +46,87 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
         .ok_or(AofError::MathOverflow)?;
 
     // Сжигаем WOOD
-    require!(ctx.accounts.user_wood.amount >= wood_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_circuit.amount >= circuit_cost, AofError::InsufficientBalance);
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Burn {
-                mint: ctx.accounts.wood_mint.to_account_info(),
-                from: ctx.accounts.user_wood.to_account_info(),
+                mint: ctx.accounts.circuit_mint.to_account_info(),
+                from: ctx.accounts.user_circuit.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        wood_cost,
+        circuit_cost,
     )?;
 
     // Сжигаем STONE
-    require!(ctx.accounts.user_stone.amount >= stone_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_silicon.amount >= silicon_cost, AofError::InsufficientBalance);
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Burn {
-                mint: ctx.accounts.stone_mint.to_account_info(),
-                from: ctx.accounts.user_stone.to_account_info(),
+                mint: ctx.accounts.silicon_mint.to_account_info(),
+                from: ctx.accounts.user_silicon.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        stone_cost,
+        silicon_cost,
     )?;
 
     // Сжигаем FOOD [НОВОЕ]
-    require!(ctx.accounts.user_food.amount >= food_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_data.amount >= data_cost, AofError::InsufficientBalance);
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Burn {
-                mint: ctx.accounts.food_mint.to_account_info(),
-                from: ctx.accounts.user_food.to_account_info(),
+                mint: ctx.accounts.data_mint.to_account_info(),
+                from: ctx.accounts.user_data.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        food_cost,
+        data_cost,
     )?;
 
     // Сжигаем SEEDS [НОВОЕ]
-    require!(ctx.accounts.user_seeds.amount >= seeds_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_neuron.amount >= neuron_cost, AofError::InsufficientBalance);
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Burn {
-                mint: ctx.accounts.seeds_mint.to_account_info(),
-                from: ctx.accounts.user_seeds.to_account_info(),
+                mint: ctx.accounts.neuron_mint.to_account_info(),
+                from: ctx.accounts.user_neuron.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        seeds_cost,
+        neuron_cost,
     )?;
 
     // Сжигаем WATER [НОВОЕ]
-    require!(ctx.accounts.user_water.amount >= water_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_power.amount >= power_cost, AofError::InsufficientBalance);
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Burn {
-                mint: ctx.accounts.water_mint.to_account_info(),
-                from: ctx.accounts.user_water.to_account_info(),
+                mint: ctx.accounts.power_mint.to_account_info(),
+                from: ctx.accounts.user_power.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        water_cost,
+        power_cost,
     )?;
 
     // Сжигаем POTATO [НОВОЕ]
-    require!(ctx.accounts.user_potato.amount >= potato_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_mind.amount >= mind_cost, AofError::InsufficientBalance);
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Burn {
-                mint: ctx.accounts.potato_mint.to_account_info(),
-                from: ctx.accounts.user_potato.to_account_info(),
+                mint: ctx.accounts.mind_mint.to_account_info(),
+                from: ctx.accounts.user_mind.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        potato_cost,
+        mind_cost,
     )?;
 
     // Сжигаем предыдущий инструмент
@@ -185,12 +185,12 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
         user: ctx.accounts.user.key(),
         tool_type,
         rarity: rarity.to_u8(),
-        wood_cost,
-        stone_cost,
-        food_cost,
-        seeds_cost,
-        water_cost,
-        potato_cost,
+        circuit_cost,
+        silicon_cost,
+        data_cost,
+        neuron_cost,
+        power_cost,
+        mind_cost,
     });
 
     Ok(())

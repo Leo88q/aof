@@ -158,6 +158,11 @@ export function buildManifest() {
     const idlName = idlKinds[id] ?? null;
     const legacyAliases = old.legacyAliases
       ?? (idlName && idlName !== kind ? [...new Set([snake(idlName), camel(idlName)])] : []);
+    // Историческое (до переименования, шаг C пункта 12) имя поля минта. Хранится, чтобы
+    // mapping «старое имя → канон» остался проверяемым после переименования; в active code
+    // таких имён быть не должно (гейт `resource-rename-plan --check`).
+    const historicalField = old.historicalField
+      ?? (old.legacyField && old.legacyField !== legacyField ? old.legacyField : null);
     return {
       id,
       kind,
@@ -165,6 +170,9 @@ export function buildManifest() {
       display: old.display ?? kind.replace(/([a-z])([A-Z])/g, '$1 $2'),
       mintSource: source,
       legacyField,
+      historicalField,
+      // Историческое имя варианта в IDL (до переименования). Только справка для плана шага C.
+      historicalIdlName: old.historicalIdlName ?? (idlName !== kind ? idlName : null),
       legacyAliases,
       idlRename: drift.some((d) => d.kind === kind && d.type === 'idl-variant-name') ? 'pending' : 'canonical',
     };
@@ -187,17 +195,20 @@ export function toMarkdown(manifest) {
     '↔ farming-алиасы. Создаётся `node scripts/resource-manifest.mjs --write`, гейт — `--check`',
     '(плюс `tests/readiness/resource-manifest.test.cjs`).',
     '',
-    'Правило: **player-facing имя — только NeuroForge-канон (`display`); farming-имена живут лишь как',
-    '`legacyAliases`/`legacyField` и удаляются из active code в пункте 12 плана.** Гейт не пропускает',
-    'farming-алиас в `display`.',
+    'Правило: **player-facing имя — только NeuroForge-канон (`display`); в active code farming-имён нет',
+    '(`legacyAliases`/`historicalField` — только историческая справка для mapping шага C).** Гейт не пропускает',
+    'farming-алиас в `display`, а `scripts/resource-rename-plan.mjs --check` — в active code.',
     '',
     `Ресурсов: **${rows.length}**; расхождений кода с каноном (долг до переименования): **${manifest.drift.length}**.`,
+    `Переименовано полей минта (историческое имя → канон): **${rows.filter((r) => r.historicalField).length}**.`,
     '',
-    '| # | kind (Rust/IDL-канон) | apiName | Где минт сейчас | legacy-поле | farming-алиасы | display | IDL-имя |',
+    '| # | kind (Rust/IDL-канон) | apiName | Где минт сейчас | поле минта: было → стало | farming-алиасы (исторические) | display | IDL-имя |',
     '|---|---|---|---|---|---|---|---|',
   ];
   for (const r of rows) {
-    lines.push(`| ${r.id} | ${r.kind} | \`${r.apiName}\` | \`${r.mintSource}\` | \`${r.legacyField}\` | ${r.legacyAliases.length ? r.legacyAliases.map((a) => `\`${a}\``).join(', ') : '—'} | ${r.display} | ${r.idlRename === 'pending' ? '⚠️ pending' : '✅ canonical' } |`);
+    const field = r.historicalField ? `\`${r.historicalField}\` → \`${r.legacyField}\`` : `\`${r.legacyField}\``;
+    const idlCell = r.historicalIdlName ? `\`${r.historicalIdlName}\` → \`${r.kind}\`` : `\`${r.kind}\``;
+    lines.push(`| ${r.id} | ${r.kind} | \`${r.apiName}\` | \`${r.mintSource}\` | ${field} | ${r.legacyAliases.length ? r.legacyAliases.map((a) => `\`${a}\``).join(', ') : '—'} | ${r.display} | ${idlCell} |`);
   }
   const byType = new Map();
   for (const d of manifest.drift) byType.set(d.type, [...(byType.get(d.type) ?? []), d]);
@@ -239,6 +250,11 @@ export function check(manifest) {
     if (actual.mintSource !== expected.mintSource) errors.push(`${expected.kind}: mintSource ${actual.mintSource}, а mint_for_kind даёт ${expected.mintSource}`);
     if (!actual.display || actual.display.length < 3) errors.push(`${expected.kind}: нет player-facing display`);
     if (!Array.isArray(actual.legacyAliases)) errors.push(`${expected.kind}: legacyAliases обязан быть списком`);
+    // Mapping шага C («было → стало») — часть доказательства: у ресурса с известными
+    // farming-алиасами обязаны остаться историческое поле и историческое имя в IDL.
+    if (actual.legacyAliases.length && !actual.historicalField && !actual.historicalIdlName) {
+      errors.push(`${expected.kind}: потеряна история переименования (historicalField/historicalIdlName)`);
+    }
     const display = String(actual.display ?? '').toLowerCase();
     for (const alias of FARMING_ALIASES) {
       if (new RegExp(`\\b${alias}\\b`).test(display)) errors.push(`${expected.kind}: farming-алиас '${alias}' в player-facing display '${actual.display}'`);

@@ -13,10 +13,10 @@ pub struct InitPotatoBank<'info> {
     pub quest_config: Account<'info, QuestConfig>,
     #[account(mut)]
     pub authority: Signer<'info>,
-    pub potato_mint: Account<'info, Mint>,
+    pub mind_mint: Account<'info, Mint>,
     #[account(init, payer = authority, space = PotatoBank::SIZE, seeds = [POTATO_BANK_SEED], bump)]
     pub potato_bank: Box<Account<'info, PotatoBank>>,
-    #[account(init, payer = authority, associated_token::mint = potato_mint, associated_token::authority = potato_bank)]
+    #[account(init, payer = authority, associated_token::mint = mind_mint, associated_token::authority = potato_bank)]
     pub potato_vault: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -24,9 +24,9 @@ pub struct InitPotatoBank<'info> {
 }
 
 pub fn init_handler(ctx: Context<InitPotatoBank>) -> Result<()> {
-    require!(ctx.accounts.potato_mint.is_initialized && ctx.accounts.potato_mint.decimals == POTATO_DECIMALS, QuestError::InvalidPotatoMint);
+    require!(ctx.accounts.mind_mint.is_initialized && ctx.accounts.mind_mint.decimals == POTATO_DECIMALS, QuestError::InvalidPotatoMint);
     let bank = &mut ctx.accounts.potato_bank;
-    bank.mint = ctx.accounts.potato_mint.key();
+    bank.mint = ctx.accounts.mind_mint.key();
     bank.vault = ctx.accounts.potato_vault.key();
     bank.reserved_atoms = 0;
     bank.open_spins = 0;

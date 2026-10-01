@@ -497,9 +497,9 @@ mod economy_tests {
     /// 3 silicon extractors: only the cutters produce Circuit, while all six consume it.
     fn net_per_hour(r: Rarity) -> (i128, i128) {
         let y = yield_atomic_per_hour(r);
-        let wood = AXES * y - TOOLS * (r.repair_wood_cost_per_unit() as i128);
-        let stone = PICKS * y - TOOLS * (r.repair_stone_cost_per_unit() as i128);
-        (wood, stone)
+        let circuit = AXES * y - TOOLS * (r.repair_circuit_cost_per_unit() as i128);
+        let silicon = PICKS * y - TOOLS * (r.repair_silicon_cost_per_unit() as i128);
+        (circuit, silicon)
     }
 
     #[test]
@@ -520,24 +520,24 @@ mod economy_tests {
             Rarity::Epic,
             Rarity::Legendary,
         ];
-        let mut prev_wood = 0i128;
-        let mut prev_stone = 0i128;
+        let mut prev_circuit = 0i128;
+        let mut prev_silicon = 0i128;
         for r in ladder {
-            let (wood, stone) = net_per_hour(r);
-            assert!(wood > 0, "{:?}: net WOOD/hour = {} must be positive", r, wood);
-            assert!(stone > 0, "{:?}: net STONE/hour = {} must be positive", r, stone);
+            let (circuit, silicon) = net_per_hour(r);
+            assert!(circuit > 0, "{:?}: net WOOD/hour = {} must be positive", r, circuit);
+            assert!(silicon > 0, "{:?}: net STONE/hour = {} must be positive", r, silicon);
             assert!(
-                wood > prev_wood,
+                circuit > prev_circuit,
                 "{:?}: upgrading must strictly improve net WOOD ({} <= {})",
-                r, wood, prev_wood
+                r, circuit, prev_circuit
             );
             assert!(
-                stone > prev_stone,
+                silicon > prev_silicon,
                 "{:?}: upgrading must strictly improve net STONE ({} <= {})",
-                r, stone, prev_stone
+                r, silicon, prev_silicon
             );
-            prev_wood = wood;
-            prev_stone = stone;
+            prev_circuit = circuit;
+            prev_silicon = silicon;
         }
     }
 
@@ -554,12 +554,12 @@ mod economy_tests {
         ] {
             let y = yield_atomic_per_hour(r);
             assert!(
-                2 * (r.repair_wood_cost_per_unit() as i128) < y,
+                2 * (r.repair_circuit_cost_per_unit() as i128) < y,
                 "{:?}: 2 x WOOD repair >= yield",
                 r
             );
             assert!(
-                2 * (r.repair_stone_cost_per_unit() as i128) < y,
+                2 * (r.repair_silicon_cost_per_unit() as i128) < y,
                 "{:?}: 2 x STONE repair >= yield",
                 r
             );
@@ -577,8 +577,8 @@ mod economy_tests {
             Rarity::Legendary,
         ] {
             let lifetime_yield = yield_atomic_per_hour(r) * MAX_DURABILITY as i128;
-            let lifetime_repair = (r.repair_wood_cost_per_unit() as i128
-                + r.repair_stone_cost_per_unit() as i128)
+            let lifetime_repair = (r.repair_circuit_cost_per_unit() as i128
+                + r.repair_silicon_cost_per_unit() as i128)
                 * MAX_DURABILITY as i128;
             assert!(
                 lifetime_yield > lifetime_repair,

@@ -53,21 +53,25 @@ test('базис фиксирует порядок enum, дискриминан�
     crypto.createHash('sha256').update('global:start_mining').digest('hex').slice(0, 16),
     'дискриминант = sha256("global:<name>")[0..8]');
   const config = core.accounts.find((a) => a.name === 'Config');
-  assert.ok(config.size > 0 && config.size === 8 + config.fields.reduce((n, f) => n + (f.type === 'Pubkey' ? 32 : 0), 0)
-    || config.size > 0, 'у Config посчитан размер');
+  assert.ok(config.size > 0, 'у Config посчитан размер');
   const material = core.accounts.find((a) => a.name === 'MaterialMints');
+  // Базис снят ДО переименования: имена полей в нём — исторические (`food_mint`, `seeds`, …),
+  // и по ним же обязан находиться каждый из 27 минтов (4 в Config + 23 в MaterialMints).
   const manifest = JSON.parse(read('docs/RESOURCE_MANIFEST.json'));
   const inConfig = manifest.resources.filter((r) => r.mintSource.startsWith('config.'));
   const inMaterials = manifest.resources.filter((r) => r.mintSource.startsWith('material_mints.'));
-  // Манифест (он сам гейтится) указывает, где лежит минт: 23 в MaterialMints + 4 в Config.
-  assert.equal(inMaterials.length, 23);
   assert.equal(inConfig.length, 4);
+  assert.equal(inMaterials.length, 23);
   assert.equal(inConfig.length + inMaterials.length, baseline.resourceKindCount);
   for (const r of [...inConfig, ...inMaterials]) {
     const acc = r.mintSource.startsWith('config.') ? config : material;
-    const field = acc.fields.find((f) => f.name === r.mintSource.split('.')[1]);
-    assert.equal(field?.type, 'Pubkey', `${r.kind}: минт ${r.mintSource} обязан быть Pubkey в layout-базисе`);
+    const field = acc.fields.find((f) => f.name === r.historicalField);
+    assert.equal(field?.type, 'Pubkey', `${r.kind}: минт ${r.historicalField} обязан быть Pubkey в базисе`);
   }
+  // Гейт обязан видеть переименование как rename, а не как поломку layout.
+  const check = run(['--check']);
+  assert.equal(check.code, 0, check.out);
+  assert.match(check.out, /~ переименование без смены layout: MaterialMints\.neuron: поле переименовано/);
   assert.ok(core.errors.some((e) => e.name === 'AofError' && e.variants.length >= 140));
   assert.equal(baseline.source.includes('anchor build'), true, 'базис обязан указывать на обязательную финальную проверку Anchor');
 });

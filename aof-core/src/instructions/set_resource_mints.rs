@@ -7,14 +7,14 @@ use crate::events::ResourceMintsUpdated;
 /// food, wood, stone, seeds, water, potato (POTATO — внешний токен коллаборации)
 pub fn handler(
     ctx: Context<SetResourceMints>,
-    food_mint: Pubkey,
-    wood_mint: Pubkey,
-    stone_mint: Pubkey,
-    seeds_mint: Pubkey,
-    water_mint: Pubkey,
-    potato_mint: Pubkey,
+    data_mint: Pubkey,
+    circuit_mint: Pubkey,
+    silicon_mint: Pubkey,
+    neuron_mint: Pubkey,
+    power_mint: Pubkey,
+    mind_mint: Pubkey,
 ) -> Result<()> {
-    let mints = [food_mint, wood_mint, stone_mint, seeds_mint, water_mint, potato_mint];
+    let mints = [data_mint, circuit_mint, silicon_mint, neuron_mint, power_mint, mind_mint];
     for (index, mint) in mints.iter().enumerate() {
         require!(*mint != Pubkey::default(), AofError::InvalidMint);
         require!(
@@ -24,13 +24,13 @@ pub fn handler(
     }
 
     let cfg = &mut ctx.accounts.config;
-    let previous = [cfg.food_mint, cfg.wood_mint, cfg.stone_mint, cfg.seeds_mint, cfg.water_mint, cfg.potato_mint];
-    cfg.food_mint = food_mint;
-    cfg.wood_mint = wood_mint;
-    cfg.stone_mint = stone_mint;
-    cfg.seeds_mint = seeds_mint;
-    cfg.water_mint = water_mint;
-    cfg.potato_mint = potato_mint;
+    let previous = [cfg.data_mint, cfg.circuit_mint, cfg.silicon_mint, cfg.neuron_mint, cfg.power_mint, cfg.mind_mint];
+    cfg.data_mint = data_mint;
+    cfg.circuit_mint = circuit_mint;
+    cfg.silicon_mint = silicon_mint;
+    cfg.neuron_mint = neuron_mint;
+    cfg.power_mint = power_mint;
+    cfg.mind_mint = mind_mint;
     emit!(ResourceMintsUpdated { previous, current: mints, authority: ctx.accounts.authority.key(), slot: Clock::get()?.slot });
     Ok(())
 }

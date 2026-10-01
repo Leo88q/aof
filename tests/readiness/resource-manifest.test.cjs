@@ -45,34 +45,36 @@ const edit = (tmp, rel, fn) => { const p = path.join(tmp, rel); fs.writeFileSync
 const editJson = (tmp, rel, fn) => edit(tmp, rel, (text) => `${JSON.stringify(fn(JSON.parse(text)), null, 2)}\n`);
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 27 ресурсов, 43 расхождения с каноном — долг пункта 12', () => {
+test('репозиторий проходит гейт: 27 ресурсов, долг переименования закрыт (0 расхождений)', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /27 ресурсов, расхождений до переименования: 43/);
+  assert.match(result.out, /27 ресурсов, расхождений до переименования: 0/);
 });
 
-test('манифест описывает все 27 вариантов и точно называет долг', () => {
+test('манифест описывает все 27 вариантов и хранит mapping «было → стало»', () => {
   const manifest = JSON.parse(read(MANIFEST));
   assert.equal(manifest.resources.length, 27);
   assert.deepEqual(manifest.resources.map((r) => r.id), [...Array(27).keys()]);
   assert.equal(manifest.resources[0].kind, 'Data');
   assert.equal(manifest.resources[26].kind, 'Mind');
-  const byType = new Map();
-  for (const d of manifest.drift) byType.set(d.type, (byType.get(d.type) ?? 0) + 1);
-  assert.deepEqual([...byType.entries()].sort(), [['backend-legacy-name', 16], ['idl-variant-name', 27]]);
-  const backendFiles = new Set(manifest.drift.filter((d) => d.type === 'backend-legacy-name').map((d) => d.file));
-  assert.deepEqual([...backendFiles], ['aof_backend/src/routes/resources.ts']);
+  assert.deepEqual(manifest.drift, [], 'долг переименования обязан быть пуст');
+  const md = read(MANIFEST_MD);
   for (const r of manifest.resources) {
     assert.ok(r.display && r.apiName && r.mintSource && r.legacyField, `${r.kind}: неполная запись`);
-    assert.equal(r.idlRename, 'pending', `${r.kind}: расхождение IDL обязано быть помечено`);
+    assert.equal(r.idlRename, 'canonical', `${r.kind}: IDL обязан быть каноническим`);
+    assert.ok(r.historicalField && r.historicalIdlName, `${r.kind}: потеряна история переименования`);
+    assert.ok(md.includes(`\`${r.historicalField}\` → \`${r.legacyField}\``), `${r.kind}: в markdown нет mapping поля`);
+    assert.ok(md.includes(`\`${r.historicalIdlName}\` → \`${r.kind}\``), `${r.kind}: в markdown нет mapping IDL-имени`);
   }
+  assert.equal(manifest.resources.find((r) => r.kind === 'Data').historicalField, 'food_mint');
+  assert.equal(manifest.resources.find((r) => r.kind === 'Mind').historicalField, 'potato_mint');
 });
 
 test('переименование в IDL без обновления манифеста роняет гейт', () => {
   withRoot((tmp) => {
     editJson(tmp, 'aof_backend/src/idl/aof_core.json', (idl) => {
       const kind = idl.types.find((t) => t.name === 'ResourceKind');
-      kind.type.variants[0].name = 'Data'; // код «исправили», манифест — нет
+      kind.type.variants[0].name = 'Food'; // IDL откатили на farming-имя, манифест — нет
       return idl;
     });
     const result = run(['--check', '--root', tmp]);
@@ -85,7 +87,7 @@ test('запись, порядок и IDL-долг манифеста прове
   const cases = [
     [(m) => { m.resources = m.resources.filter((r) => r.kind !== 'Circuit'); }, /нет записи для ResourceKind::Circuit/],
     [(m) => { m.resources[0].mintSource = 'config.wood_mint'; }, /mintSource .* а mint_for_kind даёт/],
-    [(m) => { m.resources[0].idlRename = 'canonical'; }, /IDL-имя .* расходится с Rust — idlRename обязан быть pending/],
+    [(m) => { delete m.resources[0].historicalField; delete m.resources[0].historicalIdlName; }, /потеряна история переименования/],
     [(m) => { m.resources[0].display = ''; }, /нет player-facing display/],
     [(m) => { m.resources[1].display = 'Farm wood'; }, /farming-алиас 'wood' в player-facing display/],
     [(m) => { m.resources.pop(); }, /в манифесте 26 ресурсов, а в enum — 27/],

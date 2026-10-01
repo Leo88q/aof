@@ -2,10 +2,11 @@
 /*
  * План переименования ресурсов (scripts/resource-rename-plan.mjs, шаг C пункта 12).
  *
- * Переименование затрагивает шесть слоёв и до утверждения владельцем не начинается. Гейт
- * держит документ на утверждение точным: каждый старый идентификатор (IDL-вариант, ключ
- * backend-карты, поле минта) обязан иметь ровно один канонический преемник, план не вправе
- * обещать алиасы или объявлять работу выполненной, пока drift в манифесте не пуст.
+ * Канонический mapping утверждён владельцем, Rust и IDL уже переименованы; гейт держит документ
+ * точным (таблица «было → стало» на все 27 ресурсов, честный статус по слоям) и требует ноль
+ * farming-идентификаторов в active code. Ложные срабатывания запрещены: имена инструкций
+ * (`plant_seeds`, `harvest_wheat`, `collect_flour`, `collect_bread`, `collect_well_water`,
+ * `claim_flour`, `potato_*`) и Anchor-механика `seeds` остатком не считаются.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,80 +27,117 @@ function run(args, cwd = root) {
     return { code: error.status ?? 1, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
   }
 }
+const plan = () => JSON.parse(run([]).out);
 
+/** Копия репозитория в объёме, который читает resource-rename-plan.mjs. */
 function makeRoot() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aof-rename-'));
-  for (const rel of ['aof_backend/src/idl', 'docs', 'scripts/resource-rename-plan.mjs', 'aof-core/src']) {
-    const from = path.join(root, rel);
-    fs.cpSync(from, path.join(tmp, rel), { recursive: true });
+  for (const rel of ['docs', 'aof-core/src', 'aof_backend/src', 'frontend/src', 'game', 'tests',
+    'scripts/resource-rename-plan.mjs', 'scripts/resource-manifest.mjs', 'scripts/resource-usage.mjs',
+    'scripts/rebrand.mjs', 'scripts/idl-from-source.py']) {
+    fs.cpSync(path.join(root, rel), path.join(tmp, rel), { recursive: true });
   }
   return tmp;
 }
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
+const append = (tmp, rel, text) => fs.appendFileSync(path.join(tmp, rel), text);
 
-test('план актуален и требует утверждения владельцем, пока долг не закрыт', () => {
+test('гейт зелёный, документ честно отражает состояние переименования', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  const plan = read(PLAN);
-  assert.match(plan, /не начато — требуется утверждение владельцем канонического mapping/);
-  assert.match(plan, /Долг, который план закрывает: \*\*43\*\* расхождений/);
-  assert.match(plan, /без алиасов и совместимости/);
-  assert.doesNotMatch(plan, /временно поддерживаем оба имени|alias keeps/i);
+  const doc = read(PLAN);
+  const built = plan();
+  const wording = built.left === 0 ? 'выполнено' : 'в работе — канон утверждён';
+  assert.match(doc, new RegExp(`Статус: \\*\\*${wording}`));
+  let sum = 0;
+  for (const layer of built.layers) {
+    sum += layer.hits.length;
+    assert.ok(doc.includes(`| ${layer.label} | ${layer.files} | ${layer.hits.length} |`),
+      `${layer.label}: строка слоя не совпадает с автосканом`);
+  }
+  assert.equal(built.left, sum);
 });
 
-test('у каждого из 27 ресурсов ровно один канонический преемник во всех слоях', () => {
-  const plan = read(PLAN);
-  const manifest = JSON.parse(read('docs/RESOURCE_MANIFEST.json'));
-  const idl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
-  const idlNames = idl.types.find((t) => t.name === 'ResourceKind').type.variants.map((v) => v.name);
-  assert.equal(manifest.resources.length, 27);
-  for (const resource of manifest.resources) {
-    const before = idlNames[resource.id];
-    assert.ok(before && before !== resource.kind, `${resource.kind}: ожидался legacy-IDL-вариант`);
-    // Строка таблицы соответствий: все старые имена, → канонический kind и целевое поле.
-    const line = plan.split('\n').find((l) => l.startsWith(`| ${resource.id} |`));
-    assert.ok(line, `${resource.kind}: нет строки ${resource.id} в таблице соответствий`);
-    assert.ok(line.includes(`\`${before}\``), `${resource.kind}: в строке нет legacy-IDL-имени ${before}`);
-    assert.ok(line.includes(`\`${resource.mintSource.split('.')[1]}\``), `${resource.kind}: в строке нет старого поля ${resource.mintSource}`);
-    assert.ok(line.includes(`${resource.kind} (`), `${resource.kind}: в строке нет канонической цели`);
-    assert.ok(line.includes(`| ${resource.fieldType ?? 'Pubkey'} |`), `${resource.kind}: в строке нет типа поля`);
-    assert.ok(plan.includes(`\`${resource.mintSource}\` → \``), `${resource.kind}: нет переименования минт-поля`);
+test('все 27 ресурсов имеют строку «было → стало» с типом поля и неизменным порядком', () => {
+  const doc = read(PLAN);
+  const built = plan();
+  assert.equal(built.rows.length, 27);
+  for (const row of built.rows) {
+    const line = doc.split('\n').find((l) => l.startsWith(`| ${row.index} |`));
+    assert.ok(line, `${row.kind}: нет строки ${row.index}`);
+    assert.ok(line.includes(`\`${row.fieldBefore}\``), `${row.kind}: нет исторического поля ${row.fieldBefore}`);
+    assert.ok(line.includes(`\`${row.idlBefore}\``), `${row.kind}: нет исторического IDL-имени ${row.idlBefore}`);
+    assert.ok(line.includes(`${row.kind} (\`${row.fieldHolder}.${row.fieldAfter}\`)`), `${row.kind}: нет канонической цели`);
+    assert.ok(line.includes(`| ${row.fieldType} | yes (rename only) |`), `${row.kind}: нет типа поля/неизменности порядка`);
+    assert.ok(doc.includes(`\`${row.mintBefore}\` → \`${row.mintAfter}\``), `${row.kind}: нет переименования минт-поля`);
   }
-  for (const entry of manifest.drift.filter((d) => d.type === 'backend-legacy-name')) {
-    const target = manifest.resources.find((r) => r.kind === entry.kind).apiName;
-    assert.ok(plan.includes(`\`${entry.name}\` → \`${target}\``), `${entry.name} → ${target}: нет в плане`);
-  }
+  assert.equal(built.bijection, true, 'mapping обязан быть биекцией');
 });
 
-test('три прямых переименования минтов и запреты шага C зафиксированы в плане', () => {
-  const plan = read(PLAN);
+test('прямые переименования и запреты шага C зафиксированы в плане', () => {
+  const doc = read(PLAN);
   for (const direct of [
     '`config.food_mint` → `config.data_mint`',
     '`config.wood_mint` → `config.circuit_mint`',
     '`config.stone_mint` → `config.silicon_mint`',
-  ]) assert.ok(plan.includes(direct), `нет прямого переименования ${direct}`);
-  assert.match(plan, /варианты enum не переставлять/);
-  assert.match(plan, /удалять AmberQuartz, SoulCore, Data, Dataset, Compute, Mind/);
-  assert.match(plan, /семь отключённых инструкций/);
-  assert.match(plan, /layout (не меняется|обязателен)/);
+  ]) assert.ok(doc.includes(direct), `нет прямого переименования ${direct}`);
+  assert.match(doc, /без алиасов и совместимости/);
+  assert.match(doc, /варианты enum не переставлять/);
+  assert.match(doc, /удалять AmberQuartz, SoulCore, Data, Dataset, Compute, Mind/);
+  assert.match(doc, /семь отключённых инструкций/);
+  assert.match(doc, /layout-report обязателен/);
+  assert.doesNotMatch(doc, /временно поддерживаем оба имени|alias keeps/i);
 });
 
-test('правка цели переименования или преждевременное «выполнено» роняет гейт', () => {
+test('имена инструкций и Anchor-механика seeds остатком не считаются', () => {
   withRoot((tmp) => {
-    const file = path.join(tmp, PLAN);
-    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(
+    assert.equal(run(['--write', '--root', tmp]).code, 0, 'документ в копии обязан быть свежим');
+    append(tmp, 'aof-core/src/lib.rs', `
+pub fn plant_seeds(ctx: Context<PlantSeeds>) -> Result<()> { harvest_wheat(ctx) }
+pub fn harvest_wheat(ctx: Context<HarvestWheat>) -> Result<()> { collect_flour(ctx) }
+pub fn collect_flour(ctx: Context<CollectFlour>) -> Result<()> { collect_bread(ctx) }
+pub fn collect_bread(ctx: Context<CollectBread>) -> Result<()> { collect_well_water(ctx) }
+pub fn collect_well_water(ctx: Context<CollectWellWater>) -> Result<()> { Ok(()) }
+`);
+    append(tmp, 'aof-core/src/state.rs', `
+pub fn seeds_machinery<'a>(seeds: &'a [&'a [u8]]) -> &'a [&'a [u8]] { seeds }
+#[account(seeds = [b"material_mints"], bump)]
+`);
+    append(tmp, 'aof_backend/src/lib/pda.ts', `
+const seeds: (Buffer | Uint8Array)[] = [Buffer.from('x')];
+export const find = () => PublicKey.findProgramAddressSync(seeds, PROGRAM_ID);
+`);
+    const result = run(['--check', '--root', tmp]);
+    assert.equal(result.code, 0, result.out);
+  });
+});
+
+test('реальный остаток в active code роняет гейт', () => {
+  withRoot((tmp) => {
+    assert.equal(run(['--write', '--root', tmp]).code, 0, 'документ в копии обязан быть свежим');
+    append(tmp, 'aof_backend/src/lib/leftover.ts', '\nexport const woodMint = 1;\nexport const user_stone = 2;\n');
+    const result = run(['--check', '--root', tmp]);
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /устарел|не отражены/);
+  });
+});
+
+test('преждевременное «выполнено» и правка цели роняют гейт', () => {
+  withRoot((tmp) => {
+    const p = path.join(tmp, PLAN);
+    fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(
+      'в работе — канон утверждён', 'выполнено'));
+    const result = run(['--check', '--root', tmp]);
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /устарел/);
+  });
+  withRoot((tmp) => {
+    const p = path.join(tmp, PLAN);
+    fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(
       '`config.food_mint` → `config.data_mint`', '`config.food_mint` → `config.wood_mint`'));
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1, result.out);
     assert.match(result.out, /устарел|нет переименования минт-поля/);
-  });
-  withRoot((tmp) => {
-    const file = path.join(tmp, PLAN);
-    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(
-      'не начато — требуется утверждение владельцем канонического mapping', 'выполнено'));
-    const result = run(['--check', '--root', tmp]);
-    assert.equal(result.code, 1, result.out);
-    assert.match(result.out, /устарел/);
   });
 });
 

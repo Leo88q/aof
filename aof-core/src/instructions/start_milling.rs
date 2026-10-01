@@ -17,9 +17,9 @@ pub fn handler(ctx: Context<StartMilling>, batch_size: u8) -> Result<()> {
     require!(batch_size >= 1 && batch_size <= 3, AofError::InvalidBatchSize);
     let idx = (batch_size - 1) as usize;
 
-    let wheat_cost = MILL_WHEAT_COST[idx];
-    let stone_cost = MILL_STONE_COST[idx];
-    let flour_out = MILL_FLOUR_OUT[idx];
+    let synapse_cost = MILL_WHEAT_COST[idx];
+    let silicon_cost = MILL_STONE_COST[idx];
+    let signal_out = MILL_FLOUR_OUT[idx];
     let duration = MILL_TIME[idx];
 
     // MillState: init_if_needed
@@ -28,7 +28,7 @@ pub fn handler(ctx: Context<StartMilling>, batch_size: u8) -> Result<()> {
         mill.owner = ctx.accounts.user.key();
         mill.in_progress = false;
         mill.ready_at = 0;
-        mill.output_flour = 0;
+        mill.output_signal = 0;
         mill.bump = ctx.bumps.mill_state;
     }
     require!(!mill.in_progress, AofError::MillInProgress);
@@ -47,20 +47,20 @@ pub fn handler(ctx: Context<StartMilling>, batch_size: u8) -> Result<()> {
     require!(energy.current >= ENERGY_COST_MILL, AofError::InsufficientEnergy);
 
     // Балансы
-    require!(ctx.accounts.user_wheat.amount >= wheat_cost, AofError::InsufficientBalance);
-    require!(ctx.accounts.user_stone.amount >= stone_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_synapse.amount >= synapse_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_silicon.amount >= silicon_cost, AofError::InsufficientBalance);
 
     // Burn Wheat
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Burn {
-                mint: ctx.accounts.wheat_mint.to_account_info(),
-                from: ctx.accounts.user_wheat.to_account_info(),
+                mint: ctx.accounts.synapse_mint.to_account_info(),
+                from: ctx.accounts.user_synapse.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        wheat_cost,
+        synapse_cost,
     )?;
 
     // Burn STONE
@@ -68,12 +68,12 @@ pub fn handler(ctx: Context<StartMilling>, batch_size: u8) -> Result<()> {
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Burn {
-                mint: ctx.accounts.stone_mint.to_account_info(),
-                from: ctx.accounts.user_stone.to_account_info(),
+                mint: ctx.accounts.silicon_mint.to_account_info(),
+                from: ctx.accounts.user_silicon.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        stone_cost,
+        silicon_cost,
     )?;
 
     // Energy
@@ -83,7 +83,7 @@ pub fn handler(ctx: Context<StartMilling>, batch_size: u8) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     mill.in_progress = true;
     mill.ready_at = now.checked_add(duration).ok_or(AofError::MathOverflow)?;
-    mill.output_flour = flour_out;
+    mill.output_signal = signal_out;
 
     Ok(())
 }

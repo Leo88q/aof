@@ -1,22 +1,31 @@
 #!/usr/bin/env node
 /**
- * План переименования ресурсов (шаг C пункта 12) — документ на утверждение владельцу.
+ * План переименования ресурсов (шаг C пункта 12) и гейт «farming-идентификаторов в active code нет».
  *
- * Зачем отдельный артефакт. Переименование затрагивает шесть слоёв (Rust → IDL → backend →
- * frontend → game → скрипты/тесты), и до утверждения канонического mapping его начинать
- * запрещено. Этот файл — единственное место, где видно, ЧТО именно будет переименовано и в
- * какое имя, с точным списком старых идентификаторов и без обещаний совместимости.
+ * Канонический mapping утверждён владельцем; здесь он зафиксирован один раз и проверяется
+ * автоматически:
  *
  *   node scripts/resource-rename-plan.mjs --write   пересобрать docs/RESOURCE_RENAME_PLAN.md
- *   node scripts/resource-rename-plan.mjs --check   гейт: план существует и не устарел
+ *   node scripts/resource-rename-plan.mjs --check   гейт: план точен, долг в active code равен 0
  *   --root <dir>                                    считать репозиторий из другого каталога
  *
- * Источники (оба гейтятся своими проверками): docs/RESOURCE_MANIFEST.json (канонические
- * имена, место хранения минта, legacy-алиасы) и docs/RESOURCE_EVIDENCE.json (классификация
- * и флаги). Никаких ручных списков здесь нет: имена выводятся из канона.
+ * Источники (оба гейтятся своими проверками): docs/RESOURCE_MANIFEST.json (канон имён, место
+ * хранения минта, исторические имена `historicalField`/`historicalIdlName`/`legacyAliases`) и
+ * docs/RESOURCE_EVIDENCE.json (классификация и флаги). Никаких ручных списков здесь нет.
+ *
+ * Что именно считается остатком. Legacy-идентификатор — это старое имя ресурса, использованное
+ * как идентификатор ресурса: `<alias>_mint`, `user_<alias>`, `mm.<alias>`, `<alias>Mint`,
+ * литерал `"<alias>"`/`"<PascalAlias>"` как имя ресурса и т. п. НЕ считаются остатком:
+ *  * имена инструкций и игровой механики (`plant_seeds`, `harvest_wheat`, `collect_flour`,
+ *    `collect_bread`, `collect_well_water`, `claim_flour`, все `potato_*`/`Potato*`) — их
+ *    переименование сдвинуло бы дискриминаторы (`sha256("global:<name>")[0..8]`);
+ *  * Anchor/PDA-механика `seeds` (`seeds = [..]`, `let seeds`, `&[seeds]`, `findProgramAddressSync(seeds…)`)
+ *    — это не ресурс `Neuron`;
+ *  * комментарии (не active code) и строковые PDA-литералы `b"…"`.
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -29,25 +38,144 @@ const exists = (rel) => fs.existsSync(path.join(ROOT, rel));
 
 const camel = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 const snake = (s) => s.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+const pascal = (s) => s.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUpperCase());
 
-/** Целевое имя поля минта: `config.<snake>_mint` или `material_mints.<snake>`. */
-export function targetMintField(resource) {
-  const [holder] = String(resource.mintSource ?? '').split('.');
-  return holder === 'config' ? `config.${snake(resource.kind)}_mint` : `material_mints.${snake(resource.kind)}`;
+/** Имена инструкций/механик, которые шаг C не переименовывает (сдвиг дискриминаторов). */
+const KEEP_IDENTIFIERS = [
+  /^plant_seeds$/, /^harvest_wheat$/, /^collect_flour$/, /^collect_bread$/, /^collect_well_water$/,
+  /^claim_flour$/, /^start_baking$/, /^start_milling$/, /^potato_/, /^Potato/,
+];
+
+/** Anchor/PDA-механика `seeds` — не ресурс Neuron. */
+const SEEDS_MACHINERY = /seeds\s*[:=+]|let seeds\b|&\[seeds\]|\[seeds\b|\(seeds\b|seeds\s*\)|seeds\.[a-z]|\.\.\.seeds|findProgramAddressSync|find\(seeds|seeds:\s*\(|\bseeds\s*\+/;
+
+/**
+ * Файлы, которые *описывают* legacy-имена (mapping, alias-списки, негативные фикстуры гейта),
+ * а не используют их как ресурсные идентификаторы. Список виден в плане вместе с причиной;
+ * runtime-кода продукта в нём быть не может (это проверяет гейт `--check`).
+ */
+const SCAN_EXEMPT_FILES = new Map([
+  ['scripts/rebrand.mjs', 'таблица mapping «старое → новое» — это предмет файла'],
+  ['scripts/resource-manifest.mjs', 'список farming-алиасов, запрещённых в player-facing `display`'],
+  ['scripts/resource-usage.mjs', 'список алиасов для evidence-скана (кто где встречается)'],
+  ['scripts/resource-rename-plan.mjs', 'KEEP-список, формы legacy и этот перечень — правила гейта'],
+  ['scripts/idl-from-source.py', 'Anchor PDA `seeds` в генераторе IDL — не ресурс Neuron'],
+  ['tests/readiness/resource-rename-plan.test.cjs', 'негативные фикстуры: остаток обязан ронять гейт'],
+  ['tests/readiness/resource-manifest.test.cjs', 'негативные фикстуры алиасов в `display`'],
+]);
+
+/** Слои из порядка работ владельца; порядок = порядок переименования. */
+const LAYERS = [
+  { id: 'rust', label: 'Rust (aof-core/src, programs/*/src)', prefixes: ['aof-core/src', 'programs'] },
+  { id: 'idl', label: 'IDL и TS-типы (aof_backend/src/idl)', prefixes: ['aof_backend/src/idl'] },
+  { id: 'backend', label: 'Backend (aof_backend/src, aof_backend/scripts)', prefixes: ['aof_backend/src', 'aof_backend/scripts'] },
+  { id: 'frontend', label: 'Frontend (frontend/src)', prefixes: ['frontend/src'] },
+  { id: 'game', label: 'Game (game/)', prefixes: ['game'] },
+  { id: 'tests-scripts', label: 'Тесты и скрипты (tests, scripts)', prefixes: ['tests', 'scripts'] },
+];
+const SCAN_EXT = new Set(['.rs', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.gd', '.cs', '.tscn', '.py', '.sh']);
+
+/** Убрать комментарии: они не active code (в них имена шага C упоминаются законно). */
+function stripComments(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1')
+    .replace(/(^|[^:'"\\])#[^\n]*/gm, '$1');
 }
 
-/** Старые идентификаторы ресурса в backend-картах и IDL (без дублей и уже канонических). */
-export function legacyNames(resource, idlNames) {
-  const names = new Set();
-  const idlName = idlNames[resource.id];
-  if (idlName && idlName !== resource.kind) names.add(idlName);
-  for (const alias of resource.legacyAliases ?? []) {
-    if (alias !== resource.kind && alias !== camel(resource.kind) && alias !== snake(resource.kind)) names.add(alias);
+/** Все legacy-написания ресурса: историческое поле, алиасы, историческое имя в IDL. */
+export function legacyForms(resource) {
+  const aliases = new Set((resource.legacyAliases ?? []).map(String));
+  const forms = { snake: new Set(), camel: new Set(), pascal: new Set() };
+  if (resource.historicalField) forms.snake.add(resource.historicalField);
+  if (resource.historicalIdlName) forms.pascal.add(resource.historicalIdlName);
+  for (const alias of aliases) {
+    forms.snake.add(alias);
+    forms.camel.add(camel(alias));
+    forms.pascal.add(pascal(alias));
   }
-  return [...names].sort();
+  return forms;
 }
 
-/** Типы полей `Config`/`MaterialMints` из state.rs — для колонки «Field type» (rename их не меняет). */
+const SUFFIXES = ['mint', 'supply', 'cost', 'needed', 'base', 'mult', 'amount', 'burned', 'minted24h', 'price', 'unit', 'cap'];
+const ACCESSORS = ['mm', 'materials', 'material_mints', 'config', 'cfg', 'roles', 'mints'];
+
+/**
+ * Правила поиска остатка. Границы не включают `-`, `.`, `_`: иначе Tailwind-классы
+ * (`bg-wheat-500`) и `material_mints.neuron` дают ложные срабатывания. Литерал-ключ
+ * `"seeds": [` — это PDA-механика Anchor, а не ресурс (см. исключения в scanLayer).
+ */
+export function legacyPatterns(resource) {
+  const { snake: snakes, camel: camels, pascal: pascals } = legacyForms(resource);
+  const rules = [];
+  const add = (id, source, flags = 'g') => rules.push({ id, re: new RegExp(source, flags) });
+  for (const s of snakes) {
+    const forms = [s, `user_${s}`, ...SUFFIXES.map((suffix) => `${s}_${suffix}`)];
+    add('field', `(?<![A-Za-z0-9_-])(${forms.join('|')})(?![A-Za-z0-9_-])`);
+    add('accessor', `(?:${ACCESSORS.join('|')})\.${s}(?![A-Za-z0-9_])`);
+    add('literal', `(['"])${s}\\1`);
+    add('key', `(?<![A-Za-z0-9_-])${s}(?=\\s*:)`);
+  }
+  for (const c of camels) {
+    const forms = [c, `user${pascal(c)}`, ...SUFFIXES.map((suffix) => `${c}${pascal(suffix)}`)];
+    add('field', `(?<![A-Za-z0-9_-])(${forms.join('|')})(?![A-Za-z0-9_-])`);
+    add('literal', `(['"])${c}\\1`);
+  }
+  for (const p of pascals) add('literal', `(['"])${p}\\1`);
+  return rules;
+}
+
+/** Отслеживаемые файлы: `git ls-files`, а вне git-репозитория (тесты на временной копии) — обход. */
+export function trackedFiles() {
+  try {
+    return execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean);
+  } catch {
+    const skip = /(^|\/)(node_modules|target|dist|build|\.git|__pycache__)(\/|$)/;
+    const out = [];
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+        const rel = dir ? `${dir}/${entry.name}` : entry.name;
+        if (skip.test(rel)) continue;
+        if (entry.isDirectory()) walk(rel);
+        else out.push(rel);
+      }
+    };
+    walk('');
+    return out.sort();
+  }
+}
+
+/** Найти остатки legacy-идентификаторов в файлах слоя. */
+export function scanLayer(files, resources) {
+  const byResource = resources.map((r) => ({ resource: r, rules: legacyPatterns(r) }));
+  const hits = [];
+  for (const rel of files) {
+    const text = stripComments(read(rel));
+    for (const { resource, rules } of byResource) {
+      for (const { id: rule, re } of rules) {
+        re.lastIndex = 0;
+        for (const m of text.matchAll(re)) {
+          const start = m.index ?? 0;
+          const line = text.slice(0, start).split('\n').length;
+          const raw = text.split('\n')[line - 1] ?? '';
+          const after = text.slice(start + m[0].length, start + m[0].length + 12);
+          const token = (m[1] ?? m[0]).trim();
+          if (KEEP_IDENTIFIERS.some((keep) => keep.test(token))) continue;
+          if (SEEDS_MACHINERY.test(raw)) continue;
+          if (/^["']?\s*:\s*\[/.test(after)) continue;                  // "seeds": [ — PDA Anchor
+          if (/className|tailwind|bg-|text-|from-|to-/.test(raw) && /-/.test(m[0])) continue;
+          if (/b"[^"]*"/.test(raw)) continue;                            // PDA-литералы Rust
+          hits.push({ file: rel, line, rule, resource: resource.kind, token, text: raw.trim().slice(0, 120) });
+        }
+      }
+    }
+  }
+  const unique = new Map();
+  for (const hit of hits) unique.set(`${hit.file}:${hit.line}:${hit.token}`, hit);
+  return [...unique.values()].sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+}
+
+/** Типы полей `Config`/`MaterialMints` из state.rs — rename их не меняет. */
 export function parseMintFieldTypes() {
   const src = read('aof-core/src/state.rs');
   const types = new Map();
@@ -65,52 +193,62 @@ export function buildPlan() {
   const manifest = JSON.parse(read('docs/RESOURCE_MANIFEST.json'));
   const drift = manifest.drift ?? [];
   const evidence = JSON.parse(read('docs/RESOURCE_EVIDENCE.json'));
-  const idl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
-  const idlNames = (idl.types.find((t) => t.name === 'ResourceKind')?.type.variants ?? []).map((v) => v.name);
   const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
   const fieldTypes = parseMintFieldTypes();
-  const backendDrift = drift.filter((d) => d.type === 'backend-legacy-name');
-  const rows = manifest.resources.map((r) => {
+  const files = trackedFiles().filter((rel) => SCAN_EXT.has(path.extname(rel)) && !rel.startsWith('docs/')
+    && !SCAN_EXEMPT_FILES.has(rel));
+  const resources = manifest.resources;
+  const layers = LAYERS.map((layer) => {
+    const layerFiles = files.filter((rel) => layer.prefixes.some((p) => rel === p || rel.startsWith(`${p}/`))
+      && !(layer.id === 'backend' && rel.startsWith('aof_backend/src/idl/')));
+    const hits = scanLayer(layerFiles, resources);
+    return { ...layer, files: layerFiles.length, hits };
+  });
+  const rows = resources.map((r) => {
     const flow = byKind.get(r.kind) ?? { status: 'unknown', flow: { flags: {} } };
-    const [holder, before] = String(r.mintSource ?? '').split('.');
-    const after = targetMintField(r).split('.')[1];
+    const [holder] = String(r.mintSource ?? '').split('.');
+    const fieldAfter = String(r.mintSource ?? '').split('.')[1] ?? null;
+    const holderStruct = holder === 'config' ? 'Config' : 'MaterialMints';
+    const fieldBefore = r.historicalField ?? fieldAfter;
     return {
       index: r.id,
       kind: r.kind,
-      display: r.display,
       apiName: r.apiName,
-      idlBefore: idlNames[r.id] ?? null,
+      display: r.display,
+      idlBefore: r.historicalIdlName ?? r.kind,
       idlAfter: r.kind,
-      backendBefore: backendDrift.filter((d) => d.kind === r.kind).map((d) => ({ key: d.name, file: d.file })),
-      mintBefore: r.mintSource,
-      mintAfter: targetMintField(r),
       fieldHolder: holder,
-      fieldBefore: before ?? null,
-      fieldAfter: after,
-      fieldType: fieldTypes.get(`${holder === 'config' ? 'Config' : 'MaterialMints'}.${before}`) ?? '?',
-      // Rename не трогает ни порядок вариантов, ни порядок полей структуры.
+      fieldBefore,
+      fieldAfter,
+      mintBefore: `${holder}.${fieldBefore}`,
+      mintAfter: r.mintSource,
+      fieldType: fieldTypes.get(`${holderStruct}.${fieldAfter}`) ?? '?',
       orderUnchanged: true,
       status: flow.status,
       flags: flow.flow?.flags ?? {},
     };
   });
-  // Условие владельца: mapping — биекция. Один старый идентификатор → ровно один
-  // канонический, и никакие два старых поля не ведут в одно каноническое.
+  // Условие владельца: mapping — биекция. Один старый идентификатор → ровно один канонический.
   const seenOld = new Map();
   const seenNew = new Map();
   const collisions = [];
   for (const row of rows) {
-    for (const old of [row.fieldBefore, row.idlBefore, ...row.backendBefore.map((b) => b.key)].filter(Boolean)) {
-      if (seenOld.has(old)) collisions.push({ old, kinds: [seenOld.get(old), row.kind] });
+    for (const old of [row.fieldBefore, row.idlBefore].filter(Boolean)) {
+      if (seenOld.has(old) && seenOld.get(old) !== row.kind) collisions.push({ old, kinds: [seenOld.get(old), row.kind] });
       else seenOld.set(old, row.kind);
     }
     if (seenNew.has(row.fieldAfter)) collisions.push({ new: row.fieldAfter, kinds: [seenNew.get(row.fieldAfter), row.kind] });
     else seenNew.set(row.fieldAfter, row.kind);
   }
+  const left = layers.reduce((sum, layer) => sum + layer.hits.length, 0);
   return {
     schemaVersion: 1,
-    state: drift.length === 0 ? 'done' : 'not-started',
+    canonApproved: true,
+    exempt: [...SCAN_EXEMPT_FILES.entries()].map(([file, reason]) => ({ file, reason })),
+    state: drift.length === 0 && left === 0 ? 'done' : 'in-progress',
     drift,
+    left,
+    layers,
     bijection: collisions.length === 0,
     collisions,
     rows,
@@ -118,8 +256,7 @@ export function buildPlan() {
 }
 
 export function toMarkdown(plan) {
-  const renames = plan.rows.filter((r) => r.idlBefore && r.idlBefore !== r.kind);
-  const backendKeys = plan.rows.flatMap((r) => r.backendBefore.map((entry) => ({ kind: r.kind, key: entry.key, file: entry.file })));
+  const renames = plan.rows.filter((r) => r.idlBefore !== r.idlAfter).length;
   const mintFields = plan.rows.filter((r) => r.mintBefore !== r.mintAfter);
   const players = plan.rows.filter((r) => r.status === 'active-player').map((r) => r.kind);
   const internal = plan.rows.filter((r) => r.status === 'active-internal').map((r) => r.kind);
@@ -127,13 +264,42 @@ export function toMarkdown(plan) {
   const lines = [
     '# План переименования ресурсов (шаг C пункта 12)',
     '',
-    `Статус: **${plan.state === 'done' ? 'выполнено' : 'не начато — требуется утверждение владельцем канонического mapping'}**.`,
+    plan.state === 'done'
+      ? 'Статус: **выполнено — канонический mapping применён во всех слоях, legacy-идентификаторов в active code нет**.'
+      : `Статус: **в работе — канон утверждён, осталось ${plan.left} legacy-идентификаторов в active code** (см. таблицу слоёв).`,
     'Документ собирается `node scripts/resource-rename-plan.mjs --write`, гейт — `--check`',
     '(`tests/readiness/resource-rename-plan.test.cjs`). Источники: `docs/RESOURCE_MANIFEST.json`',
     '(канон имён и мест хранения) и `docs/RESOURCE_EVIDENCE.json` (классификация и флаги).',
     '',
-    `Долг, который план закрывает: **${plan.drift.length}** расхождений — ${renames.length} IDL-вариантов`,
-    `и ${backendKeys.length} legacy-ключей backend-карт (в ${new Set(backendKeys.map((k) => k.file)).size} файле(ах)).`,
+    `Канонический mapping: **${plan.rows.length} ресурсов**, переименованных IDL-вариантов — ${renames},`,
+    `переименованных полей минта — ${mintFields.length}. Расхождений в манифесте: **${plan.drift.length}**.`,
+    '',
+    '## Слои (порядок работ владельца)',
+    '',
+    '| Слой | Файлов проверено | Остатков | Статус |',
+    '|---|---:|---:|---|',
+  ];
+  for (const layer of plan.layers) {
+    lines.push(`| ${layer.label} | ${layer.files} | ${layer.hits.length} | ${layer.hits.length === 0 ? '✅ чисто' : '⚠️ переименовать'} |`);
+  }
+  for (const layer of plan.layers.filter((l) => l.hits.length)) {
+    const byFile = new Map();
+    for (const hit of layer.hits) byFile.set(hit.file, [...(byFile.get(hit.file) ?? []), hit]);
+    lines.push('', `Остатки в слое «${layer.label}»: **${layer.hits.length}** в ${byFile.size} файле(ах).`, '',
+      '| Файл | Найдено | Примеры (строка → токен) |', '|---|---:|---|');
+    const files = [...byFile.entries()].sort((a, b) => b[1].length - a[1].length);
+    for (const [file, hits] of files.slice(0, 40)) {
+      const samples = hits.slice(0, 3).map((h) => `\`${h.line}: ${h.token}\``).join(', ');
+      lines.push(`| \`${file}\` | ${hits.length} | ${samples} |`);
+    }
+    if (files.length > 40) lines.push(`| … ещё ${files.length - 40} файлов | | полный список: \`node scripts/resource-rename-plan.mjs\` |`);
+  }
+  lines.push(
+    '',
+    'Правило гейта: остаток — это имя ресурса, использованное как идентификатор ресурса. Имена инструкций',
+    '(`plant_seeds`, `harvest_wheat`, `collect_flour`, `collect_bread`, `collect_well_water`, `claim_flour`,',
+    'все `potato_*`/`Potato*`) и Anchor-механика `seeds` остатком не считаются: их переименование сдвинуло бы',
+    'дискриминаторы инструкций и PDA.',
     '',
     '## Порядок работ (шаг C владельца, сверху вниз, один вертикальный срез за раз)',
     '',
@@ -143,12 +309,12 @@ export function toMarkdown(plan) {
     '   рецепты `craft_recipe.rs`, аргументы `init_material_mints`;',
     '3. **seeds/константы/события/ошибки**: только если строка содержит farming-имя; варианты enum не',
     '   переставлять, ошибки не сдвигать;',
-    '4. **backend**: карты kind (`routes/resources.ts` и др.) и любые `cfg.foodMint`-подобные обращения —',
-    '   на канонические (`cfg.dataMint`);',
+    '4. **backend**: карты kind (`resourceRegistryCore.ts`, `routes/*.ts`) и любые `cfg.foodMint`-подобные',
+    '   обращения — на канонические (`cfg.dataMint`);',
     '5. **frontend**: каталоги, i18n, интенты, ключи API;',
     '6. **game**: каталоги Godot-клиента;',
     '7. **скрипты/тесты**: гейты, фикстуры, ожидания;',
-    '8. **IDL**: перегенерация из Rust (`python3 scripts/idl-from-source.py aof_core --types ResourceKind`,',
+    '8. **IDL**: перегенерация из Rust (`python3 scripts/idl-from-source.py aof_core --instructions … --types …`,',
     '   затем `python3 scripts/idl-sync-ts.py`, `python3 scripts/check-idl-drift.py`);',
     '9. **docs**: `docs/RESOURCE_MANIFEST.md`, этот файл, `docs/RESOURCE_EVIDENCE.md`.',
     '',
@@ -159,54 +325,51 @@ export function toMarkdown(plan) {
     '## Полная таблица соответствий (27 строк)',
     '',
     'Ни один идентификатор не остаётся алиасом: старые имена удаляются из active code целиком.',
-    '`Old Rust/IDL/backend name` перечисляет все старые написания ресурса, которые существуют в коде',
+    '`Old Rust/IDL/backend name` перечисляет все старые написания ресурса, которые существовали в коде',
     '(поле структуры, вариант IDL, ключи backend-карт). Тип поля и порядок берутся из `state.rs`;',
     'переименование поля не меняет ни тип, ни место в структуре, ни дискриминанты enum.',
     '',
     '| Index | Old Rust/IDL/backend name | Canonical ResourceKind | Field type | Order unchanged |',
     '|---:|---|---|---|---:|',
-  ];
+  );
   for (const r of plan.rows) {
-    const olds = [r.fieldBefore, r.idlBefore, ...r.backendBefore.map((b) => b.key)].filter(Boolean);
-    const oldText = olds.map((o) => `\`${o}\``).join(', ');
-    lines.push(`| ${r.index} | ${oldText} | ${r.kind} (\`${r.fieldHolder}.${r.fieldAfter}\`) | ${r.fieldType} | yes (rename only) |`);
+    const olds = [...new Set([r.fieldBefore, r.idlBefore, camel(r.idlBefore), snake(r.idlBefore)].filter(Boolean))];
+    lines.push(`| ${r.index} | ${olds.map((o) => `\`${o}\``).join(', ')} | ${r.kind} (\`${r.fieldHolder}.${r.fieldAfter}\`) | ${r.fieldType} | yes (rename only) |`);
   }
-  lines.push('', `Минт-поля к переименованию (${mintFields.length}):`, '');
+  lines.push('', `Минт-поля: было → стало (${mintFields.length}):`, '');
   for (const r of mintFields) lines.push(`* \`${r.mintBefore}\` → \`${r.mintAfter}\` (${r.kind})`);
-  lines.push('', `Legacy-ключи backend-карт (${backendKeys.length}):`, '');
-  for (const r of backendKeys) lines.push(`* \`${r.key}\` → \`${plan.rows.find((x) => x.kind === r.kind).apiName}\` (${r.kind}, ${r.file})`);
+  lines.push('', '## Файлы, которые описывают legacy-имена (исключены из скана)', '',
+    'Это не использование ресурсных идентификаторов, а их описание: mapping-таблицы, alias-списки',
+    'для запрета в player-facing тексте и негативные фикстуры гейта. Ни один файл отсюда не является',
+    'runtime-кодом продукта — это проверяется тем же гейтом.', '',
+    '| Файл | Почему исключён |', '|---|---|');
+  for (const item of plan.exempt) lines.push(`| \`${item.file}\` | ${item.reason} |`);
   lines.push('', '## Что запрещено в этом плане', '',
     '* оставлять алиасы или читать оба имени «на время перехода»;',
     '* переставлять варианты `ResourceKind` или сдвигать коды ошибок;',
     '* удалять AmberQuartz, SoulCore, Data, Dataset, Compute, Mind и связанные mint-поля/капы до отдельного',
     '  решения владельца;',
     '* трогать семь отключённых инструкций из `docs/DEAD_CODE_EVIDENCE.md`;',
+    '* переименовывать имена инструкций (`plant_seeds`, `harvest_wheat`, `collect_flour`, `collect_bread`,',
+    '  `collect_well_water`, `claim_flour`, `potato_*`) — это сдвинуло бы дискриминаторы;',
     '* смешивать переименование с изменением экономики (формулы, капы, награды).',
-    '',
-    '## Классификация на момент утверждения',
-    '',
+    '', '## Классификация на момент утверждения', '',
     `* active-player (${players.length}): ${players.join(', ')};`,
-    `* active-internal (${internal.length}): ${internal.join(', ')};`,
-    `* candidate-dead (${candidates.length}): ${candidates.join(', ')}.`,
-    '',
+    `* active-internal (${internal.length}): ${internal.join(', ') || '—'};`,
+    `* candidate-dead (${candidates.length}): ${candidates.join(', ')}.`, '',
     'Статусы выведены из кода (`docs/RESOURCE_EVIDENCE.md`), а не назначены руками; удаление кандидатов',
-    'делается отдельным шагом после утверждения, не вместе с переименованием.',
-    '',
-    '## Проверка после переименования',
-    '',
-    '```bash',
+    'делается отдельным шагом после утверждения, не вместе с переименованием.', '',
+    '## Проверка после переименования', '', '```bash',
     'node scripts/resource-manifest.mjs --write && node scripts/resource-manifest.mjs --check  # drift 43 → 0',
-    'python3 scripts/idl-from-source.py aof_core --types ResourceKind',
+    'python3 scripts/idl-from-source.py aof_core --instructions "$(…)" --types "$(…)"',
     'python3 scripts/idl-sync-ts.py && python3 scripts/check-idl-drift.py',
     'python3 scripts/gen-core-instruction-table.py --check',
-    'node scripts/resource-usage.mjs --write && node scripts/resource-usage.mjs --check',
-    'node --test tests/readiness/*.test.cjs',
-    '```',
-    '',
+    'node scripts/resource-rename-plan.mjs --check   # legacy-идентификаторов в active code — 0',
+    'node scripts/resource-usage.mjs --check',
+    'node --test tests/readiness/*.test.cjs', '```', '',
     'Готовность шага C: `drift` в манифесте пуст, в active-коде нет farming-идентификаторов,',
     '`unclassified` в инвентаре инструкций — 0, readiness зелёный, затем `anchor build` +',
-    '`git diff -- idls/` на машине с тулчейном.',
-    '');
+    '`git diff -- idls/` на машине с тулчейном.', '');
   return `${lines.join('\n')}\n`;
 }
 
@@ -223,38 +386,55 @@ export function check() {
     if (!text.includes(`| ${row.fieldType} | yes (rename only) |`)) {
       errors.push(`${row.kind}: в строке не зафиксирован тип поля и неизменность порядка`);
     }
-    if (row.mintBefore && !text.includes(`\`${row.mintBefore}\` → \`${row.mintAfter}\``)) {
+    if (row.mintBefore !== row.mintAfter && !text.includes(`\`${row.mintBefore}\` → \`${row.mintAfter}\``)) {
       errors.push(`${row.kind}: нет переименования минт-поля ${row.mintBefore} → ${row.mintAfter}`);
     }
+    if (row.idlBefore !== row.idlAfter && !text.includes(`\`${row.idlBefore}\``)) {
+      errors.push(`${row.kind}: в таблице нет исторического IDL-имени ${row.idlBefore}`);
+    }
   }
-  if (!plan.bijection) {
-    for (const c of plan.collisions) errors.push(`mapping не биекция: ${JSON.stringify(c)}`);
+  if (!plan.bijection) for (const c of plan.collisions) errors.push(`mapping не биекция: ${JSON.stringify(c)}`);
+  // Исключения обязаны существовать и не быть runtime-кодом продукта: иначе «исключение»
+  // превратилось бы в тихий allowlist на боевом коде.
+  const runtimePrefixes = ['aof-core/src', 'programs/', 'aof_backend/src/', 'frontend/src/', 'game/'];
+  for (const item of plan.exempt) {
+    if (!exists(item.file)) errors.push(`исключение из скана указывает на несуществующий файл: ${item.file}`);
+    if (runtimePrefixes.some((prefix) => item.file.startsWith(prefix))) {
+      errors.push(`исключение ${item.file} — runtime-код продукта; он обязан быть переименован, а не исключён`);
+    }
   }
   if (plan.rows.some((r) => r.fieldType === '?')) errors.push('у части минт-полей не определён тип — план не готов к утверждению');
   if (plan.rows.some((r) => !r.orderUnchanged)) errors.push('план не фиксирует неизменность порядка полей');
-  if (plan.state !== 'not-started' && plan.state !== 'done') errors.push(`неизвестное состояние плана: ${plan.state}`);
-  if (plan.state === 'not-started' && !text.includes('требуется утверждение владельцем')) {
-    errors.push('план обязан явно требовать утверждения владельца, пока drift не пуст');
+  if (plan.drift.length) errors.push(`долг переименования в манифесте не пуст: ${plan.drift.length} — node scripts/resource-manifest.mjs --write`);
+  for (const layer of plan.layers) {
+    if (layer.hits.length && !text.includes(`| ${layer.label} | ${layer.files} | ${layer.hits.length} |`)) {
+      errors.push(`${layer.label}: остатки (${layer.hits.length}) не отражены в плане`);
+    }
   }
-  if (plan.state === 'done' && text.includes('требуется утверждение владельцем')) {
-    errors.push('переименование выполнено, но план всё ещё просит утверждение');
+  if (plan.state === 'done' && plan.left !== 0) errors.push('план объявлен выполненным, но остатки есть');
+  if (plan.state !== 'done' && !text.includes('в работе — канон утверждён')) {
+    errors.push('план обязан честно показывать, что переименование не завершено');
+  }
+  if (plan.state === 'done' && text.includes('в работе — канон утверждён')) {
+    errors.push('переименование выполнено, но план всё ещё помечен «в работе»');
   }
   return errors;
 }
 
 function main() {
   const plan = buildPlan();
-  const md = toMarkdown(plan);
   if (argv.includes('--write')) {
-    fs.writeFileSync(path.join(ROOT, PLAN), md);
-    console.log(`план переименования записан: ${plan.rows.length} ресурсов, долг ${plan.drift.length}, состояние ${plan.state}`);
+    fs.writeFileSync(path.join(ROOT, PLAN), toMarkdown(plan));
+    console.log(`план переименования записан: ${plan.rows.length} ресурсов, остатков в active code — ${plan.left}`);
     return;
   }
   if (argv.includes('--check')) {
     const errors = check();
     if (errors.length) { console.error(`resource-rename-plan: ${errors.length} проблем(а):`); for (const e of errors) console.error(`  - ${e}`); process.exit(1); }
-    console.log(`resource-rename-plan: план актуален (${plan.rows.length} ресурсов, долг ${plan.drift.length}, состояние ${plan.state})`);
+    console.log(`resource-rename-plan: ${plan.rows.length} ресурсов, legacy-идентификаторов в active code — ${plan.left}`);
+    return;
   }
+  console.log(JSON.stringify(plan, null, 2));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

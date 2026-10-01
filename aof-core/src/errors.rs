@@ -162,13 +162,13 @@ pub enum AofError {
     OvenNotReady,
     #[msg("Invalid batch size (must be 1, 2, or 3)")]
     InvalidBatchSize,
-    #[msg("Invalid fuel kind (must be 0=wood or 1=coal)")]
+    #[msg("Invalid fuel kind (must be 0=circuit or 1=compute)")]
     InvalidFuelKind,
     #[msg("Material mint is not registered in MaterialMints PDA")]
     MaterialNotRegistered,
     #[msg("Weather state already updated for this day")]
     WeatherAlreadyUpdated,
-    #[msg("Well has no water to collect")]
+    #[msg("Well has no power to collect")]
     WellEmpty,
     #[msg("Recipe not found in RecipeConfig")]
     RecipeNotFound,

@@ -28,7 +28,7 @@ pub fn handler(ctx: Context<PlantSeeds>, tile_index: u8, amount: u64) -> Result<
     require!(energy.current >= ENERGY_COST_PLANT, AofError::InsufficientEnergy);
 
     // Проверка баланса Seeds
-    require!(ctx.accounts.user_seeds.amount >= amount, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_neuron.amount >= amount, AofError::InsufficientBalance);
 
     // Проверка что тайл пуст
     let tile = &mut ctx.accounts.farm_tile;
@@ -37,15 +37,15 @@ pub fn handler(ctx: Context<PlantSeeds>, tile_index: u8, amount: u64) -> Result<
         tile.state = 0;
         tile.planted_at = 0;
         tile.ready_at = 0;
-        tile.seeds_amount = 0;
+        tile.neuron_amount = 0;
         tile.bump = ctx.bumps.farm_tile;
     }
     require!(tile.state == 0, AofError::FarmTileBusy);
 
     // Сжигаем Seeds
     let cpi_accounts = Burn {
-        mint: ctx.accounts.seeds_mint.to_account_info(),
-        from: ctx.accounts.user_seeds.to_account_info(),
+        mint: ctx.accounts.neuron_mint.to_account_info(),
+        from: ctx.accounts.user_neuron.to_account_info(),
         authority: ctx.accounts.user.to_account_info(),
     };
     let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
@@ -56,7 +56,7 @@ pub fn handler(ctx: Context<PlantSeeds>, tile_index: u8, amount: u64) -> Result<
     tile.state = 1;
     tile.planted_at = now;
     tile.ready_at = now.checked_add(WHEAT_GROW_DURATION).ok_or(AofError::MathOverflow)?;
-    tile.seeds_amount = amount;
+    tile.neuron_amount = amount;
 
     // Снимаем энергию
     energy.current = energy.current.checked_sub(ENERGY_COST_PLANT).ok_or(AofError::InsufficientEnergy)?;

@@ -22,9 +22,9 @@ pub fn handler(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Resu
     require!(fuel_kind <= 1, AofError::InvalidFuelKind);
     let idx = (batch_size - 1) as usize;
 
-    let flour_cost = OVEN_FLOUR_COST[idx];
-    let water_cost = OVEN_WATER_COST[idx];
-    let (fuel_cost, bread_out) = if fuel_kind == 0 {
+    let signal_cost = OVEN_FLOUR_COST[idx];
+    let power_cost = OVEN_WATER_COST[idx];
+    let (fuel_cost, model_out) = if fuel_kind == 0 {
         (OVEN_WOOD_COST[idx], OVEN_BREAD_WOOD[idx])
     } else {
         (OVEN_COAL_COST[idx], OVEN_BREAD_COAL[idx])
@@ -37,7 +37,7 @@ pub fn handler(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Resu
         oven.owner = ctx.accounts.user.key();
         oven.in_progress = false;
         oven.ready_at = 0;
-        oven.output_bread = 0;
+        oven.output_model = 0;
         oven.fuel_kind = 0;
         oven.bump = ctx.bumps.oven_state;
     }
@@ -57,20 +57,20 @@ pub fn handler(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Resu
     require!(energy.current >= ENERGY_COST_OVEN, AofError::InsufficientEnergy);
 
     // Балансы
-    require!(ctx.accounts.user_flour.amount >= flour_cost, AofError::InsufficientBalance);
-    require!(ctx.accounts.user_water.amount >= water_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_signal.amount >= signal_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_power.amount >= power_cost, AofError::InsufficientBalance);
 
     // Burn Flour
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Burn {
-                mint: ctx.accounts.flour_mint.to_account_info(),
-                from: ctx.accounts.user_flour.to_account_info(),
+                mint: ctx.accounts.signal_mint.to_account_info(),
+                from: ctx.accounts.user_signal.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        flour_cost,
+        signal_cost,
     )?;
 
     // Burn Water
@@ -78,19 +78,19 @@ pub fn handler(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Resu
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Burn {
-                mint: ctx.accounts.water_mint.to_account_info(),
-                from: ctx.accounts.user_water.to_account_info(),
+                mint: ctx.accounts.power_mint.to_account_info(),
+                from: ctx.accounts.user_power.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        water_cost,
+        power_cost,
     )?;
 
     // Burn топливо (WOOD или Coal)
     let (fuel_mint, fuel_acc) = if fuel_kind == 0 {
-        (&ctx.accounts.wood_mint, &ctx.accounts.user_wood)
+        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit)
     } else {
-        (&ctx.accounts.coal_mint, &ctx.accounts.user_coal)
+        (&ctx.accounts.compute_mint, &ctx.accounts.user_compute)
     };
 
     require!(fuel_acc.amount >= fuel_cost, AofError::InsufficientBalance);
@@ -113,7 +113,7 @@ pub fn handler(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Resu
     let now = Clock::get()?.unix_timestamp;
     oven.in_progress = true;
     oven.ready_at = now.checked_add(duration).ok_or(AofError::MathOverflow)?;
-    oven.output_bread = bread_out;
+    oven.output_model = model_out;
     oven.fuel_kind = fuel_kind;
 
     Ok(())

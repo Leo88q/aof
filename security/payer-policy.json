@@ -56,7 +56,7 @@
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     },
-    "aof_core.ExploreReveal.user_stone": {
+    "aof_core.ExploreReveal.user_silicon": {
       "owner": "player",
       "payer": "cranker-deposit",
       "status": "ok",
@@ -64,7 +64,7 @@
       "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
       "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
     },
-    "aof_core.ExploreReveal.user_wood": {
+    "aof_core.ExploreReveal.user_circuit": {
       "owner": "player",
       "payer": "cranker-deposit",
       "status": "ok",
@@ -508,7 +508,7 @@
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     },
-    "aof_quests.PotatoSpinExpire.user_potato": {
+    "aof_quests.PotatoSpinExpire.user_mind": {
       "owner": "player",
       "payer": "cranker-deposit",
       "status": "ok",
@@ -516,7 +516,7 @@
       "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
       "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
     },
-    "aof_quests.PotatoSpinReveal.user_potato": {
+    "aof_quests.PotatoSpinReveal.user_mind": {
       "owner": "player",
       "payer": "cranker-deposit",
       "status": "ok",

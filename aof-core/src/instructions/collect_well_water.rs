@@ -23,7 +23,7 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
     let was_initialized = well.owner != Pubkey::default();
     if !was_initialized {
         well.owner = ctx.accounts.user.key();
-        well.water_buffer = 0;
+        well.power_buffer = 0;
         well.last_collected_at = Clock::get()?.unix_timestamp;
         well.bump = ctx.bumps.well_state;
         // The first call creates the well and starts accrual. Requiring a
@@ -39,17 +39,17 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
     // priced at the weather of its own day, recomputed from the day id. The
     // cached `weather_state` no longer decides the rate, so collecting only on
     // frenzy days or leaving a stale frenzy uncranked gains nothing.
-    let water_amount: u64 = well_accrual(well.last_collected_at, now)?;
+    let power_amount: u64 = well_accrual(well.last_collected_at, now)?;
 
-    require!(water_amount > 0, AofError::WellEmpty);
+    require!(power_amount > 0, AofError::WellEmpty);
 
     // [AUDIT F-03] Water emission bypassed IssuanceCap entirely; the audit's
     // sybil model produced 78.8 M WATER/year with no bound at all.
     check_supply_cap(
         &ctx.accounts.material_mints,
         ResourceKind::Power,
-        ctx.accounts.water_mint.supply,
-        water_amount,
+        ctx.accounts.power_mint.supply,
+        power_amount,
     )?;
 
     // Mint Water
@@ -60,13 +60,13 @@ pub fn handler(ctx: Context<CollectWellWater>) -> Result<()> {
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                mint: ctx.accounts.water_mint.to_account_info(),
-                to: ctx.accounts.user_water.to_account_info(),
+                mint: ctx.accounts.power_mint.to_account_info(),
+                to: ctx.accounts.user_power.to_account_info(),
                 authority: ctx.accounts.auth.to_account_info(),
             },
             signer_seeds,
         ),
-        water_amount,
+        power_amount,
     )?;
 
     well.last_collected_at = now;

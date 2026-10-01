@@ -108,10 +108,10 @@ pub struct ResourceMintsUpdated {
 /// Emitted by set_craft_economy.
 #[event]
 pub struct CraftEconomyUpdated {
-    pub wood_base: [u64; 4],
-    pub stone_base: [u64; 4],
-    pub wood_mult: [u64; 4],
-    pub stone_mult: [u64; 4],
+    pub circuit_base: [u64; 4],
+    pub silicon_base: [u64; 4],
+    pub circuit_mult: [u64; 4],
+    pub silicon_mult: [u64; 4],
     pub authority: Pubkey,
     pub slot: u64,
 }
@@ -141,8 +141,8 @@ pub struct ToolCrafted {
     pub burned_mint: Pubkey,
     pub minted_mint: Pubkey,
     pub rarity: Rarity,
-    pub wood_cost: u64,
-    pub stone_cost: u64,
+    pub circuit_cost: u64,
+    pub silicon_cost: u64,
     pub minted_count_after: u64,
 }
 
@@ -151,8 +151,8 @@ pub struct ToolRepaired {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
     pub repaired_amount: u8,
-    pub stone_cost: u64,
-    pub wood_cost: u64,
+    pub silicon_cost: u64,
+    pub circuit_cost: u64,
     pub new_durability: u8,
 }
 
@@ -203,8 +203,8 @@ pub struct ExplorationCompleted {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
     pub success: bool,
-    pub wood_reward: u64,
-    pub stone_reward: u64,
+    pub circuit_reward: u64,
+    pub silicon_reward: u64,
 }
 
 #[event]
@@ -389,12 +389,12 @@ pub struct CraftEvent {
     pub user: Pubkey,
     pub tool_type: String,
     pub rarity: u8,
-    pub wood_cost: u64,
-    pub stone_cost: u64,
-    pub food_cost: u64,
-    pub seeds_cost: u64,
-    pub water_cost: u64,
-    pub potato_cost: u64,
+    pub circuit_cost: u64,
+    pub silicon_cost: u64,
+    pub data_cost: u64,
+    pub neuron_cost: u64,
+    pub power_cost: u64,
+    pub mind_cost: u64,
 }
 
 #[event]
@@ -403,8 +403,8 @@ pub struct ForgeCommitExpired {
     pub tool_mint: Pubkey,
     pub slot_type: u8,
     pub refunded_lamports: u64,
-    pub wood_refunded: u64,
-    pub stone_refunded: u64,
+    pub circuit_refunded: u64,
+    pub silicon_refunded: u64,
 }
 
 // ===== [F-06] Switchboard On-Demand settlement (see vrf.rs) =====

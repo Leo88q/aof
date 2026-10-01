@@ -143,7 +143,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "claim_season_reward",
     discriminator: [129, 96, 145, 129, 154, 203, 29, 150],
-    accounts: ["config", "authority", "material_mints", "season", "season_pass", "wood_mint", "user_wood", "auth", "token_program"],
+    accounts: ["config", "authority", "material_mints", "season", "season_pass", "circuit_mint", "user_circuit", "auth", "token_program"],
     actorIndexes: [],
     signerIndexes: [1],
     authorityOnly: true,
@@ -152,7 +152,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "collect_bread",
     discriminator: [34, 18, 53, 67, 153, 220, 4, 61],
-    accounts: ["config", "user", "material_mints", "oven_state", "auth", "bread_mint", "user_bread", "token_program"],
+    accounts: ["config", "user", "material_mints", "oven_state", "auth", "model_mint", "user_model", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -161,7 +161,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "collect_flour",
     discriminator: [75, 219, 64, 128, 18, 22, 144, 234],
-    accounts: ["config", "user", "material_mints", "mill_state", "auth", "flour_mint", "user_flour", "token_program"],
+    accounts: ["config", "user", "material_mints", "mill_state", "auth", "signal_mint", "user_signal", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -179,7 +179,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "collect_well_water",
     discriminator: [158, 216, 6, 212, 63, 164, 34, 24],
-    accounts: ["config", "user", "player", "material_mints", "well_state", "weather_state", "auth", "water_mint", "user_water", "token_program", "system_program"],
+    accounts: ["config", "user", "player", "material_mints", "well_state", "weather_state", "auth", "power_mint", "user_power", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -215,7 +215,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "craft",
     discriminator: [161, 233, 177, 214, 243, 109, 161, 224],
-    accounts: ["config", "authority", "user", "gastank", "prev_tool", "prev_mint", "prev_token", "new_mint", "new_token", "new_tool_data", "auth", "rarity_counter", "craft_economy", "wood_mint", "user_wood", "stone_mint", "user_stone", "food_mint", "user_food", "seeds_mint", "user_seeds", "water_mint", "user_water", "potato_mint", "user_potato", "skr_mint", "user_skr", "token_program", "system_program"],
+    accounts: ["config", "authority", "user", "gastank", "prev_tool", "prev_mint", "prev_token", "new_mint", "new_token", "new_tool_data", "auth", "rarity_counter", "craft_economy", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "data_mint", "user_data", "neuron_mint", "user_neuron", "power_mint", "user_power", "mind_mint", "user_mind", "skr_mint", "user_skr", "token_program", "system_program"],
     actorIndexes: [2],
     signerIndexes: [1, 2],
     authorityOnly: false,
@@ -242,7 +242,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "craft_order_fulfill",
     discriminator: [251, 90, 95, 48, 249, 94, 145, 204],
-    accounts: ["config", "fulfiller", "craft_order", "creator_refund", "treasury", "wood_mint", "fulfiller_wood", "creator_wood", "stone_mint", "fulfiller_stone", "creator_stone", "token_program"],
+    accounts: ["config", "fulfiller", "craft_order", "creator_refund", "treasury", "circuit_mint", "fulfiller_circuit", "creator_circuit", "silicon_mint", "fulfiller_silicon", "creator_silicon", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -278,7 +278,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "explore_reveal",
     discriminator: [16, 121, 80, 56, 125, 254, 216, 215],
-    accounts: ["config", "material_mints", "cranker", "exploration_commit", "user", "wood_mint", "user_wood", "stone_mint", "user_stone", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program"],
+    accounts: ["config", "material_mints", "cranker", "exploration_commit", "user", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program"],
     actorIndexes: [2, 4],
     signerIndexes: [2],
     authorityOnly: false,
@@ -287,7 +287,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "forge_attempt_commit",
     discriminator: [89, 191, 80, 34, 38, 104, 53, 252],
-    accounts: ["config", "authority", "user", "tool", "tool_mint", "enchant_slot", "forge_commit", "wood_mint", "user_wood", "stone_mint", "user_stone", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "authority", "user", "tool", "tool_mint", "enchant_slot", "forge_commit", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
     actorIndexes: [2],
     signerIndexes: [1, 2],
     authorityOnly: false,
@@ -305,7 +305,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "forge_attempt_expire",
     discriminator: [206, 118, 31, 164, 99, 185, 27, 61],
-    accounts: ["config", "material_mints", "forge_commit", "user", "vrf_slot", "auth", "wood_mint", "user_wood", "stone_mint", "user_stone", "token_program"],
+    accounts: ["config", "material_mints", "forge_commit", "user", "vrf_slot", "auth", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "token_program"],
     actorIndexes: [3],
     signerIndexes: [],
     authorityOnly: false,
@@ -323,7 +323,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "harvest_wheat",
     discriminator: [170, 219, 76, 224, 75, 193, 177, 108],
-    accounts: ["config", "user", "material_mints", "energy_account", "farm_tile", "tool_data", "auth", "wheat_mint", "user_wheat", "token_program", "system_program"],
+    accounts: ["config", "user", "material_mints", "energy_account", "farm_tile", "tool_data", "auth", "synapse_mint", "user_synapse", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -539,7 +539,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "plant_seeds",
     discriminator: [157, 33, 113, 208, 164, 49, 10, 229],
-    accounts: ["config", "user", "material_mints", "energy_account", "farm_tile", "seeds_mint", "user_seeds", "token_program", "system_program"],
+    accounts: ["config", "user", "material_mints", "energy_account", "farm_tile", "neuron_mint", "user_neuron", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -566,7 +566,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "referral_upgrade",
     discriminator: [13, 103, 189, 82, 214, 68, 106, 15],
-    accounts: ["config", "user", "referral_link", "wood_mint", "user_wood", "stone_mint", "user_stone", "food_mint", "user_food", "token_program"],
+    accounts: ["config", "user", "referral_link", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "data_mint", "user_data", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -602,7 +602,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "repair",
     discriminator: [97, 230, 48, 23, 128, 133, 201, 192],
-    accounts: ["config", "user", "tool", "mint", "stone_mint", "user_stone", "wood_mint", "user_wood", "tool_token", "token_program"],
+    accounts: ["config", "user", "tool", "mint", "silicon_mint", "user_silicon", "circuit_mint", "user_circuit", "tool_token", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -629,7 +629,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "repair_delegated",
     discriminator: [174, 233, 100, 52, 228, 100, 191, 133],
-    accounts: ["config", "user", "tool", "mint", "stone_mint", "user_stone", "wood_mint", "user_wood", "rental_listing", "rental_agreement", "rental_vault", "token_program"],
+    accounts: ["config", "user", "tool", "mint", "silicon_mint", "user_silicon", "circuit_mint", "user_circuit", "rental_listing", "rental_agreement", "rental_vault", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -638,7 +638,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "reroll",
     discriminator: [19, 251, 26, 108, 113, 68, 194, 142],
-    accounts: ["config", "user", "gastank", "tool_a", "mint_a", "token_a", "tool_b", "mint_b", "token_b", "new_mint", "new_token", "new_tool_data", "auth", "rarity_counter", "craft_economy", "wood_mint", "user_wood", "stone_mint", "user_stone", "food_mint", "user_food", "seeds_mint", "user_seeds", "water_mint", "user_water", "potato_mint", "user_potato", "token_program", "system_program"],
+    accounts: ["config", "user", "gastank", "tool_a", "mint_a", "token_a", "tool_b", "mint_b", "token_b", "new_mint", "new_token", "new_tool_data", "auth", "rarity_counter", "craft_economy", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "data_mint", "user_data", "neuron_mint", "user_neuron", "power_mint", "user_power", "mind_mint", "user_mind", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -728,7 +728,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "start_baking",
     discriminator: [97, 179, 181, 240, 28, 104, 190, 205],
-    accounts: ["config", "user", "material_mints", "energy_account", "oven_state", "flour_mint", "water_mint", "wood_mint", "coal_mint", "user_flour", "user_water", "user_wood", "user_coal", "token_program", "system_program"],
+    accounts: ["config", "user", "material_mints", "energy_account", "oven_state", "signal_mint", "power_mint", "circuit_mint", "compute_mint", "user_signal", "user_power", "user_circuit", "user_compute", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -737,7 +737,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "start_exploration_commit",
     discriminator: [58, 145, 149, 221, 209, 9, 12, 173],
-    accounts: ["config", "authority", "material_mints", "user", "exploration_state", "tool_mint", "tool", "exploration_commit", "food_mint", "user_food", "wood_mint", "user_wood", "stone_mint", "user_stone", "meat_mint", "user_meat", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "authority", "material_mints", "user", "exploration_state", "tool_mint", "tool", "exploration_commit", "data_mint", "user_data", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "dataset_mint", "user_dataset", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
     actorIndexes: [3],
     signerIndexes: [1, 3],
     authorityOnly: false,
@@ -746,7 +746,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "start_milling",
     discriminator: [12, 183, 141, 54, 123, 57, 105, 5],
-    accounts: ["config", "user", "material_mints", "energy_account", "mill_state", "wheat_mint", "stone_mint", "user_wheat", "user_stone", "token_program", "system_program"],
+    accounts: ["config", "user", "material_mints", "energy_account", "mill_state", "synapse_mint", "silicon_mint", "user_synapse", "user_silicon", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -782,7 +782,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "upgrade_exploration_tier",
     discriminator: [36, 77, 217, 211, 252, 176, 30, 108],
-    accounts: ["config", "user", "exploration_state", "wood_mint", "user_wood", "stone_mint", "user_stone", "food_mint", "user_food", "token_program"],
+    accounts: ["config", "user", "exploration_state", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "data_mint", "user_data", "token_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -1034,7 +1034,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "explore_expire",
     discriminator: [95, 254, 71, 97, 162, 245, 109, 180],
-    accounts: ["config", "material_mints", "exploration_commit", "user", "vrf_slot", "auth", "food_mint", "user_food", "wood_mint", "user_wood", "stone_mint", "user_stone", "meat_mint", "user_meat", "token_program"],
+    accounts: ["config", "material_mints", "exploration_commit", "user", "vrf_slot", "auth", "data_mint", "user_data", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "dataset_mint", "user_dataset", "token_program"],
     actorIndexes: [3],
     signerIndexes: [],
     authorityOnly: false,

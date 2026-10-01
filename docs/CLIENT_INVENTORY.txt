@@ -8,8 +8,8 @@
 Пересобрать: `node scripts/client-inventory.mjs --write`; проверить: `--check`
 (`tests/readiness/client-inventory.test.cjs`).
 
-Файлов: 605 (frontend: 529, game: 76).
-sha256: c55e6c6eaf317849e84d4569bd8af88f7f4318477471c966f7439c7e2183d25d
+Файлов: 606 (frontend: 530, game: 76).
+sha256: 5d0036c671e2dd0a881d3ea76cdf8f1c510b9448b10394de7b396d67f36b9bc8
 
 ```
 frontend/.env.example
@@ -434,6 +434,7 @@ frontend/src/lib/pageMetadata.ts
 frontend/src/lib/playerReadings.ts
 frontend/src/lib/ratingReadings.ts
 frontend/src/lib/rebirthReadings.ts
+frontend/src/lib/seasonPassQuote.ts
 frontend/src/lib/toolMeta.ts
 frontend/src/lib/transactionIntent.ts
 frontend/src/lib/txFlow.ts

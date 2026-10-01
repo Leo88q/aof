@@ -16,7 +16,7 @@ pub fn handler(ctx: Context<CollectFlour>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     require!(now >= mill.ready_at, AofError::MillNotReady);
 
-    let output = mill.output_flour;
+    let output = mill.output_signal;
     require!(output > 0, AofError::ZeroAmount);
 
     // [AUDIT F-03] Flour is minted by `start_milling`/`collect_flour` and by
@@ -25,7 +25,7 @@ pub fn handler(ctx: Context<CollectFlour>) -> Result<()> {
     check_supply_cap(
         &ctx.accounts.material_mints,
         ResourceKind::Signal,
-        ctx.accounts.flour_mint.supply,
+        ctx.accounts.signal_mint.supply,
         output,
     )?;
 
@@ -38,8 +38,8 @@ pub fn handler(ctx: Context<CollectFlour>) -> Result<()> {
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                mint: ctx.accounts.flour_mint.to_account_info(),
-                to: ctx.accounts.user_flour.to_account_info(),
+                mint: ctx.accounts.signal_mint.to_account_info(),
+                to: ctx.accounts.user_signal.to_account_info(),
                 authority: ctx.accounts.auth.to_account_info(),
             },
             signer_seeds,
@@ -50,7 +50,7 @@ pub fn handler(ctx: Context<CollectFlour>) -> Result<()> {
     // Сброс
     mill.in_progress = false;
     mill.ready_at = 0;
-    mill.output_flour = 0;
+    mill.output_signal = 0;
 
     Ok(())
 }

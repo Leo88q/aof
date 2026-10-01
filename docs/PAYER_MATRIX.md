@@ -18,8 +18,8 @@
 | aof_core | Craft | new_tool_data | ToolData | init_if_needed | user | player | player | ok | — | — |
 | aof_core | CraftOrderCreateCtx | craft_order | CraftOrder | init | creator | player | player | ok | — | — |
 | aof_core | DepositGas | gastank | GasTank | init_if_needed | user | player | player | ok | — | — |
-| aof_core | ExploreReveal | user_stone | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
-| aof_core | ExploreReveal | user_wood | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
+| aof_core | ExploreReveal | user_circuit | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
+| aof_core | ExploreReveal | user_silicon | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
 | aof_core | ForgeAttemptCommit | enchant_slot | EnchantSlot | init_if_needed | user | player | player | ok | — | — |
 | aof_core | ForgeAttemptCommit | forge_commit | ForgeCommit | init | user | player | player | ok | — | — |
 | aof_core | HarvestWheat | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
@@ -89,8 +89,8 @@
 | aof_quests | InitPotatoBank | potato_vault | TokenAccount | init | authority (оператор) | global | operator | ok | — | — |
 | aof_quests | InitQuestConfig | quest_config | QuestConfig | init | authority (оператор) | global | operator | ok | — | — |
 | aof_quests | PotatoSpinCommit | potato_commit | PotatoCommit | init | user | player | player | ok | — | — |
-| aof_quests | PotatoSpinExpire | user_potato | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
-| aof_quests | PotatoSpinReveal | user_potato | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
+| aof_quests | PotatoSpinExpire | user_mind | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
+| aof_quests | PotatoSpinReveal | user_mind | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
 | aof_quests | QuestInit | quest_template | QuestTemplate | init | authority (оператор) | global | operator | ok | — | — |
 | aof_quests | QuestVrfPoolAdd | vrf_slot | VrfSlot | init | authority (оператор) | global | operator | ok | — | — |
 | aof_rebirth | DoRebirth | rebirth_record | RebirthRecord | init_if_needed | user | player | player | ok | — | — |

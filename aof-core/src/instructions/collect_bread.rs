@@ -16,14 +16,14 @@ pub fn handler(ctx: Context<CollectBread>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     require!(now >= oven.ready_at, AofError::OvenNotReady);
 
-    let output = oven.output_bread;
+    let output = oven.output_model;
     require!(output > 0, AofError::ZeroAmount);
 
     // [AUDIT F-03] see collect_flour: bread emission bypassed IssuanceCap.
     check_supply_cap(
         &ctx.accounts.material_mints,
         ResourceKind::Model,
-        ctx.accounts.bread_mint.supply,
+        ctx.accounts.model_mint.supply,
         output,
     )?;
 
@@ -34,8 +34,8 @@ pub fn handler(ctx: Context<CollectBread>) -> Result<()> {
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                mint: ctx.accounts.bread_mint.to_account_info(),
-                to: ctx.accounts.user_bread.to_account_info(),
+                mint: ctx.accounts.model_mint.to_account_info(),
+                to: ctx.accounts.user_model.to_account_info(),
                 authority: ctx.accounts.auth.to_account_info(),
             },
             signer_seeds,
@@ -46,7 +46,7 @@ pub fn handler(ctx: Context<CollectBread>) -> Result<()> {
     // Сброс
     oven.in_progress = false;
     oven.ready_at = 0;
-    oven.output_bread = 0;
+    oven.output_model = 0;
     oven.fuel_kind = 0;
 
     Ok(())

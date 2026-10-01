@@ -130,7 +130,7 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
     check_supply_cap(
         &ctx.accounts.material_mints,
         ResourceKind::Circuit,
-        ctx.accounts.wood_mint.supply,
+        ctx.accounts.circuit_mint.supply,
         reward_amount,
     )?;
     let auth_bump = ctx.bumps.auth;
@@ -139,8 +139,8 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                mint: ctx.accounts.wood_mint.to_account_info(),
-                to: ctx.accounts.user_wood.to_account_info(),
+                mint: ctx.accounts.circuit_mint.to_account_info(),
+                to: ctx.accounts.user_circuit.to_account_info(),
                 authority: ctx.accounts.auth.to_account_info(),
             },
             signer_seeds,

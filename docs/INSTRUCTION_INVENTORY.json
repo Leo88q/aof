@@ -846,6 +846,13 @@
             "aof_backend/src/routes/chain.ts"
           ]
         },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-rename-plan.mjs"
+          ]
+        },
         "frontend": {
           "calls": 0,
           "mentions": 1,
@@ -868,16 +875,17 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/resource-evidence.test.cjs",
+            "tests/readiness/resource-rename-plan.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -908,6 +916,13 @@
             "aof_backend/src/routes/chain.ts"
           ]
         },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-rename-plan.mjs"
+          ]
+        },
         "frontend": {
           "calls": 0,
           "mentions": 1,
@@ -930,9 +945,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
+            "tests/readiness/resource-rename-plan.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         },
@@ -945,7 +961,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -1048,6 +1064,13 @@
           "files": [
             "aof_backend/src/routes/chain.ts"
           ]
+        },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-rename-plan.mjs"
+          ]
         }
       },
       "registries": [
@@ -1057,10 +1080,11 @@
       "tests": {
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/resource-evidence.test.cjs",
+            "tests/readiness/resource-rename-plan.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         },
@@ -1073,7 +1097,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 2,
         "validatorTested": false,
         "anyTest": true
       }
@@ -2031,6 +2055,13 @@
             "aof_backend/src/routes/chain.ts"
           ]
         },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-rename-plan.mjs"
+          ]
+        },
         "frontend": {
           "calls": 0,
           "mentions": 1,
@@ -2053,9 +2084,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/resource-evidence.test.cjs",
+            "tests/readiness/resource-rename-plan.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         },
@@ -2068,7 +2100,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -3436,6 +3468,13 @@
             "aof_backend/src/routes/chain.ts"
           ]
         },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/resource-rename-plan.mjs"
+          ]
+        },
         "frontend": {
           "calls": 0,
           "mentions": 1,
@@ -3455,10 +3494,17 @@
           "files": [
             "tests/aof_core.ts"
           ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/resource-rename-plan.test.cjs"
+          ]
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }

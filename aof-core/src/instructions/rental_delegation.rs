@@ -236,39 +236,39 @@ pub fn repair_handler(ctx: Context<RepairDelegated>, amount: u8) -> Result<()> {
     require!(new_durability <= MAX_DURABILITY, AofError::DurabilityOverflow);
 
     let rarity = ctx.accounts.tool.rarity;
-    let stone_cost = amount as u64 * rarity.repair_stone_cost_per_unit();
-    let wood_cost = amount as u64 * rarity.repair_wood_cost_per_unit();
+    let silicon_cost = amount as u64 * rarity.repair_silicon_cost_per_unit();
+    let circuit_cost = amount as u64 * rarity.repair_circuit_cost_per_unit();
 
     require!(
-        ctx.accounts.user_stone.amount >= stone_cost,
+        ctx.accounts.user_silicon.amount >= silicon_cost,
         AofError::InsufficientBalance
     );
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Burn {
-                mint: ctx.accounts.stone_mint.to_account_info(),
-                from: ctx.accounts.user_stone.to_account_info(),
+                mint: ctx.accounts.silicon_mint.to_account_info(),
+                from: ctx.accounts.user_silicon.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        stone_cost,
+        silicon_cost,
     )?;
 
     require!(
-        ctx.accounts.user_wood.amount >= wood_cost,
+        ctx.accounts.user_circuit.amount >= circuit_cost,
         AofError::InsufficientBalance
     );
     token::burn(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Burn {
-                mint: ctx.accounts.wood_mint.to_account_info(),
-                from: ctx.accounts.user_wood.to_account_info(),
+                mint: ctx.accounts.circuit_mint.to_account_info(),
+                from: ctx.accounts.user_circuit.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
-        wood_cost,
+        circuit_cost,
     )?;
 
     ctx.accounts.tool.durability = new_durability;
@@ -277,8 +277,8 @@ pub fn repair_handler(ctx: Context<RepairDelegated>, amount: u8) -> Result<()> {
         user: ctx.accounts.user.key(),
         tool_mint: ctx.accounts.tool.mint,
         repaired_amount: amount,
-        stone_cost,
-        wood_cost,
+        silicon_cost,
+        circuit_cost,
         new_durability,
     });
     Ok(())

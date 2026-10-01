@@ -105,10 +105,10 @@
 | aof_core | cancel_sell_order | compatibility | active | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_core | claim_lottery_prize | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
 | aof_core | claim_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
-| aof_core | collect_bread | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 3 | 0 |  |
-| aof_core | collect_flour | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
+| aof_core | collect_bread | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 4 | 0 |  |
+| aof_core | collect_flour | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 3 | 1 |  |
 | aof_core | collect_mining | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 4 | 0 | ✓ |
-| aof_core | collect_well_water | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 1 |  |
+| aof_core | collect_well_water | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 1 |  |
 | aof_core | collector_stake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
 | aof_core | collector_unstake | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | commit_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
@@ -124,7 +124,7 @@
 | aof_core | forge_attempt_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 0 |  |
 | aof_core | forge_attempt_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
 | aof_core | grant_season_xp | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 3 | 0 | ✓ |
-| aof_core | harvest_wheat | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
+| aof_core | harvest_wheat | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 3 | 1 |  |
 | aof_core | init_craft_economy | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_lottery_round | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_material_mints | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
@@ -148,7 +148,7 @@
 | aof_core | pay_out_with_referral | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 |  |
 | aof_core | place_buy_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | place_sell_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
-| aof_core | plant_seeds | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
+| aof_core | plant_seeds | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | purchase_season_pass | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
 | aof_core | referral_bind | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | referral_upgrade | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |

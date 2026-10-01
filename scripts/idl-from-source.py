@@ -181,14 +181,39 @@ def type_entry(name: str, src: str, enums: set[str]) -> dict:
     if em and name in enums:
         variants = [v.strip().rstrip(",") for v in drift.strip_comments(em.group(1)).splitlines()]
         return {"name": name, "type": {"kind": "enum", "variants": [{"name": v} for v in variants if v]}}
-    fields = [{"name": n, "type": drift.rust_idl_type(t)} for n, t in struct_fields_raw(src, name)]
+    sizes = drift.const_sizes(src)
+    fields = [{"name": n, "type": drift.rust_idl_type(t, sizes)} for n, t in struct_fields_raw(src, name)]
     return {"name": name, "type": {"kind": "struct", "fields": fields}}
+
+
+def carry_docs(old, new):
+    """Переносит `docs` из прежней записи IDL в новую (генератор их не сочиняет).
+
+    Комментарии полей/аккаунтов/аргументов — часть клиентского IDL; Anchor build их
+    сохраняет, поэтому при замене записи по исходникам мы не имеем права их терять.
+    Сопоставление идёт по позиции (порядок полей не меняется) и по имени, если оно
+    совпало; при переименовании поля docs остаются на своём месте.
+    """
+    if isinstance(new, dict) and isinstance(old, dict):
+        if "docs" in old and "docs" not in new:
+            new["docs"] = old["docs"]
+        for key, value in new.items():
+            if key in old:
+                carry_docs(old[key], value)
+    elif isinstance(new, list) and isinstance(old, list):
+        by_name = {e.get("name"): e for e in old if isinstance(e, dict) and "name" in e}
+        for index, element in enumerate(new):
+            if isinstance(element, dict) and element.get("name") in by_name:
+                carry_docs(by_name[element["name"]], element)
+            elif index < len(old):
+                carry_docs(old[index], element)
+    return new
 
 
 def upsert(items: list, entry: dict) -> str:
     for i, item in enumerate(items):
         if item["name"] == entry["name"]:
-            items[i] = entry
+            items[i] = carry_docs(item, entry)
             return "replaced"
     items.append(entry)
     return "appended"

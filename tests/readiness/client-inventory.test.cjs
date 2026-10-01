@@ -52,7 +52,9 @@ const withTmpCopy = (fn) => {
 test('инвентарь клиентов воспроизводим и проходит гейт', () => {
   const result = runNode(inventoryScript, ['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /605 tracked-файлов/);
+  const declared = Number(/Файлов: (\d+) \(/.exec(read(INVENTORY))?.[1]);
+  assert.ok(declared > 0, 'в инвентаре обязан быть счётчик файлов');
+  assert.match(result.out, new RegExp(`${declared} tracked-файлов`));
 });
 
 test('в инвентаре нет environment-dependent мусора и есть sha256', () => {

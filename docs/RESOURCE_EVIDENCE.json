@@ -5,13 +5,13 @@
     {
       "kind": "Data",
       "display": "Data",
-      "mintSource": "config.food_mint",
-      "legacyField": "food_mint",
+      "mintSource": "config.data_mint",
+      "legacyField": "data_mint",
       "variants": [
         "data",
         "food",
-        "food_mint",
-        "food-mint"
+        "data_mint",
+        "data-mint"
       ],
       "frontend": [
         "frontend/src/i18n/galleryBehaviorCopy.ts",
@@ -84,27 +84,31 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(mm, ResourceKind::Data, ctx.accounts.food_mint.supply, food)?;"
+          "line": "check_supply_cap(mm, ResourceKind::Data, ctx.accounts.data_mint.supply, data)?;"
         },
         {
           "file": "aof-core/src/instructions/initialize.rs",
-          "line": "cfg.food_mint = Pubkey::default();"
+          "line": "cfg.data_mint = Pubkey::default();"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "0 => config.food_mint,"
+          "line": "0 => config.data_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/rebirth_reset.rs",
+          "line": "let (data_owner, data_mint, amount) = {"
         },
         {
           "file": "aof-core/src/instructions/reroll.rs",
-          "line": "(&*ctx.accounts.food_mint, &*ctx.accounts.user_food, food_cost),"
+          "line": "(&*ctx.accounts.data_mint, &*ctx.accounts.user_data, data_cost),"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "food_mint: Pubkey,"
+          "line": "data_mint: Pubkey,"
         },
         {
           "file": "aof-core/src/instructions/set_resource_mints.rs",
-          "line": "food_mint: Pubkey,"
+          "line": "data_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -175,13 +179,13 @@
     {
       "kind": "Circuit",
       "display": "Circuit",
-      "mintSource": "config.wood_mint",
-      "legacyField": "wood_mint",
+      "mintSource": "config.circuit_mint",
+      "legacyField": "circuit_mint",
       "variants": [
         "circuit",
         "wood",
-        "wood_mint",
-        "wood-mint"
+        "circuit_mint",
+        "circuit-mint"
       ],
       "frontend": [
         "frontend/src/i18n/homeDetail.ts",
@@ -208,8 +212,8 @@
         },
         {
           "file": "frontend/src/lib/coreInstructions.ts",
-          "variant": "wood_mint",
-          "line": "accounts: [\"config\", \"user\", \"tool\", \"mint\", \"stone_mint\", \"user_stone\", \"wood_mint\", \"user_wood\", \"tool_token\", \"token_program\"],"
+          "variant": "circuit_mint",
+          "line": "accounts: [\"config\", \"user\", \"tool\", \"mint\", \"silicon_mint\", \"user_silicon\", \"circuit_mint\", \"user_circuit\", \"tool_token\", \"token_program\"],"
         }
       ],
       "game": [],
@@ -243,31 +247,31 @@
         },
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, reward)?;"
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, reward)?;"
         },
         {
           "file": "aof-core/src/instructions/forge.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, wood)?;"
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;"
         },
         {
           "file": "aof-core/src/instructions/initialize.rs",
-          "line": "cfg.wood_mint = Pubkey::default();"
+          "line": "cfg.circuit_mint = Pubkey::default();"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "1 => config.wood_mint,"
+          "line": "1 => config.circuit_mint,"
         },
         {
           "file": "aof-core/src/instructions/reroll.rs",
-          "line": "(&*ctx.accounts.wood_mint, &*ctx.accounts.user_wood, wood_cost),"
+          "line": "(&*ctx.accounts.circuit_mint, &*ctx.accounts.user_circuit, circuit_cost),"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "wood_mint: Pubkey,"
+          "line": "circuit_mint: Pubkey,"
         },
         {
           "file": "aof-core/src/instructions/set_resource_mints.rs",
-          "line": "wood_mint: Pubkey,"
+          "line": "circuit_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -350,13 +354,13 @@
     {
       "kind": "Silicon",
       "display": "Silicon",
-      "mintSource": "config.stone_mint",
-      "legacyField": "stone_mint",
+      "mintSource": "config.silicon_mint",
+      "legacyField": "silicon_mint",
       "variants": [
         "silicon",
         "stone",
-        "stone_mint",
-        "stone-mint"
+        "silicon_mint",
+        "silicon-mint"
       ],
       "frontend": [
         "frontend/src/components/ToolMiningCard.tsx",
@@ -421,31 +425,31 @@
         },
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, reward)?;"
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, reward)?;"
         },
         {
           "file": "aof-core/src/instructions/forge.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, stone)?;"
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;"
         },
         {
           "file": "aof-core/src/instructions/initialize.rs",
-          "line": "cfg.stone_mint = Pubkey::default();"
+          "line": "cfg.silicon_mint = Pubkey::default();"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "2 => config.stone_mint,"
+          "line": "2 => config.silicon_mint,"
         },
         {
           "file": "aof-core/src/instructions/reroll.rs",
-          "line": "(&*ctx.accounts.stone_mint, &*ctx.accounts.user_stone, stone_cost),"
+          "line": "(&*ctx.accounts.silicon_mint, &*ctx.accounts.user_silicon, silicon_cost),"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "stone_mint: Pubkey,"
+          "line": "silicon_mint: Pubkey,"
         },
         {
           "file": "aof-core/src/instructions/set_resource_mints.rs",
-          "line": "stone_mint: Pubkey,"
+          "line": "silicon_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -527,8 +531,8 @@
     {
       "kind": "Neuron",
       "display": "Neuron",
-      "mintSource": "material_mints.seeds",
-      "legacyField": "seeds",
+      "mintSource": "material_mints.neuron",
+      "legacyField": "neuron",
       "variants": [
         "neuron",
         "seeds"
@@ -587,24 +591,20 @@
           "line": "\"neural_seeder\" => Some(ResourceKind::Neuron),"
         },
         {
-          "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.seeds = seeds;"
-        },
-        {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "3 => materials.seeds,"
+          "line": "3 => materials.neuron,"
         },
         {
           "file": "aof-core/src/instructions/reroll.rs",
-          "line": "(&*ctx.accounts.seeds_mint, &*ctx.accounts.user_seeds, seeds_cost),"
+          "line": "(&*ctx.accounts.neuron_mint, &*ctx.accounts.user_neuron, neuron_cost),"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "seeds_mint: Pubkey,"
+          "line": "neuron_mint: Pubkey,"
         },
         {
           "file": "aof-core/src/instructions/set_resource_mints.rs",
-          "line": "seeds_mint: Pubkey,"
+          "line": "neuron_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -679,8 +679,8 @@
     {
       "kind": "Synapse",
       "display": "Synapse",
-      "mintSource": "material_mints.wheat",
-      "legacyField": "wheat",
+      "mintSource": "material_mints.synapse",
+      "legacyField": "synapse",
       "variants": [
         "synapse",
         "wheat"
@@ -742,11 +742,11 @@
         },
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.wheat = wheat;"
+          "line": "mm.synapse = synapse;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "4 => materials.wheat,"
+          "line": "4 => materials.synapse,"
         }
       ],
       "anyKindPath": [
@@ -813,8 +813,8 @@
     {
       "kind": "Signal",
       "display": "Signal",
-      "mintSource": "material_mints.flour",
-      "legacyField": "flour",
+      "mintSource": "material_mints.signal",
+      "legacyField": "signal",
       "variants": [
         "signal",
         "flour"
@@ -871,11 +871,11 @@
         },
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.flour = flour;"
+          "line": "mm.signal = signal;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "5 => materials.flour,"
+          "line": "5 => materials.signal,"
         }
       ],
       "anyKindPath": [
@@ -942,8 +942,8 @@
     {
       "kind": "Model",
       "display": "Model",
-      "mintSource": "material_mints.bread",
-      "legacyField": "bread",
+      "mintSource": "material_mints.model",
+      "legacyField": "model",
       "variants": [
         "model",
         "bread"
@@ -999,11 +999,11 @@
         },
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.bread = bread;"
+          "line": "mm.model = model;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "6 => materials.bread,"
+          "line": "6 => materials.model,"
         }
       ],
       "anyKindPath": [
@@ -1068,8 +1068,8 @@
     {
       "kind": "Power",
       "display": "Power",
-      "mintSource": "material_mints.water",
-      "legacyField": "water",
+      "mintSource": "material_mints.power",
+      "legacyField": "power",
       "variants": [
         "power",
         "water"
@@ -1127,23 +1127,23 @@
         },
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.water = water;"
+          "line": "mm.power = power;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "7 => materials.water,"
+          "line": "7 => materials.power,"
         },
         {
           "file": "aof-core/src/instructions/reroll.rs",
-          "line": "(&*ctx.accounts.water_mint, &*ctx.accounts.user_water, water_cost),"
+          "line": "(&*ctx.accounts.power_mint, &*ctx.accounts.user_power, power_cost),"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "water_mint: Pubkey,"
+          "line": "power_mint: Pubkey,"
         },
         {
           "file": "aof-core/src/instructions/set_resource_mints.rs",
-          "line": "water_mint: Pubkey,"
+          "line": "power_mint: Pubkey,"
         }
       ],
       "anyKindPath": [
@@ -1211,8 +1211,8 @@
     {
       "kind": "Compute",
       "display": "Compute",
-      "mintSource": "material_mints.coal",
-      "legacyField": "coal",
+      "mintSource": "material_mints.compute",
+      "legacyField": "compute",
       "variants": [
         "compute",
         "coal"
@@ -1258,11 +1258,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.coal = coal;"
+          "line": "mm.compute = compute;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "8 => materials.coal,"
+          "line": "8 => materials.compute,"
         }
       ],
       "anyKindPath": [
@@ -1327,8 +1327,8 @@
     {
       "kind": "Dataset",
       "display": "Dataset",
-      "mintSource": "material_mints.meat",
-      "legacyField": "meat",
+      "mintSource": "material_mints.dataset",
+      "legacyField": "dataset",
       "variants": [
         "dataset",
         "meat"
@@ -1380,15 +1380,15 @@
         },
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.meat_mint.supply, meat)?;"
+          "line": "check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.dataset_mint.supply, dataset)?;"
         },
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.meat = meat;"
+          "line": "mm.dataset = dataset;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "9 => materials.meat,"
+          "line": "9 => materials.dataset,"
         }
       ],
       "anyKindPath": [
@@ -1459,8 +1459,8 @@
     {
       "kind": "BlueCore",
       "display": "Blue Core",
-      "mintSource": "material_mints.stone_blue",
-      "legacyField": "stone_blue",
+      "mintSource": "material_mints.blue_core",
+      "legacyField": "blue_core",
       "variants": [
         "bluecore",
         "blue_core",
@@ -1502,11 +1502,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.stone_blue = stone_blue;"
+          "line": "mm.blue_core = blue_core;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "10 => materials.stone_blue,"
+          "line": "10 => materials.blue_core,"
         }
       ],
       "anyKindPath": [
@@ -1573,8 +1573,8 @@
     {
       "kind": "PurpleCore",
       "display": "Purple Core",
-      "mintSource": "material_mints.stone_purple",
-      "legacyField": "stone_purple",
+      "mintSource": "material_mints.purple_core",
+      "legacyField": "purple_core",
       "variants": [
         "purplecore",
         "purple_core",
@@ -1616,11 +1616,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.stone_purple = stone_purple;"
+          "line": "mm.purple_core = purple_core;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "11 => materials.stone_purple,"
+          "line": "11 => materials.purple_core,"
         }
       ],
       "anyKindPath": [
@@ -1687,8 +1687,8 @@
     {
       "kind": "RedCore",
       "display": "Red Core",
-      "mintSource": "material_mints.stone_red",
-      "legacyField": "stone_red",
+      "mintSource": "material_mints.red_core",
+      "legacyField": "red_core",
       "variants": [
         "redcore",
         "red_core",
@@ -1730,11 +1730,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.stone_red = stone_red;"
+          "line": "mm.red_core = red_core;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "12 => materials.stone_red,"
+          "line": "12 => materials.red_core,"
         }
       ],
       "anyKindPath": [
@@ -1801,8 +1801,8 @@
     {
       "kind": "ClearQuartz",
       "display": "Clear Quartz",
-      "mintSource": "material_mints.sand_white",
-      "legacyField": "sand_white",
+      "mintSource": "material_mints.clear_quartz",
+      "legacyField": "clear_quartz",
       "variants": [
         "clearquartz",
         "clear_quartz",
@@ -1844,11 +1844,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.sand_white = sand_white;"
+          "line": "mm.clear_quartz = clear_quartz;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "13 => materials.sand_white,"
+          "line": "13 => materials.clear_quartz,"
         }
       ],
       "anyKindPath": [
@@ -1915,8 +1915,8 @@
     {
       "kind": "RoseQuartz",
       "display": "Rose Quartz",
-      "mintSource": "material_mints.sand_pink",
-      "legacyField": "sand_pink",
+      "mintSource": "material_mints.rose_quartz",
+      "legacyField": "rose_quartz",
       "variants": [
         "rosequartz",
         "rose_quartz",
@@ -1958,11 +1958,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.sand_pink = sand_pink;"
+          "line": "mm.rose_quartz = rose_quartz;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "14 => materials.sand_pink,"
+          "line": "14 => materials.rose_quartz,"
         }
       ],
       "anyKindPath": [
@@ -2029,8 +2029,8 @@
     {
       "kind": "AmberQuartz",
       "display": "Amber Quartz",
-      "mintSource": "material_mints.sand_yellow",
-      "legacyField": "sand_yellow",
+      "mintSource": "material_mints.amber_quartz",
+      "legacyField": "amber_quartz",
       "variants": [
         "amberquartz",
         "amber_quartz",
@@ -2070,11 +2070,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.sand_yellow = sand_yellow;"
+          "line": "mm.amber_quartz = amber_quartz;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "15 => materials.sand_yellow,"
+          "line": "15 => materials.amber_quartz,"
         }
       ],
       "anyKindPath": [
@@ -2137,8 +2137,8 @@
     {
       "kind": "QuantumBit",
       "display": "Quantum Bit",
-      "mintSource": "material_mints.gem_blue",
-      "legacyField": "gem_blue",
+      "mintSource": "material_mints.quantum_bit",
+      "legacyField": "quantum_bit",
       "variants": [
         "quantumbit",
         "quantum_bit",
@@ -2182,11 +2182,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.gem_blue = gem_blue;"
+          "line": "mm.quantum_bit = quantum_bit;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "16 => materials.gem_blue,"
+          "line": "16 => materials.quantum_bit,"
         }
       ],
       "anyKindPath": [
@@ -2257,8 +2257,8 @@
     {
       "kind": "NeuralChip",
       "display": "Neural Chip",
-      "mintSource": "material_mints.gem_orange",
-      "legacyField": "gem_orange",
+      "mintSource": "material_mints.neural_chip",
+      "legacyField": "neural_chip",
       "variants": [
         "neuralchip",
         "neural_chip",
@@ -2302,11 +2302,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.gem_orange = gem_orange;"
+          "line": "mm.neural_chip = neural_chip;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "17 => materials.gem_orange,"
+          "line": "17 => materials.neural_chip,"
         }
       ],
       "anyKindPath": [
@@ -2377,8 +2377,8 @@
     {
       "kind": "PhotonBit",
       "display": "Photon Bit",
-      "mintSource": "material_mints.gem_white",
-      "legacyField": "gem_white",
+      "mintSource": "material_mints.photon_bit",
+      "legacyField": "photon_bit",
       "variants": [
         "photonbit",
         "photon_bit",
@@ -2420,11 +2420,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.gem_white = gem_white;"
+          "line": "mm.photon_bit = photon_bit;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "18 => materials.gem_white,"
+          "line": "18 => materials.photon_bit,"
         }
       ],
       "anyKindPath": [
@@ -2491,8 +2491,8 @@
     {
       "kind": "BioChip",
       "display": "Bio Chip",
-      "mintSource": "material_mints.gem_green",
-      "legacyField": "gem_green",
+      "mintSource": "material_mints.bio_chip",
+      "legacyField": "bio_chip",
       "variants": [
         "biochip",
         "bio_chip",
@@ -2534,11 +2534,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.gem_green = gem_green;"
+          "line": "mm.bio_chip = bio_chip;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "19 => materials.gem_green,"
+          "line": "19 => materials.bio_chip,"
         }
       ],
       "anyKindPath": [
@@ -2605,8 +2605,8 @@
     {
       "kind": "CryoFluid",
       "display": "Cryo Fluid",
-      "mintSource": "material_mints.flask_blue",
-      "legacyField": "flask_blue",
+      "mintSource": "material_mints.cryo_fluid",
+      "legacyField": "cryo_fluid",
       "variants": [
         "cryofluid",
         "cryo_fluid",
@@ -2648,11 +2648,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.flask_blue = flask_blue;"
+          "line": "mm.cryo_fluid = cryo_fluid;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "20 => materials.flask_blue,"
+          "line": "20 => materials.cryo_fluid,"
         }
       ],
       "anyKindPath": [
@@ -2719,8 +2719,8 @@
     {
       "kind": "VoltFluid",
       "display": "Volt Fluid",
-      "mintSource": "material_mints.flask_yellow",
-      "legacyField": "flask_yellow",
+      "mintSource": "material_mints.volt_fluid",
+      "legacyField": "volt_fluid",
       "variants": [
         "voltfluid",
         "volt_fluid",
@@ -2762,11 +2762,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.flask_yellow = flask_yellow;"
+          "line": "mm.volt_fluid = volt_fluid;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "21 => materials.flask_yellow,"
+          "line": "21 => materials.volt_fluid,"
         }
       ],
       "anyKindPath": [
@@ -2833,8 +2833,8 @@
     {
       "kind": "BioFluid",
       "display": "Bio Fluid",
-      "mintSource": "material_mints.flask_green",
-      "legacyField": "flask_green",
+      "mintSource": "material_mints.bio_fluid",
+      "legacyField": "bio_fluid",
       "variants": [
         "biofluid",
         "bio_fluid",
@@ -2876,11 +2876,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.flask_green = flask_green;"
+          "line": "mm.bio_fluid = bio_fluid;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "22 => materials.flask_green,"
+          "line": "22 => materials.bio_fluid,"
         }
       ],
       "anyKindPath": [
@@ -2947,8 +2947,8 @@
     {
       "kind": "NanoFluid",
       "display": "Nano Fluid",
-      "mintSource": "material_mints.flask_pink",
-      "legacyField": "flask_pink",
+      "mintSource": "material_mints.nano_fluid",
+      "legacyField": "nano_fluid",
       "variants": [
         "nanofluid",
         "nano_fluid",
@@ -2990,11 +2990,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.flask_pink = flask_pink;"
+          "line": "mm.nano_fluid = nano_fluid;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "23 => materials.flask_pink,"
+          "line": "23 => materials.nano_fluid,"
         }
       ],
       "anyKindPath": [
@@ -3061,8 +3061,8 @@
     {
       "kind": "QuantumFluid",
       "display": "Quantum Fluid",
-      "mintSource": "material_mints.flask_purple",
-      "legacyField": "flask_purple",
+      "mintSource": "material_mints.quantum_fluid",
+      "legacyField": "quantum_fluid",
       "variants": [
         "quantumfluid",
         "quantum_fluid",
@@ -3104,11 +3104,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.flask_purple = flask_purple;"
+          "line": "mm.quantum_fluid = quantum_fluid;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "24 => materials.flask_purple,"
+          "line": "24 => materials.quantum_fluid,"
         }
       ],
       "anyKindPath": [
@@ -3175,8 +3175,8 @@
     {
       "kind": "SoulCore",
       "display": "Soul Core",
-      "mintSource": "material_mints.love_heart",
-      "legacyField": "love_heart",
+      "mintSource": "material_mints.soul_core",
+      "legacyField": "soul_core",
       "variants": [
         "soulcore",
         "soul_core",
@@ -3208,11 +3208,11 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
-          "line": "mm.love_heart = love_heart;"
+          "line": "mm.soul_core = soul_core;"
         },
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "25 => materials.love_heart,"
+          "line": "25 => materials.soul_core,"
         }
       ],
       "anyKindPath": [
@@ -3275,13 +3275,13 @@
     {
       "kind": "Mind",
       "display": "Mind",
-      "mintSource": "config.potato_mint",
-      "legacyField": "potato_mint",
+      "mintSource": "config.mind_mint",
+      "legacyField": "mind_mint",
       "variants": [
         "mind",
         "potato",
-        "potato_mint",
-        "potato-mint"
+        "mind_mint",
+        "mind-mint"
       ],
       "frontend": [
         "frontend/src/i18n/homeDetail.ts",
@@ -3328,23 +3328,23 @@
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/orderbook.rs",
-          "line": "26 => config.potato_mint,"
+          "line": "26 => config.mind_mint,"
         },
         {
           "file": "aof-core/src/instructions/roles.rs",
-          "line": "potato_mint: Pubkey,"
+          "line": "mind_mint: Pubkey,"
         },
         {
           "file": "aof-core/src/instructions/set_resource_mints.rs",
-          "line": "potato_mint: Pubkey,"
+          "line": "mind_mint: Pubkey,"
         },
         {
           "file": "programs/aof-quests/src/instructions/drum/potato_bank.rs",
-          "line": "pub potato_mint: Account<'info, Mint>,"
+          "line": "pub mind_mint: Account<'info, Mint>,"
         },
         {
           "file": "programs/aof-quests/src/instructions/drum/potato_spin.rs",
-          "line": "pub potato_mint: Box<Account<'info, Mint>>,"
+          "line": "pub mind_mint: Box<Account<'info, Mint>>,"
         }
       ],
       "anyKindPath": [
@@ -3464,7 +3464,7 @@
       {
         "id": 0,
         "inputs": [
-          "stone_blue"
+          "blue_core"
         ],
         "outputs": [
           "QuantumBit"
@@ -3473,7 +3473,7 @@
       {
         "id": 1,
         "inputs": [
-          "stone_red"
+          "red_core"
         ],
         "outputs": [
           "NeuralChip"
@@ -3482,7 +3482,7 @@
       {
         "id": 2,
         "inputs": [
-          "sand_white"
+          "clear_quartz"
         ],
         "outputs": [
           "PhotonBit"
@@ -3491,8 +3491,8 @@
       {
         "id": 3,
         "inputs": [
-          "gem_blue",
-          "food_mint"
+          "quantum_bit",
+          "data_mint"
         ],
         "outputs": [
           "CryoFluid"
@@ -3501,8 +3501,8 @@
       {
         "id": 4,
         "inputs": [
-          "gem_orange",
-          "stone_mint"
+          "neural_chip",
+          "silicon_mint"
         ],
         "outputs": [
           "VoltFluid"
@@ -3511,8 +3511,8 @@
       {
         "id": 5,
         "inputs": [
-          "wood_mint",
-          "seeds"
+          "circuit_mint",
+          "neuron"
         ],
         "outputs": [
           "BioFluid"
@@ -3521,8 +3521,8 @@
       {
         "id": 6,
         "inputs": [
-          "sand_pink",
-          "food_mint"
+          "rose_quartz",
+          "data_mint"
         ],
         "outputs": [
           "NanoFluid"
@@ -3531,8 +3531,8 @@
       {
         "id": 7,
         "inputs": [
-          "stone_purple",
-          "gem_green"
+          "purple_core",
+          "bio_chip"
         ],
         "outputs": [
           "QuantumFluid"

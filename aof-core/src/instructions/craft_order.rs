@@ -7,8 +7,8 @@ use crate::events::*;
 
 pub fn create_handler(
     ctx: Context<CraftOrderCreateCtx>,
-    wood_needed: u64,
-    stone_needed: u64,
+    circuit_needed: u64,
+    silicon_needed: u64,
     premium_lamports: u64,
 ) -> Result<()> {
     require!(premium_lamports > 0, AofError::ZeroAmount);
@@ -16,7 +16,7 @@ pub fn create_handler(
     // to the first caller of `fulfill`. That is either a scam order or a
     // frontend bug, and in both cases the premium must not be claimable.
     require!(
-        wood_needed.checked_add(stone_needed).ok_or(AofError::MathOverflow)? > 0,
+        circuit_needed.checked_add(silicon_needed).ok_or(AofError::MathOverflow)? > 0,
         AofError::EmptyCraftOrder
     );
     anchor_lang::system_program::transfer(
@@ -31,8 +31,8 @@ pub fn create_handler(
     )?;
     let o = &mut ctx.accounts.craft_order;
     o.creator = ctx.accounts.creator.key();
-    o.wood_needed = wood_needed;
-    o.stone_needed = stone_needed;
+    o.circuit_needed = circuit_needed;
+    o.silicon_needed = silicon_needed;
     o.premium_lamports = premium_lamports;
     o.active = true;
     Ok(())
@@ -47,23 +47,23 @@ pub fn fulfill_handler(ctx: Context<CraftOrderFulfillCtx>) -> Result<()> {
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.fulfiller_wood.to_account_info(),
-                to: ctx.accounts.creator_wood.to_account_info(),
+                from: ctx.accounts.fulfiller_circuit.to_account_info(),
+                to: ctx.accounts.creator_circuit.to_account_info(),
                 authority: ctx.accounts.fulfiller.to_account_info(),
             },
         ),
-        ctx.accounts.craft_order.wood_needed,
+        ctx.accounts.craft_order.circuit_needed,
     )?;
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.fulfiller_stone.to_account_info(),
-                to: ctx.accounts.creator_stone.to_account_info(),
+                from: ctx.accounts.fulfiller_silicon.to_account_info(),
+                to: ctx.accounts.creator_silicon.to_account_info(),
                 authority: ctx.accounts.fulfiller.to_account_info(),
             },
         ),
-        ctx.accounts.craft_order.stone_needed,
+        ctx.accounts.craft_order.silicon_needed,
     )?;
 
     let premium = ctx.accounts.craft_order.premium_lamports;

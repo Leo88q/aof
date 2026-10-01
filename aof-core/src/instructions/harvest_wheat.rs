@@ -14,7 +14,7 @@ use crate::ResourceKind;
 /// Тратит:
 /// - 1 Energy
 /// - 1 durability инструмента
-/// Минтит: Wheat = seeds_amount × 1.5 × yield_mult[редкость]
+/// Минтит: Wheat = neuron_amount × 1.5 × yield_mult[редкость]
 pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     require!(tile_index < 10, AofError::InvalidBatchSize);
 
@@ -50,8 +50,8 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
 
     require!(energy.current >= ENERGY_COST_HARVEST, AofError::InsufficientEnergy);
 
-    // Считаем урожай: seeds_amount × 1.5 × yield_mult
-    let seeds_amount = tile.seeds_amount;
+    // Считаем урожай: neuron_amount × 1.5 × yield_mult
+    let neuron_amount = tile.neuron_amount;
     let yield_bps = match tool.rarity {
         Rarity::Common => YIELD_BPS_COMMON,
         Rarity::Uncommon => YIELD_BPS_UNCOMMON,
@@ -60,7 +60,7 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
         Rarity::Legendary => YIELD_BPS_LEGENDARY,
     };
     
-    let wheat_amount = seeds_amount
+    let synapse_amount = neuron_amount
         .checked_mul(SYNAPSE_YIELD_MULT_BPS as u64)
         .ok_or(AofError::MathOverflow)?
         .checked_mul(yield_bps as u64)
@@ -77,8 +77,8 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
     check_supply_cap(
         &ctx.accounts.material_mints,
         ResourceKind::Synapse,
-        ctx.accounts.wheat_mint.supply,
-        wheat_amount,
+        ctx.accounts.synapse_mint.supply,
+        synapse_amount,
     )?;
 
     // Тратим durability
@@ -95,20 +95,20 @@ pub fn handler(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                mint: ctx.accounts.wheat_mint.to_account_info(),
-                to: ctx.accounts.user_wheat.to_account_info(),
+                mint: ctx.accounts.synapse_mint.to_account_info(),
+                to: ctx.accounts.user_synapse.to_account_info(),
                 authority: ctx.accounts.auth.to_account_info(),
             },
             signer_seeds,
         ),
-        wheat_amount,
+        synapse_amount,
     )?;
 
     // Сбрасываем тайл
     tile.state = 0;
     tile.planted_at = 0;
     tile.ready_at = 0;
-    tile.seeds_amount = 0;
+    tile.neuron_amount = 0;
 
     Ok(())
 }

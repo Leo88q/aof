@@ -1,606 +1,401 @@
 {
   "schemaVersion": 1,
   "note": "Канонический манифест ресурсов: каноническое имя (kind/apiName), место хранения минта, legacy-поле и алиасы. Переименование (пункт 12) делается только по нему; drift обязан опустеть. Классификация ресурсов (active-player/active-internal/candidate-dead/dead) живёт в docs/RESOURCE_EVIDENCE.json — это отдельная ось, здесь её нет.",
-  "drift": [
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "AmberQuartz",
-      "name": "sandYellow"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "BioChip",
-      "name": "gemGreen"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "BioFluid",
-      "name": "flaskGreen"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "BlueCore",
-      "name": "stoneBlue"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "ClearQuartz",
-      "name": "sandWhite"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "CryoFluid",
-      "name": "flaskBlue"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "NanoFluid",
-      "name": "flaskPink"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "NeuralChip",
-      "name": "gemOrange"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "PhotonBit",
-      "name": "gemWhite"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "PurpleCore",
-      "name": "stonePurple"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "QuantumBit",
-      "name": "gemBlue"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "QuantumFluid",
-      "name": "flaskPurple"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "RedCore",
-      "name": "stoneRed"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "RoseQuartz",
-      "name": "sandPink"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "SoulCore",
-      "name": "loveHeart"
-    },
-    {
-      "type": "backend-legacy-name",
-      "file": "aof_backend/src/routes/resources.ts",
-      "kind": "VoltFluid",
-      "name": "flaskYellow"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 0,
-      "kind": "Data",
-      "actual": "Food"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 1,
-      "kind": "Circuit",
-      "actual": "Wood"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 10,
-      "kind": "BlueCore",
-      "actual": "StoneBlue"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 11,
-      "kind": "PurpleCore",
-      "actual": "StonePurple"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 12,
-      "kind": "RedCore",
-      "actual": "StoneRed"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 13,
-      "kind": "ClearQuartz",
-      "actual": "SandWhite"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 14,
-      "kind": "RoseQuartz",
-      "actual": "SandPink"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 15,
-      "kind": "AmberQuartz",
-      "actual": "SandYellow"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 16,
-      "kind": "QuantumBit",
-      "actual": "GemBlue"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 17,
-      "kind": "NeuralChip",
-      "actual": "GemOrange"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 18,
-      "kind": "PhotonBit",
-      "actual": "GemWhite"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 19,
-      "kind": "BioChip",
-      "actual": "GemGreen"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 2,
-      "kind": "Silicon",
-      "actual": "Stone"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 20,
-      "kind": "CryoFluid",
-      "actual": "FlaskBlue"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 21,
-      "kind": "VoltFluid",
-      "actual": "FlaskYellow"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 22,
-      "kind": "BioFluid",
-      "actual": "FlaskGreen"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 23,
-      "kind": "NanoFluid",
-      "actual": "FlaskPink"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 24,
-      "kind": "QuantumFluid",
-      "actual": "FlaskPurple"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 25,
-      "kind": "SoulCore",
-      "actual": "LoveHeart"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 26,
-      "kind": "Mind",
-      "actual": "Potato"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 3,
-      "kind": "Neuron",
-      "actual": "Seeds"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 4,
-      "kind": "Synapse",
-      "actual": "Wheat"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 5,
-      "kind": "Signal",
-      "actual": "Flour"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 6,
-      "kind": "Model",
-      "actual": "Bread"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 7,
-      "kind": "Power",
-      "actual": "Water"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 8,
-      "kind": "Compute",
-      "actual": "Coal"
-    },
-    {
-      "type": "idl-variant-name",
-      "id": 9,
-      "kind": "Dataset",
-      "actual": "Meat"
-    }
-  ],
+  "drift": [],
   "resources": [
     {
       "id": 0,
       "kind": "Data",
       "apiName": "data",
       "display": "Data",
-      "mintSource": "config.food_mint",
-      "legacyField": "food_mint",
+      "mintSource": "config.data_mint",
+      "legacyField": "data_mint",
+      "historicalField": "food_mint",
+      "historicalIdlName": "Food",
       "legacyAliases": [
         "food"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 1,
       "kind": "Circuit",
       "apiName": "circuit",
       "display": "Circuit",
-      "mintSource": "config.wood_mint",
-      "legacyField": "wood_mint",
+      "mintSource": "config.circuit_mint",
+      "legacyField": "circuit_mint",
+      "historicalField": "wood_mint",
+      "historicalIdlName": "Wood",
       "legacyAliases": [
         "wood"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 2,
       "kind": "Silicon",
       "apiName": "silicon",
       "display": "Silicon",
-      "mintSource": "config.stone_mint",
-      "legacyField": "stone_mint",
+      "mintSource": "config.silicon_mint",
+      "legacyField": "silicon_mint",
+      "historicalField": "stone_mint",
+      "historicalIdlName": "Stone",
       "legacyAliases": [
         "stone"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 3,
       "kind": "Neuron",
       "apiName": "neuron",
       "display": "Neuron",
-      "mintSource": "material_mints.seeds",
-      "legacyField": "seeds",
+      "mintSource": "material_mints.neuron",
+      "legacyField": "neuron",
+      "historicalField": "seeds",
+      "historicalIdlName": "Seeds",
       "legacyAliases": [
         "seeds"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 4,
       "kind": "Synapse",
       "apiName": "synapse",
       "display": "Synapse",
-      "mintSource": "material_mints.wheat",
-      "legacyField": "wheat",
+      "mintSource": "material_mints.synapse",
+      "legacyField": "synapse",
+      "historicalField": "wheat",
+      "historicalIdlName": "Wheat",
       "legacyAliases": [
         "wheat"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 5,
       "kind": "Signal",
       "apiName": "signal",
       "display": "Signal",
-      "mintSource": "material_mints.flour",
-      "legacyField": "flour",
+      "mintSource": "material_mints.signal",
+      "legacyField": "signal",
+      "historicalField": "flour",
+      "historicalIdlName": "Flour",
       "legacyAliases": [
         "flour"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 6,
       "kind": "Model",
       "apiName": "model",
       "display": "Model",
-      "mintSource": "material_mints.bread",
-      "legacyField": "bread",
+      "mintSource": "material_mints.model",
+      "legacyField": "model",
+      "historicalField": "bread",
+      "historicalIdlName": "Bread",
       "legacyAliases": [
         "bread"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 7,
       "kind": "Power",
       "apiName": "power",
       "display": "Power",
-      "mintSource": "material_mints.water",
-      "legacyField": "water",
+      "mintSource": "material_mints.power",
+      "legacyField": "power",
+      "historicalField": "water",
+      "historicalIdlName": "Water",
       "legacyAliases": [
         "water"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 8,
       "kind": "Compute",
       "apiName": "compute",
       "display": "Compute",
-      "mintSource": "material_mints.coal",
-      "legacyField": "coal",
+      "mintSource": "material_mints.compute",
+      "legacyField": "compute",
+      "historicalField": "coal",
+      "historicalIdlName": "Coal",
       "legacyAliases": [
         "coal"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 9,
       "kind": "Dataset",
       "apiName": "dataset",
       "display": "Dataset",
-      "mintSource": "material_mints.meat",
-      "legacyField": "meat",
+      "mintSource": "material_mints.dataset",
+      "legacyField": "dataset",
+      "historicalField": "meat",
+      "historicalIdlName": "Meat",
       "legacyAliases": [
         "meat"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 10,
       "kind": "BlueCore",
       "apiName": "blueCore",
       "display": "Blue Core",
-      "mintSource": "material_mints.stone_blue",
-      "legacyField": "stone_blue",
+      "mintSource": "material_mints.blue_core",
+      "legacyField": "blue_core",
+      "historicalField": "stone_blue",
+      "historicalIdlName": "StoneBlue",
       "legacyAliases": [
         "stone_blue",
         "stoneBlue"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 11,
       "kind": "PurpleCore",
       "apiName": "purpleCore",
       "display": "Purple Core",
-      "mintSource": "material_mints.stone_purple",
-      "legacyField": "stone_purple",
+      "mintSource": "material_mints.purple_core",
+      "legacyField": "purple_core",
+      "historicalField": "stone_purple",
+      "historicalIdlName": "StonePurple",
       "legacyAliases": [
         "stone_purple",
         "stonePurple"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 12,
       "kind": "RedCore",
       "apiName": "redCore",
       "display": "Red Core",
-      "mintSource": "material_mints.stone_red",
-      "legacyField": "stone_red",
+      "mintSource": "material_mints.red_core",
+      "legacyField": "red_core",
+      "historicalField": "stone_red",
+      "historicalIdlName": "StoneRed",
       "legacyAliases": [
         "stone_red",
         "stoneRed"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 13,
       "kind": "ClearQuartz",
       "apiName": "clearQuartz",
       "display": "Clear Quartz",
-      "mintSource": "material_mints.sand_white",
-      "legacyField": "sand_white",
+      "mintSource": "material_mints.clear_quartz",
+      "legacyField": "clear_quartz",
+      "historicalField": "sand_white",
+      "historicalIdlName": "SandWhite",
       "legacyAliases": [
         "sand_white",
         "sandWhite"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 14,
       "kind": "RoseQuartz",
       "apiName": "roseQuartz",
       "display": "Rose Quartz",
-      "mintSource": "material_mints.sand_pink",
-      "legacyField": "sand_pink",
+      "mintSource": "material_mints.rose_quartz",
+      "legacyField": "rose_quartz",
+      "historicalField": "sand_pink",
+      "historicalIdlName": "SandPink",
       "legacyAliases": [
         "sand_pink",
         "sandPink"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 15,
       "kind": "AmberQuartz",
       "apiName": "amberQuartz",
       "display": "Amber Quartz",
-      "mintSource": "material_mints.sand_yellow",
-      "legacyField": "sand_yellow",
+      "mintSource": "material_mints.amber_quartz",
+      "legacyField": "amber_quartz",
+      "historicalField": "sand_yellow",
+      "historicalIdlName": "SandYellow",
       "legacyAliases": [
         "sand_yellow",
         "sandYellow"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 16,
       "kind": "QuantumBit",
       "apiName": "quantumBit",
       "display": "Quantum Bit",
-      "mintSource": "material_mints.gem_blue",
-      "legacyField": "gem_blue",
+      "mintSource": "material_mints.quantum_bit",
+      "legacyField": "quantum_bit",
+      "historicalField": "gem_blue",
+      "historicalIdlName": "GemBlue",
       "legacyAliases": [
         "gem_blue",
         "gemBlue"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 17,
       "kind": "NeuralChip",
       "apiName": "neuralChip",
       "display": "Neural Chip",
-      "mintSource": "material_mints.gem_orange",
-      "legacyField": "gem_orange",
+      "mintSource": "material_mints.neural_chip",
+      "legacyField": "neural_chip",
+      "historicalField": "gem_orange",
+      "historicalIdlName": "GemOrange",
       "legacyAliases": [
         "gem_orange",
         "gemOrange"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 18,
       "kind": "PhotonBit",
       "apiName": "photonBit",
       "display": "Photon Bit",
-      "mintSource": "material_mints.gem_white",
-      "legacyField": "gem_white",
+      "mintSource": "material_mints.photon_bit",
+      "legacyField": "photon_bit",
+      "historicalField": "gem_white",
+      "historicalIdlName": "GemWhite",
       "legacyAliases": [
         "gem_white",
         "gemWhite"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 19,
       "kind": "BioChip",
       "apiName": "bioChip",
       "display": "Bio Chip",
-      "mintSource": "material_mints.gem_green",
-      "legacyField": "gem_green",
+      "mintSource": "material_mints.bio_chip",
+      "legacyField": "bio_chip",
+      "historicalField": "gem_green",
+      "historicalIdlName": "GemGreen",
       "legacyAliases": [
         "gem_green",
         "gemGreen"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 20,
       "kind": "CryoFluid",
       "apiName": "cryoFluid",
       "display": "Cryo Fluid",
-      "mintSource": "material_mints.flask_blue",
-      "legacyField": "flask_blue",
+      "mintSource": "material_mints.cryo_fluid",
+      "legacyField": "cryo_fluid",
+      "historicalField": "flask_blue",
+      "historicalIdlName": "FlaskBlue",
       "legacyAliases": [
         "flask_blue",
         "flaskBlue"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 21,
       "kind": "VoltFluid",
       "apiName": "voltFluid",
       "display": "Volt Fluid",
-      "mintSource": "material_mints.flask_yellow",
-      "legacyField": "flask_yellow",
+      "mintSource": "material_mints.volt_fluid",
+      "legacyField": "volt_fluid",
+      "historicalField": "flask_yellow",
+      "historicalIdlName": "FlaskYellow",
       "legacyAliases": [
         "flask_yellow",
         "flaskYellow"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 22,
       "kind": "BioFluid",
       "apiName": "bioFluid",
       "display": "Bio Fluid",
-      "mintSource": "material_mints.flask_green",
-      "legacyField": "flask_green",
+      "mintSource": "material_mints.bio_fluid",
+      "legacyField": "bio_fluid",
+      "historicalField": "flask_green",
+      "historicalIdlName": "FlaskGreen",
       "legacyAliases": [
         "flask_green",
         "flaskGreen"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 23,
       "kind": "NanoFluid",
       "apiName": "nanoFluid",
       "display": "Nano Fluid",
-      "mintSource": "material_mints.flask_pink",
-      "legacyField": "flask_pink",
+      "mintSource": "material_mints.nano_fluid",
+      "legacyField": "nano_fluid",
+      "historicalField": "flask_pink",
+      "historicalIdlName": "FlaskPink",
       "legacyAliases": [
         "flask_pink",
         "flaskPink"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 24,
       "kind": "QuantumFluid",
       "apiName": "quantumFluid",
       "display": "Quantum Fluid",
-      "mintSource": "material_mints.flask_purple",
-      "legacyField": "flask_purple",
+      "mintSource": "material_mints.quantum_fluid",
+      "legacyField": "quantum_fluid",
+      "historicalField": "flask_purple",
+      "historicalIdlName": "FlaskPurple",
       "legacyAliases": [
         "flask_purple",
         "flaskPurple"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 25,
       "kind": "SoulCore",
       "apiName": "soulCore",
       "display": "Soul Core",
-      "mintSource": "material_mints.love_heart",
-      "legacyField": "love_heart",
+      "mintSource": "material_mints.soul_core",
+      "legacyField": "soul_core",
+      "historicalField": "love_heart",
+      "historicalIdlName": "LoveHeart",
       "legacyAliases": [
         "love_heart",
         "loveHeart"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     },
     {
       "id": 26,
       "kind": "Mind",
       "apiName": "mind",
       "display": "Mind",
-      "mintSource": "config.potato_mint",
-      "legacyField": "potato_mint",
+      "mintSource": "config.mind_mint",
+      "legacyField": "mind_mint",
+      "historicalField": "potato_mint",
+      "historicalIdlName": "Potato",
       "legacyAliases": [
         "potato"
       ],
-      "idlRename": "pending"
+      "idlRename": "canonical"
     }
   ]
 }

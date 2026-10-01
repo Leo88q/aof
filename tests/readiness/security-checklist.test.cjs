@@ -715,7 +715,7 @@ test('F-G auctions: bid floor, real increments, bounded duration, cancel without
 
 test('#33 third-party payout destinations must be canonical ATAs', () => {
   const fields = [['AuctionSettleCtx', 'winner_token'], ['MatchResourceOrders', 'buyer_token'],
-    ['CraftOrderFulfillCtx', 'creator_wood'], ['CraftOrderFulfillCtx', 'creator_stone']];
+    ['CraftOrderFulfillCtx', 'creator_circuit'], ['CraftOrderFulfillCtx', 'creator_silicon']];
   for (const [ctx, field] of fields) {
     const f = (sources.aof_core.structs.get(ctx) || []).find((x) => x.name === field);
     assert.ok(f, `${ctx}.${field} not found`);

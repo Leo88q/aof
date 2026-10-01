@@ -48,82 +48,82 @@ fn require_distinct_mints(mints: &[Pubkey]) -> Result<()> {
 #[inline(always)]
 pub fn handler(
     ctx: Context<InitMaterialMints>,
-    seeds: Pubkey,
-    wheat: Pubkey,
-    flour: Pubkey,
-    bread: Pubkey,
-    water: Pubkey,
-    coal: Pubkey,
-    meat: Pubkey,
-    stone_blue: Pubkey,
-    stone_purple: Pubkey,
-    stone_red: Pubkey,
-    sand_white: Pubkey,
-    sand_pink: Pubkey,
-    sand_yellow: Pubkey,
-    gem_blue: Pubkey,
-    gem_orange: Pubkey,
-    gem_white: Pubkey,
-    gem_green: Pubkey,
-    flask_blue: Pubkey,
-    flask_yellow: Pubkey,
-    flask_green: Pubkey,
-    flask_pink: Pubkey,
-    flask_purple: Pubkey,
-    love_heart: Pubkey,
+    neuron: Pubkey,
+    synapse: Pubkey,
+    signal: Pubkey,
+    model: Pubkey,
+    power: Pubkey,
+    compute: Pubkey,
+    dataset: Pubkey,
+    blue_core: Pubkey,
+    purple_core: Pubkey,
+    red_core: Pubkey,
+    clear_quartz: Pubkey,
+    rose_quartz: Pubkey,
+    amber_quartz: Pubkey,
+    quantum_bit: Pubkey,
+    neural_chip: Pubkey,
+    photon_bit: Pubkey,
+    bio_chip: Pubkey,
+    cryo_fluid: Pubkey,
+    volt_fluid: Pubkey,
+    bio_fluid: Pubkey,
+    nano_fluid: Pubkey,
+    quantum_fluid: Pubkey,
+    soul_core: Pubkey,
 ) -> Result<()> {
     // Heap, not a stack array: see the note on `handler` about the 4096-byte
     // SBPF frame limit.
     let mut mints: Vec<Pubkey> = Vec::with_capacity(23);
-    mints.push(seeds);
-    mints.push(wheat);
-    mints.push(flour);
-    mints.push(bread);
-    mints.push(water);
-    mints.push(coal);
-    mints.push(meat);
-    mints.push(stone_blue);
-    mints.push(stone_purple);
-    mints.push(stone_red);
-    mints.push(sand_white);
-    mints.push(sand_pink);
-    mints.push(sand_yellow);
-    mints.push(gem_blue);
-    mints.push(gem_orange);
-    mints.push(gem_white);
-    mints.push(gem_green);
-    mints.push(flask_blue);
-    mints.push(flask_yellow);
-    mints.push(flask_green);
-    mints.push(flask_pink);
-    mints.push(flask_purple);
-    mints.push(love_heart);
+    mints.push(neuron);
+    mints.push(synapse);
+    mints.push(signal);
+    mints.push(model);
+    mints.push(power);
+    mints.push(compute);
+    mints.push(dataset);
+    mints.push(blue_core);
+    mints.push(purple_core);
+    mints.push(red_core);
+    mints.push(clear_quartz);
+    mints.push(rose_quartz);
+    mints.push(amber_quartz);
+    mints.push(quantum_bit);
+    mints.push(neural_chip);
+    mints.push(photon_bit);
+    mints.push(bio_chip);
+    mints.push(cryo_fluid);
+    mints.push(volt_fluid);
+    mints.push(bio_fluid);
+    mints.push(nano_fluid);
+    mints.push(quantum_fluid);
+    mints.push(soul_core);
     require_distinct_mints(&mints)?;
 
     let mm = &mut ctx.accounts.material_mints;
-    mm.seeds = seeds;
-    mm.wheat = wheat;
-    mm.flour = flour;
-    mm.bread = bread;
-    mm.water = water;
-    mm.coal = coal;
-    mm.meat = meat;
-    mm.stone_blue = stone_blue;
-    mm.stone_purple = stone_purple;
-    mm.stone_red = stone_red;
-    mm.sand_white = sand_white;
-    mm.sand_pink = sand_pink;
-    mm.sand_yellow = sand_yellow;
-    mm.gem_blue = gem_blue;
-    mm.gem_orange = gem_orange;
-    mm.gem_white = gem_white;
-    mm.gem_green = gem_green;
-    mm.flask_blue = flask_blue;
-    mm.flask_yellow = flask_yellow;
-    mm.flask_green = flask_green;
-    mm.flask_pink = flask_pink;
-    mm.flask_purple = flask_purple;
-    mm.love_heart = love_heart;
+    mm.seeds = neuron;
+    mm.synapse = synapse;
+    mm.signal = signal;
+    mm.model = model;
+    mm.power = power;
+    mm.compute = compute;
+    mm.dataset = dataset;
+    mm.blue_core = blue_core;
+    mm.purple_core = purple_core;
+    mm.red_core = red_core;
+    mm.clear_quartz = clear_quartz;
+    mm.rose_quartz = rose_quartz;
+    mm.amber_quartz = amber_quartz;
+    mm.quantum_bit = quantum_bit;
+    mm.neural_chip = neural_chip;
+    mm.photon_bit = photon_bit;
+    mm.bio_chip = bio_chip;
+    mm.cryo_fluid = cryo_fluid;
+    mm.volt_fluid = volt_fluid;
+    mm.bio_fluid = bio_fluid;
+    mm.nano_fluid = nano_fluid;
+    mm.quantum_fluid = quantum_fluid;
+    mm.soul_core = soul_core;
     mm.bump = ctx.bumps.material_mints;
     // [AUDIT F-03] No ceiling configured at deploy time: every resource starts
     // at `SUPPLY_CAP_UNLIMITED` (u64::MAX) and the authority is expected to

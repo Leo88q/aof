@@ -135,7 +135,7 @@ pub fn transfer_tool_cpi<'info>(
         token_program,
     };
     match signer_seeds {
-        Some(seeds) => core_transfer_tool(CpiContext::new_with_signer(core_program, accounts, seeds)),
+        Some(neuron) => core_transfer_tool(CpiContext::new_with_signer(core_program, accounts, neuron)),
         None => core_transfer_tool(CpiContext::new(core_program, accounts)),
     }
 }

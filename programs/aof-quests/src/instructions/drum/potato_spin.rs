@@ -28,7 +28,7 @@ pub struct PotatoSpinCommit<'info> {
     pub user: Signer<'info>,
     #[account(mut, associated_token::mint = potato_bank.mint,
         associated_token::authority = user)]
-    pub user_potato: Box<Account<'info, TokenAccount>>,
+    pub user_mind: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: owner, authority, queue and freshness are checked by vrf::commit.
@@ -61,7 +61,7 @@ pub fn commit_handler(ctx: Context<PotatoSpinCommit>) -> Result<()> {
     // read-before-transfer race: a Solana transaction locks both writable
     // accounts, and ALL mutations roll back if the VRF CPI later fails.
     token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
-        from: ctx.accounts.user_potato.to_account_info(),
+        from: ctx.accounts.user_mind.to_account_info(),
         to: ctx.accounts.potato_vault.to_account_info(),
         authority: ctx.accounts.user.to_account_info(),
     }), POTATO_SPIN_PRICE)?;
@@ -112,10 +112,10 @@ pub struct PotatoSpinReveal<'info> {
         token::mint = potato_bank.mint, token::authority = potato_bank)]
     pub potato_vault: Box<Account<'info, TokenAccount>>,
     #[account(address = potato_bank.mint @ QuestError::Unauthorized)]
-    pub potato_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = potato_mint,
+    pub mind_mint: Box<Account<'info, Mint>>,
+    #[account(init_if_needed, payer = cranker, associated_token::mint = mind_mint,
         associated_token::authority = user)]
-    pub user_potato: Box<Account<'info, TokenAccount>>,
+    pub user_mind: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, potato_commit.randomness.as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: the locked randomness; vrf::reveal verifies the signed value.
@@ -179,7 +179,7 @@ pub fn reveal_handler(ctx: Context<PotatoSpinReveal>, params: VrfRevealParams) -
         .checked_mul(POTATO_UNIT).ok_or(QuestError::MathOverflow)?;
     ctx.accounts.potato_bank.release(ctx.accounts.potato_vault.amount, prize)?;
     pay(&ctx.accounts.token_program, &ctx.accounts.potato_bank,
-        &ctx.accounts.potato_vault, &ctx.accounts.user_potato, prize)?;
+        &ctx.accounts.potato_vault, &ctx.accounts.user_mind, prize)?;
     emit!(PotatoSpinRevealed { user: ctx.accounts.user.key(), commit: commit_key,
         mint: ctx.accounts.potato_bank.mint, prize_atoms: prize, randomness,
         seed_slot, value, cranker: ctx.accounts.cranker.key() });
@@ -203,10 +203,10 @@ pub struct PotatoSpinExpire<'info> {
         token::mint = potato_bank.mint, token::authority = potato_bank)]
     pub potato_vault: Box<Account<'info, TokenAccount>>,
     #[account(address = potato_bank.mint @ QuestError::Unauthorized)]
-    pub potato_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = potato_mint,
+    pub mind_mint: Box<Account<'info, Mint>>,
+    #[account(init_if_needed, payer = cranker, associated_token::mint = mind_mint,
         associated_token::authority = user)]
-    pub user_potato: Box<Account<'info, TokenAccount>>,
+    pub user_mind: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, potato_commit.randomness.as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     pub token_program: Program<'info, Token>,
@@ -220,7 +220,7 @@ pub fn expire_handler(ctx: Context<PotatoSpinExpire>) -> Result<()> {
         ctx.accounts.potato_commit.commit_slot, Clock::get()?.slot)?;
     ctx.accounts.potato_bank.release(ctx.accounts.potato_vault.amount, POTATO_SPIN_PRICE)?;
     pay(&ctx.accounts.token_program, &ctx.accounts.potato_bank,
-        &ctx.accounts.potato_vault, &ctx.accounts.user_potato, POTATO_SPIN_PRICE)?;
+        &ctx.accounts.potato_vault, &ctx.accounts.user_mind, POTATO_SPIN_PRICE)?;
     emit!(PotatoSpinRefunded { user: ctx.accounts.potato_commit.user, commit: commit_key,
         mint: ctx.accounts.potato_bank.mint, amount_atoms: POTATO_SPIN_PRICE });
     Ok(())
