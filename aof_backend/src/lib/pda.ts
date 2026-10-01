@@ -51,47 +51,11 @@ export const rarityCounterPda = (rarity: number) => find([enc("rarity_counter"),
  */
 export const RESOURCE_KIND_ORDER = ["data", "circuit", "silicon", "neuron", "synapse", "signal", "model", "power", "compute", "dataset", "blueCore", "purpleCore", "redCore", "clearQuartz", "roseQuartz", "amberQuartz", "quantumBit", "neuralChip", "photonBit", "bioChip", "cryoFluid", "voltFluid", "bioFluid", "nanoFluid", "quantumFluid", "soulCore", "mind"] as const;
 
-/**
- * Legacy AOF resource keys → NeuroForge names (REBRAND_MAP.md).
- * Discriminant indexes are identical on both sides (pure rename), so old
- * clients/IDLs that still send `gemBlue`/`potato` resolve to the same
- * issuance-cap PDA as `quantumBit`/`mind`.
- */
-const LEGACY_RESOURCE_KIND_ALIAS: Record<string, string> = {
-  food: "data",
-  wood: "circuit",
-  stone: "silicon",
-  potato: "mind",
-  seeds: "neuron",
-  wheat: "synapse",
-  flour: "signal",
-  bread: "model",
-  water: "power",
-  coal: "compute",
-  meat: "dataset",
-  stoneBlue: "blueCore",
-  stonePurple: "purpleCore",
-  stoneRed: "redCore",
-  sandWhite: "clearQuartz",
-  sandPink: "roseQuartz",
-  sandYellow: "amberQuartz",
-  gemBlue: "quantumBit",
-  gemOrange: "neuralChip",
-  gemWhite: "photonBit",
-  gemGreen: "bioChip",
-  flaskBlue: "cryoFluid",
-  flaskYellow: "voltFluid",
-  flaskGreen: "bioFluid",
-  flaskPink: "nanoFluid",
-  flaskPurple: "quantumFluid",
-  loveHeart: "soulCore",
-};
 
 /** `kind` may be an Anchor enum object (`{ quantumBit: {} }`), a camelCase name (legacy AOF keys accepted) or a numeric index. */
 export function resourceKindIndex(kind: unknown): number {
   if (typeof kind === "number") { if (!Number.isInteger(kind) || kind < 0 || kind >= RESOURCE_KIND_ORDER.length) throw new Error("invalid resource kind index"); return kind; }
   let name = typeof kind === "string" ? kind : (kind && typeof kind === "object" ? Object.keys(kind as object)[0] : undefined);
-  if (name !== undefined && name in LEGACY_RESOURCE_KIND_ALIAS) name = LEGACY_RESOURCE_KIND_ALIAS[name];
   const idx = RESOURCE_KIND_ORDER.indexOf(name as any);
   if (idx < 0) throw new Error(`unknown resource kind: ${String(name)}`);
   return idx;
@@ -166,7 +130,7 @@ export const hotMarketPoolPda = (rarity: number) =>
 // queue PDA; callers must treat the returned address as unavailable.
 export const hotMarketQueuePda = (rarity: number) =>
   findMarket([enc("hot_queue_legacy"), u8(rarity)]);
-export const potatoConfigPda = marketConfigPda;
+export const mindConfigPda = marketConfigPda;
 
 // ============================================================
 // PDA для программы aof-session-keys
@@ -242,15 +206,15 @@ export const bowCommitPda = (toolMint: PublicKey) => find([enc("bow_commit"), to
 export const skinPda = (skinMint: PublicKey) => find([enc("skin"), skinMint.toBuffer()]);
 
 // =====================================================================
-// [БЛОК L] Хлебная экономика: новые PDA-хелперы
+// Laboratory and resource-production PDA helpers
 // =====================================================================
 export const materialMintsPda = () => find([enc("material_mints")]);
 export const energyAccountPda = (owner: PublicKey) => find([enc("energy_account"), owner.toBuffer()]);
-export const farmTilePda = (owner: PublicKey, tileIndex: number) =>
-  find([enc("farm_tile"), owner.toBuffer(), u8(tileIndex)]);
+export const labTilePda = (owner: PublicKey, tileIndex: number) =>
+  find([enc("lab_tile"), owner.toBuffer(), u8(tileIndex)]);
 export const weatherStatePda = () => find([enc("weather_state")]);
-export const wellStatePda = (owner: PublicKey) => find([enc("well_state"), owner.toBuffer()]);
-export const millStatePda = (owner: PublicKey) => find([enc("mill_state"), owner.toBuffer()]);
-export const ovenStatePda = (owner: PublicKey) => find([enc("oven_state"), owner.toBuffer()]);
+export const gridStatePda = (owner: PublicKey) => find([enc("grid_state"), owner.toBuffer()]);
+export const signalStatePda = (owner: PublicKey) => find([enc("signal_state"), owner.toBuffer()]);
+export const modelStatePda = (owner: PublicKey) => find([enc("model_state"), owner.toBuffer()]);
 export const loveProgressPda = (owner: PublicKey) => find([enc("love_progress"), owner.toBuffer()]);
 export const fortuneBoostPda = (owner: PublicKey) => find([enc("fortune_boost"), owner.toBuffer()]);

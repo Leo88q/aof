@@ -1,11 +1,11 @@
-// Inventory Russian literals in application source. Historical input aliases
-// are not display copy. This does not certify privacy or authorize a release.
+// Inventory Russian literals in application source. Resource identifiers are
+// canonical-only: no legacy input aliases are allowed. This does not certify privacy or authorize a release.
 import ts from 'typescript';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../src');
-const legacyAliases = new Set(['Фотон-бит', 'Био-чип', 'Ядро души', 'Голубое ядро']);
+const legacyAliases = new Set();
 const files = [];
 function walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -33,8 +33,7 @@ for (const file of files) {
         ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       const text = (node.text ?? node.getText(source)).replace(/\s+/g, ' ').trim();
       if (ru.test(text)) {
-        // Historic resource identifiers must be accepted as input, never used
-        // as a display string. Only these exact four property names qualify.
+        // Retain the category for report compatibility; no resource aliases are allowlisted.
         const category = rel === 'lib/visualAssets.ts' && legacyAliases.has(text) &&
           ts.isStringLiteral(node) && ts.isPropertyAssignment(node.parent) &&
           node.parent.name === node && belongsToDeclaration(node, 'LEGACY_RESOURCE_ID')
@@ -50,8 +49,7 @@ for (const file of files) {
 const byCategory = {};
 for (const { category } of findings) byCategory[category] = (byCategory[category] || 0) + 1;
 const retainedAliasNames = new Set(findings.filter(x => x.category === 'legacy-input-alias').map(x => x.text));
-const retainedValid = byCategory['legacy-input-alias'] === legacyAliases.size &&
-  retainedAliasNames.size === legacyAliases.size && [...legacyAliases].every(name => retainedAliasNames.has(name));
+const retainedValid = (byCategory['legacy-input-alias'] || 0) === 0 && retainedAliasNames.size === 0;
 const unreviewed = findings.filter(entry => entry.category === 'unreviewed');
 const report = {
   rawRussianLiterals: findings.length,
@@ -66,7 +64,7 @@ else {
   console.log(`Russian source literals outside locale catalogs: ${report.rawRussianLiterals} across ${report.files} files`);
   console.log(`  retained historic resource-input aliases: ${report.retainedOriginals.legacyAliases}`);
   console.log(`  unreviewed candidates: ${report.unreviewedCandidates}`);
-  if (!retainedValid) console.error('Historic input aliases changed: review old resource identifiers.');
+  if (!retainedValid) console.error('Legacy resource identifiers are not allowed in application source.');
   console.log('This checks source classification, not browser copy, legal sign-off or payment safety.');
 }
 if (process.argv.includes('--strict') && (!retainedValid || unreviewed.length)) process.exitCode = 1;

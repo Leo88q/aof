@@ -5,6 +5,7 @@ use crate::constants::*;
 use crate::{RentalDelistCtx, RentalListCtx, RentalStartCtx, RentalEndCtx, RentalRevokeCtx};
 use crate::errors::*;
 use crate::events::*;
+use crate::state::ToolData;
 
 /// [SECURITY_CHECKLIST_REVIEW F-H] (owner share, platform share) of a rental
 /// fee. The owner share is capped at RENTAL_MAX_OWNER_SPLIT_BPS, also for
@@ -29,6 +30,22 @@ pub fn rental_refund(owner_share: u64, start: i64, end: i64, now: i64) -> u64 {
     }
     let remaining = (end - now.max(start)) as u128;
     (owner_share as u128 * remaining / (end - start) as u128) as u64
+}
+
+/// Гасит незавершённую сессию, начатую арендатором по делегированию.
+///
+/// Сессия арендатора по построению короче аренды (`RentalSessionTooLong`
+/// не даёт начать дольше), поэтому к моменту завершения/отзыва аренды она либо
+/// уже собрана, либо брошена. Брошенную нельзя оставлять: `is_mining` остался бы
+/// висеть на инструменте и навсегда заблокировал бы владельцу `start_mining`
+/// после делиста. Награда при этом не минтится — арендатор её не заработал
+/// (и у него было гарантированное окно между `mining_end` и `end`).
+fn cancel_delegated_session(tool: &mut ToolData) {
+    if tool.is_mining {
+        tool.is_mining = false;
+        tool.mining_end = 0;
+        tool.last_mined_hours = 0;
+    }
 }
 
 pub fn list_handler(
@@ -169,6 +186,7 @@ pub fn end_handler(ctx: Context<RentalEndCtx>) -> Result<()> {
     // snapshot in the agreement. This also repairs agreements created before
     // an ownership transfer was blocked by the settlement constraints.
     let current_owner = ctx.accounts.tool.owner;
+    cancel_delegated_session(&mut ctx.accounts.tool);
     ctx.accounts.tool.operator = current_owner;
     emit!(RentalEnded {
         mint: ctx.accounts.mint.key(),
@@ -218,6 +236,7 @@ pub fn revoke_handler(ctx: Context<RentalRevokeCtx>) -> Result<()> {
         )?;
     }
     let current_owner = ctx.accounts.tool.owner;
+    cancel_delegated_session(&mut ctx.accounts.tool);
     ctx.accounts.tool.operator = current_owner;
     // Do not put `close = renter_refund` on RentalRevokeCtx: Anchor would
     // close the agreement even on the first call that only records the grace

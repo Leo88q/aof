@@ -28,9 +28,9 @@ pub fn handler(ctx: Context<Initialize>, treasury: Pubkey) -> Result<()> {
     let cfg = &mut ctx.accounts.config;
     cfg.authority = ctx.accounts.authority.key();
     cfg.treasury = treasury;
-    cfg.food_mint = Pubkey::default();
-    cfg.wood_mint = Pubkey::default();
-    cfg.stone_mint = Pubkey::default();
+    cfg.data_mint = Pubkey::default();
+    cfg.circuit_mint = Pubkey::default();
+    cfg.silicon_mint = Pubkey::default();
     cfg.craft_fee = crate::constants::FEE_PER_CRAFT_MICROS;
     cfg.unstake_fee = crate::constants::FEE_PER_NFT_MICROS;
     cfg.paused = false;

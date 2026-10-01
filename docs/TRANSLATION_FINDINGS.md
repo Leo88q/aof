@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Findings discovered during localization — deferred repairs
 
 This is an **audit queue**, not a claim that these actions are currently safe or enabled on a deployed program. Per product priority, finish localization first; do not re-enable money-moving actions merely by changing UI copy. Reproduce against the current backend and deployed program before implementing repairs.

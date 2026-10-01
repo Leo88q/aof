@@ -41,14 +41,14 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
         toolMint,
         tool: toolPda(toolMint)[0],
         explorationCommit,
-        foodMint: cfg.foodMint,
-        userFood: ata(cfg.foodMint),
-        woodMint: cfg.woodMint,
-        userWood: ata(cfg.woodMint),
-        stoneMint: cfg.stoneMint,
-        userStone: ata(cfg.stoneMint),
-        meatMint: mm.meat,
-        userMeat: ata(mm.meat),
+        dataMint: cfg.dataMint,
+        userData: ata(cfg.dataMint),
+        circuitMint: cfg.circuitMint,
+        userCircuit: ata(cfg.circuitMint),
+        siliconMint: cfg.siliconMint,
+        userSilicon: ata(cfg.siliconMint),
+        datasetMint: mm.dataset,
+        userDataset: ata(mm.dataset),
         ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -83,15 +83,15 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("exploration_reveal"),
 r.post("/upgrade-tier", async (req, res) => {
   try {
     const user = pk(req.body.user);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
-    const foodMint = pk(req.body.foodMint);
+    const circuitMint = pk(req.body.circuitMint);
+    const siliconMint = pk(req.body.siliconMint);
+    const dataMint = pk(req.body.dataMint);
 
     const [config] = configPda();
     const [explorationState] = explorationStatePda(user);
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
-    const userFood = getAssociatedTokenAddressSync(foodMint, user);
+    const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
+    const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
+    const userData = getAssociatedTokenAddressSync(dataMint, user);
 
     const ix = await (program.methods as any)
       .upgradeExplorationTier()
@@ -99,12 +99,12 @@ r.post("/upgrade-tier", async (req, res) => {
         config,
         user,
         explorationState,
-        woodMint,
-        userWood,
-        stoneMint,
-        userStone,
-        foodMint,
-        userFood,
+        circuitMint,
+        userCircuit,
+        siliconMint,
+        userSilicon,
+        dataMint,
+        userData,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();

@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Release Readiness Audit — 2026-09-15
 
 Ветка: `arena/01a0a358-aof` (продолжение `arena/01a09c71-aof`), PR #3 → `main`.

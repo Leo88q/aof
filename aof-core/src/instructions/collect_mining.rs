@@ -6,6 +6,7 @@ use crate::state::*;
 use crate::events::MiningCollected;
 use crate::CollectMining;
 use crate::ResourceKind;
+use crate::instructions::tool_ownership::assert_token_in_escrow;
 
 // Mining is settled in the same instruction that closes the session. The
 // previous flow reset ToolData first and asked a backend worker to calculate
@@ -16,7 +17,9 @@ use crate::ResourceKind;
 // registry in `state::mint_for_kind`.
 //
 // Canonical tool -> resource mapping for all five current types.
-fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
+// `pub(crate)`: та же функция используется делегированным сбором арендатора,
+// чтобы формулы и маршрутизация ресурсов не разошлись между путями.
+pub(crate) fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
     // Accept only the current five ToolData ids.
     let canonical = crate::state::canonical_tool_type(tool_type)?;
     match canonical {
@@ -30,7 +33,7 @@ fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
 }
 
 // Use the same checked calculation in settlement and host regression tests.
-fn mining_reward_amount(hours: u8, rarity: Rarity) -> Result<u64> {
+pub(crate) fn mining_reward_amount(hours: u8, rarity: Rarity) -> Result<u64> {
     (hours as u64)
         .checked_mul(BASE_RATE_MINING)
         .and_then(|base| base.checked_mul(RESOURCE_UNIT))
@@ -46,6 +49,17 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
 
     let now = Clock::get()?.unix_timestamp;
     require!(now >= ctx.accounts.tool.mining_end, AofError::MiningNotComplete);
+
+    // Token-primary ownership: награда выплачивается только пока supply-1 токен
+    // инструмента действительно лежит в эскроу программы. Флаг `tool.staked` из
+    // контекста — не доказательство: он лишь кэш, который мог разойтись с
+    // фактическим держателем токена. См. `instructions::tool_ownership`.
+    assert_token_in_escrow(
+        &ctx.accounts.tool,
+        &ctx.accounts.mint,
+        &ctx.accounts.vault_token,
+        &ctx.accounts.vault.key(),
+    )?;
 
     let hours = ctx.accounts.tool.last_mined_hours;
     require!(hours > 0, AofError::InvalidAmount);

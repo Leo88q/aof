@@ -59,8 +59,14 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const connection = provider.connection;
+  async function sendWithPayer(builder: any, payer: Keypair) {
+    const tx = await builder.transaction();
+    tx.feePayer = payer.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
+    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+  }
   const idlJson = JSON.parse(fs.readFileSync(process.cwd() + "/target/idl/aof_core.json", "utf8"));
-  if (!idlJson.address) idlJson.address = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+  if (!idlJson.address) idlJson.address = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
   const program: any = new anchor.Program(idlJson as any, provider);
   const pid = program.programId as PublicKey;
   const authority = provider.wallet.publicKey;
@@ -178,10 +184,10 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   async function mintTool(owner: Keypair) {
     const mint = await createMint(connection, owner, authPda, null, 0);
     const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, owner, mint, owner.publicKey)).address;
-    await program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
+    await sendWithPayer(program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: owner.publicKey,
-      toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-    }).rpc();
+      payer: owner.publicKey, toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }), owner);
     return { mint, tokenAccount };
   }
 
@@ -246,7 +252,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(slot.retired).to.equal(false);
   });
 
-  it("pack commit: escrows the price, seeds from the previous slot's hash, binds the oracle and locks the slot", async () => {
+  it("pack commit: escrows the price, derives randomness from the previous slot's hash, binds the oracle and locks the slot", async () => {
     const oracle = Keypair.generate().publicKey;
     const user = Keypair.generate();
     await airdrop(user);

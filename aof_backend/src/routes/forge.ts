@@ -13,7 +13,7 @@ import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 const r = Router();
 
 /**
- * [F-06] Forge attempt: wood/stone burned, fee (+protector) escrowed, level
+ * [F-06] Forge attempt: circuit/silicon burned, fee (+protector) escrowed, level
  * snapshotted, Switchboard commit on a pool slot (operator co-signs as the
  * backend gate). Settled by the vrf-settler or by the player (POST /reveal).
  */
@@ -40,10 +40,10 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
         toolMint,
         enchantSlot: enchantSlotPda(toolMint, slotType)[0],
         forgeCommit,
-        woodMint: cfg.woodMint,
-        userWood: getAssociatedTokenAddressSync(cfg.woodMint, user),
-        stoneMint: cfg.stoneMint,
-        userStone: getAssociatedTokenAddressSync(cfg.stoneMint, user),
+        circuitMint: cfg.circuitMint,
+        userCircuit: getAssociatedTokenAddressSync(cfg.circuitMint, user),
+        siliconMint: cfg.siliconMint,
+        userSilicon: getAssociatedTokenAddressSync(cfg.siliconMint, user),
         ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,

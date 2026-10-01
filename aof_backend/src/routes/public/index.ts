@@ -17,7 +17,7 @@ r.get("/prices", async (req, res) => {
     res.json({
       prices: latestTicks.map((t) => ({
         rarity: t.rarity,
-        pricePotato: t._max?.priceMascot || 0,
+        priceMind: t._max?.priceMascot || 0,
         priceSol: t._max?.priceSol || 0,
         ts: t._max?.ts || new Date(),
       })),

@@ -13,7 +13,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 | # | Замечание | Факт | Решение |
 |---|---|---|---|
 | 1 | `POST /admin/send-tx` — произвольный relay | Подтверждено (`admin.ts`) | В production отвечает **404** (`nonProductionOnly`). Оставлен только для devnet-отладки. |
-| 2 | `test-grant`, `test-grant-potato`, `test-grant-tools`, `mint-resource` в проде | Подтверждено, guard отсутствовал | **404 в production** независимо от токена. Regression-тест `test:admin-auth`. |
+| 2 | `test-grant`, `test-grant-mind`, `test-grant-tools`, `mint-resource` в проде | Подтверждено, guard отсутствовал | **404 в production** независимо от токена. Regression-тест `test:admin-auth`. |
 | 3 | Единый `ADMIN_TOKEN` | Подтверждено | Разделён на **ops** (`ADMIN_TOKEN`) и **read** (`ADMIN_READ_TOKEN`). GET под `/admin/audit`, `/admin/economy`, `/security` принимает read; любой POST — только ops. 5 ролей/2FA — см. §3. |
 | 4 | `trust proxy` не настроен | Подтверждено — не было вовсе | `app.set("trust proxy", TRUST_PROXY_HOPS)`; в production переменная обязательна; `docker-compose.prod.yml` выставляет 1. |
 | 5 | `readLimiter` объявлен, но не подключён | Подтверждено | Подключён к `/query`, `/whale-alerts`, `/market-data`, `/public`. |
@@ -43,7 +43,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 | 19 | Ledger-таблицы `ChainTx`, `ChainEvent`, `ChainMintDelta`, `IndexerCursor` (+ `EconomySnapshot.fieldQuality`) | `prisma/schema.prisma`, миграция `202609210001_chain_indexer`. Dedup: PK signature, unique `(signature,eventIndex)`, unique `(signature,mint)`. |
 | 20 | Воркер `services/chain-indexer` | Forward-sync + backfill по `getSignaturesForAddress` для `aof_core`, `aof_market`, `aof_quests`; только `finalized` (без reorg-логики); запись tx+events атомарно; курсор двигается только за полностью записанным префиксом; health на :8082. |
 | 21 | Декодер событий `src/lib/chainIndexerCore.ts` | Anchor `EventParser` с CPI-атрибуцией, camelCase-нормализация, извлечение actor/mint/amount, `walletHash` с солью, supply-дельты из pre/post token balances (mint = +, burn = −, transfer = 0). |
-| 22 | Economy monitor на реальных данных | `potatoMinted24h`/`potatoBurned24h` из `ChainMintDelta`; качество поля вычисляется из свежести курсора и покрытия окна (`complete`/`partial`/`unavailable`), сохраняется в snapshot. |
+| 22 | Economy monitor на реальных данных | `mindMinted24h`/`mindBurned24h` из `ChainMintDelta`; качество поля вычисляется из свежести курсора и покрытия окна (`complete`/`partial`/`unavailable`), сохраняется в snapshot. |
 | 23 | Read-only API `/admin/chain/*` | `status`, `events`, `events/summary`, `supply?mint=`, `wallet/:wallet` — под `ADMIN_READ_TOKEN`. Основа для anti-fraud review и продуктовых метрик. |
 | 24 | Self-test `test:chain-indexer` | Реальное кодирование событий через committed IDL, CPI, dedup-индексы, дельты, u64 max. В CI. |
 
@@ -97,7 +97,7 @@ _Обновлено: 2026-09-21 (итерация 4). Источник: внеш
 
 | Приоритет | Задача | Комментарий |
 |---|---|---|
-| ~~P0~~ done | **On-chain event indexer** | Реализован (§1c). Осталось: запустить на devnet (`--profile indexer`), дождаться `backfillComplete`, сверить `potatoMinted24h` с ручным подсчётом за сутки. |
+| ~~P0~~ done | **On-chain event indexer** | Реализован (§1c). Осталось: запустить на devnet (`--profile indexer`), дождаться `backfillComplete`, сверить `mindMinted24h` с ручным подсчётом за сутки. |
 | ~~P1~~ done | Top holders, `activity24h` из `ChainEvent` | Сделано (§1d); весь economy monitor становится `complete`, как только indexer закроет 24h-окно. |
 | P1 | `AuditLog.action` → бизнес-тип | Вместе с indexer'ом, единый словарь событий. |
 | P1 | Daily player facts | Материализованная таблица от indexer + AuditLog. |

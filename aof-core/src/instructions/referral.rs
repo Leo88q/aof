@@ -41,9 +41,9 @@ pub fn upgrade_handler(ctx: Context<ReferralUpgradeCtx>) -> Result<()> {
     let next = (link.tier + 1) as usize;
 
     for (mint, from, cost) in [
-        (&ctx.accounts.wood_mint, &ctx.accounts.user_wood, REFERRAL_UPGRADE_WOOD[next]),
-        (&ctx.accounts.stone_mint, &ctx.accounts.user_stone, REFERRAL_UPGRADE_STONE[next]),
-        (&ctx.accounts.food_mint, &ctx.accounts.user_food, REFERRAL_UPGRADE_FOOD[next]),
+        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit, REFERRAL_UPGRADE_CIRCUIT[next]),
+        (&ctx.accounts.silicon_mint, &ctx.accounts.user_silicon, REFERRAL_UPGRADE_SILICON[next]),
+        (&ctx.accounts.data_mint, &ctx.accounts.user_data, REFERRAL_UPGRADE_DATA[next]),
     ] {
         if cost == 0 { continue; }
         require!(from.amount >= cost, AofError::InsufficientBalance);

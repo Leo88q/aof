@@ -264,8 +264,8 @@ export function SonarPPI({
 
 /* ─────────────── Микропланшет 96 лунок ─────────────── */
 
-export type WellState = "empty" | "q" | "g" | "d" | "x";
-export type PlateWell = { r: number; c: number; state: WellState; level?: number; title?: string };
+export type GridState = "empty" | "q" | "g" | "d" | "x";
+export type PlateWell = { r: number; c: number; state: GridState; level?: number; title?: string };
 
 export function PlateGrid({
   wells,

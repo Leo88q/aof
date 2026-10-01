@@ -41,10 +41,10 @@ function requireQuote(value: unknown, field: string): void {
 }
 
 // Инициализация конфигурации рынка. Все параметры и адреса соответствуют
-// текущей on-chain программе aof-market; старый potatoConfig API удалён.
+// текущей on-chain программе aof-market; старый mindConfig API удалён.
 r.post("/config/init", requireAdmin, async (req, res) => {
   try {
-    const coreMint = pk(req.body.coreMint || req.body.potatoMint);
+    const coreMint = pk(req.body.coreMint || req.body.mindMint);
     const gemMint = pk(req.body.gemMint);
     const treasury = pk(req.body.treasury);
     const feeBps = Number(req.body.feeBps);
@@ -74,7 +74,7 @@ r.post("/config/init", requireAdmin, async (req, res) => {
 r.post("/pool/init", requireAdmin, async (req, res) => {
   try {
     const rarity = Number(req.body.rarity);
-    const targetPriceCore = new BN(req.body.targetPriceCore ?? req.body.basePriceCore ?? req.body.basePricePotato);
+    const targetPriceCore = new BN(req.body.targetPriceCore ?? req.body.basePriceCore ?? req.body.basePriceMind);
     const targetPriceGem = new BN(req.body.targetPriceGem ?? req.body.basePriceGem ?? 0);
     const targetRatePerHour = new BN(req.body.targetRatePerHour ?? req.body.targetSalesPerHour ?? 0);
     const decayBpsPerHour = Number(req.body.decayBpsPerHour ?? req.body.decayPerHourBps);

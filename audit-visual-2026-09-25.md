@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Аудит визуала NeuroForge (AOF) — 2026-09-25
 
 Проверено на ветке `arena/01a0d59f-aof`, коммит `0dc3bf2` («Add season, rebirth, and reputation icons.», 2026-09-25 12:49:43Z).

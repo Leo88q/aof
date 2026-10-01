@@ -7,7 +7,7 @@ import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 import { confirmSignature } from "../src/lib/confirmation";
 const user = Keypair.generate();
 const other = Keypair.generate().publicKey;
-const core = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const core = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 function transaction(...ix: TransactionInstruction[]) {
   return new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }).add(...ix);
 }
@@ -209,8 +209,10 @@ test("core instruction policy names every instruction and rejects authority-only
   // Wrong account count is rejected.
   assert.throws(() => validateCoreInstructions([ixFor("start_mining", keys.slice(1))], user.publicKey), /account count/);
 
-  // Authority-only instructions must never reach a player wallet.
-  for (const name of ["pay_out", "mint_tool", "set_paused", "set_supply_cap"]) {
+  // Instructions signed only by authority must never reach a player wallet.
+  // mint_tool is deliberately excluded: it has a separate player-payer path,
+  // gated below by an explicit local intent and authority != player.
+  for (const name of ["pay_out", "set_paused", "set_supply_cap"]) {
     const spec = specOf(name);
     const authorityKeys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
     assert.throws(
@@ -236,7 +238,7 @@ test("core instruction table covers the committed IDL", () => {
     "discriminators must be unique");
 });
 
-test("core instruction table is byte-for-byte the committed IDL, and every operator-signed instruction is authority-only", () => {
+test("core instruction table matches IDL and exclusively operator-signed instructions are authority-only", () => {
   // [nf-mutate 2026-09-28] a +1 in any discriminator byte, a dropped signer
   // index or a flipped authorityOnly flag survived the old coverage test.
   // The table is generated from this IDL (scripts/gen-core-instruction-table.py);
@@ -273,6 +275,51 @@ test("core instruction table is byte-for-byte the committed IDL, and every opera
     const keys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
     assert.throws(() => validateCoreInstructions([ixFor(name, keys)], user.publicKey), /Authority-only/, name);
   }
+});
+
+function toolMintFixture() {
+  const mint = Keypair.generate().publicKey;
+  const authority = other;
+  const toolType = "plasma_cutter";
+  const rarity = 0; // common
+  const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
+    [Buffer.from(seed), ...(key ? [key.toBuffer()] : [])], core,
+  )[0];
+  const data = Buffer.alloc(8 + 4 + Buffer.byteLength(toolType) + 1);
+  data.set(specOf("mint_tool").discriminator);
+  data.writeUInt32LE(Buffer.byteLength(toolType), 8);
+  data.write(toolType, 12, "utf8");
+  data[12 + Buffer.byteLength(toolType)] = rarity;
+  const ix = {
+    programId: core.toBase58(),
+    keys: [pda("config"), authority, pda("auth"), mint,
+      getAssociatedTokenAddressSync(mint, user.publicKey), user.publicKey, user.publicKey,
+      pda("tool", mint), TOKEN_PROGRAM_ID, SystemProgram.programId],
+    data,
+  };
+  const intent = { kind: "toolMint" as const, user: user.publicKey.toBase58(),
+    mint: mint.toBase58(), authority: authority.toBase58(), toolType, rarity: "common" as const };
+  return { ix, intent };
+}
+
+test("player tool mint requires local intent and binds payer = recipient = wallet, never authority", () => {
+  const { ix, intent } = toolMintFixture();
+  assert.doesNotThrow(() => validateTransactionIntent([ix], intent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([ix], undefined, user.publicKey), /local user intent/);
+
+  const wrongRecipient = { ...ix, keys: [...ix.keys] };
+  wrongRecipient.keys[5] = other;
+  assert.throws(() => validateTransactionIntent([wrongRecipient], intent, user.publicKey), /tool mint accounts/);
+  const wrongPayer = { ...ix, keys: [...ix.keys] };
+  wrongPayer.keys[6] = other;
+  assert.throws(() => validateTransactionIntent([wrongPayer], intent, user.publicKey), /payer/);
+
+  const authorityAsPlayer = { ...ix, keys: [...ix.keys] };
+  authorityAsPlayer.keys[1] = user.publicKey;
+  assert.throws(() => validateTransactionIntent([authorityAsPlayer],
+    { ...intent, authority: user.publicKey.toBase58() }, user.publicKey), /Authority cannot/);
+  const extra = { programId: SystemProgram.programId.toBase58(), keys: [user.publicKey], data: Buffer.alloc(0) };
+  assert.throws(() => validateTransactionIntent([ix, extra], intent, user.publicKey), /outside/);
 });
 
 // ---------------------------------------------------------------------------

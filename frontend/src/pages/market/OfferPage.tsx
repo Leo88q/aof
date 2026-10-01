@@ -133,7 +133,7 @@ export function OfferPage() {
             const rk = rarityKey(t.rarity);
             return (
               <button key={t.mint} onClick={() => setSelOwn(t.mint)}
-                className={`flex-shrink-0 max-w-full flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs text-left ${selOwn === t.mint ? "border-wheat-500 bg-wheat-500/10 text-parchment" : "border-straw/15 bg-soil-800/60 text-straw"}`}>
+                className={`flex-shrink-0 max-w-full flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs text-left ${selOwn === t.mint ? "border-accent-500 bg-accent-500/10 text-parchment" : "border-straw/15 bg-soil-800/60 text-straw"}`}>
                 <ArtPlate src={toolPlate(t.toolType, rk)} alt={toolName(language, t.toolType)} size={36} />
                 <span className="min-w-0 break-words">{toolName(language, t.toolType)}</span>
                 <span className={`${RARITY_COLOR[rk] ?? "text-straw"} min-w-0 break-words`}>· {rarityLabel(rk)}</span>
@@ -162,7 +162,7 @@ export function OfferPage() {
                     <p className="text-parchment text-sm">
                       <span className="text-straw">{shortAddr(o.buyer)}{mine ? ` (${copy.you})` : ""}</span>{copy.proposed}
                     </p>
-                    <p className="text-wheat-500 font-bold">{fmtSol(o.priceLamports, language)} ◎</p>
+                    <p className="text-accent-500 font-bold">{fmtSol(o.priceLamports, language)} ◎</p>
                   </div>
                   {mine ? (
                     <button onClick={() => cancelOffer(o)}
@@ -198,10 +198,10 @@ export function OfferPage() {
             )}
             {listings.map((l, i) => (
               <button key={l.pubkey || l.mint} onClick={() => setOfferMint(l.mint)}
-                className={`w-full flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border text-left ${offerMint === l.mint ? "border-wheat-500 bg-wheat-500/10" : "border-straw/15 bg-soil-800/60"}`}>
+                className={`w-full flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border text-left ${offerMint === l.mint ? "border-accent-500 bg-accent-500/10" : "border-straw/15 bg-soil-800/60"}`}>
                 <span className="flex-1 min-w-0 text-sm text-parchment break-all">{shortAddr(l.mint)}</span>
                 <span className="text-straw text-xs min-w-0 break-words">{copy.asking}: {fmtSol(l.priceLamports, language)} ◎</span>
-                {offerMint === l.mint && <span className="text-wheat-500">✓</span>}
+                {offerMint === l.mint && <span className="text-accent-500">✓</span>}
               </button>
             ))}
             <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -210,7 +210,7 @@ export function OfferPage() {
                 className="flex-1 min-w-0 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm" />
             </div>
             <button onClick={createOffer} disabled={!offerMint}
-              className="w-full py-2.5 rounded-xl bg-wheat-600 text-white font-semibold text-sm disabled:opacity-40">
+              className="w-full py-2.5 rounded-xl bg-accent-600 text-white font-semibold text-sm disabled:opacity-40">
               {copy.send}
             </button>
           </motion.div>

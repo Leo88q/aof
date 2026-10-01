@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Непринятые findings внешнего baseline
 
 Это review, не новый внешний аудит. Ни один finding не помечен accepted-risk; владелец должен быть назначен командой. Все 17 остаются открытыми до независимой проверки.

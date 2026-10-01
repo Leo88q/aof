@@ -15,13 +15,13 @@ import {
   seasonFromDayId,
   weatherDay,
   weatherIndexForDay,
-  wellRatePerHourUnits,
+  gridRatePerHourUnits,
 } from '../src/lib/weatherSchedule';
 
 /**
  * Погода — это правило дня, а не данные из сети. Значит зеркало на бэкенде
  * обязано совпадать с ядром численно, а не «примерно»: по этой же функции
- * `well_accrual` начисляет воду за каждую секунду окна.
+ * `grid_accrual` начисляет воду за каждую секунду окна.
  *
  * Тест читает исходники Rust и считает ожидания из них — независимо от таблиц
  * модуля. Любое расхождение (множитель, полосы, ставки, длина дня) валит CI.
@@ -71,7 +71,7 @@ assert.equal(rustNumber(constantsRs, /pub const WEATHER_NOMINAL: u8 = (\d+)/, 'W
 assert.equal(rustNumber(constantsRs, /pub const WEATHER_SURGE: u8 = (\d+)/, 'WEATHER_SURGE'), WEATHER_SURGE);
 assert.equal(rustNumber(constantsRs, /pub const WEATHER_FRENZY: u8 = (\d+)/, 'WEATHER_FRENZY'), WEATHER_FRENZY);
 
-/** `WELL_RATE_*` в Rust: либо `0`, либо `N * RESOURCE_UNIT` — читаем выражение как написано. */
+/** `GRID_RATE_*` в Rust: либо `0`, либо `N * RESOURCE_UNIT` — читаем выражение как написано. */
 function rustWellRate(name: string): number {
   const match = constantsRs.match(new RegExp(`pub const ${name}: u64 = ([^;]+);`));
   assert.ok(match, `не найдено в Rust: ${name}`);
@@ -83,15 +83,15 @@ function rustWellRate(name: string): number {
   return Number(expression);
 }
 
-const rustRates = ['WELL_RATE_BLACKOUT', 'WELL_RATE_NOMINAL', 'WELL_RATE_SURGE', 'WELL_RATE_FRENZY']
+const rustRates = ['GRID_RATE_BLACKOUT', 'GRID_RATE_NOMINAL', 'GRID_RATE_SURGE', 'GRID_RATE_FRENZY']
   .map(rustWellRate);
 assert.deepEqual(
-  [0, 1, 2, 3].map((index) => wellRatePerHourUnits(index).toString()),
+  [0, 1, 2, 3].map((index) => gridRatePerHourUnits(index).toString()),
   rustRates.map(String),
   'ставка колодца по погоде разошлась с aof-core/src/constants.rs',
 );
 assert.deepEqual(
-  [0, 1, 2, 3].map((index) => Number(wellRatePerHourUnits(index) / RESOURCE_UNIT)),
+  [0, 1, 2, 3].map((index) => Number(gridRatePerHourUnits(index) / RESOURCE_UNIT)),
   Object.values(WEATHER_META).map((meta) => meta.ratePerHour),
   'человеческая ставка в WEATHER_META разошлась с цепью',
 );

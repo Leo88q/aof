@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Стенд сайта: фон и приборные окна (2026-09-30)
 
 Задача владельца: «добавить сгенерированные картинки на фон сайта, а окошки

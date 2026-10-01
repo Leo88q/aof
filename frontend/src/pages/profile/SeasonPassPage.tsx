@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '../../lib/api';
 import { handleTxResponse } from '../../lib/txFlow';
+import type { SeasonPassInitIntent } from '../../lib/transactionIntent';
 import { useVipStatus } from '../../lib/useVipStatus';
 import { readActiveSeason } from '../../lib/currentSeasonReadings';
 import { chooseVipTheme, readVipTheme, type VipTheme } from '../../lib/vipTheme';
@@ -10,6 +11,7 @@ import { seasonPassCopy } from '../../i18n/seasonPassCopy';
 import { Card } from '../../components/ui/Card';
 import { UI_ICONS } from '../../lib/visualAssets';
 import { useTreasury, useFlash } from '../../lib/marketUtils';
+import { fetchSeasonPassQuote, lamportsToSol, type SeasonPassQuote } from '../../lib/seasonPassQuote';
 import { NoticeMsg } from '../../components/visual/NoticeMsg';
 
 // No paid offer before both reward tracks and enforceable VIP benefits pass devnet.
@@ -31,6 +33,10 @@ export function SeasonPassPage() {
   const pendingKey = user && seasonId !== null ? `${user}:${seasonId}` : null;
   const paymentBlocked = pendingKey !== null && paymentBlockedFor === pendingKey;
   const [theme, setTheme] = useState<VipTheme>('copper');
+  // Live-котировка сетевых расходов: пропуск стоит 0 игровых токенов, но rent
+  // аккаунта и комиссию сети платит игрок — цифры показываем до подписи.
+  const [quote, setQuote] = useState<SeasonPassQuote | null>(null);
+  const [quoteFailed, setQuoteFailed] = useState(false);
   useEffect(() => {
     setTheme(readVipTheme(user, seasonId ?? -1, snapshot?.isVip === true) ?? 'copper');
   }, [user, seasonId, snapshot?.isVip]);
@@ -70,6 +76,40 @@ export function SeasonPassPage() {
     }
   }
 
+  // Пропуска ещё нет — игрок создаёт его сам, своей транзакцией и за свой rent.
+  // Оператор не платит за аккаунт игрока; «бесплатно» здесь означает только
+  // нулевую цену пропуска в игровых токенах, сетевые расходы несёт игрок.
+  const canInitPass = Boolean(seasonId !== null && user && reading?.owner === user &&
+    snapshot?.seasonActive && !snapshot.pass && !busy);
+  const showInitPass = Boolean(snapshot?.seasonActive && !snapshot.pass && user && reading?.owner === user);
+
+  useEffect(() => {
+    if (!showInitPass) { setQuote(null); setQuoteFailed(false); return; }
+    let alive = true;
+    setQuoteFailed(false);
+    fetchSeasonPassQuote()
+      .then((q) => { if (alive) setQuote(q); })
+      .catch(() => { if (alive) { setQuote(null); setQuoteFailed(true); } });
+    return () => { alive = false; };
+  }, [showInitPass]);
+
+  async function initPass() {
+    if (!canInitPass || !user || seasonId === null) return;
+    setBusy(true);
+    try {
+      flash(c.preparing);
+      const resp = await api.season.passInit({ player: user, seasonId });
+      const intent: SeasonPassInitIntent = { kind: 'seasonPassInit', user, seasonId };
+      const result = await handleTxResponse(resp, intent);
+      flash(result.success ? c.submitted : result.signature ? c.pending : c.failed);
+      refresh();
+    } catch {
+      flash(c.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const status = !user ? c.connect : !reading || reading.kind === 'loading' ? c.verifying
     : reading.kind === 'error' || !snapshot ? c.unavailable
     : snapshot.isVip ? c.active : snapshot.passPremium ? c.expired
@@ -81,7 +121,7 @@ export function SeasonPassPage() {
         className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
         <NoticeMsg text={txStatus} />
       </motion.div>}
-      <Card className="bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30">
+      <Card className="bg-gradient-to-r from-accent-600/20 to-soil-850 border border-accent-600/30">
         <div className="flex items-center gap-3 min-w-0">
           <img src={UI_ICONS.seasonPass} alt="" className="w-12 h-12 object-contain shrink-0" />
           <div className="flex-1 min-w-0">
@@ -115,6 +155,20 @@ export function SeasonPassPage() {
             </div>)}
         </div>
       </Card>}
+      {snapshot?.seasonActive && !snapshot.pass && user && reading?.owner === user && <>
+        <p className="text-straw text-xs" role="note">{c.initPassNote}</p>
+        {quote && <div className="text-straw text-xs space-y-1" role="note" aria-label={c.quoteTitle}>
+          <p>{c.quoteTitle}</p>
+          <p>{c.quoteRent(lamportsToSol(quote.rentLamports), String(quote.rentLamports))}</p>
+          <p>{c.quoteFee(lamportsToSol(quote.baseFeeLamports), String(quote.baseFeeLamports),
+            quote.priorityMicroLamports === null ? '—' : String(quote.priorityMicroLamports))}</p>
+        </div>}
+        {quoteFailed && <p className="text-straw text-xs" role="note">{c.quoteUnavailable}</p>}
+        <button type="button" onClick={initPass} disabled={!canInitPass}
+          className="w-full py-3.5 px-3 rounded-2xl bg-soil-800 border border-gold/40 text-parchment font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
+          {c.initPass}
+        </button>
+      </>}
       {snapshot?.seasonActive && !snapshot.passPremium && !paymentBlocked && <>
         {!treasury && <p className="text-straw text-xs" role="status">{c.missingTreasury}</p>}
         <button type="button" onClick={buy} disabled={!canBuy}

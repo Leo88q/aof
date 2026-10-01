@@ -1,5 +1,5 @@
 {
-  "address": "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
+  "address": "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY",
   "metadata": {
     "name": "aof_market",
     "version": "0.1.0",
@@ -7,52 +7,6 @@
     "description": "NeuroForge — Age of Intelligence Hot Market + Session Keys"
   },
   "instructions": [
-    {
-      "name": "cancel_limit_order",
-      "discriminator": [
-        132,
-        156,
-        132,
-        31,
-        67,
-        40,
-        232,
-        97
-      ],
-      "accounts": [
-        {
-          "name": "maker",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "order",
-          "writable": true
-        },
-        {
-          "name": "currency_mint",
-          "writable": true
-        },
-        {
-          "name": "order_vault",
-          "writable": true
-        },
-        {
-          "name": "maker_currency",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        }
-      ],
-      "args": [
-        {
-          "name": "rarity",
-          "type": "u8"
-        }
-      ]
-    },
     {
       "name": "crank_market",
       "discriminator": [
@@ -475,101 +429,6 @@
       ]
     },
     {
-      "name": "place_limit_order",
-      "discriminator": [
-        108,
-        176,
-        33,
-        186,
-        146,
-        229,
-        1,
-        197
-      ],
-      "accounts": [
-        {
-          "name": "config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  114,
-                  107,
-                  101,
-                  116,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "maker",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "order",
-          "writable": true
-        },
-        {
-          "name": "currency_mint",
-          "writable": true
-        },
-        {
-          "name": "maker_currency",
-          "writable": true
-        },
-        {
-          "name": "order_vault",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "rarity",
-          "type": "u8"
-        },
-        {
-          "name": "currency",
-          "type": {
-            "defined": {
-              "name": "Currency"
-            }
-          }
-        },
-        {
-          "name": "is_buy",
-          "type": "bool"
-        },
-        {
-          "name": "limit_price",
-          "type": "u64"
-        },
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "set_fees",
       "discriminator": [
         137,
@@ -822,19 +681,6 @@
   ],
   "accounts": [
     {
-      "name": "HotLimitOrder",
-      "discriminator": [
-        197,
-        198,
-        219,
-        217,
-        218,
-        149,
-        161,
-        23
-      ]
-    },
-    {
       "name": "HotMarketPool",
       "discriminator": [
         179,
@@ -928,32 +774,6 @@
       ]
     },
     {
-      "name": "LimitOrderMatched",
-      "discriminator": [
-        11,
-        163,
-        116,
-        110,
-        238,
-        93,
-        229,
-        28
-      ]
-    },
-    {
-      "name": "LimitOrderPlaced",
-      "discriminator": [
-        104,
-        46,
-        231,
-        29,
-        78,
-        174,
-        107,
-        112
-      ]
-    },
-    {
       "name": "AuthorityRotationProposed",
       "discriminator": [
         76,
@@ -1041,33 +861,28 @@
     },
     {
       "code": 6009,
-      "name": "OrderNotActive",
-      "msg": "Order is not active"
-    },
-    {
-      "code": 6010,
-      "name": "TradingDisabled",
-      "msg": "Market trading is disabled until canonical ToolData transfer is implemented"
-    },
-    {
-      "code": 6011,
       "name": "InsufficientReserve",
       "msg": "Insufficient reserve in pool"
     },
     {
-      "code": 6012,
+      "code": 6010,
       "name": "NoPendingAuthority",
       "msg": "No authority rotation is pending"
     },
     {
-      "code": 6013,
+      "code": 6011,
       "name": "NotPendingAuthority",
       "msg": "Signer is not the pending authority"
     },
     {
-      "code": 6014,
+      "code": 6012,
       "name": "InvalidInput",
       "msg": "Invalid input"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidCurrencyMint",
+      "msg": "Currency mint is not the canonical mint for the selected currency"
     }
   ],
   "types": [
@@ -1081,46 +896,6 @@
           },
           {
             "name": "Gem"
-          }
-        ]
-      }
-    },
-    {
-      "name": "HotLimitOrder",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "rarity",
-            "type": "u8"
-          },
-          {
-            "name": "currency",
-            "type": {
-              "defined": {
-                "name": "Currency"
-              }
-            }
-          },
-          {
-            "name": "is_buy",
-            "type": "bool"
-          },
-          {
-            "name": "limit_price",
-            "type": "u64"
-          },
-          {
-            "name": "amount_escrowed",
-            "type": "u64"
-          },
-          {
-            "name": "active",
-            "type": "bool"
           }
         ]
       }
@@ -1304,50 +1079,6 @@
           },
           {
             "name": "price",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LimitOrderMatched",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "rarity",
-            "type": "u8"
-          },
-          {
-            "name": "price",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LimitOrderPlaced",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "rarity",
-            "type": "u8"
-          },
-          {
-            "name": "is_buy",
-            "type": "bool"
-          },
-          {
-            "name": "limit_price",
             "type": "u64"
           }
         ]

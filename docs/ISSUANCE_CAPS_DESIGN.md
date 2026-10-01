@@ -5,8 +5,8 @@
 > утверждения больше не соответствуют коду:
 >
 > 1. **Cap покрывает 2 из 9 минтящих путей.** `IssuanceCap` проверяется только в
->    `mint_resource` и `mint_resource_once`. `collect_mining`, `collect_flour`,
->    `collect_bread`, `collect_well_water`, `craft_recipe`, `craft`,
+>    `mint_resource` и `mint_resource_once`. `collect_mining`, `collect_signal`,
+>    `collect_model`, `collect_power`, `craft_recipe`, `craft`,
 >    `claim_season_reward` и `explore_reveal` эмитировали без всякого лимита
 >    (F-03). Глобальный потолок теперь живёт в `MaterialMints.max_supply` и
 >    проверяется функцией `check_supply_cap()` на **всех** путях; `IssuanceCap`
@@ -64,8 +64,8 @@ pub struct IssuanceCap {
 // 8 + 1 + 8 + 8 + 8 + 8 + 16 + 1 = 58 bytes
 ```
 
-Один PDA на `ResourceKind` (27 видов) — независимые лимиты; POTATO и gems с
-малым cap, food/wood/stone — с большим.
+Один PDA на `ResourceKind` (27 видов) — независимые лимиты; MIND и gems с
+малым cap, Data/Circuit/Silicon — с большим.
 
 ## Логика в `execute_mint`
 
@@ -111,7 +111,7 @@ mint не двигает счётчик. Учитывается `amount` (gross)
     pub gross: u64, pub fee: u64, pub minted_in_epoch: u64, pub cap_per_epoch: u64, pub slot: u64 }
 ```
 
-Закрывает одновременно «`potatoMinted24h` unavailable» в economy monitor: индексер
+Закрывает одновременно «`mindMinted24h` unavailable» в economy monitor: индексер
 читает `ResourceIssued`, а не парсит SPL `MintTo`.
 
 ## 5. Разделение authority (вместе с Squads)
@@ -128,9 +128,9 @@ mint не двигает счётчик. Учитывается `amount` (gross)
 
 | kind | epoch | cap_per_epoch | обоснование |
 |---|---|---|---|
-| Potato | 24h | 2× среднедневной reward payout последних 30 дней | запас на ивенты |
-| Gem*, Flask*, LoveHeart | 24h | 3× дневного среднего | редкие, малый объём |
-| Food/Wood/Stone | 24h | 5× дневного среднего | базовые, всплески при онбординге |
+| MIND | 24h | 2× среднедневной reward payout последних 30 дней | запас на ивенты |
+| QuantumBit/NeuralChip/PhotonBit/BioChip, fluids, SoulCore | 24h | 3× дневного среднего | редкие, малый объём |
+| Data/Circuit/Silicon | 24h | 5× дневного среднего | базовые, всплески при онбординге |
 | остальные | 24h | 3× | |
 
 При превышении backend получает `IssuanceCapExceeded`, inbox-claim уходит в

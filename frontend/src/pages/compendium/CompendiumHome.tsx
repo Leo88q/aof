@@ -10,7 +10,7 @@ import { toolName, toolsCopy } from "../../i18n/toolsCopy";
 import { COMPENDIUM_RARITIES, COMPENDIUM_TOOL_IDS, readCompendiumGrid } from "../../lib/compendiumReadings";
 
 type Read = { owner: string; state: 'loading' | 'ready' | 'error'; entries?: Set<string> };
-const rarityColors = ['border-straw/40', 'border-sprout-500/40', 'border-water-500/40', 'border-wheat-500/40', 'border-gold/60'] as const;
+const rarityColors = ['border-straw/40', 'border-sprout-500/40', 'border-info-500/40', 'border-accent-500/40', 'border-gold/60'] as const;
 
 export function CompendiumHome() {
   const user = useWalletStr();
@@ -47,12 +47,12 @@ export function CompendiumHome() {
       <Card className="mb-4">
         <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
           <span className="text-parchment text-sm font-semibold break-words">{copy.progress}</span>
-          <span className="text-wheat-500 font-bold">{pct === null ? '—' : `${pct.toLocaleString(language)}%`}</span>
+          <span className="text-accent-500 font-bold">{pct === null ? '—' : `${pct.toLocaleString(language)}%`}</span>
         </div>
         <div className="h-3 bg-soil-800 rounded-full overflow-hidden">
           <motion.div initial={{ width: 0 }} animate={{ width: pct === null ? '0%' : `${pct}%` }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-wheat-700 to-wheat-500 rounded-full" />
+            className="h-full bg-gradient-to-r from-accent-700 to-accent-500 rounded-full" />
         </div>
         <p role="status" className="text-straw text-xs mt-2 break-words">{message}</p>
         <p className="text-straw/70 text-xs mt-3 break-words">{copy.milestone}</p>

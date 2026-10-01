@@ -25,7 +25,7 @@
 #                                           preflight:mining-devnet` и прочитать
 #                                           отчёт (BLOCKED не считается OK);
 #   * валидный ADMIN_TOKEN                — GET /admin/config/mining отвечает;
-#   * четыре выплатных минта заданы       — woodMint, stoneMint, meat, seeds;
+#   * четыре выплатных минта заданы       — circuitMint, siliconMint, dataset, neuron;
 #   * MaterialMints проходит канонический валидатор бэкенда
 #                                           (/query/material-mints = 200).
 set -euo pipefail
@@ -98,15 +98,15 @@ check_mint() { # ЧЕЛОВЕКОЧИТАЕМОЕ ИМЯ ЗНАЧЕНИЕ
     ok "$label=$value"
   fi
 }
-check_mint "Config.woodMint  (plasma_cutter → CIRCUIT)"  "$(echo "$CONFIG_JSON" | jq -r '.woodMint // empty')"
-check_mint "Config.stoneMint (silicon_extractor → SILICON)" "$(echo "$CONFIG_JSON" | jq -r '.stoneMint // empty')"
+check_mint "Config.circuitMint  (plasma_cutter → CIRCUIT)"  "$(echo "$CONFIG_JSON" | jq -r '.circuitMint // empty')"
+check_mint "Config.siliconMint (silicon_extractor → SILICON)" "$(echo "$CONFIG_JSON" | jq -r '.siliconMint // empty')"
 if [ "$MATERIALS_HTTP" != "200" ]; then
   blockers+=("MaterialMints (/query/material-mints = $MATERIALS_HTTP)")
   echo "   ✗ MaterialMints не проходит канонический валидатор: HTTP $MATERIALS_HTTP $(echo "$MATERIALS_JSON" | jq -rc '.error // empty')"
 else
   MATERIAL_MINTS="$(echo "$MATERIALS_JSON" | jq -r '.mints // {}')"
-  check_mint "MaterialMints.meat  (data_harvester, quantum_transmitter → DATASET)" "$(echo "$MATERIAL_MINTS" | jq -r '.meat // empty')"
-  check_mint "MaterialMints.seeds (neural_seeder → NEURON)" "$(echo "$MATERIAL_MINTS" | jq -r '.seeds // empty')"
+  check_mint "MaterialMints.dataset  (data_harvester, quantum_transmitter → DATASET)" "$(echo "$MATERIAL_MINTS" | jq -r '.dataset // empty')"
+  check_mint "MaterialMints.neuron (neural_seeder → NEURON)" "$(echo "$MATERIAL_MINTS" | jq -r '.neuron // empty')"
 fi
 
 step "4/6 Решение"
@@ -144,6 +144,6 @@ else
   echo
   echo "Дальше (порядок из docs/UNBLOCK_PLAN_2026-09-30.md §1):"
   echo "  1) игрок: start_mining, затем collect_mining — выплата приходит на минт из шага 3;"
-  echo "  2) ремонт: POST /tools/repair должен отвечать 200 (Config.stoneMint/woodMint уже заданы);"
+  echo "  2) ремонт: POST /tools/repair должен отвечать 200 (Config.siliconMint/circuitMint уже заданы);"
   echo "  3) выключить обратно: POST /admin/config/mining {\"enabled\":false}"
 fi

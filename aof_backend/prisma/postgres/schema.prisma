@@ -519,10 +519,10 @@ model EconomySnapshot {
   id             String   @id @default(cuid())
   timestamp      DateTime @default(now())
   
-  // POTATO метрики
-  potatoSupply   BigInt   // Total supply
-  potatoBurned24h BigInt  // Burned за 24 часа
-  potatoMinted24h BigInt  // Minted за 24 часа
+  // MIND supply metrics
+  mindSupply   BigInt   // Total supply
+  mindBurned24h BigInt  // Burned за 24 часа
+  mindMinted24h BigInt  // Minted за 24 часа
   inflation24h   Float    // Процент инфляции
   
   // Активность

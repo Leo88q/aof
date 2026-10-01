@@ -10,7 +10,7 @@ type Copy = {
 
 export const drumCopy: Record<Language, Copy> = {
   ru: {
-    unavailable: 'Барабан Potato пока недоступен: внешний токен не подключён. Старые спины можно завершить или вернуть.', rawUnits: 'атомарных единиц (минт не проверен)',
+    unavailable: 'Барабан MIND пока недоступен: внешний токен не подключён. Старые спины можно завершить или вернуть.', rawUnits: 'атомарных единиц (минт не проверен)',
     title: 'Барабан удачи', cost: n => `Спин стоит ${n} атомарных единиц (минт не проверен). Баланс проверяет программа.`,
     connect: 'Подключите кошелёк', notCompleted: 'Спин не выполнен',
     paid: 'Спин оплачен. Оракул Switchboard определяет приз…',
@@ -25,7 +25,7 @@ export const drumCopy: Record<Language, Copy> = {
     oracle: 'Приз определяет оракул Switchboard On-Demand. Проверить раскрытый результат можно по событию DrumRevealed в сети.',
   },
   en: {
-    unavailable: 'Potato wheel unavailable: external token not connected. Existing spins can still be settled or refunded.', rawUnits: 'raw units (mint unverified)',
+    unavailable: 'MIND wheel unavailable: external token not connected. Existing spins can still be settled or refunded.', rawUnits: 'raw units (mint unverified)',
     title: 'Wheel of fortune', cost: n => `A spin costs ${n} raw units (mint unverified). The program checks your balance.`,
     connect: 'Connect your wallet', notCompleted: 'Spin not completed',
     paid: 'Spin paid for. The Switchboard oracle is determining the prize…',
@@ -40,7 +40,7 @@ export const drumCopy: Record<Language, Copy> = {
     oracle: 'The Switchboard On-Demand oracle determines the prize. You can check a revealed result in the on-chain DrumRevealed event.',
   },
   pt: {
-    unavailable: 'Roda Potato indisponível: token externo não conectado. Giros antigos podem ser resolvidos ou reembolsados.', rawUnits: 'unidades atómicas (mint não verificado)',
+    unavailable: 'Roda MIND indisponível: token externo não conectado. Giros antigos podem ser resolvidos ou reembolsados.', rawUnits: 'unidades atómicas (mint não verificado)',
     title: 'Roda da sorte', cost: n => `Cada giro custa ${n} unidades atómicas (mint não verificado). O programa verifica o saldo.`,
     connect: 'Conecte a carteira', notCompleted: 'O giro não foi concluído',
     paid: 'Giro pago. O oráculo Switchboard está determinando o prêmio…',
@@ -55,7 +55,7 @@ export const drumCopy: Record<Language, Copy> = {
     oracle: 'O oráculo Switchboard On-Demand determina o prêmio. O resultado revelado pode ser conferido no evento DrumRevealed na rede.',
   },
   es: {
-    unavailable: 'Rueda Potato no disponible: token externo sin conectar. Los giros anteriores se pueden resolver o reembolsar.', rawUnits: 'unidades atómicas (mint sin verificar)',
+    unavailable: 'Rueda MIND no disponible: token externo sin conectar. Los giros anteriores se pueden resolver o reembolsar.', rawUnits: 'unidades atómicas (mint sin verificar)',
     title: 'Ruleta de la suerte', cost: n => `Cada giro cuesta ${n} unidades atómicas (mint sin verificar). El programa comprueba el saldo.`,
     connect: 'Conecta tu cartera', notCompleted: 'El giro no se completó',
     paid: 'Giro pagado. El oráculo Switchboard está determinando el premio…',
@@ -70,7 +70,7 @@ export const drumCopy: Record<Language, Copy> = {
     oracle: 'El oráculo Switchboard On-Demand determina el premio. Puedes verificar el resultado revelado en el evento DrumRevealed de la cadena.',
   },
   vi: {
-    unavailable: 'Vòng quay Potato chưa khả dụng: chưa kết nối token ngoài. Lượt cũ vẫn có thể xử lý hoặc hoàn tiền.', rawUnits: 'đơn vị nguyên tử (chưa xác minh mint)',
+    unavailable: 'Vòng quay MIND chưa khả dụng: chưa kết nối token ngoài. Lượt cũ vẫn có thể xử lý hoặc hoàn tiền.', rawUnits: 'đơn vị nguyên tử (chưa xác minh mint)',
     title: 'Vòng quay may mắn', cost: n => `Mỗi lượt quay tốn ${n} đơn vị nguyên tử (chưa xác minh mint). Chương trình sẽ kiểm tra số dư.`,
     connect: 'Kết nối ví', notCompleted: 'Lượt quay chưa hoàn tất',
     paid: 'Đã thanh toán lượt quay. Hệ thống Switchboard đang xác định phần thưởng…',
@@ -85,7 +85,7 @@ export const drumCopy: Record<Language, Copy> = {
     oracle: 'Hệ thống Switchboard On-Demand xác định phần thưởng. Bạn có thể kiểm tra kết quả đã công bố qua sự kiện DrumRevealed trên chuỗi.',
   },
   id: {
-    unavailable: 'Roda Potato belum tersedia: token eksternal belum terhubung. Putaran lama masih dapat diselesaikan atau dikembalikan.', rawUnits: 'unit atomik (mint belum diverifikasi)',
+    unavailable: 'Roda MIND belum tersedia: token eksternal belum terhubung. Putaran lama masih dapat diselesaikan atau dikembalikan.', rawUnits: 'unit atomik (mint belum diverifikasi)',
     title: 'Roda keberuntungan', cost: n => `Setiap putaran membutuhkan ${n} unit atomik (mint belum diverifikasi). Program akan memeriksa saldo.`,
     connect: 'Hubungkan dompet', notCompleted: 'Putaran tidak selesai',
     paid: 'Putaran telah dibayar. Oracle Switchboard sedang menentukan hadiah…',
@@ -100,7 +100,7 @@ export const drumCopy: Record<Language, Copy> = {
     oracle: 'Oracle Switchboard On-Demand menentukan hadiah. Kamu dapat memeriksa hasil yang terungkap melalui peristiwa DrumRevealed di blockchain.',
   },
   fil: {
-    unavailable: 'Hindi pa available ang Potato wheel: hindi pa nakakabit ang external token. Puwede pang tapusin o i-refund ang lumang ikot.', rawUnits: 'atomic unit (hindi beripikado ang mint)',
+    unavailable: 'Hindi pa available ang MIND wheel: hindi pa nakakabit ang external token. Puwede pang tapusin o i-refund ang lumang ikot.', rawUnits: 'atomic unit (hindi beripikado ang mint)',
     title: 'Gulong ng suwerte', cost: n => `Nagkakahalaga ng ${n} atomic unit (hindi beripikado ang mint) ang bawat ikot. Susuriin ng programa ang balanse.`,
     connect: 'Ikonekta ang wallet', notCompleted: 'Hindi natapos ang ikot',
     paid: 'Nabayaran na ang ikot. Tinutukoy ng Switchboard oracle ang premyo…',

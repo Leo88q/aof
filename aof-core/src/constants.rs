@@ -35,7 +35,7 @@ pub const COLLECTOR_SEED: &[u8] = b"collector";
 // [НОВОЕ]
 // ===== [НОВОЕ] SKR-привилегия =====
 pub const SKR_MIN_BALANCE: u64 = 3_000_000_000_000; // 3000 SKR (с 9 decimals)
-pub const SKR_CRAFT_DISCOUNT_BPS: u16 = 1500; // 15% скидка на POTATO
+pub const SKR_CRAFT_DISCOUNT_BPS: u16 = 1500; // 15% скидка на MIND
  // 6 ресурсов // 4 массива по 4 x u64 + bump
 
 /// Fee constants (in micros, 1 SOL = 1e6 micros)
@@ -102,21 +102,21 @@ pub const RESOURCE_KIND_COUNT: usize = 27;
 /// Sentinel for `MaterialMints::max_supply`: no ceiling configured.
 pub const SUPPLY_CAP_UNLIMITED: u64 = u64::MAX;
 
-// [НОВОЕ] Стоимость ремонта (STONE за 1 юнит прочности), по редкости —
+// [НОВОЕ] Стоимость ремонта (SILICON за 1 юнит прочности), по редкости —
 // используется через Rarity::repair_stone_cost_per_unit() в state.rs,
 // тем же паттерном, что MAX_HOURS_* + Rarity::max_hours().
 // =====================================================================
 // [AUDIT F-08] Кривая ремонта пересчитана.
 //
-// Было: yield растёт 10 -> 18 (x1.8), а ремонт 3 -> 70 WOOD (x23.3) и
-// 2 -> 45 STONE (x22.5). Портфель 3 plasma cutters + 3 silicon extractors по 20 ч/сутки убыточен
-// по обоим ресурсам уже с Rare (-900/-300), а с Uncommon — по WOOD.
+// Было: yield растёт 10 -> 18 (x1.8), а ремонт 3 -> 70 CIRCUIT (x23.3) и
+// 2 -> 45 SILICON (x22.5). Портфель 3 plasma cutters + 3 silicon extractors по 20 ч/сутки убыточен
+// по обоим ресурсам уже с Rare (-900/-300), а с Uncommon — по CIRCUIT.
 // Условие безубыточности портфеля: `yield_per_hour > 2 * repair_per_unit`
 // (3 добывающих инструмента кормят ремонт всех 6).
 //
-// Стало: ремонт растёт вдвое медленнее добычи (x1.67 WOOD, x1.75 STONE
+// Стало: ремонт растёт вдвое медленнее добычи (x1.67 CIRCUIT, x1.75 SILICON
 // против x1.8 у yield), поэтому нетто-маржа строго растёт с редкостью:
-//   Common    +12.0 WOOD/ч  +18.0 STONE/ч
+//   Common    +12.0 CIRCUIT/ч  +18.0 SILICON/ч
 //   Uncommon  +13.5         +19.5
 //   Rare      +15.0         +21.0
 //   Epic      +18.0         +27.0
@@ -131,7 +131,7 @@ pub const REPAIR_SILICON_RARE: u64 = 2 * RESOURCE_UNIT + HALF_UNIT;
 pub const REPAIR_SILICON_EPIC: u64 = 3 * RESOURCE_UNIT;
 pub const REPAIR_SILICON_LEGENDARY: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
 
-// Стоимость ремонта в WOOD за единицу прочности
+// Стоимость ремонта в CIRCUIT за единицу прочности
 pub const REPAIR_CIRCUIT_COMMON: u64 = 3 * RESOURCE_UNIT;
 pub const REPAIR_CIRCUIT_UNCOMMON: u64 = 3 * RESOURCE_UNIT + HALF_UNIT;
 pub const REPAIR_CIRCUIT_RARE: u64 = 4 * RESOURCE_UNIT;
@@ -211,11 +211,11 @@ pub const PACK_TOOL_TYPES: [&str; 3] = ["plasma_cutter", "silicon_extractor", "d
 pub const REROLL_ODDS_BPS_DEFAULT: [u16; 5] = [5_500, 3_000, 1_100, 400, 0];
 
 // ----- Exploration: 10 тиров -----
-// [ФАКТ, из аудита index.js]: EXP_TIERS, TRIP_COST = {food:75, wood:35, stone:35}
-pub const TRIP_COST_FOOD: u64 = 75 * RESOURCE_UNIT;
-pub const TRIP_COST_WOOD: u64 = 35 * RESOURCE_UNIT;
-pub const TRIP_COST_STONE: u64 = 35 * RESOURCE_UNIT;
-pub const TRIP_COST_MEAT: u64 = 50 * RESOURCE_UNIT; // [НОВОЕ] Мясо для исследования
+// Exploration costs are denominated in canonical Data, Circuit, and Silicon.
+pub const TRIP_COST_DATA: u64 = 75 * RESOURCE_UNIT;
+pub const TRIP_COST_CIRCUIT: u64 = 35 * RESOURCE_UNIT;
+pub const TRIP_COST_SILICON: u64 = 35 * RESOURCE_UNIT;
+pub const TRIP_COST_DATASET: u64 = 50 * RESOURCE_UNIT; // [НОВОЕ] Мясо для исследования
 pub const EXPLORATION_COOLDOWN_HOURS: [u8; 10] = [24, 22, 20, 18, 16, 14, 12, 10, 9, 8];
 pub const EXPLORATION_SUCCESS_BPS: [u16; 10] =
     [3_000, 4_000, 5_000, 5_500, 6_000, 6_000, 6_500, 7_000, 7_500, 8_000];
@@ -230,13 +230,13 @@ pub const MAX_EXPLORATION_TIER: u8 = 10;
 // программе крафт устроен иначе — сжигает целый инструмент N-1, шардов
 // как отдельной сущности craft не использует (см. AUDIT_V4). Чтобы не
 // city вводить параллельную неиспользуемую экономику, exploration здесь
-// выдаёт бонусные WOOD/STONE вместо шардов — тем же диапазоном "штук".
+// выдаёт бонусные CIRCUIT/SILICON вместо шардов — тем же диапазоном "штук".
 
 // ----- Рефералы: 7 тиров -----
 pub const REFERRAL_PCT_BPS: [u16; 7] = [10, 50, 100, 170, 250, 350, 500]; // 0.1%..5.0%
-pub const REFERRAL_UPGRADE_WOOD: [u64; 7] = [0, 1_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 12_000 * RESOURCE_UNIT, 20_000 * RESOURCE_UNIT, 50_000 * RESOURCE_UNIT];
-pub const REFERRAL_UPGRADE_STONE: [u64; 7] = [0, 1_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 12_000 * RESOURCE_UNIT, 20_000 * RESOURCE_UNIT, 50_000 * RESOURCE_UNIT];
-pub const REFERRAL_UPGRADE_FOOD: [u64; 7] = [0, 500 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 13_000 * RESOURCE_UNIT, 25_000 * RESOURCE_UNIT];
+pub const REFERRAL_UPGRADE_CIRCUIT: [u64; 7] = [0, 1_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 12_000 * RESOURCE_UNIT, 20_000 * RESOURCE_UNIT, 50_000 * RESOURCE_UNIT];
+pub const REFERRAL_UPGRADE_SILICON: [u64; 7] = [0, 1_000 * RESOURCE_UNIT, 3_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 12_000 * RESOURCE_UNIT, 20_000 * RESOURCE_UNIT, 50_000 * RESOURCE_UNIT];
+pub const REFERRAL_UPGRADE_DATA: [u64; 7] = [0, 500 * RESOURCE_UNIT, 2_000 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT, 7_000 * RESOURCE_UNIT, 13_000 * RESOURCE_UNIT, 25_000 * RESOURCE_UNIT];
 pub const REFERRAL_BASE_CAP: u32 = 5;
 pub const REFERRAL_MEDALLION_BONUS_CAP: u32 = 5;
 pub const REFERRAL_HISTORIAN_BONUS_CAP: u32 = 25;
@@ -247,8 +247,8 @@ pub const ENCHANT_MAX_LEVEL: u8 = 5;
 pub const FORGE_SUCCESS_BPS: [u16; 5] = [10_000, 9_000, 7_500, 5_500, 3_500];
 pub const FORGE_PARTIAL_FAIL_BPS: [u16; 5] = [0, 800, 2_000, 3_500, 4_500];
 // остальное — полная потеря (сброс уровня в 0)
-pub const ENCHANT_WOOD_COST: [u64; 5] = [200 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 1_200 * RESOURCE_UNIT, 2_400 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT];
-pub const ENCHANT_STONE_COST: [u64; 5] = [200 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 1_200 * RESOURCE_UNIT, 2_400 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT];
+pub const ENCHANT_CIRCUIT_COST: [u64; 5] = [200 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 1_200 * RESOURCE_UNIT, 2_400 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT];
+pub const ENCHANT_SILICON_COST: [u64; 5] = [200 * RESOURCE_UNIT, 500 * RESOURCE_UNIT, 1_200 * RESOURCE_UNIT, 2_400 * RESOURCE_UNIT, 4_000 * RESOURCE_UNIT];
 pub const ENCHANT_FEE_LAMPORTS: [u64; 5] = [
     33_000_000, 66_000_000, 133_000_000, 266_000_000, 800_000_000,
 ]; // ~$1/$2/$4/$8/$24 на референс-курсе 1 SOL=$100 (см. TOR v4 §5a.1)
@@ -334,14 +334,14 @@ pub const MINT_FEE_BOTH_MAX_BPS: u16 = 300;
 // [БЛОК L] Хлебная экономика: семена, space, базовые ставки
 // =====================================================================
 
-// Seeds для новых PDA
+// Resource-specific PDA seed bytes
 pub const MATERIAL_MINTS_SEED: &[u8] = b"material_mints";
 pub const ENERGY_ACCOUNT_SEED: &[u8] = b"energy_account";
-pub const FARM_TILE_SEED: &[u8] = b"farm_tile";
+pub const LAB_TILE_SEED: &[u8] = b"lab_tile";
 pub const WEATHER_STATE_SEED: &[u8] = b"weather_state";
-pub const WELL_STATE_SEED: &[u8] = b"well_state";
-pub const MILL_STATE_SEED: &[u8] = b"mill_state";
-pub const OVEN_STATE_SEED: &[u8] = b"oven_state";
+pub const GRID_STATE_SEED: &[u8] = b"grid_state";
+pub const SIGNAL_STATE_SEED: &[u8] = b"signal_state";
+pub const MODEL_STATE_SEED: &[u8] = b"model_state";
 
 // Space для новых аккаунтов
 
@@ -353,27 +353,27 @@ pub const YIELD_BPS_RARE: u16 = 13000;
 pub const YIELD_BPS_EPIC: u16 = 15000;
 pub const YIELD_BPS_LEGENDARY: u16 = 18000;
 
-// Ферма: рост пшеницы
-pub const WHEAT_GROW_DURATION: i64 = 6 * 3600; // 6 часов
+// Laboratory cell: Neuron-to-Synapse synthesis duration
+pub const SYNAPSE_SYNTHESIS_DURATION: i64 = 6 * 3600; // 6 часов
 pub const SYNAPSE_YIELD_MULT_BPS: u16 = 15000; // ×1.5 от посева
 
-// Мельница: время помола по партиям (в секундах)
-pub const MILL_TIME_SMALL: i64 = 1 * 3600;   // 1 час
-pub const MILL_TIME_MEDIUM: i64 = 3 * 3600;  // 3 часа
-pub const MILL_TIME_LARGE: i64 = 6 * 3600;   // 6 часов
+// Signal processing duration by batch size (seconds)
+pub const SIGNAL_PROCESSING_TIME_SMALL: i64 = 1 * 3600;   // 1 час
+pub const SIGNAL_PROCESSING_TIME_MEDIUM: i64 = 3 * 3600;  // 3 часа
+pub const SIGNAL_PROCESSING_TIME_LARGE: i64 = 6 * 3600;   // 6 часов
 
-// Печь: время выпечки по партиям
-pub const OVEN_TIME_SMALL: i64 = 2 * 3600;   // 2 часа
-pub const OVEN_TIME_MEDIUM: i64 = 5 * 3600;  // 5 часов
-pub const OVEN_TIME_LARGE: i64 = 10 * 3600;  // 10 часов
+// Model training duration by batch size
+pub const MODEL_TRAINING_TIME_SMALL: i64 = 2 * 3600;   // 2 часа
+pub const MODEL_TRAINING_TIME_MEDIUM: i64 = 5 * 3600;  // 5 часов
+pub const MODEL_TRAINING_TIME_LARGE: i64 = 10 * 3600;  // 10 часов
 
 // Энергия
 pub const ENERGY_CAP: u8 = 20;
 pub const ENERGY_REGEN_SECONDS: i64 = 30 * 60; // +1 за 30 минут
-pub const ENERGY_COST_PLANT: u8 = 1;
-pub const ENERGY_COST_HARVEST: u8 = 1;
-pub const ENERGY_COST_MILL: u8 = 2;
-pub const ENERGY_COST_OVEN: u8 = 2;
+pub const ENERGY_COST_SYNTHESIS: u8 = 1;
+pub const ENERGY_COST_COLLECTION: u8 = 1;
+pub const ENERGY_COST_SIGNAL_PROCESSING: u8 = 2;
+pub const ENERGY_COST_MODEL_TRAINING: u8 = 2;
 
 // Погода (enum значения)
 pub const WEATHER_BLACKOUT: u8 = 0;
@@ -381,18 +381,18 @@ pub const WEATHER_NOMINAL: u8 = 1;
 pub const WEATHER_SURGE: u8 = 2;
 pub const WEATHER_FRENZY: u8 = 3;
 
-// Ставки колодца (Water/час по погоде)
-pub const WELL_RATE_BLACKOUT: u64 = 0;
-pub const WELL_RATE_NOMINAL: u64 = 5 * RESOURCE_UNIT;
-pub const WELL_RATE_SURGE: u64 = 15 * RESOURCE_UNIT;
-pub const WELL_RATE_FRENZY: u64 = 20 * RESOURCE_UNIT;
+// Grid Station accrual rates (Power/hour by network load)
+pub const GRID_RATE_BLACKOUT: u64 = 0;
+pub const GRID_RATE_NOMINAL: u64 = 5 * RESOURCE_UNIT;
+pub const GRID_RATE_SURGE: u64 = 15 * RESOURCE_UNIT;
+pub const GRID_RATE_FRENZY: u64 = 20 * RESOURCE_UNIT;
 /// Maximum accrual window per collection. Excess elapsed time is discarded,
 /// preventing an account from minting an unbounded backlog after a long absence.
-pub const WELL_MAX_ACCRUAL_SECONDS: u64 = 24 * 60 * 60;
+pub const GRID_MAX_ACCRUAL_SECONDS: u64 = 24 * 60 * 60;
 
 // ===== [НОВОЕ] Инструкции #11 из аудита =====
 
-// Конверсия FOOD → энергия (1 FOOD = 10 энергии, максимум 100)
+// Конверсия DATA → энергия (1 DATA = 10 энергии, максимум 100)
 
 // Эффекты фляг (энергия за тип)
 
@@ -435,11 +435,11 @@ pub const SEASON_SPACE: usize = 8 + Season::INIT_SPACE;
 pub const SEASON_PASS_SPACE: usize = 8 + SeasonPass::INIT_SPACE;
 pub const MATERIAL_MINTS_SPACE: usize = 8 + MaterialMints::INIT_SPACE;
 pub const ENERGY_ACCOUNT_SPACE: usize = 8 + EnergyAccount::INIT_SPACE;
-pub const FARM_TILE_SPACE: usize = 8 + FarmTile::INIT_SPACE;
+pub const LAB_TILE_SPACE: usize = 8 + LabTile::INIT_SPACE;
 pub const WEATHER_STATE_SPACE: usize = 8 + WeatherState::INIT_SPACE;
-pub const WELL_STATE_SPACE: usize = 8 + WellState::INIT_SPACE;
-pub const MILL_STATE_SPACE: usize = 8 + MillState::INIT_SPACE;
-pub const OVEN_STATE_SPACE: usize = 8 + OvenState::INIT_SPACE;
+pub const GRID_STATE_SPACE: usize = 8 + GridState::INIT_SPACE;
+pub const SIGNAL_STATE_SPACE: usize = 8 + SignalState::INIT_SPACE;
+pub const MODEL_STATE_SPACE: usize = 8 + ModelState::INIT_SPACE;
 pub const VAULT_GUARD_SPACE: usize = 8 + VaultGuard::INIT_SPACE;
 pub const COLLECTOR_ALLOW_SPACE: usize = 8 + CollectorAllowEntry::INIT_SPACE;
 
@@ -497,9 +497,9 @@ mod economy_tests {
     /// 3 silicon extractors: only the cutters produce Circuit, while all six consume it.
     fn net_per_hour(r: Rarity) -> (i128, i128) {
         let y = yield_atomic_per_hour(r);
-        let wood = AXES * y - TOOLS * (r.repair_wood_cost_per_unit() as i128);
-        let stone = PICKS * y - TOOLS * (r.repair_stone_cost_per_unit() as i128);
-        (wood, stone)
+        let circuit = AXES * y - TOOLS * (r.repair_circuit_cost_per_unit() as i128);
+        let silicon = PICKS * y - TOOLS * (r.repair_silicon_cost_per_unit() as i128);
+        (circuit, silicon)
     }
 
     #[test]
@@ -520,24 +520,24 @@ mod economy_tests {
             Rarity::Epic,
             Rarity::Legendary,
         ];
-        let mut prev_wood = 0i128;
-        let mut prev_stone = 0i128;
+        let mut prev_circuit = 0i128;
+        let mut prev_silicon = 0i128;
         for r in ladder {
-            let (wood, stone) = net_per_hour(r);
-            assert!(wood > 0, "{:?}: net WOOD/hour = {} must be positive", r, wood);
-            assert!(stone > 0, "{:?}: net STONE/hour = {} must be positive", r, stone);
+            let (circuit, silicon) = net_per_hour(r);
+            assert!(circuit > 0, "{:?}: net CIRCUIT/hour = {} must be positive", r, circuit);
+            assert!(silicon > 0, "{:?}: net SILICON/hour = {} must be positive", r, silicon);
             assert!(
-                wood > prev_wood,
-                "{:?}: upgrading must strictly improve net WOOD ({} <= {})",
-                r, wood, prev_wood
+                circuit > prev_circuit,
+                "{:?}: upgrading must strictly improve net CIRCUIT ({} <= {})",
+                r, circuit, prev_circuit
             );
             assert!(
-                stone > prev_stone,
-                "{:?}: upgrading must strictly improve net STONE ({} <= {})",
-                r, stone, prev_stone
+                silicon > prev_silicon,
+                "{:?}: upgrading must strictly improve net SILICON ({} <= {})",
+                r, silicon, prev_silicon
             );
-            prev_wood = wood;
-            prev_stone = stone;
+            prev_circuit = circuit;
+            prev_silicon = silicon;
         }
     }
 
@@ -554,13 +554,13 @@ mod economy_tests {
         ] {
             let y = yield_atomic_per_hour(r);
             assert!(
-                2 * (r.repair_wood_cost_per_unit() as i128) < y,
-                "{:?}: 2 x WOOD repair >= yield",
+                2 * (r.repair_circuit_cost_per_unit() as i128) < y,
+                "{:?}: 2 x CIRCUIT repair >= yield",
                 r
             );
             assert!(
-                2 * (r.repair_stone_cost_per_unit() as i128) < y,
-                "{:?}: 2 x STONE repair >= yield",
+                2 * (r.repair_silicon_cost_per_unit() as i128) < y,
+                "{:?}: 2 x SILICON repair >= yield",
                 r
             );
         }
@@ -577,8 +577,8 @@ mod economy_tests {
             Rarity::Legendary,
         ] {
             let lifetime_yield = yield_atomic_per_hour(r) * MAX_DURABILITY as i128;
-            let lifetime_repair = (r.repair_wood_cost_per_unit() as i128
-                + r.repair_stone_cost_per_unit() as i128)
+            let lifetime_repair = (r.repair_circuit_cost_per_unit() as i128
+                + r.repair_silicon_cost_per_unit() as i128)
                 * MAX_DURABILITY as i128;
             assert!(
                 lifetime_yield > lifetime_repair,

@@ -7,20 +7,20 @@ const { spawnSync } = require('node:child_process');
 const root = join(__dirname, '../..');
 const source = path => readFileSync(join(root, path), 'utf8');
 
-test('paid Potato/season operations fail closed until network and economics are verified', () => {
+test('paid Mind/season operations fail closed until network and economics are verified', () => {
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/commit"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/config\/init"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/quest\/init"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/season.ts'), /r\.post\("\/pass\/purchase"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('programs/aof-quests/src/instructions/drum/drum_commit.rs'), /pub fn handler[^\n]*\{[\s\S]{0,360}require!\(false, QuestError::Paused\)/);
-  const v2 = source('programs/aof-quests/src/instructions/drum/potato_spin.rs');
+  const v2 = source('programs/aof-quests/src/instructions/drum/mind_spin.rs');
   assert.match(v2, /pub fn commit_handler[^\n]*\{[\s\S]{0,500}require!\(false, QuestError::FeatureDisabled\)/);
   assert.match(v2, /seeds = \[COMMIT_SEED, user\.key\(\)\.as_ref\(\)\]/);
-  assert.match(v2, /pub potato_commit: Account<'info, PotatoCommit>/);
-  assert.match(v2, /potato_bank\.reserve\(ctx\.accounts\.potato_vault\.amount\)/);
-  assert.match(v2, /potato_bank\.release\(ctx\.accounts\.potato_vault\.amount, POTATO_SPIN_PRICE\)/);
+  assert.match(v2, /pub mind_commit: Account<'info, MindCommit>/);
+  assert.match(v2, /mind_bank\.reserve\(ctx\.accounts\.mind_vault\.amount\)/);
+  assert.match(v2, /mind_bank\.release\(ctx\.accounts\.mind_vault\.amount, MIND_SPIN_PRICE\)/);
   assert.doesNotMatch(v2, /DrumCommitted|DrumRevealed|DrumRefunded/);
-  assert.match(source('programs/aof-quests/src/instructions/drum/potato_bank.rs'), /bank\.paused = true/);
+  assert.match(source('programs/aof-quests/src/instructions/drum/mind_bank.rs'), /bank\.paused = true/);
   assert.match(source('aof-core/src/instructions/season.rs'), /pub fn purchase_pass_handler[^\n]*\{[\s\S]{0,300}require!\(false, AofError::SeasonPremiumRequired\)/);
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/reveal", requireWalletLimits/);
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.get\("\/status\/:user"/);

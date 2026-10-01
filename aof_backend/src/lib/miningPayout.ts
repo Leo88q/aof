@@ -38,11 +38,11 @@ export function calculatePayoutAmount(hours: number, rarity: string): BN {
 }
 
 /**
- * Coal drops are not part of the current canonical collect_mining
+ * Compute drops are not part of the current canonical collect_mining
  * instruction. Keep this legacy helper fail-closed instead of inventing a
  * second, off-chain RNG/economic path that could diverge from the program.
  */
-export async function calculateCoalDrop(
+export async function calculateComputeDrop(
   _toolType: string,
   _hours: number
 ): Promise<{ mint: PublicKey; amount: BN } | null> {

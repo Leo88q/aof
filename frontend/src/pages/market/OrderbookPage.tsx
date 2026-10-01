@@ -217,7 +217,7 @@ export function OrderbookPage() {
       <span className="text-straw break-all">{shortAddr(order.maker)}{mine ? ` (${copy.you})` : ''}</span>
       <span className="text-straw">{order.isBuy ? copy.bids : copy.asks}</span>
       <span className="text-parchment ml-auto break-all">{formatResourceUnits(order.amountRemaining)} {copy.amountUnit}</span>
-      <span className="text-wheat-500 font-semibold break-all">{price(order)}</span>
+      <span className="text-accent-500 font-semibold break-all">{price(order)}</span>
       {order.isBuy && <span className="text-straw break-all">{copy.escrowLabel}: {lamportsToSol(order.escrowLamports)} SOL</span>}
       {mine && <button type="button" onClick={() => cancel(order)} disabled={busy || bookState !== 'ready'}
         className="text-parchment underline underline-offset-2 disabled:opacity-40 break-words">{copy.cancel}</button>}
@@ -231,15 +231,15 @@ export function OrderbookPage() {
         className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20 whitespace-normal break-words disabled:opacity-40">{copy.refresh}</button>
     </header>
     <p className="text-straw text-xs break-words">{copy.intro}</p>
-    <Card className="border border-wheat-600/40">
-      <p className="text-wheat-500 text-sm font-semibold break-words">{copy.v2Badge}</p>
+    <Card className="border border-accent-600/40">
+      <p className="text-accent-500 text-sm font-semibold break-words">{copy.v2Badge}</p>
       <p className="text-straw text-xs mt-2 break-words">{copy.pausedWhatWorks}</p>
       <p className="text-straw text-xs mt-2 break-words">{copy.unitWarning}</p>
     </Card>
     <label className="block min-w-0 text-straw text-xs">
       {copy.select}
       <select value={resource?.key || ''} disabled={!resource} onChange={e => setSelectedKey(e.target.value)}
-        className="block w-full mt-2 bg-soil-800 text-parchment text-sm rounded-xl border border-straw/20 px-4 py-3 focus:border-wheat-500 focus:outline-none min-w-0">
+        className="block w-full mt-2 bg-soil-800 text-parchment text-sm rounded-xl border border-straw/20 px-4 py-3 focus:border-accent-500 focus:outline-none min-w-0">
         {resources.map(item => <option key={item.key} value={item.key}>{displayName(item)}</option>)}
       </select>
     </label>
@@ -252,7 +252,7 @@ export function OrderbookPage() {
         <Card>
           <div className="flex flex-wrap justify-between gap-3 text-sm min-w-0">
             <div className="min-w-0"><p className="text-straw text-xs">{copy.bestBid}</p><p className="text-sprout-500 font-bold break-all">{bids[0] ? price(bids[0]) : '—'}</p></div>
-            <div className="min-w-0 text-right"><p className="text-straw text-xs">{copy.bestAsk}</p><p className="text-wheat-500 font-bold break-all">{asks[0] ? price(asks[0]) : '—'}</p></div>
+            <div className="min-w-0 text-right"><p className="text-straw text-xs">{copy.bestAsk}</p><p className="text-accent-500 font-bold break-all">{asks[0] ? price(asks[0]) : '—'}</p></div>
           </div>
           <p className="text-straw text-xs mt-2">{copy.priceUnit}</p>
         </Card>
@@ -274,7 +274,7 @@ export function OrderbookPage() {
               <input type="text" inputMode="decimal" value={amountInput} onChange={e => setAmountInput(e.target.value.trim())}
                 className="block w-full mt-1 bg-soil-800 border border-straw/20 rounded-xl px-3 py-2 text-parchment text-sm min-w-0" />
             </label>
-            {preview.error && <p className="text-wheat-500 text-xs mb-2 break-words" role="status">{copy.formInvalid}</p>}
+            {preview.error && <p className="text-accent-500 text-xs mb-2 break-words" role="status">{copy.formInvalid}</p>}
             {preview.total !== null && preview.escrow !== null && <p className="text-parchment text-xs mb-2 break-words">
               {copy.quoteLine(lamportsToSol(preview.total.toString()), lamportsToSol(preview.escrow.toString()))}</p>}
             {formNotice && <p className="text-straw text-xs mb-2 break-words" role="status">{copy[formNotice === 'working' ? 'formWorking' : formNotice === 'pending' ? 'formPending' : 'formFailed']}</p>}

@@ -16,7 +16,7 @@ export function startCronJobs() {
       try {
         console.log("🕐 [Cron] Taking economy snapshot...");
         const metrics = await takeEconomySnapshot();
-        console.log(`📊 [Cron] Snapshot saved: supply=${metrics.potatoSupply}, inflation=${metrics.inflation24h.toFixed(2)}%`);
+        console.log(`📊 [Cron] Snapshot saved: supply=${metrics.mindSupply}, inflation=${metrics.inflation24h.toFixed(2)}%`);
       } catch (e) {
         console.error("❌ [Cron] Economy snapshot failed:", e);
       }

@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Аудит лаборатории и интерфейса (2026-09-28)
 
 Проверялись: вкладка «Лаборатория» (обзор + участок), мобильная адаптация игры

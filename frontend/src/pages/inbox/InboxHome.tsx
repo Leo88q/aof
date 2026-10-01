@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
+import { handleTxResponse } from "../../lib/txFlow";
+import type { RewardClaimIntent } from "../../lib/transactionIntent";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { inboxReadCopy, inboxUiCopy } from "../../i18n/inboxReadCopy";
 import { farmOverviewCopy } from "../../i18n/farmOverviewCopy";
@@ -77,26 +79,59 @@ export function InboxHome() {
       }).catch(() => { /* The message remains unread if confirmation fails. */ });
   }
 
+  function markClaimed(letter: any) {
+    setClaimStatus('confirmed');
+    setLetters(ls => ls.map(l => l.id === letter.id ? { ...l, claimed: true, read: true } : l));
+    setOpened((current: any) => current?.id === letter.id ? { ...current, claimed: true } : current);
+  }
+
   async function claimReward(letter: any) {
     if (!letter?.dbId || !user || claimBusy) return;
     setClaimBusy(true);
     setClaimStatus('preparing');
     try {
-      // The server reads canonical mints and confirms authority-only issuance;
-      // no wallet transaction is returned to the player to sign here.
+      // [PAYER] Награда — claim игрока: сервер отдаёт частично подписанную
+      // транзакцию, где плательщик и подписант — кошелёк игрока (Player и
+      // RewardReceipt оплачивает он, authority добавляет только авторизацию).
+      // Кошелёк проверяет состав транзакции по локальному интенту, подписывает
+      // её и отправляет сам; доказательство выплаты — on-chain RewardReceipt,
+      // поэтому подпись подтверждается отдельным запросом.
       const res: any = await api.inbox.claim({ id: letter.dbId, user });
       if (ownerRef.current !== user) return;
       if (res?.pending) {
         setClaimStatus('pending');
-      } else if (res?.item?.id === letter.dbId && res.item.user === user &&
-                 res.item.claimed === true && res.item.claimState === 'confirmed' &&
-                 ((typeof res.onchainSig === 'string' && res.onchainSig.length > 0) ||
-                  (typeof res.recoveredFromReceipt === 'string' && res.recoveredFromReceipt.length > 0))) {
-        setClaimStatus('confirmed');
-        setLetters(ls => ls.map(l => l.id === letter.id ? { ...l, claimed: true, read: true } : l));
-        setOpened((current: any) => current?.id === letter.id ? { ...current, claimed: true } : current);
-      } else {
+        return;
+      }
+      if (res?.item?.id === letter.dbId && res.item.user === user && res.item.claimed === true &&
+          (res.item.claimState === 'confirmed' || typeof res.recoveredFromReceipt === 'string')) {
+        markClaimed(letter);
+        return;
+      }
+      if (!res?.tx || !res?.quote) {
         setClaimStatus('unknown');
+        return;
+      }
+      const intent: RewardClaimIntent = {
+        kind: 'rewardClaim',
+        user,
+        mint: res.quote.mint,
+        resourceKind: res.quote.resourceKind,
+        amountAtoms: res.quote.amount,
+        treasury: res.quote.treasury,
+        rewardId: res.quote.rewardId,
+      };
+      const sent = await handleTxResponse(res, intent);
+      if (ownerRef.current !== user) return;
+      if (!sent.success || !sent.signature) {
+        setClaimStatus('unknown');
+        return;
+      }
+      const confirmed: any = await api.inbox.confirmClaim({ id: letter.dbId, user, signature: sent.signature });
+      if (ownerRef.current !== user) return;
+      if (confirmed?.item?.claimState === 'confirmed' || typeof confirmed?.onchainSig === 'string') {
+        markClaimed(letter);
+      } else {
+        setClaimStatus('pending');
       }
     } catch {
       if (ownerRef.current === user) setClaimStatus('unknown');
@@ -125,7 +160,7 @@ export function InboxHome() {
 
       <div className="flex justify-center items-center mb-4 mt-2">
         {unread > 0 && (
-          <span className="max-w-full break-words text-xs px-2.5 py-1 rounded-full bg-wheat-600 text-white font-bold">
+          <span className="max-w-full break-words text-xs px-2.5 py-1 rounded-full bg-accent-600 text-white font-bold">
             {copy.unreadCount(format(unread))}
           </span>
         )}
@@ -181,7 +216,7 @@ export function InboxHome() {
           <motion.button key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
             onClick={() => openLetter(l)}
-            className={`w-full text-left rounded-2xl p-3 border ${l.read ? "bg-soil-850/50 border-straw/10" : "bg-soil-800 border-wheat-600/30"} active:scale-[0.99]`}>
+            className={`w-full text-left rounded-2xl p-3 border ${l.read ? "bg-soil-850/50 border-straw/10" : "bg-soil-800 border-accent-600/30"} active:scale-[0.99]`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${l.hasReward ? "bg-gold/20" : "bg-soil-700"}`}>
                 <img src={l.hasReward ? UI_ICONS.inboxReward : UI_ICONS.inbox} alt="" className="w-7 h-7 object-contain" />
@@ -189,7 +224,7 @@ export function InboxHome() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-parchment text-sm font-semibold truncate">{l.sender}</span>
-                  {!l.read && <span className="w-2 h-2 rounded-full bg-wheat-500" />}
+                  {!l.read && <span className="w-2 h-2 rounded-full bg-accent-500" />}
                 </div>
                 <p className="text-straw text-xs truncate">{l.subject}</p>
               </div>
@@ -206,7 +241,7 @@ export function InboxHome() {
             className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
             onClick={() => setOpened(null)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-soil-850 rounded-3xl p-4 sm:p-6 max-w-md w-full min-w-0 max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain border border-wheat-600/30 shadow-2xl"
+              className="bg-soil-850 rounded-3xl p-4 sm:p-6 max-w-md w-full min-w-0 max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain border border-accent-600/30 shadow-2xl"
               onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <img src={opened.hasReward ? UI_ICONS.inboxReward : UI_ICONS.inbox} alt="" className="w-10 h-10 object-contain" />

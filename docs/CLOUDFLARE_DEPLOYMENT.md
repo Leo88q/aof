@@ -18,7 +18,7 @@
    * `VITE_SOLANA_NETWORK`: `mainnet-beta` (или `devnet` для тестов)
    * `VITE_RPC_URL`: публичный RPC без секретов либо HTTPS URL собственного RPC-прокси. **Все `VITE_*` публичны**; ключ провайдера хранится только на прокси. Прокси требует allowlist методов, лимиты запросов/размера и бюджета; не открытый relay
    * `VITE_API_URL`: `https://api.yourdomain.com` (адрес бэкенда)
-   * `VITE_PROGRAM_ID`: `HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq`
+   * `VITE_PROGRAM_ID`: `okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx`
 5. Нажмите **Save and Deploy**. Cloudflare автоматически соберёт проект и выдаст адрес вида `https://aof-xxx.pages.dev`.
 
 ---

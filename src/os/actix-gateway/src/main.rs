@@ -21,11 +21,11 @@ async fn os_config() -> impl Responder {
         // the two spec placeholders stay as non-address markers.
         "programIds": [
             "AOF_CORE_PROGRAM_ID",
-            "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
-            "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
-            "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
-            "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
-            "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+            "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY",
+            "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc",
+            "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF",
+            "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S",
+            "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5",
             "CgInv111...",
             "STrEaSuRy111..."
         ],

@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 ```json
 {
   "address": "2dQsHg3oVKwyKHjemS2CbWkczv6sCRAY5r2WrGBv4vgC",

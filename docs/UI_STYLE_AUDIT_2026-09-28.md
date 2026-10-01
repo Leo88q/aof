@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Аудит слоя представления NeuroForge — что выдаёт шаблон «sci-fi UI от нейросети»
 
 _Этап 1 (аудит, без правок кода). Дата: 2026-09-28._

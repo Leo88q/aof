@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # FINAL_REPORT_V3.md — AOF v3 (20 пунктов)
 
 Финальный отчёт Watchtower OS v3 — Ideal Free Stack для tenant/game **aof**

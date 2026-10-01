@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Age of Farming — Expansion (market/quests/rebirth/liquidity/session-keys/retention) — единый файл
 
 5 новых Anchor-программ (aof-market, aof-session-keys, aof-quests, aof-rebirth, aof-liquidity), расширенный бэкенд (27 роутеров, Prisma-схема 35 моделей, 4 воркера) и точечные фронтенд-страницы (хот-маркет с live-графиком, квесты). Существующий базовый проект (aof_core + основной backend/frontend) не дублируется здесь — см. предыдущий файл AOF_ALL_CHANGES_FULL_SOURCE.md.

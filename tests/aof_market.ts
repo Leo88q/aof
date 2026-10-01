@@ -14,7 +14,11 @@
  *     списан по цене, которую он не подписывал;
  *  3. продажа возвращает инструмент пулу и платит продавцу из резерва;
  *  4. произвольный SPL-минт (без канонического ToolData) не продаётся по цене
- *     пула — «кран» закрыт.
+ *     пула — «кран» закрыт;
+ *  5. чужой ВАЛЮТНЫЙ минт (F-CURRENCY-01) не покупает инструмент ни под
+ *     `Currency::Core`, ни под `Currency::Gem`: констрейнт связывает
+ *     `currency_mint` с `MarketConfig.core_mint`/`gem_mint` до первого перевода,
+ *     а канонический минт той же инструкцией проходит.
  *
  * Запускается после tests/aof_core.ts, чей before() создаёт Config и auth-PDA
  * (тот же контракт, что у tests/aof_extended.ts).
@@ -30,8 +34,8 @@ import {
 import { expect } from "chai";
 import fs from "fs";
 
-const MARKET_ID = new PublicKey("4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo");
-const CORE_ID = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const MARKET_ID = new PublicKey("A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY");
+const CORE_ID = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
 describe("aof-market: горячий рынок покупает и продаёт инструмент вместе с владением", () => {
   const provider = anchor.AnchorProvider.env();
@@ -150,11 +154,18 @@ describe("aof-market: горячий рынок покупает и продаё
 
   const balance = async (address: PublicKey) => BigInt((await getAccount(connection, address)).amount.toString());
 
+  async function sendWithPayer(builder: any, payer: Keypair) {
+    const tx = await builder.transaction();
+    tx.feePayer = payer.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
+    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+  }
+
   /** Инструмент каноническим путём aof_core: 0-decimal минт с авторитетом auth-PDA. */
   async function mintTool(to: PublicKey) {
     const mint = await createMint(connection, setupPayer, authPda, null, 0);
     const tokenAccount = await ensureAta(mint, to, setupPayer);
-    await core.methods
+    await sendWithPayer(core.methods
       .mintTool("plasma_cutter", RARITY_ARG)
       .accounts({
         config: coreConfig,
@@ -163,29 +174,37 @@ describe("aof-market: горячий рынок покупает и продаё
         mint,
         tokenAccount,
         recipient: to,
+        payer: setupPayer.publicKey,
         toolData: toolPda(mint),
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
-      .rpc();
+      }), setupPayer);
     return mint;
   }
 
-  async function buy(buyerKp: Keypair, mint: PublicKey, maxPrice: BN) {
+  // `currency`/`currencyMint` — параметры F-CURRENCY-01: тест на чужой валютный
+  // mint обязан уметь подать «согласованный» чужой минт вместо канонического.
+  async function buy(
+    buyerKp: Keypair,
+    mint: PublicKey,
+    maxPrice: BN,
+    currency: any = { core: {} },
+    currencyMint: PublicKey = coreMint,
+  ) {
     return market.methods
-      .hotMarketBuy(RARITY, { core: {} }, maxPrice)
+      .hotMarketBuy(RARITY, currency, maxPrice)
       .accounts({
         config: marketConfig,
         buyer: buyerKp.publicKey,
         pool,
         treasury: treasury.publicKey,
-        currencyMint: coreMint,
-        buyerCurrency: ata(coreMint, buyerKp.publicKey),
-        treasuryCurrency: ata(coreMint, treasury.publicKey),
+        currencyMint,
+        buyerCurrency: ata(currencyMint, buyerKp.publicKey),
+        treasuryCurrency: ata(currencyMint, treasury.publicKey),
         newToolMint: mint,
         poolTool: ata(mint, pool),
         buyerTool: ata(mint, buyerKp.publicKey),
-        poolCurrency: ata(coreMint, pool),
+        poolCurrency: ata(currencyMint, pool),
         toolData: toolPda(mint),
         coreProgram: core.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -194,20 +213,26 @@ describe("aof-market: горячий рынок покупает и продаё
       .rpc();
   }
 
-  async function sell(sellerKp: Keypair, mint: PublicKey, minPrice: BN) {
+  async function sell(
+    sellerKp: Keypair,
+    mint: PublicKey,
+    minPrice: BN,
+    currency: any = { core: {} },
+    currencyMint: PublicKey = coreMint,
+  ) {
     return market.methods
-      .hotMarketSellIntoQueue(RARITY, { core: {} }, minPrice)
+      .hotMarketSellIntoQueue(RARITY, currency, minPrice)
       .accounts({
         config: marketConfig,
         seller: sellerKp.publicKey,
         pool,
-        currencyMint: coreMint,
-        sellerCurrency: ata(coreMint, sellerKp.publicKey),
-        poolCurrency: ata(coreMint, pool),
+        currencyMint,
+        sellerCurrency: ata(currencyMint, sellerKp.publicKey),
+        poolCurrency: ata(currencyMint, pool),
         soldToolMint: mint,
         sellerTool: ata(mint, sellerKp.publicKey),
         poolTool: ata(mint, pool),
-        treasuryCurrency: ata(coreMint, treasury.publicKey),
+        treasuryCurrency: ata(currencyMint, treasury.publicKey),
         toolData: toolPda(mint),
         coreProgram: core.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -343,5 +368,72 @@ describe("aof-market: горячий рынок покупает и продаё
     }
     expect(failed, "у произвольного минта нет канонического ToolData — продажа обязана упасть").to.not.equal(null);
     expect((await balance(ata(alien, buyer.publicKey))).toString()).to.equal("1", "чужой токен не должен уехать в пул");
+  });
+
+  // F-CURRENCY-01: цена пула считается по аргументу `currency`, а платёж идёт в
+  // том mint'е, который пришёл аккаунтом `currency_mint`. Пока они не связаны,
+  // покупатель объявляет дорогую валюту и платит своим произвольным минтом,
+  // забирая настоящий инструмент из пула. Тест держит привязку на валидаторе:
+  // чужой минт обязан упасть ДО любого перевода, а канонический — работать.
+  it("чужой валютный mint не покупает инструмент — ни под Core, ни под Gem", async () => {
+    toolMint = await mintTool(pool);
+    await ensureAta(toolMint, buyer.publicKey, setupPayer);
+
+    // Злоумышленник может бесправно создать свой SPL-mint, начеканить его себе
+    // и создать «согласованные» token-аккаунты пула и казны под него: рынок
+    // раньше связывал их только друг с другом.
+    const fakeMint = await createMint(connection, setupPayer, setupPayer.publicKey, null, 9);
+    await ensureAta(fakeMint, buyer.publicKey, setupPayer);
+    await mintTo(
+      connection, setupPayer, fakeMint, ata(fakeMint, buyer.publicKey), setupPayer,
+      1_000n * 1_000_000_000n,
+    );
+    await ensureAta(fakeMint, pool, setupPayer);
+    await ensureAta(fakeMint, treasury.publicKey, setupPayer);
+
+    const poolToolBefore = await balance(ata(toolMint, pool));
+    const ownerBefore = (await core.account.toolData.fetch(toolPda(toolMint))).owner.toBase58();
+    const poolReserveBefore = await balance(ata(coreMint, pool));
+    const treasuryBefore = await balance(ata(coreMint, treasury.publicKey));
+    const fakeBalanceBefore = await balance(ata(fakeMint, buyer.publicKey));
+    const gemReserveBefore = await balance(ata(gemMint, pool));
+
+    expect(ownerBefore).to.equal(pool.toBase58(), "предпосылка: инструмент лежит в пуле");
+
+    for (const [label, currency, maxPrice] of [
+      ["Core", { core: {} }, TARGET_CORE],
+      ["Gem", { gem: {} }, TARGET_GEM],
+    ] as const) {
+      let failed: any = null;
+      try {
+        await buy(buyer, toolMint, maxPrice, currency, fakeMint);
+      } catch (error) {
+        failed = error;
+      }
+      expect(failed, `покупка с валютой ${label} и чужим минтом обязана упасть`).to.not.equal(null);
+      expect(anchorErrorName(failed), `ожидается InvalidCurrencyMint для ${label}`).to.equal("InvalidCurrencyMint");
+    }
+
+    // Инструмент, владение и деньги не сдвинулись ни на атом.
+    expect((await balance(ata(toolMint, pool))).toString()).to.equal(poolToolBefore.toString(), "инструмент обязан остаться в пуле");
+    expect((await balance(ata(toolMint, buyer.publicKey))).toString()).to.equal("0", "покупатель не должен получить инструмент");
+    expect((await core.account.toolData.fetch(toolPda(toolMint))).owner.toBase58()).to.equal(pool.toBase58(), "владение не должно перейти");
+    expect((await balance(ata(coreMint, pool))).toString()).to.equal(poolReserveBefore.toString(), "резерв пула не тронут");
+    expect((await balance(ata(coreMint, treasury.publicKey))).toString()).to.equal(treasuryBefore.toString(), "казна не тронута");
+    expect((await balance(ata(fakeMint, buyer.publicKey))).toString()).to.equal(fakeBalanceBefore.toString(), "чужой токен не списан");
+
+    // Положительный контроль: канонический Gem-минт той же инструкцией проходит,
+    // то есть проверка привязывает валюту, а не блокирует торговлю целиком.
+    await ensureAta(gemMint, buyer.publicKey, setupPayer);
+    await mintTo(
+      connection, setupPayer, gemMint, ata(gemMint, buyer.publicKey), setupPayer,
+      10n * 1_000_000_000n,
+    );
+    await buy(buyer, toolMint, TARGET_GEM, { gem: {} }, gemMint);
+
+    const bought: any = await core.account.toolData.fetch(toolPda(toolMint));
+    expect(bought.owner.toBase58()).to.equal(buyer.publicKey.toBase58(), "канонический Gem обязан купить инструмент");
+    expect((await balance(ata(toolMint, buyer.publicKey))).toString()).to.equal("1");
+    expect((await balance(ata(gemMint, pool))).toString()).to.not.equal(gemReserveBefore.toString(), "оплата обязана прийти в резерв пула");
   });
 });

@@ -12,9 +12,9 @@
  */
 
 export type ResourceId = 
-  | "SEEDS" | "WHEAT" | "FLOUR" | "BREAD"
-  | "WOOD" | "STONE" | "COAL" | "MEAT"
-  | "WATER" | "FOOD"
+  | "NEURON" | "SYNAPSE" | "SIGNAL" | "MODEL"
+  | "CIRCUIT" | "SILICON" | "COMPUTE" | "DATASET"
+  | "POWER" | "DATA"
   | "FLASK_ENERGY" | "FLASK_GROWTH" | "FLASK_LUCK"
   | "TOOL_HOE" | "TOOL_AXE" | "TOOL_PICKAXE";
 
@@ -23,7 +23,7 @@ type AgentType =
   | "alchemist" | "miner" | "hunter" | "guild_master";
 
 type ActionType =
-  | "plant" | "water" | "harvest" | "craft" | "trade"
+  | "plant" | "power" | "harvest" | "craft" | "trade"
   | "rebirth" | "quest" | "guild_deposit" | "buy_flask" | "repair_tool";
 
 interface ResourceConfig {
@@ -38,33 +38,33 @@ interface ResourceConfig {
 
 const RESOURCES: Record<ResourceId, ResourceConfig> = {
   // Базовые ресурсы
-  SEEDS:  { id: "SEEDS",  basePrice: 0.0001, supplyPerDay: 10000, demandPerDay: 3000, energyCost: 5, craftTime: 0 },
-  WHEAT:  { id: "WHEAT",  basePrice: 0.0005, supplyPerDay: 8000,  demandPerDay: 4000, energyCost: 10, craftTime: 3 },
-  FLOUR:  { id: "FLOUR",  basePrice: 0.0015, supplyPerDay: 3000,  demandPerDay: 2500, energyCost: 15, craftTime: 1, craftFrom: [{ resource: "WHEAT", amount: 2 }] },
-  BREAD:  { id: "BREAD",  basePrice: 0.003,  supplyPerDay: 1500,  demandPerDay: 2000, energyCost: 20, craftTime: 1, craftFrom: [{ resource: "FLOUR", amount: 2 }] },
-  WOOD:   { id: "WOOD",   basePrice: 0.0008, supplyPerDay: 5000,  demandPerDay: 2000, energyCost: 12, craftTime: 0 },
-  STONE:  { id: "STONE",  basePrice: 0.001,  supplyPerDay: 4000,  demandPerDay: 1800, energyCost: 15, craftTime: 0 },
-  COAL:   { id: "COAL",   basePrice: 0.0012, supplyPerDay: 2500,  demandPerDay: 2200, energyCost: 18, craftTime: 0 },
-  MEAT:   { id: "MEAT",   basePrice: 0.002,  supplyPerDay: 2000,  demandPerDay: 2500, energyCost: 25, craftTime: 0 },
-  WATER:  { id: "WATER",  basePrice: 0.0002, supplyPerDay: 15000, demandPerDay: 8000, energyCost: 3, craftTime: 0 },
-  FOOD:   { id: "FOOD",   basePrice: 0.0025, supplyPerDay: 1000,  demandPerDay: 3000, energyCost: 0, craftTime: 0 },
+  NEURON:  { id: "NEURON",  basePrice: 0.0001, supplyPerDay: 10000, demandPerDay: 3000, energyCost: 5, craftTime: 0 },
+  SYNAPSE:  { id: "SYNAPSE",  basePrice: 0.0005, supplyPerDay: 8000,  demandPerDay: 4000, energyCost: 10, craftTime: 3 },
+  SIGNAL:  { id: "SIGNAL",  basePrice: 0.0015, supplyPerDay: 3000,  demandPerDay: 2500, energyCost: 15, craftTime: 1, craftFrom: [{ resource: "SYNAPSE", amount: 2 }] },
+  MODEL:  { id: "MODEL",  basePrice: 0.003,  supplyPerDay: 1500,  demandPerDay: 2000, energyCost: 20, craftTime: 1, craftFrom: [{ resource: "SIGNAL", amount: 2 }] },
+  CIRCUIT:   { id: "CIRCUIT",   basePrice: 0.0008, supplyPerDay: 5000,  demandPerDay: 2000, energyCost: 12, craftTime: 0 },
+  SILICON:  { id: "SILICON",  basePrice: 0.001,  supplyPerDay: 4000,  demandPerDay: 1800, energyCost: 15, craftTime: 0 },
+  COMPUTE:   { id: "COMPUTE",   basePrice: 0.0012, supplyPerDay: 2500,  demandPerDay: 2200, energyCost: 18, craftTime: 0 },
+  DATASET:   { id: "DATASET",   basePrice: 0.002,  supplyPerDay: 2000,  demandPerDay: 2500, energyCost: 25, craftTime: 0 },
+  POWER:  { id: "POWER",  basePrice: 0.0002, supplyPerDay: 15000, demandPerDay: 8000, energyCost: 3, craftTime: 0 },
+  DATA:   { id: "DATA",   basePrice: 0.0025, supplyPerDay: 1000,  demandPerDay: 3000, energyCost: 0, craftTime: 0 },
   
   // Флаконы (зелья)
-  FLASK_ENERGY: { id: "FLASK_ENERGY", basePrice: 0.005, supplyPerDay: 500, demandPerDay: 800, energyCost: 30, craftTime: 2, craftFrom: [{ resource: "WATER", amount: 3 }, { resource: "FOOD", amount: 1 }] },
-  FLASK_GROWTH: { id: "FLASK_GROWTH", basePrice: 0.008, supplyPerDay: 300, demandPerDay: 400, energyCost: 30, craftTime: 2, craftFrom: [{ resource: "WATER", amount: 2 }, { resource: "SEEDS", amount: 5 }] },
-  FLASK_LUCK:   { id: "FLASK_LUCK",   basePrice: 0.01,  supplyPerDay: 200, demandPerDay: 300, energyCost: 30, craftTime: 3, craftFrom: [{ resource: "WATER", amount: 2 }, { resource: "MEAT", amount: 2 }] },
+  FLASK_ENERGY: { id: "FLASK_ENERGY", basePrice: 0.005, supplyPerDay: 500, demandPerDay: 800, energyCost: 30, craftTime: 2, craftFrom: [{ resource: "POWER", amount: 3 }, { resource: "DATA", amount: 1 }] },
+  FLASK_GROWTH: { id: "FLASK_GROWTH", basePrice: 0.008, supplyPerDay: 300, demandPerDay: 400, energyCost: 30, craftTime: 2, craftFrom: [{ resource: "POWER", amount: 2 }, { resource: "NEURON", amount: 5 }] },
+  FLASK_LUCK:   { id: "FLASK_LUCK",   basePrice: 0.01,  supplyPerDay: 200, demandPerDay: 300, energyCost: 30, craftTime: 3, craftFrom: [{ resource: "POWER", amount: 2 }, { resource: "DATASET", amount: 2 }] },
   
   // Инструменты
-  TOOL_HOE:     { id: "TOOL_HOE",     basePrice: 0.02,  supplyPerDay: 100, demandPerDay: 150, energyCost: 50, craftTime: 5, craftFrom: [{ resource: "WOOD", amount: 5 }, { resource: "STONE", amount: 3 }] },
-  TOOL_AXE:     { id: "TOOL_AXE",     basePrice: 0.025, supplyPerDay: 80,  demandPerDay: 120, energyCost: 50, craftTime: 5, craftFrom: [{ resource: "WOOD", amount: 3 }, { resource: "STONE", amount: 5 }] },
-  TOOL_PICKAXE: { id: "TOOL_PICKAXE", basePrice: 0.03,  supplyPerDay: 60,  demandPerDay: 100, energyCost: 50, craftTime: 5, craftFrom: [{ resource: "WOOD", amount: 2 }, { resource: "STONE", amount: 8 }, { resource: "COAL", amount: 2 }] },
+  TOOL_HOE:     { id: "TOOL_HOE",     basePrice: 0.02,  supplyPerDay: 100, demandPerDay: 150, energyCost: 50, craftTime: 5, craftFrom: [{ resource: "CIRCUIT", amount: 5 }, { resource: "SILICON", amount: 3 }] },
+  TOOL_AXE:     { id: "TOOL_AXE",     basePrice: 0.025, supplyPerDay: 80,  demandPerDay: 120, energyCost: 50, craftTime: 5, craftFrom: [{ resource: "CIRCUIT", amount: 3 }, { resource: "SILICON", amount: 5 }] },
+  TOOL_PICKAXE: { id: "TOOL_PICKAXE", basePrice: 0.03,  supplyPerDay: 60,  demandPerDay: 100, energyCost: 50, craftTime: 5, craftFrom: [{ resource: "CIRCUIT", amount: 2 }, { resource: "SILICON", amount: 8 }, { resource: "COMPUTE", amount: 2 }] },
 };
 
 interface Agent {
   id: number;
   type: AgentType;
   wallet: string;
-  potato: number;
+  mind: number;
   sol: number;
   energy: number;          // текущая энергия (макс 100)
   maxEnergy: number;
@@ -80,7 +80,7 @@ interface Agent {
 interface SimulationResult {
   days: number;
   totalAgents: number;
-  potatoInflation: number;
+  mindInflation: number;
   priceChanges: Record<ResourceId, number>;
   resourceImbalance: Record<ResourceId, number>;
   warnings: string[];
@@ -97,7 +97,7 @@ interface SimulationResult {
   };
   timeline: Array<{
     day: number;
-    potatoSupply: number;
+    mindSupply: number;
     inflation: number;
     activeAgents: number;
     totalEnergy: number;
@@ -128,7 +128,7 @@ function generateAgents(count: number): Agent[] {
       id: i,
       type,
       wallet: `AGENT_${i.toString().padStart(4, "0")}`,
-      potato: 100 + Math.random() * 900,
+      mind: 100 + Math.random() * 900,
       sol: 0.05 + Math.random() * 0.45,
       energy: 80 + Math.random() * 20,
       maxEnergy: 100,
@@ -148,7 +148,7 @@ function generateAgents(count: number): Agent[] {
 export function runSimulationV2(
   agentCount: number = 1000,
   days: number = 30,
-  dailyPotatoMint: number = 50000
+  dailyMindMint: number = 50000
 ): SimulationResult {
   console.log(`🧪 [Sandbox V2] Запуск: ${agentCount} агентов, ${days} дней`);
   
@@ -157,7 +157,7 @@ export function runSimulationV2(
   const initialPrices: Record<ResourceId, number> = {} as any;
   const supplies: Record<ResourceId, number> = {} as any;
   const actionCounts: Record<ActionType, number> = {
-    plant: 0, water: 0, harvest: 0, craft: 0, trade: 0,
+    plant: 0, power: 0, harvest: 0, craft: 0, trade: 0,
     rebirth: 0, quest: 0, guild_deposit: 0, buy_flask: 0, repair_tool: 0,
   };
   const resourceTrades: Record<ResourceId, number> = {} as any;
@@ -169,19 +169,19 @@ export function runSimulationV2(
     resourceTrades[resId] = 0;
   }
   
-  let potatoSupply = 1_000_000;
+  let mindSupply = 1_000_000;
   let totalRebirths = 0;
   const timeline: SimulationResult["timeline"] = [];
   
   for (let day = 1; day <= days; day++) {
-    const initialPotatoSupply = potatoSupply;
+    const initialMindSupply = mindSupply;
     
     // Производство ресурсов
     for (const resId of Object.keys(RESOURCES) as ResourceId[]) {
       supplies[resId] += RESOURCES[resId].supplyPerDay;
     }
     
-    potatoSupply += dailyPotatoMint;
+    mindSupply += dailyMindMint;
     
     // Восстановление энергии у всех агентов
     for (const agent of agents) {
@@ -190,15 +190,15 @@ export function runSimulationV2(
     
     // Действия агентов
     for (const agent of agents) {
-      if (agent.sol < 0.01 && agent.potato < 10) continue;
+      if (agent.sol < 0.01 && agent.mind < 10) continue;
       
       simulateAgentDayV2(agent, supplies, prices, actionCounts, resourceTrades, day);
       
       // Rebirth если накопил достаточно
-      if (agent.potato > 1000 && Math.random() < 0.1) {
+      if (agent.mind > 1000 && Math.random() < 0.1) {
         agent.rebirthCount++;
         totalRebirths++;
-        agent.potato -= 500;
+        agent.mind -= 500;
         agent.maxEnergy += 10;
         actionCounts.rebirth++;
         agent.actionsLog.push("rebirth");
@@ -207,7 +207,7 @@ export function runSimulationV2(
       // Quest completion
       if (Math.random() < 0.2) {
         agent.questsCompleted++;
-        agent.potato += 50;
+        agent.mind += 50;
         actionCounts.quest++;
         agent.actionsLog.push("quest");
       }
@@ -226,13 +226,13 @@ export function runSimulationV2(
     }
     
     const avgPrice = Object.values(prices).reduce((a, b) => a + b, 0) / Object.keys(prices).length;
-    const inflation = ((potatoSupply - initialPotatoSupply) / initialPotatoSupply) * 100;
-    const activeAgents = agents.filter(a => a.sol >= 0.01 || a.potato >= 10).length;
+    const inflation = ((mindSupply - initialMindSupply) / initialMindSupply) * 100;
+    const activeAgents = agents.filter(a => a.sol >= 0.01 || a.mind >= 10).length;
     const totalEnergy = agents.reduce((sum, a) => sum + a.energy, 0);
     
     timeline.push({
       day,
-      potatoSupply: Math.round(potatoSupply),
+      mindSupply: Math.round(mindSupply),
       inflation: Number(inflation.toFixed(2)),
       activeAgents,
       totalEnergy: Math.round(totalEnergy),
@@ -250,12 +250,12 @@ export function runSimulationV2(
     resourceImbalance[resId] = (supplies[resId] - config.demandPerDay) / config.demandPerDay;
   }
   
-  const totalPotatoInflation = ((potatoSupply - 1_000_000) / 1_000_000) * 100;
+  const totalMindInflation = ((mindSupply - 1_000_000) / 1_000_000) * 100;
   const warnings: string[] = [];
   const recommendations: string[] = [];
   
-  if (totalPotatoInflation > 100) {
-    warnings.push(`🚨 Критическая инфляция: ${totalPotatoInflation.toFixed(0)}%`);
+  if (totalMindInflation > 100) {
+    warnings.push(`🚨 Критическая инфляция: ${totalMindInflation.toFixed(0)}%`);
     recommendations.push("Увеличить стоимость крафта или снизить награды");
   }
   
@@ -268,7 +268,7 @@ export function runSimulationV2(
     }
   }
   
-  const bankruptAgents = agents.filter(a => a.sol < 0.01 && a.potato < 10).length;
+  const bankruptAgents = agents.filter(a => a.sol < 0.01 && a.mind < 10).length;
   const typeProfits: Record<AgentType, number> = {} as any;
   for (const agent of agents) {
     typeProfits[agent.type] = (typeProfits[agent.type] || 0) + agent.profit;
@@ -288,7 +288,7 @@ export function runSimulationV2(
   return {
     days,
     totalAgents: agentCount,
-    potatoInflation: Number(totalPotatoInflation.toFixed(2)),
+    mindInflation: Number(totalMindInflation.toFixed(2)),
     priceChanges,
     resourceImbalance,
     warnings,
@@ -321,11 +321,11 @@ function simulateAgentDayV2(
       // Фармер: сажает, поливает, собирает
       if (agent.energy >= 15 && Math.random() < 0.4) {
         // Посадка
-        const seeds = ["SEEDS", "WHEAT"] as ResourceId[];
-        const seed = seeds[Math.floor(Math.random() * seeds.length)];
+        const pair = ["NEURON", "SYNAPSE"] as ResourceId[];
+        const seed = pair[Math.floor(Math.random() * pair.length)];
         if ((agent.inventory[seed] || 0) > 0) {
           agent.inventory[seed]!--;
-          agent.planted.push({ resource: seed === "SEEDS" ? "WHEAT" : "FLOUR", dayPlanted: currentDay });
+          agent.planted.push({ resource: seed === "NEURON" ? "SYNAPSE" : "SIGNAL", dayPlanted: currentDay });
           agent.energy -= 15;
           actionCounts.plant++;
           agent.actionsLog.push("plant");
@@ -335,8 +335,8 @@ function simulateAgentDayV2(
       // Полив
       if (agent.energy >= 10 && agent.planted.length > 0 && Math.random() < 0.3) {
         agent.energy -= 10;
-        actionCounts.water++;
-        agent.actionsLog.push("water");
+        actionCounts.power++;
+        agent.actionsLog.push("power");
       }
       
       // Сбор урожая
@@ -349,7 +349,7 @@ function simulateAgentDayV2(
       }
       
       // Продажа излишков
-      for (const res of ["WHEAT", "FLOUR"] as ResourceId[]) {
+      for (const res of ["SYNAPSE", "SIGNAL"] as ResourceId[]) {
         if ((agent.inventory[res] || 0) > 10) {
           const sellAmount = Math.floor((agent.inventory[res] || 0) * 0.5);
           agent.sol += sellAmount * prices[res];
@@ -364,7 +364,7 @@ function simulateAgentDayV2(
       
     case "crafter":
       // Крафтер: делает муку, хлеб
-      const craftPairs: Array<[ResourceId, ResourceId]> = [["WHEAT", "FLOUR"], ["FLOUR", "BREAD"]];
+      const craftPairs: Array<[ResourceId, ResourceId]> = [["SYNAPSE", "SIGNAL"], ["SIGNAL", "MODEL"]];
       const [from, to] = craftPairs[Math.floor(Math.random() * craftPairs.length)];
       
       if ((agent.inventory[from] || 0) >= 2 && agent.energy >= RESOURCES[to].energyCost) {
@@ -420,7 +420,7 @@ function simulateAgentDayV2(
       
     case "miner":
       // Шахтёр: добывает камень, уголь
-      const mineResources: ResourceId[] = ["STONE", "COAL"];
+      const mineResources: ResourceId[] = ["SILICON", "COMPUTE"];
       const mined = mineResources[Math.floor(Math.random() * mineResources.length)];
       
       if (agent.energy >= RESOURCES[mined].energyCost) {
@@ -441,16 +441,16 @@ function simulateAgentDayV2(
       
     case "hunter":
       // Охотник: добывает мясо
-      if (agent.energy >= RESOURCES.MEAT.energyCost) {
+      if (agent.energy >= RESOURCES.DATASET.energyCost) {
         const amount = 2 + Math.floor(Math.random() * 4);
-        agent.inventory.MEAT = (agent.inventory.MEAT || 0) + amount;
-        agent.energy -= RESOURCES.MEAT.energyCost;
+        agent.inventory.DATASET = (agent.inventory.DATASET || 0) + amount;
+        agent.energy -= RESOURCES.DATASET.energyCost;
         
         const sellAmount = Math.floor(amount * 0.7);
-        agent.sol += sellAmount * prices.MEAT;
-        agent.profit += sellAmount * prices.MEAT;
-        agent.inventory.MEAT = (agent.inventory.MEAT || 0) - sellAmount;
-        resourceTrades.MEAT += sellAmount;
+        agent.sol += sellAmount * prices.DATASET;
+        agent.profit += sellAmount * prices.DATASET;
+        agent.inventory.DATASET = (agent.inventory.DATASET || 0) - sellAmount;
+        resourceTrades.DATASET += sellAmount;
         actionCounts.trade++;
         agent.actionsLog.push("trade");
       }
@@ -515,7 +515,7 @@ function simulateAgentDayV2(
         if (depositRes) {
           const depositAmount = Math.floor((agent.inventory[depositRes] || 0) * 0.3);
           agent.inventory[depositRes] = (agent.inventory[depositRes] || 0) - depositAmount;
-          agent.potato += depositAmount * 10;
+          agent.mind += depositAmount * 10;
           actionCounts.guild_deposit++;
           agent.actionsLog.push("guild_deposit");
         }

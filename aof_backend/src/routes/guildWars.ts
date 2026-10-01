@@ -6,7 +6,7 @@ const r = Router();
 // Предустановленные территории (связаны с Exploration-локациями)
 const TERRITORIES = [
   { territoryId: "forest_edge", name: "Опушка леса", bonusType: "wood_mining_+15pct" },
-  { territoryId: "stone_quarry", name: "Каменный карьер", bonusType: "stone_mining_+15pct" },
+  { territoryId: "silicon_quarry", name: "Каменный карьер", bonusType: "stone_mining_+15pct" },
   { territoryId: "fertile_field", name: "Плодородное поле", bonusType: "food_mining_+15pct" },
   { territoryId: "ancient_ruins", name: "Древние руины", bonusType: "rare_loot_+25pct" },
   { territoryId: "mountain_peak", name: "Горный пик", bonusType: "all_+10pct" },

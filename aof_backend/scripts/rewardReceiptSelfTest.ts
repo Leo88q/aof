@@ -46,7 +46,7 @@ async function main() {
   await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => ({ owner: core, data: Buffer.alloc(121) }) } as any, id, recipient));
 
   const instructions = new BorshInstructionCoder(idl as any);
-  const encoded = instructions.encode("mint_resource_once", { kind: { Wood: {} }, amount: gross, reward_id: Array.from(inboxRewardId(id)) });
+  const encoded = instructions.encode("mint_resource_once", { kind: { Circuit: {} }, amount: gross, reward_id: Array.from(inboxRewardId(id)) });
   assert.equal(encoded.length, 49); // 8 discriminator + 1 enum + 8 amount + 32 ID
   const buy = instructions.encode("marketplace_buy_bounded", { max_price_lamports: new BN("18446744073709551615"), expires_at: new BN(150) });
   assert.equal(buy.length, 24);

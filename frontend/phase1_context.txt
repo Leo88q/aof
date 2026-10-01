@@ -1,3 +1,4 @@
+# HISTORICAL — frozen context snapshot; not active product source.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

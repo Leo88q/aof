@@ -12,7 +12,7 @@ const r = Router();
  * Параметры:
  * - agents: количество агентов (по умолчанию 1000)
  * - days: количество дней (по умолчанию 30)
- * - dailyMint: сколько POTATO минтится в день (по умолчанию 50000)
+ * - dailyMint: сколько MIND минтится в день (по умолчанию 50000)
  */
 r.post("/run", requireAdmin, async (req, res) => {
   try {
@@ -58,7 +58,7 @@ r.post("/compare", requireAdmin, async (req, res) => {
       scenarioA: { params: scenarioA, result: resultA },
       scenarioB: { params: scenarioB, result: resultB },
       comparison: {
-        inflationDiff: resultB.potatoInflation - resultA.potatoInflation,
+        inflationDiff: resultB.mindInflation - resultA.mindInflation,
         profitDiff: resultB.agentStats.avgProfitPerAgent - resultA.agentStats.avgProfitPerAgent,
         bankruptDiff: resultB.agentStats.bankruptAgents - resultA.agentStats.bankruptAgents,
       },
@@ -97,7 +97,7 @@ r.post("/run-v2", requireAdmin, async (req, res) => {
 
 
 // The historical V3 model used unrelated pre-NeuroForge items and a
-// fabricated daily Potato mint. It must not be offered as a current economy
+// fabricated daily MIND mint. It must not be offered as a current economy
 // forecast or an enabled tool catalog.
 r.post("/run-v3", requireAdmin, (_req, res) => {
   res.status(503).json({ error: "Legacy V3 model retired; not a canonical economy forecast" });
