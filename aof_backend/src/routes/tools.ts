@@ -263,6 +263,14 @@ r.post("/repair", async (req, res) => {
     const woodMint = new PublicKey(cfg.woodMint);
     const userStone = getAssociatedTokenAddressSync(stoneMint, user);
     const userWood = getAssociatedTokenAddressSync(woodMint, user);
+    // Token-primary ownership: программа проверяет, где реально лежит supply-1
+    // токен инструмента. Отдаём именно это место, а не «канонический ATA по
+    // умолчанию»: у застейканного инструмента токен лежит в vault программы.
+    const toolData: any = await fetchOne("toolData", tool);
+    const [vault] = vaultPda();
+    const ownerToolAta = getAssociatedTokenAddressSync(mint, user, true);
+    const vaultToolAta = getAssociatedTokenAddressSync(mint, vault, true);
+    const toolToken = toolData?.staked ? vaultToolAta : ownerToolAta;
     const repairIx = await (program.methods as any)
       .repair(amount)
       .accounts({
@@ -274,6 +282,7 @@ r.post("/repair", async (req, res) => {
         userStone,
         woodMint,
         userWood,
+        toolToken,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
@@ -376,6 +385,8 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
     const [config] = configPda();
     const [tool] = toolPda(mint);
     const [player] = playerPda(user);
+    const [vault] = vaultPda();
+    const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
     const ix = await (program.methods as any)
       .startMining(hours)
       .accounts({
@@ -384,6 +395,10 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
         tool,
         mint,
         player,
+        // Token-primary ownership: майнинг разрешён только пока токен инструмента
+        // действительно лежит в эскроу программы (стейк обязателен для майнинга).
+        vault,
+        vaultToken,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -427,6 +442,8 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
       return res.status(503).json({ error: "MINING_TOOL_REWARD_NOT_CONFIGURED" });
     }
     const payoutToken = getAssociatedTokenAddressSync(payoutMint, user);
+    const [vault] = vaultPda();
+    const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
     const ix = await (program.methods as any)
       .collectMining()
       .accounts({
@@ -439,6 +456,9 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
         auth,
         payoutMint,
         payoutToken,
+        // См. start-mining: награда выплачивается только при токене в эскроу.
+        vault,
+        vaultToken,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();

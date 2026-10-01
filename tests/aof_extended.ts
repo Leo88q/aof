@@ -457,8 +457,12 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const { mint } = await mintTool(owner.publicKey, "silicon_extractor");
     const ownerStone = await giveResource("stone", stoneMint, owner.publicKey, 50);
     const ownerWood = await giveResource("wood", woodMint, owner.publicKey, 50);
+    // Token-primary ownership: repair проверяет, где реально лежит supply-1 токен.
+    // Инструмент свободен, поэтому это личный ATA того, кого ремонтируют.
+    const toolTokenFor = (who: PublicKey) => getAssociatedTokenAddressSync(mint, who, true);
     const repair = (signer: Keypair, amount: number, userStone: PublicKey, userWood: PublicKey) => program.methods.repair(amount).accounts({
       config: configPda, user: signer.publicKey, tool: toolPda(mint), mint, stoneMint, userStone, woodMint, userWood,
+      toolToken: toolTokenFor(signer.publicKey),
       tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([signer]).rpc();
     const [stone0, wood0] = [await balance(ownerStone), await balance(ownerWood)];

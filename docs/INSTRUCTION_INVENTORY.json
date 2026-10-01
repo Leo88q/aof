@@ -33,10 +33,10 @@
       "candidate-dead-code": 2
     },
     "disabledOnChain": 11,
-    "validatorTested": 92,
+    "validatorTested": 95,
     "sharedNames": 23,
     "withoutAnyCallSite": 25,
-    "withoutCallSiteAndTest": 9
+    "withoutCallSiteAndTest": 8
   },
   "programs": {
     "aof_core": {
@@ -52,10 +52,10 @@
         "candidate-dead-code": 0
       },
       "disabledOnChain": 4,
-      "validatorTested": 86,
+      "validatorTested": 89,
       "sharedNames": 7,
       "withoutAnyCallSite": 12,
-      "withoutCallSiteAndTest": 2
+      "withoutCallSiteAndTest": 1
     },
     "aof_market": {
       "instructions": 14,
@@ -394,6 +394,13 @@
       ],
       "bringup": [],
       "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_tool_ownership.ts"
+          ]
+        },
         "readiness": {
           "calls": 0,
           "mentions": 1,
@@ -404,7 +411,7 @@
       },
       "summary": {
         "callSiteCount": 1,
-        "validatorTested": false,
+        "validatorTested": true,
         "anyTest": true
       }
     },
@@ -986,10 +993,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "selfTests": {
@@ -2800,11 +2808,12 @@
       ],
       "tests": {
         "validator": {
-          "calls": 2,
+          "calls": 3,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
-            "tests/aof_extended.ts"
+            "tests/aof_extended.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "selfTests": {
@@ -2875,12 +2884,13 @@
       ],
       "tests": {
         "validator": {
-          "calls": 4,
+          "calls": 5,
           "mentions": 0,
           "files": [
             "tests/aof_core.ts",
             "tests/aof_extended.ts",
             "tests/aof_market.ts",
+            "tests/aof_tool_ownership.ts",
             "tests/aof_vrf_localnet.ts"
           ]
         },
@@ -3958,10 +3968,11 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_extended.ts"
+            "tests/aof_extended.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         }
       },
@@ -4528,10 +4539,11 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "selfTests": {
@@ -4764,10 +4776,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "readiness": {
@@ -5495,10 +5508,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "readiness": {
@@ -6917,6 +6931,13 @@
       ],
       "bringup": [],
       "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_tool_ownership.ts"
+          ]
+        },
         "selfTests": {
           "calls": 0,
           "mentions": 2,
@@ -6928,7 +6949,7 @@
       },
       "summary": {
         "callSiteCount": 1,
-        "validatorTested": false,
+        "validatorTested": true,
         "anyTest": true
       }
     },
@@ -6953,11 +6974,19 @@
       "callSites": {},
       "registries": [],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_tool_ownership.ts"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 0,
-        "validatorTested": false,
-        "anyTest": false
+        "validatorTested": true,
+        "anyTest": true
       }
     },
     {

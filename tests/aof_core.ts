@@ -532,7 +532,10 @@ describe("aof-core: security & core flows", () => {
     }).signers([user]).rpc();
     const sm = (h: number) => program.methods.startMining(h).accounts({
       config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
-      player: playerPda(user.publicKey), systemProgram: SystemProgram.programId }).signers([user]).rpc();
+      player: playerPda(user.publicKey),
+      // Token-primary ownership: майнинг требует токен в эскроу программы.
+      vault: vaultPda, vaultToken,
+      systemProgram: SystemProgram.programId }).signers([user]).rpc();
     // New deployments default to a closed mining switch. Explicit activation
     // is required even for the local-validator pilot.
     expect((await program.account.config.fetch(configPda)).miningEnabled).to.equal(false);
@@ -558,6 +561,7 @@ describe("aof-core: security & core flows", () => {
         auth: authPda,
         payoutMint: woodMint,
         payoutToken,
+        vault: vaultPda, vaultToken,
         tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([user]).rpc(), "MiningNotComplete");
       const stillMining = await program.account.toolData.fetch(toolPda(mint));
@@ -568,7 +572,8 @@ describe("aof-core: security & core flows", () => {
       await expectError(program.methods.collectMining().accounts({
         config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
         player: playerPda(user.publicKey), materialMints: materialMintsPda,
-        auth: authPda, payoutMint: woodMint, payoutToken, tokenProgram: TOKEN_PROGRAM_ID,
+        auth: authPda, payoutMint: woodMint, payoutToken,
+        vault: vaultPda, vaultToken, tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([user]).rpc(), "MiningDisabled");
       expect((await program.account.toolData.fetch(toolPda(mint))).isMining).to.equal(true);
     } finally {
@@ -1262,7 +1267,8 @@ describe("aof-core: security & core flows", () => {
       }).signers([user]).rpc();
       const sm = () => program.methods.startMining(2).accounts({
         config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
-        player: playerPda(user.publicKey), systemProgram: SystemProgram.programId,
+        player: playerPda(user.publicKey),
+        vault: vaultPda, vaultToken, systemProgram: SystemProgram.programId,
       }).signers([user]).rpc();
       await program.methods.setMiningEnabled(false).accounts({ config: configPda, authority }).rpc();
       await expectError(sm(), "MiningDisabled");
