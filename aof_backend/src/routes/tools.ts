@@ -76,14 +76,25 @@ r.post("/mint", requireAdmin, async (req, res) => {
         tokenAccount,
         // [AUDIT F-22] the destination ATA must belong to the intended owner.
         recipient: owner,
+        // [PAYER] ToolData — собственность получателя: его rent платит и его
+        // подписью подтверждается сам получатель. Программный констрейнт
+        // `payer == recipient` не даёт проекту оплатить чужой аккаунт.
+        payer: owner,
         toolData,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
 
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
+    // ATA получателя — тоже аккаунт игрока: создаётся лениво/идемпотентно в его
+    // же транзакции, payer = owner. authority подписывает только авторизацию и
+    // возвращает частично подписанную транзакцию фиксированной формы; блокхаш
+    // служит expiry, а инструкции — quote, который игрок видит в кошельке.
+    const createOwnerAta = createAssociatedTokenAccountIdempotentInstruction(
+      owner, tokenAccount, owner, mint,
+    );
+    const tx = await coSign([createOwnerAta, ix], owner);
+    res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

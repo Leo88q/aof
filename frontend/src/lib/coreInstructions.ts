@@ -8,7 +8,7 @@
  *   1. any instruction whose 8-byte discriminator is not recognised (an
  *      unrecognised aof-core call is never "probably fine");
  *   2. any authority-only instruction presented for the player to sign - a
- *      player wallet has no business signing `pay_out`, `mint_tool`,
+ *      player wallet has no business signing `pay_out`,
  *      `set_paused` or any other authority instruction;
  *   3. any instruction whose account list length differs from the program's
  *      own context;
@@ -440,10 +440,10 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "mint_tool",
     discriminator: [9, 202, 31, 77, 56, 227, 14, 40],
-    accounts: ["config", "authority", "auth", "mint", "token_account", "recipient", "tool_data", "token_program", "system_program"],
-    actorIndexes: [5],
-    signerIndexes: [1],
-    authorityOnly: true,
+    accounts: ["config", "authority", "auth", "mint", "token_account", "recipient", "payer", "tool_data", "token_program", "system_program"],
+    actorIndexes: [5, 6],
+    signerIndexes: [1, 6],
+    authorityOnly: false,
     trailingAccounts: null,
   },
   {
@@ -812,7 +812,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     accounts: ["config", "material_mints", "authority", "auth", "mint", "token_account", "treasury_token", "player", "issuance_cap", "token_program", "reward_receipt", "system_program"],
     actorIndexes: [],
     signerIndexes: [2],
-    authorityOnly: true,
+    authorityOnly: false,
     trailingAccounts: null,
   },
   {

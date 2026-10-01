@@ -19,7 +19,6 @@ const script = path.join(root, 'scripts/payer-audit.mjs');
 const POLICY = 'security/payer-policy.json';
 const MATRIX_JSON = 'docs/PAYER_MATRIX.json';
 const MATRIX_MD = 'docs/PAYER_MATRIX.md';
-const KEY = 'aof_core.MintTool.tool_data';
 
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
@@ -54,25 +53,28 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn, withPolicy = true) => { const tmp = makeRoot(withPolicy); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 90 инициализаций, 5 долгов (шаг B удалил две мёртвые инициализации)', () => {
+test('репозиторий проходит гейт: 89 инициализаций, 3 долга (коммит 4 закрыл MintResource.player и MintTool.tool_data)', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /90 инициализаций классифицированы/);
-  assert.match(result.out, /долг \(платит оператор вместо игрока\): 5/);
+  assert.match(result.out, /89 инициализаций классифицированы/);
+  assert.match(result.out, /долг \(платит оператор вместо игрока\): 3/);
 });
 
-test('политика и матрица покрывают одни и те же 90 аккаунтов', () => {
+test('политика и матрица покрывают одни и те же 89 аккаунтов', () => {
   const policy = JSON.parse(read(POLICY));
   const matrix = JSON.parse(read(MATRIX_JSON));
-  assert.equal(Object.keys(policy.entries).length, 90);
-  assert.equal(matrix.rows.length, 90);
+  assert.equal(Object.keys(policy.entries).length, 89);
+  assert.equal(matrix.rows.length, 89);
+  // Операторская выдача больше не создаёт профиль игрока: записи
+  // `aof_core.MintResource.player` в политике быть не должно — иначе гейт
+  // сообщил бы об устаревшей записи, а `init_if_needed, payer = authority`
+  // вернулся бы незамеченным.
+  assert.equal(policy.entries['aof_core.MintResource.player'], undefined);
   const debt = matrix.rows.filter((r) => r.status === 'debt').map((r) => `${r.program}.${r.instruction}.${r.account}`);
   assert.deepEqual(debt, [
     'aof_core.GrantSeasonXp.season_pass',
-    'aof_core.MintResource.player',
     'aof_core.MintResourceOnce.player',
     'aof_core.MintResourceOnce.reward_receipt',
-    'aof_core.MintTool.tool_data',
   ]);
   for (const row of matrix.rows) {
     assert.ok(row.owner && row.requiredPayer && row.status, `${row.program}.${row.instruction}.${row.account}: не классифицирован`);
@@ -80,12 +82,32 @@ test('политика и матрица покрывают одни и те ж�
   }
 });
 
-test('снятый долг (ok вместо debt) роняет гейт как скрытая субсидия', () => {
+test('код, вернувший оператору оплату аккаунта игрока, роняет гейт как скрытая субсидия', () => {
+  // Долгов в политике больше нет, поэтому субсидию вводим в самом коде
+  // песочницы: `payer = user` игрока становится `payer = authority`. Гейт
+  // обязан поймать это, даже если политика осталась нетронутой.
   withRoot((tmp) => {
-    editJson(tmp, POLICY, (p) => { p.entries[KEY].status = 'ok'; return p; });
+    const file = path.join(tmp, 'aof-core/src/lib.rs');
+    const src = fs.readFileSync(file, 'utf8');
+    assert.match(src, /init_if_needed, payer = user/);
+    fs.writeFileSync(file, src.replace('init_if_needed, payer = user', 'init_if_needed, payer = authority'));
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1, result.out);
     assert.match(result.out, /скрытая субсидия/);
+  });
+});
+
+test('запись политики для аккаунта, который больше не создаётся, — ошибка', () => {
+  withRoot((tmp) => {
+    editJson(tmp, POLICY, (p) => {
+      p.entries['aof_core.MintResource.player'] = {
+        owner: 'player', payer: 'player', status: 'ok', reason: 'вернули init_if_needed оператора в обход гейта',
+      };
+      return p;
+    });
+    const result = run(['--check', '--root', tmp]);
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /устарела/);
   });
 });
 

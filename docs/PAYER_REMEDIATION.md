@@ -116,6 +116,41 @@ payer = кошелёк игрока, подписывает игрок; backend 
 **Тест:** ATA отсутствует → транзакция создаёт его, lamports списаны с игрока, lamports authority не
 изменились; повторный вызов с существующим ATA не платит за него второй раз.
 
+## Прогресс
+
+**Коммит 4 (player-funded player-owned accounts) — исходники готовы, помечены pending compilation.**
+
+* `MintResource.player`: `init_if_needed, payer = authority` убран. Поле стало
+  `UncheckedAccount` под seeds-констрейнтом (аккаунта может ещё не быть), handler читает его
+  через `read_optional_player` и передаёт в `execute_mint` как `Option<&Player>`; ветка
+  «инициализировать профиль нулём» удалена. Профиль создаётся действием игрока.
+  Эта запись ушла из `security/payer-policy.json` вместе с долгом: гейт теперь ловит
+  попытку вернуть `init_if_needed` (тест «запись для аккаунта, который больше не создаётся»).
+* `MintTool.tool_data`: добавлен `payer: Signer` сразу после `recipient`, констрейнт
+  `payer.key() == recipient.key()`, `init_if_needed, payer = payer`. `security/instruction-roles.json`
+  не меняется (роли инструкции те же), а `docs/INSTRUCTION_INVENTORY` перегенерирован.
+* Backend: `routes/tools.ts` (`POST /tools/mint`) возвращает `{ tx }` — fee payer и подписант
+  получатель, ATA получателя создаётся в его же транзакции; `routes/admin.ts`
+  (`POST /test-grant-tools`) собирает mint-аккаунт, ATA и `ToolData` со счёта получателя и
+  подписывает частично (`coSign(instructions, recipient, mintKeypairs)`), authority добавляет
+  только авторизацию.
+* Frontend: добавлен локальный интент `toolMint` (`frontend/src/lib/transactionIntent.ts`) —
+  кошелёк принимает только один `mint_tool` на свой ATA со своим `ToolData`, ровно одно
+  идемпотентное создание ATA, точный тип/редкость инструмента из payload; в транзакции
+  разрешены две подписи (игрок + authority). Генератор таблицы инструкций больше не помечает
+  `mint_tool` как authority-only.
+* Тесты: `tests/readiness/payer-tool-mint.test.cjs` (6) — Rust-контекст, handler, backend-роуты,
+  IDL/таблица, интент; `tests/readiness/payer-audit.test.cjs` обновлён на 89 инициализаций и
+  3 долга, а тест «скрытая субсидия» теперь вводит нарушение в код песочницы, а не в политику.
+* Остаток долга после коммита 4: `MintResourceOnce.player`, `MintResourceOnce.reward_receipt`
+  (коммит 5), `GrantSeasonXp.season_pass` (коммит 5). `MintResourceOnce.player` перенесён из
+  коммита 4 в коммит 5: его исправляет та же подпись игрока, что и чек награды, и дробить один
+  контекст на два коммита значило бы дважды переписывать один вертикальный срез.
+
+**Что осталось до закрытия пункта 10:** коммиты 5 и 6, 10 payer acceptance-тестов
+(`tests/aof_payer_funding.ts`, pending validator), обнуление долга в `payer-audit`, отчёт из 10
+пунктов в PR.
+
 ## Payer acceptance tests (обязательный минимум, 10)
 
 1. игрок платит за `Player`/профиль; 2. игрок платит за `ToolData`; 3. игрок платит за

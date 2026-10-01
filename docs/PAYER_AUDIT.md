@@ -17,11 +17,11 @@ prepaid-механики субсидией не являются.
   Тесты доказывают, что гейт живой: снятый долг (`ok` вместо `debt`) падает как «скрытая
   субсидия», отсутствующая или устаревшая запись — тоже.
 
-Охват: **90 init/`init_if_needed` аккаунта** в шести программах — `aof_core` (65),
-`aof_quests` (14), `aof_liquidity` (4), `aof_market` (2),
-`aof_session_keys` (3), `aof_rebirth` (2).
-(Шаг B пункта 12 удалил мёртвые `MigrateTool.tool_data` и `PlaceLimitOrder.order` — минус два аккаунта и
-минус один долг.)
+Охват: **89 init/`init_if_needed` аккаунтов** в шести программах.
+(Шаг B пункта 12 удалил мёртвые `MigrateTool.tool_data` и `PlaceLimitOrder.order` — минус два аккаунта
+и минус один долг. Коммит 4 payer-remediation убрал создание `MintResource.player` из операторской
+выдачи: аккаунт больше не инициализируется программой вообще, поэтому из матрицы ушла и его запись —
+минус ещё один аккаунт и один долг.)
 
 Сводка (из `docs/PAYER_MATRIX.json`):
 
@@ -31,27 +31,32 @@ prepaid-механики субсидией не являются.
 | Инфраструктура проекта (`requiredPayer: operator`) | 24 |
 | Prepaid, возмещается поселенцу (`requiredPayer: cranker-deposit`) | 15 |
 | Отдельный сервис проекта (`requiredPayer: service`, oracle) | 1 |
-| **Долг: платит оператор, а должен игрок** | **5** |
+| **Долг: платит оператор, а должен игрок** | **3** |
 
-Из 90 аккаунтов 62 — аккаунты игрока, 28 — глобальные. Фактически кошелёк оператора/authority
-платит за 44 аккаунта: 39 законной глобальной инфраструктуры и 5 долгов.
+Фактически кошелёк оператора/authority платит за глобальную инфраструктуру и за 3 оставшихся
+долга (см. ниже).
 
-## Долг до деплоя (5 записей, `status: debt`)
+## Долг до деплоя (3 записи, `status: debt`)
+
+Коммит 4 (ветка `arena/01a0f648-aof`) закрыл два долга из пяти — на уровне исходников:
+
+| Было | Стало |
+|---|---|
+| `MintResource.player` — `init_if_needed, payer = authority` создавал профиль игрока за счёт оператора | профиль в этой инструкции не создаётся: `player` — опциональный read-only PDA, handler читает его как `Option<Player>`, а сама выдача идёт по базовым перкам. Профиль создаётся действием игрока |
+| `MintTool.tool_data` — `init_if_needed, payer = authority` | в контексте появился `payer: Signer` с констрейнтом `payer.key() == recipient.key()`; `ToolData` и ATA получателя оплачивает и подписывает получатель, authority только авторизует минт (частично подписанная транзакция) |
+
+Остаются три записи, все в операторских выдачах наград/сезона (закрываются коммитами 5–6):
 
 | Аккаунт | Платит сейчас | Почему это долг |
 |---|---|---|
-| `GrantSeasonXp.season_pass` (aof_core) | `authority` | сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия |
-| `MintResource.player` (aof_core) | `authority` | создаётся профиль игрока: rent платит кошелёк authority-оператора. Долг до деплоя: claim/выдача должны быть подписаны кошельком игрока, либо профиль создаётся его собственным действием |
-| `MintResourceOnce.player` (aof_core) | `authority` | то же, что MintResource.player: профиль игрока создаётся за счёт оператора на выдаче награды |
+| `GrantSeasonXp.season_pass` (aof_core) | `authority` | сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия. План: отдельный `init_season_pass` игроком, `grant_season_xp` меняет только существующий |
+| `MintResourceOnce.player` (aof_core) | `authority` | профиль игрока создаётся за счёт оператора на выдаче награды. План: награда — claim игрока (`player: Signer`, `payer = player`) |
 | `MintResourceOnce.reward_receipt` (aof_core) | `authority` | чек награды игрока (proof выплаты) оплачивает оператор; должен оплачивать игрок в своей claim-транзакции |
-| `MintTool.tool_data` (aof_core) | `authority` | ToolData инструмента — собственность получателя, но получатель не подписант: rent платит оператор. Долг до деплоя: recipient должен подписывать и платить |
-
-Полные формулировки «что делать» — в `docs/PAYER_MATRIX.md` и в плане remediation: player-funded
-профиль, чек и `ToolData`, отдельный `init_season_pass` игроком, отказ backend от оплаты чужих ATA.
 
 Правки не внесены: они меняют набор подписантов, а значит IDL и вызовы клиентов, и требуют
 `anchor build` + validator'а, которых в песочнице нет. После решения владельца каждая правка
 делается отдельным коммитом с `scripts/idl-sync-ts.py` и `check-idl-drift.py`.
+Статус исходников: **source-aligned manually; generated validation pending**.
 
 ## Почему prepaid-пути — не субсидия (доказательства)
 
@@ -88,11 +93,13 @@ prepaid-механики субсидией не являются.
 
 * `aof_backend/src/routes/resources.ts:92-95` — `createAssociatedTokenAccountIdempotentInstruction`
   с `AUTHORITY_PUBKEY` как плательщиком;
-* `aof_backend/src/routes/inbox.ts:206-215`, `aof_backend/src/routes/admin.ts:300+` — тот же паттерн.
+* `aof_backend/src/routes/inbox.ts:206-215`, `aof_backend/src/routes/admin.ts:258-261`, `408-418`,
+  `506-509`, `581`, `aof_backend/src/routes/hotMarket.ts:109-110` — тот же паттерн.
 
-Значит rent ATA игрока (≈0.00203 SOL) сейчас на проекте. Варианты: claim/выдача становятся
-wallet-signed (платит игрок — согласуется с правилом и с prepaid-подходом), либо проект
-фиксирует это как явную статью расходов с лимитом. Решение — за владельцем.
+Решение владельца: ATA в message транзакции игрока, payer = кошелёк игрока, подпись игрока,
+authority подписывает только authorization-инструкции; ленивое/идемпотентное создание; quote без
+rent уже существующего ATA; асинхронные награды — player claim. Закрывается коммитами 5 (claim) и 6
+(остальные роуты), проверка — `tests/readiness/ata-funding.test.cjs`.
 
 ## Как перезапустить проверку
 

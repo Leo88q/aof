@@ -3,17 +3,15 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **90**; нарушают принцип (долг до деплоя): **5**.
+Инициализаций аккаунтов: **89**; нарушают принцип (долг до деплоя): **3**.
 
 ## Долг: платит оператор, а должен игрок
 
 | Инструкция | Аккаунт | Тип | Платит сейчас | Должен | Причина |
 |---|---|---|---|---|---|
 | aof_core.GrantSeasonXp | season_pass | SeasonPass | authority | player | сезонный пропуск платный (PurchaseSeasonPass, payer = user), а здесь создаётся бесплатно за счёт оператора — субсидия |
-| aof_core.MintResource | player | Player | authority | player | создаётся профиль игрока: rent платит кошелёк authority-оператора. Долг до деплоя: claim/выдача должны быть подписаны кошельком игрока, либо профиль создаётся его собственным действием |
 | aof_core.MintResourceOnce | player | Player | authority | player | то же, что MintResource.player: профиль игрока создаётся за счёт оператора на выдаче награды |
 | aof_core.MintResourceOnce | reward_receipt | RewardReceipt | authority | player | чек награды игрока (proof выплаты) оплачивает оператор; должен оплачивать игрок в своей claim-транзакции |
-| aof_core.MintTool | tool_data | ToolData | authority | player | ToolData инструмента — собственность получателя, но получатель не подписант: rent платит оператор. Долг до деплоя: recipient должен подписывать и платить |
 
 ## Все инициализации
 
@@ -45,10 +43,9 @@
 | aof_core | InitSeason | season | Season | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | InitVaultGuard | vault_guard | VaultGuard | init | authority (оператор) | global | operator | ok | — | — |
 | aof_core | MarketplaceList | listing | Listing | init | seller | player | player | ok | — | — |
-| aof_core | MintResource | player | Player | init_if_needed | authority (оператор) | player | player | debt | — | — |
 | aof_core | MintResourceOnce | player | Player | init_if_needed | authority (оператор) | player | player | debt | — | — |
 | aof_core | MintResourceOnce | reward_receipt | RewardReceipt | init | authority (оператор) | player | player | debt | — | — |
-| aof_core | MintTool | tool_data | ToolData | init_if_needed | authority (оператор) | player | player | debt | — | — |
+| aof_core | MintTool | tool_data | ToolData | init_if_needed | payer | player | player | ok | — | — |
 | aof_core | OfferCreateCtx | offer | Offer | init | buyer | player | player | ok | — | — |
 | aof_core | PackOpenCommit | pack_commit | PackCommit | init | user | player | player | ok | — | — |
 | aof_core | PackOpenReveal | mint | Mint | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |

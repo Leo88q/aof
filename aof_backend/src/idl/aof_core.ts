@@ -4000,8 +4000,7 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "player",
-          "writable": true
+          "name": "player"
         },
         {
           "name": "issuanceCap",
@@ -4066,6 +4065,11 @@ export type AofCore = {
         {
           "name": "recipient",
           "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "toolData",

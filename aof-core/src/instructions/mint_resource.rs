@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::AccountDeserialize;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_spl::token::{self, Token, Mint, TokenAccount, MintTo};
 use anchor_lang::solana_program::program_option::COption;
@@ -32,17 +33,33 @@ fn pick_fee_bps(user: &Pubkey, amount: u64, has_medallion: bool, has_historian: 
     min_bps + offset as u16
 }
 
+/// Профиль игрока может отсутствовать: операторская выдача не создаёт его и не
+/// платит за него (см. `MintResource.player`). Пустой PDA — это `None`, то есть
+/// базовые перки; ошибка десериализации несуществующим аккаунтом не маскируется.
+pub fn read_optional_player(account: &UncheckedAccount<'_>) -> Result<Option<Player>> {
+    if account.data_is_empty() {
+        return Ok(None);
+    }
+    let data = account.try_borrow_data()?;
+    Ok(Some(Player::try_deserialize(&mut &data[..])?))
+}
+
 pub fn handler(ctx: Context<MintResource>, kind: ResourceKind, amount: u64) -> Result<()> {
+    let player = read_optional_player(&ctx.accounts.player)?;
     execute_mint(&ctx.accounts.config, &ctx.accounts.material_mints,
-        &mut ctx.accounts.player, &mut ctx.accounts.issuance_cap,
+        player.as_ref(), &mut ctx.accounts.issuance_cap,
         &ctx.accounts.mint, &ctx.accounts.token_account,
         &ctx.accounts.treasury_token, &ctx.accounts.auth, &ctx.accounts.token_program,
         ctx.bumps.auth, kind, amount)
 }
 
-// One canonical economic path for both legacy admin mints and replay-protected rewards.
+/// One canonical economic path for both legacy admin mints and replay-protected
+/// rewards. `player` is read-only and optional: caller-issued mints must not
+/// create or fund a player-owned profile. Instructions that do create a profile
+/// at the player's own expense (`mint_resource_once`, payer = player) initialise
+/// its fields themselves before calling this function.
 pub fn execute_mint<'info>(
-    config: &Config, material_mints: &MaterialMints, player: &mut Player,
+    config: &Config, material_mints: &MaterialMints, player: Option<&Player>,
     issuance_cap: &mut IssuanceCap,
     mint: &Account<'info, Mint>, token_account: &Account<'info, TokenAccount>,
     treasury_token: &Account<'info, TokenAccount>, auth: &UncheckedAccount<'info>,
@@ -68,18 +85,13 @@ pub fn execute_mint<'info>(
     let slot = Clock::get()?.slot;
     issuance_cap.charge(kind as u8, amount, slot)?;
 
-    if player.owner == Pubkey::default() {
-        player.owner = token_account.owner;
-        player.villagers = DEFAULT_VILLAGERS;
-        player.villagers_available = DEFAULT_VILLAGERS;
-    }
+    // Профиль не создаётся и не дописывается здесь: аккаунт игрока оплачивает
+    // игрок, а выдача может происходить вообще без профиля (базовые перки).
+    let (has_medallion, has_historian) = player
+        .map(|p| (p.has_medallion(), p.has_historian()))
+        .unwrap_or((false, false));
 
-    let bps = pick_fee_bps(
-        &token_account.owner,
-        amount,
-        player.has_medallion(),
-        player.has_historian(),
-    );
+    let bps = pick_fee_bps(&token_account.owner, amount, has_medallion, has_historian);
     let (user_cut, fee_cut) = crate::economics::split_bps(amount, bps)?;
 
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];

@@ -162,12 +162,6 @@
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     },
-    "aof_core.MintResource.player": {
-      "owner": "player",
-      "payer": "player",
-      "status": "debt",
-      "reason": "создаётся профиль игрока: rent платит кошелёк authority-оператора. Долг до деплоя: claim/выдача должны быть подписаны кошельком игрока, либо профиль создаётся его собственным действием"
-    },
     "aof_core.MintResourceOnce.player": {
       "owner": "player",
       "payer": "player",
@@ -183,8 +177,8 @@
     "aof_core.MintTool.tool_data": {
       "owner": "player",
       "payer": "player",
-      "status": "debt",
-      "reason": "ToolData инструмента — собственность получателя, но получатель не подписант: rent платит оператор. Долг до деплоя: recipient должен подписывать и платить"
+      "status": "ok",
+      "reason": "ToolData — собственность получателя; в контексте появился `payer: Signer` с констрейнтом `payer == recipient`, а `init_if_needed` платит `payer`. Операторский минт передаёт получателя и отправляет частично подписанную транзакцию (authority подписывает только авторизацию)"
     },
     "aof_core.OfferCreateCtx.offer": {
       "owner": "player",

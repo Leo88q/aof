@@ -98,7 +98,23 @@ export interface RebirthIntent {
   readonly surplus: readonly { readonly mint: string; readonly tokenAccount: string; readonly amountAtoms: string }[];
 }
 
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent;
+/**
+ * [PAYER] Минт инструмента: `ToolData` и ATA — аккаунты получателя, поэтому
+ * программа требует его подписи (`payer == recipient`) и списывает rent с него,
+ * а не с проекта. Кошелёк подписывает только собственную выдачу: ровно один
+ * `mint_tool` за свой ATA со своим `ToolData` и ровно одно ленивое создание
+ * этого ATA. Authority (config.operator) добавляет только авторизацию.
+ */
+export interface ToolMintIntent {
+  readonly kind: "toolMint";
+  readonly user: string;
+  readonly mint: string;
+  readonly authority: string;
+  readonly toolType: string;
+  readonly rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+}
+
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent | ToolMintIntent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
@@ -106,7 +122,7 @@ export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 4
 export function expectedSigners(intent: TransactionIntent | undefined): number {
   // packOpen и rebirth co-sign-ятся оператором: без его подписи транзакция не
   // собирается, поэтому кошелёк разрешает вторую подпись.
-  return intent?.kind === "packOpen" || intent?.kind === "rebirth" ? 2 : 1;
+  return intent?.kind === "packOpen" || intent?.kind === "rebirth" || intent?.kind === "toolMint" ? 2 : 1;
 }
 type Instruction = { programId: string; keys: PublicKey[]; data: Uint8Array };
 
@@ -185,6 +201,7 @@ export function validateTransactionIntent(
   if (intent.kind === "collector") return validateCollectorIntent(instructions, intent, user);
   if (intent.kind === "orderbookV2") return validateOrderbookV2Intent(instructions, intent, user);
   if (intent.kind === "rebirth") return validateRebirthIntent(instructions, intent, user);
+  if (intent.kind === "toolMint") return validateToolMintIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -346,6 +363,52 @@ function validateRebirthIntent(instructions: Instruction[], intent: RebirthInten
   ];
   if (!keysEqual(instructions[1].keys, expectedRebirthKeys)) throw new Error("Unexpected rebirth accounts");
   if (instructions[1].data.length !== 8) throw new Error("Unexpected rebirth payload");
+}
+
+/**
+ * [PAYER] Минт инструмента — единственный активный случай, когда игрок
+ * подписывает инструкцию, которую также подписывает authority: получатель
+ * платит за свои аккаунты. Проверяются точные аккаунты (получатель = плательщик
+ * = кошелёк), точный тип/редкость инструмента из payload и ровно одно ленивое
+ * создание ATA получателя; любая третья инструкция отменяет подпись.
+ */
+function validateToolMintIntent(instructions: Instruction[], intent: ToolMintIntent, user: PublicKey): void {
+  const RARITY: Record<ToolMintIntent["rarity"], number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  const mint = new PublicKey(intent.mint);
+  const authority = new PublicKey(intent.authority);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the tool mint intent");
+  if (!(intent.rarity in RARITY)) throw new Error("Unknown tool rarity");
+  if (typeof intent.toolType !== "string" || intent.toolType.length === 0 || intent.toolType.length > 32) {
+    throw new Error("Unknown tool type");
+  }
+  const tokenAccount = ata(mint, user);
+  const expected = [pda("config"), authority, pda("auth"), mint, tokenAccount, user, user,
+    pda("tool", mint), TOKEN, new PublicKey(SYSTEM)];
+  let mints = 0, atas = 0;
+  for (const ix of instructions) {
+    const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+    if (spec?.name === "mint_tool") {
+      mints += 1;
+      if (mints !== 1 || !keysEqual(ix.keys, expected)) throw new Error("Unexpected tool mint accounts");
+      const toolType = new TextEncoder().encode(intent.toolType);
+      if (ix.data.length !== 8 + 4 + toolType.length + 1) throw new Error("Unexpected tool mint payload");
+      const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+      if (view.getUint32(8, true) !== toolType.length) throw new Error("Unexpected tool type length");
+      for (let i = 0; i < toolType.length; i += 1) {
+        if (ix.data[12 + i] !== toolType[i]) throw new Error("Tool type differs from user intent");
+      }
+      if (ix.data[12 + toolType.length] !== RARITY[intent.rarity]) throw new Error("Tool rarity differs from user intent");
+    } else if (ix.programId === ATA.toBase58()) {
+      atas += 1;
+      if (atas !== 1 || ix.data.length !== 1 || ix.data[0] !== 1 ||
+          !keysEqual(ix.keys, [user, tokenAccount, user, mint, new PublicKey(SYSTEM), TOKEN])) {
+        throw new Error("Unexpected rent destination");
+      }
+    } else if (ix.programId !== COMPUTE) {
+      throw new Error("Extra instruction is outside the tool mint intent");
+    }
+  }
+  if (mints !== 1) throw new Error("Missing tool mint");
 }
 
 function validateOrderbookV2Intent(instructions: Instruction[], intent: OrderbookV2Intent, user: PublicKey): void {

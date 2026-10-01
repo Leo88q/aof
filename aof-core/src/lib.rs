@@ -545,14 +545,18 @@ pub struct MintResource<'info> {
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
     #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
     pub treasury_token: Box<Account<'info, TokenAccount>>,
-    /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
-    /// создаём с нулевыми перками — mint_resource не должен блокироваться
-    /// отсутствием профиля.
-    #[account(
-        init_if_needed, payer = authority, space = PLAYER_SPACE,
-        seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
-    )]
-    pub player: Box<Account<'info, Player>>,
+    /// [PAYER] Профиль игрока — его собственный аккаунт, поэтому операторская
+    /// выдача больше НЕ создаёт его и не платит за него rent: раньше здесь было
+    /// `init_if_needed, payer = authority`, то есть чужой аккаунт создавался за
+    /// счёт кошелька оператора. Профиль создаётся действием игрока
+    /// (player-funded пути, например `start_mining`: `payer = user`).
+    /// Пока профиля нет, передаётся канонический PDA `[PLAYER_SEED, owner]` —
+    /// пустой read-only аккаунт, и выдача идёт по базовым перкам.
+    /// CHECK: не `Account`, потому что аккаунт может ещё не существовать;
+    /// адрес проверяет seeds-констрейнт, данные читает handler
+    /// (`read_optional_player`) и не пишет их.
+    #[account(seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump)]
+    pub player: UncheckedAccount<'info>,
     /// Per-kind issuance budget. Required: a missing PDA fails account
     /// resolution, so an un-initialised cap can never mean "unlimited".
     #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
@@ -663,9 +667,17 @@ pub struct MintTool<'info> {
     /// CHECK: explicit recipient of the minted tool; must own `token_account`.
     #[account(mut)]
     pub recipient: UncheckedAccount<'info>,
+    /// [PAYER] Плательщик и подписант пользовательских аккаунтов этой выдачи.
+    /// `ToolData` — собственность получателя, значит и rent, и подпись его;
+    /// третья сторона (включая проект) физически не может оплатить чужой
+    /// `ToolData`. Для player-mint `payer == recipient`; операторский минт
+    /// передаёт сюда получателя и отправляет частично подписанную транзакцию,
+    /// где authority подписывает только авторизацию.
+    #[account(mut, constraint = payer.key() == recipient.key() @ AofError::Unauthorized)]
+    pub payer: Signer<'info>,
     #[account(
         init_if_needed,
-        payer = authority,
+        payer = payer,
         space = TOOL_DATA_SPACE,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump

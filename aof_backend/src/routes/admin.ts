@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { SystemProgram, Transaction, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { SystemProgram, Transaction, PublicKey, Keypair } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createInitializeMintInstruction, MINT_SIZE, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import {AUTHORITY, TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { fetchOne, fetchOneForSigner } from "../lib/decode";
@@ -572,13 +572,31 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
     const [config] = configPda();
     const [auth] = authPda();
     const instructions: any[] = [];
+    const mintKeypairs: Keypair[] = [];
     const granted: Array<{ mint: string; tokenAccount: string; toolData: string }> = [];
+    // [PAYER] Инструмент — собственность получателя: mint-аккаунт, ATA и
+    // ToolData оплачивает он, а не кошелёк проекта. Backend только готовит
+    // частично подписанную транзакцию фиксированной формы: authority
+    // подписывает исключительно минт-авторизацию (mint_authority = auth PDA),
+    // подпись получателя и оплата добавляются его кошельком. Блокхаш — expiry.
+    const mintRent = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
     for (let index = 0; index < count; index += 1) {
-      const mint = await createMint(connection, AUTHORITY, auth, null, 0, undefined, { commitment: "confirmed" });
+      const mintKp = Keypair.generate();
+      const mint = mintKp.publicKey;
       const tokenAccount = getAssociatedTokenAddressSync(mint, recipient);
       const [toolData] = toolPda(mint);
       instructions.push(
-        createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, tokenAccount, recipient, mint),
+        SystemProgram.createAccount({
+          fromPubkey: recipient,
+          newAccountPubkey: mint,
+          lamports: mintRent,
+          space: MINT_SIZE,
+          programId: TOKEN_PROGRAM_ID,
+        }),
+      );
+      instructions.push(createInitializeMintInstruction(mint, 0, auth, null));
+      instructions.push(
+        createAssociatedTokenAccountIdempotentInstruction(recipient, tokenAccount, recipient, mint),
       );
       instructions.push(await (program.methods as any)
         .mintTool(toolType, rarity)
@@ -589,15 +607,17 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
           mint,
           tokenAccount,
           recipient,
+          payer: recipient,
           toolData,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
         .instruction());
+      mintKeypairs.push(mintKp);
       granted.push({ mint: mint.toBase58(), tokenAccount: tokenAccount.toBase58(), toolData: toolData.toBase58() });
     }
-    const sig = await authorityOnly(instructions);
-    res.json({ success: true, count: granted.length, recipient: recipient.toBase58(), sig, granted });
+    const tx = await coSign(instructions, recipient, mintKeypairs);
+    res.json({ success: true, count: granted.length, recipient: recipient.toBase58(), tx, granted });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

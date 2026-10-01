@@ -2680,7 +2680,7 @@
         "kind": "delegate",
         "path": "instructions::mint_resource::handler",
         "file": "aof-core/src/instructions/mint_resource.rs",
-        "line": 35
+        "line": 47
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -2732,10 +2732,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
+            "tests/readiness/payer-tool-mint.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -2771,6 +2772,13 @@
           "files": [
             "aof_backend/src/routes/admin.ts",
             "aof_backend/src/routes/tools.ts"
+          ]
+        },
+        "frontend": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "frontend/src/lib/transactionIntent.ts"
           ]
         },
         "platform": {
@@ -2810,10 +2818,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 5,
           "files": [
             "tests/readiness/nft-standards.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
+            "tests/readiness/payer-tool-mint.test.cjs",
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
@@ -2827,7 +2836,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 5,
         "validatorTested": true,
         "anyTest": true
       }
@@ -5117,7 +5126,7 @@
         "kind": "delegate",
         "path": "instructions::mint_resource_once::handler",
         "file": "aof-core/src/instructions/mint_resource_once.rs",
-        "line": 5
+        "line": 6
       },
       "disabledOnChain": false,
       "role": "gameplay",
