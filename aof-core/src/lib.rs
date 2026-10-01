@@ -742,6 +742,38 @@ pub struct TransferTool<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// Восстановление кэша `ToolData` после обычного SPL-перевода инструмента.
+///
+/// `config` в контексте намеренно отсутствует: синхронизация не двигает
+/// ценность, она лишь приводит кэш в соответствие с токеном. Пауза не должна
+/// оставлять держателя с «замёрзшим» инструментом, который нельзя ни продать,
+/// ни застейкать (exit-path, как в `unstake`/`marketplace_cancel`).
+#[derive(Accounts)]
+pub struct SyncToolOwner<'info> {
+    /// Новый держатель — единственная подпись. Permissionless-синхронизация
+    /// позволила бы постороннему сбросить `operator` у чужого инструмента.
+    pub holder: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+    )]
+    pub tool: Account<'info, ToolData>,
+    /// Доказательство владения: личный ATA держателя с ровно одной единицей.
+    /// `owner == holder` и `amount == 1` вместе отсекают и чужой аккаунт, и
+    /// произвольный минт (он всё равно сверяется с `ToolData.mint` выше).
+    /// Escrow-аккаунты (стейк, аренда, листинг, аукцион) принадлежат программе,
+    /// поэтому при активных обязательствах доказательство не проходит.
+    #[account(
+        constraint = holder_token.mint == mint.key() @ AofError::InvalidMint,
+        constraint = holder_token.owner == holder.key() @ AofError::NotToolOwner,
+        constraint = holder_token.amount == 1 @ AofError::ZeroAmount
+    )]
+    pub holder_token: Account<'info, TokenAccount>,
+}
+
 #[derive(Accounts)]
 #[instruction(tool_type: String, rarity: Rarity, durability: u8)]
 pub struct MigrateTool<'info> {
@@ -3896,6 +3928,12 @@ pub mod aof_core {
     /// Канонический перенос инструмента (NFT + владение) одним действием.
     pub fn transfer_tool(ctx: Context<TransferTool>) -> Result<()> {
         instructions::tool_transfer::transfer_handler(ctx)
+    }
+
+    /// Привести кэш `ToolData.owner`/`operator` в соответствие с фактическим
+    /// держателем токена после обычного SPL-перевода. Подписывает новый держатель.
+    pub fn sync_tool_owner(ctx: Context<SyncToolOwner>) -> Result<()> {
+        instructions::sync_tool_owner::sync_handler(ctx)
     }
 
     pub fn craft(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {

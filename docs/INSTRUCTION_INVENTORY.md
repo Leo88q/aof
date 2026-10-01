@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 120 | 4 | 86 (72%) | 11 | 1 |
+| aof_core | 121 | 4 | 86 (71%) | 12 | 2 |
 | aof_market | 14 | 1 | 4 (29%) | 2 | 1 |
 | aof_quests | 19 | 4 | 0 (0%) | 7 | 6 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **170** | **11** | **92** (54%) | **24** | **8** |
+| **всего** | **171** | **11** | **92** (54%) | **25** | **9** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -31,7 +31,7 @@
 
 | Роль | aof_core | aof_market | aof_quests | aof_rebirth | aof_liquidity | aof_session_keys | всего |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| gameplay | 76 | 4 | 9 | 1 | 2 | 4 | 96 |
+| gameplay | 77 | 4 | 9 | 1 | 2 | 4 | 97 |
 | admin | 21 | 5 | 7 | 3 | 3 | 1 | 40 |
 | emergency | 6 | 1 | 1 | 0 | 0 | 0 | 8 |
 | migration | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
@@ -58,7 +58,7 @@
 | aof_session_keys.session_check_and_spend | gameplay | Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
 | aof_session_keys.session_create | gameplay | Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
 
-## Без найденных call sites (24)
+## Без найденных call sites (25)
 
 Не «мёртвый код», а список мест для ручной проверки. «Тесты» — есть ли хоть одно покрытие (validator / самотест / readiness / Rust).
 Инструкции с общими именами (23: ротация authority, set_fees, set_paused, vrf_pool_*) исключены: по тексту нельзя определить, какой программе принадлежит упоминание.
@@ -76,6 +76,7 @@
 | aof_core.emergency_stop | emergency | active | validator, readiness, rust | Guardian: пауза игры и/или заморозка выводов одним действием. |
 | aof_core.set_cashout_frozen | emergency | active | validator, readiness, rust | Заморозка/разморозка выводов (operator/guardian). |
 | aof_core.vrf_slot_recover | emergency | active | readiness | Оператор снимает блокировку слота VRF, чей держатель исчез. |
+| aof_core.sync_tool_owner | gameplay | active | — | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
 | aof_market.cancel_limit_order | candidate-dead-code | active | selfTests | Снимает лимитный ордер и возвращает эскроу; place_limit_order отключена, поэтому ордера не создаются. |
 | aof_market.place_limit_order | candidate-dead-code | disabled-on-chain | — | Лимитные ордера отключены: нет инструкции матчинга и расчёта (TradingDisabled); аргументы сохранены ради IDL. |
 | aof_quests.init_potato_bank | initialization | active | — | Изолированная казна Potato V2, изначально на паузе. |
@@ -217,6 +218,7 @@
 | aof_core | match_resource_orders_v2 | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | reset_for_rebirth | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | transfer_tool | gameplay | active | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |  |
+| aof_core | sync_tool_owner | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_market | cancel_limit_order | candidate-dead-code | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |

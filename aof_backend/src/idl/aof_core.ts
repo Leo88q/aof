@@ -10730,6 +10730,53 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "syncToolOwner",
+      "discriminator": [
+        86,
+        255,
+        249,
+        230,
+        115,
+        219,
+        123,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "holderToken"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -12254,6 +12301,19 @@ export type AofCore = {
         146,
         54,
         128
+      ]
+    },
+    {
+      "name": "toolOwnershipSynced",
+      "discriminator": [
+        189,
+        3,
+        233,
+        19,
+        80,
+        26,
+        124,
+        77
       ]
     }
   ],

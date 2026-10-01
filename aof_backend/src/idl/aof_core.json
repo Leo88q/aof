@@ -10724,6 +10724,53 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "sync_tool_owner",
+      "discriminator": [
+        86,
+        255,
+        249,
+        230,
+        115,
+        219,
+        123,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "holder_token"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -12248,6 +12295,19 @@
         146,
         54,
         128
+      ]
+    },
+    {
+      "name": "ToolOwnershipSynced",
+      "discriminator": [
+        189,
+        3,
+        233,
+        19,
+        80,
+        26,
+        124,
+        77
       ]
     }
   ],

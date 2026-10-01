@@ -25,6 +25,22 @@ pub struct ToolTransferred {
     pub to: Pubkey,
 }
 
+/// `sync_tool_owner` привёл кэш `ToolData.owner`/`operator` в соответствие с
+/// фактическим держателем supply-1 токена после обычного SPL-перевода.
+///
+/// `previous_*` — значения кэша ДО синхронизации, а не предыдущий владелец
+/// токена: программа не видит обычные SPL-переводы и не знает, сколько
+/// держателей сменилось с последней синхронизации.
+#[event]
+pub struct ToolOwnershipSynced {
+    pub mint: Pubkey,
+    pub previous_owner: Pubkey,
+    pub previous_operator: Pubkey,
+    pub new_owner: Pubkey,
+    /// Слот, в котором кэш был согласован с токеном.
+    pub slot: u64,
+}
+
 #[event]
 pub struct Staked {
     pub user: Pubkey,

@@ -618,6 +618,11 @@
         "role": "gameplay",
         "status": "active",
         "note": "Канонический перенос инструмента (NFT и ToolData.owner одним действием); зовётся из aof_market по CPI."
+      },
+      "sync_tool_owner": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof."
       }
     },
     "aof_market": {

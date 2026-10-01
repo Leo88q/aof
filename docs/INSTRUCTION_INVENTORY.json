@@ -21,9 +21,9 @@
     }
   ],
   "totals": {
-    "instructions": 170,
+    "instructions": 171,
     "byRole": {
-      "gameplay": 96,
+      "gameplay": 97,
       "admin": 40,
       "emergency": 8,
       "migration": 2,
@@ -35,14 +35,14 @@
     "disabledOnChain": 11,
     "validatorTested": 92,
     "sharedNames": 23,
-    "withoutAnyCallSite": 24,
-    "withoutCallSiteAndTest": 8
+    "withoutAnyCallSite": 25,
+    "withoutCallSiteAndTest": 9
   },
   "programs": {
     "aof_core": {
-      "instructions": 120,
+      "instructions": 121,
       "byRole": {
-        "gameplay": 76,
+        "gameplay": 77,
         "admin": 21,
         "emergency": 6,
         "migration": 2,
@@ -54,8 +54,8 @@
       "disabledOnChain": 4,
       "validatorTested": 86,
       "sharedNames": 7,
-      "withoutAnyCallSite": 11,
-      "withoutCallSiteAndTest": 1
+      "withoutAnyCallSite": 12,
+      "withoutCallSiteAndTest": 2
     },
     "aof_market": {
       "instructions": 14,
@@ -954,7 +954,7 @@
         "kind": "delegate",
         "path": "instructions::collect_mining::handler",
         "file": "aof-core/src/instructions/collect_mining.rs",
-        "line": 42
+        "line": 43
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -2482,7 +2482,7 @@
         "kind": "inline",
         "path": null,
         "file": "aof-core/src/lib.rs",
-        "line": 4050
+        "line": 4111
       },
       "disabledOnChain": true,
       "role": "deprecated",
@@ -3861,7 +3861,7 @@
         "kind": "inline",
         "path": null,
         "file": "aof-core/src/lib.rs",
-        "line": 4092
+        "line": 4153
       },
       "disabledOnChain": true,
       "role": "deprecated",
@@ -3916,7 +3916,7 @@
         "kind": "delegate",
         "path": "instructions::repair::handler",
         "file": "aof-core/src/instructions/repair.rs",
-        "line": 9
+        "line": 53
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -4725,7 +4725,7 @@
         "kind": "delegate",
         "path": "instructions::start_mining::handler",
         "file": "aof-core/src/instructions/start_mining.rs",
-        "line": 13
+        "line": 14
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6933,6 +6933,34 @@
       }
     },
     {
+      "program": "aof_core",
+      "name": "sync_tool_owner",
+      "camel": "syncToolOwner",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::sync_tool_owner::sync_handler",
+        "file": "aof-core/src/instructions/sync_tool_owner.rs",
+        "line": 39
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof.",
+      "evidence": null,
+      "callSites": {},
+      "registries": [],
+      "bringup": [],
+      "tests": {},
+      "summary": {
+        "callSiteCount": 0,
+        "validatorTested": false,
+        "anyTest": false
+      }
+    },
+    {
       "program": "aof_market",
       "name": "cancel_limit_order",
       "camel": "cancelLimitOrder",
@@ -6942,7 +6970,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 601
+        "line": 656
       },
       "disabledOnChain": false,
       "role": "candidate-dead-code",
@@ -6978,7 +7006,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 561
+        "line": 616
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7016,7 +7044,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 381
+        "line": 416
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7077,7 +7105,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 468
+        "line": 514
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7137,7 +7165,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 579
+        "line": 634
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7186,7 +7214,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 266
+        "line": 301
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -7232,7 +7260,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 341
+        "line": 376
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -7278,7 +7306,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 585
+        "line": 640
       },
       "disabledOnChain": true,
       "role": "candidate-dead-code",
@@ -7306,7 +7334,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 328
+        "line": 363
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7337,7 +7365,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 335
+        "line": 370
       },
       "disabledOnChain": false,
       "role": "emergency",
@@ -7368,7 +7396,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 549
+        "line": 604
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7406,7 +7434,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 289
+        "line": 324
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7437,7 +7465,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 302
+        "line": 337
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7468,7 +7496,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 315
+        "line": 350
       },
       "disabledOnChain": false,
       "role": "admin",

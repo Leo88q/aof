@@ -72,3 +72,5 @@ pub mod roles;
 pub use authority::{accept_authority, cancel_pending_authority, set_pending_authority};
 pub use admin_config::{set_mining_enabled, set_supply_cap};
 pub mod tool_transfer;
+pub mod tool_ownership;
+pub mod sync_tool_owner;
