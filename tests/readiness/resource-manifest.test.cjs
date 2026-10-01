@@ -64,7 +64,7 @@ test('манифест описывает все 27 вариантов и точ
   assert.deepEqual([...backendFiles], ['aof_backend/src/routes/resources.ts']);
   for (const r of manifest.resources) {
     assert.ok(r.display && r.apiName && r.mintSource && r.legacyField, `${r.kind}: неполная запись`);
-    assert.equal(r.status, 'rename-pending');
+    assert.equal(r.idlRename, 'pending', `${r.kind}: расхождение IDL обязано быть помечено`);
   }
 });
 
@@ -81,11 +81,11 @@ test('переименование в IDL без обновления маниф
   });
 });
 
-test('запись, порядок и статусы манифеста проверяются по коду', () => {
+test('запись, порядок и IDL-долг манифеста проверяются по коду', () => {
   const cases = [
     [(m) => { m.resources = m.resources.filter((r) => r.kind !== 'Circuit'); }, /нет записи для ResourceKind::Circuit/],
     [(m) => { m.resources[0].mintSource = 'config.wood_mint'; }, /mintSource .* а mint_for_kind даёт/],
-    [(m) => { m.resources[0].status = 'active'; }, /IDL-имя .* расходится с Rust — статус обязан быть rename-pending/],
+    [(m) => { m.resources[0].idlRename = 'canonical'; }, /IDL-имя .* расходится с Rust — idlRename обязан быть pending/],
     [(m) => { m.resources[0].display = ''; }, /нет player-facing display/],
     [(m) => { m.resources[1].display = 'Farm wood'; }, /farming-алиас 'wood' в player-facing display/],
     [(m) => { m.resources.pop(); }, /в манифесте 26 ресурсов, а в enum — 27/],

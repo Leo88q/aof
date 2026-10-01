@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "note": "Канонический манифест ресурсов. Переименование (пункт 12 плана) делается только по нему; drift обязан опустеть.",
+  "note": "Канонический манифест ресурсов: каноническое имя (kind/apiName), место хранения минта, legacy-поле и алиасы. Переименование (пункт 12) делается только по нему; drift обязан опустеть. Классификация ресурсов (active-player/active-internal/candidate-dead/dead) живёт в docs/RESOURCE_EVIDENCE.json — это отдельная ось, здесь её нет.",
   "drift": [
     {
       "type": "backend-legacy-name",
@@ -272,7 +272,7 @@
       "legacyAliases": [
         "food"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 1,
@@ -284,7 +284,7 @@
       "legacyAliases": [
         "wood"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 2,
@@ -296,7 +296,7 @@
       "legacyAliases": [
         "stone"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 3,
@@ -308,7 +308,7 @@
       "legacyAliases": [
         "seeds"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 4,
@@ -320,7 +320,7 @@
       "legacyAliases": [
         "wheat"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 5,
@@ -332,7 +332,7 @@
       "legacyAliases": [
         "flour"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 6,
@@ -344,7 +344,7 @@
       "legacyAliases": [
         "bread"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 7,
@@ -356,7 +356,7 @@
       "legacyAliases": [
         "water"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 8,
@@ -368,7 +368,7 @@
       "legacyAliases": [
         "coal"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 9,
@@ -380,7 +380,7 @@
       "legacyAliases": [
         "meat"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 10,
@@ -393,7 +393,7 @@
         "stone_blue",
         "stoneBlue"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 11,
@@ -406,7 +406,7 @@
         "stone_purple",
         "stonePurple"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 12,
@@ -419,7 +419,7 @@
         "stone_red",
         "stoneRed"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 13,
@@ -432,7 +432,7 @@
         "sand_white",
         "sandWhite"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 14,
@@ -445,7 +445,7 @@
         "sand_pink",
         "sandPink"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 15,
@@ -458,7 +458,7 @@
         "sand_yellow",
         "sandYellow"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 16,
@@ -471,7 +471,7 @@
         "gem_blue",
         "gemBlue"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 17,
@@ -484,7 +484,7 @@
         "gem_orange",
         "gemOrange"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 18,
@@ -497,7 +497,7 @@
         "gem_white",
         "gemWhite"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 19,
@@ -510,7 +510,7 @@
         "gem_green",
         "gemGreen"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 20,
@@ -523,7 +523,7 @@
         "flask_blue",
         "flaskBlue"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 21,
@@ -536,7 +536,7 @@
         "flask_yellow",
         "flaskYellow"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 22,
@@ -549,7 +549,7 @@
         "flask_green",
         "flaskGreen"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 23,
@@ -562,7 +562,7 @@
         "flask_pink",
         "flaskPink"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 24,
@@ -575,7 +575,7 @@
         "flask_purple",
         "flaskPurple"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 25,
@@ -588,7 +588,7 @@
         "love_heart",
         "loveHeart"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     },
     {
       "id": 26,
@@ -600,7 +600,7 @@
       "legacyAliases": [
         "potato"
       ],
-      "status": "rename-pending"
+      "idlRename": "pending"
     }
   ]
 }

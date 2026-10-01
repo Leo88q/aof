@@ -1008,10 +1008,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/devnet-release-guards.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -1308,13 +1309,6 @@
             "aof_backend/src/routes/tools.ts"
           ]
         },
-        "adminScripts": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "scripts/resource-usage.mjs"
-          ]
-        },
         "frontend": {
           "calls": 0,
           "mentions": 14,
@@ -1374,7 +1368,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 24,
+        "callSiteCount": 23,
         "validatorTested": false,
         "anyTest": true
       }
@@ -2701,9 +2695,10 @@
         },
         "adminScripts": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
-            "scripts/check-mint-writable.py"
+            "scripts/check-mint-writable.py",
+            "scripts/resource-usage.mjs"
           ]
         }
       },
@@ -2734,17 +2729,18 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 5,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/payer-tool-mint.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 4,
         "validatorTested": true,
         "anyTest": true
       }
@@ -5134,9 +5130,10 @@
         },
         "adminScripts": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
-            "scripts/check-mint-writable.py"
+            "scripts/check-mint-writable.py",
+            "scripts/resource-usage.mjs"
           ]
         }
       },
@@ -5165,17 +5162,18 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 5,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
             "tests/readiness/payer-reward-claim.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }

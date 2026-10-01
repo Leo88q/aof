@@ -107,12 +107,12 @@
 | aof_core | claim_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | collect_bread | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 3 | 0 |  |
 | aof_core | collect_flour | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 1 |  |
-| aof_core | collect_mining | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 3 | 0 | ✓ |
+| aof_core | collect_mining | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 4 | 0 | ✓ |
 | aof_core | collect_well_water | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 1 |  |
 | aof_core | collector_stake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
 | aof_core | collector_unstake | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | commit_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
-| aof_core | craft | gameplay | active | 5 | 1 | 14 | 1 | 3 | 0 | 0 | 2 | 6 | 0 |  |
+| aof_core | craft | gameplay | active | 5 | 0 | 14 | 1 | 3 | 0 | 0 | 2 | 6 | 0 |  |
 | aof_core | craft_order_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_fulfill | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -136,7 +136,7 @@
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
-| aof_core | mint_resource | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 3 | 2 | 4 | 0 | ✓ |
+| aof_core | mint_resource | gameplay | active | 2 | 2 | 0 | 0 | 0 | 0 | 3 | 2 | 5 | 0 | ✓ |
 | aof_core | mint_tool | gameplay | active | 2 | 0 | 0 | 0 | 2 | 0 | 6 | 1 | 4 | 1 | ✓ |
 | aof_core | offer_accept | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | offer_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
@@ -178,7 +178,7 @@
 | aof_core | upgrade_exploration_tier | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
 | aof_core | weather_crank | gameplay | active | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
 | aof_core | withdraw_gas | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 0 | 2 | 1 |  |
-| aof_core | mint_resource_once | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 4 | 0 |  |
+| aof_core | mint_resource_once | gameplay | active | 1 | 2 | 0 | 0 | 0 | 0 | 2 | 2 | 5 | 0 |  |
 | aof_core | marketplace_buy_bounded | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | init_issuance_cap | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | set_issuance_cap | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |

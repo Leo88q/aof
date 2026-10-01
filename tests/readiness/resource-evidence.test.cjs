@@ -44,41 +44,96 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 21 active, 4 internal-only, 2 candidate-dead', () => {
+test('репозиторий проходит гейт: 16 active-player, 9 active-internal, 2 candidate-dead, 0 dead', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /27 ресурсов/);
-  const resources = JSON.parse(read(EVIDENCE)).resources;
-  const counts = Object.values(resources.reduce((a, r) => ({ ...a, [r.status]: (a[r.status] ?? 0) + 1 }), {}))
-    .reduce((a, v) => a, {});
-  assert.deepEqual(
-    Object.entries(resources.reduce((a, r) => ({ ...a, [r.status]: (a[r.status] ?? 0) + 1 }), {})).sort(),
-    [['active', 21], ['candidate-dead', 2], ['internal-only', 4]].sort(),
-  );
-  const byStatus = (status) => resources.filter((r) => r.status === status).map((r) => r.kind).sort();
+  const evidence = JSON.parse(read(EVIDENCE));
+  const byStatus = (status) => evidence.resources.filter((r) => r.status === status).map((r) => r.kind).sort();
+  assert.equal(byStatus('active-player').length, 16);
+  assert.equal(byStatus('active-internal').length, 9);
+  assert.equal(byStatus('candidate-dead').length, 2);
+  assert.equal(byStatus('dead').length, 0);
   assert.deepEqual(byStatus('candidate-dead'), ['AmberQuartz', 'SoulCore']);
-  assert.deepEqual(byStatus('internal-only'), ['Compute', 'Data', 'Dataset', 'Mind']);
-  assert.ok(counts);
+  // Статусы взаимоисключающие и не дублируются: «Data и активен, и internal-only» — ошибка.
+  const seen = new Set();
+  for (const r of evidence.resources) {
+    assert.ok(!seen.has(r.kind), `${r.kind}: дубликат записи`);
+    seen.add(r.kind);
+    assert.ok(['active-player', 'active-internal', 'candidate-dead', 'dead'].includes(r.status),
+      `${r.kind}: статус ${r.status} вне взаимоисключающего набора`);
+  }
 });
 
 test('источники и стоки подтверждены обработчиками, а не декларацией', () => {
   const evidence = JSON.parse(read(EVIDENCE));
   const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
-  const sourceOf = (kind) => byKind.get(kind).onchainSource.map((s) => path.basename(s.split('#')[0]));
-  const sinkOf = (kind) => byKind.get(kind).onchainSink.map((s) => path.basename(s.split('#')[0]));
+  const sourceOf = (kind) => byKind.get(kind).flow.playerSource.map((s) => path.basename(s.split('#')[0]));
+  const sinkOf = (kind) => byKind.get(kind).flow.playerSink.map((s) => path.basename(s.split('#')[0]));
   assert.ok(sourceOf('Circuit').includes('season.rs'), 'Circuit выдаётся в награде сезона');
+  assert.ok(sourceOf('Circuit').includes('collect_mining.rs'), 'Circuit выбирается таблицей инструментов');
   assert.ok(sourceOf('Synapse').includes('harvest_wheat.rs'), 'Synapse — пшеница');
   assert.ok(sourceOf('Model').includes('collect_bread.rs'), 'Model минтается на печи');
   assert.ok(sourceOf('Power').includes('collect_well_water.rs'), 'Power — колодец');
+  assert.ok(sourceOf('Dataset').includes('collect_mining.rs'), 'Dataset даёт инструмент data_harvester');
   assert.ok(sourceOf('QuantumBit').includes('craft_recipe.rs'), 'QuantumBit — рецепт 0');
   assert.ok(sinkOf('Silicon').includes('repair.rs'), 'Silicon тратится на ремонт');
   assert.ok(sinkOf('Compute').includes('start_baking.rs'), 'Compute — топливо печи');
   assert.ok(sinkOf('Data').includes('exploration.rs'), 'Data — стоимость трипа');
   for (const kind of ['AmberQuartz', 'SoulCore']) {
     const r = byKind.get(kind);
-    assert.equal(r.onchainSource.length + r.onchainSink.length, 0, `${kind}: в коде нет ни выдачи, ни траты`);
+    assert.equal(r.flow.playerSource.length + r.flow.playerSink.length, 0, `${kind}: в коде нет ни выдачи, ни траты`);
     assert.ok(r.frontend.length > 0, `${kind}: при этом присутствует во фронтенд-каталоге`);
+    assert.ok(r.flow.flags.admin_mintable && r.flow.flags.player_claimable, `${kind}: generic-пути открыты для любого kind`);
   }
+});
+
+test('dynamic dispatch посчитан: generic-пути, таблица инструментов и рецепты в evidence', () => {
+  const evidence = JSON.parse(read(EVIDENCE));
+  const g = evidence.genericPaths;
+  assert.ok(g.adminMint.some((e) => e.includes('mint_resource.rs')), 'generic admin-минт обязан быть в evidence');
+  assert.ok(g.playerClaim.some((e) => e.includes('mint_resource_once.rs')), 'claim игрока обязан быть в evidence');
+  assert.deepEqual(g.miningKinds, ['Circuit', 'Dataset', 'Neuron', 'Silicon'], 'таблица resource_kind_for_tool');
+  assert.equal(g.orderbookKinds, 27, 'ордербук принимает все 27 kinds — это не источник');
+  assert.equal(g.recipes.length, 8, 'рецептов в craft_recipe.rs — 8');
+  assert.deepEqual(evidence.productGaps.craftInputsWithoutPlayerSource.sort(),
+    ['BioChip', 'BlueCore', 'ClearQuartz', 'Data', 'PurpleCore', 'RedCore', 'RoseQuartz']);
+  assert.deepEqual(evidence.productGaps.craftOutputsNeverConsumed.sort(),
+    ['BioFluid', 'CryoFluid', 'NanoFluid', 'PhotonBit', 'QuantumFluid', 'VoltFluid']);
+});
+
+test('флаги каждого ресурса согласованы со списками, а статус — с флагами', () => {
+  const evidence = JSON.parse(read(EVIDENCE));
+  for (const r of evidence.resources) {
+    assert.deepEqual(r.flow.flags, {
+      has_player_source: r.flow.playerSource.length > 0,
+      has_player_sink: r.flow.playerSink.length > 0,
+      tradable: r.flow.tradable.length > 0,
+      craft_input: r.flow.craftInput.length > 0,
+      craft_output: r.flow.craftOutput.length > 0,
+      admin_mintable: r.flow.adminMint.length > 0,
+      player_claimable: r.flow.playerClaim.length > 0,
+      ui_visible: r.frontend.length > 0,
+    }, `${r.kind}: флаги разошлись со списками`);
+    if (r.status === 'active-player') assert.ok(r.flow.flags.has_player_source, `${r.kind}: active-player без источника`);
+    if (r.status === 'candidate-dead') {
+      assert.ok(!r.flow.flags.has_player_source && !r.flow.flags.has_player_sink
+        && !r.flow.flags.craft_input && !r.flow.flags.craft_output, `${r.kind}: candidate-dead с тратой или источником`);
+    }
+  }
+});
+
+test('возвратные пути не выдают за источник игрока', () => {
+  const evidence = JSON.parse(read(EVIDENCE));
+  const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
+  for (const kind of ['Circuit', 'Silicon']) {
+    const refunds = byKind.get(kind).flow.refund;
+    assert.ok(refunds.some((e) => /forge\.rs/.test(e)), `${kind}: возврат forge expire должен быть в refund`);
+    assert.ok(!byKind.get(kind).flow.playerSource.some((e) => /forge\.rs/.test(e)),
+      `${kind}: возврат из эскроу — не новый источник для игрока`);
+  }
+  const expedition = byKind.get('Compute').flow.projectSink;
+  assert.deepEqual(expedition, [], 'у Compute нет проектных стоков');
 });
 
 test('правка статуса на active без источника в цепочке роняет гейт', () => {
@@ -90,7 +145,7 @@ test('правка статуса на active без источника в це�
     });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1, result.out);
-    assert.match(result.out, /SoulCore: статус active, а evidence даёт/);
+    assert.match(result.out, /SoulCore: статус active, а evidence даёт candidate-dead/);
   });
 });
 

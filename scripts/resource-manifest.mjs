@@ -166,13 +166,13 @@ export function buildManifest() {
       mintSource: source,
       legacyField,
       legacyAliases,
-      status: drift.some((d) => d.kind === kind && d.type === 'idl-variant-name') ? 'rename-pending' : 'active',
+      idlRename: drift.some((d) => d.kind === kind && d.type === 'idl-variant-name') ? 'pending' : 'canonical',
     };
   });
 
   return {
     schemaVersion: 1,
-    note: 'Канонический манифест ресурсов. Переименование (пункт 12 плана) делается только по нему; drift обязан опустеть.',
+    note: 'Канонический манифест ресурсов: каноническое имя (kind/apiName), место хранения минта, legacy-поле и алиасы. Переименование (пункт 12) делается только по нему; drift обязан опустеть. Классификация ресурсов (active-player/active-internal/candidate-dead/dead) живёт в docs/RESOURCE_EVIDENCE.json — это отдельная ось, здесь её нет.',
     drift,
     resources,
   };
@@ -193,11 +193,11 @@ export function toMarkdown(manifest) {
     '',
     `Ресурсов: **${rows.length}**; расхождений кода с каноном (долг до переименования): **${manifest.drift.length}**.`,
     '',
-    '| # | kind (Rust/IDL-канон) | apiName | Где минт сейчас | legacy-поле | farming-алиасы | display | Статус |',
+    '| # | kind (Rust/IDL-канон) | apiName | Где минт сейчас | legacy-поле | farming-алиасы | display | IDL-имя |',
     '|---|---|---|---|---|---|---|---|',
   ];
   for (const r of rows) {
-    lines.push(`| ${r.id} | ${r.kind} | \`${r.apiName}\` | \`${r.mintSource}\` | \`${r.legacyField}\` | ${r.legacyAliases.length ? r.legacyAliases.map((a) => `\`${a}\``).join(', ') : '—'} | ${r.display} | ${r.status === 'rename-pending' ? '⚠️ rename-pending' : '✅ active' } |`);
+    lines.push(`| ${r.id} | ${r.kind} | \`${r.apiName}\` | \`${r.mintSource}\` | \`${r.legacyField}\` | ${r.legacyAliases.length ? r.legacyAliases.map((a) => `\`${a}\``).join(', ') : '—'} | ${r.display} | ${r.idlRename === 'pending' ? '⚠️ pending' : '✅ canonical' } |`);
   }
   const byType = new Map();
   for (const d of manifest.drift) byType.set(d.type, [...(byType.get(d.type) ?? []), d]);
@@ -251,8 +251,8 @@ export function check(manifest) {
     errors.push(`drift в манифесте не совпадает с кодом: записано ${(manifest.drift ?? []).length}, видно ${current.drift.length}. Обновите: node scripts/resource-manifest.mjs --write`);
   }
   for (const d of current.drift) {
-    if (d.type === 'idl-variant-name' && byKind.get(d.kind)?.status !== 'rename-pending') {
-      errors.push(`${d.kind}: IDL-имя '${d.actual}' расходится с Rust — статус обязан быть rename-pending`);
+    if (d.type === 'idl-variant-name' && byKind.get(d.kind)?.idlRename !== 'pending') {
+      errors.push(`${d.kind}: IDL-имя '${d.actual}' расходится с Rust — idlRename обязан быть pending`);
     }
   }
   return errors;
