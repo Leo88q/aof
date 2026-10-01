@@ -19,7 +19,7 @@ use aof_core::{ToolData, TOOL_SEED};
 
 use crate::errors::MarketError;
 use crate::pricing;
-use crate::state::{Currency, HotMarketPool};
+use crate::state::{Currency, HotMarketPool, MarketConfig};
 
 /// Проверяет, что переданный аккаунт — канонический `ToolData` (PDA
 /// `[TOOL_SEED, mint]` программы aof_core) нужного владельца и редкости.
@@ -49,6 +49,22 @@ pub fn read_canonical_tool(
     require!(!tool.staked && !tool.is_mining, MarketError::InvalidInput);
     require!(tool.rarity.to_u8() == rarity_index, MarketError::InvalidInput);
     Ok(())
+}
+
+/// Канонический SPL-минт валюты по `MarketConfig`: `Currency::Core` →
+/// `config.core_mint`, `Currency::Gem` → `config.gem_mint`.
+///
+/// F-CURRENCY-01: `hot_market_buy`/`hot_market_sell_into_queue` считают цену по
+/// аргументу `currency`, а платёж выполняют в том mint'е, который пришёл
+/// аккаунтом `currency_mint`. Пока эти две вещи не связаны, игрок выбирает
+/// дорогую валюту (`Gem`), а платит своим произвольным дешёвым SPL-минтом —
+/// пул отдаёт канонический инструмент за мусорный токен. Привязка обязана
+/// проверяться в программе: frontend/backend — не граница безопасности.
+pub fn expected_currency_mint(config: &MarketConfig, currency: Currency) -> Pubkey {
+    match currency {
+        Currency::Core => config.core_mint,
+        Currency::Gem => config.gem_mint,
+    }
 }
 
 /// Текущая цена пула в выбранной валюте: рост от покупок, затухание по
@@ -134,6 +150,28 @@ mod tests {
         // Комиссия округляется вниз и никогда не превышает цену.
         let (payout, fee) = fee_split(3, 10_000).unwrap();
         assert_eq!(payout + fee, 3);
+    }
+
+    /// F-CURRENCY-01 держится на этом соответствии: `Currency` выбирает, какой
+    /// именно канонический минт конфига обязан прийти в `currency_mint`.
+    #[test]
+    fn currency_selects_the_matching_canonical_mint() {
+        let config = MarketConfig {
+            authority: Pubkey::new_unique(),
+            treasury: Pubkey::new_unique(),
+            core_mint: Pubkey::new_unique(),
+            gem_mint: Pubkey::new_unique(),
+            fee_bps: 200,
+            paused: false,
+            bump: 255,
+            pending_authority: Pubkey::default(),
+            authority_updated_at: 0,
+        };
+        assert_eq!(expected_currency_mint(&config, Currency::Core), config.core_mint);
+        assert_eq!(expected_currency_mint(&config, Currency::Gem), config.gem_mint);
+        // Валюты различимы: подмена одного минта другим не проходит.
+        assert_ne!(expected_currency_mint(&config, Currency::Core), config.gem_mint);
+        assert_ne!(expected_currency_mint(&config, Currency::Gem), config.core_mint);
     }
 
 }

@@ -34,4 +34,14 @@ pub enum MarketError {
     NotPendingAuthority,
     #[msg("Invalid input")]
     InvalidInput,
+
+    // ===== [F-CURRENCY-01] canonical currency binding =====
+    /// `currency_mint` не совпал с каноническим минтом ВЫБРАННОЙ валюты
+    /// (`MarketConfig.core_mint` / `MarketConfig.gem_mint`).
+    ///
+    /// Объявлен последним намеренно: Anchor выдаёт коды в порядке объявления,
+    /// и вставка в середину сдвинула бы `NoPendingAuthority`/`NotPendingAuthority`/
+    /// `InvalidInput` (6012–6014), на которые уже смотрят клиенты и IDL.
+    #[msg("Currency mint is not the canonical mint for the selected currency")]
+    InvalidCurrencyMint,
 }

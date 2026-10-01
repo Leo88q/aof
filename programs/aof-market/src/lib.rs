@@ -101,7 +101,21 @@ pub struct HotMarketBuy<'info> {
     /// CHECK: казна
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
-    #[account(mut)]
+    /// F-CURRENCY-01: минт платежа обязан быть каноническим минтом ВЫБРАННОЙ
+    /// валюты. Цена считается по `currency` (`pool_price`), а платёж идёт в том
+    /// mint'е, который пришёл этим аккаунтом. Пока эти две вещи не связаны,
+    /// покупатель объявляет `Currency::Gem` (дорогая цена пула) и платит своим
+    /// произвольным SPL-минтом, согласованным только с token-аккаунтами ниже —
+    /// пул отдаёт канонический инструмент за мусорный токен.
+    /// Проверка стоит в аккаунте, а не в теле: она срабатывает при разборе
+    /// аккаунтов, то есть до первого `token::transfer`.
+    #[account(
+        mut,
+        constraint = (
+            (currency == Currency::Core && currency_mint.key() == config.core_mint)
+            || (currency == Currency::Gem && currency_mint.key() == config.gem_mint)
+        ) @ MarketError::InvalidCurrencyMint
+    )]
     pub currency_mint: Account<'info, Mint>,
     #[account(mut, constraint = buyer_currency.mint == currency_mint.key(), constraint = buyer_currency.owner == buyer.key())]
     pub buyer_currency: Account<'info, TokenAccount>,
@@ -144,8 +158,11 @@ pub struct HotMarketBuy<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+// `currency`/`min_price` объявлены не для красоты: без `currency` констрейнт
+// валютного минта ниже не имеет доступа к выбранной валюте (F-CURRENCY-01).
+// Порядок и имена совпадают с `hot_market_sell_into_queue`.
 #[derive(Accounts)]
-#[instruction(rarity: u8)]
+#[instruction(rarity: u8, currency: Currency, min_price: u64)]
 pub struct HotMarketSell<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ MarketError::Paused)]
     pub config: Account<'info, MarketConfig>,
@@ -153,7 +170,15 @@ pub struct HotMarketSell<'info> {
     pub seller: Signer<'info>,
     #[account(mut, seeds = [POOL_SEED, &[rarity]], bump = pool.bump, constraint = !pool.paused @ MarketError::Paused)]
     pub pool: Account<'info, HotMarketPool>,
-    #[account(mut)]
+    /// F-CURRENCY-01: см. `HotMarketBuy` — продавец получает выплату из резерва
+    /// пула в том mint'е, который назван здесь, а цена считается по `currency`.
+    #[account(
+        mut,
+        constraint = (
+            (currency == Currency::Core && currency_mint.key() == config.core_mint)
+            || (currency == Currency::Gem && currency_mint.key() == config.gem_mint)
+        ) @ MarketError::InvalidCurrencyMint
+    )]
     pub currency_mint: Account<'info, Mint>,
     #[account(mut, constraint = seller_currency.mint == currency_mint.key(), constraint = seller_currency.owner == seller.key())]
     pub seller_currency: Account<'info, TokenAccount>,
@@ -228,7 +253,17 @@ pub struct PlaceLimitOrder<'info> {
     pub maker: Signer<'info>,
     #[account(init, payer = maker, space = LIMIT_ORDER_SPACE, seeds = [LIMIT_ORDER_SEED, maker.key().as_ref(), &[rarity]], bump)]
     pub order: Account<'info, HotLimitOrder>,
-    #[account(mut)]
+    /// F-CURRENCY-01: та же привязка к каноническим минтам конфига, что и в
+    /// `HotMarketBuy`/`HotMarketSell`. Инструкция пока закрыта
+    /// (`MarketError::TradingDisabled`), но констрейнт держит её безопасной для
+    /// момента включения: ордер, номинированный в чужом минте, не создастся.
+    #[account(
+        mut,
+        constraint = (
+            (currency == Currency::Core && currency_mint.key() == config.core_mint)
+            || (currency == Currency::Gem && currency_mint.key() == config.gem_mint)
+        ) @ MarketError::InvalidCurrencyMint
+    )]
     pub currency_mint: Account<'info, Mint>,
     #[account(mut, constraint = maker_currency.mint == currency_mint.key(), constraint = maker_currency.owner == maker.key())]
     pub maker_currency: Account<'info, TokenAccount>,
@@ -383,6 +418,17 @@ pub mod aof_market {
         require!(rarity == ctx.accounts.pool.rarity, MarketError::InvalidInput);
         require!(max_price > 0, MarketError::SlippageExceeded);
 
+        // 0. F-CURRENCY-01: минт платежа — канонический минт выбранной валюты.
+        // Констрейнт `HotMarketBuy.currency_mint` уже сделал эту проверку при
+        // разборе аккаунтов; дублируем её в точке использования, чтобы будущая
+        // правка структуры аккаунтов не оставила `token::transfer` без привязки
+        // (цена считается по `currency`, платёж идёт по `currency_mint`).
+        require_keys_eq!(
+            ctx.accounts.currency_mint.key(),
+            crate::tools::expected_currency_mint(&ctx.accounts.config, currency),
+            MarketError::InvalidCurrencyMint
+        );
+
         // 1. В пуле лежит канонический инструмент этой редкости.
         let pool_key = ctx.accounts.pool.key();
         crate::tools::read_canonical_tool(
@@ -469,6 +515,15 @@ pub mod aof_market {
         rarity_index_ok(rarity)?;
         require!(rarity == ctx.accounts.pool.rarity, MarketError::InvalidInput);
         require!(min_price > 0, MarketError::SlippageExceeded);
+
+        // 0. F-CURRENCY-01: см. `hot_market_buy` — цена берётся по `currency`, а
+        // выплата идёт в `currency_mint`; без привязки продавец получал бы
+        // выплату из резерва пула в собственном произвольном минте.
+        require_keys_eq!(
+            ctx.accounts.currency_mint.key(),
+            crate::tools::expected_currency_mint(&ctx.accounts.config, currency),
+            MarketError::InvalidCurrencyMint
+        );
 
         // 1. Продаётся канонический инструмент, которым продавец владеет и
         //    распоряжается (не в стейке, не в майнинге, не в аренде).
