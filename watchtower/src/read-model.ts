@@ -205,7 +205,7 @@ export async function economy(deps: ReadModelDeps, days: number) {
     mints: [...perMint].map(([mint, m]) => ({ mint, minted: m.minted.toString(), burned: m.burned.toString(), net: (m.minted - m.burned).toString(),
       daily: [...m.daily].sort(([a], [b]) => a.localeCompare(b)).map(([day, v]) => ({ day, minted: v.minted.toString(), burned: v.burned.toString() })) })),
     latestSnapshot: snapshot ? {
-      timestamp: snapshot.timestamp, potatoSupply: snapshot.potatoSupply.toString(), potatoMinted24h: snapshot.potatoMinted24h.toString(), potatoBurned24h: snapshot.potatoBurned24h.toString(),
+      timestamp: snapshot.timestamp, mindSupply: snapshot.mindSupply.toString(), mindMinted24h: snapshot.mindMinted24h.toString(), mindBurned24h: snapshot.mindBurned24h.toString(),
       inflation24h: snapshot.inflation24h, activeCrafters24h: snapshot.activeCrafters24h, activeTraders24h: snapshot.activeTraders24h, totalTxs24h: snapshot.totalTxs24h, failedTxs24h: snapshot.failedTxs24h,
       fieldQuality: snapshot.fieldQuality ? JSON.parse(snapshot.fieldQuality) : null,
     } : null,

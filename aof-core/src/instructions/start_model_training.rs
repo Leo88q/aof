@@ -1,0 +1,120 @@
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn};
+use crate::constants::*;
+use crate::state::*;
+use crate::errors::*;
+use crate::StartModelTraining;
+
+/// Рецепты выпечки (индекс = batch_size - 1)
+const MODEL_SIGNAL_COST: [u64; 3] = [4 * RESOURCE_UNIT, 12 * RESOURCE_UNIT, 28 * RESOURCE_UNIT];
+const MODEL_POWER_COST: [u64; 3] = [3 * RESOURCE_UNIT, 8 * RESOURCE_UNIT, 18 * RESOURCE_UNIT];
+const MODEL_CIRCUIT_COST: [u64; 3] = [5 * RESOURCE_UNIT, 12 * RESOURCE_UNIT, 25 * RESOURCE_UNIT];
+const MODEL_COMPUTE_COST: [u64; 3] = [2 * RESOURCE_UNIT, 5 * RESOURCE_UNIT, 10 * RESOURCE_UNIT];
+const MODEL_CIRCUIT_OUTPUT: [u64; 3] = [2 * RESOURCE_UNIT, 7 * RESOURCE_UNIT, 18 * RESOURCE_UNIT];
+const MODEL_COMPUTE_OUTPUT: [u64; 3] = [3 * RESOURCE_UNIT, 9 * RESOURCE_UNIT, 22 * RESOURCE_UNIT];
+const MODEL_TRAINING_TIME: [i64; 3] = [MODEL_TRAINING_TIME_SMALL, MODEL_TRAINING_TIME_MEDIUM, MODEL_TRAINING_TIME_LARGE];
+
+/// [БЛОК L] Запуск обучения модели.
+/// fuel_kind: 0 = дрова, 1 = уголь.
+/// Сжигает Signal+Power+топливо сразу, -2 Energy, ставит таймер.
+pub fn handler(ctx: Context<StartModelTraining>, batch_size: u8, fuel_kind: u8) -> Result<()> {
+    require!(batch_size >= 1 && batch_size <= 3, AofError::InvalidBatchSize);
+    require!(fuel_kind <= 1, AofError::InvalidFuelKind);
+    let idx = (batch_size - 1) as usize;
+
+    let signal_cost = MODEL_SIGNAL_COST[idx];
+    let power_cost = MODEL_POWER_COST[idx];
+    let (fuel_cost, model_out) = if fuel_kind == 0 {
+        (MODEL_CIRCUIT_COST[idx], MODEL_CIRCUIT_OUTPUT[idx])
+    } else {
+        (MODEL_COMPUTE_COST[idx], MODEL_COMPUTE_OUTPUT[idx])
+    };
+    let duration = MODEL_TRAINING_TIME[idx];
+
+    // ModelState init_if_needed
+    let model_state = &mut ctx.accounts.model_state;
+    if model_state.owner == Pubkey::default() {
+        model_state.owner = ctx.accounts.user.key();
+        model_state.in_progress = false;
+        model_state.ready_at = 0;
+        model_state.output_model = 0;
+        model_state.fuel_kind = 0;
+        model_state.bump = ctx.bumps.model_state;
+    }
+    require!(!model_state.in_progress, AofError::ModelInProgress);
+
+    // Энергия (ленивый реген)
+    let energy = &mut ctx.accounts.energy_account;
+    if energy.owner == Pubkey::default() {
+        energy.owner = ctx.accounts.user.key();
+        energy.current = ENERGY_CAP;
+        energy.last_regen_at = Clock::get()?.unix_timestamp;
+        energy.cap = ENERGY_CAP;
+        energy.bump = ctx.bumps.energy_account;
+    } else {
+        energy.regenerate(Clock::get()?.unix_timestamp);
+    }
+    require!(energy.current >= ENERGY_COST_MODEL_TRAINING, AofError::InsufficientEnergy);
+
+    // Балансы
+    require!(ctx.accounts.user_signal.amount >= signal_cost, AofError::InsufficientBalance);
+    require!(ctx.accounts.user_power.amount >= power_cost, AofError::InsufficientBalance);
+
+    // Burn Signal
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Burn {
+                mint: ctx.accounts.signal_mint.to_account_info(),
+                from: ctx.accounts.user_signal.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        signal_cost,
+    )?;
+
+    // Burn Power
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Burn {
+                mint: ctx.accounts.power_mint.to_account_info(),
+                from: ctx.accounts.user_power.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        power_cost,
+    )?;
+
+    // Burn топливо (Circuit или Compute)
+    let (fuel_mint, fuel_acc) = if fuel_kind == 0 {
+        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit)
+    } else {
+        (&ctx.accounts.compute_mint, &ctx.accounts.user_compute)
+    };
+
+    require!(fuel_acc.amount >= fuel_cost, AofError::InsufficientBalance);
+    token::burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Burn {
+                mint: fuel_mint.to_account_info(),
+                from: fuel_acc.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        fuel_cost,
+    )?;
+
+    // Energy
+    energy.current = energy.current.checked_sub(ENERGY_COST_MODEL_TRAINING).ok_or(AofError::InsufficientEnergy)?;
+
+    // Store the pending model-training batch
+    let now = Clock::get()?.unix_timestamp;
+    model_state.in_progress = true;
+    model_state.ready_at = now.checked_add(duration).ok_or(AofError::MathOverflow)?;
+    model_state.output_model = model_out;
+    model_state.fuel_kind = fuel_kind;
+
+    Ok(())
+}

@@ -598,6 +598,12 @@ cmd_devnet() {
     SKIP_DEPLOY=1
   fi
 
+  # Деплой требует явной ёмкости программ (PROGRAM_MAX_LEN_POLICY) и откажет без неё; отказ лучше получить ДО
+  # получаса установки, тестов и сборки, а не после.
+  if [ "${SKIP_DEPLOY:-0}" != "1" ] && [ -z "${PROGRAM_MAX_LEN_POLICY:-}" ]; then
+    die "не задана ёмкость программ: PROGRAM_MAX_LEN_POLICY=exact|headroom|legacy-2x (для headroom ещё PROGRAM_MAX_LEN_HEADROOM_PERCENT=1..99). Таблица стоимости: python3 scripts/devnet-deploy-estimator.py compare --from-registry (docs/DEVNET_DEPLOY_COSTS.md)"
+  fi
+
   if [ "${SKIP_SYNC:-0}" = "1" ]; then
     warn "SKIP_SYNC=1 — GitHub не опрашиваю"
   else

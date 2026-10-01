@@ -4,7 +4,7 @@
     "name": "aof_quests",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "NeuroForge \u2014 Quests, Achievements, Challenges, Quantum Drum"
+    "description": "NeuroForge — Quests, Achievements, Challenges, Quantum Drum"
   },
   "instructions": [
     {
@@ -22,7 +22,28 @@
       "accounts": [
         {
           "name": "quest_config",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "new_authority",
@@ -70,35 +91,7 @@
         },
         {
           "name": "achievement_record",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  99,
-                  104,
-                  105,
-                  101,
-                  118,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "arg",
-                "path": "achievement_id"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "user",
@@ -132,7 +125,28 @@
       "accounts": [
         {
           "name": "quest_config",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "authority",
@@ -180,73 +194,11 @@
         },
         {
           "name": "challenge_round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  104,
-                  97,
-                  108,
-                  108,
-                  101,
-                  110,
-                  103,
-                  101,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "week_number"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "contribution",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  104,
-                  97,
-                  108,
-                  108,
-                  101,
-                  110,
-                  103,
-                  101,
-                  95,
-                  99,
-                  111,
-                  110,
-                  116,
-                  114,
-                  105,
-                  98
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "arg",
-                "path": "week_number"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "user",
@@ -308,35 +260,7 @@
         },
         {
           "name": "challenge_round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  104,
-                  97,
-                  108,
-                  108,
-                  101,
-                  110,
-                  103,
-                  101,
-                  95,
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "week_number"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "authority",
@@ -743,16 +667,16 @@
       ]
     },
     {
-      "name": "init_potato_bank",
+      "name": "init_mind_bank",
       "discriminator": [
-        147,
-        168,
-        178,
-        231,
-        2,
-        107,
-        18,
-        81
+        240,
+        60,
+        101,
+        10,
+        13,
+        139,
+        228,
+        157
       ],
       "accounts": [
         {
@@ -785,22 +709,20 @@
           "signer": true
         },
         {
-          "name": "potato_mint"
+          "name": "mind_mint"
         },
         {
-          "name": "potato_bank",
+          "name": "mind_bank",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  111,
-                  116,
-                  97,
-                  116,
-                  111,
+                  109,
+                  105,
+                  110,
+                  100,
                   95,
                   98,
                   97,
@@ -812,7 +734,7 @@
           }
         },
         {
-          "name": "potato_vault",
+          "name": "mind_vault",
           "writable": true
         },
         {
@@ -893,62 +815,34 @@
       ]
     },
     {
-      "name": "potato_spin_commit",
+      "name": "mind_spin_commit",
       "discriminator": [
-        197,
-        5,
-        255,
-        158,
-        221,
-        207,
-        109,
-        31
+        138,
+        50,
+        67,
+        168,
+        196,
+        89,
+        48,
+        47
       ],
       "accounts": [
         {
-          "name": "potato_commit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  116,
-                  97,
-                  116,
-                  111,
-                  95,
-                  99,
-                  111,
-                  109,
-                  109,
-                  105,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "name": "mind_commit",
+          "writable": true
         },
         {
-          "name": "potato_bank",
+          "name": "mind_bank",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  111,
-                  116,
-                  97,
-                  116,
-                  111,
+                  109,
+                  105,
+                  110,
+                  100,
                   95,
                   98,
                   97,
@@ -960,7 +854,7 @@
           }
         },
         {
-          "name": "potato_vault",
+          "name": "mind_vault",
           "writable": true
         },
         {
@@ -969,7 +863,7 @@
           "signer": true
         },
         {
-          "name": "user_potato",
+          "name": "user_mind",
           "writable": true
         },
         {
@@ -1052,36 +946,34 @@
       "args": []
     },
     {
-      "name": "potato_spin_expire",
+      "name": "mind_spin_expire",
       "discriminator": [
-        24,
-        141,
-        34,
-        224,
-        159,
-        50,
-        65,
-        119
+        62,
+        4,
+        25,
+        121,
+        178,
+        39,
+        80,
+        58
       ],
       "accounts": [
         {
-          "name": "potato_commit",
+          "name": "mind_commit",
           "writable": true
         },
         {
-          "name": "potato_bank",
+          "name": "mind_bank",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  111,
-                  116,
-                  97,
-                  116,
-                  111,
+                  109,
+                  105,
+                  110,
+                  100,
                   95,
                   98,
                   97,
@@ -1102,14 +994,14 @@
           "writable": true
         },
         {
-          "name": "potato_vault",
+          "name": "mind_vault",
           "writable": true
         },
         {
-          "name": "potato_mint"
+          "name": "mind_mint"
         },
         {
-          "name": "user_potato",
+          "name": "user_mind",
           "writable": true
         },
         {
@@ -1132,36 +1024,34 @@
       "args": []
     },
     {
-      "name": "potato_spin_reveal",
+      "name": "mind_spin_reveal",
       "discriminator": [
-        214,
-        235,
-        144,
-        20,
-        28,
-        210,
-        64,
-        78
+        166,
+        183,
+        118,
+        16,
+        152,
+        192,
+        62,
+        125
       ],
       "accounts": [
         {
-          "name": "potato_commit",
+          "name": "mind_commit",
           "writable": true
         },
         {
-          "name": "potato_bank",
+          "name": "mind_bank",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  111,
-                  116,
-                  97,
-                  116,
-                  111,
+                  109,
+                  105,
+                  110,
+                  100,
                   95,
                   98,
                   97,
@@ -1182,14 +1072,14 @@
           "writable": true
         },
         {
-          "name": "potato_vault",
+          "name": "mind_vault",
           "writable": true
         },
         {
-          "name": "potato_mint"
+          "name": "mind_mint"
         },
         {
-          "name": "user_potato",
+          "name": "user_mind",
           "writable": true
         },
         {
@@ -1315,69 +1205,11 @@
           }
         },
         {
-          "name": "quest_template",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  116,
-                  101,
-                  109,
-                  112,
-                  108,
-                  97,
-                  116,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "quest_id"
-              }
-            ]
-          }
+          "name": "quest_template"
         },
         {
           "name": "quest_progress",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  112,
-                  114,
-                  111,
-                  103,
-                  114,
-                  101,
-                  115,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "arg",
-                "path": "quest_id"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "user",
@@ -1394,94 +1226,7 @@
         },
         {
           "name": "user_mascot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "quest_config.mascot_mint",
-                "account": "QuestConfig"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -1534,34 +1279,7 @@
         },
         {
           "name": "quest_template",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  116,
-                  101,
-                  109,
-                  112,
-                  108,
-                  97,
-                  116,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "quest_id"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "authority",
@@ -1599,7 +1317,28 @@
       "accounts": [
         {
           "name": "quest_config",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "authority",
@@ -1614,16 +1353,16 @@
       ]
     },
     {
-      "name": "set_potato_bank_paused",
+      "name": "set_mind_bank_paused",
       "discriminator": [
-        199,
-        58,
-        104,
-        151,
-        138,
-        12,
-        130,
-        134
+        207,
+        215,
+        230,
+        188,
+        190,
+        124,
+        127,
+        86
       ],
       "accounts": [
         {
@@ -1655,19 +1394,17 @@
           "signer": true
         },
         {
-          "name": "potato_bank",
+          "name": "mind_bank",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  111,
-                  116,
-                  97,
-                  116,
-                  111,
+                  109,
+                  105,
+                  110,
+                  100,
                   95,
                   98,
                   97,
@@ -1808,8 +1545,7 @@
           "name": "switchboard_program"
         },
         {
-          "name": "address_lookup_table_program",
-          "address": "AddressLookupTab1e1111111111111111111111111"
+          "name": "address_lookup_table_program"
         },
         {
           "name": "token_program",
@@ -1943,29 +1679,29 @@
       ]
     },
     {
-      "name": "PotatoBank",
+      "name": "MindBank",
       "discriminator": [
-        28,
-        104,
-        172,
-        150,
-        55,
-        51,
-        44,
-        229
+        71,
+        3,
+        202,
+        95,
+        211,
+        191,
+        174,
+        214
       ]
     },
     {
-      "name": "PotatoCommit",
+      "name": "MindCommit",
       "discriminator": [
-        78,
-        115,
-        254,
-        139,
-        198,
-        245,
-        92,
-        152
+        176,
+        162,
+        46,
+        233,
+        225,
+        112,
+        1,
+        166
       ]
     },
     {
@@ -2140,42 +1876,42 @@
       ]
     },
     {
-      "name": "PotatoSpinCommitted",
+      "name": "MindSpinCommitted",
       "discriminator": [
-        69,
-        177,
-        93,
-        254,
-        191,
-        140,
-        223,
-        168
-      ]
-    },
-    {
-      "name": "PotatoSpinRefunded",
-      "discriminator": [
-        213,
-        39,
+        232,
         11,
-        196,
-        18,
+        238,
+        26,
         149,
-        117,
-        158
+        202,
+        183,
+        117
       ]
     },
     {
-      "name": "PotatoSpinRevealed",
+      "name": "MindSpinRefunded",
       "discriminator": [
-        128,
-        205,
-        46,
-        74,
-        212,
-        13,
-        3,
-        118
+        21,
+        79,
+        19,
+        148,
+        84,
+        217,
+        91,
+        206
+      ]
+    },
+    {
+      "name": "MindSpinRevealed",
+      "discriminator": [
+        253,
+        48,
+        15,
+        19,
+        135,
+        49,
+        176,
+        209
       ]
     },
     {
@@ -2369,6 +2105,21 @@
       "code": 6024,
       "name": "TreasuryTooLow",
       "msg": "Mascot treasury cannot cover the largest prize"
+    },
+    {
+      "code": 6025,
+      "name": "MindBankPaused",
+      "msg": "Mind bank is paused; new spins cannot be accepted"
+    },
+    {
+      "code": 6026,
+      "name": "MindBankInsolvent",
+      "msg": "The isolated MIND vault cannot cover all outstanding spin obligations"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidMindMint",
+      "msg": "MIND mint must be an initialized 9-decimal SPL token"
     }
   ],
   "types": [
@@ -2670,7 +2421,7 @@
       }
     },
     {
-      "name": "PotatoBank",
+      "name": "MindBank",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2702,7 +2453,7 @@
       }
     },
     {
-      "name": "PotatoCommit",
+      "name": "MindCommit",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2738,7 +2489,7 @@
       }
     },
     {
-      "name": "PotatoSpinCommitted",
+      "name": "MindSpinCommitted",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2770,7 +2521,7 @@
       }
     },
     {
-      "name": "PotatoSpinRefunded",
+      "name": "MindSpinRefunded",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2794,7 +2545,7 @@
       }
     },
     {
-      "name": "PotatoSpinRevealed",
+      "name": "MindSpinRevealed",
       "type": {
         "kind": "struct",
         "fields": [

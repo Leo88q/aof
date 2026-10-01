@@ -46,8 +46,8 @@ BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 # есть считаются от начала данных, как их отдаёт RPC.
 CONFIG_PAUSED_OFFSET = 8 + 272
 CONFIG_MINING_OFFSET = 8 + 274
-CONFIG_WOOD_MINT_OFFSET = 8 + 96
-CONFIG_STONE_MINT_OFFSET = 8 + 128
+CONFIG_CIRCUIT_MINT_OFFSET = 8 + 96
+CONFIG_SILICON_MINT_OFFSET = 8 + 128
 LISTING_ACTIVE_OFFSET = 8 + 72
 
 
@@ -209,11 +209,11 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
         row("Общая пауза контракта", "выключено", "Config.paused = true: денежные действия отклоняются",
             "POST /admin/config/set-paused {paused:false} ключом authority")
 
-    # Ремонт берёт wood/stone из Config: без них /tools/repair отвечает 503.
+    # Ремонт использует Circuit/Silicon из Config: без них /tools/repair отвечает 503.
     try:
         mints = first_account_data(
             rpc, core, "Config", call_fn=call_fn,
-            data_slice={"offset": CONFIG_WOOD_MINT_OFFSET, "length": 64},
+            data_slice={"offset": CONFIG_CIRCUIT_MINT_OFFSET, "length": 64},
         )
         if mints is None:
             repair_mints = ("", "")
@@ -227,7 +227,7 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
     row(
         "Ремонт инструментов",
         "включено" if repair_on else "выключено",
-        (f"Config.wood_mint={repair_mints[0] or '—'}, stone_mint={repair_mints[1] or '—'}"
+        (f"Config.circuit_mint={repair_mints[0] or '—'}, silicon_mint={repair_mints[1] or '—'}"
          if deployed.get("aof_core") else config_evidence),
         ("" if repair_on else (config_action if not deployed.get("aof_core")
                                else "scripts/devnet-bringup.sh --apply (шаг 5/10: initMintsV2.ts задаёт адреса ресурсов)")),
@@ -240,7 +240,7 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
     core_instructions = repo_instruction_names("aof_core")
     contract_blocked = [
         ("Фляги: применение", ("use_flask",), "§3.8", "/tools/use-flask"),
-        ("Обмен ресурсов на энергию", ("exchange_food_energy",), "§3.8", "/resources/exchange-energy"),
+        ("Обмен ресурсов на энергию", ("exchange_data_energy",), "§3.8", "/resources/exchange-energy"),
         ("Награда за лук (устаревший предмет)", ("bow_reward_commit", "bow_reward_reveal"), "§3.8", "/forge/bow/*"),
     ]
     for title, instructions, section, route in contract_blocked:

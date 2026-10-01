@@ -3,7 +3,7 @@
 #
 # Зачем этот скрипт. Читающий зонд (scripts/devnet-program-probe.py) показал:
 # по адресам aof_core, aof_market и aof_session_keys на девнете нет аккаунтов, а
-# aof_core — это 113 инструкций (добыча, инструменты, ресурсы, крафт, паки,
+# aof_core — это 120 инструкций (добыча, инструменты, ресурсы, крафт, паки,
 # рынок, газ-бак, коллекционеры). Пока программ нет в сети, любая механика
 # честно отвечает 503 «нет данных из сети» — переключатель этого не исправит.
 # Дальше деплоя включать нечего не потому, что «нельзя», а потому что нужен
@@ -18,19 +18,31 @@
 #   AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
 #
 # Обязательные условия (без них выход 3 и ни одной транзакции):
-#   * AOF_DEPLOY_TARGET=devnet — mainnet этим скриптом не включается;
+#   * AOF_DEPLOY_TARGET=devnet — mainnet этим скриптом не включается; RPC обязан
+#     отвечать genesis-хешем devnet;
+#   * PROGRAM_MAX_LEN_POLICY=exact|headroom|legacy-2x (для headroom ещё
+#     PROGRAM_MAX_LEN_HEADROOM_PERCENT=1..99) — явная ёмкость программ: без неё
+#     деплой отказывает (SKIP=deploy её не требует). Подробности и стоимость:
+#     docs/DEVNET_DEPLOY_COSTS.md;
 #   * ключ оператора AUTHORITY_KEYPAIR (по умолчанию
 #     solana/keys/aof-authority-devnet.json) и ≥ MIN_SOL SOL на нём;
 #   * ключи программ target/deploy/<name>-keypair.json, чьи pubkey равны
 #     объявленным адресам (иначе см. §0.1: PROGRAMS=... scripts/dev-local.sh keys --apply);
 #   * solana CLI; для сборки — anchor; для шагов 5–7 — работающий backend
 #     (BACKEND_URL, ADMIN_TOKEN) в hot-режиме, потому что минты и тумблер добычи
-#     подписываются его ключом (AUTHORITY_SECRET_KEY);
+#     подписываются его ключом (AUTHORITY_SECRET_KEY). Backend проверяется ДО деплоя
+#     маршрутом GET /admin/config/bootstrap-preflight, которому не нужен Config:
+#     ops-токен принят, режим hot, authority backend'а == ключ оператора, program ID
+#     == реестр, RPC backend'а — devnet. Любое расхождение (backend не запущен,
+#     чужой сервис на порту, неверный токен, read-only, чужой authority/program ID,
+#     mainnet) — отказ до первой транзакции; «любой HTTP 400» не принимается;
 #   * для шага collector — COLLECTOR_MINTS="<mint>:historian,<mint>:medallion"
 #     (адреса минтов инструментов, попадающих в allowlist коллекционеров).
 #
 # Переменные окружения:
 #   RPC_URL, AUTHORITY_KEYPAIR, ARTIFACTS, BACKEND_URL, ADMIN_TOKEN, MIN_SOL,
+#   PROGRAM_MAX_LEN_POLICY, PROGRAM_MAX_LEN_HEADROOM_PERCENT,
+#   OPERATOR_RESERVE_SOL (по умолчанию MIN_SOL), DEPLOY_FEE_RESERVE_SOL (по умолчанию 0.1),
 #   COLLECTOR_MINTS,
 #   SKIP=build,deploy,config,mints,caps,craft,mechanics,market,mining,collectors,report
 #   SKIP_BUILD=1 — не собирать, взять готовые .so из target/deploy.
@@ -51,7 +63,7 @@
 #
 # Что скрипт НЕ делает и не может: не меняет контракты. Пункты из
 # docs/UNBLOCK_PLAN_2026-09-30.md §3, которые ещё требуют работы по контракту
-# (сессионные ключи, платный сезон-пропуск, Potato V2), скрипт печатает в конце
+# (сессионные ключи, платный сезон-пропуск, Mind V2), скрипт печатает в конце
 # ещё раз, чтобы «включено» не читалось шире, чем есть.
 set -euo pipefail
 
@@ -76,6 +88,9 @@ MIN_SOL="${MIN_SOL:-1}"
 SKIP="${SKIP:-}"
 COLLECTOR_MINTS="${COLLECTOR_MINTS:-}"
 PROBE="${PROBE:-scripts/devnet-program-probe.py}"
+ESTIMATOR="${ESTIMATOR:-scripts/devnet-deploy-estimator.py}"
+# Тот же genesis, что в aof_backend/scripts/miningDevnetPreflight.ts и scripts/verify-address-registry.cjs.
+DEVNET_GENESIS_HASH="EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 CRAFT_RARITY_COUNTERS="${CRAFT_RARITY_COUNTERS:-1,2,3,4}"
 SEASON_ID="${SEASON_ID:-1}"
 LOTTERY_ROUND_ID="${LOTTERY_ROUND_ID:-1}"
@@ -127,6 +142,20 @@ command -v curl >/dev/null || die "нет curl"
 [ -f "$AUTHORITY_KEYPAIR" ] || die \
   "нет ключа оператора: $AUTHORITY_KEYPAIR (файл кладётся на своей машине, в чат его присылать нельзя)"
 [ -f "$PROBE" ] || die "нет читающего зонда $PROBE"
+# Деплой требует явной политики ёмкости программ (PROGRAM_MAX_LEN_POLICY): проверяем её здесь, ДО backend и
+# до первой команды, чтобы отказ не нашёл вас посреди запуска. Без деплоя (SKIP=deploy) политика не нужна.
+if ! skipped deploy; then
+  command -v python3 >/dev/null || die "нет python3 (нужен оценщику стоимости деплоя)"
+  [ -f "$ESTIMATOR" ] || die "нет оценщика стоимости $ESTIMATOR"
+  POLICY_LABEL="$(python3 "$ESTIMATOR" check-policy 2>&1)" || die "политика max_len: ${POLICY_LABEL#ОТКАЗ: }"
+  ok "ёмкость программ (max-len): $POLICY_LABEL"
+fi
+# Название URL не доказывает сеть: AOF_DEPLOY_TARGET=devnet с mainnet-RPC иначе «включал» бы mainnet.
+command -v python3 >/dev/null || die "нет python3 (нужен для проверки кластера и оценки стоимости)"
+[ -f "$ESTIMATOR" ] || die "нет оценщика стоимости $ESTIMATOR"
+GENESIS_REPORT="$(python3 "$ESTIMATOR" cluster --rpc "$RPC_URL" --expect-genesis "$DEVNET_GENESIS_HASH" 2>&1)" \
+  || die "RPC не подтверждён как devnet: ${GENESIS_REPORT#ОТКАЗ: }"
+ok "RPC отвечает genesis-хешем devnet"
 NEED_BACKEND=0
 for s in mints caps market mining collectors; do skipped "$s" || NEED_BACKEND=1; done
 if [ "$NEED_BACKEND" = 1 ]; then
@@ -136,10 +165,50 @@ if [ "$NEED_BACKEND" = 1 ]; then
   # это половина работы, а отказ после деплоя труднее откатывать.
   [ -n "$ADMIN_TOKEN" ] || die \
     "не задан ADMIN_TOKEN: минты и тумблер добычи подписываются ключом backend'а в hot-режиме. Запустите backend (cd aof_backend && npm run dev) с AUTHORITY_MODE=hot/AUTHORITY_SECRET_KEY/RPC_URL и ADMIN_TOKEN, затем повторите с ADMIN_TOKEN=<токен>. Если сейчас нужен только деплой — SKIP=mints,caps,mining,collectors"
-  STATE_HTTP="$(curl -sS -o /dev/null -w '%{http_code}' --max-time "$API_TIMEOUT" \
-    -X GET "$BACKEND_URL/admin/config/mining" -H "Authorization: Bearer $ADMIN_TOKEN" || echo 000)"
-  [ "$STATE_HTTP" = "200" ] || die "GET $BACKEND_URL/admin/config/mining вернул HTTP $STATE_HTTP: backend не запущен, недоступен или ADMIN_TOKEN неверный"
-  ok "backend отвечает 200, ADMIN_TOKEN принят"
+  # ВАЖНО: раньше здесь был GET /admin/config/mining со строгим «200». Но этот маршрут читает Config, которого
+  # до деплоя нет, и честно отвечает 400 — запуск упирался в замкнутый круг. «Принять любой 400» нельзя
+  # (так проходят и неверный токен, и чужой сервис), поэтому backend отдаёт отдельный маршрут, который не
+  # требует ни программ, ни Config, но закрыт ops-токеном и ничего не подписывает.
+  AUTHORITY_PUBKEY="$(solana address -k "$AUTHORITY_KEYPAIR" 2>/dev/null)" || die "ключ не читается как keypair-файл"
+  PREFLIGHT_BODY="$(mktemp "${TMPDIR:-/tmp}/aof-bootstrap-preflight.XXXXXX")"
+  trap 'rm -f "$PREFLIGHT_BODY"' EXIT
+  CURL_RC=0
+  PREFLIGHT_HTTP="$(curl -sS -o "$PREFLIGHT_BODY" -w '%{http_code}' --max-time "$API_TIMEOUT" \
+    -X GET "$BACKEND_URL/admin/config/bootstrap-preflight" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Accept: application/json')" || CURL_RC=$?
+  [ "$CURL_RC" -eq 0 ] || die "backend недоступен: $BACKEND_URL (curl завершился с кодом $CURL_RC). Запустите его (cd aof_backend && npm run dev) с AUTHORITY_MODE=hot, AUTHORITY_SECRET_KEY, RPC_URL и ADMIN_TOKEN либо поправьте BACKEND_URL"
+  case "$PREFLIGHT_HTTP" in
+    200) ;;
+    401|403) die "backend отклонил ADMIN_TOKEN (HTTP $PREFLIGHT_HTTP): нужен ops-токен ADMIN_TOKEN, а не ADMIN_READ_TOKEN и не чужой токен" ;;
+    404) die "по адресу $BACKEND_URL нет /admin/config/bootstrap-preflight (HTTP 404): это посторонний сервис на порту или старая сборка backend — обновите и перезапустите backend из этого репозитория" ;;
+    *) die "GET $BACKEND_URL/admin/config/bootstrap-preflight вернул HTTP $PREFLIGHT_HTTP вместо 200: backend не готов (смотрите его лог, чаще всего недоступен RPC) либо это посторонний сервис" ;;
+  esac
+  jq -e '.kind == "aof.bootstrap-preflight" and .schemaVersion == 1 and .service == "aof-backend"' "$PREFLIGHT_BODY" >/dev/null 2>&1 \
+    || die "ответ $BACKEND_URL не похож на bootstrap-preflight AOF backend (HTTP 200, но другой формат): это посторонний сервис"
+  [ "$(jq -r '.authority.mode' "$PREFLIGHT_BODY")" = "hot" ] && [ "$(jq -r '.authority.canSign' "$PREFLIGHT_BODY")" = "true" ] \
+    || die "backend не в hot-режиме подписи (mode=$(jq -r '.authority.mode' "$PREFLIGHT_BODY"), canSign=$(jq -r '.authority.canSign' "$PREFLIGHT_BODY")): Config, минты и тумблер подписываются его ключом. Запустите backend с AUTHORITY_MODE=hot и AUTHORITY_SECRET_KEY (read-only для bootstrap не годится)"
+  BACKEND_AUTHORITY="$(jq -r '.authority.pubkey' "$PREFLIGHT_BODY")"
+  [ "$BACKEND_AUTHORITY" = "$AUTHORITY_PUBKEY" ] \
+    || die "authority backend'а $BACKEND_AUTHORITY не совпадает с ключом оператора $AUTHORITY_PUBKEY (AUTHORITY_KEYPAIR): Config привязывается к upgrade authority, и деплой одним ключом с инициализацией другим закончился бы отказом ПОСЛЕ траты SOL"
+  BACKEND_GENESIS="$(jq -r '.rpc.genesisHash' "$PREFLIGHT_BODY")"
+  [ "$BACKEND_GENESIS" = "$DEVNET_GENESIS_HASH" ] \
+    || die "RPC backend'а отвечает genesis $BACKEND_GENESIS — это не devnet ($DEVNET_GENESIS_HASH). mainnet этим скриптом не включается"
+  [ "$(jq -r '.rpc.genesisMatchesExpected' "$PREFLIGHT_BODY")" != "false" ] \
+    || die "EXPECTED_GENESIS_HASH backend'а не совпадает с genesis его RPC"
+  BACKEND_DEPLOYED=0
+  while read -r name address; do
+    got="$(jq -r --arg n "$name" '.programs[$n].programId // empty' "$PREFLIGHT_BODY")"
+    [ "$got" = "$address" ] || die "backend знает $name по адресу '${got:-<нет>}', а в реестре (watchtower/addresses.json) $address: backend собран/настроен под другие программы (PROGRAM_ID, IDL)"
+    anomaly="$(jq -r --arg n "$name" '.programs[$n].anomaly // empty' "$PREFLIGHT_BODY")"
+    [ -z "$anomaly" ] || die "программа $name ($address) в сети в неожиданном состоянии: $anomaly"
+    [ "$(jq -r --arg n "$name" '.programs[$n].deployed' "$PREFLIGHT_BODY")" != "true" ] || BACKEND_DEPLOYED=$((BACKEND_DEPLOYED + 1))
+  done < <(jq -r '.programs[] | "\(.name) \(.address)"' watchtower/addresses.json)
+  BACKEND_PROGRAM_COUNT="$(jq -r '.programs | length' watchtower/addresses.json)"
+  CONFIG_ANOMALY="$(jq -r '.config.anomaly // empty' "$PREFLIGHT_BODY")"
+  [ -z "$CONFIG_ANOMALY" ] || die "Config ($(jq -r '.config.pda' "$PREFLIGHT_BODY")) в неожиданном состоянии: $CONFIG_ANOMALY"
+  CONFIG_EXISTS="$(jq -r '.config.exists' "$PREFLIGHT_BODY")"
+  ok "backend проверен без Config: ops-токен принят, hot-режим, authority $AUTHORITY_PUBKEY, devnet"
+  ok "program ID backend'а совпали с реестром; в сети программ: $BACKEND_DEPLOYED из $BACKEND_PROGRAM_COUNT, Config: $([ "$CONFIG_EXISTS" = "true" ] && echo есть || echo 'ещё нет (создаётся в шаге 5)')"
 else
   ok "backend-шаги пропущены (SKIP) — ADMIN_TOKEN не нужен"
 fi
@@ -193,6 +262,8 @@ fi
 step "5/10 Config, минты, потолки выпуска и экономика крафта"
 if skipped config; then
   info "Config пропущен (SKIP=config)"
+elif [ "${CONFIG_EXISTS:-false}" = "true" ]; then
+  ok "Config уже инициализирован (по bootstrap-preflight) — шаг пропущен, повторный запуск ничего не пересоздаёт"
 elif [ "$APPLY" = 1 ]; then
   ( cd aof_backend && npx ts-node scripts/initConfig.ts ) || die "initConfig.ts не прошёл"
 else
@@ -341,8 +412,8 @@ if skipped market; then
 else
   # MarketConfig создаётся один раз, и его валюты больше не меняются: поэтому
   # адреса берутся явно, а не «какие-нибудь». Порядок поиска:
-  #   core — MARKET_CORE_MINT → Config.potatoMint (внутриигровой MIND);
-  #   gem  — MARKET_GEM_MINT  → MaterialMints.gem_blue (QUANTUM_BIT);
+  #   core — MARKET_CORE_MINT → Config.mindMint (внутриигровой MIND);
+  #   gem  — MARKET_GEM_MINT  → MaterialMints.quantumBit (QUANTUM_BIT);
   #   казна — MARKET_TREASURY → Config.treasury.
   # Пул без аккаунта не торгует, а hot_market_buy/sell уже живые в коде: пустой
   # пул — это единственное, что остаётся между игроком и механикой.
@@ -353,7 +424,7 @@ else
     CORE_STATE="$(api GET /query/config)"
     MINT_STATE="$(api GET /query/material-mints)"
     if [ -z "$MARKET_CORE_MINT" ]; then
-      MARKET_CORE_MINT="$(printf '%s' "$CORE_STATE" | jq -r '.potatoMint // empty')"
+      MARKET_CORE_MINT="$(printf '%s' "$CORE_STATE" | jq -r '.mindMint // empty')"
     fi
     if [ -z "$MARKET_GEM_MINT" ]; then
       MARKET_GEM_MINT="$(printf '%s' "$MINT_STATE" | jq -r '.mints.QUANTUM_BIT // empty')"
@@ -496,7 +567,7 @@ echo "Осталось работой по контракту (не перекл
 echo "  * сессионные ключи: резерв лимита обязан быть атомарно привязан к целевой инструкции (§3.3);"
 echo "  * платный сезон-пропуск: сезон создан, но продажа пропуска — раздельные"
 echo "    треки и идемпотентные начисления (V2) (§3.6);"
-echo "  * Potato: отдельный минт, казна и V2-инструкции барабана (§3.7, docs/POTATO_DEVNET_SETUP.md)."
+echo "  * MIND: отдельный utility mint and bank; spin instructions remain disabled (§3.7, docs/MIND_DEVNET_SETUP.md)."
 echo
 echo "Проверить всё это в любой момент (ничего не подписывает):"
 echo "  python3 scripts/devnet-program-probe.py $RPC_URL"

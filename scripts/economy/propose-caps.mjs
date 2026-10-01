@@ -52,7 +52,7 @@ export function readConstants(src = readFileSync(path.join(root, "aof-core/src/c
     baseRate: product(raw("BASE_RATE_MINING"), unit),
     yieldLegendaryBps: product(raw("YIELD_BPS_LEGENDARY"), unit),
     villagers: product(raw("DEFAULT_VILLAGERS"), unit),
-    well: ["WELL_RATE_BLACKOUT", "WELL_RATE_NOMINAL", "WELL_RATE_SURGE", "WELL_RATE_FRENZY"].map(units),
+    well: ["GRID_RATE_BLACKOUT", "GRID_RATE_NOMINAL", "GRID_RATE_SURGE", "GRID_RATE_FRENZY"].map(units),
     synapseMultBps: product(raw("SYNAPSE_YIELD_MULT_BPS"), unit),
     rewardPerLevel: product(raw("SEASON_REWARD_UNITS_PER_LEVEL"), unit),
     maxLevel: product(raw("SEASON_PASS_MAX_LEVEL"), unit),

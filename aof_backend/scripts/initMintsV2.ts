@@ -174,12 +174,12 @@ async function main() {
       Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
     },
     body: JSON.stringify({
-      foodMint: mints.food,
-      woodMint: mints.wood,
-      stoneMint: mints.stone,
-      seedsMint: mints.seeds,
-      waterMint: mints.water,
-      potatoMint: mints.potato,
+      dataMint: mints.data,
+      circuitMint: mints.circuit,
+      siliconMint: mints.silicon,
+      neuronMint: mints.neuron,
+      powerMint: mints.power,
+      mindMint: mints.mind,
     }),
   });
   const setMintsResult: any = await setMintsResp.json();

@@ -23,12 +23,12 @@ export const smallIntSchema = z.number().int().min(0).max(255);
 export const adminInitializeSchema = z.object({}).strict();
 
 export const setResourceMintsSchema = z.object({
-  foodMint: pubkeySchema,
-  woodMint: pubkeySchema,
-  stoneMint: pubkeySchema,
-  seedsMint: pubkeySchema,
-  waterMint: pubkeySchema,
-  potatoMint: pubkeySchema,
+  dataMint: pubkeySchema,
+  circuitMint: pubkeySchema,
+  siliconMint: pubkeySchema,
+  neuronMint: pubkeySchema,
+  powerMint: pubkeySchema,
+  mindMint: pubkeySchema,
 }).strict();
 
 export const gastankDepositSchema = z.object({
@@ -46,7 +46,7 @@ export const hotMarketBuySchema = z.object({
 
 export const hotMarketPoolInitSchema = z.object({
   rarity: raritySchema,
-  basePricePotato: amountSchema,
+  basePriceMind: amountSchema,
   basePriceSolLamports: amountSchema,
   growthPerPurchaseBps: bpsSchema,
   decayPerHourBps: bpsSchema,
@@ -56,7 +56,7 @@ export const hotMarketPoolInitSchema = z.object({
 
 export const questInitSchema = z.object({
   questId: z.number().int().min(0).max(1000000),
-  rewardPotato: amountSchema,
+  rewardMind: amountSchema,
 }).strict();
 
 export const sessionCreateSchema = z.object({

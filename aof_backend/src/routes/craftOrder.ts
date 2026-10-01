@@ -11,14 +11,14 @@ const r = Router();
 r.post("/create", async (req, res) => {
   try {
     const creator = pk(req.body.creator);
-    const woodNeeded = new BN(req.body.woodNeeded);
-    const stoneNeeded = new BN(req.body.stoneNeeded);
+    const circuitNeeded = new BN(req.body.circuitNeeded);
+    const siliconNeeded = new BN(req.body.siliconNeeded);
     const premiumLamports = new BN(req.body.premiumLamports);
     const [config] = configPda();
     const [craftOrder] = craftOrderPda(creator);
 
     const ix = await (program.methods as any)
-      .craftOrderCreate(woodNeeded as any, stoneNeeded as any, premiumLamports as any)
+      .craftOrderCreate(circuitNeeded as any, siliconNeeded as any, premiumLamports as any)
       .accounts({ config, creator, craftOrder, systemProgram: SystemProgram.programId })
       .instruction();
 
@@ -34,14 +34,14 @@ r.post("/fulfill", async (req, res) => {
     const fulfiller = pk(req.body.fulfiller);
     const creator = pk(req.body.creator);
     const treasury = pk(req.body.treasury);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
+    const circuitMint = pk(req.body.circuitMint);
+    const siliconMint = pk(req.body.siliconMint);
     const [config] = configPda();
     const [craftOrder] = craftOrderPda(creator);
-    const fulfillerWood = getAssociatedTokenAddressSync(woodMint, fulfiller);
-    const creatorWood = getAssociatedTokenAddressSync(woodMint, creator);
-    const fulfillerStone = getAssociatedTokenAddressSync(stoneMint, fulfiller);
-    const creatorStone = getAssociatedTokenAddressSync(stoneMint, creator);
+    const fulfillerCircuit = getAssociatedTokenAddressSync(circuitMint, fulfiller);
+    const creatorCircuit = getAssociatedTokenAddressSync(circuitMint, creator);
+    const fulfillerSilicon = getAssociatedTokenAddressSync(siliconMint, fulfiller);
+    const creatorSilicon = getAssociatedTokenAddressSync(siliconMint, creator);
 
     const ix = await (program.methods as any)
       .craftOrderFulfill()
@@ -51,12 +51,12 @@ r.post("/fulfill", async (req, res) => {
         craftOrder,
         creatorRefund: creator,
         treasury,
-        woodMint,
-        fulfillerWood,
-        creatorWood,
-        stoneMint,
-        fulfillerStone,
-        creatorStone,
+        circuitMint,
+        fulfillerCircuit,
+        creatorCircuit,
+        siliconMint,
+        fulfillerSilicon,
+        creatorSilicon,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();

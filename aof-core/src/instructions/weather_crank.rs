@@ -12,7 +12,7 @@ pub fn handler(ctx: Context<WeatherCrank>) -> Result<()> {
 
     let weather = &mut ctx.accounts.weather_state;
     // init_if_needed creates the PDA with zeroed fields; persist the bump so
-    // later CollectWellWater seed validation can authenticate this account.
+    // later CollectPower seed validation can authenticate this account.
     weather.bump = ctx.bumps.weather_state;
 
     // Уже обновлено на этот день?
@@ -21,7 +21,7 @@ pub fn handler(ctx: Context<WeatherCrank>) -> Result<()> {
     }
 
     // Детерминированный выбор погоды из дня (golden ratio hash), общий с
-    // collect_well_water: state::weather_for_day.
+    // collect_power: state::weather_for_day.
     let weather_type = weather_for_day(day_id);
 
     weather.day_id = day_id;

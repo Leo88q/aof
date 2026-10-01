@@ -67,7 +67,7 @@ function lamportsToMicros(lamports) {
 
 /**
  * Get SPL token balances for resource mints + SOL + gastank
- * Returns: { food, wood, stone, sol, gastankLamports }
+ * Returns: { data, circuit, silicon, sol, gastankLamports }
  */
 async function getWalletBalancesSol(walletAddress) {
   const rpc = process.env.SOL_RPC || 'https://api.devnet.solana.com';
@@ -75,9 +75,9 @@ async function getWalletBalancesSol(walletAddress) {
   const userPk = new PublicKey(walletAddress);
 
   // resource mint addresses from env (or derive from config PDA)
-  const foodMint = new PublicKey(process.env.SOL_FOOD_MINT || 'So11111111111111111111111111111111111111112'); // placeholder
-  const woodMint = new PublicKey(process.env.SOL_WOOD_MINT || 'So11111111111111111111111111111111111111112');
-  const stoneMint = new PublicKey(process.env.SOL_STONE_MINT || 'So11111111111111111111111111111111111111112');
+  const dataMint = new PublicKey(process.env.SOL_DATA_MINT || 'So11111111111111111111111111111111111111112'); // placeholder
+  const circuitMint = new PublicKey(process.env.SOL_CIRCUIT_MINT || 'So11111111111111111111111111111111111111112');
+  const siliconMint = new PublicKey(process.env.SOL_SILICON_MINT || 'So11111111111111111111111111111111111111112');
 
   async function getSplBalance(mint) {
     try {
@@ -89,10 +89,10 @@ async function getWalletBalancesSol(walletAddress) {
     }
   }
 
-  const [food, wood, stone, sol, gastankLamports] = await Promise.all([
-    getSplBalance(foodMint),
-    getSplBalance(woodMint),
-    getSplBalance(stoneMint),
+  const [data, circuit, silicon, sol, gastankLamports] = await Promise.all([
+    getSplBalance(dataMint),
+    getSplBalance(circuitMint),
+    getSplBalance(siliconMint),
     conn.getBalance(userPk),
     // gastank PDA holds SOL directly
     (async () => {
@@ -105,7 +105,7 @@ async function getWalletBalancesSol(walletAddress) {
     })(),
   ]);
 
-  return { food, wood, stone, sol, gastankLamports };
+  return { data, circuit, silicon, sol, gastankLamports };
 }
 
 /**

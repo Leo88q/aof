@@ -1,3 +1,8 @@
+// [LEGACY / OFF-CHAIN — NOT PART OF THE NEUROFORGE SOLANA PRODUCT]
+// This tree is the historical Firebase/Firestore backend (Ронин-эпоха): off-chain
+// resource custody, not deployed from this repository and a removal candidate
+// (см. docs/RESOURCE_RENAME_PLAN.md, раздел «исключения из скана»). Farming-era
+// Firestore-пути здесь остаются историей и не входят в canonical resource surface.
 /**
  * index.solana.js — Age of Farming: Solana Migration backend.
  * Firebase Functions v2 (onCall), Node.js 20, CommonJS.
@@ -355,7 +360,7 @@ const TOKEN_PROGRAM_ID_PK = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss62
 /**
  * Balances of a Solana wallet:
  * - SOL (lamports) via connection.getBalance
- * - SPL resource tokens (food/wood/stone) via getParsedTokenAccountsByOwner
+ * - SPL resource tokens (Data/Circuit/Silicon) via getParsedTokenAccountsByOwner
  * - gas tank PDA lamports
  *
  * Resource amounts are tracked in micros (1e6); lamports equivalents
@@ -395,9 +400,9 @@ exports.getWalletBalancesSol = onCall(async (request) => {
   }
 
   const RESOURCE_MINTS = {
-    food: process.env.SOL_FOOD_MINT || '',
-    wood: process.env.SOL_WOOD_MINT || '',
-    stone: process.env.SOL_STONE_MINT || '',
+    data: process.env.SOL_DATA_MINT || '',
+    circuit: process.env.SOL_CIRCUIT_MINT || '',
+    silicon: process.env.SOL_SILICON_MINT || '',
   };
 
   const resources = {};
@@ -1603,13 +1608,13 @@ exports.submitSignedBurnPack = onCall(async (request) => {
 // ============================================
 const { getAssociatedTokenAddressSync } = require('@solana/spl-token');
 
-const RESOURCE_KEYS = ['food', 'wood', 'stone'];
+const RESOURCE_KEYS = ['data', 'circuit', 'silicon'];
 const FEE_PER_WITHDRAW_MICROS = solCore.FEE_PER_NFT_MICROS; // fee дебетуется on-chain из gasTank
 const MAX_AMOUNT_MICROS = 1_000_000_000_000_000; // sanity cap (< 2^53, помещается в u64)
 
 /** PublicKey минта ресурса из env или null, если не сконфигурирован. */
 function resourceMintPk(resource) {
-  const envKey = { food: 'SOL_FOOD_MINT', wood: 'SOL_WOOD_MINT', stone: 'SOL_STONE_MINT' }[resource];
+  const envKey = { data: 'SOL_DATA_MINT', circuit: 'SOL_CIRCUIT_MINT', silicon: 'SOL_SILICON_MINT' }[resource];
   const raw = envKey ? process.env[envKey] : '';
   if (!raw) return null;
   try { return new PublicKey(raw.trim()); } catch (_) { return null; }

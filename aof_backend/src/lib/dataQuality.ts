@@ -7,9 +7,9 @@
 export type DataQuality = "complete" | "partial" | "unavailable";
 
 export type EconomyFieldQuality = {
-  potatoSupply: DataQuality;      // on-chain mint supply read
-  potatoBurned24h: DataQuality;   // chain indexer (ChainMintDelta); overridden at runtime by coverage
-  potatoMinted24h: DataQuality;   // chain indexer (ChainMintDelta); overridden at runtime by coverage
+  mindSupply: DataQuality;      // on-chain mint supply read
+  mindBurned24h: DataQuality;   // chain indexer (ChainMintDelta); overridden at runtime by coverage
+  mindMinted24h: DataQuality;   // chain indexer (ChainMintDelta); overridden at runtime by coverage
   inflation24h: DataQuality;      // derived from supply vs 24h-old snapshot
   activity24h: DataQuality;       // crafters/traders/tx counts from AuditLog (off-chain, partial by nature)
   topHolders: DataQuality;        // getTokenLargestAccounts (top-20); overridden at runtime
@@ -22,9 +22,9 @@ export type EconomyFieldQuality = {
  * an "unavailable" field as a measured zero.
  */
 export const ECONOMY_FIELD_QUALITY: EconomyFieldQuality = {
-  potatoSupply: "complete",
-  potatoBurned24h: "unavailable",
-  potatoMinted24h: "unavailable",
+  mindSupply: "complete",
+  mindBurned24h: "unavailable",
+  mindMinted24h: "unavailable",
   inflation24h: "partial",
   activity24h: "partial",
   topHolders: "unavailable",

@@ -13,11 +13,11 @@ import { commitStatus, drumOutcomeFromLogs, DrumOutcome, selfSettleTransaction }
  */
 const r = Router();
 
-// Potato is a future external SPL mint, NOT the internal MIND mint. The
+// The spin system requires a separate external MIND utility mint, distinct from the core resource mint. The
 // deployed quest program uses raw atomic amounts. Do not accept a new payment
 // until a decimals-aware, audited deployment and fully funded treasury exist.
 r.post("/commit", (_req, res) => {
-  res.status(503).json({ error: "Potato spin payments are not configured; pending spins can still be revealed or refunded." });
+  res.status(503).json({ error: "MIND spin payments are not configured; pending spins can still be revealed or refunded." });
 });
 
 /** Outcome of the player's latest spin (newest transaction of the commit PDA first). */

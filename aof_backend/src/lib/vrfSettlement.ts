@@ -151,8 +151,8 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
       const cfg = await coreConfig();
       ix = await (program.methods as any).exploreReveal(params).accounts({
         config, materialMints: materialMintsPda()[0], cranker, explorationCommit: c.address, user: a.user,
-        woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, a.user),
-        stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, a.user), auth: authPda()[0], ...withAta,
+        circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
+        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user), auth: authPda()[0], ...withAta,
       }).instruction();
       break;
     }
@@ -220,18 +220,18 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
       return await (program.methods as any).exploreExpire().accounts({
         config, materialMints: materialMintsPda()[0], explorationCommit: c.address, user: a.user, vrfSlot,
         auth: authPda()[0],
-        foodMint: cfg.foodMint, userFood: ata(cfg.foodMint, a.user),
-        woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, a.user),
-        stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, a.user),
-        meatMint: mm.meat, userMeat: ata(mm.meat, a.user), tokenProgram: TOKEN_PROGRAM_ID,
+        dataMint: cfg.dataMint, userData: ata(cfg.dataMint, a.user),
+        circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
+        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user),
+        datasetMint: mm.dataset, userDataset: ata(mm.dataset, a.user), tokenProgram: TOKEN_PROGRAM_ID,
       }).instruction();
     }
     case "forge": {
       const cfg = await coreConfig();
       return await (program.methods as any).forgeAttemptExpire().accounts({
         config, materialMints: materialMintsPda()[0], forgeCommit: c.address, user: a.user, vrfSlot,
-        auth: authPda()[0], woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, a.user),
-        stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, a.user), tokenProgram: TOKEN_PROGRAM_ID,
+        auth: authPda()[0], circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
+        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user), tokenProgram: TOKEN_PROGRAM_ID,
       }).instruction();
     }
     case "lottery":
