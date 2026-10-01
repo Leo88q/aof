@@ -870,9 +870,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -1009,10 +1010,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
             "tests/readiness/devnet-release-guards.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -1057,9 +1059,10 @@
       "tests": {
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         },
@@ -1355,11 +1358,12 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 6,
+          "mentions": 7,
           "files": [
             "tests/readiness/bringup-entrypoints.test.cjs",
             "tests/readiness/mechanic-configs.test.cjs",
             "tests/readiness/payer-audit.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/rng-economy.test.cjs",
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
@@ -1574,6 +1578,13 @@
           "mentions": 1,
           "files": [
             "scripts/test-mint-writable-gate.py"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/resource-evidence.test.cjs"
           ]
         }
       },
@@ -2042,8 +2053,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         },
@@ -2796,9 +2808,10 @@
         },
         "adminScripts": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
-            "scripts/check-mint-writable.py"
+            "scripts/check-mint-writable.py",
+            "scripts/resource-usage.mjs"
           ]
         }
       },
@@ -2838,7 +2851,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 4,
         "validatorTested": true,
         "anyTest": true
       }

@@ -1,0 +1,1960 @@
+{
+  "schemaVersion": 1,
+  "note": "Product evidence по ресурсам: frontend, game-клиент, backend, рецепты, ассеты, on-chain источники/стоки.",
+  "resources": [
+    {
+      "kind": "Data",
+      "display": "Data",
+      "mintSource": "config.food_mint",
+      "legacyField": "food_mint",
+      "variants": [
+        "data",
+        "food",
+        "food_mint",
+        "food-mint"
+      ],
+      "frontend": [
+        "frontend/src/i18n/galleryBehaviorCopy.ts",
+        "frontend/src/i18n/galleryCryoCopy.ts",
+        "frontend/src/i18n/galleryMixCopy.ts",
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteChanceCopy.ts",
+        "frontend/src/i18n/siteFaq.ts",
+        "frontend/src/i18n/siteGlossary.ts",
+        "frontend/src/i18n/siteGuide.ts",
+        "frontend/src/i18n/siteMind.ts",
+        "frontend/src/i18n/siteMine.ts",
+        "frontend/src/i18n/siteSeasons.ts",
+        "frontend/src/i18n/siteWorkshop.ts",
+        "frontend/src/i18n/toolsCopy.ts",
+        "frontend/src/lib/api.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/transactionIntent.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/social/PlayerRatingPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/galleryBehaviorCopy.ts",
+          "variant": "data",
+          "line": "sample: { rule: 'RULE', honesty: 'NO GUESSWORK', unknownTitle: 'Unknown versus zero', balance: 'Balance', noConnection: 'network did not res"
+        },
+        {
+          "file": "frontend/src/i18n/galleryCryoCopy.ts",
+          "variant": "data",
+          "line": "'cryo-03': { title: 'Rack without readings', variant: 'no data — empty gauges', where: 'Laboratory · wallet data unavailable', note: 'A null"
+        },
+        {
+          "file": "frontend/src/i18n/galleryMixCopy.ts",
+          "variant": "data",
+          "line": "'mix-03': { title: 'Mixer without readings', variant: 'tool types visible, gauges empty', where: 'Tools · wallet data unavailable', note: 'T"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/chainIndexerCore.ts",
+        "aof_backend/src/routes/daily.ts",
+        "aof_backend/src/routes/portfolio.ts",
+        "aof_backend/src/routes/query.ts",
+        "aof_backend/src/routes/whaleAlerts.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/data.png",
+        "frontend/public/assets/icons/dataset.png",
+        "frontend/public/assets/icons/ui/building-data.png",
+        "frontend/public/assets/nfts/data-harvester-epic.jpg",
+        "frontend/public/assets/nfts/data-harvester-legendary.jpg",
+        "frontend/public/assets/nfts/data-harvester-rare.jpg",
+        "frontend/public/assets/nfts/data-harvester-uncommon.jpg",
+        "frontend/public/assets/nfts/data-harvester.jpg",
+        "frontend/public/assets/nfts/resources/data.jpg",
+        "frontend/public/assets/nfts/resources/dataset.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/exploration.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs",
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft.rs",
+          "line": "mint: ctx.accounts.food_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(mm, ResourceKind::Data, ctx.accounts.food_mint.supply, food)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "food_mint: v1.food_mint,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Circuit",
+      "display": "Circuit",
+      "mintSource": "config.wood_mint",
+      "legacyField": "wood_mint",
+      "variants": [
+        "circuit",
+        "wood",
+        "wood_mint",
+        "wood-mint"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/pages/tools/RepairPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "circuit",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/siteToolsCatalog.ts",
+          "variant": "circuit",
+          "line": "plasma_cutter: 'circuit',"
+        },
+        {
+          "file": "frontend/src/lib/coreInstructions.ts",
+          "variant": "wood_mint",
+          "line": "accounts: [\"config\", \"user\", \"tool\", \"mint\", \"stone_mint\", \"user_stone\", \"wood_mint\", \"user_wood\", \"token_program\"],"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/vrf.ts",
+        "aof_backend/src/routes/admin-config.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/circuit.png",
+        "frontend/public/assets/nfts/resources/circuit.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_mining.rs",
+        "aof-core/src/instructions/exploration.rs",
+        "aof-core/src/instructions/forge.rs",
+        "aof-core/src/instructions/season.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs",
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/forge.rs",
+        "aof-core/src/instructions/rental_delegation.rs",
+        "aof-core/src/instructions/repair.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"plasma_cutter\" => Some(ResourceKind::Circuit),"
+        },
+        {
+          "file": "aof-core/src/instructions/craft_order.rs",
+          "line": "from: ctx.accounts.fulfiller_wood.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/craft.rs",
+          "line": "mint: ctx.accounts.wood_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, reward)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/forge.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, wood)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/rental_delegation.rs",
+          "line": "mint: ctx.accounts.wood_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/repair.rs",
+          "line": "mint: ctx.accounts.wood_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "wood_mint: v1.wood_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/season.rs",
+          "line": "ResourceKind::Circuit,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Silicon",
+      "display": "Silicon",
+      "mintSource": "config.stone_mint",
+      "legacyField": "stone_mint",
+      "variants": [
+        "silicon",
+        "stone",
+        "stone_mint",
+        "stone-mint"
+      ],
+      "frontend": [
+        "frontend/src/components/ToolMiningCard.tsx",
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/farm/MillPanel.tsx",
+        "frontend/src/pages/tools/RepairPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/components/ToolMiningCard.tsx",
+          "variant": "silicon",
+          "line": "? { icon: (resourceIcon(\"silicon\") || \"\"), label: copy.worn, color: \"#E2685F\" }"
+        },
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "silicon",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/siteToolsCatalog.ts",
+          "variant": "silicon",
+          "line": "silicon_extractor: 'silicon',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/silicon.png",
+        "frontend/public/assets/icons/ui/building-silicon.png",
+        "frontend/public/assets/nfts/resources/silicon.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-epic.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-legendary.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-rare.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-uncommon.jpg",
+        "frontend/public/assets/nfts/silicon-extractor.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_mining.rs",
+        "aof-core/src/instructions/exploration.rs",
+        "aof-core/src/instructions/forge.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs",
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/forge.rs",
+        "aof-core/src/instructions/rental_delegation.rs",
+        "aof-core/src/instructions/repair.rs",
+        "aof-core/src/instructions/start_milling.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"silicon_extractor\" => Some(ResourceKind::Silicon),"
+        },
+        {
+          "file": "aof-core/src/instructions/craft_order.rs",
+          "line": "from: ctx.accounts.fulfiller_stone.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/craft.rs",
+          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, reward)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/forge.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, stone)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/rental_delegation.rs",
+          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/repair.rs",
+          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "stone_mint: v1.stone_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/start_milling.rs",
+          "line": "mint: ctx.accounts.stone_mint.to_account_info(),"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Neuron",
+      "display": "Neuron",
+      "mintSource": "material_mints.seeds",
+      "legacyField": "seeds",
+      "variants": [
+        "neuron",
+        "seeds"
+      ],
+      "frontend": [
+        "frontend/src/components/ToolMiningCard.tsx",
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/PlantingPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/components/ToolMiningCard.tsx",
+          "variant": "neuron",
+          "line": "? { icon: (resourceIcon(\"neuron\") || \"\"), label: copy.healthy, color: \"#5FD3A8\" }"
+        },
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "neuron",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "neuron",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        }
+      ],
+      "game": [
+        "game/godot/chain/spl_builders.gd",
+        "game/godot/products/inventory.gd"
+      ],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/lib/toolResourceMint.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/neuron.png",
+        "frontend/public/assets/nfts/resources/neuron.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_mining.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs",
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/plant_seeds.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"neural_seeder\" => Some(ResourceKind::Neuron),"
+        },
+        {
+          "file": "aof-core/src/instructions/craft.rs",
+          "line": "mint: ctx.accounts.seeds_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/plant_seeds.rs",
+          "line": "mint: ctx.accounts.seeds_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "seeds_mint: v1.seeds_mint,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": true,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Synapse",
+      "display": "Synapse",
+      "mintSource": "material_mints.wheat",
+      "legacyField": "wheat",
+      "variants": [
+        "synapse",
+        "wheat"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteDocs.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/economy/SeasonCalendar.tsx",
+        "frontend/src/pages/farm/FarmPlot.tsx",
+        "frontend/src/pages/farm/MillPanel.tsx",
+        "frontend/src/pages/market/AuctionPage.tsx",
+        "frontend/src/pages/market/ListingPage.tsx",
+        "frontend/src/pages/market/OfferPage.tsx",
+        "frontend/src/pages/market/OrderbookPage.tsx",
+        "frontend/src/pages/market/RentalPage.tsx",
+        "frontend/src/pages/tools/RepairPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "synapse",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "synapse",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/siteDocs.ts",
+          "variant": "wheat",
+          "line": "lab: { title: 'Laboratory work', description: 'Legacy code names such as wheat and flour remain. The client speaks of samples and signals; a"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/synapse.png",
+        "frontend/public/assets/nfts/resources/synapse.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/harvest_wheat.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/start_milling.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/harvest_wheat.rs",
+          "line": "ResourceKind::Synapse,"
+        },
+        {
+          "file": "aof-core/src/instructions/start_milling.rs",
+          "line": "mint: ctx.accounts.wheat_mint.to_account_info(),"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Signal",
+      "display": "Signal",
+      "mintSource": "material_mints.flour",
+      "legacyField": "flour",
+      "variants": [
+        "signal",
+        "flour"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteDocs.ts",
+        "frontend/src/i18n/siteGuide.ts",
+        "frontend/src/i18n/siteLore.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/MillPanel.tsx",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "signal",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "signal",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/siteDocs.ts",
+          "variant": "flour",
+          "line": "lab: { title: 'Laboratory work', description: 'Legacy code names such as wheat and flour remain. The client speaks of samples and signals; a"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/signal.png",
+        "frontend/public/assets/nfts/resources/signal.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_flour.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/start_baking.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_flour.rs",
+          "line": "ResourceKind::Signal,"
+        },
+        {
+          "file": "aof-core/src/instructions/start_baking.rs",
+          "line": "mint: ctx.accounts.flour_mint.to_account_info(),"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Model",
+      "display": "Model",
+      "mintSource": "material_mints.bread",
+      "legacyField": "bread",
+      "variants": [
+        "model",
+        "bread"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteEconomy.ts",
+        "frontend/src/i18n/siteGuide.ts",
+        "frontend/src/i18n/siteStrategies.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "model",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "model",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/siteEconomy.ts",
+          "variant": "model",
+          "line": "production: { title: 'The model chain', steps: ['Grow a sample', 'Separate the harvest', 'Train a model with a verified recipe'] },"
+        }
+      ],
+      "game": [
+        "game/godot/chain/candy_machine.gd"
+      ],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/model.png",
+        "frontend/public/assets/nfts/resources/model.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_bread.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_bread.rs",
+          "line": "ResourceKind::Model,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": true,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Power",
+      "display": "Power",
+      "mintSource": "material_mints.water",
+      "legacyField": "water",
+      "variants": [
+        "power",
+        "water"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/wellCopy.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/pages/farm/PlantingPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "power",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "power",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/wellCopy.ts",
+          "variant": "power",
+          "line": "station: 'Network station', connectWallet: 'Connect your wallet', sourceNetwork: 'Source: on-chain', missingState: 'WeatherState was not fou"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/economySimulatorV2.ts",
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/power.png",
+        "frontend/public/assets/nfts/resources/power.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_well_water.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs",
+        "aof-core/src/instructions/start_baking.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_well_water.rs",
+          "line": "ResourceKind::Power,"
+        },
+        {
+          "file": "aof-core/src/instructions/craft.rs",
+          "line": "mint: ctx.accounts.water_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "water_mint: v1.water_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/start_baking.rs",
+          "line": "mint: ctx.accounts.water_mint.to_account_info(),"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "Compute",
+      "display": "Compute",
+      "mintSource": "material_mints.coal",
+      "legacyField": "coal",
+      "variants": [
+        "compute",
+        "coal"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "compute",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/lib/marketUtils.ts",
+          "variant": "compute",
+          "line": "{ key: \"COMPUTE\", label: homeResourceNames.ru.compute, icon: resourceIcon(\"COMPUTE\") || \"\", mint: \"\", kind: 8 },"
+        },
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "compute",
+          "line": "{ id: \"compute\", name: homeResourceNames.ru.compute, en: homeResourceNames.en.compute, plate: \"/assets/nfts/resources/compute.jpg\", icon: \"/"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/compute.png",
+        "frontend/public/assets/nfts/resources/compute.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": false
+      },
+      "status": "candidate-dead"
+    },
+    {
+      "kind": "Dataset",
+      "display": "Dataset",
+      "mintSource": "material_mints.meat",
+      "legacyField": "meat",
+      "variants": [
+        "dataset",
+        "meat"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "dataset",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/siteToolsCatalog.ts",
+          "variant": "dataset",
+          "line": "data_harvester: 'dataset',"
+        },
+        {
+          "file": "frontend/src/lib/marketUtils.ts",
+          "variant": "dataset",
+          "line": "{ key: \"DATASET\", label: homeResourceNames.ru.dataset, icon: resourceIcon(\"DATASET\") || \"\", mint: \"\", kind: 9 },"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/lib/toolResourceMint.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/dataset.png",
+        "frontend/public/assets/nfts/resources/dataset.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_mining.rs",
+        "aof-core/src/instructions/exploration.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"data_harvester\" | \"quantum_transmitter\" => Some(ResourceKind::Dataset),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.meat_mint.supply, meat)?;"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "BlueCore",
+      "display": "Blue Core",
+      "mintSource": "material_mints.stone_blue",
+      "legacyField": "stone_blue",
+      "variants": [
+        "bluecore",
+        "blue_core",
+        "blue-core",
+        "stone_blue",
+        "stone-blue",
+        "stoneblue"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "blue-core",
+          "line": "{ id: \"blueCore\", name: homeResourceNames.ru.blueCore, en: homeResourceNames.en.blueCore, plate: \"/assets/nfts/resources/blue-core.jpg\", ico"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "blue-core",
+          "line": "{ id: 'blueCore', slug: 'blue-core', name: homeResourceNames.ru.blueCore, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/blue-core.png",
+        "frontend/public/assets/nfts/resources/blue-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    },
+    {
+      "kind": "PurpleCore",
+      "display": "Purple Core",
+      "mintSource": "material_mints.stone_purple",
+      "legacyField": "stone_purple",
+      "variants": [
+        "purplecore",
+        "purple_core",
+        "purple-core",
+        "stone_purple",
+        "stone-purple",
+        "stonepurple"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "purple-core",
+          "line": "{ id: \"purpleCore\", name: homeResourceNames.ru.purpleCore, en: homeResourceNames.en.purpleCore, plate: \"/assets/nfts/resources/purple-core.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "purple-core",
+          "line": "{ id: 'purpleCore', slug: 'purple-core', name: homeResourceNames.ru.purpleCore, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/purple-core.png",
+        "frontend/public/assets/nfts/resources/purple-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    },
+    {
+      "kind": "RedCore",
+      "display": "Red Core",
+      "mintSource": "material_mints.stone_red",
+      "legacyField": "stone_red",
+      "variants": [
+        "redcore",
+        "red_core",
+        "red-core",
+        "stone_red",
+        "stone-red",
+        "stonered"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "red-core",
+          "line": "{ id: \"redCore\", name: homeResourceNames.ru.redCore, en: homeResourceNames.en.redCore, plate: \"/assets/nfts/resources/red-core.jpg\", icon: \""
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "red-core",
+          "line": "{ id: 'redCore', slug: 'red-core', name: homeResourceNames.ru.redCore, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/red-core.png",
+        "frontend/public/assets/nfts/resources/red-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    },
+    {
+      "kind": "ClearQuartz",
+      "display": "Clear Quartz",
+      "mintSource": "material_mints.sand_white",
+      "legacyField": "sand_white",
+      "variants": [
+        "clearquartz",
+        "clear_quartz",
+        "clear-quartz",
+        "sand_white",
+        "sand-white",
+        "sandwhite"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "clear-quartz",
+          "line": "{ id: \"clearQuartz\", name: homeResourceNames.ru.clearQuartz, en: homeResourceNames.en.clearQuartz, plate: \"/assets/nfts/resources/clear-quar"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "clear-quartz",
+          "line": "{ id: 'clearQuartz', slug: 'clear-quartz', name: homeResourceNames.ru.clearQuartz, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/clear-quartz.png",
+        "frontend/public/assets/nfts/resources/clear-quartz.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    },
+    {
+      "kind": "RoseQuartz",
+      "display": "Rose Quartz",
+      "mintSource": "material_mints.sand_pink",
+      "legacyField": "sand_pink",
+      "variants": [
+        "rosequartz",
+        "rose_quartz",
+        "rose-quartz",
+        "sand_pink",
+        "sand-pink",
+        "sandpink"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "rose-quartz",
+          "line": "{ id: \"roseQuartz\", name: homeResourceNames.ru.roseQuartz, en: homeResourceNames.en.roseQuartz, plate: \"/assets/nfts/resources/rose-quartz.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "rose-quartz",
+          "line": "{ id: 'roseQuartz', slug: 'rose-quartz', name: homeResourceNames.ru.roseQuartz, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/rose-quartz.png",
+        "frontend/public/assets/nfts/resources/rose-quartz.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    },
+    {
+      "kind": "AmberQuartz",
+      "display": "Amber Quartz",
+      "mintSource": "material_mints.sand_yellow",
+      "legacyField": "sand_yellow",
+      "variants": [
+        "amberquartz",
+        "amber_quartz",
+        "amber-quartz",
+        "sand_yellow",
+        "sand-yellow",
+        "sandyellow"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "amber-quartz",
+          "line": "{ id: \"amberQuartz\", name: homeResourceNames.ru.amberQuartz, en: homeResourceNames.en.amberQuartz, plate: \"/assets/nfts/resources/amber-quar"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "amber-quartz",
+          "line": "{ id: 'amberQuartz', slug: 'amber-quartz', name: homeResourceNames.ru.amberQuartz, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/amber-quartz.png",
+        "frontend/public/assets/nfts/resources/amber-quartz.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": false
+      },
+      "status": "candidate-dead"
+    },
+    {
+      "kind": "QuantumBit",
+      "display": "Quantum Bit",
+      "mintSource": "material_mints.gem_blue",
+      "legacyField": "gem_blue",
+      "variants": [
+        "quantumbit",
+        "quantum_bit",
+        "quantum-bit",
+        "gem_blue",
+        "gem-blue",
+        "gemblue"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "quantum-bit",
+          "line": "{ id: \"quantumBit\", name: homeResourceNames.ru.quantumBit, en: homeResourceNames.en.quantumBit, plate: \"/assets/nfts/resources/quantum-bit.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "quantum-bit",
+          "line": "{ id: 'quantumBit', slug: 'quantum-bit', name: homeResourceNames.ru.quantumBit, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/quantum-bit.png",
+        "frontend/public/assets/nfts/resources/quantum-bit.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::QuantumBit);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "NeuralChip",
+      "display": "Neural Chip",
+      "mintSource": "material_mints.gem_orange",
+      "legacyField": "gem_orange",
+      "variants": [
+        "neuralchip",
+        "neural_chip",
+        "neural-chip",
+        "gem_orange",
+        "gem-orange",
+        "gemorange"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "neural-chip",
+          "line": "{ id: \"neuralChip\", name: homeResourceNames.ru.neuralChip, en: homeResourceNames.en.neuralChip, plate: \"/assets/nfts/resources/neural-chip.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "neural-chip",
+          "line": "{ id: 'neuralChip', slug: 'neural-chip', name: homeResourceNames.ru.neuralChip, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/neural-chip.png",
+        "frontend/public/assets/nfts/resources/neural-chip.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::NeuralChip);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active"
+    },
+    {
+      "kind": "PhotonBit",
+      "display": "Photon Bit",
+      "mintSource": "material_mints.gem_white",
+      "legacyField": "gem_white",
+      "variants": [
+        "photonbit",
+        "photon_bit",
+        "photon-bit",
+        "gem_white",
+        "gem-white",
+        "gemwhite"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "photon-bit",
+          "line": "{ id: \"photonBit\", name: homeResourceNames.ru.photonBit, en: homeResourceNames.en.photonBit, plate: \"/assets/nfts/resources/photon-bit.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "photon-bit",
+          "line": "{ id: 'photonBit', slug: 'photon-bit', name: homeResourceNames.ru.photonBit, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/photon-bit.png",
+        "frontend/public/assets/nfts/resources/photon-bit.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::PhotonBit);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "BioChip",
+      "display": "Bio Chip",
+      "mintSource": "material_mints.gem_green",
+      "legacyField": "gem_green",
+      "variants": [
+        "biochip",
+        "bio_chip",
+        "bio-chip",
+        "gem_green",
+        "gem-green",
+        "gemgreen"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "bio-chip",
+          "line": "{ id: \"bioChip\", name: homeResourceNames.ru.bioChip, en: homeResourceNames.en.bioChip, plate: \"/assets/nfts/resources/bio-chip.jpg\", icon: \""
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "bio-chip",
+          "line": "{ id: 'bioChip', slug: 'bio-chip', name: homeResourceNames.ru.bioChip, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/bio-chip.png",
+        "frontend/public/assets/nfts/resources/bio-chip.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    },
+    {
+      "kind": "CryoFluid",
+      "display": "Cryo Fluid",
+      "mintSource": "material_mints.flask_blue",
+      "legacyField": "flask_blue",
+      "variants": [
+        "cryofluid",
+        "cryo_fluid",
+        "cryo-fluid",
+        "flask_blue",
+        "flask-blue",
+        "flaskblue"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "cryo-fluid",
+          "line": "{ id: \"cryoFluid\", name: homeResourceNames.ru.cryoFluid, en: homeResourceNames.en.cryoFluid, plate: \"/assets/nfts/resources/cryo-fluid.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "cryo-fluid",
+          "line": "{ id: 'cryoFluid', slug: 'cryo-fluid', name: homeResourceNames.ru.cryoFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/cryo-fluid.png",
+        "frontend/public/assets/nfts/resources/cryo-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::CryoFluid);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "VoltFluid",
+      "display": "Volt Fluid",
+      "mintSource": "material_mints.flask_yellow",
+      "legacyField": "flask_yellow",
+      "variants": [
+        "voltfluid",
+        "volt_fluid",
+        "volt-fluid",
+        "flask_yellow",
+        "flask-yellow",
+        "flaskyellow"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "volt-fluid",
+          "line": "{ id: \"voltFluid\", name: homeResourceNames.ru.voltFluid, en: homeResourceNames.en.voltFluid, plate: \"/assets/nfts/resources/volt-fluid.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "volt-fluid",
+          "line": "{ id: 'voltFluid', slug: 'volt-fluid', name: homeResourceNames.ru.voltFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/volt-fluid.png",
+        "frontend/public/assets/nfts/resources/volt-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::VoltFluid);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "BioFluid",
+      "display": "Bio Fluid",
+      "mintSource": "material_mints.flask_green",
+      "legacyField": "flask_green",
+      "variants": [
+        "biofluid",
+        "bio_fluid",
+        "bio-fluid",
+        "flask_green",
+        "flask-green",
+        "flaskgreen"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "bio-fluid",
+          "line": "{ id: \"bioFluid\", name: homeResourceNames.ru.bioFluid, en: homeResourceNames.en.bioFluid, plate: \"/assets/nfts/resources/bio-fluid.jpg\", ico"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "bio-fluid",
+          "line": "{ id: 'bioFluid', slug: 'bio-fluid', name: homeResourceNames.ru.bioFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/bio-fluid.png",
+        "frontend/public/assets/nfts/resources/bio-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::BioFluid);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "NanoFluid",
+      "display": "Nano Fluid",
+      "mintSource": "material_mints.flask_pink",
+      "legacyField": "flask_pink",
+      "variants": [
+        "nanofluid",
+        "nano_fluid",
+        "nano-fluid",
+        "flask_pink",
+        "flask-pink",
+        "flaskpink"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "nano-fluid",
+          "line": "{ id: \"nanoFluid\", name: homeResourceNames.ru.nanoFluid, en: homeResourceNames.en.nanoFluid, plate: \"/assets/nfts/resources/nano-fluid.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "nano-fluid",
+          "line": "{ id: 'nanoFluid', slug: 'nano-fluid', name: homeResourceNames.ru.nanoFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/nano-fluid.png",
+        "frontend/public/assets/nfts/resources/nano-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::NanoFluid);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "QuantumFluid",
+      "display": "Quantum Fluid",
+      "mintSource": "material_mints.flask_purple",
+      "legacyField": "flask_purple",
+      "variants": [
+        "quantumfluid",
+        "quantum_fluid",
+        "quantum-fluid",
+        "flask_purple",
+        "flask-purple",
+        "flaskpurple"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "quantum-fluid",
+          "line": "{ id: \"quantumFluid\", name: homeResourceNames.ru.quantumFluid, en: homeResourceNames.en.quantumFluid, plate: \"/assets/nfts/resources/quantum"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "quantum-fluid",
+          "line": "{ id: 'quantumFluid', slug: 'quantum-fluid', name: homeResourceNames.ru.quantumFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/quantum-fluid.png",
+        "frontend/public/assets/nfts/resources/quantum-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft_recipe.rs",
+          "line": "mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::QuantumFluid);"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active"
+    },
+    {
+      "kind": "SoulCore",
+      "display": "Soul Core",
+      "mintSource": "material_mints.love_heart",
+      "legacyField": "love_heart",
+      "variants": [
+        "soulcore",
+        "soul_core",
+        "soul-core",
+        "love_heart",
+        "love-heart",
+        "loveheart"
+      ],
+      "frontend": [
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "soul-core",
+          "line": "{ id: 'soulCore', slug: 'soul-core', name: homeResourceNames.ru.soulCore, category: 'social', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/nfts/resources/soul-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [],
+      "onchainRefs": [],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": false
+      },
+      "status": "candidate-dead"
+    },
+    {
+      "kind": "Mind",
+      "display": "Mind",
+      "mintSource": "config.potato_mint",
+      "legacyField": "potato_mint",
+      "variants": [
+        "mind",
+        "potato",
+        "potato_mint",
+        "potato-mint"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteGlossary.ts",
+        "frontend/src/i18n/translations.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts",
+        "frontend/src/site/pages/ExtraSections.tsx"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "mind",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "mind",
+          "line": "cryoFluid: 'A fluid for advanced stages.', voltFluid: 'A fluid for advanced stages.', bioFluid: 'A fluid from the organic chain.', nanoFluid"
+        },
+        {
+          "file": "frontend/src/i18n/siteGlossary.ts",
+          "variant": "mind",
+          "line": "'rebirth', 'crank', 'siteMark', 'mind',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/questGenerator.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/mind.png",
+        "frontend/public/assets/nfts/resources/mind.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/craft.rs",
+          "line": "mint: ctx.accounts.potato_mint.to_account_info(),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "potato_mint: v1.potato_mint,"
+        },
+        {
+          "file": "programs/aof-quests/src/instructions/drum/potato_spin.rs",
+          "line": "from: ctx.accounts.user_potato.to_account_info(),"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "internal-only"
+    }
+  ]
+}
