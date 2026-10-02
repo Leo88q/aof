@@ -489,7 +489,7 @@ describe("aof-core: security & core flows", () => {
     const concurrentReceipt = pda([B("reward_receipt"), user.publicKey.toBuffer(), Buffer.from(concurrentId)]);
     const results = await Promise.allSettled([gross, gross.addn(1)].map((amount) =>
       program.methods.mintResourceOnce({ circuit: {} }, amount, concurrentId)
-        .accounts({ ...accounts, rewardReceipt: concurrentReceipt }).rpc()));
+        .accounts({ ...accounts, rewardReceipt: concurrentReceipt }).signers([user]).rpc()));
     expect(results.filter((result) => result.status === "fulfilled").length).to.equal(1);
   });
 
