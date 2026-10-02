@@ -750,7 +750,7 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
                 wallet(w.operator, true),
                 w.auth_info(),
                 spl_mint(mint, 0, Some(w.auth_key), freeze_authority),
-                token_account(Pubkey::new_unique(), mint, recipient, 0),
+                token_account(ata(&recipient, &mint), mint, recipient, 0),
                 wallet(recipient, false),
                 wallet(payer, true),
                 program_account(tool_key, &blank, TOOL_DATA_SPACE),
