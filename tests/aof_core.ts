@@ -64,11 +64,13 @@ describe("aof-core: security & core flows", () => {
       const donor = Keypair.generate();
       await airdrop(donor);
       const donorAta = await giveResource(kind, mint, donor.publicKey, units * 2);
+      const transferAmount = UNIT.muln(units);
+      const donorBalanceSlot = await waitForTokenBalance(donorAta, transferAmount, `vault donor ${donor.publicKey}`);
       const vaultAta = await ensureAta(mint, vaultPda);
       const transfer = new Transaction().add(createTransferInstruction(
-        donorAta, vaultAta, donor.publicKey, UNIT.muln(units).toNumber(), [], TOKEN_PROGRAM_ID,
+        donorAta, vaultAta, donor.publicKey, transferAmount.toNumber(), [], TOKEN_PROGRAM_ID,
       ));
-      await submitWithPayer(provider.connection, transfer, donor);
+      await submitWithPayer(provider.connection, transfer, donor, [], donorBalanceSlot);
       return vaultAta;
     }
     await ensurePlayer(user);
@@ -82,6 +84,18 @@ describe("aof-core: security & core flows", () => {
     return ata;
   }
   const balance = async (ata: PublicKey) => new BN((await provider.connection.getTokenAccountBalance(ata)).value.amount);
+
+  async function waitForTokenBalance(ata: PublicKey, minimum: BN, label: string, timeoutMs = 10_000): Promise<number> {
+    const deadline = Date.now() + timeoutMs;
+    let observed = new BN(0);
+    do {
+      const response = await provider.connection.getTokenAccountBalance(ata, "confirmed");
+      observed = new BN(response.value.amount);
+      if (observed.gte(minimum)) return response.context.slot;
+      await sleep(100);
+    } while (Date.now() < deadline);
+    throw new Error(`${label} has ${observed.toString()} token base units; expected at least ${minimum.toString()}`);
+  }
 
   // Lamport change of each account inside one transaction (pre/post balances of
   // its metadata), plus the fee its payer was charged. Exact even for the
@@ -428,10 +442,12 @@ describe("aof-core: security & core flows", () => {
       expect((ev as any).data.authority.toBase58()).to.equal(authority.toBase58());
     }
     const before = (await balance(userCircuit)).add(await balance(treasuryCircuit));
-    const userLamportsBefore = await provider.connection.getBalance(user.publicKey, "confirmed");
-    await program.methods.mintResourceOnce({ circuit: {} }, gross, rewardId).accounts(accounts).signers([user]).rpc();
+    const rewardSignature = await sendWithPayer(
+      program.methods.mintResourceOnce({ circuit: {} }, gross, rewardId).accounts(accounts), user,
+    );
+    const rewardPayerDelta = await txDeltas(rewardSignature);
     // [PAYER] весь rent профиля и чека списан с игрока, а не с оператора.
-    expect(await provider.connection.getBalance(user.publicKey, "confirmed")).to.be.lessThan(userLamportsBefore);
+    expect(rewardPayerDelta(user.publicKey)).to.be.lessThan(0);
     const receipt = await program.account.rewardReceipt.fetch(rewardReceipt);
     expect(receipt.recipient.toBase58()).to.equal(user.publicKey.toBase58());
     expect(receipt.mint.toBase58()).to.equal(circuitMint.toBase58());

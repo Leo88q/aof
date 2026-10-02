@@ -31,7 +31,7 @@ import {
 } from "@solana/spl-token";
 import { expect } from "chai";
 import fs from "fs";
-import { submitWithPayer, waitForAccountOwner } from "./payer-transaction";
+import { submitWithPayer, waitForAccountAbsent, waitForAccountOwner } from "./payer-transaction";
 
 const CORE_ID = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
@@ -286,10 +286,8 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
       })
       .signers([attacker])
       .rpc();
-    expect(await connection.getAccountInfo(ata(mint, attacker.publicKey), "confirmed"))
-      .to.equal(null, "burn_nft closes the empty NFT token account and returns its rent");
-    expect(await connection.getAccountInfo(toolPda(mint), "confirmed"))
-      .to.equal(null, "burn_nft closes the ToolData PDA and returns its rent");
+    await waitForAccountAbsent(connection, ata(mint, attacker.publicKey), "burned NFT token account");
+    await waitForAccountAbsent(connection, toolPda(mint), "burned ToolData PDA");
   });
 
   // [5]: посторонний не должен уметь сбросить кэш (иначе он уводит operator).
@@ -739,6 +737,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     const renter = Keypair.generate();
     await airdrop(renter, 5);
     const setup = await listedAndRented(owner, renter);
+    const renterToolToken = await ensureAta(setup.mint, renter.publicKey);
     const cfg: any = await core.account.config.fetch(coreConfig);
     const siliconMint = new PublicKey(cfg.siliconMint);
     const circuitMint = new PublicKey(cfg.circuitMint);
@@ -780,7 +779,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
         .accounts({
           config: coreConfig, user: renter.publicKey, tool: setup.tool, mint: setup.mint,
           siliconMint, userSilicon: renterSilicon, circuitMint, userCircuit: renterCircuit,
-          toolToken: ata(setup.mint, renter.publicKey), tokenProgram: TOKEN_PROGRAM_ID,
+          toolToken: renterToolToken, tokenProgram: TOKEN_PROGRAM_ID,
         })
         .signers([renter])
         .rpc(),

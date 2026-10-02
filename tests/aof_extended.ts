@@ -618,6 +618,9 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     // Token-primary ownership: repair проверяет, где реально лежит supply-1 токен.
     // Инструмент свободен, поэтому это личный ATA того, кого ремонтируют.
     const toolTokenFor = (who: PublicKey) => getAssociatedTokenAddressSync(mint, who, true);
+    // Repair's token-account constraint runs before the operator check.
+    // Give the stranger an empty ATA so this test reaches NotToolOperator.
+    await ensureAta(mint, stranger.publicKey);
     const repair = (signer: Keypair, amount: number, userSilicon: PublicKey, userCircuit: PublicKey) => program.methods.repair(amount).accounts({
       config: configPda, user: signer.publicKey, tool: toolPda(mint), mint, siliconMint, userSilicon, circuitMint, userCircuit,
       toolToken: toolTokenFor(signer.publicKey),

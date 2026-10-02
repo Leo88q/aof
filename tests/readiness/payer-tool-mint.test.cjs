@@ -151,8 +151,8 @@ test('Anchor helpers cover a separate payer as well as the self-mint path', () =
     'shared signer helper assigns the explicit payer as fee payer');
   assert.match(sharedAnchorPayer, /const signers = required\.map\(/,
     'shared signer helper signs only transaction-required local signers');
-  assert.match(sharedAnchorPayer, /minContextSlot: context\.slot/,
-    'explicit payer submission cannot simulate before the latest confirmed state');
+  assert.match(sharedAnchorPayer, /minContextSlot:\s*Math\.max\(context\.slot, minContextSlot \?\? 0\)/,
+    'explicit payer submission waits for both the latest blockhash and any required account snapshot');
   const vrf = read('tests/aof_vrf_localnet.ts');
   assert.match(vrf, /recipient: owner\.publicKey,[\s\S]*?payer: owner\.publicKey/,
     'VRF self-mint explicitly uses the player as payer and recipient');

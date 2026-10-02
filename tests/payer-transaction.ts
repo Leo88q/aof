@@ -25,6 +25,24 @@ export async function waitForAccountOwner(
   }
 }
 
+/** Wait for a confirmed close to become visible on the validator bank. */
+export async function waitForAccountAbsent(
+  connection: Connection,
+  address: PublicKey,
+  label = "account",
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const observed = await connection.getAccountInfo(address, "confirmed");
+    if (!observed) return;
+    if (Date.now() >= deadline) {
+      throw new Error(`${label} ${address} still exists after ${timeoutMs}ms (owner ${observed.owner}, lamports ${observed.lamports})`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 /** Submit a legacy Anchor transaction with only the required explicit signers.
  * AnchorProvider.sendAndConfirm always tries its wallet, even when that wallet
  * is not a required signer; payer-funded instructions must not inherit it. */
@@ -33,6 +51,7 @@ export async function submitWithPayer(
   transaction: Transaction,
   payer: Keypair,
   extraSigners: Keypair[] = [],
+  minContextSlot?: number,
 ): Promise<string> {
   transaction.feePayer = payer.publicKey;
   const { context, value: lifetime } = await connection.getLatestBlockhashAndContext("confirmed");
@@ -53,7 +72,7 @@ export async function submitWithPayer(
   transaction.partialSign(...signers as Keypair[]);
   const signature = await connection.sendRawTransaction(transaction.serialize(), {
     preflightCommitment: "confirmed",
-    minContextSlot: context.slot,
+    minContextSlot: Math.max(context.slot, minContextSlot ?? 0),
   });
   let tx: any = null;
   let transactionError: any = null;
