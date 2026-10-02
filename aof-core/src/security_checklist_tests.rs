@@ -736,6 +736,7 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
     runtime();
     let w = World::new();
     let recipient = Pubkey::new_unique();
+    let payer = Pubkey::new_unique();
     let mint = Pubkey::new_unique();
     let tool_key = pda(&[TOOL_SEED, mint.as_ref()]).0;
     let blank = tool(mint, Pubkey::default(), Pubkey::default(), "");
@@ -751,6 +752,7 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
                 spl_mint(mint, 0, Some(w.auth_key), freeze_authority),
                 token_account(Pubkey::new_unique(), mint, recipient, 0),
                 wallet(recipient, false),
+                wallet(payer, true),
                 program_account(tool_key, &blank, TOOL_DATA_SPACE),
                 token_program_info(),
                 system_program_info(),
