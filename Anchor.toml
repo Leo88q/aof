@@ -48,6 +48,9 @@ cluster = "Localnet"
 wallet = "solana/keys/aof-authority-devnet.json"
 
 [test]
+# CI loads several upgradeable programs into the local validator before the
+# first RPC blockhash is available; allow a cold validator 30 seconds to start.
+startup_wait = 30000
 # Initialize читает канонический ProgramData апгрейд-лоадера, чтобы привязать
 # Config.authority к фактическому upgrade authority, а не к произвольному
 # подписанту. Без upgradeable-деплоя этого аккаунта нет, и bootstrap падает.
