@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { SystemProgram, Transaction, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { SystemProgram, Transaction, PublicKey, Keypair } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createInitializeMintInstruction, MINT_SIZE, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import {AUTHORITY, TREASURY, AUTHORITY_PUBKEY} from "../config";
 import { fetchOne, fetchOneForSigner } from "../lib/decode";
@@ -20,7 +20,9 @@ import {
   issuanceCapPda,
   RESOURCE_KIND_ORDER,
 } from "../lib/pda";
-import { authorityOnly, pk, coSign } from "../lib/tx";
+import { authorityOnly, pk, coSign, coSignQuoted } from "../lib/tx";
+import { PLAYER_ACCOUNT_SIZE, TOKEN_ACCOUNT_SIZE, TOKEN_MINT_SIZE, TOOL_DATA_ACCOUNT_SIZE } from "../lib/accountSizes";
+import { requireExistingPlayer } from "../lib/playerAccount";
 import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
 import { simulateTransaction } from "../security/txSimulator";
 
@@ -136,15 +138,15 @@ r.post("/set-paused", async (req, res) => {
 
 r.post("/set-resource-mints", async (req, res) => {
   try {
-    const foodMint = pk(req.body.foodMint);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
-    const seedsMint = pk(req.body.seedsMint);
-    const waterMint = pk(req.body.waterMint);
-    const potatoMint = pk(req.body.potatoMint);
+    const dataMint = pk(req.body.dataMint);
+    const circuitMint = pk(req.body.circuitMint);
+    const siliconMint = pk(req.body.siliconMint);
+    const neuronMint = pk(req.body.neuronMint);
+    const powerMint = pk(req.body.powerMint);
+    const mindMint = pk(req.body.mindMint);
     const [config] = configPda();
     const ix = await (program.methods as any)
-      .setResourceMints(foodMint, woodMint, stoneMint, seedsMint, waterMint, potatoMint)
+      .setResourceMints(dataMint, circuitMint, siliconMint, neuronMint, powerMint, mindMint)
       .accounts({ config, authority: AUTHORITY_PUBKEY })
       .instruction();
     const sig = await authorityOnly([ix]);
@@ -177,17 +179,17 @@ r.post("/craft-economy/init", async (req, res) => {
 r.post("/craft-economy/set", async (req, res) => {
   try {
     // IDL требует массивы [u64; 4] для каждого параметра
-    const woodBase = (req.body.woodBase || ["100","100","100","100"]).map((x: any) => new BN(x));
-    const stoneBase = (req.body.stoneBase || ["100","100","100","100"]).map((x: any) => new BN(x));
-    const woodMult = (req.body.woodMult || ["2","2","2","2"]).map((x: any) => new BN(x));
-    const stoneMult = (req.body.stoneMult || ["2","2","2","2"]).map((x: any) => new BN(x));
+    const circuitBase = (req.body.circuitBase || ["100","100","100","100"]).map((x: any) => new BN(x));
+    const siliconBase = (req.body.siliconBase || ["100","100","100","100"]).map((x: any) => new BN(x));
+    const circuitMult = (req.body.circuitMult || ["2","2","2","2"]).map((x: any) => new BN(x));
+    const siliconMult = (req.body.siliconMult || ["2","2","2","2"]).map((x: any) => new BN(x));
     const [config] = configPda();
     const [craftEconomy] = craftEconomyPda();
     
-    console.log("[craft-economy/set] params:", { woodBase, stoneBase, woodMult, stoneMult });
+    console.log("[craft-economy/set] params:", { circuitBase, siliconBase, circuitMult, siliconMult });
     
     const ix = await (program.methods as any)
-      .setCraftEconomy(woodBase, stoneBase, woodMult, stoneMult)
+      .setCraftEconomy(circuitBase, siliconBase, circuitMult, siliconMult)
       .accounts({ config, authority: AUTHORITY_PUBKEY, craftEconomy })
       .instruction();
     const sig = await authorityOnly([ix]);
@@ -225,54 +227,13 @@ r.post("/rarity-counter/init", async (req, res) => {
   }
 });
 
-r.post("/migrate-tool", async (req, res) => {
-  try {
-    const mint = pk(req.body.mint);
-    const toolType = req.body.toolType;
-    const rarityMap: Record<string, any> = {
-      common: { common: {} },
-      uncommon: { uncommon: {} },
-      rare: { rare: {} },
-      epic: { epic: {} },
-      legendary: { legendary: {} },
-    };
-    const rarity = rarityMap[req.body.rarity];
-    const durability = Number(req.body.durability);
-    const [config] = configPda();
-    const [auth] = authPda();
-    const [vault] = vaultPda();
-    const [toolData] = toolPda(mint);
-    const vaultTokenAccount = getAssociatedTokenAddressSync(mint, vault, true);
-    const ix = await (program.methods as any)
-      .migrateTool(toolType, rarity, durability)
-      .accounts({
-        config,
-        migrationAuthority: AUTHORITY_PUBKEY,
-        authority: AUTHORITY_PUBKEY,
-        auth,
-        vault,
-        mint,
-        vaultTokenAccount,
-        toolData,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-
-
 // [FIXED] Тестовая выдача ресурса игроку — правильные аккаунты tokenAccount + treasuryToken + player + авто-создание ATA
 // Bulk manual minting is a devnet/staging tool. In production resources are
 // issued only through audited flows (inbox rewards with on-chain receipts).
 r.post("/mint-resource", nonProductionOnly, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
+    await requireExistingPlayer(owner);
     const kind = req.body.kind;
     const amount = new BN(req.body.amount);
     const [config] = configPda();
@@ -280,10 +241,10 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
     const [auth] = authPda();
     const cfg: any = await fetchOneForSigner("config", config);
     if (!cfg || !cfg.treasury) return res.status(400).json({ error: "Config not initialized" });
-    const mint = kind === "Food" ? cfg.foodMint
-      : kind === "Wood" ? cfg.woodMint
-      : kind === "Stone" ? cfg.stoneMint
-      : kind === "Potato" ? cfg.potatoMint
+    const mint = kind === "Data" ? cfg.dataMint
+      : kind === "Circuit" ? cfg.circuitMint
+      : kind === "Silicon" ? cfg.siliconMint
+      : kind === "Mind" ? cfg.mindMint
       : undefined;
     if (!mint) return res.status(400).json({ error: "минт ресурса не задан в конфиге" });
     const mintPk = typeof mint === "string" ? pk(mint) : mint;
@@ -297,11 +258,20 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
       mind: { mind: {} },
     };
 
+    // [PAYER] ATA игрока — его аккаунт и его подпись: создаётся лениво в ЕГО
+    // транзакции (owner = fee payer = payer ATA), authority только авторизует
+    // минт. ATA казны — инфраструктура проекта: проект оплачивает её сам и
+    // только если её ещё нет, вне транзакции игрока.
+    const treasuryAtaInfo = await connection.getAccountInfo(treasuryAta, "confirmed");
+    if (!treasuryAtaInfo) {
+      await authorityOnly([
+        createAssociatedTokenAccountIdempotentInstruction(
+          AUTHORITY_PUBKEY, treasuryAta, cfg.treasury, mintPk,
+        ),
+      ]);
+    }
     const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, userAta, owner, mintPk
-    );
-    const createTreasuryAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, treasuryAta, cfg.treasury, mintPk
+      owner, userAta, owner, mintPk
     );
 
     const ix = await (program.methods as any)
@@ -321,10 +291,12 @@ r.post("/mint-resource", nonProductionOnly, async (req, res) => {
       })
       .instruction();
 
-    const sig = await authorityOnly([createTreasuryAtaIx, createAtaIx, ix]);
-    res.json({ sig });
+    const prepared = await coSignQuoted([createAtaIx, ix], owner, [
+      { name: "recipient_ata", address: userAta, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+    ]);
+    res.json(prepared);
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 
@@ -337,10 +309,10 @@ r.post("/init-craft-economy", async (req, res) => {
     // Anchor ожидает BN[] для u64 массивов — заворачиваю каждое число
     const unit = new BN(1_000_000_000);
     const asAtomic = (values: number[]) => values.map((x) => new BN(x).mul(unit));
-    const woodBase = asAtomic([100, 150, 500, 2_000]);
-    const stoneBase = asAtomic([100, 120, 400, 1_500]);
-    const woodMult = asAtomic([1, 2, 10, 50]);
-    const stoneMult = asAtomic([1, 2, 10, 50]);
+    const circuitBase = asAtomic([100, 150, 500, 2_000]);
+    const siliconBase = asAtomic([100, 120, 400, 1_500]);
+    const circuitMult = asAtomic([1, 2, 10, 50]);
+    const siliconMult = asAtomic([1, 2, 10, 50]);
 
     const ix1 = await (program.methods as any)
       .initCraftEconomy()
@@ -353,7 +325,7 @@ r.post("/init-craft-economy", async (req, res) => {
       .instruction();
 
     const ix2 = await (program.methods as any)
-      .setCraftEconomy(woodBase, stoneBase, woodMult, stoneMult)
+      .setCraftEconomy(circuitBase, siliconBase, circuitMult, siliconMult)
       .accounts({
         config,
         authority: AUTHORITY_PUBKEY,
@@ -374,6 +346,7 @@ r.post("/init-craft-economy", async (req, res) => {
 r.post("/test-grant", nonProductionOnly, async (req, res) => {
   try {
     const user = pk(req.body.user);
+    await requireExistingPlayer(user);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [auth] = authPda();
@@ -386,46 +359,47 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
       return res.status(400).json({ error: "Config/MaterialMints not initialized" });
     }
     
-    // Базовые ресурсы из Config (FOOD/WOOD/STONE) - много для тестов
+    // Базовые ресурсы из Config (DATA/CIRCUIT/SILICON) - много для тестов
     const baseResources = [
-      { name: "DATA", mint: cfg.foodMint, amount: 10000 },
-      { name: "CIRCUIT", mint: cfg.woodMint, amount: 10000 },
-      { name: "SILICON", mint: cfg.stoneMint, amount: 10000 },
-      { name: "MIND", mint: cfg.potatoMint, amount: 10000 },
+      { name: "DATA", mint: cfg.dataMint, amount: 10000 },
+      { name: "CIRCUIT", mint: cfg.circuitMint, amount: 10000 },
+      { name: "SILICON", mint: cfg.siliconMint, amount: 10000 },
+      { name: "MIND", mint: cfg.mindMint, amount: 10000 },
     ];
     
     // Все ресурсы из MaterialMints
     const materialResources = [
-      { name: "NEURON", mint: mm.seeds, amount: 500 },
-      { name: "SYNAPSE", mint: mm.wheat, amount: 1000 },
-      { name: "SIGNAL", mint: mm.flour, amount: 500 },
-      { name: "MODEL", mint: mm.bread, amount: 200 },
-      { name: "POWER", mint: mm.water, amount: 2000 },
-      { name: "COMPUTE", mint: mm.coal, amount: 500 },
-      { name: "DATASET", mint: mm.meat, amount: 300 },
+      { name: "NEURON", mint: mm.neuron, amount: 500 },
+      { name: "SYNAPSE", mint: mm.synapse, amount: 1000 },
+      { name: "SIGNAL", mint: mm.signal, amount: 500 },
+      { name: "MODEL", mint: mm.model, amount: 200 },
+      { name: "POWER", mint: mm.power, amount: 2000 },
+      { name: "COMPUTE", mint: mm.compute, amount: 500 },
+      { name: "DATASET", mint: mm.dataset, amount: 300 },
       // Камни
-      { name: "BLUE_CORE", mint: mm.stone_blue, amount: 100 },
-      { name: "PURPLE_CORE", mint: mm.stone_purple, amount: 100 },
-      { name: "RED_CORE", mint: mm.stone_red, amount: 100 },
+      { name: "BLUE_CORE", mint: mm.blueCore, amount: 100 },
+      { name: "PURPLE_CORE", mint: mm.purpleCore, amount: 100 },
+      { name: "RED_CORE", mint: mm.redCore, amount: 100 },
       // Песок
-      { name: "CLEAR_QUARTZ", mint: mm.sand_white, amount: 100 },
-      { name: "ROSE_QUARTZ", mint: mm.sand_pink, amount: 100 },
-      { name: "AMBER_QUARTZ", mint: mm.sand_yellow, amount: 100 },
+      { name: "CLEAR_QUARTZ", mint: mm.clearQuartz, amount: 100 },
+      { name: "ROSE_QUARTZ", mint: mm.roseQuartz, amount: 100 },
+      { name: "AMBER_QUARTZ", mint: mm.amberQuartz, amount: 100 },
       // Гемы
-      { name: "QUANTUM_BIT", mint: mm.gem_blue, amount: 50 },
-      { name: "NEURAL_CHIP", mint: mm.gem_orange, amount: 50 },
-      { name: "PHOTON_BIT", mint: mm.gem_white, amount: 50 },
-      { name: "BIO_CHIP", mint: mm.gem_green, amount: 50 },
+      { name: "QUANTUM_BIT", mint: mm.quantumBit, amount: 50 },
+      { name: "NEURAL_CHIP", mint: mm.neuralChip, amount: 50 },
+      { name: "PHOTON_BIT", mint: mm.photonBit, amount: 50 },
+      { name: "BIO_CHIP", mint: mm.bioChip, amount: 50 },
       // Флаконы
-      { name: "CRYO_FLUID", mint: mm.flask_blue, amount: 20 },
-      { name: "VOLT_FLUID", mint: mm.flask_yellow, amount: 20 },
-      { name: "BIO_FLUID", mint: mm.flask_green, amount: 20 },
-      { name: "NANO_FLUID", mint: mm.flask_pink, amount: 20 },
-      { name: "QUANTUM_FLUID", mint: mm.flask_purple, amount: 20 },
+      { name: "CRYO_FLUID", mint: mm.cryoFluid, amount: 20 },
+      { name: "VOLT_FLUID", mint: mm.voltFluid, amount: 20 },
+      { name: "BIO_FLUID", mint: mm.bioFluid, amount: 20 },
+      { name: "NANO_FLUID", mint: mm.nanoFluid, amount: 20 },
+      { name: "QUANTUM_FLUID", mint: mm.quantumFluid, amount: 20 },
     ];
     
     const allResources = [...baseResources, ...materialResources];
-    const instructions: any[] = [];
+    const resourceTxItems: Array<{ instructions: any[]; rentAccount: { name: string; address: PublicKey; size: number; strategy: "idempotent" } }> = [];
+    const treasurySetup: any[] = [];
     let mintedCount = 0;
     let skippedCount = 0;
     
@@ -440,23 +414,15 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
         const userAta = getAssociatedTokenAddressSync(mintPk, user, true);
         const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
         
-        // Проверяем существуют ли ATA, если нет — создаём их authority-плательщиком.
-        const [userInfo, treasuryInfo] = await Promise.all([
-          connection.getAccountInfo(userAta),
-          connection.getAccountInfo(treasuryAta),
-        ]);
-        if (!userInfo) {
-          instructions.push(
-            createAssociatedTokenAccountIdempotentInstruction(
-              AUTHORITY_PUBKEY,
-              userAta,
-              user,
-              mintPk,
-            )
-          );
-        }
+        // [PAYER] ATA игрока — его аккаунт: создаётся лениво в его транзакции,
+        // платит и подписывает игрок. ATA казны — инфраструктура проекта: её
+        // проект оплачивает сам, вне транзакции игрока.
+        const treasuryInfo = await connection.getAccountInfo(treasuryAta, "confirmed");
+        const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
+          user, userAta, user, mintPk,
+        );
         if (!treasuryInfo) {
-          instructions.push(
+          treasurySetup.push(
             createAssociatedTokenAccountIdempotentInstruction(
               AUTHORITY_PUBKEY,
               treasuryAta,
@@ -487,7 +453,10 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
           })
           .instruction();
         
-        instructions.push(ix);
+        resourceTxItems.push({
+          instructions: [createUserAta, ix],
+          rentAccount: { name: `recipient_ata_${r.name.toLowerCase()}`, address: userAta, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+        });
         mintedCount++;
       } catch (e: any) {
         console.log(`Skip ${r.name}:`, e.message);
@@ -495,24 +464,30 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
       }
     }
     
-    if (instructions.length === 0) {
+    if (resourceTxItems.length === 0) {
       return res.status(400).json({ error: "No valid mints to process" });
     }
     
-    // Батчим инструкции по 10 (лимит Solana)
-    const BATCH_SIZE = 10;
-    const signatures = [];
-    
-    for (let i = 0; i < instructions.length; i += BATCH_SIZE) {
-      const batch = instructions.slice(i, i + BATCH_SIZE);
-      const sig = await authorityOnly(batch);
-      signatures.push(sig);
+    // ATA казны проект создаёт сам: это инфраструктура, а не аккаунт игрока.
+    if (treasurySetup.length) await authorityOnly(treasurySetup);
+
+    // Keep each ATA-create/mint pair together. Every returned batch has its
+    // own exact-message quote and a bounded per-ATA rent ceiling.
+    const BATCH_SIZE = 4;
+    const txs: Array<{ tx: string; quote: any }> = [];
+    for (let i = 0; i < resourceTxItems.length; i += BATCH_SIZE) {
+      const batch = resourceTxItems.slice(i, i + BATCH_SIZE);
+      txs.push(await coSignQuoted(
+        batch.flatMap((item) => item.instructions),
+        user,
+        batch.map((item) => item.rentAccount),
+      ));
     }
     
     res.json({
       success: true,
       message: `Granted ${mintedCount} resources (${skippedCount} skipped - no mints)`,
-      signatures,
+      txs,
       resources: allResources.map(r => ({
         name: r.name,
         amount: r.amount,
@@ -520,42 +495,50 @@ r.post("/test-grant", nonProductionOnly, async (req, res) => {
       }))
     });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 
-// [ТЕСТ] Начисление POTATO (отдельно, через Config)
-r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
+// [ТЕСТ] Начисление MIND (отдельно, через Config)
+r.post("/test-grant-mind", nonProductionOnly, async (req, res) => {
   try {
     const user = pk(req.body.user);
+    await requireExistingPlayer(user);
     const amount = Number(req.body.amount || 10000);
     const [config] = configPda();
     const cfg: any = await fetchOneForSigner("config", config);
     
-    if (!cfg?.potatoMint) {
-      return res.status(400).json({ error: "PotatoMint not configured" });
+    if (!cfg?.mindMint) {
+      return res.status(400).json({ error: "External MIND mint not configured" });
     }
     
-    const mintPk = pk(cfg.potatoMint);
+    const mintPk = pk(cfg.mindMint);
     const treasury = new PublicKey(cfg.treasury.toString());
     const userAta = getAssociatedTokenAddressSync(mintPk, user, true);
     const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasury, true);
     const [auth] = authPda();
     const [materialMints] = materialMintsPda();
     
-    // Идемпотентно создаём ATA игрока и казны.
+    // [PAYER] ATA игрока оплачивает и подписывает игрок (в его транзакции);
+    // ATA казны — инфраструктура проекта, её проект создаёт сам и только если
+    // её ещё нет.
+    const treasuryAtaInfo = await connection.getAccountInfo(treasuryAta, "confirmed");
+    if (!treasuryAtaInfo) {
+      await authorityOnly([
+        createAssociatedTokenAccountIdempotentInstruction(
+          AUTHORITY_PUBKEY, treasuryAta, treasury, mintPk,
+        ),
+      ]);
+    }
     const instructions: any[] = [
       createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY_PUBKEY, userAta, user, mintPk,
-      ),
-      createAssociatedTokenAccountIdempotentInstruction(
-        AUTHORITY_PUBKEY, treasuryAta, treasury, mintPk,
+        user, userAta, user, mintPk,
       ),
     ];
     
     const amountWithDecimals = amount * 1e9;
     const ix = await (program.methods as any)
-      .mintResource(RESOURCE_KIND_BY_NAME.POTATO, new BN(amountWithDecimals))
+      .mintResource(RESOURCE_KIND_BY_NAME.MIND, new BN(amountWithDecimals))
       .accounts({
         config,
         materialMints,
@@ -565,18 +548,19 @@ r.post("/test-grant-potato", nonProductionOnly, async (req, res) => {
         tokenAccount: userAta,
         treasuryToken: treasuryAta,
         player: playerPda(user)[0],
-        issuanceCap: issuanceCapPda(RESOURCE_KIND_BY_NAME.POTATO)[0],
+        issuanceCap: issuanceCapPda(RESOURCE_KIND_BY_NAME.MIND)[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     
     instructions.push(ix);
-    const sig = await authorityOnly(instructions);
-    
-    res.json({ success: true, signature: sig, amount });
+    const prepared = await coSignQuoted(instructions, user, [
+      { name: "recipient_ata", address: userAta, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+    ]);
+    res.json({ success: true, ...prepared, amount });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 
@@ -603,6 +587,9 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
       return res.status(503).json({ error: "Authority signing is disabled (AUTHORITY_MODE=read-only)." });
     }
     const recipient = pk(req.body.user || req.body.recipient);
+    if (recipient.equals(AUTHORITY_PUBKEY)) {
+      return res.status(400).json({ error: "AUTHORITY_CANNOT_BE_TOOL_RECIPIENT" });
+    }
     const toolType = String(req.body.toolType || "plasma_cutter").toLowerCase();
     const rarity = TOOL_RARITY_ARG[String(req.body.rarity || "common").toLowerCase()];
     const count = Math.min(Math.max(Number(req.body.count ?? 1) || 1, 1), 5);
@@ -614,13 +601,37 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
     const [config] = configPda();
     const [auth] = authPda();
     const instructions: any[] = [];
+    const mintKeypairs: Keypair[] = [];
+    const rentAccounts: any[] = [];
     const granted: Array<{ mint: string; tokenAccount: string; toolData: string }> = [];
+    // [PAYER] Инструмент — собственность получателя: mint-аккаунт, ATA и
+    // ToolData оплачивает он, а не кошелёк проекта. Backend только готовит
+    // частично подписанную транзакцию фиксированной формы: authority
+    // подписывает исключительно минт-авторизацию (mint_authority = auth PDA),
+    // подпись получателя и оплата добавляются его кошельком. Блокхаш — expiry.
+    const mintRent = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
     for (let index = 0; index < count; index += 1) {
-      const mint = await createMint(connection, AUTHORITY, auth, null, 0, undefined, { commitment: "confirmed" });
+      const mintKp = Keypair.generate();
+      const mint = mintKp.publicKey;
       const tokenAccount = getAssociatedTokenAddressSync(mint, recipient);
       const [toolData] = toolPda(mint);
       instructions.push(
-        createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, tokenAccount, recipient, mint),
+        SystemProgram.createAccount({
+          fromPubkey: recipient,
+          newAccountPubkey: mint,
+          lamports: mintRent,
+          space: MINT_SIZE,
+          programId: TOKEN_PROGRAM_ID,
+        }),
+      );
+      instructions.push(createInitializeMintInstruction(mint, 0, auth, null));
+      instructions.push(
+        createAssociatedTokenAccountIdempotentInstruction(recipient, tokenAccount, recipient, mint),
+      );
+      rentAccounts.push(
+        { name: `tool_mint_${index}`, address: mint, size: MINT_SIZE, strategy: "create" },
+        { name: `recipient_ata_${index}`, address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+        { name: `tool_data_${index}`, address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
       );
       instructions.push(await (program.methods as any)
         .mintTool(toolType, rarity)
@@ -631,17 +642,19 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
           mint,
           tokenAccount,
           recipient,
+          payer: recipient,
           toolData,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
         .instruction());
+      mintKeypairs.push(mintKp);
       granted.push({ mint: mint.toBase58(), tokenAccount: tokenAccount.toBase58(), toolData: toolData.toBase58() });
     }
-    const sig = await authorityOnly(instructions);
-    res.json({ success: true, count: granted.length, recipient: recipient.toBase58(), sig, granted });
+    const prepared = await coSignQuoted(instructions, recipient, rentAccounts, mintKeypairs);
+    res.json({ success: true, count: granted.length, recipient: recipient.toBase58(), ...prepared, granted });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 

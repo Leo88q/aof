@@ -25,6 +25,22 @@ pub struct ToolTransferred {
     pub to: Pubkey,
 }
 
+/// `sync_tool_owner` привёл кэш `ToolData.owner`/`operator` в соответствие с
+/// фактическим держателем supply-1 токена после обычного SPL-перевода.
+///
+/// `previous_*` — значения кэша ДО синхронизации, а не предыдущий владелец
+/// токена: программа не видит обычные SPL-переводы и не знает, сколько
+/// держателей сменилось с последней синхронизации.
+#[event]
+pub struct ToolOwnershipSynced {
+    pub mint: Pubkey,
+    pub previous_owner: Pubkey,
+    pub previous_operator: Pubkey,
+    pub new_owner: Pubkey,
+    /// Слот, в котором кэш был согласован с токеном.
+    pub slot: u64,
+}
+
 #[event]
 pub struct Staked {
     pub user: Pubkey,
@@ -92,10 +108,10 @@ pub struct ResourceMintsUpdated {
 /// Emitted by set_craft_economy.
 #[event]
 pub struct CraftEconomyUpdated {
-    pub wood_base: [u64; 4],
-    pub stone_base: [u64; 4],
-    pub wood_mult: [u64; 4],
-    pub stone_mult: [u64; 4],
+    pub circuit_base: [u64; 4],
+    pub silicon_base: [u64; 4],
+    pub circuit_mult: [u64; 4],
+    pub silicon_mult: [u64; 4],
     pub authority: Pubkey,
     pub slot: u64,
 }
@@ -125,8 +141,8 @@ pub struct ToolCrafted {
     pub burned_mint: Pubkey,
     pub minted_mint: Pubkey,
     pub rarity: Rarity,
-    pub wood_cost: u64,
-    pub stone_cost: u64,
+    pub circuit_cost: u64,
+    pub silicon_cost: u64,
     pub minted_count_after: u64,
 }
 
@@ -135,8 +151,8 @@ pub struct ToolRepaired {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
     pub repaired_amount: u8,
-    pub stone_cost: u64,
-    pub wood_cost: u64,
+    pub silicon_cost: u64,
+    pub circuit_cost: u64,
     pub new_durability: u8,
 }
 
@@ -187,8 +203,8 @@ pub struct ExplorationCompleted {
     pub user: Pubkey,
     pub tool_mint: Pubkey,
     pub success: bool,
-    pub wood_reward: u64,
-    pub stone_reward: u64,
+    pub circuit_reward: u64,
+    pub silicon_reward: u64,
 }
 
 #[event]
@@ -354,6 +370,14 @@ pub struct SeasonPassPurchased {
     pub season_id: u32,
 }
 
+/// [PAYER] Пропуск создаёт сам игрок (`init_season_pass`), поэтому создание —
+/// отдельное наблюдаемое событие, не связанное с оплатой проекта.
+#[event]
+pub struct SeasonPassInitialized {
+    pub owner: Pubkey,
+    pub season_id: u32,
+}
+
 #[event]
 pub struct SeasonRewardClaimed {
     pub owner: Pubkey,
@@ -365,12 +389,12 @@ pub struct CraftEvent {
     pub user: Pubkey,
     pub tool_type: String,
     pub rarity: u8,
-    pub wood_cost: u64,
-    pub stone_cost: u64,
-    pub food_cost: u64,
-    pub seeds_cost: u64,
-    pub water_cost: u64,
-    pub potato_cost: u64,
+    pub circuit_cost: u64,
+    pub silicon_cost: u64,
+    pub data_cost: u64,
+    pub neuron_cost: u64,
+    pub power_cost: u64,
+    pub mind_cost: u64,
 }
 
 #[event]
@@ -379,8 +403,8 @@ pub struct ForgeCommitExpired {
     pub tool_mint: Pubkey,
     pub slot_type: u8,
     pub refunded_lamports: u64,
-    pub wood_refunded: u64,
-    pub stone_refunded: u64,
+    pub circuit_refunded: u64,
+    pub silicon_refunded: u64,
 }
 
 // ===== [F-06] Switchboard On-Demand settlement (see vrf.rs) =====
@@ -574,6 +598,11 @@ pub struct SeasonXpGranted {
     pub season_id: u32,
     pub amount: u32,
     pub total_xp: u32,
+    pub nonce: u32,
+    pub expiry_slot: u64,
+    pub campaign_digest: [u8; 32],
+    pub entitlement_id: [u8; 32],
+    pub genesis_hash_digest: [u8; 32],
 }
 
 #[event]

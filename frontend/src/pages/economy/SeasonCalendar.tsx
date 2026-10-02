@@ -101,7 +101,7 @@ export function SeasonCalendar() {
             const label = nameFor(d.weather.type);
             return (
               <div key={d.dayId}
-                className={'nf-plate nf-plate--icon rounded-lg p-0.5 sm:p-1.5 text-center min-w-0' + (d.today ? ' outline outline-1 outline-wheat-300' : '')}
+                className={'nf-plate nf-plate--icon rounded-lg p-0.5 sm:p-1.5 text-center min-w-0' + (d.today ? ' outline outline-1 outline-accent-500' : '')}
                 title={`${d.date.toLocaleDateString(language, { day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${label}`}
                 aria-label={`${d.today ? copy.today + ': ' : ''}${copy.dayOfSeason.replace('{day}', String(d.day)).replace('{total}', String(DAYS_PER_SEASON))} · ${label}`}>
                 <img src={WEATHER_ICONS[d.weather.type]} alt="" className="w-5 h-5 sm:w-6 sm:h-6 object-contain mx-auto max-w-full" />

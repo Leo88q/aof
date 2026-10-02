@@ -15,17 +15,17 @@ import { requireNoFraudHold } from "../security/fraudHold";
 
 const r = Router();
 
-// Do not initialise a QuestConfig with the internal Config.potatoMint (MIND).
-// A separate external Potato mint, its decimals and treasury must be verified
+// Do not initialise a QuestConfig with the internal Config.mindMint (MIND).
+// A separate external MIND utility mint, its decimals and treasury must be verified
 // before enabling new quest payouts. Existing claim paths remain available.
 r.post("/config/init", requireAdmin, (_req, res) => {
-  res.status(503).json({ error: "External Potato mint not configured" });
+  res.status(503).json({ error: "External MIND mint not configured" });
 });
 
-// New raw-amount rewards cannot be priced correctly before Potato decimals are known.
+// New raw-amount rewards cannot be priced correctly before MIND decimals are known.
 // Existing on-chain claims are deliberately not disabled.
 r.post("/quest/init", requireAdmin, (_req, res) => {
-  res.status(503).json({ error: "External Potato quest rewards not configured" });
+  res.status(503).json({ error: "External MIND quest rewards not configured" });
 });
 
 // Клейм награды за выполненный квест

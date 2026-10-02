@@ -5,7 +5,7 @@ const SCENE_EMOJI: Record<string, string> = {
   "🗺️": "locMap", "🗺": "locMap", "🏚️": "locServerRuins", "🏚": "locServerRuins",
   "🏭": "locFactory", "🏰": "locVault", "🏡": "locEdge", "🏖️": "locCoolLake",
   "🏖": "locCoolLake", "🌵": "locArid", "🧙♂️": "npcOracle", "🧙": "npcOracle",
-  "💡": "buffIdea", "📜": "catalog", "🥔": "rewardStar", // Potato is not in the MIND resource registry
+  "💡": "buffIdea", "📜": "catalog", "🥔": "rewardStar", // The vegetable emoji is a reward marker, not a resource icon.
 };
 
 /**

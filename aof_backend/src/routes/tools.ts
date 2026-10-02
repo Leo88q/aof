@@ -15,8 +15,11 @@ import {
   vaultPda,
   materialMintsPda,
   vaultGuardPda,
+  rentalListingPda,
+  rentalAgreementPda,
 } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
+import { authorityOnly, coSign, coSignQuoted, pk } from "../lib/tx";
+import { TOKEN_ACCOUNT_SIZE, TOKEN_MINT_SIZE, TOOL_DATA_ACCOUNT_SIZE } from "../lib/accountSizes";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
 import { miningEnabledOnChain } from "../lib/configState";
@@ -56,6 +59,9 @@ const rarityMap: Record<string, any> = {
 r.post("/mint", requireAdmin, async (req, res) => {
   try {
     const owner = pk(req.body.owner);
+    if (owner.equals(AUTHORITY_PUBKEY)) {
+      return res.status(400).json({ error: "AUTHORITY_CANNOT_BE_TOOL_RECIPIENT_OR_PAYER" });
+    }
     const mint = pk(req.body.mint);
     const toolType = req.body.toolType;
     const rarity = rarityMap[req.body.rarity];
@@ -74,21 +80,35 @@ r.post("/mint", requireAdmin, async (req, res) => {
         tokenAccount,
         // [AUDIT F-22] the destination ATA must belong to the intended owner.
         recipient: owner,
+        // [PAYER] This self-service route chooses payer = recipient = player;
+        // the program also supports a distinct non-authority payer for an
+        // operator-authorized/prepaid mint. Authority is never payer or recipient.
+        payer: owner,
         toolData,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
 
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
+    // ATA получателя — тоже аккаунт игрока: создаётся лениво/идемпотентно в его
+    // же транзакции, payer = owner. authority подписывает только авторизацию и
+    // возвращает частично подписанную транзакцию фиксированной формы; блокхаш
+    // служит expiry, а инструкции — quote, который игрок видит в кошельке.
+    const createOwnerAta = createAssociatedTokenAccountIdempotentInstruction(
+      owner, tokenAccount, owner, mint,
+    );
+    const prepared = await coSignQuoted([createOwnerAta, ix], owner, [
+      { name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+      { name: "tool_data", address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
+    ]);
+    res.json(prepared);
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 
 
-// [NEW] Калькулятор стоимости крафта (WOOD + STONE + FOOD)
+// [NEW] Калькулятор стоимости крафта (CIRCUIT + SILICON + DATA)
 r.post("/craft-quote", async (req, res) => {
   try {
     const rarity = req.body.rarity; // "uncommon" | "rare" | "epic" | "legendary"
@@ -107,28 +127,28 @@ r.post("/craft-quote", async (req, res) => {
     const idx = rarityIdx - 1;
     const minted = Number(counter.mintedCount?.toString?.() ?? counter.mintedCount ?? 0);
     const requiredArrays = [
-      econ.woodBase, econ.woodMult, econ.stoneBase, econ.stoneMult,
-      econ.foodBase, econ.foodMult, econ.seedsBase, econ.seedsMult,
-      econ.waterBase, econ.waterMult, econ.potatoBase, econ.potatoMult,
+      econ.circuitBase, econ.circuitMult, econ.siliconBase, econ.siliconMult,
+      econ.dataBase, econ.dataMult, econ.neuronBase, econ.neuronMult,
+      econ.powerBase, econ.powerMult, econ.mindBase, econ.mindMult,
     ];
     if (requiredArrays.some((values: any) => !Array.isArray(values) || values.length < 4)) {
       return res.status(503).json({ error: "craft economy arrays are incomplete on canonical chain" });
     }
-    const circuit = displayResource(Number(econ.woodBase[idx]) + minted * Number(econ.woodMult[idx]));
-    const silicon = displayResource(Number(econ.stoneBase[idx]) + minted * Number(econ.stoneMult[idx]));
-    const data = displayResource(Number(econ.foodBase?.[idx] || 0) + minted * Number(econ.foodMult?.[idx] || 0));
-    const neuron = displayResource(Number(econ.seedsBase?.[idx] || 0) + minted * Number(econ.seedsMult?.[idx] || 0));
-    const power = displayResource(Number(econ.waterBase?.[idx] || 0) + minted * Number(econ.waterMult?.[idx] || 0));
-    const mind = displayResource(Number(econ.potatoBase?.[idx] || 0) + minted * Number(econ.potatoMult?.[idx] || 0));
+    const circuit = displayResource(Number(econ.circuitBase[idx]) + minted * Number(econ.circuitMult[idx]));
+    const silicon = displayResource(Number(econ.siliconBase[idx]) + minted * Number(econ.siliconMult[idx]));
+    const data = displayResource(Number(econ.dataBase?.[idx] || 0) + minted * Number(econ.dataMult?.[idx] || 0));
+    const neuron = displayResource(Number(econ.neuronBase?.[idx] || 0) + minted * Number(econ.neuronMult?.[idx] || 0));
+    const power = displayResource(Number(econ.powerBase?.[idx] || 0) + minted * Number(econ.powerMult?.[idx] || 0));
+    const mind = displayResource(Number(econ.mindBase?.[idx] || 0) + minted * Number(econ.mindMult?.[idx] || 0));
     
     // SKR discount is deliberately fail-closed. There is no canonical SKR
     // mint in Config/MaterialMints and the on-chain craft instruction does
-    // not apply a discount, so the quote must never advertise reduced POTATO.
+    // not apply a discount, so the quote must never advertise reduced MIND.
     const privilege = {
       source: "DISABLED_UNTIL_CANONICAL_MINT",
       discountBps: 0,
     };
-    res.json({ circuit, silicon, data, neuron, power, mind, minted, privilege }); // [REBRAND] ex wood/stone/food/seeds/water/potato
+    res.json({ circuit, silicon, data, neuron, power, mind, minted, privilege });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
@@ -152,16 +172,16 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
     const [craftEconomy] = craftEconomyPda();
     const prevToken = getAssociatedTokenAddressSync(prevMint, user);
     const newToken = getAssociatedTokenAddressSync(newMint, user);
-    const woodMint = pk(req.body.woodMint);
-    const stoneMint = pk(req.body.stoneMint);
-    const foodMint = pk(req.body.foodMint);
+    const circuitMint = pk(req.body.circuitMint);
+    const siliconMint = pk(req.body.siliconMint);
+    const dataMint = pk(req.body.dataMint);
     // The legacy Craft account map still contains skrMint/userSkr, but the
     // program intentionally ignores them until a canonical SKR mint exists.
-    // Bind the unused compatibility accounts to canonical FOOD instead of
+    // Bind the unused compatibility accounts to canonical DATA instead of
     // accepting an arbitrary caller-supplied mint or failing on an empty one.
-    const skrMint = foodMint;
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
+    const skrMint = dataMint;
+    const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
+    const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
 
     const ix = await (program.methods as any)
       .craft(toolType, rarity)
@@ -179,19 +199,19 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
         auth,
         rarityCounter,
         craftEconomy,
-        woodMint,
-        userWood,
-        stoneMint,
-        userStone,
+        circuitMint,
+        userCircuit,
+        siliconMint,
+        userSilicon,
         // [НОВОЕ] 4 дополнительных ресурса
-        foodMint,
-        userFood: getAssociatedTokenAddressSync(foodMint, user),
-        seedsMint: pk(req.body.seedsMint),
-        userSeeds: getAssociatedTokenAddressSync(pk(req.body.seedsMint), user),
-        waterMint: pk(req.body.waterMint),
-        userWater: getAssociatedTokenAddressSync(pk(req.body.waterMint), user),
-        potatoMint: pk(req.body.potatoMint),
-        userPotato: getAssociatedTokenAddressSync(pk(req.body.potatoMint), user),
+        dataMint,
+        userData: getAssociatedTokenAddressSync(dataMint, user),
+        neuronMint: pk(req.body.neuronMint),
+        userNeuron: getAssociatedTokenAddressSync(pk(req.body.neuronMint), user),
+        powerMint: pk(req.body.powerMint),
+        userPower: getAssociatedTokenAddressSync(pk(req.body.powerMint), user),
+        mindMint: pk(req.body.mindMint),
+        userMind: getAssociatedTokenAddressSync(pk(req.body.mindMint), user),
         // [НОВОЕ] SKR для ончейн-проверки скидки
         skrMint,
         userSkr: getAssociatedTokenAddressSync(skrMint, user),
@@ -200,7 +220,7 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
       })
       .instruction();
 
-    // [ФИКС] FOOD теперь сжигается внутри контракта в инструкции craft
+    // [ФИКС] DATA теперь сжигается внутри контракта в инструкции craft
     // Отдельный burnResource больше не нужен
     const tx = await coSign([ix], user);
     res.json({ tx });
@@ -210,7 +230,7 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
 });
 
 
-// Atomic repair quote: the on-chain instruction burns STONE and WOOD.
+// Atomic repair quote: the on-chain instruction burns SILICON and CIRCUIT.
 r.post("/repair-quote", async (req, res) => {
   try {
     const mint = pk(req.body.mint);
@@ -236,11 +256,35 @@ r.post("/repair-quote", async (req, res) => {
     const silicon = (siliconCosts[rkQ] || 0) * amount;
     const circuit = (circuitCosts[rkQ] || 0) * amount;
 
-    res.json({ silicon, circuit, amount }); // [REBRAND] ex stone/wood
+    res.json({ silicon, circuit, amount });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
+
+/**
+ * Где сейчас лежит инструмент и каким путём его можно авторизовать.
+ *
+ * Стейк-путь (`startMining`/`collectMining`/`repair`) требует токен в общем
+ * vault программы; арендатор арендованным инструментом владеть не может —
+ * токен лежит в эскроу листинга, поэтому для него существуют делегированные
+ * инструкции (`*Delegated`), где право доказывает активная запись аренды.
+ * Возвращаем `null`, если у вызывающего нет ни стейка, ни аренды: тогда
+ * инструкцию строить нельзя, и маршрут обязан ответить ошибкой, а не собрать
+ * заведомо невалидную транзакцию.
+ */
+async function toolCustody(user: PublicKey, mint: PublicKey, toolData: any) {
+  if (toolData?.staked) return { kind: "staked" as const };
+  const [rentalListing] = rentalListingPda(mint);
+  const [rentalAgreement] = rentalAgreementPda(mint);
+  const agreement: any = await fetchOne("rentalAgreement", rentalAgreement);
+  const renter = agreement?.renter;
+  if (renter && String(renter) === String(user)) {
+    const rentalVault = getAssociatedTokenAddressSync(mint, rentalListing, true);
+    return { kind: "delegated" as const, rentalListing, rentalAgreement, rentalVault };
+  }
+  return null;
+}
 
 r.post("/repair", async (req, res) => {
   try {
@@ -253,38 +297,66 @@ r.post("/repair", async (req, res) => {
     const [config] = configPda();
     const [tool] = toolPda(mint);
     const cfg: any = await fetchOne("config", config);
-    if (!cfg?.stoneMint || !cfg?.woodMint) {
+    if (!cfg?.siliconMint || !cfg?.circuitMint) {
       return res.status(503).json({ error: "REPAIR_RESOURCES_NOT_CONFIGURED" });
     }
     // The program binds both mints to Config. Do not trust caller-supplied
     // resource addresses and do not build a second burn transaction: Repair
-    // burns stone and wood atomically with the durability update.
-    const stoneMint = new PublicKey(cfg.stoneMint);
-    const woodMint = new PublicKey(cfg.woodMint);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const repairIx = await (program.methods as any)
-      .repair(amount)
-      .accounts({
-        config,
-        user,
-        tool,
-        mint,
-        stoneMint,
-        userStone,
-        woodMint,
-        userWood,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
+    // burns silicon and circuit atomically with the durability update.
+    const siliconMint = new PublicKey(cfg.siliconMint);
+    const circuitMint = new PublicKey(cfg.circuitMint);
+    const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
+    const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
+    // Token-primary ownership: программа сама проверяет, где лежит supply-1
+    // токен. Стейк-путь берёт токен из общего vault, делегированный — из эскроу
+    // листинга аренды; свободный инструмент чинит владелец со своего ATA.
+    const toolData: any = await fetchOne("toolData", tool);
+    const custody = await toolCustody(user, mint, toolData);
+    const [vault] = vaultPda();
+    const ownerToolAta = getAssociatedTokenAddressSync(mint, user, true);
+    const vaultToolAta = getAssociatedTokenAddressSync(mint, vault, true);
+    const toolToken = toolData?.staked ? vaultToolAta : ownerToolAta;
+    const repairIx = custody?.kind === "delegated"
+      ? await (program.methods as any)
+          .repairDelegated(amount)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            siliconMint,
+            userSilicon,
+            circuitMint,
+            userCircuit,
+            rentalListing: custody.rentalListing,
+            rentalAgreement: custody.rentalAgreement,
+            rentalVault: custody.rentalVault,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction()
+      : await (program.methods as any)
+          .repair(amount)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            siliconMint,
+            userSilicon,
+            circuitMint,
+            userCircuit,
+            toolToken,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction();
 
-    const createStoneAta = createAssociatedTokenAccountIdempotentInstruction(
-      user, userStone, user, stoneMint,
+    const createSiliconAta = createAssociatedTokenAccountIdempotentInstruction(
+      user, userSilicon, user, siliconMint,
     );
-    const createWoodAta = createAssociatedTokenAccountIdempotentInstruction(
-      user, userWood, user, woodMint,
+    const createCircuitAta = createAssociatedTokenAccountIdempotentInstruction(
+      user, userCircuit, user, circuitMint,
     );
-    const tx = await coSign([createStoneAta, createWoodAta, repairIx], user);
+    const tx = await coSign([createSiliconAta, createCircuitAta, repairIx], user);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -376,17 +448,43 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
     const [config] = configPda();
     const [tool] = toolPda(mint);
     const [player] = playerPda(user);
-    const ix = await (program.methods as any)
-      .startMining(hours)
-      .accounts({
-        config,
-        user,
-        tool,
-        mint,
-        player,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const [vault] = vaultPda();
+    const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
+    const toolData: any = await fetchOne("toolData", tool);
+    const custody = await toolCustody(user, mint, toolData);
+    if (!custody) {
+      return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
+    }
+    const ix = custody.kind === "delegated"
+      ? await (program.methods as any)
+          .startMiningDelegated(hours)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            rentalListing: custody.rentalListing,
+            rentalAgreement: custody.rentalAgreement,
+            rentalVault: custody.rentalVault,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction()
+      : await (program.methods as any)
+          .startMining(hours)
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            // Token-primary ownership: майнинг разрешён только пока токен
+            // инструмента действительно лежит в эскроу программы.
+            vault,
+            vaultToken,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
 
     const tx = await coSign([ix], user);
     res.json({ tx });
@@ -427,21 +525,49 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
       return res.status(503).json({ error: "MINING_TOOL_REWARD_NOT_CONFIGURED" });
     }
     const payoutToken = getAssociatedTokenAddressSync(payoutMint, user);
-    const ix = await (program.methods as any)
-      .collectMining()
-      .accounts({
-        config,
-        user,
-        tool,
-        mint,
-        player,
-        materialMints,
-        auth,
-        payoutMint,
-        payoutToken,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .instruction();
+    const [vault] = vaultPda();
+    const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
+    const custody = await toolCustody(user, mint, toolData);
+    if (!custody) {
+      return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
+    }
+    const ix = custody.kind === "delegated"
+      ? await (program.methods as any)
+          .collectMiningDelegated()
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            materialMints,
+            auth,
+            payoutMint,
+            payoutToken,
+            rentalListing: custody.rentalListing,
+            rentalAgreement: custody.rentalAgreement,
+            rentalVault: custody.rentalVault,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction()
+      : await (program.methods as any)
+          .collectMining()
+          .accounts({
+            config,
+            user,
+            tool,
+            mint,
+            player,
+            materialMints,
+            auth,
+            payoutMint,
+            payoutToken,
+            // См. start-mining: награда выплачивается только при токене в эскроу.
+            vault,
+            vaultToken,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction();
 
     // The ATA creation and the settlement are one wallet-signed transaction.
     const createPayoutAta = createAssociatedTokenAccountIdempotentInstruction(
@@ -534,7 +660,7 @@ r.post("/prep-mint", requireCircuitOpen, requireWalletLimits("tools_prep_mint"),
     const [auth] = authPda();
     const lamports = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
     const userToken = getAssociatedTokenAddressSync(mintKp.publicKey, owner);
-    const tx = await coSign([
+    const prepared = await coSignQuoted([
       SystemProgram.createAccount({
         fromPubkey: owner,
         newAccountPubkey: mintKp.publicKey,
@@ -544,10 +670,13 @@ r.post("/prep-mint", requireCircuitOpen, requireWalletLimits("tools_prep_mint"),
       }),
       createInitializeMintInstruction(mintKp.publicKey, 0, auth, null),
       createAssociatedTokenAccountIdempotentInstruction(owner, userToken, owner, mintKp.publicKey),
-    ], owner, [mintKp]);
-    res.json({ tx, mint: mintKp.publicKey.toBase58() });
+    ], owner, [
+      { name: "mint", address: mintKp.publicKey, size: MINT_SIZE, strategy: "create" },
+      { name: "recipient_ata", address: userToken, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+    ], [mintKp]);
+    res.json({ ...prepared, mint: mintKp.publicKey.toBase58() });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 

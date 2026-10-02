@@ -75,9 +75,11 @@ test('tests/aof_market.ts ссылается только на существу�
   assert.deepEqual(problems, [], problems.join('\n'));
 });
 
-test('тест рынка подключён к Anchor.toml и проверяет не только «не упало»', () => {
+test('тест рынка подключён к Anchor runner и проверяет не только «не упало»', () => {
   const anchor = read('Anchor.toml');
-  assert.match(anchor, /tests\/aof_market\.ts/, 'Anchor.toml [scripts] test не запускает тест рынка');
+  const runner = read('scripts/run-anchor-tests.sh');
+  assert.match(anchor, /bash scripts\/run-anchor-tests\.sh/, 'Anchor.toml [scripts] test не запускает общий runner');
+  assert.match(runner, /tests\/aof_market\.ts/, 'общий Anchor runner не запускает тест рынка');
 
   const source = read('tests/aof_market.ts');
   // Покупка/продажа обязаны проверяться по состоянию, а не только по отсутствию

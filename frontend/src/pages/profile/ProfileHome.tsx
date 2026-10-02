@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { profileCopy } from "../../i18n/profileCopy";
 import { gameHeaders } from "../../i18n/gameHeaders";
 import { readPlayerSnapshot, type PlayerSnapshot } from "../../lib/playerReadings";
 import { api } from "../../lib/api";
+import { handleTxResponse } from "../../lib/txFlow";
+import type { PlayerInitIntent, PayerCostQuote } from "../../lib/transactionIntent";
+import { formatLamportsAsSol } from "../../lib/formatLamports";
 import { WalletButton } from "../../components/ui/WalletButton";
 import { ListRow } from "../../components/ListRow";
 import { Key, Keys, Note, Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
@@ -23,7 +26,8 @@ import { PortfolioHome } from "../portfolio/PortfolioHome";
 import { LeaderboardPage } from "../social/LeaderboardPage";
 import { PlayerRatingPage } from "../social/PlayerRatingPage";
 
-type PlayerRead = { owner: string; kind: 'loading' | 'ready' | 'error'; player?: PlayerSnapshot };
+type PlayerRead = { owner: string; kind: 'loading' | 'ready' | 'missing' | 'error'; player?: PlayerSnapshot };
+type PreparedPlayerInit = { owner: string; response: { tx: string; quote: PayerCostQuote } };
 
 export function ProfileHome() {
   const { language } = useLocale();
@@ -32,6 +36,17 @@ export function ProfileHome() {
   const user = useWalletStr();
   const { push } = useNav();
   const [reading, setReading] = useState<PlayerRead | null>(null);
+  const [playerRevision, setPlayerRevision] = useState(0);
+  const [preparedPlayerInit, setPreparedPlayerInit] = useState<PreparedPlayerInit | null>(null);
+  const [playerInitStatus, setPlayerInitStatus] = useState<'idle' | 'preparing' | 'prepared' | 'failed' | 'pending' | 'success'>('idle');
+  const [playerInitBusy, setPlayerInitBusy] = useState(false);
+  const currentUser = useRef(user);
+  currentUser.current = user;
+
+  useEffect(() => {
+    setPreparedPlayerInit(null);
+    setPlayerInitStatus('idle');
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -39,12 +54,66 @@ export function ProfileHome() {
     setReading({ owner: user, kind: 'loading' });
     api.query.player(user).then(raw => {
       if (!active) return;
-      const player = readPlayerSnapshot(raw, user);
+      if (!raw || typeof raw !== 'object' || typeof raw.exists !== 'boolean') {
+        throw new Error('Invalid player read response');
+      }
+      if (!raw.exists) {
+        setReading({ owner: user, kind: 'missing' });
+        return;
+      }
+      const player = readPlayerSnapshot(raw.player, user);
       if (!player) throw new Error('Incomplete on-chain player state');
       setReading({ owner: user, kind: 'ready', player });
+      setPreparedPlayerInit(null);
+      setPlayerInitStatus((status) => status === 'pending' ? 'success' : status);
     }).catch(() => { if (active) setReading({ owner: user, kind: 'error' }); });
     return () => { active = false; };
-  }, [user]);
+  }, [user, playerRevision]);
+
+  const preparePlayerInit = async () => {
+    if (!user || playerInitBusy) return;
+    const owner = user;
+    setPlayerInitBusy(true);
+    setPlayerInitStatus('preparing');
+    setPreparedPlayerInit(null);
+    try {
+      const response = await api.profile.initPlayer({ player: owner });
+      if (currentUser.current !== owner) return;
+      if (typeof response?.tx !== 'string' || !response.tx || !response.quote) {
+        throw new Error('Missing bounded player initialization quote');
+      }
+      setPreparedPlayerInit({ owner, response });
+      setPlayerInitStatus('prepared');
+    } catch {
+      if (currentUser.current === owner) setPlayerInitStatus('failed');
+    } finally {
+      setPlayerInitBusy(false);
+    }
+  };
+
+  const confirmPlayerInit = async () => {
+    if (!user || !preparedPlayerInit || preparedPlayerInit.owner !== user || playerInitBusy) return;
+    const { owner, response } = preparedPlayerInit;
+    const intent: PlayerInitIntent = { kind: 'playerInit', user: owner, quote: response.quote };
+    setPlayerInitBusy(true);
+    try {
+      const result = await handleTxResponse(response, intent);
+      if (currentUser.current !== owner) return;
+      if (result.success) {
+        setPreparedPlayerInit(null);
+        setPlayerInitStatus('success');
+        setPlayerRevision((revision) => revision + 1);
+      } else if (result.signature) {
+        setPreparedPlayerInit(null);
+        setPlayerInitStatus('pending');
+        setPlayerRevision((revision) => revision + 1);
+      } else {
+        setPlayerInitStatus('failed');
+      }
+    } finally {
+      setPlayerInitBusy(false);
+    }
+  };
 
   const state = !user ? 'disconnected' : reading?.owner !== user ? 'loading' : reading.kind;
   const player = state === 'ready' && reading?.owner === user ? reading.player ?? null : null;
@@ -56,10 +125,34 @@ export function ProfileHome() {
       <div className="flex justify-end mb-2"><WalletButton /></div>
       <Panel tier="hero" id={<Sticker bars>{short ?? copy.guestSticker}</Sticker>}
         meta={user ? copy.operator : copy.noWallet} title={short ?? copy.guest}
-        sub={state === 'disconnected' ? copy.connect : state === 'loading' ? copy.reading : state === 'error' ? copy.unknown : copy.source}>
+        sub={state === 'disconnected' ? copy.connect : state === 'loading' ? copy.reading : state === 'error' ? copy.unknown : state === 'missing' ? copy.playerMissing : copy.source}>
         <p role="status" className="fg-note break-words">
-          {state === 'disconnected' ? copy.connect : state === 'loading' ? copy.reading : state === 'error' ? copy.unknown : copy.source}
+          {state === 'disconnected' ? copy.connect : state === 'loading' ? copy.reading : state === 'error' ? copy.unknown : state === 'missing' ? copy.playerMissing : copy.source}
         </p>
+        {state === 'missing' && user && reading?.owner === user && <div className="mt-4 space-y-3 rounded-2xl border border-gold/30 bg-soil-900/60 p-3">
+          <p className="text-straw text-sm break-words">{copy.initPlayerNote}</p>
+          {preparedPlayerInit?.owner === user && <div className="text-straw text-xs space-y-1" role="note" aria-label={copy.initPlayerPrepared}>
+            <p>{copy.initPlayerPrepared}</p>
+            <p>{copy.quoteRent(formatLamportsAsSol(preparedPlayerInit.response.quote.rentLamports, language))}</p>
+            <p>{copy.quoteNetworkFee(formatLamportsAsSol(preparedPlayerInit.response.quote.networkFeeLamports, language))}</p>
+            <p>{copy.quoteMax(formatLamportsAsSol(preparedPlayerInit.response.quote.maxCostLamports, language))}</p>
+          </div>}
+          {playerInitStatus === 'preparing' && <p role="status" className="text-straw text-xs">{copy.initPlayerPreparing}</p>}
+          {playerInitStatus === 'failed' && <p role="status" className="text-straw text-xs">{copy.initPlayerFailed}</p>}
+          {playerInitStatus === 'pending' && <div role="status" className="text-straw text-xs space-y-2">
+            <p>{copy.initPlayerPending}</p>
+            <button type="button" onClick={() => setPlayerRevision((revision) => revision + 1)} className="underline">{copy.retryRead}</button>
+          </div>}
+          {playerInitStatus === 'success' && <p role="status" className="text-straw text-xs">{copy.initPlayerSuccess}</p>}
+          <button type="button" onClick={preparedPlayerInit?.owner === user ? confirmPlayerInit : preparePlayerInit} disabled={playerInitBusy || playerInitStatus === 'pending'}
+            className="w-full py-3.5 px-3 rounded-2xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
+            {playerInitBusy ? copy.initPlayerPreparing : preparedPlayerInit?.owner === user ? copy.initPlayerConfirm : copy.initPlayer}
+          </button>
+          {preparedPlayerInit?.owner === user && <button type="button" onClick={preparePlayerInit} disabled={playerInitBusy}
+            className="w-full py-2 px-3 rounded-xl border border-gold/30 text-parchment text-xs disabled:opacity-40">{copy.refreshQuote}</button>}
+        </div>}
+        {state === 'error' && user && <button type="button" onClick={() => setPlayerRevision((revision) => revision + 1)}
+          className="mt-3 rounded-xl border border-gold/30 px-3 py-2 text-xs text-parchment">{copy.retryRead}</button>}
         {player && <p className="text-straw text-xs mt-2 break-words">{copy.tent}: {player.hasTent ? copy.tentYes : copy.tentNo}</p>}
         <div style={{ marginTop: 16 }}><Readouts>
           <Readout label={copy.villagers} value={player ? count(player.villagers) : undefined} dash={!player} hint={copy.villagersHint} />

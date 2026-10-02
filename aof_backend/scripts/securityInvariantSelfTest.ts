@@ -73,10 +73,10 @@ for (const guard of ["is_resource_mint", "get_associated_token_address", "TokenS
 assert.match(read("aof_backend/src/routes/rebirth.ts"), /remainingAccounts/,
   "the backend must hand the surplus list to the atomic reset");
 
-// The historical raw-atom drum and the proposed whole-Potato V2 both remain
+// The historical raw-atom drum and the proposed whole-MIND V2 both remain
 // closed for NEW payments. Neither the presence of VRF paths nor a bank pause
 // switch is sufficient to open sales; paid refunds/reveals still use vrf.rs.
-const v2Spin = read("programs/aof-quests/src/instructions/drum/potato_spin.rs");
+const v2Spin = read("programs/aof-quests/src/instructions/drum/mind_spin.rs");
 assert.match(questsDrum, /require!\(false, QuestError::Paused\)/, "legacy drum must stay disabled");
 assert.match(v2Spin, /require!\(false, QuestError::FeatureDisabled\)/, "V2 paid spin must stay disabled");
 assert.match(read("aof_backend/src/routes/drum.ts"), /r\.post\("\/commit"[^\n]*\n\s*res\.status\(503\)/,
@@ -84,7 +84,7 @@ assert.match(read("aof_backend/src/routes/drum.ts"), /r\.post\("\/commit"[^\n]*\
 for (const [name, source] of [
   ["legacy drum", questsDrum + read("programs/aof-quests/src/instructions/drum/drum_reveal.rs")
     + read("programs/aof-quests/src/instructions/drum/drum_expire.rs")],
-  ["Potato V2", v2Spin],
+  ["MIND V2", v2Spin],
 ] as const) {
   assert.doesNotMatch(source, /hash_secret|get_slot_hash|slot_hashes/, `${name} must use Switchboard`);
   for (const fn of ["vrf::commit(", "vrf::reveal(", "vrf::release_for_refund("])
@@ -206,15 +206,23 @@ assert.doesNotMatch(appNotice, /^  reroll: \{/m);
   assert.doesNotMatch(adminRoute, /TOOL_GRANT_DISABLED/,
     "test-grant-tools must build the instruction instead of answering a disabled code");
   assert.match(adminRoute, /mintTool\(/, "test-grant-tools must build aof_core::mint_tool");
-  assert.match(adminRoute, /createMint\(connection, AUTHORITY, auth, null, 0/,
+  assert.match(adminRoute, /fromPubkey: recipient/,
+    "the granted mint account must be paid for by the recipient, not authority");
+  assert.match(adminRoute, /createInitializeMintInstruction\(mint, 0, auth, null\)/,
     "the granted tool must be a 0-decimal mint whose authority is the auth PDA");
+  assert.match(adminRoute, /createAssociatedTokenAccountIdempotentInstruction\(recipient, tokenAccount, recipient, mint\)/,
+    "the grant must create the recipient's ATA with recipient as payer and owner");
   assert.match(adminRoute, /recipient,/,
     "the grant must name the recipient: mint_tool checks token_account.owner == recipient");
+  assert.match(adminRoute, /payer: recipient/,
+    "the current test-grant self-mint uses the recipient as ToolData payer");
+  assert.match(adminRoute, /recipient\.equals\(AUTHORITY_PUBKEY\)/,
+    "authority cannot be the tool recipient");
   assert.match(adminRoute, /TOOL_KIND_IDS/,
     "the grant must reject tool ids the program does not canonicalise");
   assert.match(section(core, "pub struct MintTool", "pub struct BurnTool"),
-    /token_account\.owner == recipient\.key\(\)/,
-    "mint_tool must keep rejecting an ATA that belongs to another wallet");
+    /token_account\.owner == recipient\.key\(\)[\s\S]*recipient\.key\(\) != authority\.key\(\)[\s\S]*payer\.key\(\) != authority\.key\(\)/,
+    "mint_tool must bind the recipient ATA and keep authority separate from both recipient and payer");
 }
 
 // [AUDIT F-16] Collector perks are no longer hard-disabled: the on-chain
@@ -263,8 +271,8 @@ const forgeExpireCtx = section(core, "pub struct ForgeAttemptExpire", "// ----- 
 assert.match(forgeExpireCtx, /close = user/);
 assert.match(forgeExpireCtx, /address = forge_commit\.user/);
 assert.match(forgeExpireCtx, /associated_token::authority = user/);
-assert.match(forge, /fc\.wood_burned = wood_cost/);
-assert.match(forge, /fc\.stone_burned = stone_cost/);
+assert.match(forge, /fc\.circuit_burned = circuit_cost/);
+assert.match(forge, /fc\.silicon_burned = silicon_cost/);
 assert.match(forge, /pub fn expire_handler[\s\S]*vrf::release_for_refund[\s\S]*check_supply_cap[\s\S]*token::mint_to/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "forge_attempt_expire"), "forge_attempt_expire missing from committed IDL");
 

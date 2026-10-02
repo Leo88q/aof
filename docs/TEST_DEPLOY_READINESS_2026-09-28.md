@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Готовность к тестовому деплою — 2026-09-28 (вечер)
 
 Проверка по просьбе владельца: собрать сайт и игру, прогнать тесты, убедиться, что

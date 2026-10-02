@@ -6,8 +6,8 @@ SPL Token changes the mint supply on mint_to and burn, so the mint account must
 be writable. Anchor only marks an account writable when its field carries
 `mut`; a read-only mint compiles fine and fails only on a real validator with
 "Cross-program invocation with unauthorized signer or writable account /
-writable privilege escalated". That is exactly how plant_seeds, start_milling,
-start_baking, harvest_wheat, exploration, forge, referral upgrades, season
+writable privilege escalated". That is exactly how the planting, signal-processing and
+start_model_training, harvest_synapse, exploration, forge, referral upgrades, season
 rewards and use_flask were broken before e2964cd / 16aeba1.
 
 [AUDIT F-04] `craft_recipe` shipped three read-only mints anyway (all eight

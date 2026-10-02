@@ -46,7 +46,7 @@ async function main() {
   await assert.rejects(fetchRewardReceipt({ getAccountInfo: async () => ({ owner: core, data: Buffer.alloc(121) }) } as any, id, recipient));
 
   const instructions = new BorshInstructionCoder(idl as any);
-  const encoded = instructions.encode("mint_resource_once", { kind: { Wood: {} }, amount: gross, reward_id: Array.from(inboxRewardId(id)) });
+  const encoded = instructions.encode("mint_resource_once", { kind: { Circuit: {} }, amount: gross, reward_id: Array.from(inboxRewardId(id)) });
   assert.equal(encoded.length, 49); // 8 discriminator + 1 enum + 8 amount + 32 ID
   const buy = instructions.encode("marketplace_buy_bounded", { max_price_lamports: new BN("18446744073709551615"), expires_at: new BN(150) });
   assert.equal(buy.length, 24);
@@ -122,9 +122,19 @@ async function main() {
   assert.deepEqual(JSON.parse(browserIntent.match(/MARKETPLACE_BUY_DISCRIMINATOR = (\[[^\]]+\])/)![1]),
     idl.instructions.find((ix) => ix.name === "marketplace_buy_bounded")!.discriminator);
   const lib = readFileSync(path.join(root, "aof-core/src/lib.rs"), "utf8");
-  assert.match(lib, /pub fn marketplace_buy\(ctx: Context<MarketplaceBuy>\)[\s\S]*?err!\(AofError::FeatureDisabled\)/);
+  // The unsafe legacy discriminator is removed entirely; purchases must use
+  // the bounded instruction with a wallet-signed price ceiling and expiry.
+  assert.doesNotMatch(lib, /pub fn marketplace_buy\s*\(/);
+  assert.match(lib, /pub fn marketplace_buy_bounded\(ctx: Context<MarketplaceBuy>,\s*max_price_lamports: u64,\s*expires_at: i64\)/);
+  assert.ok(idl.instructions.some((ix) => ix.name === "marketplace_buy_bounded"));
+  assert.ok(!idl.instructions.some((ix) => ix.name === "marketplace_buy"));
   const context = lib.slice(lib.indexOf("pub struct MintResourceOnce"), lib.indexOf("pub struct BurnResource"));
-  assert.match(context, /init, payer = authority, space = 8 \+ RewardReceipt::INIT_SPACE/);
+  // Reward receipt/profile rents are paid by the claimant; authority only
+  // co-signs the mint and must never subsidize a player's accounts.
+  assert.match(context, /init, payer = payer, space = 8 \+ RewardReceipt::INIT_SPACE/);
+  assert.match(context, /pub payer: Signer<'info>/);
+  assert.match(context, /payer\.key\(\) == token_account\.owner/);
+  assert.doesNotMatch(context, /payer = authority/);
   // [AUDIT F-28] the seed is (recipient, reward_id), not reward_id alone.
   assert.match(context, /seeds = \[b"reward_receipt", token_account.owner.as_ref\(\), reward_id.as_ref\(\)\]/);
   assert.doesNotMatch(context, /seeds = \[b"reward_receipt", reward_id.as_ref\(\)\]/);

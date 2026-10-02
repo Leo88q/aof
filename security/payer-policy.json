@@ -1,0 +1,588 @@
+{
+  "schemaVersion": 1,
+  "note": "Политика плательщиков: кто ДОЛЖЕН платить rent за каждый init-аккаунт. Гейт: node scripts/payer-audit.mjs --check",
+  "entries": {
+    "aof_core.AuctionCreateCtx.auction": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.BuyLotteryTicket.lottery_ticket": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.BuyLotteryTicket.ticket_counter": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.CollectPower.grid_state": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.CollectorStake.player": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.CollectorStake.staked_collector": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.Craft.new_tool_data": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.CraftOrderCreateCtx.craft_order": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.DepositGas.gastank": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.ExploreReveal.user_circuit": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
+      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
+      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
+    },
+    "aof_core.ExploreReveal.user_silicon": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
+      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
+      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
+    },
+    "aof_core.ForgeAttemptCommit.enchant_slot": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.ForgeAttemptCommit.forge_commit": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.HarvestSynapse.energy_account": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.InitCraftEconomy.craft_economy": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitIssuanceCap.issuance_cap": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitLotteryRound.lottery_round": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitMaterialMints.material_mints": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitPackConfig.pack_config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.GrantSeasonXp.claim_cursor": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "первый authority-авторизованный XP claim создаёт per-player/per-season cursor за счёт подписанта-игрока; существующий PDA повторно не оплачивается"
+    },
+    "aof_core.GrantSeasonXp.season_pass": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "authority только авторизует XP entitlement; игрок подписывает и оплачивает rent SeasonPass, если аккаунта ещё нет"
+    },
+    "aof_core.InitPlayer.player_profile": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "Профиль игрока создаётся отдельной инструкцией `init_player`: сам игрок подписывает и оплачивает свой PDA"
+    },
+    "aof_core.InitRarityCounter.rarity_counter": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitRerollConfig.reroll_config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitSeason.season": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.InitSeasonPass.season_pass": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок может создать SeasonPass отдельной `init_season_pass`; первый authority-авторизованный XP claim также создаёт его только с подписью и rent игрока"
+    },
+    "aof_core.InitVaultGuard.vault_guard": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.Initialize.config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.MarketplaceList.listing": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.MintResourceOnce.player": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "профиль игрока создаётся в его claim-транзакции: появился `payer: Signer` с констрейнтом `payer == token_account.owner`, и `init_if_needed` платит `payer`"
+    },
+    "aof_core.MintResourceOnce.reward_receipt": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "чек награды — доказательство игрока: `init, payer = payer`, где `payer` — подписант-получатель"
+    },
+    "aof_core.MintTool.tool_data": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "ToolData — собственность получателя; `init_if_needed` оплачивает подписавший `payer`, который обязан отличаться от authority. Self-mint выбирает payer = recipient; operator-authorized/prepaid flow допускает отдельного non-authority payer. Получатель ATA обязан совпадать с recipient, authority только авторизует"
+    },
+    "aof_core.OfferCreateCtx.offer": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PackOpenCommit.pack_commit": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PackOpenReveal.mint": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.PackOpenReveal.tool_data": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.PackOpenReveal.user_token": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.PlaceBuyOrder.order": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PlaceBuyOrderV2.order": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PlaceSellOrder.order": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PlaceSellOrderV2.order": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PlantNeuron.energy_account": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PlantNeuron.lab_tile": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.PurchaseSeasonPass.season_pass": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.ReferralBindCtx.referral_link": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.ReferralBindCtx.referrer_stats": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "статистика реферера создаётся действием приглашённого, который подписывает и платит"
+    },
+    "aof_core.RegisterCollectorMint.entry": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.RentalListCtx.rental_listing": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.RentalStartCtx.rental_agreement": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.Reroll.new_tool_data": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.RerollRandomCommit.reroll_commit": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.RerollRandomExpire.new_mint": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.RerollRandomExpire.new_token": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.RerollRandomExpire.new_tool_data": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.RerollRandomReveal.new_mint": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.RerollRandomReveal.new_token": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.RerollRandomReveal.new_tool_data": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "аккаунт результата принадлежит игроку; стоимость внесена им заранее на коммите",
+      "settlement": "игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26)",
+      "refund": "settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67)"
+    },
+    "aof_core.StartExplorationCommit.exploration_commit": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartExplorationCommit.exploration_state": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartMining.player": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartMiningDelegated.player": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartModelTraining.energy_account": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartModelTraining.model_state": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartSignalProcessing.energy_account": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.StartSignalProcessing.signal_state": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.VrfPoolAdd.vrf_slot": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_core.WeatherCrank.weather_state": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_liquidity.InitLpConfig.lp_config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_liquidity.LpDeposit.lp_pool": {
+      "owner": "global",
+      "payer": "player",
+      "status": "ok",
+      "reason": "общий пул/позиция: первый вкладчик создаёт аккаунт сам, проект не субсидирует; владелец аккаунта — программа"
+    },
+    "aof_liquidity.LpDeposit.lp_position": {
+      "owner": "global",
+      "payer": "player",
+      "status": "ok",
+      "reason": "общий пул/позиция: первый вкладчик создаёт аккаунт сам, проект не субсидирует; владелец аккаунта — программа"
+    },
+    "aof_liquidity.LpDeposit.pool_vault": {
+      "owner": "global",
+      "payer": "player",
+      "status": "ok",
+      "reason": "общий пул/позиция: первый вкладчик создаёт аккаунт сам, проект не субсидирует; владелец аккаунта — программа"
+    },
+    "aof_market.InitConfig.config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_market.InitPool.pool": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_quests.AchievementUnlock.achievement_record": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_quests.ChallengeContribute.contribution": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_quests.ChallengeInit.challenge_round": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_quests.DrumCommitCtx.drum_commit": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_quests.DrumExpire.user_mascot": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
+      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
+      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
+    },
+    "aof_quests.DrumReveal.user_mascot": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
+      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
+      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
+    },
+    "aof_quests.InitMindBank.mind_bank": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_quests.InitMindBank.mind_vault": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_quests.InitQuestConfig.quest_config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_quests.MindSpinCommit.mind_commit": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_quests.MindSpinExpire.user_mind": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
+      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
+      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
+    },
+    "aof_quests.MindSpinReveal.user_mind": {
+      "owner": "player",
+      "payer": "cranker-deposit",
+      "status": "ok",
+      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
+      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
+      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
+    },
+    "aof_quests.QuestInit.quest_template": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_quests.QuestVrfPoolAdd.vrf_slot": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_rebirth.DoRebirth.rebirth_record": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_rebirth.InitRebirthConfig.rebirth_config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_session_keys.InitSkConfig.config": {
+      "owner": "global",
+      "payer": "operator",
+      "status": "ok",
+      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
+    },
+    "aof_session_keys.SessionCreate.session": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "сессионный аккаунт игрока: поле authority здесь — кошелёк владельца сессии (seeds [SESSION_SEED, authority.key()]), он и платит"
+    },
+    "aof_session_keys.TrustSnapshotUpdate.trust": {
+      "owner": "global",
+      "payer": "service",
+      "status": "ok",
+      "reason": "снапшот доверия пишет oracle-сервис проекта своей подписью; это не кошелёк authority-оператора и не актив игрока"
+    }
+  }
+}

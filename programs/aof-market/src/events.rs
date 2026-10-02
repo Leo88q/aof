@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+
 use crate::state::Currency;
 
 #[event]
@@ -38,21 +39,6 @@ pub struct HotMarketSkipped {
     pub rarity: u8,
 }
 
-#[event]
-pub struct LimitOrderPlaced {
-    pub maker: Pubkey,
-    pub rarity: u8,
-    pub is_buy: bool,
-    pub limit_price: u64,
-}
-
-#[event]
-pub struct LimitOrderMatched {
-    pub maker: Pubkey,
-    pub rarity: u8,
-    pub price: u64,
-}
-
 /// [AUDIT F-02] Authority rotation, both steps.
 #[event]
 pub struct AuthorityRotationProposed {
@@ -68,26 +54,16 @@ pub struct AuthorityChanged {
     pub at: i64,
 }
 
-/// SW027: admin fee change is observable off-chain (Helika/GameSight/Game Signals).
 #[event]
 pub struct GlobalFeesUpdated {
     pub authority: Pubkey,
     pub fee_bps: u16,
 }
 
-/// SW027: pause toggle must be trackable by indexers and the Watchtower.
 #[event]
 pub struct GlobalPausedUpdated {
     pub authority: Pubkey,
     pub paused: bool,
-}
-
-/// SW027: cancelling a resting limit order returns escrow — emit for attribution.
-#[event]
-pub struct LimitOrderCancelled {
-    pub maker: Pubkey,
-    pub rarity: u8,
-    pub refunded: u64,
 }
 
 /// [SECURITY_CHECKLIST_REVIEW F-C] A cancelled authority rotation used to be

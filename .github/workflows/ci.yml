@@ -865,6 +865,10 @@ jobs:
           # never a .so whose declare_id! was rewritten (CI builds use
           # throwaway ids, so those binaries must not reach devnet).
           python3 scripts/test-deploy-devnet.py
+          # Deploy cost estimator: rent and fees come only from RPC answers (no
+          # per-byte rate in the code), max_len is an explicit policy, and the
+          # balance gate is computed over ALL programs before the first tx.
+          python3 scripts/test-devnet-deploy-estimator.py
           # Bringup runbook: one command from "no programs on devnet" to a
           # working game. Must never turn mining on before the payout mints
           # exist, never touch mainnet, and never POST in a dry run.
@@ -888,7 +892,11 @@ jobs:
           # original self-test only modeled replay in memory).
           npm run test:wallet-proof-middleware 2>&1 | tee -a /tmp/backend-build.log
           # [AUDIT 2026-09-23 AOF-H1] authority key custody gate matrix.
-          npm run test:authority-gate 2>&1 | tee -a /tmp/backend-build.log
+          npm run test:authority-gate 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          # Bootstrap preflight: GET /admin/config/bootstrap-preflight must work BEFORE
+          # deploy/Config exist (GET /mining answers 400 then), stay ops-token only,
+          # reveal no secrets and fail closed on an RPC error.
+          npm run test:bootstrap-preflight 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Self-test - reward receipts and bounded purchases
@@ -897,7 +905,7 @@ jobs:
       - name: Self-test - resource registry and mining gates
         run: |
           set -uo pipefail
-          for test in test:resource-registry test:tool-mining test:weather-schedule test:mining-flag test:mining-preflight test:potato-inspect test:potato-economics test:active-season; do
+          for test in test:resource-registry test:tool-mining test:weather-schedule test:mining-flag test:mining-preflight test:mind-inspect test:mind-economics test:active-season; do
             npm run "$test" 2>&1 | tee -a /tmp/backend-build.log
             status="${PIPESTATUS[0]}"
             [ "$status" -eq 0 ] || exit "$status"
@@ -1441,14 +1449,29 @@ jobs:
         id: anchor_test
         if: steps.idl_check.outputs.available == 'true'
         env:
-          # tests/aof_vrf_localnet.ts must not skip here (the double is loaded above).
+          # The Switchboard double is loaded above. The 18k-slot expiry case runs
+          # separately with an accelerated validator after the regular suite.
           AOF_REQUIRE_SWITCHBOARD_MOCK: "1"
+          AOF_TEST_VRF_EXPIRY: "0"
         run: |
           set -uo pipefail
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           : > /tmp/anchor-test.log
           rc=0
           RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor test --skip-build 2>&1 | tee -a /tmp/anchor-test.log || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            # Anchor redirects solana-test-validator output to this ledger log;
+            # include it so startup failures are diagnosable from the PR check.
+            for validator_log in .anchor/test-ledger/test-ledger-log.txt .anchor/test-ledger/validator.log; do
+              if [ -s "$validator_log" ]; then
+                {
+                  printf '\n===== tail of %s =====\n' "$validator_log"
+                  tail -n 20 "$validator_log"
+                  printf '\n===== end validator log =====\n'
+                } | tee -a /tmp/anchor-test.log
+              fi
+            done
+          fi
           echo "anchor test exit code: $rc" | tee -a /tmp/anchor-test.log
           # Belt and braces: `anchor test` has been observed to exit 0 while
           # mocha reported failures in some CLI/mocha combinations. Treat any
@@ -1498,6 +1521,54 @@ jobs:
             '{output: {title: $title, summary: $summary, text: $text}}' > /tmp/cu-report-payload.json
           gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$job_id" --input /tmp/cu-report-payload.json >/dev/null \
             || echo "::notice::check-run output not updated - the report is in the job summary only"
+
+      - name: Anchor VRF expiry test (fast local validator)
+        id: vrf_expiry_test
+        if: steps.anchor_test.outcome == 'success'
+        env:
+          AOF_REQUIRE_SWITCHBOARD_MOCK: "1"
+          AOF_TEST_VRF_EXPIRY: "1"
+          AOF_VRF_EXPIRY_ONLY: "1"
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          : > /tmp/anchor-vrf-expiry.log
+          cp Anchor.toml /tmp/anchor-vrf-expiry-Anchor.toml
+          trap 'cp /tmp/anchor-vrf-expiry-Anchor.toml Anchor.toml' EXIT
+          sed -i '/^\[test\.validator\]/a ticks_per_slot = 8' Anchor.toml
+          if ! grep -qx 'ticks_per_slot = 8' Anchor.toml; then
+            echo "::error::could not configure eight ticks per slot for the VRF expiry-only run"
+            exit 1
+          fi
+          rc=0
+          RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor test --skip-build 2>&1 | tee -a /tmp/anchor-vrf-expiry.log || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            for validator_log in .anchor/test-ledger/test-ledger-log.txt .anchor/test-ledger/validator.log; do
+              if [ -s "$validator_log" ]; then
+                {
+                  printf '\n===== tail of %s =====\n' "$validator_log"
+                  tail -n 20 "$validator_log"
+                  printf '\n===== end validator log =====\n'
+                } | tee -a /tmp/anchor-vrf-expiry.log
+              fi
+            done
+          fi
+          echo "VRF expiry test exit code: $rc" | tee -a /tmp/anchor-vrf-expiry.log
+          if grep -Eq '^[[:space:]]*[1-9][0-9]* failing' /tmp/anchor-vrf-expiry.log; then
+            echo "::error::mocha reported failing VRF expiry tests"
+            rc=1
+          fi
+          if ! grep -Eq '^[[:space:]]*[1-9][0-9]* passing' /tmp/anchor-vrf-expiry.log; then
+            echo "::error::mocha did not report a passing VRF expiry test"
+            rc=1
+          fi
+          exit "$rc"
+
+      - name: Publish VRF expiry failure log
+        if: always() && steps.vrf_expiry_test.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-failure-log.sh /tmp/anchor-vrf-expiry.log "Anchor VRF expiry test (local validator)" 10
 
   secrets-scan:
     name: Secret scan (full git history)

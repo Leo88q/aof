@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::AccountDeserialize;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_spl::token::{self, Token, Mint, TokenAccount, MintTo};
 use anchor_lang::solana_program::program_option::COption;
@@ -32,17 +33,31 @@ fn pick_fee_bps(user: &Pubkey, amount: u64, has_medallion: bool, has_historian: 
     min_bps + offset as u16
 }
 
+/// Decode only an existing, program-owned Player PDA. An absent account gets a
+/// dedicated error; RPC/backend callers separately distinguish read failures.
+pub fn read_existing_player(account: &UncheckedAccount<'_>, expected_owner: &Pubkey) -> Result<Player> {
+    require!(!account.data_is_empty(), AofError::PlayerNotInitialized);
+    require_keys_eq!(*account.owner, crate::ID, AofError::PlayerNotInitialized);
+    let data = account.try_borrow_data()?;
+    let player = Player::try_deserialize(&mut &data[..])?;
+    require_keys_eq!(player.owner, *expected_owner, AofError::Unauthorized);
+    Ok(player)
+}
+
 pub fn handler(ctx: Context<MintResource>, kind: ResourceKind, amount: u64) -> Result<()> {
+    let player = read_existing_player(&ctx.accounts.player, &ctx.accounts.token_account.owner)?;
     execute_mint(&ctx.accounts.config, &ctx.accounts.material_mints,
-        &mut ctx.accounts.player, &mut ctx.accounts.issuance_cap,
+        &player, &mut ctx.accounts.issuance_cap,
         &ctx.accounts.mint, &ctx.accounts.token_account,
         &ctx.accounts.treasury_token, &ctx.accounts.auth, &ctx.accounts.token_program,
         ctx.bumps.auth, kind, amount)
 }
 
-// One canonical economic path for both legacy admin mints and replay-protected rewards.
+/// One canonical economic path for operator mints and replay-protected rewards.
+/// Both callers must supply a Player which already exists or is initialized in
+/// the same player-funded `mint_resource_once` instruction.
 pub fn execute_mint<'info>(
-    config: &Config, material_mints: &MaterialMints, player: &mut Player,
+    config: &Config, material_mints: &MaterialMints, player: &Player,
     issuance_cap: &mut IssuanceCap,
     mint: &Account<'info, Mint>, token_account: &Account<'info, TokenAccount>,
     treasury_token: &Account<'info, TokenAccount>, auth: &UncheckedAccount<'info>,
@@ -68,18 +83,11 @@ pub fn execute_mint<'info>(
     let slot = Clock::get()?.slot;
     issuance_cap.charge(kind as u8, amount, slot)?;
 
-    if player.owner == Pubkey::default() {
-        player.owner = token_account.owner;
-        player.villagers = DEFAULT_VILLAGERS;
-        player.villagers_available = DEFAULT_VILLAGERS;
-    }
+    // Profile creation is owned by player-funded instructions; every mint path
+    // passes the existing Player explicitly.
+    let (has_medallion, has_historian) = (player.has_medallion(), player.has_historian());
 
-    let bps = pick_fee_bps(
-        &token_account.owner,
-        amount,
-        player.has_medallion(),
-        player.has_historian(),
-    );
+    let bps = pick_fee_bps(&token_account.owner, amount, has_medallion, has_historian);
     let (user_cut, fee_cut) = crate::economics::split_bps(amount, bps)?;
 
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];

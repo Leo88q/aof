@@ -97,11 +97,11 @@ export function MarketHome() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="mt-6">
         <Card
           onClick={() => go("hot", <HotMarket />)}
-          className="bg-gradient-to-r from-wheat-600/20 to-soil-850 border border-wheat-600/30"
+          className="bg-gradient-to-r from-accent-600/20 to-soil-850 border border-accent-600/30"
         >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="font-semibold flex items-start gap-2 text-wheat-500">
+              <h3 className="font-semibold flex items-start gap-2 text-accent-500">
                 <img src={UI_ICONS.marketHot} alt="" className="w-5 h-5 object-contain shrink-0" />
                 <span className="min-w-0 break-words">{copy.hotOpen}</span>
               </h3>

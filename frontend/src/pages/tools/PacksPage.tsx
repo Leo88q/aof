@@ -226,7 +226,7 @@ export function PacksPage() {
               <p className="text-parchment font-semibold mt-3">{copy.waiting} {Math.floor(waitingMs / 1000)} {copy.seconds}</p>
               {waitingMs > SELF_SETTLE_AFTER_MS && (
                 <button onClick={() => selfSettle(opening.packCommit)} disabled={busy === opening.packCommit}
-                  className="mt-3 px-4 py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold disabled:opacity-50">
+                  className="mt-3 px-4 py-2 rounded-xl bg-accent-600 text-white text-sm font-semibold disabled:opacity-50">
                   {copy.revealSelf}
                 </button>
               )}
@@ -276,7 +276,7 @@ export function PacksPage() {
                   </div>
                 </div>
                 <button onClick={() => { setLastPack(pack.id); open(pack); }} disabled={!cfg || !address || busy !== null}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white text-sm font-bold disabled:opacity-40">
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-nf-purple to-accent-600 text-white text-sm font-bold disabled:opacity-40">
                   {busy === pack.id ? "…" : copy.open}
                 </button>
               </div>

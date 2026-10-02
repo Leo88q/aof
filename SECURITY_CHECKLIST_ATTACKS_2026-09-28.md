@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Атаки июня–сентября 2026 и весь год: разбор пунктов 94–130 по коду NeuroForge
 
 _Дата: 2026-09-28. Продолжение разборов:_

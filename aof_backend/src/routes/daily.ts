@@ -8,13 +8,13 @@ const r = Router();
  */
 r.get("/status/:user", (_req, res) => {
   res.status(503).json({
-    error: "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_POTATO_REWARD_IS_DEPLOYED",
+    error: "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_MIND_REWARD_IS_DEPLOYED",
   });
 });
 
 r.post("/claim", (_req, res) => {
   res.status(503).json({
-    error: "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_POTATO_REWARD_IS_DEPLOYED",
+    error: "DAILY_REWARDS_UNAVAILABLE_UNTIL_ONCHAIN_MIND_REWARD_IS_DEPLOYED",
   });
 });
 

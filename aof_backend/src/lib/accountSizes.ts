@@ -1,0 +1,9 @@
+// Byte sizes include Anchor's 8-byte account discriminator.
+// Keep these pinned to aof-core/src/constants.rs and tests/readiness payer tests.
+export const PLAYER_ACCOUNT_SIZE = 59;
+export const TOOL_DATA_ACCOUNT_SIZE = 161;
+export const REWARD_RECEIPT_ACCOUNT_SIZE = 121;
+export const SEASON_PASS_ACCOUNT_SIZE = 57;
+export const SEASON_XP_CLAIM_CURSOR_ACCOUNT_SIZE = 49;
+export const TOKEN_ACCOUNT_SIZE = 165;
+export const TOKEN_MINT_SIZE = 82;

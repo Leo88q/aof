@@ -35,7 +35,7 @@ C/U/R/E/L = Base / Enhanced / Quantum / Singularity / Transcendent.
 | Ремонт за юнит (CIRCUIT / SILICON) | 3.0/3.5 / 2.0/2.5 → 5.0/3.5 по редкости (кривая F-08: нетто-маржа растёт с редкостью) | `REPAIR_CIRCUIT_*/REPAIR_SILICON_*` |
 | Слоты зачарования | 0=Speed, 1=Durability, 2=EnergyEfficiency | `enchant_slot` PDA |
 | Стейкинг | перки из счётчиков Player-PDA: `historian_count`, `medallion_count` | `stake`/`unstake` |
-| Mint / сжигание / миграция | `mint_tool`, `burn_tool`, `migrate_tool` | aof-core |
+| Mint / сжигание | `mint_tool`, `burn_tool` | aof-core |
 
 Yield-таблица (net-маржа по F-08): Base +12 CIRCUIT/ч и +18 SILICON/ч → Transcendent +24 / +33.
 
@@ -51,13 +51,13 @@ epoch = 1 500 … 6 480 000 слотов) + одноразовые начисл�
 | Ресурс | Группа | Источник | Траты / куда уходит |
 |---|---|---|---|
 | Data | базовые | эмиссия: админ/инбокс-награды (`mint_resource`) | крафт флюидов (р. 3, 6 — по 5), общий |
-| Circuit | базовые | `plasma_cutter` (mining), exploration (reward) | ремонт, топливо тренажёра (р. `start_baking`), bio fluid (×5), крафт инструментов |
+| Circuit | базовые | `plasma_cutter` (mining), exploration (reward) | ремонт, топливо тренажёра (р. `start_model_training`), bio fluid (×5), крафт инструментов |
 | Silicon | базовые | `silicon_extractor` (mining), exploration | ремонт, volt fluid (×3), крафт инструментов |
-| Neuron | модельная цепочка | `neural_seeder` (mining) | посев (`plant_seeds`), bio fluid (×5) |
-| Synapse | модельная цепочка | `plant_seeds` (neuron+power, energy 1) → `harvest_wheat` (×1.5 от посева, energy 1) | переработка (`start_milling`) |
-| Signal | модельная цепочка | `start_milling`/`collect_flour` (energy 2) | тренировка (`start_baking`) |
-| Model | модельная цепочка | `start_baking`/`collect_bread` (signal + топливо CIRCUIT или Compute, energy 2) | готовая модель — конечный продукт игрока |
-| Power | базовые | **сетевая станция** `collect_well_water`: ставка по нагрузке 0 / 5 / 15 / 20 юнитов·ч (blackout/nominal/surge/frenzy), накопление до 24 ч | посев, крафт |
+| Neuron | модельная цепочка | `neural_seeder` (mining) | посев (`plant_neuron`), bio fluid (×5) |
+| Synapse | модельная цепочка | `plant_neuron` (neuron+power, energy 1) → `harvest_synapse` (×1.5 от посева, energy 1) | переработка (`start_signal_processing`) |
+| Signal | модельная цепочка | `start_signal_processing`/`collect_signal` (energy 2) | тренировка (`start_model_training`) |
+| Model | модельная цепочка | `start_model_training`/`collect_model` (signal + топливо CIRCUIT или Compute, energy 2) | готовая модель — конечный продукт игрока |
+| Power | базовые | **сетевая станция** `collect_power`: ставка по нагрузке 0 / 5 / 15 / 20 юнитов·ч (blackout/nominal/surge/frenzy), накопление до 24 ч | посев, крафт |
 | Compute | базовые | эмиссия: награды | топливо тренажёра (альтернатива CIRCUIT) |
 | Dataset | базовые | `quantum_transmitter` / `data_harvester` (охота) | крафт / датасеты |
 | BlueCore | ядра | эмиссия / дропы | рецепт 0 → QuantumBit (1:1) |
@@ -105,8 +105,8 @@ epoch = 1 500 … 6 480 000 слотов) + одноразовые начисл�
 | Механика | Как работает | Ключевые числа |
 |---|---|---|
 | Энергия | ленивая реген, трата по действиям | кап **20**, **+1 / 30 мин**; цены: plant 1, harvest 1, milling 2, training 2 |
-| Посев / сбор | `plant_seeds` (тайл, neuron+power) → `harvest_wheat` | yield **×1.5** от посева (`SYNAPSE_YIELD_MULT_BPS`) |
-| Переработка / тренировка | `start_milling`/`collect_flour`, `start_baking`/`collect_bread` | топливо: CIRCUIT или Compute |
+| Посев / сбор | `plant_neuron` (тайл, neuron+power) → `harvest_synapse` | yield **×1.5** от посева (`SYNAPSE_YIELD_MULT_BPS`) |
+| Переработка / тренировка | `start_signal_processing`/`collect_signal`, `start_model_training`/`collect_model` | топливо: CIRCUIT или Compute |
 | Сетевая станция | накопление по нагрузке сети | 0 / 5 / 15 / 20 юнитов·ч, макс. накопление **24 ч** |
 | Нагрузка сети | `weather_crank` | 4 состояния: Blackout / Nominal / Surge / Frenzy |
 | Агенты | villagers + ёмкость хранилища | дефолт **6** агентов; `adjust_player_capacity` (дельта ≤ ±6, с server rack больше) |

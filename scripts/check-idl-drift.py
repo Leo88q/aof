@@ -105,8 +105,17 @@ def parse_structs(src: str) -> dict[str, list[tuple[str, bool, bool, bool]]]:
     return out
 
 
-def rust_idl_type(value: str):
+def const_sizes(src: str) -> dict:
+    """Размеры констант `pub const NAME: usize = N;` — их использует IDL как длину массива."""
+    return {m.group(1): int(m.group(2)) for m in re.finditer(r"pub const (\w+): usize = (\d+);", src)}
+
+
+def rust_idl_type(value: str, sizes: dict | None = None):
     value = re.sub(r"\s+", "", value)
+    # IDL ссылается на типы по короткому имени: `crate::state::CollectorKind` -> `CollectorKind`
+    # (Anchor build делает то же самое), иначе клиент не найдёт тип.
+    if "::" in value and not value.startswith(("Vec<", "Option<", "[")):
+        value = value.split("::")[-1]
     if value in {"u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "bool"}:
         return value
     if value == "Vec<u8>": return "bytes"
@@ -114,7 +123,10 @@ def rust_idl_type(value: str):
         return {"String": "string", "Pubkey": "pubkey"}[value]
     m = re.fullmatch(r"\[(.+);(\d+)\]", value)
     if m:
-        return {"array": [rust_idl_type(m[1]), int(m[2])]}
+        return {"array": [rust_idl_type(m[1], sizes), int(m[2])]}
+    m = re.fullmatch(r"\[(.+);(\w+)\]", value)
+    if m and sizes and m[2] in sizes:
+        return {"array": [rust_idl_type(m[1], sizes), sizes[m[2]]]}
     m = re.fullmatch(r"(Vec|Option)<(.+)>", value)
     if m:
         return {"vec" if m[1] == "Vec" else "option": rust_idl_type(m[2])}

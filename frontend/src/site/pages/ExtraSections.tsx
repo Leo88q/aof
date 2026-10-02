@@ -314,7 +314,7 @@ export function ExtraSections({ id }: { id: string }) {
     );
   }
 
-  if (id === 'potato') {
+  if (id === 'mind') {
     const copy = siteMind[language];
     return (
       <>
@@ -932,7 +932,7 @@ export function ExtraSections({ id }: { id: string }) {
 
 import { pages as xlPages } from '../content/game';
 const relatedMap: Record<string, string[]> = {
-  home: ['guide', 'recipes', 'trade', 'potato'],
+  home: ['guide', 'recipes', 'trade', 'mind'],
   start: ['guide', 'rules', 'energy'],
   guide: ['start', 'strategies', 'recipes'],
   strategies: ['guide', 'quests', 'trade'],
@@ -942,7 +942,7 @@ const relatedMap: Record<string, string[]> = {
   weather: ['farm', 'seasons', 'energy'],
   farm: ['recipes', 'weather', 'energy'],
   craft: ['recipes', 'tools', 'docs'],
-  recipes: ['farm', 'craft', 'potato'],
+  recipes: ['farm', 'craft', 'mind'],
   tools: ['craft', 'trade', 'market'],
   mine: ['trade', 'recipes', 'energy'],
   packs: ['lottery', 'trade', 'recipes'],
@@ -950,13 +950,13 @@ const relatedMap: Record<string, string[]> = {
   economy: ['trade', 'market', 'investors'],
   market: ['trade', 'economy', 'tools'],
   trade: ['market', 'economy', 'tools'],
-  potato: ['recipes', 'trade', 'rules'],
+  mind: ['recipes', 'trade', 'rules'],
   seasons: ['quests', 'roadmap', 'trust'],
   quests: ['guide', 'strategies', 'trust'],
   trust: ['rules', 'quests', 'docs'],
   resources: ['recipes', 'trade', 'glossary'],
   lore: ['manifesto', 'seasons', 'rules'],
-  rules: ['trust', 'potato', 'start'],
+  rules: ['trust', 'mind', 'start'],
   faq: ['glossary', 'docs', 'guide'],
   glossary: ['faq', 'docs', 'recipes'],
   roadmap: ['investors', 'seasons', 'lore'],

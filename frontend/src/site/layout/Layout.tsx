@@ -39,7 +39,7 @@ import { recordSiteBadge, recordSiteVisit, refreshSiteJournal, SITE_JOURNAL_KEY 
 
 // Only these routes have complete page bodies and special sections translated.
 // A Russian-only article must never inherit a foreign-language document tag.
-const localizedRoutes = new Set<string>(['home', 'start', 'world', 'energy', 'manifesto', 'weather', 'lore', 'roadmap', 'faq', 'quests', 'packs', 'lottery', 'seasons', 'trust', 'rules', 'tools', 'mine', 'market', 'economy', 'investors', 'guide', 'strategies', 'trade', 'docs', 'recipes', 'potato', 'farm', 'craft', 'glossary', 'resources']);
+const localizedRoutes = new Set<string>(['home', 'start', 'world', 'energy', 'manifesto', 'weather', 'lore', 'roadmap', 'faq', 'quests', 'packs', 'lottery', 'seasons', 'trust', 'rules', 'tools', 'mine', 'market', 'economy', 'investors', 'guide', 'strategies', 'trade', 'docs', 'recipes', 'mind', 'farm', 'craft', 'glossary', 'resources']);
 function markJournalRoute(pathname: string) {
   const parts = pathname.split('/').filter(Boolean);
   const id = parts[1] || 'home';
@@ -94,7 +94,7 @@ export function SiteLayout() {
     const trade = id === 'trade' ? siteTrade[language] : undefined;
     const docs = id === 'docs' ? siteDocs[language] : undefined;
     const recipes = id === 'recipes' ? siteRecipes[language] : undefined;
-    const mind = id === 'potato' ? siteMind[language] : undefined;
+    const mind = id === 'mind' ? siteMind[language] : undefined;
     const farmGuide = id === 'farm' ? siteWorkshop[language].farm : undefined;
     const craftGuide = id === 'craft' ? siteWorkshop[language].craft : undefined;
     const glossary = id === 'glossary' ? siteGlossary[language] : undefined;

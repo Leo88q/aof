@@ -1,3 +1,8 @@
+// [LEGACY / OFF-CHAIN — NOT PART OF THE NEUROFORGE SOLANA PRODUCT]
+// This tree is the historical Firebase/Firestore backend (Ронин-эпоха): off-chain
+// resource custody, not deployed from this repository and a removal candidate
+// (см. docs/RESOURCE_RENAME_PLAN.md, раздел «исключения из скана»). Farming-era
+// Firestore-пути здесь остаются историей и не входят в canonical resource surface.
 /* eslint-env node, es2020 */
 /* eslint-disable require-jsdoc */
 
@@ -85,13 +90,13 @@ const ALLOWED_COLLECTORS = new Set(
 );
 
 const REFERRAL_TIERS = [
-  {level: 0, pct: 0.1, cost: {wood: 0, stone: 0, food: 0}}, // base
-  {level: 1, pct: 0.5, cost: {wood: 1000, stone: 1000, food: 500}},
-  {level: 2, pct: 1.0, cost: {wood: 3000, stone: 3000, food: 2000}},
-  {level: 3, pct: 1.7, cost: {wood: 7000, stone: 7000, food: 4000}},
-  {level: 4, pct: 2.5, cost: {wood: 12000, stone: 12000, food: 7000}},
-  {level: 5, pct: 3.5, cost: {wood: 20000, stone: 20000, food: 13000}},
-  {level: 6, pct: 5.0, cost: {wood: 50000, stone: 50000, food: 25000}},
+  {level: 0, pct: 0.1, cost: {circuit: 0, silicon: 0, data: 0}}, // base
+  {level: 1, pct: 0.5, cost: {circuit: 1000, silicon: 1000, data: 500}},
+  {level: 2, pct: 1.0, cost: {circuit: 3000, silicon: 3000, data: 2000}},
+  {level: 3, pct: 1.7, cost: {circuit: 7000, silicon: 7000, data: 4000}},
+  {level: 4, pct: 2.5, cost: {circuit: 12000, silicon: 12000, data: 7000}},
+  {level: 5, pct: 3.5, cost: {circuit: 20000, silicon: 20000, data: 13000}},
+  {level: 6, pct: 5.0, cost: {circuit: 50000, silicon: 50000, data: 25000}},
 ];
 
 const COLLECTOR_VAULT_ADDRESS = normalizeAddr(process.env.COLLECTOR_VAULT_ADDRESS || "");
@@ -267,7 +272,7 @@ exports.sweepStakeCollectorsJobs = onSchedule(
 );
 
 /**
- * Map a token ID to its user document field name (e.g., 0 -> "food").
+ * Map a token ID to its user document field name (e.g., 0 -> "data").
  * @param {number} id - Token ID.
  * @return {string} Field key in the user doc.
  */
@@ -1164,9 +1169,9 @@ function withKillSwitchBg(handler) {
 
 
 const TOKEN_ID_TO_FIELD = {
-  0: "food",
-  1: "wood",
-  2: "stone",
+  0: "data",
+  1: "circuit",
+  2: "silicon",
 };
 
 // Minimal ABI
@@ -2225,7 +2230,7 @@ exports.mintNFTTool = onRequest(
 
         // ---------- Helpers ----------
         const RARITY_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
-        const BASE_RESOURCE_ORDER = ["food", "wood", "stone"]; // skins are NFT burns
+        const BASE_RESOURCE_ORDER = ["data", "circuit", "silicon"]; // skins are NFT burns
         const SKIN_TOOLTYPE_ALIASES = ["Animal_Skin", "Animal Skin", "Material"]; // exact stored values (no normalization for queries)
 
         const userAddressLower = String(userAddress).toLowerCase();
@@ -2281,7 +2286,7 @@ exports.mintNFTTool = onRequest(
               try {
                 // ---------- RESERVE (READS then WRITES in a single txn) ----------
                 let reserved = {
-                  dynamic: {food: 0, wood: 0, stone: 0},
+                  dynamic: {data: 0, circuit: 0, silicon: 0},
                   burnTokenIds: [], // final chosen set for ownerMintWithBurn (set later)
                   burnedToolDocIds: [], // staked_nfts docIds to delete (skins + chosen prev)
                   skinsBurnIds: [], // skin token ids (burned off-chain; contract only validates prev tool)
@@ -2314,11 +2319,11 @@ exports.mintNFTTool = onRequest(
                     String(rarity).toLowerCase()
                 ] || 1;
 
-                  // dynamic resources: wood/stone scale; food constant
+                  // dynamic resources: circuit/silicon scale; data constant
                   const dynamic = {
-                    food: Number(cost.food || 0),
-                    wood: Number((cost.wood || 0) + mintedCount * mult),
-                    stone: Number((cost.stone || 0) + mintedCount * mult),
+                    data: Number(cost.data || 0),
+                    circuit: Number((cost.circuit || 0) + mintedCount * mult),
+                    silicon: Number((cost.silicon || 0) + mintedCount * mult),
                   };
 
                   // basic requirements
@@ -2455,9 +2460,9 @@ exports.mintNFTTool = onRequest(
 
                   // lock numeric resources + fee
                   tx.update(userDocRef, {
-                    "locks.crafting.food": admin.firestore.FieldValue.increment(Number(dynamic.food || 0)),
-                    "locks.crafting.wood": admin.firestore.FieldValue.increment(Number(dynamic.wood || 0)),
-                    "locks.crafting.stone": admin.firestore.FieldValue.increment(Number(dynamic.stone || 0)),
+                    "locks.crafting.data": admin.firestore.FieldValue.increment(Number(dynamic.data || 0)),
+                    "locks.crafting.circuit": admin.firestore.FieldValue.increment(Number(dynamic.circuit || 0)),
+                    "locks.crafting.silicon": admin.firestore.FieldValue.increment(Number(dynamic.silicon || 0)),
                     "locks.crafting.ronMicros": admin.firestore.FieldValue.increment(FEE_PER_CRAFT_RON_MICROS),
                   });
 
@@ -2474,9 +2479,9 @@ exports.mintNFTTool = onRequest(
                         skinsBurnIds,
                         ownerUid: userAddressLower,
                         dynamicCostData: {
-                          food: Number(dynamic.food || 0),
-                          wood: Number(dynamic.wood || 0),
-                          stone: Number(dynamic.stone || 0),
+                          data: Number(dynamic.data || 0),
+                          circuit: Number(dynamic.circuit || 0),
+                          silicon: Number(dynamic.silicon || 0),
                           skinsNeeded: isTent ? Number(skinsNeeded) : 0,
                         },
                         tentBurn: isTent ?
@@ -2819,7 +2824,7 @@ async function finalizeRerollJob(jobRef, jobData) {
 
   const burnDocIds = Array.isArray(job.burnedToolDocIds) ? job.burnedToolDocIds : [];
 
-  const FOOD_PER_REROLL = Number(job?.dynamicCostData?.food || 0);
+  const DATA_PER_REROLL = Number(job?.dynamicCostData?.data || 0);
   const RON_MICROS_PER_REROLL = Number(job?.dynamicCostData?.ronMicros || 0);
 
   // Prefer mint hash (2-tx flow). Fallback to legacy txHash.
@@ -2864,7 +2869,7 @@ async function finalizeRerollJob(jobRef, jobData) {
       if (!userSnap.exists) throw new Error("User not found (unreserve).");
 
       tx.update(userRef, {
-        "locks.reroll.food": FieldValue.increment(-FOOD_PER_REROLL),
+        "locks.reroll.data": FieldValue.increment(-DATA_PER_REROLL),
         "locks.reroll.ronMicros": FieldValue.increment(-RON_MICROS_PER_REROLL),
       });
 
@@ -2909,15 +2914,15 @@ async function finalizeRerollJob(jobRef, jobData) {
     if (!userSnap.exists) throw new Error("User not found.");
 
     const u = userSnap.data() || {};
-    if ((u.food ?? 0) < FOOD_PER_REROLL) throw new Error("Insufficient food on finalize (recheck).");
+    if ((u.data ?? 0) < DATA_PER_REROLL) throw new Error("Insufficient data on finalize (recheck).");
     if ((u.gasTankRonMicros ?? 0) < RON_MICROS_PER_REROLL) {
       throw new Error("Insufficient RON on finalize (recheck).");
     }
 
     // Deduct & unlock
     tx.update(userRef, {
-      "food": FieldValue.increment(-FOOD_PER_REROLL),
-      "locks.reroll.food": FieldValue.increment(-FOOD_PER_REROLL),
+      "data": FieldValue.increment(-DATA_PER_REROLL),
+      "locks.reroll.data": FieldValue.increment(-DATA_PER_REROLL),
 
       "gasTankRonMicros": FieldValue.increment(-RON_MICROS_PER_REROLL),
       "locks.reroll.ronMicros": FieldValue.increment(-RON_MICROS_PER_REROLL),
@@ -3042,7 +3047,7 @@ exports.rerollNFTTool = onRequest(
           tokenIds, // array of 2 ids (strings or numbers)
           tokenDocIds, // OPTIONAL: array of 2 Firestore docIds (strings)
           rarity, // Common / Uncommon / Rare / Epic  (Legendary not allowed to reroll)
-          costFood, // UI-declared food (must match expected)
+          costData, // UI-declared data (must match expected)
           feeRON, // UI-declared RON (must match expected)
           feeTxHash, // optional
           nonce,
@@ -3059,19 +3064,19 @@ exports.rerollNFTTool = onRequest(
 
         // ---- COST SCHEDULE (2-burn reroll) ----
         const COSTS = {
-          Common: {food: 200, ron: 3},
-          Uncommon: {food: 400, ron: 10},
-          Rare: {food: 800, ron: 30},
-          Epic: {food: 1500, ron: 70},
+          Common: {data: 200, ron: 3},
+          Uncommon: {data: 400, ron: 10},
+          Rare: {data: 800, ron: 30},
+          Epic: {data: 1500, ron: 70},
         };
 
         const RARITY_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
         if (!COSTS[rarity]) return err(400, "Invalid rarity for 2-burn reroll.");
-        const expectedFood = COSTS[rarity].food;
+        const expectedData = COSTS[rarity].data;
         const expectedRon = COSTS[rarity].ron;
 
-        if (Number(costFood) !== expectedFood) return err(400, "Bad costFood.");
+        if (Number(costData) !== expectedData) return err(400, "Bad costFood.");
         if (Number(feeRON || 0) && Math.abs(Number(feeRON) - expectedRon) > 1e-9) {
           return err(400, "Bad feeRON.");
         }
@@ -3092,7 +3097,7 @@ exports.rerollNFTTool = onRequest(
           collectionAddress,
           tokenIds: canonIds, // stringify already
           rarity,
-          costFood: expectedFood,
+          costData: expectedData,
           feeRON: expectedRon,
           nonce,
           ...(Array.isArray(tokenDocIds) && tokenDocIds.length === 2 ? {tokenDocIds} : {}),
@@ -3157,7 +3162,7 @@ exports.rerollNFTTool = onRequest(
               const reserved = {
                 burnedToolDocIds: [],
                 burnTokenIds: [],
-                dynamicCostData: {food: expectedFood, ronMicros: requiredRonMicros},
+                dynamicCostData: {data: expectedData, ronMicros: requiredRonMicros},
                 toolTypeForTx: null,
                 rarityFrom: rarity,
                 rarityTo: nextRarity,
@@ -3173,8 +3178,8 @@ exports.rerollNFTTool = onRequest(
                   const user = userSnap.data() || {};
 
                   // Balance checks
-                  if (Number(user.food || 0) < expectedFood) {
-                    throw new Error("Insufficient food for reroll.");
+                  if (Number(user.data || 0) < expectedData) {
+                    throw new Error("Insufficient data for reroll.");
                   }
                   if (readRonTankMicros(user) < requiredRonMicros) {
                     throw new Error("Insufficient RON in game wallet for fee.");
@@ -3232,7 +3237,7 @@ exports.rerollNFTTool = onRequest(
 
                   // ---------- WRITES ----------
                   tx.update(userRef, {
-                    "locks.reroll.food": admin.firestore.FieldValue.increment(expectedFood),
+                    "locks.reroll.data": admin.firestore.FieldValue.increment(expectedData),
                     "locks.reroll.ronMicros": admin.firestore.FieldValue.increment(requiredRonMicros),
                   });
 
@@ -3244,7 +3249,7 @@ exports.rerollNFTTool = onRequest(
                     burnedToolDocIds: foundDocs.map((f) => f.docId),
                     rarityFrom: rarity,
                     rarityTo: nextRarity,
-                    dynamicCostData: {food: expectedFood, ronMicros: requiredRonMicros},
+                    dynamicCostData: {data: expectedData, ronMicros: requiredRonMicros},
                     feeRON: expectedRon,
                     feeTxHash: feeTxHash || null,
                     ownerUid: userLower,
@@ -3306,7 +3311,7 @@ exports.rerollNFTTool = onRequest(
                 // --- Decide the random mint type (uniform over 3 candidates) ---
                 // Seed is derived from chain data so the user cannot pre-pick via nonce.
                 // Add a server salt to avoid anyone precomputing offline.
-                const candidates = ["Stone_Axe", "Stone_Pick", "Stone_Spear"];
+                const candidates = ["Silicon_Axe", "Silicon_Pick", "Silicon_Spear"];
                 const salt = process.env.REROLL_SALT || "public-fallback-salt";
                 const seedHex = ethers.keccak256(
                     ethers.solidityPacked(
@@ -3379,7 +3384,7 @@ exports.rerollNFTTool = onRequest(
                       const [mark, userSnap] = await Promise.all([tx.get(unreserveRef), tx.get(uref)]);
                       if (!mark.exists && userSnap.exists) {
                         tx.update(uref, {
-                          "locks.reroll.food": admin.firestore.FieldValue.increment(-expectedFood),
+                          "locks.reroll.data": admin.firestore.FieldValue.increment(-expectedData),
                           "locks.reroll.ronMicros": admin.firestore.FieldValue.increment(-requiredRonMicros),
                         });
                         tx.set(unreserveRef, {
@@ -3604,9 +3609,9 @@ async function finalizeMintJobV2(jobRef, jobData) {
           FEE_PER_CRAFT_RON_MICROS;
 
         tx.update(userDocRef, {
-          "locks.crafting.food": FieldValue.increment(-n(dd.food)),
-          "locks.crafting.wood": FieldValue.increment(-n(dd.wood)),
-          "locks.crafting.stone": FieldValue.increment(-n(dd.stone)),
+          "locks.crafting.data": FieldValue.increment(-n(dd.data)),
+          "locks.crafting.circuit": FieldValue.increment(-n(dd.circuit)),
+          "locks.crafting.silicon": FieldValue.increment(-n(dd.silicon)),
           "locks.crafting.ronMicros": FieldValue.increment(-ronToUnreserve),
         });
 
@@ -3749,21 +3754,21 @@ async function finalizeMintJobV2(jobRef, jobData) {
       const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
       const need = (isSkinMint || isShardMint) ?
-        {energy: 0, food: 0, wood: 0, stone: 0, gasTankRonMicros: 0} :
+        {energy: 0, data: 0, circuit: 0, silicon: 0, gasTankRonMicros: 0} :
         {
           energy: 100,
-          food: n(dd.food),
-          wood: n(dd.wood),
-          stone: n(dd.stone),
+          data: n(dd.data),
+          circuit: n(dd.circuit),
+          silicon: n(dd.silicon),
           gasTankRonMicros: FEE_PER_CRAFT_RON_MICROS,
         };
 
       // safety: don't go negative
       if (
         (u.energy ?? 0) < need.energy ||
-        (u.food ?? 0) < need.food ||
-        (u.wood ?? 0) < need.wood ||
-        (u.stone ?? 0) < need.stone ||
+        (u.data ?? 0) < need.data ||
+        (u.circuit ?? 0) < need.circuit ||
+        (u.silicon ?? 0) < need.silicon ||
         (u.gasTankRonMicros ?? 0) < need.gasTankRonMicros
       ) {
         throw new Error("Insufficient resources to finalize craft");
@@ -3783,16 +3788,16 @@ async function finalizeMintJobV2(jobRef, jobData) {
 
       const userUpdates = {
         ...(need.energy ? {energy: FieldValue.increment(-need.energy)} : {}),
-        ...(need.food ? {food: FieldValue.increment(-need.food)} : {}),
-        ...(need.wood ? {wood: FieldValue.increment(-need.wood)} : {}),
-        ...(need.stone ? {stone: FieldValue.increment(-need.stone)} : {}),
+        ...(need.data ? {data: FieldValue.increment(-need.data)} : {}),
+        ...(need.circuit ? {circuit: FieldValue.increment(-need.circuit)} : {}),
+        ...(need.silicon ? {silicon: FieldValue.increment(-need.silicon)} : {}),
         ...(need.gasTankRonMicros ? {
           gasTankRonMicros: FieldValue.increment(-need.gasTankRonMicros),
           gasTankRon: FieldValue.increment(-microsToRon(need.gasTankRonMicros)),
         } : {}),
-        "locks.crafting.food": FieldValue.increment(-need.food),
-        "locks.crafting.wood": FieldValue.increment(-need.wood),
-        "locks.crafting.stone": FieldValue.increment(-need.stone),
+        "locks.crafting.data": FieldValue.increment(-need.data),
+        "locks.crafting.circuit": FieldValue.increment(-need.circuit),
+        "locks.crafting.silicon": FieldValue.increment(-need.silicon),
         "locks.crafting.ronMicros": FieldValue.increment(-need.gasTankRonMicros),
       };
 
@@ -3896,9 +3901,9 @@ async function finalizeMintJobV2(jobRef, jobData) {
         const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
         tx.update(userDocRef, {
-          "locks.crafting.food": FieldValue.increment(-n(dd.food)),
-          "locks.crafting.wood": FieldValue.increment(-n(dd.wood)),
-          "locks.crafting.stone": FieldValue.increment(-n(dd.stone)),
+          "locks.crafting.data": FieldValue.increment(-n(dd.data)),
+          "locks.crafting.circuit": FieldValue.increment(-n(dd.circuit)),
+          "locks.crafting.silicon": FieldValue.increment(-n(dd.silicon)),
           "locks.crafting.ronMicros": FieldValue.increment(-FEE_PER_CRAFT_RON_MICROS),
         });
 
@@ -4055,9 +4060,9 @@ exports.authenticateRoninWallet = functions.https.onRequest(
           await userRef.set({
             userAddress: uid,
             // sensible defaults so post-login calls don't 404
-            food: 0,
-            wood: 0,
-            stone: 0,
+            data: 0,
+            circuit: 0,
+            silicon: 0,
             energy: 1000,
             gasTankRon: 0,
             gasTankRonMicros: 0,
@@ -4081,7 +4086,7 @@ exports.authenticateRoninWallet = functions.https.onRequest(
       }
     }));
 
-exports.exchangeFoodEnergy = functions.https.onRequest(
+exports.exchangeDataEnergy = functions.https.onRequest(
     withKillSwitchHttp(async (req, res) => {
       try {
       // --- Auth (unchanged) ---
@@ -4103,17 +4108,17 @@ exports.exchangeFoodEnergy = functions.https.onRequest(
         const {amount: amountRaw, signature, clientNonce} = req.body?.data || {};
         const amount = Number.parseInt(amountRaw, 10);
         if (!Number.isFinite(amount) || amount <= 0) {
-          return err(400, "Please provide a valid amount of food to exchange.");
+          return err(400, "Please provide a valid amount of data to exchange.");
         }
         if (!signature) return err(400, "Missing signature.");
         if (!clientNonce) return err(400, "Missing clientNonce.");
 
         // OPTIONAL: anti-replay (persist nonce per user for a short TTL)
-        await consumeNonceOrFail(usersDocId, "exchangeFoodEnergy", String(clientNonce));
+        await consumeNonceOrFail(usersDocId, "exchangeDataEnergy", String(clientNonce));
 
         // --- Mutex key now includes the nonce so each click is unique ---
         const requestId = stableRequestIdFrom({
-          op: "exchangeFoodEnergy",
+          op: "exchangeDataEnergy",
           uid: lockKey,
           nonce: String(clientNonce),
         });
@@ -4123,7 +4128,7 @@ exports.exchangeFoodEnergy = functions.https.onRequest(
             requestId,
             async () => {
               const energyToReceive = amount * 4;
-              const message = `Exchange ${amount} food for ${energyToReceive} energy`;
+              const message = `Exchange ${amount} data for ${energyToReceive} energy`;
 
               let recovered;
               try {
@@ -4144,7 +4149,7 @@ exports.exchangeFoodEnergy = functions.https.onRequest(
               const {season} = getCurrentSeasonInfo(Date.now());
               const isWinter = season === "Winter";
 
-              let newFood = null;
+              let newData = null;
               let newEnergy = null;
               const opId = `exch_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
@@ -4153,29 +4158,29 @@ exports.exchangeFoodEnergy = functions.https.onRequest(
                 if (!snap.exists) throw new Error("User data not found.");
 
                 const data = snap.data() || {};
-                const currentFood = Number(data.food || 0);
+                const currentData = Number(data.data || 0);
                 const currentEnergy = Number(data.energy || 0);
 
-                if (currentFood < amount) {
-                  throw new Error("Insufficient food balance.");
+                if (currentData < amount) {
+                  throw new Error("Insufficient data balance.");
                 }
 
-                const energyPerFood = 4;
+                const energyPerData = 4;
                 const availableRoom = MAX_ENERGY_CAP - currentEnergy;
                 if (availableRoom <= 0) {
                   throw new Error(`Energy is already at the cap (${MAX_ENERGY_CAP}).`);
                 }
                 if (energyToReceive > availableRoom) {
-                  const maxFood = Math.floor(availableRoom / energyPerFood);
+                  const maxData = Math.floor(availableRoom / energyPerData);
                   throw new Error(
                       `This exchange would exceed the energy cap (${MAX_ENERGY_CAP}). ` +
-                  `You can exchange at most ${maxFood} food right now.`,
+                  `You can exchange at most ${maxData} data right now.`,
                   );
                 }
 
                 // Update balances
                 tx.update(userRef, {
-                  food: FieldValue.increment(-amount),
+                  data: FieldValue.increment(-amount),
                   energy: FieldValue.increment(energyToReceive),
                   lastEnergyExchangeAt: new Date(),
                   lastEnergyExchangeOpId: opId,
@@ -4187,15 +4192,15 @@ exports.exchangeFoodEnergy = functions.https.onRequest(
                       rankingsRef,
                       {
                         // keep existing fields (mint_score, total_rewards, username) untouched
-                        consumed_food: FieldValue.increment(amount),
+                        consumed_data: FieldValue.increment(amount),
                         // optional observability:
-                        last_consumed_food_at: FieldValue.serverTimestamp(),
+                        last_consumed_data_at: FieldValue.serverTimestamp(),
                       },
                       {merge: true},
                   );
                 }
 
-                newFood = currentFood - amount;
+                newData = currentData - amount;
                 newEnergy = currentEnergy + energyToReceive;
               });
 
@@ -4206,7 +4211,7 @@ exports.exchangeFoodEnergy = functions.https.onRequest(
                   opId,
                   exchanged: amount,
                   gainedEnergy: energyToReceive,
-                  newBalances: {food: newFood, energy: newEnergy},
+                  newBalances: {data: newData, energy: newEnergy},
                   // optional echo for UI: was winter applied?
                   winterCounted: isWinter,
                 },
@@ -5097,7 +5102,7 @@ async function createAndSendSkinMintJob({userAddressLower, baseKey, idx}) {
     rarity: "Common",
     burnTokenIds: [],
     burnedToolDocIds: [],
-    dynamicCostData: {food: 0, wood: 0, stone: 0},
+    dynamicCostData: {data: 0, circuit: 0, silicon: 0},
     reason: "collect_skin",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     attempts: 0,
@@ -6204,9 +6209,9 @@ exports.collectRewards = functions.https.onRequest(
                   const rarity = String(d.rarity || "").toLowerCase();
 
                   let rewardType = "";
-                  if (toolTypeLower.includes("pick")) rewardType = "stone";
-                  else if (toolTypeLower.includes("axe")) rewardType = "wood";
-                  else if (toolTypeLower.includes("spear")) rewardType = "food";
+                  if (toolTypeLower.includes("pick")) rewardType = "silicon";
+                  else if (toolTypeLower.includes("axe")) rewardType = "circuit";
+                  else if (toolTypeLower.includes("spear")) rewardType = "data";
                   else if (toolTypeLower.includes("bow")) rewardType = "skin";
                   if (!rewardType) continue;
 
@@ -6266,8 +6271,8 @@ exports.collectRewards = functions.https.onRequest(
 
                 // ====== PHASE 2: COMPUTE ======
                 let villagersToReturn = 0;
-                const totals = {food: 0, wood: 0, stone: 0, total: 0};
-                const bonus = {food: 0, wood: 0, stone: 0}; // for referrer
+                const totals = {data: 0, circuit: 0, silicon: 0, total: 0};
+                const bonus = {data: 0, circuit: 0, silicon: 0}; // for referrer
                 let skinWins = 0;
 
                 const penaltyPercent = (miningTime) =>
@@ -6327,9 +6332,9 @@ exports.collectRewards = functions.https.onRequest(
                 const userUpdates = {
                   villagers_available: FieldValue.increment(villagersToReturn),
                 };
-                if (totals.food) userUpdates.food = FieldValue.increment(totals.food);
-                if (totals.wood) userUpdates.wood = FieldValue.increment(totals.wood);
-                if (totals.stone) userUpdates.stone = FieldValue.increment(totals.stone);
+                if (totals.data) userUpdates.data = FieldValue.increment(totals.data);
+                if (totals.circuit) userUpdates.circuit = FieldValue.increment(totals.circuit);
+                if (totals.silicon) userUpdates.silicon = FieldValue.increment(totals.silicon);
                 tx.update(userRef, userUpdates);
 
                 // c) Rankings (public)
@@ -6344,9 +6349,9 @@ exports.collectRewards = functions.https.onRequest(
                   const refUserRef = db.collection("users").doc(refUid);
 
                   const refIncrements = {};
-                  if (bonus.food) refIncrements.food = FieldValue.increment(bonus.food);
-                  if (bonus.wood) refIncrements.wood = FieldValue.increment(bonus.wood);
-                  if (bonus.stone) refIncrements.stone = FieldValue.increment(bonus.stone);
+                  if (bonus.data) refIncrements.data = FieldValue.increment(bonus.data);
+                  if (bonus.circuit) refIncrements.circuit = FieldValue.increment(bonus.circuit);
+                  if (bonus.silicon) refIncrements.silicon = FieldValue.increment(bonus.silicon);
                   if (Object.keys(refIncrements).length) tx.update(refUserRef, refIncrements);
 
                   const statsDocId = (refUsername ? refUsername.toLowerCase() : `uid:${refUid}`);
@@ -6355,9 +6360,9 @@ exports.collectRewards = functions.https.onRequest(
                       refStatsRef,
                       {
                         referrerUid: refUid,
-                        bonus_food: FieldValue.increment(bonus.food || 0),
-                        bonus_wood: FieldValue.increment(bonus.wood || 0),
-                        bonus_stone: FieldValue.increment(bonus.stone || 0),
+                        bonus_data: FieldValue.increment(bonus.data || 0),
+                        bonus_circuit: FieldValue.increment(bonus.circuit || 0),
+                        bonus_silicon: FieldValue.increment(bonus.silicon || 0),
                         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                       },
                       {merge: true},
@@ -6368,9 +6373,9 @@ exports.collectRewards = functions.https.onRequest(
                       {
                         referred_uid: collectorUid,
                         referred_username: myUsername || collectorUid,
-                        bonus_food: FieldValue.increment(bonus.food || 0),
-                        bonus_wood: FieldValue.increment(bonus.wood || 0),
-                        bonus_stone: FieldValue.increment(bonus.stone || 0),
+                        bonus_data: FieldValue.increment(bonus.data || 0),
+                        bonus_circuit: FieldValue.increment(bonus.circuit || 0),
+                        bonus_silicon: FieldValue.increment(bonus.silicon || 0),
                         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                       },
                       {merge: true},
@@ -6385,9 +6390,9 @@ exports.collectRewards = functions.https.onRequest(
                         referrer: refUsername || "",
                         referred_uid: collectorUid,
                         referred_username: myUsername || collectorUid,
-                        bonus_food: FieldValue.increment(bonus.food || 0),
-                        bonus_wood: FieldValue.increment(bonus.wood || 0),
-                        bonus_stone: FieldValue.increment(bonus.stone || 0),
+                        bonus_data: FieldValue.increment(bonus.data || 0),
+                        bonus_circuit: FieldValue.increment(bonus.circuit || 0),
+                        bonus_silicon: FieldValue.increment(bonus.silicon || 0),
                       },
                       {merge: true},
                   );
@@ -6689,7 +6694,7 @@ exports.requestWithdraw = functions.https.onRequest(
 
                   for (let i = 0; i < ids.length; i++) {
                     const id = ids[i];
-                    const field = fieldOf(id); // 'food' | 'wood' | 'stone'
+                    const field = fieldOf(id); // 'data' | 'circuit' | 'silicon'
                     const dec = TOKEN_DECIMALS[id] ?? 18;
 
                     const gb = ethers.toBigInt(String(grossBase[i]));
@@ -7136,7 +7141,7 @@ exports.requestDeposit = functions.https.onRequest(
                 const updates = {};
                 for (let i = 0; i < tokenIds.length; i++) {
                   const id = Number(tokenIds[i]);
-                  const field = fieldOf(id); // 0->'food',1->'wood',2->'stone'
+                  const field = fieldOf(id); // 0->'data',1->'circuit',2->'silicon'
                   if (!field) throw new Error(`Unknown token id ${id}`);
                   const n = Number(String(humanAmounts[i]));
                   if (Number.isFinite(n) && n > 0) {
@@ -7240,7 +7245,7 @@ exports.reconcilePendingDeposits = onSchedule(
 
             const updates = {};
             for (const [id, humanStr] of creditNow) {
-              const field = fieldOf(id); // 0->'food', 1->'wood', 2->'stone'
+              const field = fieldOf(id); // 0->'data', 1->'circuit', 2->'silicon'
               const n = Number(String(humanStr));
               if (!Number.isFinite(n) || !(n > 0)) continue;
 
@@ -7979,9 +7984,9 @@ exports.redeemKeyAndCreateUser = functions.https.onRequest(
             if (!existing) {
             // Create the user doc with your defaults + username
               tx.set(userRef, {
-                food: 0,
-                wood: 0,
-                stone: 0,
+                data: 0,
+                circuit: 0,
+                silicon: 0,
                 energy: 1500,
                 gasTankRon: 0,
                 gasTankRonMicros: 0,
@@ -9288,7 +9293,7 @@ exports.upgradeReferralTier = functions.https.onRequest(
             }
 
             const tier = referral_tiers_safe(targetLevel); // small helper below
-            const cost = tier.cost; // {wood, stone, food}
+            const cost = tier.cost; // {circuit, silicon, data}
 
             // --- Signature verification ---
             // Must match the exact message the client signs:
@@ -9315,20 +9320,20 @@ exports.upgradeReferralTier = functions.https.onRequest(
 
             // --- Resource check ---
             const have = {
-              wood: Number(user.wood || 0),
-              stone: Number(user.stone || 0),
-              food: Number(user.food || 0),
+              circuit: Number(user.circuit || 0),
+              silicon: Number(user.silicon || 0),
+              data: Number(user.data || 0),
             };
-            if (have.wood < cost.wood || have.stone < cost.stone || have.food < cost.food) {
+            if (have.circuit < cost.circuit || have.silicon < cost.silicon || have.data < cost.data) {
               throw new Error("Not enough resources for upgrade.");
             }
 
             // --- Apply updates ---
             tx.update(userRef, {
               referral_level: targetLevel,
-              wood: FieldValue.increment(-cost.wood),
-              stone: FieldValue.increment(-cost.stone),
-              food: FieldValue.increment(-cost.food),
+              circuit: FieldValue.increment(-cost.circuit),
+              silicon: FieldValue.increment(-cost.silicon),
+              data: FieldValue.increment(-cost.data),
               referral_upgraded_at: admin.firestore.FieldValue.serverTimestamp(),
             });
 
@@ -9548,19 +9553,19 @@ exports.removeReferral = functions.https.onRequest(
 );
 
 const EXP_TIERS = [
-  {level: 1, upgrade: {wood: 1000, stone: 1000, food: 1000}, missionsPerDay: 1, chancePct: 30, shardMin: 2, shardMax: 3, cooldownH: 24},
-  {level: 2, upgrade: {wood: 2000, stone: 2000, food: 2000}, missionsPerDay: 1, chancePct: 40, shardMin: 2, shardMax: 3, cooldownH: 22},
-  {level: 3, upgrade: {wood: 3000, stone: 3000, food: 3000}, missionsPerDay: 1, chancePct: 50, shardMin: 3, shardMax: 4, cooldownH: 20},
-  {level: 4, upgrade: {wood: 4000, stone: 4000, food: 4000}, missionsPerDay: 1, chancePct: 55, shardMin: 3, shardMax: 5, cooldownH: 18},
-  {level: 5, upgrade: {wood: 5000, stone: 5000, food: 5000}, missionsPerDay: 1, chancePct: 60, shardMin: 4, shardMax: 5, cooldownH: 16},
-  {level: 6, upgrade: {wood: 6000, stone: 6000, food: 6000}, missionsPerDay: 2, chancePct: 60, shardMin: 4, shardMax: 5, cooldownH: 14},
-  {level: 7, upgrade: {wood: 7000, stone: 7000, food: 7000}, missionsPerDay: 2, chancePct: 65, shardMin: 4, shardMax: 6, cooldownH: 12},
-  {level: 8, upgrade: {wood: 8000, stone: 8000, food: 8000}, missionsPerDay: 2, chancePct: 70, shardMin: 5, shardMax: 6, cooldownH: 10},
-  {level: 9, upgrade: {wood: 9000, stone: 9000, food: 9000}, missionsPerDay: 2, chancePct: 75, shardMin: 5, shardMax: 7, cooldownH: 9},
-  {level: 10, upgrade: {wood: 10000, stone: 10000, food: 10000}, missionsPerDay: 3, chancePct: 80, shardMin: 6, shardMax: 8, cooldownH: 8},
+  {level: 1, upgrade: {circuit: 1000, silicon: 1000, data: 1000}, missionsPerDay: 1, chancePct: 30, shardMin: 2, shardMax: 3, cooldownH: 24},
+  {level: 2, upgrade: {circuit: 2000, silicon: 2000, data: 2000}, missionsPerDay: 1, chancePct: 40, shardMin: 2, shardMax: 3, cooldownH: 22},
+  {level: 3, upgrade: {circuit: 3000, silicon: 3000, data: 3000}, missionsPerDay: 1, chancePct: 50, shardMin: 3, shardMax: 4, cooldownH: 20},
+  {level: 4, upgrade: {circuit: 4000, silicon: 4000, data: 4000}, missionsPerDay: 1, chancePct: 55, shardMin: 3, shardMax: 5, cooldownH: 18},
+  {level: 5, upgrade: {circuit: 5000, silicon: 5000, data: 5000}, missionsPerDay: 1, chancePct: 60, shardMin: 4, shardMax: 5, cooldownH: 16},
+  {level: 6, upgrade: {circuit: 6000, silicon: 6000, data: 6000}, missionsPerDay: 2, chancePct: 60, shardMin: 4, shardMax: 5, cooldownH: 14},
+  {level: 7, upgrade: {circuit: 7000, silicon: 7000, data: 7000}, missionsPerDay: 2, chancePct: 65, shardMin: 4, shardMax: 6, cooldownH: 12},
+  {level: 8, upgrade: {circuit: 8000, silicon: 8000, data: 8000}, missionsPerDay: 2, chancePct: 70, shardMin: 5, shardMax: 6, cooldownH: 10},
+  {level: 9, upgrade: {circuit: 9000, silicon: 9000, data: 9000}, missionsPerDay: 2, chancePct: 75, shardMin: 5, shardMax: 7, cooldownH: 9},
+  {level: 10, upgrade: {circuit: 10000, silicon: 10000, data: 10000}, missionsPerDay: 3, chancePct: 80, shardMin: 6, shardMax: 8, cooldownH: 8},
 ];
 
-const TRIP_COST = {food: 75, wood: 35, stone: 35}; // total per run
+const TRIP_COST = {data: 75, circuit: 35, silicon: 35}; // total per run
 
 const exp_tier_safe = (level) => {
   const t = EXP_TIERS.find((x) => x.level === level);
@@ -9643,20 +9648,20 @@ exports.upgradeExplorationLevel = functions.https.onRequest(
 
             // Resource check
             const have = {
-              wood: Number(user.wood || 0),
-              stone: Number(user.stone || 0),
-              food: Number(user.food || 0),
+              circuit: Number(user.circuit || 0),
+              silicon: Number(user.silicon || 0),
+              data: Number(user.data || 0),
             };
-            if (have.wood < cost.wood || have.stone < cost.stone || have.food < cost.food) {
+            if (have.circuit < cost.circuit || have.silicon < cost.silicon || have.data < cost.data) {
               throw new Error("Not enough resources for upgrade.");
             }
 
             // Apply updates
             tx.update(userRef, {
               exploration_level: targetLevel,
-              wood: admin.firestore.FieldValue.increment(-cost.wood),
-              stone: admin.firestore.FieldValue.increment(-cost.stone),
-              food: admin.firestore.FieldValue.increment(-cost.food),
+              circuit: admin.firestore.FieldValue.increment(-cost.circuit),
+              silicon: admin.firestore.FieldValue.increment(-cost.silicon),
+              data: admin.firestore.FieldValue.increment(-cost.data),
               exploration_upgraded_at: admin.firestore.FieldValue.serverTimestamp(),
             });
 
@@ -9782,11 +9787,11 @@ exports.startExploration = functions.https.onRequest(
 
                 // Resource check (trip cost is total per run)
                 const have = {
-                  wood: Number(user.wood || 0),
-                  stone: Number(user.stone || 0),
-                  food: Number(user.food || 0),
+                  circuit: Number(user.circuit || 0),
+                  silicon: Number(user.silicon || 0),
+                  data: Number(user.data || 0),
                 };
-                if (have.wood < TRIP_COST.wood || have.stone < TRIP_COST.stone || have.food < TRIP_COST.food) {
+                if (have.circuit < TRIP_COST.circuit || have.silicon < TRIP_COST.silicon || have.data < TRIP_COST.data) {
                   throw new Error("Not enough resources for trip.");
                 }
 
@@ -9803,9 +9808,9 @@ exports.startExploration = functions.https.onRequest(
 
                 // Deduct trip cost + RON fee, then (re)create the job — all atomically
                 tx.update(userRef, {
-                  wood: admin.firestore.FieldValue.increment(-TRIP_COST.wood),
-                  stone: admin.firestore.FieldValue.increment(-TRIP_COST.stone),
-                  food: admin.firestore.FieldValue.increment(-TRIP_COST.food),
+                  circuit: admin.firestore.FieldValue.increment(-TRIP_COST.circuit),
+                  silicon: admin.firestore.FieldValue.increment(-TRIP_COST.silicon),
+                  data: admin.firestore.FieldValue.increment(-TRIP_COST.data),
                   gasTankRonMicros: admin.firestore.FieldValue.increment(-FEE_PER_EXPLORE_RON_MICROS),
                   gasTankRon: admin.firestore.FieldValue.increment(-microsToRon(FEE_PER_EXPLORE_RON_MICROS)),
                   last_exploration_started_at: now,
@@ -10004,7 +10009,7 @@ exports.collectExplorationRewards = functions.https.onRequest(
                   rarity: "Common",
                   amount: Number(outcome.shards), // expectedAmount for finalizer
                   expectedAmount: Number(outcome.shards), // explicit
-                  dynamicCostData: {food: 0, wood: 0, stone: 0},
+                  dynamicCostData: {data: 0, circuit: 0, silicon: 0},
                   burnTokenIds: [],
                   burnedToolDocIds: [],
                   skinsBurnIds: [],
@@ -10220,40 +10225,40 @@ exports.repairTool = functions.https.onRequest(
             for (let i = 0; i < costSnaps.length; i++) {
               const snap = costSnaps[i];
               const id = costIds[i];
-              if (!snap.exists) costMap.set(id, {wood: 0, stone: 0});
+              if (!snap.exists) costMap.set(id, {circuit: 0, silicon: 0});
               else {
                 const c = snap.data();
-                costMap.set(id, {wood: c.wood_repair || 0,
-                  stone: c.stone_repair || 0});
+                costMap.set(id, {circuit: c.circuit_repair || 0,
+                  silicon: c.silicon_repair || 0});
               }
             }
 
-            const totals = {wood: 0, stone: 0};
+            const totals = {circuit: 0, silicon: 0};
             const repairedTools = [];
 
             for (const n of normalized) {
-              const unit = costMap.get(n.costId) || {wood: 0, stone: 0};
-              const costWood = unit.wood * n.inc;
-              const costStone = unit.stone * n.inc;
+              const unit = costMap.get(n.costId) || {circuit: 0, silicon: 0};
+              const costCircuit = unit.circuit * n.inc;
+              const costSilicon = unit.silicon * n.inc;
 
-              totals.wood += costWood;
-              totals.stone += costStone;
+              totals.circuit += costCircuit;
+              totals.silicon += costSilicon;
 
               repairedTools.push({stakedNftDocId: n.idStr, inc: n.inc,
-                cost: {wood: costWood, stone: costStone}});
+                cost: {circuit: costCircuit, silicon: costSilicon}});
             }
 
-            const haveWood = userData.wood || 0;
-            const haveStone = userData.stone || 0;
-            if (haveWood < totals.wood || haveStone <
-            totals.stone) throw new Error("Not enough resources for repair.");
+            const haveCircuit = userData.circuit || 0;
+            const haveSilicon = userData.silicon || 0;
+            if (haveCircuit < totals.circuit || haveSilicon <
+            totals.silicon) throw new Error("Not enough resources for repair.");
 
             for (const n of normalized) {
               tx.update(n.ref, {durability: FieldValue.increment(n.inc)});
             }
             tx.update(userRef, {
-              wood: FieldValue.increment(-totals.wood),
-              stone: FieldValue.increment(-totals.stone),
+              circuit: FieldValue.increment(-totals.circuit),
+              silicon: FieldValue.increment(-totals.silicon),
             });
 
             return {repaired: normalized.length, totals, repairedTools};
@@ -10818,7 +10823,7 @@ function makeRng(seedHex /* "0x..." */) {
 }
 
 function rollLoot(rng, packKey, count) {
-  const TYPES = ["Stone_Axe", "Stone_Pick", "Stone_Spear"];
+  const TYPES = ["Silicon_Axe", "Silicon_Pick", "Silicon_Spear"];
   const RARITIES = ["Common", "Uncommon", "Rare", "Epic"];
 
   // keys must match your packKey: 'small' | 'medium' | 'big'

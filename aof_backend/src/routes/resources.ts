@@ -3,9 +3,11 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
+import { connection, program } from "../provider";
 import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
+import { authorityOnly, coSign, coSignQuoted, pk } from "../lib/tx";
+import { TOKEN_ACCOUNT_SIZE } from "../lib/accountSizes";
+import { requireExistingPlayer } from "../lib/playerAccount";
 import { fetchOne } from "../lib/decode";
 import { validateMintForTransaction } from "../security/mintValidator";
 import { requireCircuitOpen } from "../middleware/security";
@@ -28,26 +30,26 @@ const kindMap: Record<string, any> = {
   compute: { compute: {} },
   dataset: { dataset: {} },
   // Камни
-  stoneBlue: { stoneBlue: {} },
-  stonePurple: { stonePurple: {} },
-  stoneRed: { stoneRed: {} },
+  blueCore: { blueCore: {} },
+  purpleCore: { purpleCore: {} },
+  redCore: { redCore: {} },
   // Песок
-  sandWhite: { sandWhite: {} },
-  sandPink: { sandPink: {} },
-  sandYellow: { sandYellow: {} },
+  clearQuartz: { clearQuartz: {} },
+  roseQuartz: { roseQuartz: {} },
+  amberQuartz: { amberQuartz: {} },
   // Гемы
-  gemBlue: { gemBlue: {} },
-  gemOrange: { gemOrange: {} },
-  gemWhite: { gemWhite: {} },
-  gemGreen: { gemGreen: {} },
+  quantumBit: { quantumBit: {} },
+  neuralChip: { neuralChip: {} },
+  photonBit: { photonBit: {} },
+  bioChip: { bioChip: {} },
   // Баночки
-  flaskBlue: { flaskBlue: {} },
-  flaskYellow: { flaskYellow: {} },
-  flaskGreen: { flaskGreen: {} },
-  flaskPink: { flaskPink: {} },
-  flaskPurple: { flaskPurple: {} },
+  cryoFluid: { cryoFluid: {} },
+  voltFluid: { voltFluid: {} },
+  bioFluid: { bioFluid: {} },
+  nanoFluid: { nanoFluid: {} },
+  quantumFluid: { quantumFluid: {} },
   // Особое
-  loveHeart: { loveHeart: {} },
+  soulCore: { soulCore: {} },
 };
 
 r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
@@ -57,6 +59,7 @@ r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
 
     const owner = pk(req.body.owner);
     const mint = pk(req.body.mint);
+    await requireExistingPlayer(owner);
     const kind = kindMap[req.body.kind];
     if (!kind) return res.status(400).json({ error: "unknown resource kind" });
     const amount = new BN(req.body.amount);
@@ -88,16 +91,23 @@ r.post("/mint", requireAdmin, requireCircuitOpen, async (req, res) => {
       })
       .instruction();
 
-    const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, tokenAccount, owner, mint,
-    );
-    const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
-      AUTHORITY_PUBKEY, treasuryToken, treasury, mint,
-    );
-    const sig = await authorityOnly([createTreasuryAta, createUserAta, ix]);
-    res.json({ sig });
+    // [PAYER] ATA игрока — его аккаунт: создаётся лениво в ЕГО транзакции, payer
+    // = кошелёк игрока, подпись игрока; authority добавляет только авторизацию
+    // минта. ATA казны — инфраструктура проекта: её rent проект платит сам и
+    // вне транзакции игрока (и только если её ещё нет).
+    const treasuryInfo = await connection.getAccountInfo(treasuryToken, "confirmed");
+    if (!treasuryInfo) {
+      await authorityOnly([
+        createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, treasuryToken, treasury, mint),
+      ]);
+    }
+    const createUserAta = createAssociatedTokenAccountIdempotentInstruction(owner, tokenAccount, owner, mint);
+    const prepared = await coSignQuoted([createUserAta, ix], owner, [
+      { name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+    ]);
+    res.json(prepared);
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 
@@ -136,8 +146,8 @@ r.post("/burn", requireCircuitOpen, async (req, res) => {
 });
 
 
-// Disabled because the current aof-core program has no exchange_food_energy
-// instruction. Do not pretend to build a transaction for a missing entrypoint.
+// Disabled because the current aof-core program has no resource-energy exchange
+// instruction. Do not build a transaction for a missing entrypoint.
 r.post("/exchange-energy", (_req, res) => {
   res.status(503).json({ error: "ENERGY_EXCHANGE_DISABLED_UNTIL_ONCHAIN_INSTRUCTION_EXISTS" });
 });
@@ -146,18 +156,18 @@ r.post("/exchange-energy", (_req, res) => {
 r.post("/exchange-energy", async (req, res) => {
   try {
     const user = pk(req.body.user);
-    const foodMint = pk(req.body.foodMint);
-    const foodAmount = BigInt(req.body.foodAmount);
+    const dataMint = pk(req.body.dataMint);
+    const dataAmount = BigInt(req.body.dataAmount);
     const [config] = configPda();
     const [player] = playerPda(user);
-    const userFood = getAssociatedTokenAddressSync(foodMint, user);
+    const userData = getAssociatedTokenAddressSync(dataMint, user);
     const ix = await (program.methods as any)
-      .exchangeFoodEnergy(foodAmount)
+      .exchangeDataEnergy(dataAmount)
       .accounts({
         config,
         user,
-        foodMint,
-        userFood,
+        dataMint,
+        userData,
         player,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,

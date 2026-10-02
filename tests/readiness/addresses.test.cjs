@@ -47,7 +47,7 @@ test('observing an executable does NOT certify bytecode or custody', async () =>
 // и минтов. Владелец видел «ничего нельзя включить», не видя причины.
 const GENESIS_FILES = [
   'aof_backend/scripts/miningDevnetPreflight.ts',
-  'aof_backend/scripts/potatoDevnetInspect.ts',
+  'aof_backend/scripts/mindDevnetInspect.ts',
   'scripts/verify-address-registry.cjs',
 ];
 const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';

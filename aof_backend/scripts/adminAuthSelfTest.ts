@@ -145,8 +145,8 @@ async function testEconomyQuality() {
   assert.equal(worstQuality({ a: "unavailable", b: "unavailable" }), "unavailable");
   // Until the on-chain indexer exists these must stay flagged; flipping them
   // to "complete" without an indexer would reintroduce fictitious zeros.
-  assert.equal(ECONOMY_FIELD_QUALITY.potatoMinted24h, "unavailable");
-  assert.equal(ECONOMY_FIELD_QUALITY.potatoBurned24h, "unavailable");
+  assert.equal(ECONOMY_FIELD_QUALITY.mindMinted24h, "unavailable");
+  assert.equal(ECONOMY_FIELD_QUALITY.mindBurned24h, "unavailable");
   assert.equal(ECONOMY_FIELD_QUALITY.topHolders, "unavailable");
 }
 
@@ -168,12 +168,12 @@ async function testIssuanceCapMapping() {
   const body = /pub enum ResourceKind \{([\s\S]*?)\n\}/.exec(rs)![1];
   const rust = body.split("\n").map((l) => l.trim().replace(/,$/, "")).filter((l) => l && !l.startsWith("//")).map((n) => n[0].toLowerCase() + n.slice(1));
   assert.deepEqual([...RESOURCE_KIND_ORDER], rust);
-  assert.equal(resourceKindIndex({ gemBlue: {} }), 16);
+  assert.equal(resourceKindIndex({ quantumBit: {} }), 16);
   assert.equal(resourceKindIndex("mind"), 26);
   assert.equal(resourceKindIndex(0), 0);
   assert.throws(() => resourceKindIndex({ nope: {} }));
   assert.throws(() => resourceKindIndex(99));
-  assert.equal(issuanceCapPda({ potato: {} })[0].toBase58(), issuanceCapPda("mind")[0].toBase58());
+  assert.equal(issuanceCapPda({ mind: {} })[0].toBase58(), issuanceCapPda("mind")[0].toBase58());
   assert.notEqual(issuanceCapPda("mind")[0].toBase58(), issuanceCapPda("data")[0].toBase58());
   // IDL errors for the cap must exist with the codes the backend matches on.
   const idl = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "idl", "aof_core.json"), "utf8"));

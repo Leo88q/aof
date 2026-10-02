@@ -64,10 +64,10 @@ pub struct DrumRefunded {
     pub amount: u64,
 }
 
-/// Versioned events: legacy drum indexers must never treat whole-Potato V2
+/// Versioned events: legacy drum indexers must never treat whole-MIND V2
 /// payouts as historical raw-atom mascot payouts (or vice versa).
 #[event]
-pub struct PotatoSpinCommitted {
+pub struct MindSpinCommitted {
     pub user: Pubkey,
     pub commit: Pubkey,
     pub mint: Pubkey,
@@ -77,7 +77,7 @@ pub struct PotatoSpinCommitted {
 }
 
 #[event]
-pub struct PotatoSpinRevealed {
+pub struct MindSpinRevealed {
     pub user: Pubkey,
     pub commit: Pubkey,
     pub mint: Pubkey,
@@ -89,7 +89,7 @@ pub struct PotatoSpinRevealed {
 }
 
 #[event]
-pub struct PotatoSpinRefunded {
+pub struct MindSpinRefunded {
     pub user: Pubkey,
     pub commit: Pubkey,
     pub mint: Pubkey,

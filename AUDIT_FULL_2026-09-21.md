@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # AOF (Age of Farming) — полный независимый аудит
 
 **Дата:** 2026-09-21

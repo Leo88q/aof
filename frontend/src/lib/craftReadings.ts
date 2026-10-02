@@ -1,7 +1,7 @@
 /** Canonical craft cost/balance keys from aof_backend/src/routes/tools.ts
  * (/craft-quote) and aof_backend/src/routes/query.ts (/balances/:owner).
- * Do not read deprecated wood/stone/food quote fields: they are absent from
- * the response and would incorrectly display the price as zero. */
+ * Only canonical resource keys are accepted; unsupported fields would incorrectly
+ * display the price as zero. */
 export const CRAFT_RESOURCES = [
   { key: 'circuit', chain: 'CIRCUIT' },
   { key: 'silicon', chain: 'SILICON' },

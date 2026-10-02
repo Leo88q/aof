@@ -178,7 +178,7 @@ export function ExplorationPage() {
           </motion.div>
         )}
         <button onClick={startExploration} disabled={busy || !address || !transmitter || (trip !== 'ready' && trip !== 'closed')}
-          className="w-full min-w-0 px-3 py-3.5 rounded-2xl bg-gradient-to-r from-nf-purple to-wheat-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform whitespace-normal break-words">
+          className="w-full min-w-0 px-3 py-3.5 rounded-2xl bg-gradient-to-r from-nf-purple to-accent-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform whitespace-normal break-words">
           {busy ? copy.sending : !address ? copy.connect : trip === 'checking' ? copy.checking : trip === 'unavailable' ? copy.unavailable : trip === 'pending' ? copy.pending : !transmitter ? copy.missingTool : copy.send}
         </button>
         {transmitter && trip === 'pending' && <button onClick={selfSettle} disabled={busy}

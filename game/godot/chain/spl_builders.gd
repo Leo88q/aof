@@ -1,7 +1,7 @@
 class_name SplBuilders
 extends RefCounted
 ## SPL builders — ATA create, token mint/transfer/burn for Standard NFT
-## (golden tools, land) and resource mints (seeds/crops/materials).
+## (golden tools, land) and canonical resource mints (components/materials).
 
 static func create_ata(owner: String, mint: String) -> Dictionary: return {"ix": "create_ata", "owner": owner, "mint": mint}
 static func mint_to(mint: String, dest: String, amount: int) -> Dictionary: return {"ix": "mint_to", "mint": mint, "dest": dest, "amount": amount}

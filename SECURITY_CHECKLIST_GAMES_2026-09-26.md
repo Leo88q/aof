@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Чек-лист безопасности крипто-игр (пункты 31–70) — разбор NeuroForge, 2026-09-26
 
 Продолжение отчётов:

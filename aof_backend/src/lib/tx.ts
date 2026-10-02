@@ -3,6 +3,7 @@ import { connection, assertExpectedCluster } from "../provider";
 import { AUTHORITY, AUTHORITY_PUBKEY } from "../config";
 import { sendConfirmedTransaction } from "./transactionLifecycle";
 import { simulateTransaction } from "../security/txSimulator";
+import { PayerCostQuote, PayerRentAccountSpec, quotePayerCosts } from "./payerQuote";
 
 async function requireSimulation(tx: Transaction): Promise<void> {
   const result = await simulateTransaction(tx);
@@ -29,14 +30,17 @@ function requireAuthoritySigning(): void {
   }
 }
 
-export async function coSign(ix: any[], feePayer: PublicKey, signers: Signer[] = []): Promise<string> {
+async function buildCoSignedTransaction(
+  ix: any[],
+  feePayer: PublicKey,
+  signers: Signer[] = [],
+): Promise<{ tx: Transaction; lifetime: { blockhash: string; lastValidBlockHeight: number } }> {
   await assertExpectedCluster();
   const tx = new Transaction().add(...ix);
   tx.feePayer = feePayer;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  // [ФИКС] Подписываем авторити только если инструкция реально требует его подписи.
-  // Иначе partialSign бросает "unknown signer" и все пользовательские роуты
-  // (листинг/офферы/аренда/аукцион/ордербук) падают на этапе сборки транзакции.
+  const lifetime = await connection.getLatestBlockhash("confirmed");
+  tx.recentBlockhash = lifetime.blockhash;
+  // Sign with the operator only when an instruction actually requires it.
   const msg = tx.compileMessage();
   const required = msg.accountKeys.slice(0, msg.header.numRequiredSignatures);
   if (required.some((k: any) => k.equals(AUTHORITY_PUBKEY))) {
@@ -44,8 +48,30 @@ export async function coSign(ix: any[], feePayer: PublicKey, signers: Signer[] =
     tx.partialSign(AUTHORITY as NonNullable<typeof AUTHORITY>);
   }
   if (signers.length) tx.partialSign(...signers);
+  return { tx, lifetime };
+}
+
+export async function coSign(ix: any[], feePayer: PublicKey, signers: Signer[] = []): Promise<string> {
+  const { tx } = await buildCoSignedTransaction(ix, feePayer, signers);
   await requireSimulation(tx);
   return tx.serialize({ requireAllSignatures: false }).toString("base64");
+}
+
+/** Build and partially sign, then return a bounded quote tied to this exact
+ * serialized message. The player's signature is still required to broadcast. */
+export async function coSignQuoted(
+  ix: any[],
+  feePayer: PublicKey,
+  rentAccounts: PayerRentAccountSpec[],
+  signers: Signer[] = [],
+): Promise<{ tx: string; quote: PayerCostQuote }> {
+  const { tx, lifetime } = await buildCoSignedTransaction(ix, feePayer, signers);
+  const quote = await quotePayerCosts(tx, feePayer, lifetime, rentAccounts);
+  await requireSimulation(tx);
+  return {
+    tx: tx.serialize({ requireAllSignatures: false }).toString("base64"),
+    quote,
+  };
 }
 
 export async function authorityOnly(

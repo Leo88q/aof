@@ -58,7 +58,7 @@ async function main(): Promise<void> {
     AuditLog: () => prisma.auditLog.create({ data: { user: stamp, action: "test" } }),
     AuditRecord: () => prisma.auditRecord.create({ data: { action: "test", wallet: stamp, mint: "m", signature: `${stamp}-sig`, status: "ok", details: "{}", ipAddress: "ip", userAgent: "ua" } }),
     WalletOperation: () => prisma.walletOperation.create({ data: { wallet: stamp, operationType: "test" } }),
-    EconomySnapshot: () => prisma.economySnapshot.create({ data: { potatoSupply: 1n, potatoBurned24h: 0n, potatoMinted24h: 0n, inflation24h: 0, activeCrafters24h: 0, activeTraders24h: 0, totalTxs24h: 0, failedTxs24h: 0, topHolders: "[]" } }),
+    EconomySnapshot: () => prisma.economySnapshot.create({ data: { mindSupply: 1n, mindBurned24h: 0n, mindMinted24h: 0n, inflation24h: 0, activeCrafters24h: 0, activeTraders24h: 0, totalTxs24h: 0, failedTxs24h: 0, topHolders: "[]" } }),
     TraderExecution: () => prisma.traderExecution.create({ data: { user: stamp, ruleId: "r", action: "test" } }),
   };
   // Prisma surfaces the trigger differently per provider: PostgreSQL keeps the

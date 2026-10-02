@@ -14,9 +14,10 @@ type WalletProofRoute = { path: string; subject: string; field: string };
 // not unexpectedly trigger a wallet popup. Every listed route gets a fresh,
 // one-time proof bound to its backend subject before it is sent.
 const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
-  { path: "/friend/water", subject: "friend_water", field: "waterer" },
+  { path: "/friend/power", subject: "friend_power", field: "power" },
   { path: "/neighbors/visit", subject: "neighbors_visit", field: "visitor" },
   { path: "/profile/register", subject: "profile_register", field: "address" },
+  { path: "/profile/init-player", subject: "player_init", field: "player" },
   { path: "/streaks/check-in", subject: "streak_check_in", field: "user" },
   { path: "/onboarding/step/complete", subject: "onboarding_step", field: "user" },
   { path: "/compendium/mark-seen", subject: "compendium_mark_seen", field: "user" },
@@ -29,18 +30,19 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/inbox/list", subject: "inbox_list", field: "user" },
   { path: "/inbox/read", subject: "inbox_read", field: "user" },
   { path: "/inbox/claim", subject: "inbox_claim", field: "user" },
+  { path: "/inbox/claim/confirm", subject: "inbox_claim_confirm", field: "user" },
   { path: "/inbox/archive", subject: "inbox_archive", field: "user" },
   { path: "/alerts/create", subject: "alerts_create", field: "user" },
   { path: "/alerts/", subject: "alerts_delete", field: "user" },
   { path: "/antifraud/device/register", subject: "antifraud_device_register", field: "user" },
-  { path: "/chain/farm/plant", subject: "chain_farm_plant", field: "user" },
-  { path: "/chain/farm/harvest", subject: "chain_farm_harvest", field: "user" },
-  { path: "/chain/mill/start", subject: "chain_mill_start", field: "user" },
-  { path: "/chain/mill/collect", subject: "chain_mill_collect", field: "user" },
-  { path: "/chain/oven/start", subject: "chain_oven_start", field: "user" },
-  { path: "/chain/oven/collect", subject: "chain_oven_collect", field: "user" },
+  { path: "/chain/lab/plant-neuron", subject: "chain_lab_plant_neuron", field: "user" },
+  { path: "/chain/lab/harvest-synapse", subject: "chain_lab_harvest_synapse", field: "user" },
+  { path: "/chain/signal/start-processing", subject: "chain_signal_start_processing", field: "user" },
+  { path: "/chain/signal/collect", subject: "chain_signal_collect", field: "user" },
+  { path: "/chain/model/start-training", subject: "chain_model_start_training", field: "user" },
+  { path: "/chain/model/collect", subject: "chain_model_collect", field: "user" },
   { path: "/chain/weather/crank", subject: "chain_weather_crank", field: "cranker" },
-  { path: "/chain/well/collect", subject: "chain_well_collect", field: "user" },
+  { path: "/chain/grid/collect", subject: "chain_grid_collect", field: "user" },
   { path: "/chain/recipe/craft", subject: "chain_recipe_craft", field: "user" },
   { path: "/craft-order/create", subject: "craft_order_create", field: "creator" },
   { path: "/craft-order/fulfill", subject: "craft_order_fulfill", field: "fulfiller" },
@@ -54,7 +56,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/lottery/ticket/buy", subject: "lottery_ticket_buy", field: "buyer" },
   { path: "/lottery/claim", subject: "lottery_claim", field: "winner" },
   { path: "/marketplace/list", subject: "marketplace_list", field: "seller" },
-  { path: "/marketplace/buy", subject: "marketplace_buy", field: "buyer" },
+  { path: "/marketplace/buy", subject: "marketplace_buy_bounded", field: "buyer" },
   { path: "/marketplace/cancel", subject: "marketplace_cancel", field: "seller" },
   { path: "/auction/create", subject: "auction_create", field: "seller" },
   { path: "/auction/bid", subject: "auction_bid", field: "bidder" },
@@ -65,9 +67,10 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/offer/accept", subject: "offer_accept", field: "seller" },
   { path: "/offer/cancel", subject: "offer_cancel", field: "buyer" },
   { path: "/rental/list", subject: "rental_list", field: "owner" },
-  { path: "/rental/start", subject: "rental_start", field: "renter" },
+  { path: "/rental/start", subject: "rental_start_bounded", field: "renter" },
   { path: "/rental/end", subject: "rental_end", field: "caller" },
   { path: "/rental/revoke", subject: "rental_revoke", field: "owner" },
+  { path: "/season/pass/init", subject: "season_pass_init", field: "player" },
   { path: "/rental/delist", subject: "rental_delist", field: "caller" },
   { path: "/orderbook/v2/buy/place", subject: "orderbook_v2_buy_place", field: "maker" },
   { path: "/orderbook/buy/place", subject: "orderbook_buy_place", field: "maker" },
@@ -90,6 +93,8 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/resources/burn", subject: "resources_burn", field: "owner" },
   { path: "/resources/exchange-energy", subject: "resources_exchange_energy", field: "user" },
   { path: "/season/pass/purchase", subject: "season_pass_purchase", field: "user" },
+  { path: "/xp/claims", subject: "season_xp_claim", field: "player" },
+  { path: "/xp/claims/", subject: "season_xp_claim", field: "player" },
   { path: "/tools/prep-mint", subject: "tools_prep_mint", field: "owner" },
   { path: "/tools/craft", subject: "tools_craft", field: "user" },
   { path: "/tools/repair", subject: "tools_repair", field: "user" },
@@ -220,7 +225,7 @@ export const api = {
   },
 
   friend: {
-    water: (v: any) => post("/friend/water", v),
+    power: (v: any) => post("/friend/power", v),
   },
 
   // === Чтение ончейн-состояния ===
@@ -228,7 +233,7 @@ export const api = {
     balances: (owner: string) => get(`/query/balances/${owner}`),
     config: () => get("/query/config"),
     craftEconomy: () => get("/query/craft-economy"),
-    farmTiles: (user: string) => get(`/query/farm-tiles/${user}`),
+    labTiles: (user: string) => get(`/query/lab-tiles/${user}`),
     materialMints: () => get("/query/material-mints"),
     rarityCounter: (idx: number) => get(`/query/rarity-counter/${idx}`),
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
@@ -236,9 +241,9 @@ export const api = {
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
     collector: (mint: string) => get(`/query/collector/${mint}`),
     weatherState: () => get("/query/weather-state"),
-    wellState: (owner: string) => get(`/query/well-state/${owner}`),
-    millState: (owner: string) => get(`/query/mill-state/${owner}`),
-    ovenState: (owner: string) => get(`/query/oven-state/${owner}`),
+    gridState: (owner: string) => get(`/query/grid-state/${owner}`),
+    signalState: (owner: string) => get(`/query/signal-state/${owner}`),
+    modelState: (owner: string) => get(`/query/model-state/${owner}`),
     tool: (mint: string) => get(`/query/tool/${mint}`),
     myTools: (owner: string) => get(`/query/my-tools/${owner}`),
     friendFarm: (address: string) => get(`/query/friend-farm/${address}`),
@@ -277,7 +282,6 @@ export const api = {
     economyAlertResolve: (id: string) => post(`/admin/economy/alerts/${id}/resolve`, {}),
 
     rarityCounterInit: (v: any) => post("/admin/rarity-counter/init", v),
-    migrateTool: (v: any) => post("/admin/migrate-tool", v),
   },
 
   // === Газ-бак ===
@@ -315,16 +319,16 @@ export const api = {
   // === [БЛОК L] Модельная экономика ===
   chain: {
     // Лаборатория
-    plantSeeds: (v: any) => post("/chain/farm/plant", v),
-    harvestWheat: (v: any) => post("/chain/farm/harvest", v),
+    plantNeuron: (v: any) => post("/chain/lab/plant-neuron", v),
+    harvestSynapse: (v: any) => post("/chain/lab/harvest-synapse", v),
     // Переработка
-    startMilling: (v: any) => post("/chain/mill/start", v),
-    collectFlour: (v: any) => post("/chain/mill/collect", v),
+    startSignalProcessing: (v: any) => post("/chain/signal/start-processing", v),
+    collectSignal: (v: any) => post("/chain/signal/collect", v),
     // Тренировка
-    startBaking: (v: any) => post("/chain/oven/start", v),
-    collectBread: (v: any) => post("/chain/oven/collect", v),
+    startModelTraining: (v: any) => post("/chain/model/start-training", v),
+    collectModel: (v: any) => post("/chain/model/collect", v),
     // Сетевая станция и нагрузка сети
-    collectWellWater: (v: any) => post("/chain/well/collect", v),
+    collectPower: (v: any) => post("/chain/grid/collect", v),
     weatherCrank: (v: any) => post("/chain/weather/crank", v),
     // Мгновенный крафт (гемы/баночки)
     craftRecipe: (v: any) => post("/chain/recipe/craft", v),
@@ -460,7 +464,13 @@ export const api = {
   season: {
     init: (v: any) => post("/season/init", v),
     passPurchase: (v: any) => post("/season/pass/purchase", v),
-    xpGrant: (v: any) => post("/season/xp/grant", v),
+    // [PAYER] Пропуск создаёт сам игрок: его подпись и его rent.
+    passInit: (v: any) => post("/season/pass/init", v),
+    xpClaims: (player: string, seasonId?: number) => post("/xp/claims", { player, ...(seasonId === undefined ? {} : { seasonId }) }),
+    xpClaimTransaction: (player: string, entitlementId: string) =>
+      post(`/xp/claims/${encodeURIComponent(entitlementId)}/transaction`, { player }),
+    xpClaimConfirm: (player: string, entitlementId: string, signature: string) =>
+      post(`/xp/claims/${encodeURIComponent(entitlementId)}/confirm`, { player, signature }),
     rewardClaim: (v: any) => post("/season/reward/claim", v),
     // Роут vipStatus смонтирован на /season и слушает /:user — путь без
     // «vip-status», иначе запрос уходил в 404 и VIP молча не находился.
@@ -542,6 +552,9 @@ export const api = {
     list: (user: string) => post("/inbox/list", { user }),
     read: (v: any) => post("/inbox/read", v),
     claim: (v: any) => post("/inbox/claim", v),
+    // [PAYER] Claim отправляет кошелёк игрока; доказательство выплаты —
+    // on-chain RewardReceipt, поэтому подпись подтверждается отдельно.
+    confirmClaim: (v: any) => post("/inbox/claim/confirm", v),
   },
 
   compendium: {
@@ -552,6 +565,7 @@ export const api = {
   profile: {
     get: (user: string) => get(`/profile/${user}`),
     update: (v: any) => post("/profile/update", v),
+    initPlayer: (v: any) => post("/profile/init-player", v),
   },
 
   rating: {

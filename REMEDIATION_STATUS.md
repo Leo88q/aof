@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # AOF — статус устранения замечаний аудита 2026-09-21
 
 Исходный аудит: [`AUDIT_FULL_2026-09-21.md`](./AUDIT_FULL_2026-09-21.md) (36 находок:

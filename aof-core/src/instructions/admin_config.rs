@@ -21,7 +21,7 @@ pub fn set_mining_enabled(ctx: Context<SetMiningEnabled>, enabled: bool) -> Resu
 ///
 /// `SUPPLY_CAP_UNLIMITED` (u64::MAX) disables the ceiling for that kind; any
 /// other value is enforced on **every** mint path (mint_resource, mint_resource
-/// once, collect_mining, collect_flour, collect_bread, collect_well_water,
+/// once, collect_mining, collect_signal, collect_model, collect_power,
 /// craft_recipe, claim_season_reward), not just the two that go through
 /// `IssuanceCap`. Lowering it below the current supply halts that resource.
 pub fn set_supply_cap(ctx: Context<SetSupplyCap>, kind: ResourceKind, max_supply: u64) -> Result<()> {

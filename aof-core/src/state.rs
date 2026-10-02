@@ -7,12 +7,12 @@ use crate::ResourceKind;
 pub struct Config {
     pub authority: Pubkey,          // 32
     pub treasury: Pubkey,           // 32
-    pub food_mint: Pubkey,          // 32
-    pub wood_mint: Pubkey,          // 32
-    pub stone_mint: Pubkey,         // 32
-    pub seeds_mint: Pubkey,         // 32 [НОВОЕ]
-    pub water_mint: Pubkey,         // 32 [НОВОЕ]
-    pub potato_mint: Pubkey,        // 32 Historical ABI name: internal MIND resource, NOT external Potato
+    pub data_mint: Pubkey,          // 32
+    pub circuit_mint: Pubkey,          // 32
+    pub silicon_mint: Pubkey,         // 32
+    pub neuron_mint: Pubkey,         // 32 [НОВОЕ]
+    pub power_mint: Pubkey,         // 32 [НОВОЕ]
+    pub mind_mint: Pubkey,        // 32 Historical ABI name: internal MIND resource, NOT external MIND
     pub craft_fee: u64,             // 8
     pub unstake_fee: u64,           // 8
     pub paused: bool,               // 1
@@ -69,35 +69,35 @@ pub fn canonical_tool_type(tool_type: &str) -> Option<&'static str> {
 impl Config {
     pub fn is_resource_mint(&self, materials: &MaterialMints, mint: &Pubkey) -> bool {
         let m = mint;
-        *m == self.food_mint
-            || *m == self.wood_mint
-            || *m == self.stone_mint
-            || *m == self.seeds_mint
-            || *m == self.water_mint
-            || *m == self.potato_mint
-            || *m == materials.seeds
-            || *m == materials.wheat
-            || *m == materials.flour
-            || *m == materials.bread
-            || *m == materials.water
-            || *m == materials.coal
-            || *m == materials.meat
-            || *m == materials.stone_blue
-            || *m == materials.stone_purple
-            || *m == materials.stone_red
-            || *m == materials.sand_white
-            || *m == materials.sand_pink
-            || *m == materials.sand_yellow
-            || *m == materials.gem_blue
-            || *m == materials.gem_orange
-            || *m == materials.gem_white
-            || *m == materials.gem_green
-            || *m == materials.flask_blue
-            || *m == materials.flask_yellow
-            || *m == materials.flask_green
-            || *m == materials.flask_pink
-            || *m == materials.flask_purple
-            || *m == materials.love_heart
+        *m == self.data_mint
+            || *m == self.circuit_mint
+            || *m == self.silicon_mint
+            || *m == self.neuron_mint
+            || *m == self.power_mint
+            || *m == self.mind_mint
+            || *m == materials.neuron
+            || *m == materials.synapse
+            || *m == materials.signal
+            || *m == materials.model
+            || *m == materials.power
+            || *m == materials.compute
+            || *m == materials.dataset
+            || *m == materials.blue_core
+            || *m == materials.purple_core
+            || *m == materials.red_core
+            || *m == materials.clear_quartz
+            || *m == materials.rose_quartz
+            || *m == materials.amber_quartz
+            || *m == materials.quantum_bit
+            || *m == materials.neural_chip
+            || *m == materials.photon_bit
+            || *m == materials.bio_chip
+            || *m == materials.cryo_fluid
+            || *m == materials.volt_fluid
+            || *m == materials.bio_fluid
+            || *m == materials.nano_fluid
+            || *m == materials.quantum_fluid
+            || *m == materials.soul_core
     }
 }
 
@@ -219,7 +219,7 @@ impl Rarity {
         }
     }
 
-    /// Стоимость ремонта (STONE за 1 юнит прочности) — тот же паттерн,
+    /// Стоимость ремонта (Silicon за 1 юнит прочности) — тот же паттерн,
     /// что max_hours()/income_multiplier(), константы см. constants.rs.
     /// Yield multiplier in bps for mining. Single source of truth: it used to
     /// be duplicated between `constants::YIELD_BPS_*` and a private
@@ -234,7 +234,7 @@ impl Rarity {
         }
     }
 
-    pub fn repair_stone_cost_per_unit(&self) -> u64 {
+    pub fn repair_silicon_cost_per_unit(&self) -> u64 {
         match self {
             Rarity::Common => REPAIR_SILICON_COMMON,
             Rarity::Uncommon => REPAIR_SILICON_UNCOMMON,
@@ -244,7 +244,7 @@ impl Rarity {
         }
     }
     
-    pub fn repair_wood_cost_per_unit(&self) -> u64 {
+    pub fn repair_circuit_cost_per_unit(&self) -> u64 {
         match self {
             Rarity::Common => REPAIR_CIRCUIT_COMMON,
             Rarity::Uncommon => REPAIR_CIRCUIT_UNCOMMON,
@@ -261,7 +261,7 @@ impl Rarity {
 
 /// Глобальный счётчик заминченных инструментов по редкости — bonding-curve
 /// эскалация цены крафта. [ФАКТ, из аудита index.js реального Ronin-бэкенда]:
-/// там цена крафта росла как `cost.wood + mintedCount * mult`; в присланных
+/// там цена крафта росла как `cost.circuit + mintedCount * mult`; в присланных
 /// файлах этой механики не было вовсе (craft ничего не тратил, кроме
 /// фикс. SOL-комиссии) — восстанавливаю на Solana.
 #[account]
@@ -276,18 +276,18 @@ pub struct RarityCounter {
 #[account]
 #[derive(InitSpace)]
 pub struct CraftEconomy {
-    pub wood_base: [u64; 4],
-    pub stone_base: [u64; 4],
-    pub food_base: [u64; 4],      // [НОВОЕ]
-    pub seeds_base: [u64; 4],     // [НОВОЕ]
-    pub water_base: [u64; 4],     // [НОВОЕ]
-    pub potato_base: [u64; 4],    // [НОВОЕ]
-    pub wood_mult: [u64; 4],
-    pub stone_mult: [u64; 4],
-    pub food_mult: [u64; 4],      // [НОВОЕ]
-    pub seeds_mult: [u64; 4],     // [НОВОЕ]
-    pub water_mult: [u64; 4],     // [НОВОЕ]
-    pub potato_mult: [u64; 4],    // [НОВОЕ]
+    pub circuit_base: [u64; 4],
+    pub silicon_base: [u64; 4],
+    pub data_base: [u64; 4],      // [НОВОЕ]
+    pub neuron_base: [u64; 4],     // [НОВОЕ]
+    pub power_base: [u64; 4],     // [НОВОЕ]
+    pub mind_base: [u64; 4],    // [НОВОЕ]
+    pub circuit_mult: [u64; 4],
+    pub silicon_mult: [u64; 4],
+    pub data_mult: [u64; 4],      // [НОВОЕ]
+    pub neuron_mult: [u64; 4],     // [НОВОЕ]
+    pub power_mult: [u64; 4],     // [НОВОЕ]
+    pub mind_mult: [u64; 4],    // [НОВОЕ]
     pub bump: u8,
 }
 
@@ -449,10 +449,10 @@ pub struct ExplorationCommit {
     /// must not change its odds.
     pub tier: u8,
     /// Resources burned at commit, re-minted on refund.
-    pub food_burned: u64,
-    pub wood_burned: u64,
-    pub stone_burned: u64,
-    pub meat_burned: u64,
+    pub data_burned: u64,
+    pub circuit_burned: u64,
+    pub silicon_burned: u64,
+    pub dataset_burned: u64,
     pub randomness: Pubkey,
     pub seed_slot: u64,
     pub commit_slot: u64,
@@ -500,8 +500,8 @@ pub struct ForgeCommit {
     /// or refund (-> user).
     pub paid_lamports: u64,
     /// Resources burned at commit; re-minted to the user on refund.
-    pub wood_burned: u64,
-    pub stone_burned: u64,
+    pub circuit_burned: u64,
+    pub silicon_burned: u64,
     pub randomness: Pubkey,
     pub seed_slot: u64,
     pub commit_slot: u64,
@@ -674,8 +674,8 @@ pub struct ResourceOrderV2 {
 #[derive(InitSpace)]
 pub struct CraftOrder {
     pub creator: Pubkey,
-    pub wood_needed: u64,
-    pub stone_needed: u64,
+    pub circuit_needed: u64,
+    pub silicon_needed: u64,
     pub premium_lamports: u64,
     pub active: bool,
 }
@@ -700,6 +700,18 @@ pub struct SeasonPass {
     pub claimed_bitmap: u64, // до 42 уровней — влезает в u64 битовую маску
 }
 
+/// One durable claim cursor per player and season. It prevents replay without
+/// allocating a permanent PDA for each frequent XP entitlement. The player
+/// funds this account on their first XP claim for the season.
+#[account]
+#[derive(InitSpace)]
+pub struct SeasonXpClaimCursor {
+    pub owner: Pubkey,
+    pub season_id: u32,
+    pub next_nonce: u32,
+    pub bump: u8,
+}
+
 // =====================================================================
 // [БЛОК L] Хлебная экономика: новые аккаунты
 // =====================================================================
@@ -708,36 +720,36 @@ pub struct SeasonPass {
 #[account]
 #[derive(InitSpace)]
 pub struct MaterialMints {
-    pub seeds: Pubkey,
-    pub wheat: Pubkey,
-    pub flour: Pubkey,
-    pub bread: Pubkey,
-    pub water: Pubkey,
-    pub coal: Pubkey,
-    pub meat: Pubkey,
-    pub stone_blue: Pubkey,
-    pub stone_purple: Pubkey,
-    pub stone_red: Pubkey,
-    pub sand_white: Pubkey,
-    pub sand_pink: Pubkey,
-    pub sand_yellow: Pubkey,
-    pub gem_blue: Pubkey,
-    pub gem_orange: Pubkey,
-    pub gem_white: Pubkey,
-    pub gem_green: Pubkey,
-    pub flask_blue: Pubkey,
-    pub flask_yellow: Pubkey,
-    pub flask_green: Pubkey,
-    pub flask_pink: Pubkey,
-    pub flask_purple: Pubkey,
-    pub love_heart: Pubkey,
+    pub neuron: Pubkey,
+    pub synapse: Pubkey,
+    pub signal: Pubkey,
+    pub model: Pubkey,
+    pub power: Pubkey,
+    pub compute: Pubkey,
+    pub dataset: Pubkey,
+    pub blue_core: Pubkey,
+    pub purple_core: Pubkey,
+    pub red_core: Pubkey,
+    pub clear_quartz: Pubkey,
+    pub rose_quartz: Pubkey,
+    pub amber_quartz: Pubkey,
+    pub quantum_bit: Pubkey,
+    pub neural_chip: Pubkey,
+    pub photon_bit: Pubkey,
+    pub bio_chip: Pubkey,
+    pub cryo_fluid: Pubkey,
+    pub volt_fluid: Pubkey,
+    pub bio_fluid: Pubkey,
+    pub nano_fluid: Pubkey,
+    pub quantum_fluid: Pubkey,
+    pub soul_core: Pubkey,
     pub bump: u8,
     /// [AUDIT F-03] Hard ceiling on the total supply of every resource,
     /// indexed by `ResourceKind as u8` (see `RESOURCE_KIND_COUNT`).
     ///
     /// `IssuanceCap` only ever guarded `mint_resource`/`mint_resource_once`,
-    /// so `collect_mining`, `collect_flour`, `collect_bread`,
-    /// `collect_well_water`, `explore_reveal`, `craft_recipe` and
+    /// so `collect_mining`, `collect_signal`, `collect_model`,
+    /// `collect_power`, `explore_reveal`, `craft_recipe` and
     /// `claim_season_reward` could emit without any bound. This array is
     /// checked by every minting path, whatever the caller, because the check
     /// is a pure function of the mint account supply.
@@ -780,34 +792,34 @@ pub fn init_tool_data(
 pub fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &ResourceKind) -> Pubkey {
     match kind {
         // Старые ресурсы из Config
-        ResourceKind::Data => config.food_mint,
-        ResourceKind::Circuit => config.wood_mint,
-        ResourceKind::Silicon => config.stone_mint,
+        ResourceKind::Data => config.data_mint,
+        ResourceKind::Circuit => config.circuit_mint,
+        ResourceKind::Silicon => config.silicon_mint,
         // [БЛОК L] Новые ресурсы из MaterialMints
-        ResourceKind::Neuron => material_mints.seeds,
-        ResourceKind::Synapse => material_mints.wheat,
-        ResourceKind::Signal => material_mints.flour,
-        ResourceKind::Model => material_mints.bread,
-        ResourceKind::Power => material_mints.water,
-        ResourceKind::Compute => material_mints.coal,
-        ResourceKind::Dataset => material_mints.meat,
-        ResourceKind::BlueCore => material_mints.stone_blue,
-        ResourceKind::PurpleCore => material_mints.stone_purple,
-        ResourceKind::RedCore => material_mints.stone_red,
-        ResourceKind::ClearQuartz => material_mints.sand_white,
-        ResourceKind::RoseQuartz => material_mints.sand_pink,
-        ResourceKind::AmberQuartz => material_mints.sand_yellow,
-        ResourceKind::QuantumBit => material_mints.gem_blue,
-        ResourceKind::NeuralChip => material_mints.gem_orange,
-        ResourceKind::PhotonBit => material_mints.gem_white,
-        ResourceKind::BioChip => material_mints.gem_green,
-        ResourceKind::CryoFluid => material_mints.flask_blue,
-        ResourceKind::VoltFluid => material_mints.flask_yellow,
-        ResourceKind::BioFluid => material_mints.flask_green,
-        ResourceKind::NanoFluid => material_mints.flask_pink,
-        ResourceKind::QuantumFluid => material_mints.flask_purple,
-        ResourceKind::SoulCore => material_mints.love_heart,
-        ResourceKind::Mind => config.potato_mint,
+        ResourceKind::Neuron => material_mints.neuron,
+        ResourceKind::Synapse => material_mints.synapse,
+        ResourceKind::Signal => material_mints.signal,
+        ResourceKind::Model => material_mints.model,
+        ResourceKind::Power => material_mints.power,
+        ResourceKind::Compute => material_mints.compute,
+        ResourceKind::Dataset => material_mints.dataset,
+        ResourceKind::BlueCore => material_mints.blue_core,
+        ResourceKind::PurpleCore => material_mints.purple_core,
+        ResourceKind::RedCore => material_mints.red_core,
+        ResourceKind::ClearQuartz => material_mints.clear_quartz,
+        ResourceKind::RoseQuartz => material_mints.rose_quartz,
+        ResourceKind::AmberQuartz => material_mints.amber_quartz,
+        ResourceKind::QuantumBit => material_mints.quantum_bit,
+        ResourceKind::NeuralChip => material_mints.neural_chip,
+        ResourceKind::PhotonBit => material_mints.photon_bit,
+        ResourceKind::BioChip => material_mints.bio_chip,
+        ResourceKind::CryoFluid => material_mints.cryo_fluid,
+        ResourceKind::VoltFluid => material_mints.volt_fluid,
+        ResourceKind::BioFluid => material_mints.bio_fluid,
+        ResourceKind::NanoFluid => material_mints.nano_fluid,
+        ResourceKind::QuantumFluid => material_mints.quantum_fluid,
+        ResourceKind::SoulCore => material_mints.soul_core,
+        ResourceKind::Mind => config.mind_mint,
     }
 }
 
@@ -955,34 +967,34 @@ pub fn weather_for_day(day_id: u32) -> u8 {
     }
 }
 
-pub fn well_rate_per_hour(weather: u8) -> u64 {
+pub fn grid_rate_per_hour(weather: u8) -> u64 {
     match weather {
-        WEATHER_BLACKOUT => WELL_RATE_BLACKOUT,
-        WEATHER_NOMINAL => WELL_RATE_NOMINAL,
-        WEATHER_SURGE => WELL_RATE_SURGE,
-        WEATHER_FRENZY => WELL_RATE_FRENZY,
-        _ => WELL_RATE_NOMINAL,
+        WEATHER_BLACKOUT => GRID_RATE_BLACKOUT,
+        WEATHER_NOMINAL => GRID_RATE_NOMINAL,
+        WEATHER_SURGE => GRID_RATE_SURGE,
+        WEATHER_FRENZY => GRID_RATE_FRENZY,
+        _ => GRID_RATE_NOMINAL,
     }
 }
 
-/// [SECURITY_CHECKLIST_REVIEW F-D] Water accrued between `last` and `now`
-/// (unix seconds): only the most recent `WELL_MAX_ACCRUAL_SECONDS` count, and
-/// every second is priced at the weather of its own day. The well used to apply
+/// [SECURITY_CHECKLIST_REVIEW F-D] Power accrued between `last` and `now`
+/// (unix seconds): only the most recent `GRID_MAX_ACCRUAL_SECONDS` count, and
+/// every second is priced at the weather of its own day. The grid station used to apply
 /// the *cached* weather to the whole window, so collecting only on frenzy days
 /// (or never cranking a stale frenzy) paid up to 20/h instead of the fair ~9/h.
 /// A 24 h window spans at most two days, so the loop runs at most twice.
-pub fn well_accrual(last: i64, now: i64) -> core::result::Result<u64, crate::errors::AofError> {
+pub fn grid_accrual(last: i64, now: i64) -> core::result::Result<u64, crate::errors::AofError> {
     use crate::errors::AofError;
     if now <= last {
         return Ok(0);
     }
-    let mut t = core::cmp::max(last, now.saturating_sub(WELL_MAX_ACCRUAL_SECONDS as i64));
+    let mut t = core::cmp::max(last, now.saturating_sub(GRID_MAX_ACCRUAL_SECONDS as i64));
     let mut rate_seconds: u128 = 0;
     while t < now {
         let day = t.div_euclid(86_400);
         let segment_end = core::cmp::min(day.saturating_add(1).saturating_mul(86_400), now);
         let seconds = (segment_end - t) as u128;
-        rate_seconds += seconds * well_rate_per_hour(weather_for_day(day as u32)) as u128;
+        rate_seconds += seconds * grid_rate_per_hour(weather_for_day(day as u32)) as u128;
         t = segment_end;
     }
     u64::try_from(rate_seconds / 3600).map_err(|_| AofError::MathOverflow)
@@ -1052,15 +1064,15 @@ mod energy_tests {
     }
 }
 
-/// FarmTile — состояние полевого тайла (пусто/растёт/готово)
+/// LabTile — состояние лабораторной ячейки синтеза Neuron → Synapse (пусто/активно/готово)
 #[account]
 #[derive(InitSpace)]
-pub struct FarmTile {
+pub struct LabTile {
     pub owner: Pubkey,
     pub state: u8, // 0=empty, 1=growing, 2=ready
-    pub planted_at: i64,
+    pub started_at: i64,
     pub ready_at: i64,
-    pub seeds_amount: u64,
+    pub neuron_amount: u64,
     pub bump: u8,
 }
 
@@ -1074,35 +1086,35 @@ pub struct WeatherState {
     pub bump: u8,
 }
 
-/// WellState — колодец игрока (копит воду из погоды)
+/// GridState — сетевой аккумулятор Power игрока
 #[account]
 #[derive(InitSpace)]
-pub struct WellState {
+pub struct GridState {
     pub owner: Pubkey,
-    pub water_buffer: u64,
+    pub power_buffer: u64,
     pub last_collected_at: i64,
     pub bump: u8,
 }
 
-/// MillState — мельница игрока (одна активная партия одновременно)
+/// SignalState — обработчик сигналов игрока (одна активная партия одновременно)
 #[account]
 #[derive(InitSpace)]
-pub struct MillState {
+pub struct SignalState {
     pub owner: Pubkey,
     pub in_progress: bool,
     pub ready_at: i64,
-    pub output_flour: u64,
+    pub output_signal: u64,
     pub bump: u8,
 }
 
-/// OvenState — печь игрока (одна активная партия одновременно)
+/// ModelState — обучение модели игрока (одна активная задача одновременно)
 #[account]
 #[derive(InitSpace)]
-pub struct OvenState {
+pub struct ModelState {
     pub owner: Pubkey,
     pub in_progress: bool,
     pub ready_at: i64,
-    pub output_bread: u64,
+    pub output_model: u64,
     pub fuel_kind: u8, // 0=дрова, 1=уголь
     pub bump: u8,
 }
@@ -1234,29 +1246,29 @@ pub(crate) mod test_support {
 
     pub fn material_mints() -> MaterialMints {
         MaterialMints {
-            seeds: Pubkey::default(),
-            wheat: Pubkey::default(),
-            flour: Pubkey::default(),
-            bread: Pubkey::default(),
-            water: Pubkey::default(),
-            coal: Pubkey::default(),
-            meat: Pubkey::default(),
-            stone_blue: Pubkey::default(),
-            stone_purple: Pubkey::default(),
-            stone_red: Pubkey::default(),
-            sand_white: Pubkey::default(),
-            sand_pink: Pubkey::default(),
-            sand_yellow: Pubkey::default(),
-            gem_blue: Pubkey::default(),
-            gem_orange: Pubkey::default(),
-            gem_white: Pubkey::default(),
-            gem_green: Pubkey::default(),
-            flask_blue: Pubkey::default(),
-            flask_yellow: Pubkey::default(),
-            flask_green: Pubkey::default(),
-            flask_pink: Pubkey::default(),
-            flask_purple: Pubkey::default(),
-            love_heart: Pubkey::default(),
+            neuron: Pubkey::default(),
+            synapse: Pubkey::default(),
+            signal: Pubkey::default(),
+            model: Pubkey::default(),
+            power: Pubkey::default(),
+            compute: Pubkey::default(),
+            dataset: Pubkey::default(),
+            blue_core: Pubkey::default(),
+            purple_core: Pubkey::default(),
+            red_core: Pubkey::default(),
+            clear_quartz: Pubkey::default(),
+            rose_quartz: Pubkey::default(),
+            amber_quartz: Pubkey::default(),
+            quantum_bit: Pubkey::default(),
+            neural_chip: Pubkey::default(),
+            photon_bit: Pubkey::default(),
+            bio_chip: Pubkey::default(),
+            cryo_fluid: Pubkey::default(),
+            volt_fluid: Pubkey::default(),
+            bio_fluid: Pubkey::default(),
+            nano_fluid: Pubkey::default(),
+            quantum_fluid: Pubkey::default(),
+            soul_core: Pubkey::default(),
             bump: 0,
             max_supply: [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT],
         }
@@ -1407,12 +1419,12 @@ mod state_tests {
         let cfg = Config {
             authority: Pubkey::default(),
             treasury: Pubkey::default(),
-            food_mint: Pubkey::new_unique(),
-            wood_mint: Pubkey::new_unique(),
-            stone_mint: Pubkey::new_unique(),
-            seeds_mint: Pubkey::default(),
-            water_mint: Pubkey::default(),
-            potato_mint: Pubkey::default(),
+            data_mint: Pubkey::new_unique(),
+            circuit_mint: Pubkey::new_unique(),
+            silicon_mint: Pubkey::new_unique(),
+            neuron_mint: Pubkey::default(),
+            power_mint: Pubkey::default(),
+            mind_mint: Pubkey::default(),
             craft_fee: 0,
             unstake_fee: 0,
             paused: false,
@@ -1444,9 +1456,9 @@ mod state_tests {
                 "{kind:?} cap lookup reads the wrong slot"
             );
         }
-        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Circuit), cfg.wood_mint);
-        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Silicon), cfg.stone_mint);
-        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Data), cfg.food_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Circuit), cfg.circuit_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Silicon), cfg.silicon_mint);
+        assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Data), cfg.data_mint);
     }
 }
 

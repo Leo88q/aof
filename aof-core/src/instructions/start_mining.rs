@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::StartMining;
 use crate::errors::*;
 use crate::constants::DEFAULT_VILLAGERS;
+use crate::instructions::tool_ownership::assert_token_in_escrow;
 
 /// [НАХОДКА]: в присланном state.rs уже есть тип `Player` с полями
 /// `villagers`/`villagers_available`/`has_tent` и константа PLAYER_SEED/
@@ -31,6 +32,19 @@ pub fn handler(ctx: Context<StartMining>, hours: u8) -> Result<()> {
         player.cooldown_until = 0;
     }
     require!(player.villagers_available > 0, AofError::NoIdleVillagers);
+
+    // Token-primary ownership: инструмент можно запустить в майнинг только пока
+    // его supply-1 токен реально лежит в программе. Флаг `tool.staked`, который
+    // проверяет контекст, — это утверждение программы о себе; здесь проверяется
+    // сам токен. Иначе достаточно было бы снять/перевести токен так, чтобы флаг
+    // остался, и майнинг продолжился бы на инструменте, которого у эскроу нет.
+    assert_token_in_escrow(
+        &ctx.accounts.tool,
+        &ctx.accounts.mint,
+        &ctx.accounts.vault_token,
+        &ctx.accounts.vault.key(),
+    )?;
+
     player.villagers_available -= 1;
 
     let now = Clock::get()?.unix_timestamp;

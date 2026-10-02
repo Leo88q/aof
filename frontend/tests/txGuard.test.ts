@@ -10,6 +10,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   ComputeBudgetProgram, Keypair, MessageV0, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction,
 } from "@solana/web3.js";
@@ -21,7 +22,7 @@ import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 
 const user = Keypair.generate();
 const other = Keypair.generate().publicKey;
-const core = new PublicKey("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+const core = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 const auth = PublicKey.findProgramAddressSync([Buffer.from("auth")], core)[0];
 const coreIx = () => new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) });
 const transaction = (...ix: TransactionInstruction[]) =>
@@ -227,4 +228,116 @@ test('lottery claim/refund intents bind wallet, round, ticket and exact instruct
     const extra = ixFor(action); extra.data = Buffer.concat([extra.data, Buffer.from([1])]);
     assert.equal((await guard(transaction(extra), { intent: intent(action) })).safe, false, `${action}: unexpected data`);
   }
+});
+
+
+test('season XP claim: bound campaign/genesis digests, exact on-chain arguments/accounts, live cluster and expiry', async () => {
+  const { CORE_INSTRUCTIONS } = await import('../src/lib/coreInstructions');
+  const { expectedPayerRentAccounts } = await import('../src/lib/transactionIntent');
+  const { webcrypto } = await import('node:crypto');
+  if (!globalThis.crypto?.subtle) Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
+
+  const userAddress = user.publicKey.toBase58();
+  const authority = Keypair.generate().publicKey;
+  const genesis = Keypair.generate().publicKey.toBase58();
+  const seasonId = 71;
+  const amount = 2_500;
+  const nonce = 4;
+  const expirySlot = '1000';
+  const campaignId = 'season-71-daily:4';
+  const digest = (domain: string, value: string) => createHash('sha256').update(`${domain}\0${value}`, 'utf8').digest();
+  const campaignDigest = digest('AOF_SEASON_XP_CAMPAIGN_V1', campaignId);
+  const genesisHashDigest = digest('AOF_SEASON_XP_GENESIS_V1', genesis);
+  const entitlementId = Buffer.alloc(32, 0x75);
+  const seasonBytes = Buffer.alloc(4); seasonBytes.writeUInt32LE(seasonId);
+  const season = PublicKey.findProgramAddressSync([Buffer.from('season'), seasonBytes], core)[0];
+  const seasonPass = PublicKey.findProgramAddressSync([Buffer.from('season_pass'), user.publicKey.toBuffer(), seasonBytes], core)[0];
+  const cursor = PublicKey.findProgramAddressSync([Buffer.from('season_xp_claim_cursor'), user.publicKey.toBuffer(), seasonBytes], core)[0];
+  const config = PublicKey.findProgramAddressSync([Buffer.from('config')], core)[0];
+  const instructionSpec = CORE_INSTRUCTIONS.find((entry) => entry.name === 'grant_season_xp');
+  assert.ok(instructionSpec, 'generated instruction table contains the XP grant');
+  const data = Buffer.alloc(124);
+  Buffer.from(instructionSpec.discriminator).copy(data, 0);
+  data.writeUInt32LE(amount, 8);
+  data.writeUInt32LE(seasonId, 12);
+  data.writeUInt32LE(nonce, 16);
+  data.writeBigUInt64LE(BigInt(expirySlot), 20);
+  campaignDigest.copy(data, 28);
+  entitlementId.copy(data, 60);
+  genesisHashDigest.copy(data, 92);
+  const ix = new TransactionInstruction({
+    programId: core,
+    data,
+    keys: [
+      { pubkey: config, isSigner: false, isWritable: false },
+      { pubkey: authority, isSigner: true, isWritable: false },
+      { pubkey: user.publicKey, isSigner: true, isWritable: true },
+      { pubkey: season, isSigner: false, isWritable: false },
+      { pubkey: seasonPass, isSigner: false, isWritable: true },
+      { pubkey: cursor, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+  });
+  const tx = transaction(ix);
+  const expectedRent = expectedPayerRentAccounts({
+    kind: 'seasonXpClaim', user: userAddress, authority: authority.toBase58(), seasonId, amount,
+    campaignId, campaignDigest: campaignDigest.toString('hex'), entitlementId: entitlementId.toString('hex'),
+    nonce, expirySlot, clusterGenesisHash: genesis, programId: core.toBase58(),
+    genesisHashDigest: genesisHashDigest.toString('hex'), quote: {} as any,
+  });
+  const rentAccounts = expectedRent.map((account) => ({
+    name: account.name,
+    address: account.address.toBase58(),
+    size: account.size,
+    strategy: account.strategy,
+    exists: false,
+    rentDueLamports: '100000',
+    maxRentLamports: '100000',
+  }));
+  const quote = {
+    version: 1 as const,
+    payer: userAddress,
+    recentBlockhash: tx.recentBlockhash!,
+    lastValidBlockHeight: 200,
+    messageSha256: createHash('sha256').update(tx.serializeMessage()).digest('hex'),
+    networkFeeLamports: '10000',
+    rentLamports: '200000',
+    maxRentLamports: '200000',
+    maxCostLamports: '210000',
+    rentAccounts,
+  };
+  const intent = {
+    kind: 'seasonXpClaim' as const, user: userAddress, authority: authority.toBase58(), seasonId, amount,
+    campaignId, campaignDigest: campaignDigest.toString('hex'), entitlementId: entitlementId.toString('hex'),
+    nonce, expirySlot, clusterGenesisHash: genesis, programId: core.toBase58(),
+    genesisHashDigest: genesisHashDigest.toString('hex'), quote,
+  };
+  const makeRpc = (over: { genesis?: string; slot?: number; height?: number } = {}): any => ({
+    getGenesisHash: async () => over.genesis ?? genesis,
+    getSlot: async () => over.slot ?? 999,
+    getFeeForMessage: async () => ({ value: 10_000 }),
+    getBlockHeight: async () => over.height ?? 100,
+    getAccountInfo: async () => null,
+    getMinimumBalanceForRentExemption: async () => 100_000,
+    simulateTransaction: async () => ({ value: { err: null, logs: [] } }),
+  });
+
+  assert.equal((await guard(tx, { intent }, makeRpc())).safe, true, 'a correct authority-signed entitlement reaches the wallet');
+  assert.equal((await guard(tx, { intent: { ...intent, campaignDigest: '00'.repeat(32) } }, makeRpc())).safe, false,
+    'campaign metadata cannot drift away from the authority-signed digest');
+  assert.equal((await guard(tx, { intent: { ...intent, clusterGenesisHash: other.toBase58() } }, makeRpc())).safe, false,
+    'wrong genesis target is rejected before wallet signing');
+  assert.equal((await guard(tx, { intent }, makeRpc({ genesis: other.toBase58() }))).safe, false,
+    'live RPC genesis must match the signed entitlement');
+  assert.equal((await guard(tx, { intent }, makeRpc({ slot: 1001 }))).safe, false,
+    'expired slot is rejected');
+  assert.equal((await guard(tx, { intent: { ...intent, programId: other.toBase58() } }, makeRpc())).safe, false,
+    'wrong program is rejected');
+  assert.equal((await guard(tx, { intent: { ...intent, amount: amount + 1 } }, makeRpc())).safe, false,
+    'a changed XP amount is rejected');
+  assert.equal((await guard(transaction(new TransactionInstruction({ ...ix, keys: ix.keys.map((key, index) =>
+    index === 3 ? { ...key, pubkey: other } : key) })), { intent }, makeRpc())).safe, false,
+    'a different season account is rejected');
+  assert.equal((await guard(transaction(ix, SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: other, lamports: 1 })),
+    { intent }, makeRpc())).safe, false, 'an extra top-level action is rejected');
 });

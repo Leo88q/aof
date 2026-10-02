@@ -1,4 +1,5 @@
 {
+  "historicalMarker": "HISTORICAL external audit snapshot; superseded by current readiness evidence.",
   "schemaVersion": 1,
   "gameId": "aof",
   "reportType": "remediation-review-NOT-external-rescan",

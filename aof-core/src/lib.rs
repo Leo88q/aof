@@ -18,21 +18,12 @@ pub use state::*;
 pub use constants::*;
 pub use errors::*;
 
-declare_id!("HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+declare_id!("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
-// REBRAND_MAP.md: AOF → NeuroForge renames. Variant ORDER (discriminants)
-// must NOT change — binary compatibility. Every variant sits on its own line
-// as `Name,` because adminAuthSelfTest.ts parses this enum line-by-line.
-//
-// Food→Data, Wood→Circuit, Stone→Silicon, Seeds→Neuron, Wheat→Synapse,
-// Flour→Signal, Bread→Model, Water→Power, Coal→Compute, Meat→Dataset,
-// StoneBlue→BlueCore, StonePurple→PurpleCore, StoneRed→RedCore,
-// SandWhite→ClearQuartz, SandPink→RoseQuartz, SandYellow→AmberQuartz,
-// GemBlue→QuantumBit, GemOrange→NeuralChip, GemWhite→PhotonBit,
-// GemGreen→BioChip, FlaskBlue→CryoFluid, FlaskYellow→VoltFluid,
-// FlaskGreen→BioFluid, FlaskPink→NanoFluid, FlaskPurple→QuantumFluid,
-// LoveHeart→SoulCore, Potato→Mind.
+// Canonical ResourceKind names and their order are the on-chain wire contract.
+// Do not reorder existing variants; historical name mappings are recorded in
+// docs/RESOURCE_DRIFT.md. Append new variants only after explicit layout review.
 pub enum ResourceKind {
     // Базовые ресурсы
     Data,
@@ -85,7 +76,7 @@ pub enum ResourceKind {
 // получает СВОЙ собственный Config, где сам является authority. Дальше
 // вызывает set_resource_mints (тоже проверяет только has_one=authority на
 // ПЕРЕДАННЫЙ config, а не "тот самый" config) на своём config, указывая
-// РЕАЛЬНЫЕ адреса FOOD/WOOD/STONE мintов. Затем вызывает mint_resource со
+// РЕАЛЬНЫЕ адреса DATA/CIRCUIT/SILICON мintов. Затем вызывает mint_resource со
 // своим config + своей подписью authority — has_one=authority проходит
 // (сам себе авторитет), а CPI mint_to подписывается ГЛОБАЛЬНЫМ `auth` PDA
 // (seeds=[AUTH_SEED], НЕ привязан к конкретному config) — то есть
@@ -517,6 +508,19 @@ pub struct SetIssuanceCap<'info> {
     pub issuance_cap: Account<'info, IssuanceCap>,
 }
 
+/// Create a Player profile only with the player's own signature and lamports.
+#[derive(Accounts)]
+pub struct InitPlayer<'info> {
+    #[account(mut)]
+    pub player: Signer<'info>,
+    #[account(
+        init, payer = player, space = PLAYER_SPACE,
+        seeds = [PLAYER_SEED, player.key().as_ref()], bump
+    )]
+    pub player_profile: Account<'info, Player>,
+    pub system_program: Program<'info, System>,
+}
+
 #[derive(Accounts)]
 #[instruction(kind: ResourceKind, amount: u64)]
 pub struct MintResource<'info> {
@@ -538,21 +542,21 @@ pub struct MintResource<'info> {
     pub mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
-        constraint = token_account.mint == mint.key() @ AofError::InvalidMint
+        constraint = token_account.mint == mint.key() @ AofError::InvalidMint,
+        constraint = token_account.owner != authority.key() @ AofError::Unauthorized
     )]
     pub token_account: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ]: withdraw-fee bps по перкам (см. instructions::mint_resource,
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
     #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
     pub treasury_token: Box<Account<'info, TokenAccount>>,
-    /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
-    /// создаём с нулевыми перками — mint_resource не должен блокироваться
-    /// отсутствием профиля.
-    #[account(
-        init_if_needed, payer = authority, space = PLAYER_SPACE,
-        seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
-    )]
-    pub player: Box<Account<'info, Player>>,
+    /// [PAYER] MintResource never creates the recipient's Player profile.
+    /// The player must initialize it with `init_player` first; an absent or
+    /// malformed profile fails closed before any mint CPI.
+    /// CHECK: UncheckedAccount lets the handler return PlayerNotInitialized for
+    /// an absent PDA rather than Anchor's generic AccountNotInitialized.
+    #[account(seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump)]
+    pub player: UncheckedAccount<'info>,
     /// Per-kind issuance budget. Required: a missing PDA fails account
     /// resolution, so an un-initialised cap can never mean "unlimited".
     #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
@@ -582,18 +586,29 @@ pub struct MintResourceOnce<'info> {
     pub mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
-        constraint = token_account.mint == mint.key() @ AofError::InvalidMint
+        constraint = token_account.mint == mint.key() @ AofError::InvalidMint,
+        constraint = token_account.owner != authority.key() @ AofError::Unauthorized
     )]
     pub token_account: Box<Account<'info, TokenAccount>>,
     // [НОВОЕ]: withdraw-fee bps по перкам (см. instructions::mint_resource,
     // перенос `pickFeeBps` из Ronin index.js на materialization ресурсов).
     #[account(mut, constraint = treasury_token.mint == mint.key(), constraint = treasury_token.owner == config.treasury)]
     pub treasury_token: Box<Account<'info, TokenAccount>>,
-    /// CHECK: если Player ещё не создан (новый игрок, ни разу не майнил),
-    /// создаём с нулевыми перками — mint_resource не должен блокироваться
-    /// отсутствием профиля.
+    /// [PAYER] Получатель награды и единственный плательщик этой инструкции:
+    /// `RewardReceipt` — доказательство игрока, а `Player` — его профиль, поэтому
+    /// и rent, и подпись его. Authority больше не оплачивает аккаунты игрока и
+    /// остаётся только авторизацией минта; для claim'а `payer.key()` обязан
+    /// совпасть с владельцем ATA-получателя.
     #[account(
-        init_if_needed, payer = authority, space = PLAYER_SPACE,
+        mut,
+        constraint = payer.key() == token_account.owner @ AofError::Unauthorized,
+        constraint = payer.key() != authority.key() @ AofError::Unauthorized
+    )]
+    pub payer: Signer<'info>,
+    /// Профиль игрока: создаётся вместе с его подписью и за его счёт
+    /// (`init_if_needed`, чтобы выдача работала и для нового кошелька).
+    #[account(
+        init_if_needed, payer = payer, space = PLAYER_SPACE,
         seeds = [PLAYER_SEED, token_account.owner.as_ref()], bump
     )]
     pub player: Box<Account<'info, Player>>,
@@ -605,7 +620,8 @@ pub struct MintResourceOnce<'info> {
     /// in one global namespace: a receipt minted for wallet A permanently
     /// blocked the same reward ID for wallet B (a cross-wallet DoS that looked
     /// like "reward already claimed"). The recipient is now part of the seed.
-    #[account(init, payer = authority, space = 8 + RewardReceipt::INIT_SPACE,
+    /// [PAYER] `init`, но платит игрок: чек — его доказательство выплаты.
+    #[account(init, payer = payer, space = 8 + RewardReceipt::INIT_SPACE,
         seeds = [b"reward_receipt", token_account.owner.as_ref(), reward_id.as_ref()], bump)]
     pub reward_receipt: Box<Account<'info, RewardReceipt>>,
     pub system_program: Program<'info, System>,
@@ -658,14 +674,27 @@ pub struct MintTool<'info> {
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
-    #[account(mut, constraint = token_account.mint == mint.key(), constraint = token_account.amount == 0, constraint = token_account.owner == recipient.key() @ AofError::Unauthorized)]
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = recipient,
+        constraint = token_account.amount == 0,
+        constraint = token_account.owner == recipient.key() @ AofError::Unauthorized
+    )]
     pub token_account: Account<'info, TokenAccount>,
     /// CHECK: explicit recipient of the minted tool; must own `token_account`.
-    #[account(mut)]
+    /// Authority is an authorization key only: it cannot be the recipient.
+    #[account(mut, constraint = recipient.key() != authority.key() @ AofError::Unauthorized)]
     pub recipient: UncheckedAccount<'info>,
+    /// [PAYER] Плательщик и подписант `ToolData` этой выдачи. Для player-mint
+    /// `payer == recipient`; в отдельном operator-authorized/prepaid mint payer
+    /// может отличаться от recipient. Authority — только авторизация и никогда
+    /// не может быть payer или recipient.
+    #[account(mut, constraint = payer.key() != authority.key() @ AofError::Unauthorized)]
+    pub payer: Signer<'info>,
     #[account(
         init_if_needed,
-        payer = authority,
+        payer = payer,
         space = TOOL_DATA_SPACE,
         seeds = [TOOL_SEED, mint.key().as_ref()],
         bump
@@ -742,42 +771,36 @@ pub struct TransferTool<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// Восстановление кэша `ToolData` после обычного SPL-перевода инструмента.
+///
+/// `config` в контексте намеренно отсутствует: синхронизация не двигает
+/// ценность, она лишь приводит кэш в соответствие с токеном. Пауза не должна
+/// оставлять держателя с «замёрзшим» инструментом, который нельзя ни продать,
+/// ни застейкать (exit-path, как в `unstake`/`marketplace_cancel`).
 #[derive(Accounts)]
-#[instruction(tool_type: String, rarity: Rarity, durability: u8)]
-pub struct MigrateTool<'info> {
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ AofError::Unauthorized)]
-    pub config: Account<'info, Config>,
-    /// Migration signer is the configured core authority. Keeping this
-    /// relation in the account constraints avoids a stale hardcoded key.
-    #[account(mut, constraint = migration_authority.key() == config.authority @ AofError::InvalidMigrationAuthority)]
-    pub migration_authority: Signer<'info>,
-    pub authority: Signer<'info>,
-    /// CHECK: auth PDA
-    #[account(seeds = [AUTH_SEED], bump)]
-    pub auth: UncheckedAccount<'info>,
-    /// CHECK: vault PDA
-    #[account(seeds = [VAULT_SEED], bump)]
-    pub vault: UncheckedAccount<'info>,
+pub struct SyncToolOwner<'info> {
+    /// Новый держатель — единственная подпись. Permissionless-синхронизация
+    /// позволила бы постороннему сбросить `operator` у чужого инструмента.
+    pub holder: Signer<'info>,
+    pub mint: Account<'info, Mint>,
     #[account(
         mut,
-        constraint = mint.decimals == 0 @ AofError::InvalidMint,
-        constraint = mint.supply == 0 @ AofError::InvalidMint,
-        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
-        constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
-    )]
-    pub mint: Account<'info, Mint>,
-    #[account(mut, constraint = vault_token_account.mint == mint.key(), constraint = vault_token_account.owner == vault.key(), constraint = vault_token_account.amount == 0)]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    #[account(
-        init_if_needed,
-        payer = migration_authority,
-        space = TOOL_DATA_SPACE,
         seeds = [TOOL_SEED, mint.key().as_ref()],
-        bump
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
     )]
-    pub tool_data: Account<'info, ToolData>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
+    pub tool: Account<'info, ToolData>,
+    /// Доказательство владения: личный ATA держателя с ровно одной единицей.
+    /// `owner == holder` и `amount == 1` вместе отсекают и чужой аккаунт, и
+    /// произвольный минт (он всё равно сверяется с `ToolData.mint` выше).
+    /// Escrow-аккаунты (стейк, аренда, листинг, аукцион) принадлежат программе,
+    /// поэтому при активных обязательствах доказательство не проходит.
+    #[account(
+        constraint = holder_token.mint == mint.key() @ AofError::InvalidMint,
+        constraint = holder_token.owner == holder.key() @ AofError::NotToolOwner,
+        constraint = holder_token.amount == 1 @ AofError::ZeroAmount
+    )]
+    pub holder_token: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -844,32 +867,32 @@ pub struct Craft<'info> {
     pub rarity_counter: Box<Account<'info, RarityCounter>>,
     #[account(seeds = [CRAFT_ECONOMY_SEED], bump = craft_economy.bump)]
     pub craft_economy: Box<Account<'info, CraftEconomy>>,
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
-    // ===== [НОВОЕ] FOOD / SEEDS / WATER / POTATO =====
-    #[account(mut, address = config.food_mint)]
-    pub food_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.seeds_mint)]
-    pub seeds_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_seeds.mint == seeds_mint.key(), constraint = user_seeds.owner == user.key())]
-    pub user_seeds: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.water_mint)]
-    pub water_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
-    pub user_water: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.potato_mint)]
-    pub potato_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_potato.mint == potato_mint.key(), constraint = user_potato.owner == user.key())]
-    pub user_potato: Box<Account<'info, TokenAccount>>,
-    // ===== [НОВОЕ] SKR для скидки 15% на POTATO =====
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
+    // ===== [НОВОЕ] DATA / NEURON / POWER / MIND =====
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_data.mint == data_mint.key(), constraint = user_data.owner == user.key())]
+    pub user_data: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.neuron_mint)]
+    pub neuron_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_neuron.mint == neuron_mint.key(), constraint = user_neuron.owner == user.key())]
+    pub user_neuron: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.power_mint)]
+    pub power_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_power.mint == power_mint.key(), constraint = user_power.owner == user.key())]
+    pub user_power: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.mind_mint)]
+    pub mind_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_mind.mint == mind_mint.key(), constraint = user_mind.owner == user.key())]
+    pub user_mind: Box<Account<'info, TokenAccount>>,
+    // ===== [НОВОЕ] SKR для скидки 15% на MIND =====
     #[account(mut)]
     pub skr_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_skr.mint == skr_mint.key(), constraint = user_skr.owner == user.key())]
@@ -881,8 +904,8 @@ pub struct Craft<'info> {
 /// [AUDIT F-09] `reroll` (burn 2 tools of rarity R -> mint 1 of R+1) cost only
 /// 0.06 SOL of gas: no resources, no `rarity_counter` movement. Sixteen Common
 /// tools and 0.90 SOL therefore produced a Legendary, while the craft path for
-/// the same result costs 2 750 WOOD / 2 120 STONE / 1 430 FOOD / 710 SEEDS /
-/// 540 WATER / 630 POTATO (and grows with every craft). Reroll now burns the
+/// the same result costs 2 750 CIRCUIT / 2 120 SILICON / 1 430 DATA / 710 NEURON /
+/// 540 POWER / 630 MIND (and grows with every craft). Reroll now burns the
 /// same bundle the craft curve charges for the target rarity and increments the
 /// rarity counter, so the two progression tracks finally share one sink.
 #[derive(Accounts)]
@@ -970,30 +993,30 @@ pub struct Reroll<'info> {
     pub rarity_counter: Box<Account<'info, RarityCounter>>,
     #[account(seeds = [CRAFT_ECONOMY_SEED], bump = craft_economy.bump)]
     pub craft_economy: Box<Account<'info, CraftEconomy>>,
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.food_mint)]
-    pub food_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.seeds_mint)]
-    pub seeds_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_seeds.mint == seeds_mint.key(), constraint = user_seeds.owner == user.key())]
-    pub user_seeds: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.water_mint)]
-    pub water_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
-    pub user_water: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.potato_mint)]
-    pub potato_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_potato.mint == potato_mint.key(), constraint = user_potato.owner == user.key())]
-    pub user_potato: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_data.mint == data_mint.key(), constraint = user_data.owner == user.key())]
+    pub user_data: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.neuron_mint)]
+    pub neuron_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_neuron.mint == neuron_mint.key(), constraint = user_neuron.owner == user.key())]
+    pub user_neuron: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.power_mint)]
+    pub power_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_power.mint == power_mint.key(), constraint = user_power.owner == user.key())]
+    pub user_power: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.mind_mint)]
+    pub mind_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_mind.mint == mind_mint.key(), constraint = user_mind.owner == user.key())]
+    pub user_mind: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1099,6 +1122,14 @@ pub struct StartMining<'info> {
         bump
     )]
     pub player: Account<'info, Player>,
+    /// CHECK: общий program vault (`[VAULT_SEED]`) — эскроу застейканного инструмента.
+    #[account(seeds = [VAULT_SEED], bump)]
+    pub vault: UncheckedAccount<'info>,
+    /// Токен-аккаунт vault'а: майнинг разрешён только пока сам токен лежит в
+    /// эскроу. Раньше инструкция доверяла флагу `ToolData.staked` и не смотрела
+    /// на токен вообще, поэтому «стейк» был утверждением программы о себе.
+    #[account(mut, constraint = vault_token.owner == vault.key() @ AofError::NotToolOwner, constraint = vault_token.mint == mint.key() @ AofError::InvalidMint)]
+    pub vault_token: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1140,6 +1171,13 @@ pub struct CollectMining<'info> {
         constraint = payout_token.owner == user.key()
     )]
     pub payout_token: Account<'info, TokenAccount>,
+    /// CHECK: общий program vault (`[VAULT_SEED]`) — эскроу застейканного инструмента.
+    #[account(seeds = [VAULT_SEED], bump)]
+    pub vault: UncheckedAccount<'info>,
+    /// См. `StartMining`: награда выплачивается только пока токен действительно
+    /// лежит в эскроу, а не помечен застейканным в кэше.
+    #[account(mut, constraint = vault_token.owner == vault.key() @ AofError::NotToolOwner, constraint = vault_token.mint == mint.key() @ AofError::InvalidMint)]
+    pub vault_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1160,14 +1198,166 @@ pub struct Repair<'info> {
     pub tool: Account<'info, ToolData>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Account<'info, TokenAccount>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Account<'info, TokenAccount>,
+    /// Где реально лежит supply-1 токен ремонтируемого инструмента: личный ATA
+    /// владельца (idle) либо общий program vault (инструмент застейкан).
+    ///
+    /// Раньше `repair` авторизовался только по кэшу `ToolData.owner/operator` и не
+    /// смотрел на токен: владелец, уже переведший инструмент обычным SPL-переводом,
+    /// мог продолжать его чинить. Теперь право ремонта доказывает сам токен.
+    #[account(constraint = tool_token.mint == mint.key() @ AofError::InvalidMint)]
+    pub tool_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+// =========================================================================
+// Делегированные действия арендатора (Этап 8).
+//
+// Арендованный инструмент лежит в `rental_vault` листинга, а не в общем
+// stake-vault: `rental_list` требует `!tool.staked`, `stake` — подписи
+// владельца. Поэтому обычные `start_mining`/`collect_mining`/`repair` для
+// арендатора недостижимы, и право даёт **активная запись аренды**:
+// `RentalAgreement.renter == подписант == ToolData.operator`, инструмент — в
+// эскроу листинга. Контексты намеренно отдельные: у самих себя
+// (`start_mining` и т.д.) аккаунт-списки остаются неизменными, а лишний
+// «пустой» аккаунт соглашения не появляется на стейк-пути.
+//
+// Общая проверка — одна на все три инструкции:
+// `instructions::tool_ownership::assert_rental_delegation`.
+// =========================================================================
+
+#[derive(Accounts)]
+pub struct StartMiningDelegated<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    /// Арендатор: он же `operator` инструмента и `renter` соглашения.
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = !tool.is_mining @ AofError::AlreadyMining,
+    )]
+    pub tool: Account<'info, ToolData>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = PLAYER_SPACE,
+        seeds = [PLAYER_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub player: Account<'info, Player>,
+    #[account(seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    pub rental_listing: Account<'info, RentalListing>,
+    #[account(seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    pub rental_agreement: Account<'info, RentalAgreement>,
+    /// Эскроу аренды: `owner` токен-аккаунта — PDA листинга, а не арендатор.
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive,
+        constraint = rental_vault.amount == 1 @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CollectMiningDelegated<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+        constraint = tool.is_mining @ AofError::NotMining,
+    )]
+    pub tool: Account<'info, ToolData>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        seeds = [PLAYER_SEED, user.key().as_ref()],
+        bump,
+        constraint = player.owner == user.key() @ AofError::Unauthorized,
+    )]
+    pub player: Account<'info, Player>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    /// CHECK: auth PDA, canonical mint authority for resource emissions.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub payout_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        constraint = payout_token.mint == payout_mint.key(),
+        constraint = payout_token.owner == user.key()
+    )]
+    pub payout_token: Account<'info, TokenAccount>,
+    #[account(seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    pub rental_listing: Account<'info, RentalListing>,
+    #[account(seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    pub rental_agreement: Account<'info, RentalAgreement>,
+    /// Read-only: награда платится из emission, токен инструмента не двигается.
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+#[instruction(amount: u8)]
+pub struct RepairDelegated<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    /// Арендатор: ремонтирует своими ресурсами (`user_silicon`/`user_circuit` — его).
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TOOL_SEED, mint.key().as_ref()],
+        bump,
+        constraint = tool.mint == mint.key() @ AofError::InvalidMint,
+        constraint = tool.operator == user.key() @ AofError::NotToolOperator,
+    )]
+    pub tool: Account<'info, ToolData>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Account<'info, TokenAccount>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Account<'info, TokenAccount>,
+    #[account(seeds = [RENTAL_LISTING_SEED, mint.key().as_ref()], bump)]
+    pub rental_listing: Account<'info, RentalListing>,
+    #[account(seeds = [RENTAL_AGREEMENT_SEED, mint.key().as_ref()], bump)]
+    pub rental_agreement: Account<'info, RentalAgreement>,
+    #[account(
+        constraint = rental_vault.owner == rental_listing.key() @ AofError::NotActive,
+        constraint = rental_vault.mint == mint.key() @ AofError::NotActive,
+        constraint = rental_vault.amount == 1 @ AofError::NotActive
+    )]
+    pub rental_vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1802,26 +1992,26 @@ pub struct StartExplorationCommit<'info> {
     )]
     pub exploration_commit: Box<Account<'info, ExplorationCommit>>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.food_mint)]
-    pub food_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_data.mint == data_mint.key(), constraint = user_data.owner == user.key())]
+    pub user_data: Box<Account<'info, TokenAccount>>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
-    // [НОВОЕ] MEAT для исследования — только официальный MaterialMints mint.
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
+    // [НОВОЕ] DATASET для исследования — только официальный MaterialMints mint.
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.meat)]
-    pub meat_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_meat.mint == meat_mint.key(), constraint = user_meat.owner == user.key())]
-    pub user_meat: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.dataset)]
+    pub dataset_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_dataset.mint == dataset_mint.key(), constraint = user_dataset.owner == user.key())]
+    pub user_dataset: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
@@ -1864,14 +2054,14 @@ pub struct ExploreReveal<'info> {
     /// CHECK: the committing player (rent + rewards).
     #[account(mut, address = exploration_commit.user)]
     pub user: UncheckedAccount<'info>,
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = wood_mint, associated_token::authority = user)]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(init_if_needed, payer = cranker, associated_token::mint = stone_mint, associated_token::authority = user)]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(init_if_needed, payer = cranker, associated_token::mint = circuit_mint, associated_token::authority = user)]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(init_if_needed, payer = cranker, associated_token::mint = silicon_mint, associated_token::authority = user)]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
@@ -1936,22 +2126,22 @@ pub struct ExploreExpire<'info> {
     /// CHECK: auth PDA — mint authority of the resources.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(mut, address = config.food_mint)]
-    pub food_mint: Box<Account<'info, Mint>>,
-    #[account(mut, associated_token::mint = food_mint, associated_token::authority = user)]
-    pub user_food: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, associated_token::mint = wood_mint, associated_token::authority = user)]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, associated_token::mint = stone_mint, associated_token::authority = user)]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = material_mints.meat)]
-    pub meat_mint: Box<Account<'info, Mint>>,
-    #[account(mut, associated_token::mint = meat_mint, associated_token::authority = user)]
-    pub user_meat: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = data_mint, associated_token::authority = user)]
+    pub user_data: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = user)]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = user)]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.dataset)]
+    pub dataset_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = user)]
+    pub user_dataset: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -1964,20 +2154,20 @@ pub struct UpgradeExplorationTier<'info> {
     #[account(mut, seeds = [EXPLORATION_STATE_SEED, user.key().as_ref()], bump, constraint = exploration_state.owner == user.key() @ AofError::Unauthorized)]
     pub exploration_state: Account<'info, ExplorationState>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Account<'info, TokenAccount>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Account<'info, TokenAccount>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.food_mint)]
-    pub food_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Account<'info, TokenAccount>,
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_data.mint == data_mint.key(), constraint = user_data.owner == user.key())]
+    pub user_data: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -2016,20 +2206,20 @@ pub struct ReferralUpgradeCtx<'info> {
     #[account(mut, seeds = [REFERRAL_LINK_SEED, user.key().as_ref()], bump, constraint = referral_link.referred == user.key() @ AofError::Unauthorized)]
     pub referral_link: Account<'info, ReferralLink>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Account<'info, TokenAccount>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Account<'info, TokenAccount>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Account<'info, TokenAccount>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Account<'info, TokenAccount>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.food_mint)]
-    pub food_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_food.mint == food_mint.key(), constraint = user_food.owner == user.key())]
-    pub user_food: Account<'info, TokenAccount>,
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_data.mint == data_mint.key(), constraint = user_data.owner == user.key())]
+    pub user_data: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -2102,15 +2292,15 @@ pub struct ForgeAttemptCommit<'info> {
     )]
     pub forge_commit: Box<Account<'info, ForgeCommit>>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
@@ -2188,8 +2378,8 @@ pub struct ForgeAttemptReveal<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// [F-06] Refund of a forge attempt the oracle never revealed: burned wood and
-/// stone are re-minted to the player's canonical ATAs, the escrowed fee and
+/// [F-06] Refund of a forge attempt the oracle never revealed: burned Circuit and
+/// Silicon are re-minted to the player's canonical ATAs, the escrowed fee and
 /// the rent go back. Permissionless; only once the reveal window has closed.
 #[derive(Accounts)]
 pub struct ForgeAttemptExpire<'info> {
@@ -2212,14 +2402,14 @@ pub struct ForgeAttemptExpire<'info> {
     /// CHECK: auth PDA — mint authority ресурсов.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
-    #[account(mut, associated_token::mint = wood_mint, associated_token::authority = user)]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, associated_token::mint = stone_mint, associated_token::authority = user)]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = user)]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = user)]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -2892,7 +3082,7 @@ pub struct InitMaterialMints<'info> {
 // [БЛОК L] Посадка семян на полевой тайл
 #[derive(Accounts)]
 #[instruction(tile_index: u8)]
-pub struct PlantSeeds<'info> {
+pub struct PlantNeuron<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -2910,20 +3100,20 @@ pub struct PlantSeeds<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = FARM_TILE_SPACE,
-        seeds = [FARM_TILE_SEED, user.key().as_ref(), &[tile_index]],
+        space = LAB_TILE_SPACE,
+        seeds = [LAB_TILE_SEED, user.key().as_ref(), &[tile_index]],
         bump
     )]
-    pub farm_tile: Box<Account<'info, FarmTile>>,
+    pub lab_tile: Box<Account<'info, LabTile>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.seeds)]
-    pub seeds_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = material_mints.neuron)]
+    pub neuron_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
-        constraint = user_seeds.mint == seeds_mint.key(),
-        constraint = user_seeds.owner == user.key()
+        constraint = user_neuron.mint == neuron_mint.key(),
+        constraint = user_neuron.owner == user.key()
     )]
-    pub user_seeds: Box<Account<'info, TokenAccount>>,
+    pub user_neuron: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2931,7 +3121,7 @@ pub struct PlantSeeds<'info> {
 // [БЛОК L] Сбор пшеницы с готового тайла
 #[derive(Accounts)]
 #[instruction(tile_index: u8)]
-pub struct HarvestWheat<'info> {
+pub struct HarvestSynapse<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -2948,10 +3138,10 @@ pub struct HarvestWheat<'info> {
     pub energy_account: Box<Account<'info, EnergyAccount>>,
     #[account(
         mut,
-        seeds = [FARM_TILE_SEED, user.key().as_ref(), &[tile_index]],
-        bump = farm_tile.bump
+        seeds = [LAB_TILE_SEED, user.key().as_ref(), &[tile_index]],
+        bump = lab_tile.bump
     )]
-    pub farm_tile: Box<Account<'info, FarmTile>>,
+    pub lab_tile: Box<Account<'info, LabTile>>,
     #[account(
         mut,
         seeds = [TOOL_SEED, tool_data.mint.as_ref()],
@@ -2964,21 +3154,21 @@ pub struct HarvestWheat<'info> {
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.wheat)]
-    pub wheat_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = material_mints.synapse)]
+    pub synapse_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
-        constraint = user_wheat.mint == wheat_mint.key(),
-        constraint = user_wheat.owner == user.key()
+        constraint = user_synapse.mint == synapse_mint.key(),
+        constraint = user_synapse.owner == user.key()
     )]
-    pub user_wheat: Box<Account<'info, TokenAccount>>,
+    pub user_synapse: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 // [БЛОК L] Запуск партии помола
 #[derive(Accounts)]
-pub struct StartMilling<'info> {
+pub struct StartSignalProcessing<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -2996,28 +3186,28 @@ pub struct StartMilling<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = MILL_STATE_SPACE,
-        seeds = [MILL_STATE_SEED, user.key().as_ref()],
+        space = SIGNAL_STATE_SPACE,
+        seeds = [SIGNAL_STATE_SEED, user.key().as_ref()],
         bump
     )]
-    pub mill_state: Box<Account<'info, MillState>>,
+    pub signal_state: Box<Account<'info, SignalState>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.wheat)]
-    pub wheat_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = material_mints.synapse)]
+    pub synapse_mint: Box<Account<'info, Mint>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = config.stone_mint)]
-    pub stone_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_wheat.mint == wheat_mint.key(), constraint = user_wheat.owner == user.key())]
-    pub user_wheat: Box<Account<'info, TokenAccount>>,
-    #[account(mut, constraint = user_stone.mint == stone_mint.key(), constraint = user_stone.owner == user.key())]
-    pub user_stone: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_synapse.mint == synapse_mint.key(), constraint = user_synapse.owner == user.key())]
+    pub user_synapse: Box<Account<'info, TokenAccount>>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
+    pub user_silicon: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 // [БЛОК L] Сбор готовой муки
 #[derive(Accounts)]
-pub struct CollectFlour<'info> {
+pub struct CollectSignal<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -3026,25 +3216,25 @@ pub struct CollectFlour<'info> {
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(
         mut,
-        seeds = [MILL_STATE_SEED, user.key().as_ref()],
-        bump = mill_state.bump,
-        constraint = mill_state.owner == user.key() @ AofError::Unauthorized
+        seeds = [SIGNAL_STATE_SEED, user.key().as_ref()],
+        bump = signal_state.bump,
+        constraint = signal_state.owner == user.key() @ AofError::Unauthorized
     )]
-    pub mill_state: Box<Account<'info, MillState>>,
+    pub signal_state: Box<Account<'info, SignalState>>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.flour)]
-    pub flour_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_flour.mint == flour_mint.key(), constraint = user_flour.owner == user.key())]
-    pub user_flour: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.signal)]
+    pub signal_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_signal.mint == signal_mint.key(), constraint = user_signal.owner == user.key())]
+    pub user_signal: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
 // [БЛОК L] Запуск партии выпечки в печи
 #[derive(Accounts)]
-pub struct StartBaking<'info> {
+pub struct StartModelTraining<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -3062,38 +3252,38 @@ pub struct StartBaking<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = OVEN_STATE_SPACE,
-        seeds = [OVEN_STATE_SEED, user.key().as_ref()],
+        space = MODEL_STATE_SPACE,
+        seeds = [MODEL_STATE_SEED, user.key().as_ref()],
         bump
     )]
-    pub oven_state: Box<Account<'info, OvenState>>,
+    pub model_state: Box<Account<'info, ModelState>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.flour)]
-    pub flour_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = material_mints.signal)]
+    pub signal_mint: Box<Account<'info, Mint>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.water)]
-    pub water_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = material_mints.power)]
+    pub power_mint: Box<Account<'info, Mint>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
     // `mut`: token::burn decreases the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.coal)]
-    pub coal_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_flour.mint == flour_mint.key(), constraint = user_flour.owner == user.key())]
-    pub user_flour: Box<Account<'info, TokenAccount>>,
-    #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
-    pub user_water: Box<Account<'info, TokenAccount>>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == user.key())]
-    pub user_wood: Box<Account<'info, TokenAccount>>,
-    #[account(mut, constraint = user_coal.mint == coal_mint.key(), constraint = user_coal.owner == user.key())]
-    pub user_coal: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.compute)]
+    pub compute_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_signal.mint == signal_mint.key(), constraint = user_signal.owner == user.key())]
+    pub user_signal: Box<Account<'info, TokenAccount>>,
+    #[account(mut, constraint = user_power.mint == power_mint.key(), constraint = user_power.owner == user.key())]
+    pub user_power: Box<Account<'info, TokenAccount>>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == user.key())]
+    pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, constraint = user_compute.mint == compute_mint.key(), constraint = user_compute.owner == user.key())]
+    pub user_compute: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 // [БЛОК L] Сбор готового хлеба с печи
 #[derive(Accounts)]
-pub struct CollectBread<'info> {
+pub struct CollectModel<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -3102,19 +3292,19 @@ pub struct CollectBread<'info> {
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(
         mut,
-        seeds = [OVEN_STATE_SEED, user.key().as_ref()],
-        bump = oven_state.bump,
-        constraint = oven_state.owner == user.key() @ AofError::Unauthorized
+        seeds = [MODEL_STATE_SEED, user.key().as_ref()],
+        bump = model_state.bump,
+        constraint = model_state.owner == user.key() @ AofError::Unauthorized
     )]
-    pub oven_state: Box<Account<'info, OvenState>>,
+    pub model_state: Box<Account<'info, ModelState>>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.bread)]
-    pub bread_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_bread.mint == bread_mint.key(), constraint = user_bread.owner == user.key())]
-    pub user_bread: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.model)]
+    pub model_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_model.mint == model_mint.key(), constraint = user_model.owner == user.key())]
+    pub user_model: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -3138,7 +3328,7 @@ pub struct WeatherCrank<'info> {
 
 // [БЛОК L] Сбор воды из колодца
 #[derive(Accounts)]
-pub struct CollectWellWater<'info> {
+pub struct CollectPower<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
@@ -3157,21 +3347,21 @@ pub struct CollectWellWater<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = WELL_STATE_SPACE,
-        seeds = [WELL_STATE_SEED, user.key().as_ref()],
+        space = GRID_STATE_SPACE,
+        seeds = [GRID_STATE_SEED, user.key().as_ref()],
         bump
     )]
-    pub well_state: Box<Account<'info, WellState>>,
+    pub grid_state: Box<Account<'info, GridState>>,
     #[account(seeds = [WEATHER_STATE_SEED], bump = weather_state.bump)]
     pub weather_state: Box<Account<'info, WeatherState>>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = material_mints.water)]
-    pub water_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_water.mint == water_mint.key(), constraint = user_water.owner == user.key())]
-    pub user_water: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = material_mints.power)]
+    pub power_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_power.mint == power_mint.key(), constraint = user_power.owner == user.key())]
+    pub user_power: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -3457,7 +3647,7 @@ pub struct MatchResourceOrdersV2<'info> {
 // ----- Крафт под заказ -----
 
 #[derive(Accounts)]
-#[instruction(wood_needed: u64, stone_needed: u64, premium_lamports: u64)]
+#[instruction(circuit_needed: u64, silicon_needed: u64, premium_lamports: u64)]
 pub struct CraftOrderCreateCtx<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
     pub config: Account<'info, Config>,
@@ -3488,18 +3678,18 @@ pub struct CraftOrderFulfillCtx<'info> {
     /// CHECK: казна
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
-    #[account(address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = fulfiller_wood.mint == wood_mint.key(), constraint = fulfiller_wood.owner == fulfiller.key())]
-    pub fulfiller_wood: Account<'info, TokenAccount>,
-    #[account(mut, constraint = creator_wood.mint == wood_mint.key(), constraint = creator_wood.owner == craft_order.creator, constraint = is_canonical_ata(&creator_wood.key(), &creator_wood.owner, &wood_mint.key()) @ AofError::NonCanonicalTokenAccount)]
-    pub creator_wood: Account<'info, TokenAccount>,
-    #[account(address = config.stone_mint)]
-    pub stone_mint: Account<'info, Mint>,
-    #[account(mut, constraint = fulfiller_stone.mint == stone_mint.key(), constraint = fulfiller_stone.owner == fulfiller.key())]
-    pub fulfiller_stone: Account<'info, TokenAccount>,
-    #[account(mut, constraint = creator_stone.mint == stone_mint.key(), constraint = creator_stone.owner == craft_order.creator, constraint = is_canonical_ata(&creator_stone.key(), &creator_stone.owner, &stone_mint.key()) @ AofError::NonCanonicalTokenAccount)]
-    pub creator_stone: Account<'info, TokenAccount>,
+    #[account(address = config.circuit_mint)]
+    pub circuit_mint: Account<'info, Mint>,
+    #[account(mut, constraint = fulfiller_circuit.mint == circuit_mint.key(), constraint = fulfiller_circuit.owner == fulfiller.key())]
+    pub fulfiller_circuit: Account<'info, TokenAccount>,
+    #[account(mut, constraint = creator_circuit.mint == circuit_mint.key(), constraint = creator_circuit.owner == craft_order.creator, constraint = is_canonical_ata(&creator_circuit.key(), &creator_circuit.owner, &circuit_mint.key()) @ AofError::NonCanonicalTokenAccount)]
+    pub creator_circuit: Account<'info, TokenAccount>,
+    #[account(address = config.silicon_mint)]
+    pub silicon_mint: Account<'info, Mint>,
+    #[account(mut, constraint = fulfiller_silicon.mint == silicon_mint.key(), constraint = fulfiller_silicon.owner == fulfiller.key())]
+    pub fulfiller_silicon: Account<'info, TokenAccount>,
+    #[account(mut, constraint = creator_silicon.mint == silicon_mint.key(), constraint = creator_silicon.owner == craft_order.creator, constraint = is_canonical_ata(&creator_silicon.key(), &creator_silicon.owner, &silicon_mint.key()) @ AofError::NonCanonicalTokenAccount)]
+    pub creator_silicon: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -3555,19 +3745,52 @@ pub struct PurchaseSeasonPass<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Authority-authorized XP settlement. The player is the transaction fee
+/// payer and signs; `init_if_needed` therefore charges the player for a missing
+/// SeasonPass and one per-player/per-season cursor. The authority signature
+/// binds every entitlement field in the instruction data, while the cursor
+/// prevents replay without allocating an account per frequent reward.
 #[derive(Accounts)]
+#[instruction(amount: u32, season_id: u32, nonce: u32, expiry_slot: u64, campaign_digest: [u8; 32], entitlement_id: [u8; 32], genesis_hash_digest: [u8; 32])]
 pub struct GrantSeasonXp<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = authority.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
-    #[account(mut)]
+    /// The project authority authorizes only; it is intentionally read-only.
     pub authority: Signer<'info>,
-    /// CHECK: игрок, которому начисляется XP
-    pub user: UncheckedAccount<'info>,
-    #[account(seeds = [SEASON_SEED, &season.season_id.to_le_bytes()], bump = season.bump)]
+    /// The recipient signs and funds the transaction and any newly created accounts.
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(seeds = [SEASON_SEED, &season_id.to_le_bytes()], bump = season.bump)]
     pub season: Account<'info, Season>,
     #[account(
-        init_if_needed, payer = authority, space = SEASON_PASS_SPACE,
-        seeds = [SEASON_PASS_SEED, user.key().as_ref(), &season.season_id.to_le_bytes()], bump
+        init_if_needed, payer = user, space = SEASON_PASS_SPACE,
+        seeds = [SEASON_PASS_SEED, user.key().as_ref(), &season_id.to_le_bytes()], bump
+    )]
+    pub season_pass: Account<'info, SeasonPass>,
+    #[account(
+        init_if_needed, payer = user, space = SEASON_XP_CLAIM_CURSOR_SPACE,
+        seeds = [SEASON_XP_CLAIM_CURSOR_SEED, user.key().as_ref(), &season_id.to_le_bytes()], bump
+    )]
+    pub claim_cursor: Account<'info, SeasonXpClaimCursor>,
+    pub system_program: Program<'info, System>,
+}
+
+/// [PAYER] Отдельное создание сезонного пропуска: подписывает и оплачивает
+/// только сам игрок, поэтому операторский `grant_season_xp` не может выдать
+/// платный аккаунт бесплатно. `PurchaseSeasonPass` дальше только апгрейдит
+/// существующий пропуск до premium-трека.
+#[derive(Accounts)]
+#[instruction(season_id: u32)]
+pub struct InitSeasonPass<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub player: Signer<'info>,
+    #[account(seeds = [SEASON_SEED, &season_id.to_le_bytes()], bump = season.bump)]
+    pub season: Account<'info, Season>,
+    #[account(
+        init, payer = player, space = SEASON_PASS_SPACE,
+        seeds = [SEASON_PASS_SEED, player.key().as_ref(), &season_id.to_le_bytes()], bump
     )]
     pub season_pass: Account<'info, SeasonPass>,
     pub system_program: Program<'info, System>,
@@ -3583,13 +3806,17 @@ pub struct ClaimSeasonReward<'info> {
     pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(seeds = [SEASON_SEED, &season.season_id.to_le_bytes()], bump = season.bump)]
     pub season: Account<'info, Season>,
-    #[account(mut, seeds = [SEASON_PASS_SEED, season_pass.owner.as_ref(), &season.season_id.to_le_bytes()], bump)]
+    #[account(
+        mut,
+        seeds = [SEASON_PASS_SEED, season_pass.owner.as_ref(), &season.season_id.to_le_bytes()], bump,
+        constraint = season_pass.owner != authority.key() @ AofError::Unauthorized
+    )]
     pub season_pass: Account<'info, SeasonPass>,
     // `mut`: SPL Token mint_to/burn changes the mint supply, so the mint must be writable.
-    #[account(mut, address = config.wood_mint)]
-    pub wood_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_wood.mint == wood_mint.key(), constraint = user_wood.owner == season_pass.owner)]
-    pub user_wood: Account<'info, TokenAccount>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == season_pass.owner)]
+    pub user_circuit: Account<'info, TokenAccount>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
@@ -3653,14 +3880,14 @@ pub mod aof_core {
 
     pub fn set_resource_mints(
         ctx: Context<SetResourceMints>,
-        food_mint: Pubkey,
-        wood_mint: Pubkey,
-        stone_mint: Pubkey,
-        seeds_mint: Pubkey,
-        water_mint: Pubkey,
-        potato_mint: Pubkey,
+        data_mint: Pubkey,
+        circuit_mint: Pubkey,
+        silicon_mint: Pubkey,
+        neuron_mint: Pubkey,
+        power_mint: Pubkey,
+        mind_mint: Pubkey,
     ) -> Result<()> {
-        instructions::set_resource_mints::handler(ctx, food_mint, wood_mint, stone_mint, seeds_mint, water_mint, potato_mint)
+        instructions::set_resource_mints::handler(ctx, data_mint, circuit_mint, silicon_mint, neuron_mint, power_mint, mind_mint)
     }
 
     pub fn init_craft_economy(ctx: Context<InitCraftEconomy>) -> Result<()> {
@@ -3753,12 +3980,12 @@ pub mod aof_core {
 
     pub fn set_craft_economy(
         ctx: Context<SetCraftEconomy>,
-        wood_base: [u64; 4],
-        stone_base: [u64; 4],
-        wood_mult: [u64; 4],
-        stone_mult: [u64; 4],
+        circuit_base: [u64; 4],
+        silicon_base: [u64; 4],
+        circuit_mult: [u64; 4],
+        silicon_mult: [u64; 4],
     ) -> Result<()> {
-        instructions::set_craft_economy::handler(ctx, wood_base, stone_base, wood_mult, stone_mult)
+        instructions::set_craft_economy::handler(ctx, circuit_base, silicon_base, circuit_mult, silicon_mult)
     }
 
     pub fn init_rarity_counter(ctx: Context<InitRarityCounter>, rarity: Rarity) -> Result<()> {
@@ -3768,66 +3995,66 @@ pub mod aof_core {
     /// [БЛОК L] Инициализация MaterialMints PDA с адресами 23 минтов
     pub fn init_material_mints(
         ctx: Context<InitMaterialMints>,
-        seeds: Pubkey,
-        wheat: Pubkey,
-        flour: Pubkey,
-        bread: Pubkey,
-        water: Pubkey,
-        coal: Pubkey,
-        meat: Pubkey,
-        stone_blue: Pubkey,
-        stone_purple: Pubkey,
-        stone_red: Pubkey,
-        sand_white: Pubkey,
-        sand_pink: Pubkey,
-        sand_yellow: Pubkey,
-        gem_blue: Pubkey,
-        gem_orange: Pubkey,
-        gem_white: Pubkey,
-        gem_green: Pubkey,
-        flask_blue: Pubkey,
-        flask_yellow: Pubkey,
-        flask_green: Pubkey,
-        flask_pink: Pubkey,
-        flask_purple: Pubkey,
-        love_heart: Pubkey,
+        neuron: Pubkey,
+        synapse: Pubkey,
+        signal: Pubkey,
+        model: Pubkey,
+        power: Pubkey,
+        compute: Pubkey,
+        dataset: Pubkey,
+        blue_core: Pubkey,
+        purple_core: Pubkey,
+        red_core: Pubkey,
+        clear_quartz: Pubkey,
+        rose_quartz: Pubkey,
+        amber_quartz: Pubkey,
+        quantum_bit: Pubkey,
+        neural_chip: Pubkey,
+        photon_bit: Pubkey,
+        bio_chip: Pubkey,
+        cryo_fluid: Pubkey,
+        volt_fluid: Pubkey,
+        bio_fluid: Pubkey,
+        nano_fluid: Pubkey,
+        quantum_fluid: Pubkey,
+        soul_core: Pubkey,
     ) -> Result<()> {
         instructions::init_material_mints::handler(
-            ctx, seeds, wheat, flour, bread, water, coal, meat,
-            stone_blue, stone_purple, stone_red, sand_white, sand_pink, sand_yellow,
-            gem_blue, gem_orange, gem_white, gem_green,
-            flask_blue, flask_yellow, flask_green, flask_pink, flask_purple, love_heart,
+            ctx, neuron, synapse, signal, model, power, compute, dataset,
+            blue_core, purple_core, red_core, clear_quartz, rose_quartz, amber_quartz,
+            quantum_bit, neural_chip, photon_bit, bio_chip,
+            cryo_fluid, volt_fluid, bio_fluid, nano_fluid, quantum_fluid, soul_core,
         )
     }
 
     /// [БЛОК L] Посадка семян на полевой тайл
-    pub fn plant_seeds(ctx: Context<PlantSeeds>, tile_index: u8, amount: u64) -> Result<()> {
-        instructions::plant_seeds::handler(ctx, tile_index, amount)
+    pub fn plant_neuron(ctx: Context<PlantNeuron>, tile_index: u8, amount: u64) -> Result<()> {
+        instructions::plant_neuron::handler(ctx, tile_index, amount)
     }
 
     /// [БЛОК L] Сбор пшеницы с готового тайла
-    pub fn harvest_wheat(ctx: Context<HarvestWheat>, tile_index: u8) -> Result<()> {
-        instructions::harvest_wheat::handler(ctx, tile_index)
+    pub fn harvest_synapse(ctx: Context<HarvestSynapse>, tile_index: u8) -> Result<()> {
+        instructions::harvest_synapse::handler(ctx, tile_index)
     }
 
     /// [БЛОК L] Запуск партии помола на мельнице
-    pub fn start_milling(ctx: Context<StartMilling>, batch_size: u8) -> Result<()> {
-        instructions::start_milling::handler(ctx, batch_size)
+    pub fn start_signal_processing(ctx: Context<StartSignalProcessing>, batch_size: u8) -> Result<()> {
+        instructions::start_signal_processing::handler(ctx, batch_size)
     }
 
     /// [БЛОК L] Сбор готовой муки с мельницы
-    pub fn collect_flour(ctx: Context<CollectFlour>) -> Result<()> {
-        instructions::collect_flour::handler(ctx)
+    pub fn collect_signal(ctx: Context<CollectSignal>) -> Result<()> {
+        instructions::collect_signal::handler(ctx)
     }
 
     /// [БЛОК L] Запуск партии выпечки в печи (0=дрова, 1=уголь)
-    pub fn start_baking(ctx: Context<StartBaking>, batch_size: u8, fuel_kind: u8) -> Result<()> {
-        instructions::start_baking::handler(ctx, batch_size, fuel_kind)
+    pub fn start_model_training(ctx: Context<StartModelTraining>, batch_size: u8, fuel_kind: u8) -> Result<()> {
+        instructions::start_model_training::handler(ctx, batch_size, fuel_kind)
     }
 
     /// [БЛОК L] Сбор готового хлеба с печи
-    pub fn collect_bread(ctx: Context<CollectBread>) -> Result<()> {
-        instructions::collect_bread::handler(ctx)
+    pub fn collect_model(ctx: Context<CollectModel>) -> Result<()> {
+        instructions::collect_model::handler(ctx)
     }
 
     /// [БЛОК L] Обновление погоды (permissionless, раз в сутки)
@@ -3836,8 +4063,8 @@ pub mod aof_core {
     }
 
     /// [БЛОК L] Сбор воды из колодца
-    pub fn collect_well_water(ctx: Context<CollectWellWater>) -> Result<()> {
-        instructions::collect_well_water::handler(ctx)
+    pub fn collect_power(ctx: Context<CollectPower>) -> Result<()> {
+        instructions::collect_power::handler(ctx)
     }
 
     /// [БЛОК L] Мгновенный крафт гемов/баночек (recipe_id 0-7)
@@ -3872,6 +4099,11 @@ pub mod aof_core {
         instructions::mint_resource::handler(ctx, kind, amount)
     }
 
+    /// Player-funded creation of the player's own profile PDA.
+    pub fn init_player(ctx: Context<InitPlayer>) -> Result<()> {
+        instructions::player::init_player_handler(ctx)
+    }
+
     pub fn mint_resource_once(ctx: Context<MintResourceOnce>, kind: ResourceKind, amount: u64, reward_id: [u8; 32]) -> Result<()> {
         instructions::mint_resource_once::handler(ctx, kind, amount, reward_id)
     }
@@ -3889,13 +4121,15 @@ pub mod aof_core {
         instructions::burn_tool::handler(ctx)
     }
 
-    pub fn migrate_tool(ctx: Context<MigrateTool>, tool_type: String, rarity: Rarity, durability: u8) -> Result<()> {
-        instructions::migrate_tool::handler(ctx, tool_type, rarity, durability)
-    }
-
     /// Канонический перенос инструмента (NFT + владение) одним действием.
     pub fn transfer_tool(ctx: Context<TransferTool>) -> Result<()> {
         instructions::tool_transfer::transfer_handler(ctx)
+    }
+
+    /// Привести кэш `ToolData.owner`/`operator` в соответствие с фактическим
+    /// держателем токена после обычного SPL-перевода. Подписывает новый держатель.
+    pub fn sync_tool_owner(ctx: Context<SyncToolOwner>) -> Result<()> {
+        instructions::sync_tool_owner::sync_handler(ctx)
     }
 
     pub fn craft(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {
@@ -3924,6 +4158,19 @@ pub mod aof_core {
 
     pub fn repair(ctx: Context<Repair>, amount: u8) -> Result<()> {
         instructions::repair::handler(ctx, amount)
+    }
+
+    /// Делегированные действия арендатора: право даёт активная запись аренды.
+    pub fn start_mining_delegated(ctx: Context<StartMiningDelegated>, hours: u8) -> Result<()> {
+        instructions::rental_delegation::start_handler(ctx, hours)
+    }
+
+    pub fn collect_mining_delegated(ctx: Context<CollectMiningDelegated>) -> Result<()> {
+        instructions::rental_delegation::collect_handler(ctx)
+    }
+
+    pub fn repair_delegated(ctx: Context<RepairDelegated>, amount: u8) -> Result<()> {
+        instructions::rental_delegation::repair_handler(ctx, amount)
     }
 
     pub fn burn_nft(ctx: Context<BurnNft>) -> Result<()> {
@@ -4015,7 +4262,7 @@ pub mod aof_core {
     pub fn forge_attempt_reveal(ctx: Context<ForgeAttemptReveal>, params: VrfRevealParams) -> Result<()> {
         instructions::forge::reveal_handler(ctx, params)
     }
-    /// Refund a forge commit the oracle never revealed (re-mint burned wood/stone, return escrowed fee + rent).
+    /// Refund a forge commit the oracle never revealed (re-mint burned Circuit/Silicon, return escrowed fee + rent).
     pub fn forge_attempt_expire(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
         instructions::forge::expire_handler(ctx)
     }
@@ -4045,11 +4292,10 @@ pub mod aof_core {
     pub fn marketplace_list(ctx: Context<MarketplaceList>, price_lamports: u64) -> Result<()> {
         instructions::marketplace::list_handler(ctx, price_lamports)
     }
-    // Keep the old discriminator fail-closed. A new discriminator is essential:
-    // an older deployed binary may ignore trailing args on the unbounded call.
-    pub fn marketplace_buy(ctx: Context<MarketplaceBuy>) -> Result<()> {
-        err!(AofError::FeatureDisabled)
-    }
+    // [Шаг B п.12] Старый неограниченный дискриминатор `marketplace_buy` удалён
+    // из программы: он был always-disabled, а развёртывания не существовало, так
+    // что fail-closed заглушка больше никого не защищает. Проверять цену обязан
+    // только `marketplace_buy_bounded` (max_price_lamports + expires_at).
     pub fn marketplace_buy_bounded(ctx: Context<MarketplaceBuy>, max_price_lamports: u64, expires_at: i64) -> Result<()> {
         instructions::marketplace::buy_handler(ctx, max_price_lamports, expires_at)
     }
@@ -4086,12 +4332,10 @@ pub mod aof_core {
     pub fn rental_list(ctx: Context<RentalListCtx>, owner_split_bps: u16, min_duration: i64, max_duration: i64, price_per_hour_lamports: u64) -> Result<()> {
         instructions::rental::list_handler(ctx, owner_split_bps, min_duration, max_duration, price_per_hour_lamports)
     }
-    // [SECURITY_CHECKLIST_REVIEW F-H] Rental terms can change now (delist and
-    // relist), so a renter must sign a fee ceiling: the old discriminator stays
-    // fail-closed, exactly like marketplace_buy.
-    pub fn rental_start(ctx: Context<RentalStartCtx>, duration_seconds: i64) -> Result<()> {
-        err!(AofError::FeatureDisabled)
-    }
+    // [SECURITY_CHECKLIST_REVIEW F-H] Условия аренды могут меняться (delist +
+    // relist), поэтому арендатор обязан подписать потолок комиссии. Старый
+    // `rental_start` (без потолка) удалён в шаге B п.12: он был always-disabled,
+    // развёртывания не было, и потолок проверяет только `rental_start_bounded`.
     pub fn rental_start_bounded(ctx: Context<RentalStartCtx>, duration_seconds: i64, max_total_fee: u64) -> Result<()> {
         instructions::rental::start_handler(ctx, duration_seconds, max_total_fee)
     }
@@ -4149,8 +4393,8 @@ pub mod aof_core {
     }
 
     // --- Крафт под заказ ---
-    pub fn craft_order_create(ctx: Context<CraftOrderCreateCtx>, wood_needed: u64, stone_needed: u64, premium_lamports: u64) -> Result<()> {
-        instructions::craft_order::create_handler(ctx, wood_needed, stone_needed, premium_lamports)
+    pub fn craft_order_create(ctx: Context<CraftOrderCreateCtx>, circuit_needed: u64, silicon_needed: u64, premium_lamports: u64) -> Result<()> {
+        instructions::craft_order::create_handler(ctx, circuit_needed, silicon_needed, premium_lamports)
     }
     pub fn craft_order_fulfill(ctx: Context<CraftOrderFulfillCtx>) -> Result<()> {
         instructions::craft_order::fulfill_handler(ctx)
@@ -4166,8 +4410,24 @@ pub mod aof_core {
     pub fn purchase_season_pass(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
         instructions::season::purchase_pass_handler(ctx)
     }
-    pub fn grant_season_xp(ctx: Context<GrantSeasonXp>, amount: u32) -> Result<()> {
-        instructions::season::grant_xp_handler(ctx, amount)
+    /// [PAYER] Создание пропуска игроком: его подпись и его rent.
+    pub fn init_season_pass(ctx: Context<InitSeasonPass>, season_id: u32) -> Result<()> {
+        instructions::season::init_pass_handler(ctx, season_id)
+    }
+    /// Authority authorizes one player-signed, player-paid XP entitlement claim.
+    pub fn grant_season_xp(
+        ctx: Context<GrantSeasonXp>,
+        amount: u32,
+        season_id: u32,
+        nonce: u32,
+        expiry_slot: u64,
+        campaign_digest: [u8; 32],
+        entitlement_id: [u8; 32],
+        genesis_hash_digest: [u8; 32],
+    ) -> Result<()> {
+        instructions::season::grant_xp_handler(
+            ctx, amount, season_id, nonce, expiry_slot, campaign_digest, entitlement_id, genesis_hash_digest,
+        )
     }
     pub fn claim_season_reward(ctx: Context<ClaimSeasonReward>, level: u8, premium_track: bool) -> Result<()> {
         instructions::season::claim_reward_handler(ctx, level, premium_track)

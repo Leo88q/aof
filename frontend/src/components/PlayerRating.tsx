@@ -75,7 +75,7 @@ export function PlayerRating({ toUser, context, referenceId, onSubmitted }: Play
             onMouseLeave={() => setHover(0)}
             className="text-3xl transition-transform hover:scale-110 active:scale-95"
           >
-            <span className={(hover || rating) >= star ? "text-wheat-500" : "text-soil-600"}>
+            <span className={(hover || rating) >= star ? "text-accent-500" : "text-soil-600"}>
               ★
             </span>
           </button>
@@ -99,7 +99,7 @@ export function PlayerRating({ toUser, context, referenceId, onSubmitted }: Play
             onClick={handleSubmit}
             type="button"
             disabled={loading || !fromUser}
-            className="w-full mt-3 py-2 bg-wheat-600 text-white text-sm font-semibold rounded-lg hover:bg-wheat-700 transition disabled:opacity-50"
+            className="w-full mt-3 py-2 bg-accent-600 text-white text-sm font-semibold rounded-lg hover:bg-accent-700 transition disabled:opacity-50"
           >
             {loading ? text.sending : text.submit}
           </button>

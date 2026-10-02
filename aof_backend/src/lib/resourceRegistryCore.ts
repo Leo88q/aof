@@ -7,16 +7,16 @@ export type ResourceMintKey = (typeof RESOURCE_MINT_KEYS)[number];
 export type CanonicalResourceMints = Record<ResourceMintKey, PublicKey>;
 
 const CONFIG_FIELDS: Record<ResourceMintKey, string> = {
-  DATA: "foodMint",
-  CIRCUIT: "woodMint",
-  SILICON: "stoneMint",
+  DATA: "dataMint",
+  CIRCUIT: "circuitMint",
+  SILICON: "siliconMint",
   // Historical core ABI field name: this is the IN-GAME MIND resource mint.
-  // The future external Potato SPL mint is not stored in core Config.
-  MIND: "potatoMint",
+  // The separately configured external MIND SPL mint is not stored in core Config.
+  MIND: "mindMint",
   // These two are duplicated in Config for legacy/core instructions and must
   // agree with the canonical MaterialMints entries below.
-  NEURON: "seedsMint",
-  POWER: "waterMint",
+  NEURON: "neuronMint",
+  POWER: "powerMint",
   SYNAPSE: "",
   SIGNAL: "",
   MODEL: "",
@@ -45,29 +45,29 @@ const MATERIAL_FIELDS: Record<ResourceMintKey, string> = {
   CIRCUIT: "",
   SILICON: "",
   MIND: "",
-  NEURON: "seeds",
-  SYNAPSE: "wheat",
-  SIGNAL: "flour",
-  MODEL: "bread",
-  POWER: "water",
-  COMPUTE: "coal",
-  DATASET: "meat",
-  BLUE_CORE: "stone_blue",
-  PURPLE_CORE: "stone_purple",
-  RED_CORE: "stone_red",
-  CLEAR_QUARTZ: "sand_white",
-  ROSE_QUARTZ: "sand_pink",
-  AMBER_QUARTZ: "sand_yellow",
-  QUANTUM_BIT: "gem_blue",
-  NEURAL_CHIP: "gem_orange",
-  PHOTON_BIT: "gem_white",
-  BIO_CHIP: "gem_green",
-  CRYO_FLUID: "flask_blue",
-  VOLT_FLUID: "flask_yellow",
-  BIO_FLUID: "flask_green",
-  NANO_FLUID: "flask_pink",
-  QUANTUM_FLUID: "flask_purple",
-  SOUL_CORE: "love_heart",
+  NEURON: "neuron",
+  SYNAPSE: "synapse",
+  SIGNAL: "signal",
+  MODEL: "model",
+  POWER: "power",
+  COMPUTE: "compute",
+  DATASET: "dataset",
+  BLUE_CORE: "blueCore",
+  PURPLE_CORE: "purpleCore",
+  RED_CORE: "redCore",
+  CLEAR_QUARTZ: "clearQuartz",
+  ROSE_QUARTZ: "roseQuartz",
+  AMBER_QUARTZ: "amberQuartz",
+  QUANTUM_BIT: "quantumBit",
+  NEURAL_CHIP: "neuralChip",
+  PHOTON_BIT: "photonBit",
+  BIO_CHIP: "bioChip",
+  CRYO_FLUID: "cryoFluid",
+  VOLT_FLUID: "voltFluid",
+  BIO_FLUID: "bioFluid",
+  NANO_FLUID: "nanoFluid",
+  QUANTUM_FLUID: "quantumFluid",
+  SOUL_CORE: "soulCore",
 };
 
 function asPublicKey(value: unknown): PublicKey | null {
@@ -106,11 +106,11 @@ export function buildCanonicalResourceMints(
     }
   }
 
-  // Config.seeds_mint and Config.water_mint are still consumed by legacy/core
-  // instructions. They must not silently diverge from MaterialMints.
+  // Config.neuron_mint/power_mint and MaterialMints.neuron/power are consumed by
+  // core instructions; they must not silently diverge.
   for (const [key, configField, materialField] of [
-    ["NEURON", "seedsMint", "seeds"],
-    ["POWER", "waterMint", "water"],
+    ["NEURON", "neuronMint", "neuron"],
+    ["POWER", "powerMint", "power"],
   ] as const) {
     const configKey = asPublicKey(config?.[configField]);
     const materialKey = asPublicKey(materialMints?.[materialField]);

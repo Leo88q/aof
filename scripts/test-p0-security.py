@@ -12,6 +12,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 PATHS = {
     'session': 'programs/aof-session-keys/src/lib.rs',
     'market': 'programs/aof-market/src/lib.rs',
+    'orderbook': 'aof-core/src/instructions/orderbook.rs',
+    'core': 'aof-core/src/lib.rs',
     'lp': 'programs/aof-liquidity/src/state/lp_pool.rs',
     'deposit': 'programs/aof-liquidity/src/instructions/lp_deposit.rs',
     'rebirth': 'programs/aof-rebirth/src/instructions/do_rebirth.rs',
@@ -41,11 +43,23 @@ def check(s):
     assert 'seeds = [SESSION_SEED, authority.key().as_ref()]' in spend, 'SW013'
     assert 'owner = anchor_lang::system_program::ID' in s['session'], 'SW013'
     assert 'address = drum_commit.user' in s['drum'], 'SW013'
-    cancel = body(s['market'], 'pub fn cancel_limit_order')
-    assert 'order_vault.reload()?' in cancel and 'maker_currency.reload()?' in cancel, 'SW008'
-    assert cancel.index('order_vault.reload()?') > cancel.index('token::transfer('), 'SW008'
-    assert cancel.index('maker_currency.reload()?') > cancel.index('token::transfer('), 'SW008'
-    assert 'order.reload()' not in cancel, 'SW008: discards active=false'
+    # SW008 was originally about the retired market::cancel_limit_order path.
+    # The active implementation lives in aof-core and closes its escrow vault
+    # after returning every remaining token, so there is no post-CPI balance read
+    # for which an Account::reload() is required.
+    for marker in ('pub fn cancel_sell_handler(', 'pub fn cancel_sell_handler_v2('):
+        cancel = body(s['orderbook'], marker)
+        assert 'from: ctx.accounts.order_vault.to_account_info()' in cancel, 'SW008'
+        assert 'to: ctx.accounts.maker_token.to_account_info()' in cancel, 'SW008'
+        assert 'authority: ctx.accounts.order.to_account_info()' in cancel, 'SW008'
+        assert cancel.index('token::transfer(') < cancel.index('token::close_account('), 'SW008'
+        assert 'ctx.accounts.order.amount_remaining = 0;' in cancel, 'SW008'
+    for marker in ("pub struct CancelSellOrder<'info>", "pub struct CancelSellOrderV2<'info>"):
+        accounts = body(s['core'], marker)
+        assert "pub maker: Signer<'info>" in accounts and 'close = maker' in accounts, 'SW008'
+        assert 'constraint = order_vault.owner == order.key()' in accounts, 'SW008'
+        assert 'constraint = maker_token.mint == mint.key()' in accounts, 'SW008'
+        assert 'constraint = maker_token.owner == maker.key()' in accounts, 'SW008'
     assert 'init, payer = authority, space = SESSION_SPACE' in s['session'], 'SW016'
     assert 'epoch >= t.computed_epoch' in s['session'], 'SW016'
     # [§3.4] Перерождение больше не заглушка, но и не «бонус даром»: цена и
@@ -65,7 +79,11 @@ def check(s):
     assert 'position.shares.checked_add(shares_minted)' in s['deposit'], 'SW016'
     assert '.checked_div(assets)' in s['lp'], 'SW024'
     assert '.checked_div(total as u128)' in s['lp'], 'SW024'
-    for file, fn in [('market', 'set_fees'), ('market', 'set_paused'), ('market', 'cancel_limit_order'),
+    # The SW027 cancel_limit_order row is a historical finding for a retired
+    # market instruction. The active core orderbook cancellation handlers still
+    # lack a cancellation event; that low-severity telemetry debt needs separate
+    # event/IDL work and is not closed by this source tripwire.
+    for file, fn in [('market', 'set_fees'), ('market', 'set_paused'),
                      ('session', 'session_revoke'), ('session', 'session_pause')]:
         assert 'emit!(' in body(s[file], 'pub fn ' + fn + '('), 'SW027'
     assert 'emit!(RebirthPerformed' in s['rebirth'], 'SW027'
@@ -78,7 +96,7 @@ class SecurityTripwires(unittest.TestCase):
     def test_negative_mutations_are_detected_for_every_rule(self):
         mutations = [
             ('SW001', 'session', "pub authority: Signer<'info>", "pub authority: UncheckedAccount<'info>"),
-            ('SW008', 'market', 'ctx.accounts.order_vault.reload()?;', ''),
+            ('SW008', 'orderbook', 'to: ctx.accounts.maker_token.to_account_info()', 'to: ctx.accounts.order_vault.to_account_info()'),
             ('SW013', 'drum', 'address = drum_commit.user', 'address = user.key()'),
             ('SW016', 'session', 'init, payer = authority, space = SESSION_SPACE', 'init_if_needed, payer = authority, space = SESSION_SPACE'),
             ('SW016', 'rebirth_reset', 'get_associated_token_address(&user_key, &mint_info.key())', 'mint_info.key()'),

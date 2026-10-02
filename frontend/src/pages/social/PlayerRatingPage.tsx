@@ -53,7 +53,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
         sub={UI_ICONS.rewardStar}
       /></div>
       <div className="flex justify-center gap-1 mb-2" aria-hidden="true">{[1, 2, 3, 4, 5].map(s =>
-        <span key={s} className={`text-2xl ${s <= stars ? 'text-wheat-500' : 'text-soil-600'}`}>★</span>)}</div>
+        <span key={s} className={`text-2xl ${s <= stars ? 'text-accent-500' : 'text-soil-600'}`}>★</span>)}</div>
       <p className="text-straw text-sm">{copy.reviews(data.count)}</p>
       <p className="text-straw text-xs mt-2">{copy.communitySource}</p>
     </Card>
@@ -63,11 +63,11 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
         const count = data.distribution[star - 1];
         const pct = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
         return <div key={star} className="flex items-center gap-2">
-          <span className="text-wheat-500 text-sm w-6 inline-flex items-center gap-0.5">
+          <span className="text-accent-500 text-sm w-6 inline-flex items-center gap-0.5">
             <ResourceGlyph icon={UI_ICONS.rewardStar} alt="" className="w-3.5 h-3.5" />{star}
           </span>
           <div className="flex-1 h-2 bg-soil-800 rounded-full overflow-hidden"><motion.div
-            className="h-full bg-wheat-500" initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+            className="h-full bg-accent-500" initial={{ width: 0 }} animate={{ width: `${pct}%` }}
             transition={{ duration: 0.5, delay: (5 - star) * 0.1 }} /></div>
           <span className="text-straw text-xs w-8 text-right">{count}</span>
         </div>;
@@ -80,7 +80,7 @@ export function PlayerRatingPage({ targetUser }: { targetUser?: string }) {
         className="p-2 rounded-lg bg-soil-800/40 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-1">
           <span aria-label={`${r.rating}/5`} className="flex gap-0.5" >{[1, 2, 3, 4, 5].map(s =>
-            <span key={s} aria-hidden="true" className={`text-sm ${s <= r.rating ? 'text-wheat-500' : 'text-soil-600'}`}>★</span>)}</span>
+            <span key={s} aria-hidden="true" className={`text-sm ${s <= r.rating ? 'text-accent-500' : 'text-soil-600'}`}>★</span>)}</span>
           <time dateTime={r.timestamp} className="text-straw text-[10px] shrink-0">{new Date(r.timestamp).toLocaleDateString(language)}</time>
         </div>
         <p className="text-straw text-xs font-mono break-all">{copy.by} {r.fromUser.slice(0, 8)}…{r.fromUser.slice(-8)}</p>

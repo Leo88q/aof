@@ -68,6 +68,35 @@ model InboxItem {
   createdAt    DateTime  @default(now())
 }
 
+/// Durable off-chain grant registry; this stores XP entitlements, never funds.
+model SeasonXpEntitlement {
+  id                 String    @id
+  clusterGenesisHash String
+  programId          String
+  seasonId           Int
+  player             String
+  amount             Int
+  campaignId         String
+  campaignDigest     String
+  nonce              Int
+  expirySlot         String
+  status             String    @default("pending")
+  claimSignature     String?
+  createdAt          DateTime  @default(now())
+  consumedAt         DateTime?
+
+  @@unique([clusterGenesisHash, programId, seasonId, player, nonce], map: "season_xp_scope_nonce_uq")
+  @@unique([clusterGenesisHash, programId, seasonId, player, campaignId], map: "season_xp_campaign_uq")
+  @@index([clusterGenesisHash, programId, player, seasonId, status], map: "season_xp_player_status_idx")
+}
+
+/// Monotonic nonce allocator; the on-chain cursor is the authoritative replay gate.
+model SeasonXpNonceSequence {
+  key       String   @id
+  nextNonce Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 model CompendiumEntry {
   id       String   @id @default(cuid())
   user     String
@@ -519,10 +548,10 @@ model EconomySnapshot {
   id             String   @id @default(cuid())
   timestamp      DateTime @default(now())
   
-  // POTATO метрики
-  potatoSupply   BigInt   // Total supply
-  potatoBurned24h BigInt  // Burned за 24 часа
-  potatoMinted24h BigInt  // Minted за 24 часа
+  // MIND supply metrics
+  mindSupply   BigInt   // Total supply
+  mindBurned24h BigInt  // Burned за 24 часа
+  mindMinted24h BigInt  // Minted за 24 часа
   inflation24h   Float    // Процент инфляции
   
   // Активность

@@ -20,17 +20,21 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, createMint, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createMint, getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
+import { submitWithPayer, waitForAccountOwner } from "./payer-transaction";
 
 const SB_PROGRAM = new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv");
 const SB_QUEUE = new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w");
 const SB_STATE = new PublicKey("7Gs9n5FQMeC9XcEhg281bRZ6VHRrCvqp5Yq1j78HkvNa");
 const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 const ALT_PROGRAM = new PublicKey("AddressLookupTab1e1111111111111111111111111");
+// aof_core::constants::VRF_REFUND_AFTER_SLOTS; pinned in tests/readiness/vrf.test.cjs.
+const REFUND_AFTER_SLOTS = 18_000;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // aof-core constants::PACK_TOOL_TYPES and state::Rarity, in order.
 const PACK_TOOL_TYPES = ["plasma_cutter", "silicon_extractor", "data_harvester"];
 const RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
@@ -59,8 +63,13 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const connection = provider.connection;
+  const providerSigner = (provider.wallet as anchor.Wallet).payer;
+  async function sendWithPayer(builder: any, payer: Keypair, extraSigners: Keypair[] = []) {
+    const tx = await builder.transaction();
+    return submitWithPayer(connection, tx, payer, [...extraSigners, providerSigner]);
+  }
   const idlJson = JSON.parse(fs.readFileSync(process.cwd() + "/target/idl/aof_core.json", "utf8"));
-  if (!idlJson.address) idlJson.address = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+  if (!idlJson.address) idlJson.address = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
   const program: any = new anchor.Program(idlJson as any, provider);
   const pid = program.programId as PublicKey;
   const authority = provider.wallet.publicKey;
@@ -74,13 +83,23 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   };
   const u64le = (n: BN) => n.toArrayLike(Buffer, "le", 8);
   const configPda = pda([B("config")]);
+  const vaultPda = pda([B("vault")]);
+  const programDataPda = PublicKey.findProgramAddressSync(
+    [pid.toBuffer()], new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
+  )[0];
   const vrfAuthority = pda([B("vrf_authority")]);
   const packConfig = pda([B("pack_config"), Buffer.from([0])]);
   const authPda = pda([B("auth")]);
   const zero = PublicKey.default.toBase58();
 
-  const airdrop = async (kp: Keypair, sol = 5) =>
-    connection.confirmTransaction(await connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL));
+  const airdrop = async (kp: Keypair, sol = 5) => {
+    const requested = sol * LAMPORTS_PER_SOL;
+    const signature = await connection.requestAirdrop(kp.publicKey, requested);
+    const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
+  };
 
   async function expectError(p: Promise<any>, code: string) {
     try {
@@ -111,12 +130,12 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     return Object.assign(delta, { fee: meta.fee, pre: (key: PublicKey) => meta.preBalances[index(key)] });
   }
 
-  // The provider wallet is the treasury and pays every fee. On this validator
-  // its balance can end a few lamports off credit - meta.fee (seen: +16), so
-  // its delta gets a small window; the program's own transfers are pinned
-  // exactly through the commit account, the settler and the player.
-  function expectFeePayerDelta(actual: number, expected: number) {
-    expect(actual - expected, `fee payer delta ${actual} vs ${expected}`).to.be.within(-1_000, 1_000);
+  // aof_core::vrf::tool_settlement_rent: SPL Mint::LEN, SPL TokenAccount::LEN,
+  // and TOOL_DATA_SPACE (161, pinned by tests/readiness/rng-economy.test.cjs).
+  async function toolSettlementRent() {
+    const rents = await Promise.all([82, 165, 161].map((bytes) =>
+      connection.getMinimumBalanceForRentExemption(bytes, "confirmed")));
+    return rents.reduce((sum, rent) => sum + rent, 0);
   }
 
   let index = -1;
@@ -128,8 +147,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   let price: BN;
   let odds: number[];
 
-  // Default commitment on purpose: .rpc() confirms at the provider's
-  // commitment, and a stricter read can still see the previous state.
+  // Successful payer-aware sends confirm at `confirmed` before account reads.
   async function readRandomness() {
     const info = await connection.getAccountInfo(randomness);
     if (!info) throw new Error("randomness account missing");
@@ -177,11 +195,17 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   /** A tool NFT issued by the program, as tests/aof_core.ts mintTool does. */
   async function mintTool(owner: Keypair) {
     const mint = await createMint(connection, owner, authPda, null, 0);
-    const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, owner, mint, owner.publicKey)).address;
-    await program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
+    await waitForAccountOwner(connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
+    const tokenAccount = getAssociatedTokenAddressSync(mint, owner.publicKey);
+    const createAta = new Transaction().add(createAssociatedTokenAccountIdempotentInstruction(
+      owner.publicKey, tokenAccount, owner.publicKey, mint, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+    ));
+    await submitWithPayer(connection, createAta, owner);
+    await waitForAccountOwner(connection, tokenAccount, TOKEN_PROGRAM_ID, "tool recipient ATA");
+    await sendWithPayer(program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: owner.publicKey,
-      toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-    }).rpc();
+      payer: owner.publicKey, toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }), owner);
     return { mint, tokenAccount };
   }
 
@@ -190,8 +214,8 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     await airdrop(user);
     const nonce = new BN(Date.now());
     const packCommit = pda([B("pack_commit"), user.publicKey.toBuffer(), u64le(nonce)]);
-    await program.methods.packOpenCommit({ small: {} }, nonce, price)
-      .accounts(commitAccounts(user.publicKey, packCommit, oracle)).signers([user]).rpc();
+    await sendWithPayer(program.methods.packOpenCommit({ small: {} }, nonce, price)
+      .accounts(commitAccounts(user.publicKey, packCommit, oracle)), user);
     return { user, packCommit };
   }
 
@@ -204,6 +228,21 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       console.log("      skipped: no Switchboard program on this validator (CI loads tests/mock-switchboard)");
       this.skip();
     }
+    // The CI expiry-only invocation starts a fresh validator and runs only the
+    // timeout case, so it cannot depend on aof_core.ts having seeded Config and
+    // pack_config first. The normal full-suite path already has these PDAs.
+    if (!(await connection.getAccountInfo(configPda, "confirmed"))) {
+      await sendWithPayer(program.methods.initialize(authority).accounts({
+        config: configPda, authority, auth: authPda, vault: vaultPda,
+        programData: programDataPda, systemProgram: SystemProgram.programId,
+      }), providerSigner);
+    }
+    if (!(await connection.getAccountInfo(packConfig, "confirmed"))) {
+      await sendWithPayer(program.methods.initPackConfig(0, new BN(100_000_000), [6000, 3200, 700, 100, 0]).accounts({
+        config: configPda, authority, packConfig, systemProgram: SystemProgram.programId,
+      }), providerSigner);
+    }
+
     for (let i = 0; i < 64 && index < 0; i += 1) {
       const r = pda([B("vrf_randomness"), u32le(i)]);
       if (!(await connection.getAccountInfo(pda([B("vrf_slot"), r.toBuffer()])))) index = i;
@@ -216,6 +255,22 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const pc = await program.account.packConfig.fetch(packConfig);
     price = pc.priceLamports;
     odds = pc.oddsBps.map(Number);
+
+    // The fast expiry-only CI invocation also starts a fresh validator and
+    // skips the vrf_pool_add test, so provision the one slot it needs here.
+    if (process.env.AOF_VRF_EXPIRY_ONLY === "1" && !(await connection.getAccountInfo(vrfSlot, "confirmed"))) {
+      const recentSlot = await connection.getSlot("finalized");
+      const lutSigner = pda([B("LutSigner"), randomness.toBuffer()], SB_PROGRAM);
+      await sendWithPayer(program.methods.vrfPoolAdd(index, new BN(recentSlot)).accounts({
+        config: configPda, operator: authority, vrfAuthority, randomness, vrfSlot,
+        rewardEscrow: getAssociatedTokenAddressSync(NATIVE_MINT, randomness, true),
+        queue: SB_QUEUE, programState: SB_STATE, lutSigner,
+        lut: pda([lutSigner.toBuffer(), new BN(recentSlot).toArrayLike(Buffer, "le", 8)], ALT_PROGRAM),
+        wrappedSolMint: NATIVE_MINT, switchboardProgram: SB_PROGRAM,
+        addressLookupTableProgram: ALT_PROGRAM, tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      }), providerSigner);
+    }
   });
 
   it("vrf_pool_add: only the operator, and the CPI creates a Switchboard-owned account with the program PDA as authority", async () => {
@@ -246,7 +301,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(slot.retired).to.equal(false);
   });
 
-  it("pack commit: escrows the price, seeds from the previous slot's hash, binds the oracle and locks the slot", async () => {
+  it("pack commit: escrows the price, derives randomness from the previous slot's hash, binds the oracle and locks the slot", async () => {
     const oracle = Keypair.generate().publicKey;
     const user = Keypair.generate();
     await airdrop(user);
@@ -263,9 +318,22 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     await expectError(program.methods.packOpenCommit({ small: {} }, nonce, price.subn(1))
       .accounts(commitAccounts(user.publicKey, packCommit, oracle)).signers([user]).rpc(), "PriceAboveMaximum");
 
-    await program.methods.packOpenCommit({ small: {} }, nonce, price)
-      .accounts(commitAccounts(user.publicKey, packCommit, oracle)).signers([user]).rpc();
+    const commitSignature = await sendWithPayer(program.methods.packOpenCommit({ small: {} }, nonce, price)
+      .accounts(commitAccounts(user.publicKey, packCommit, oracle)), user);
+    const commitDelta = await txDeltas(commitSignature);
     const commit = await program.account.packCommit.fetch(packCommit);
+    const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
+    expect(commitInfo).to.not.equal(null);
+    const commitRent = await connection.getMinimumBalanceForRentExemption(commitInfo!.data.length, "confirmed");
+    const settlementCap = await toolSettlementRent();
+    expect(commit.depositLamports.toNumber()).to.equal(settlementCap,
+      "the player-prepaid deposit is exactly Mint + ATA + ToolData rent, not an unbounded cranker quote");
+    expect(commit.paidLamports.toNumber()).to.equal(price.toNumber());
+    expect(commitDelta(packCommit)).to.equal(commitRent + price.toNumber() + settlementCap,
+      "commit PDA receives its rent bond plus the exact escrowed price and capped settlement rent");
+    expect(commitDelta(user.publicKey)).to.equal(-(commitRent + price.toNumber() + settlementCap + commitDelta.fee),
+      "player pays commit rent, price, settlement cap and network fee");
+    expect(commitDelta(authority)).to.equal(0, "authority co-signs but does not pay the player's commit");
     const r = await readRandomness();
     expect(commit.randomness.toBase58()).to.equal(randomness.toBase58());
     expect(r.seedSlot.toString()).to.equal(commit.seedSlot.toString());
@@ -303,7 +371,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       .signers([cranker]).rpc(), "InvalidRandomnessAccount");
 
     const accounts = revealAccounts(cranker.publicKey, user.publicKey, packCommit, oracle);
-    const signature = await program.methods.packOpenReveal(revealParams(value)).accounts(accounts).signers([cranker]).rpc();
+    const signature = await sendWithPayer(program.methods.packOpenReveal(revealParams(value)).accounts(accounts), cranker);
     const d = await txDeltas(signature);
 
     // Outcome = aof-core's roll of the published value for this commit.
@@ -330,10 +398,11 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(await connection.getAccountInfo(packCommit)).to.equal(null);
     const commitLamports = d.pre(packCommit);
     expect(d(packCommit)).to.equal(-commitLamports);
-    if (treasury.equals(authority)) expectFeePayerDelta(d(treasury), commit.paidLamports.toNumber() - d.fee);
-    else expect(d(treasury)).to.equal(commit.paidLamports.toNumber());
+    expect(d(treasury)).to.equal(commit.paidLamports.toNumber(), "treasury receives the price; it does not pay the cranker fee");
     const settlementRent = d(accounts.mint) + d(accounts.userToken) + d(accounts.toolData);
-    expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent);
+    expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent(), "prepaid reimbursement is capped at the live account rent");
+    expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent - d.fee,
+      "cranker fronts exact NFT rent and network fee, then recovers only the rent from the player's cap");
     expect(d(user.publicKey)).to.equal(commitLamports - commit.paidLamports.toNumber() - commit.depositLamports.toNumber());
 
     // Settled once: the commit account is gone.
@@ -353,7 +422,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     await airdrop(cranker, 2);
     const value = crypto.createHash("sha256").update("aof localnet vrf #2").digest();
     const accounts = revealAccounts(cranker.publicKey, user.publicKey, packCommit, oracle);
-    await program.methods.packOpenReveal(revealParams(value)).accounts(accounts).signers([cranker]).rpc();
+    await sendWithPayer(program.methods.packOpenReveal(revealParams(value)).accounts(accounts), cranker);
     const expected = rollTool(value, "pack", packCommit, odds);
     const tool = await program.account.toolData.fetch(accounts.toolData);
     expect(Object.keys(tool.rarity)[0]).to.equal(RARITIES[expected.rarity]);
@@ -372,20 +441,20 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     await airdrop(user);
     const { mint: burnMint, tokenAccount: burnToken } = await mintTool(user);
     const gastank = pda([B("gastank"), user.publicKey.toBuffer()]);
-    await program.methods.depositGas(new BN(100_000_000)).accounts({
+    await sendWithPayer(program.methods.depositGas(new BN(100_000_000)).accounts({
       config: configPda, user: user.publicKey, gastank, systemProgram: SystemProgram.programId,
-    }).signers([user]).rpc();
+    }), user);
     const tankBefore = (await program.account.gasTank.fetch(gastank)).balanceMicros.toNumber();
 
     const oracle = Keypair.generate().publicKey;
     const nonce = new BN(11);
     const rerollCommit = pda([B("reroll_commit"), user.publicKey.toBuffer(), u64le(nonce)]);
-    await program.methods.rerollRandomCommit(nonce).accounts({
+    await sendWithPayer(program.methods.rerollRandomCommit(nonce).accounts({
       config: configPda, authority, user: user.publicKey, gastank, rerollConfig,
       burnTool: pda([B("tool"), burnMint.toBuffer()]), burnMint, burnToken, rerollCommit,
       vrfSlot, randomness, vrfAuthority, queue: SB_QUEUE, oracle, recentSlothashes: SLOT_HASHES,
       switchboardProgram: SB_PROGRAM, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-    }).signers([user]).rpc();
+    }), user);
     // The old tool is gone at commit time: token account and ToolData closed.
     expect(await connection.getAccountInfo(burnToken)).to.equal(null);
     expect(await connection.getAccountInfo(pda([B("tool"), burnMint.toBuffer()]))).to.equal(null);
@@ -398,14 +467,15 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     await airdrop(cranker, 2);
     const value = crypto.createHash("sha256").update("aof localnet vrf reroll").digest();
     const newMint = pda([B("reroll_mint"), rerollCommit.toBuffer()]);
+    const newToken = getAssociatedTokenAddressSync(newMint, user.publicKey);
     const newToolData = pda([B("tool"), newMint.toBuffer()]);
-    const signature = await program.methods.rerollRandomReveal(revealParams(value)).accounts({
+    const signature = await sendWithPayer(program.methods.rerollRandomReveal(revealParams(value)).accounts({
       config: configPda, cranker: cranker.publicKey, rerollCommit, user: user.publicKey, treasury, newMint,
-      newToken: getAssociatedTokenAddressSync(newMint, user.publicKey), newToolData, auth: authPda,
+      newToken, newToolData, auth: authPda,
       ...switchboardRevealAccounts(oracle),
       tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
-    }).signers([cranker]).rpc();
+    }), cranker);
     const d = await txDeltas(signature);
 
     const expected = rollTool(value, "reroll", rerollCommit, rerollOdds);
@@ -413,12 +483,77 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(Object.keys(tool.rarity)[0]).to.equal(RARITIES[expected.rarity]);
     expect(tool.toolType).to.equal(expected.toolType);
     expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
-    expect((await connection.getTokenAccountBalance(getAssociatedTokenAddressSync(newMint, user.publicKey))).value.amount)
-      .to.equal("1");
+    expect((await connection.getTokenAccountBalance(newToken)).value.amount).to.equal("1");
     expect(await connection.getAccountInfo(rerollCommit)).to.equal(null);
     expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero);
-    if (treasury.equals(authority)) expectFeePayerDelta(d(treasury), commit.feeLamports.toNumber() - d.fee);
-    else expect(d(treasury)).to.equal(commit.feeLamports.toNumber());
+    expect(d(treasury)).to.equal(commit.feeLamports.toNumber(), "only the escrowed reroll fee goes to treasury");
+    const settlementRent = d(newMint) + d(newToken) + d(newToolData);
+    expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent());
+    expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent - d.fee,
+      "reroll cranker recovers only prepaid rent and remains the network-fee payer");
     expect(d(rerollCommit)).to.equal(-d.pre(rerollCommit));
   });
+
+  // Run this integration case in its own CI invocation so ordinary tests keep
+  // the validator's default blockhash lifetime and throughput.
+  if (process.env.AOF_TEST_VRF_EXPIRY === "1") {
+    it("pack timeout refund: the validator reaches expiry and returns price, capped deposit, and rent bond to the player", async function () {
+      this.timeout(40 * 60_000);
+      const oracle = Keypair.generate().publicKey;
+      const { user, packCommit } = await commitPack(oracle);
+      const commit = await program.account.packCommit.fetch(packCommit);
+      const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
+      expect(commitInfo).to.not.equal(null);
+      const commitRent = await connection.getMinimumBalanceForRentExemption(commitInfo!.data.length, "confirmed");
+      const settlementCap = await toolSettlementRent();
+      const escrowLamports = commitInfo!.lamports;
+      expect(commit.depositLamports.toNumber()).to.equal(settlementCap);
+      expect(escrowLamports).to.equal(commitRent + commit.paidLamports.toNumber() + settlementCap,
+        "the commit account holds rent bond + price + capped settlement rent");
+      const userBeforeExpiry = await connection.getBalance(user.publicKey, "confirmed");
+      const cranker = Keypair.generate();
+      await airdrop(cranker, 2);
+      const crankerBeforeExpiry = await connection.getBalance(cranker.publicKey, "confirmed");
+      const authorityBefore = await connection.getBalance(authority, "confirmed");
+      const expireBuilder = () => program.methods.packOpenExpire().accounts({
+        config: configPda, packCommit, user: user.publicKey, vrfSlot,
+      });
+
+      await expectError(expireBuilder().rpc(), "CommitNotExpired");
+      expect((await program.account.packCommit.fetch(packCommit)).user.toBase58()).to.equal(user.publicKey.toBase58(),
+        "refund is unavailable before the reveal window closes");
+
+      const targetSlot = commit.commitSlot.toNumber() + REFUND_AFTER_SLOTS;
+      // Agave 4.x does not expose the historical test-only warpSlot JSON-RPC
+      // method. CI's expiry-only invocation uses eight ticks per slot so the
+      // real validator advances the on-chain timeout without shortening the
+      // blockhash window for the rest of the suite.
+      const slotDeadline = Date.now() + 35 * 60_000;
+      let observedSlot = await connection.getSlot("processed");
+      while (observedSlot < targetSlot) {
+        if (Date.now() >= slotDeadline) {
+          throw new Error(`local-validator did not advance to refund slot ${targetSlot}; last observed ${observedSlot}`);
+        }
+        await sleep(1_000);
+        observedSlot = await connection.getSlot("processed");
+      }
+      expect(observedSlot).to.be.at.least(targetSlot,
+        "validator clock reached commit_slot + VRF_REFUND_AFTER_SLOTS");
+
+      const signature = await sendWithPayer(expireBuilder(), cranker);
+      const d = await txDeltas(signature);
+      expect(d.pre(packCommit)).to.equal(escrowLamports);
+      expect(d(packCommit)).to.equal(-escrowLamports, "expiry closes the commit and empties its escrow");
+      expect(d(user.publicKey)).to.equal(escrowLamports,
+        "player receives price + unused deposit + refundable commit rent bond");
+      expect(d(cranker.publicKey)).to.equal(-d.fee, "permissionless expirer pays only its network fee");
+      expect(await connection.getBalance(user.publicKey, "confirmed")).to.equal(userBeforeExpiry + escrowLamports);
+      expect(await connection.getBalance(cranker.publicKey, "confirmed")).to.equal(crankerBeforeExpiry - d.fee);
+      expect(await connection.getBalance(authority, "confirmed")).to.equal(authorityBefore,
+        "authority neither funds expiry nor receives the player's refund");
+      expect(await connection.getAccountInfo(packCommit)).to.equal(null);
+      expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero,
+        "timeout refund releases the pooled randomness slot");
+    });
+  }
 });

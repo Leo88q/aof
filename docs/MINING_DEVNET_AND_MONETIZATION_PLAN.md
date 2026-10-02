@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Devnet-first release gate: mining, Potato, season pass and VIP
 
 **Status (2026-09-30): code prepared, NOT deployed or verified against devnet.** `watchtower/addresses.json` still labels the listed programs `reference-unverified`. No mainnet transaction is authorized by this plan. The owner confirms there are no historical `axe/pick/spear/bow/reaper` NFT ToolData accounts on the target network; resource-entry aliases are a different matter and remain intact.

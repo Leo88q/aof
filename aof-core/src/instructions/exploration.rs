@@ -49,12 +49,12 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> 
         .ok_or(AofError::MathOverflow)?;
     let tier = state.tier;
 
-    // TRIP_COST — {food:75, wood:35, stone:35, meat:50}
+    // TRIP_COST — {data:75, circuit:35, silicon:35, dataset:50}
     for (mint, from, cost) in [
-        (&ctx.accounts.food_mint, &ctx.accounts.user_food, TRIP_COST_FOOD),
-        (&ctx.accounts.wood_mint, &ctx.accounts.user_wood, TRIP_COST_WOOD),
-        (&ctx.accounts.stone_mint, &ctx.accounts.user_stone, TRIP_COST_STONE),
-        (&ctx.accounts.meat_mint, &ctx.accounts.user_meat, TRIP_COST_MEAT),
+        (&ctx.accounts.data_mint, &ctx.accounts.user_data, TRIP_COST_DATA),
+        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit, TRIP_COST_CIRCUIT),
+        (&ctx.accounts.silicon_mint, &ctx.accounts.user_silicon, TRIP_COST_SILICON),
+        (&ctx.accounts.dataset_mint, &ctx.accounts.user_dataset, TRIP_COST_DATASET),
     ] {
         require!(from.amount >= cost, AofError::InsufficientBalance);
         token::burn(
@@ -86,10 +86,10 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> 
     ec.user = ctx.accounts.user.key();
     ec.tool_mint = ctx.accounts.tool_mint.key();
     ec.tier = tier;
-    ec.food_burned = TRIP_COST_FOOD;
-    ec.wood_burned = TRIP_COST_WOOD;
-    ec.stone_burned = TRIP_COST_STONE;
-    ec.meat_burned = TRIP_COST_MEAT;
+    ec.data_burned = TRIP_COST_DATA;
+    ec.circuit_burned = TRIP_COST_CIRCUIT;
+    ec.silicon_burned = TRIP_COST_SILICON;
+    ec.dataset_burned = TRIP_COST_DATASET;
     ec.randomness = ctx.accounts.randomness.key();
     ec.seed_slot = seed_slot;
     ec.commit_slot = clock.slot;
@@ -119,7 +119,7 @@ pub fn trip_outcome(value: &[u8; 32], commit: &Pubkey, tier: u8) -> Result<(bool
     let span = (EXPLORATION_SHARDS_MAX[idx] - EXPLORATION_SHARDS_MIN[idx] + 1) as u64;
     let amount = EXPLORATION_SHARDS_MIN[idx] as u64 + vrf::below(vrf::lane(&roll, 1), span);
     // [ДИЗАЙН-РЕШЕНИЕ, см. constants.rs]: вместо отдельных "шардов"
-    // (которых нет в модели крафта этой программы) — бонусные WOOD/STONE.
+    // (которых нет в модели крафта этой программы) — бонусные CIRCUIT/SILICON.
     Ok((true, amount.checked_mul(RESOURCE_UNIT).ok_or(AofError::MathOverflow)?))
 }
 
@@ -166,12 +166,12 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> R
     let (success, reward) = trip_outcome(&value, &commit_key, tier)?;
     if success {
         // Emission paths check the global supply ceiling before minting.
-        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, reward)?;
-        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, reward)?;
+        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, reward)?;
+        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, reward)?;
         let token_program = ctx.accounts.token_program.to_account_info();
         let auth = ctx.accounts.auth.to_account_info();
-        mint_resource(&token_program, &ctx.accounts.wood_mint.to_account_info(), &ctx.accounts.user_wood.to_account_info(), &auth, ctx.bumps.auth, reward)?;
-        mint_resource(&token_program, &ctx.accounts.stone_mint.to_account_info(), &ctx.accounts.user_stone.to_account_info(), &auth, ctx.bumps.auth, reward)?;
+        mint_resource(&token_program, &ctx.accounts.circuit_mint.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, reward)?;
+        mint_resource(&token_program, &ctx.accounts.silicon_mint.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, reward)?;
     }
 
     emit!(VrfSettled {
@@ -186,8 +186,8 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> R
         user: ctx.accounts.exploration_commit.user,
         tool_mint: ctx.accounts.exploration_commit.tool_mint,
         success,
-        wood_reward: reward,
-        stone_reward: reward,
+        circuit_reward: reward,
+        silicon_reward: reward,
     });
     Ok(())
 }
@@ -203,18 +203,18 @@ pub fn expire_handler(ctx: Context<ExploreExpire>) -> Result<()> {
     vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
 
     let ec = &ctx.accounts.exploration_commit;
-    let (food, wood, stone, meat) = (ec.food_burned, ec.wood_burned, ec.stone_burned, ec.meat_burned);
+    let (data, circuit, silicon, dataset) = (ec.data_burned, ec.circuit_burned, ec.silicon_burned, ec.dataset_burned);
     let mm = &ctx.accounts.material_mints;
-    check_supply_cap(mm, ResourceKind::Data, ctx.accounts.food_mint.supply, food)?;
-    check_supply_cap(mm, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, wood)?;
-    check_supply_cap(mm, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, stone)?;
-    check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.meat_mint.supply, meat)?;
+    check_supply_cap(mm, ResourceKind::Data, ctx.accounts.data_mint.supply, data)?;
+    check_supply_cap(mm, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;
+    check_supply_cap(mm, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;
+    check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.dataset_mint.supply, dataset)?;
     let token_program = ctx.accounts.token_program.to_account_info();
     let auth = ctx.accounts.auth.to_account_info();
-    mint_resource(&token_program, &ctx.accounts.food_mint.to_account_info(), &ctx.accounts.user_food.to_account_info(), &auth, ctx.bumps.auth, food)?;
-    mint_resource(&token_program, &ctx.accounts.wood_mint.to_account_info(), &ctx.accounts.user_wood.to_account_info(), &auth, ctx.bumps.auth, wood)?;
-    mint_resource(&token_program, &ctx.accounts.stone_mint.to_account_info(), &ctx.accounts.user_stone.to_account_info(), &auth, ctx.bumps.auth, stone)?;
-    mint_resource(&token_program, &ctx.accounts.meat_mint.to_account_info(), &ctx.accounts.user_meat.to_account_info(), &auth, ctx.bumps.auth, meat)?;
+    mint_resource(&token_program, &ctx.accounts.data_mint.to_account_info(), &ctx.accounts.user_data.to_account_info(), &auth, ctx.bumps.auth, data)?;
+    mint_resource(&token_program, &ctx.accounts.circuit_mint.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, circuit)?;
+    mint_resource(&token_program, &ctx.accounts.silicon_mint.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, silicon)?;
+    mint_resource(&token_program, &ctx.accounts.dataset_mint.to_account_info(), &ctx.accounts.user_dataset.to_account_info(), &auth, ctx.bumps.auth, dataset)?;
 
     emit!(VrfCommitRefunded {
         mechanic: VRF_MECHANIC_EXPLORATION,
@@ -238,9 +238,9 @@ pub fn upgrade_tier_handler(ctx: Context<UpgradeExplorationTier>) -> Result<()> 
     let cost = EXPLORATION_UPGRADE_COST_PER_TIER[(state.tier - 1) as usize];
 
     for (mint, from) in [
-        (&ctx.accounts.wood_mint, &ctx.accounts.user_wood),
-        (&ctx.accounts.stone_mint, &ctx.accounts.user_stone),
-        (&ctx.accounts.food_mint, &ctx.accounts.user_food),
+        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit),
+        (&ctx.accounts.silicon_mint, &ctx.accounts.user_silicon),
+        (&ctx.accounts.data_mint, &ctx.accounts.user_data),
     ] {
         require!(from.amount >= cost, AofError::InsufficientBalance);
         token::burn(

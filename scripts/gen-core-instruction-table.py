@@ -21,8 +21,13 @@ AUTHORITY_ONLY = {
     "initialize", "set_fees", "set_paused", "set_resource_mints", "init_craft_economy",
     "set_craft_economy", "init_rarity_counter", "init_pack_config", "set_pack_config",
     "init_reroll_config", "set_reroll_config", "init_material_mints", "mint_resource",
-    "mint_resource_once", "mint_tool", "migrate_tool", "pay_out", "pay_out_with_referral",
-    "sweep_gas_fees", "adjust_player_capacity", "grant_season_xp", "init_season",
+    # [PAYER] `mint_tool` и `mint_resource_once` БОЛЬШЕ НЕ authority-only:
+    # получатель подписывает и оплачивает свои аккаунты (ToolData, ATA), а
+    # authority добавляет только авторизацию. Минт в свой кошелёк за свой счёт
+    # безопасен и без интента, но UI обязан передавать toolMint/rewardClaim
+    # интент — он проверяет точный состав инструкции.
+    "pay_out", "pay_out_with_referral",
+    "sweep_gas_fees", "adjust_player_capacity", "init_season",
     "init_issuance_cap", "set_issuance_cap", "set_pending_authority", "accept_authority",
     "cancel_pending_authority", "set_mining_enabled", "init_vault_guard", "set_vault_guard",
     "set_supply_cap", "register_collector_mint", "revoke_collector_mint",
@@ -44,6 +49,17 @@ ACTOR = {
     # transfer_tool signs as `sender`; the recipient is a counterparty and does
     # not have to be the connected wallet.
     "sender",
+}
+
+# Some account names denote a player only for a specific instruction. In
+# sync_tool_owner, `holder` is the new token holder who signs; in other contexts
+# (for example vrf_slot_recover) it is only a destination/subject.
+ACTOR_BY_INSTRUCTION = {
+    "sync_tool_owner": {"holder"},
+    # `player` is a PDA in several instructions; only these contexts use a
+    # player signer/payer and must bind that slot to the connected wallet.
+    "init_season_pass": {"player"},
+    "init_player": {"player"},
 }
 
 # Instructions whose handler reads `ctx.remaining_accounts`: the account list in
@@ -72,7 +88,7 @@ HEADER = """/**
  *   1. any instruction whose 8-byte discriminator is not recognised (an
  *      unrecognised aof-core call is never "probably fine");
  *   2. any authority-only instruction presented for the player to sign - a
- *      player wallet has no business signing `pay_out`, `mint_tool`,
+ *      player wallet has no business signing `pay_out`,
  *      `set_paused` or any other authority instruction;
  *   3. any instruction whose account list length differs from the program's
  *      own context;
@@ -145,7 +161,8 @@ def render() -> str:
     lines = [HEADER.rstrip("\n")]
     for ix in idl["instructions"]:
         names = [a["name"] for a in ix["accounts"]]
-        actors = [i for i, n in enumerate(names) if n in ACTOR]
+        actor_names = ACTOR | ACTOR_BY_INSTRUCTION.get(ix["name"], set())
+        actors = [i for i, n in enumerate(names) if n in actor_names]
         signers = [i for i, a in enumerate(ix["accounts"]) if a.get("signer")]
         lines.append("  {")
         lines.append(f'    name: "{ix["name"]}",')

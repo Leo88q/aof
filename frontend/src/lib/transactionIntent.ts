@@ -2,10 +2,10 @@ import { PublicKey } from "@solana/web3.js";
 import { positiveU64 } from "./amounts";
 import { coreInstructionSpec } from "./coreInstructions";
 
-export const CORE_PROGRAM_ID = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+export const CORE_PROGRAM_ID = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
 /** aof-rebirth: постоянный бонус и запись поколения. Идентификатор совпадает
  * с остальными гвардами (Anchor.toml / txGuard AOF_PROGRAMS). */
-export const REBIRTH_PROGRAM_ID = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb";
+export const REBIRTH_PROGRAM_ID = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF";
 /** `do_rebirth` — байты взяты из aof_backend/src/idl/aof_rebirth.json; тест
  * `readiness/rebirth-reset.test.cjs` сверяет их с IDL, чтобы константа не
  * разъехалась с программой молча. */
@@ -98,7 +98,119 @@ export interface RebirthIntent {
   readonly surplus: readonly { readonly mint: string; readonly tokenAccount: string; readonly amountAtoms: string }[];
 }
 
-export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent;
+/**
+ * [PAYER] Минт инструмента: `ToolData` и ATA — аккаунты получателя, поэтому
+ * self-service builder выбирает `payer = recipient = player`, поэтому rent платит игрок,
+ * а не проект. Кошелёк подписывает только собственную выдачу: ровно один
+ * `mint_tool` за свой ATA со своим `ToolData` и ровно одно ленивое создание
+ * этого ATA. Authority (config.operator) добавляет только авторизацию.
+ */
+export type PayerRentStrategy = "init" | "init_if_needed" | "idempotent" | "create";
+export interface PayerRentQuoteLine {
+  readonly name: string;
+  readonly address: string;
+  readonly size: number;
+  readonly strategy: PayerRentStrategy;
+  readonly exists: boolean;
+  readonly rentDueLamports: string;
+  readonly maxRentLamports: string;
+}
+export interface PayerCostQuote {
+  readonly version: 1;
+  readonly payer: string;
+  readonly recentBlockhash: string;
+  readonly lastValidBlockHeight: number;
+  readonly messageSha256: string;
+  readonly networkFeeLamports: string;
+  readonly rentLamports: string;
+  readonly maxRentLamports: string;
+  readonly maxCostLamports: string;
+  readonly rentAccounts: readonly PayerRentQuoteLine[];
+}
+export interface ExpectedPayerRentAccount {
+  readonly name: string;
+  readonly address: PublicKey;
+  readonly size: number;
+  readonly strategy: PayerRentStrategy;
+}
+
+export interface PlayerInitIntent {
+  readonly kind: "playerInit";
+  readonly user: string;
+  readonly quote: PayerCostQuote;
+}
+
+export interface ResourceMintIntent {
+  readonly kind: "resourceMint";
+  readonly user: string;
+  readonly mint: string;
+  readonly authority: string;
+  readonly treasury: string;
+  readonly resourceKind: number;
+  readonly amountAtoms: string;
+  readonly quote: PayerCostQuote;
+}
+
+export interface ToolMintIntent {
+  readonly kind: "toolMint";
+  readonly user: string;
+  readonly mint: string;
+  readonly authority: string;
+  readonly toolType: string;
+  readonly rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  readonly quote: PayerCostQuote;
+}
+
+/**
+ * [PAYER] Claim награды из инбокса: `Player` и `RewardReceipt` — аккаунты
+ * игрока, поэтому платит и подписывает он, а authority добавляет только
+ * авторизацию минта. Кошелёк принимает ровно одну `mint_resource_once` со
+ * своим ATA/профилем/чеком и ровно одно ленивое создание своего ATA; сумма,
+ * вид ресурса и reward_id сверяются с локальным интентом байт в байт.
+ */
+export interface RewardClaimIntent {
+  readonly kind: "rewardClaim";
+  readonly user: string;
+  readonly mint: string;
+  readonly resourceKind: number;
+  readonly amountAtoms: string;
+  /** Кошелёк казны проекта: из него выводится ATA, куда уходит комиссия минта. */
+  readonly treasury: string;
+  /** sha256("AOF_INBOX_REWARD_V1\0" + id) в hex — id письма, а не серверный PDA. */
+  readonly rewardId: string;
+  readonly quote: PayerCostQuote;
+}
+
+/**
+ * [PAYER] Создание сезонного пропуска — действие игрока: подпись и rent его.
+ * Кошелёк подписывает ровно одну `init_season_pass` этого сезона.
+ */
+export interface SeasonPassInitIntent {
+  readonly kind: "seasonPassInit";
+  readonly user: string;
+  readonly seasonId: number;
+  readonly quote: PayerCostQuote;
+}
+
+/** Authority-signed XP entitlement; the player remains signer and fee payer. */
+export interface SeasonXpClaimIntent {
+  readonly kind: "seasonXpClaim";
+  readonly user: string;
+  readonly authority: string;
+  readonly seasonId: number;
+  readonly amount: number;
+  readonly campaignId: string;
+  readonly campaignDigest: string;
+  readonly entitlementId: string;
+  readonly nonce: number;
+  readonly expirySlot: string;
+  readonly clusterGenesisHash: string;
+  readonly programId: string;
+  readonly genesisHashDigest: string;
+  readonly quote: PayerCostQuote;
+}
+
+export type TransactionIntent = MarketplaceBuyIntent | PackOpenIntent | SeasonPassIntent | LotteryTicketIntent | GasTankIntent | CollectorIntent | OrderbookV2Intent | RebirthIntent | PlayerInitIntent | ResourceMintIntent | ToolMintIntent | RewardClaimIntent | SeasonPassInitIntent | SeasonXpClaimIntent;
 export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 40] as const;
 
 /** Signatures a transaction for `intent` may carry: the wallet, plus the
@@ -106,9 +218,17 @@ export const PACK_OPEN_COMMIT_DISCRIMINATOR = [119, 24, 174, 81, 188, 146, 76, 4
 export function expectedSigners(intent: TransactionIntent | undefined): number {
   // packOpen и rebirth co-sign-ятся оператором: без его подписи транзакция не
   // собирается, поэтому кошелёк разрешает вторую подпись.
-  return intent?.kind === "packOpen" || intent?.kind === "rebirth" ? 2 : 1;
+  // Игрок + authority: ко-подписанные игровые операции. Остальное подписывает
+  // только кошелёк игрока.
+  return intent?.kind === "packOpen" || intent?.kind === "rebirth" || intent?.kind === "toolMint"
+    || intent?.kind === "rewardClaim" || intent?.kind === "resourceMint" || intent?.kind === "seasonXpClaim" ? 2 : 1;
 }
-type Instruction = { programId: string; keys: PublicKey[]; data: Uint8Array };
+type Instruction = {
+  programId: string;
+  keys: PublicKey[];
+  data: Uint8Array;
+  metas?: readonly { readonly isSigner: boolean; readonly isWritable: boolean }[];
+};
 
 export function isMarketplaceBuy(ix: Instruction): boolean {
   return ix.programId === CORE_PROGRAM_ID && MARKETPLACE_BUY_DISCRIMINATOR.every((v, i) => ix.data[i] === v);
@@ -121,6 +241,119 @@ function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
   return actual.length === expected.length && expected.every((key, i) => key.equals(actual[i]));
 }
 
+const MAX_QUOTED_NETWORK_FEE_LAMPORTS = 250_000n;
+const MAX_QUOTED_PAYER_COST_LAMPORTS = 20_000_000n;
+const PLAYER_ACCOUNT_SIZE = 59;
+const TOOL_DATA_ACCOUNT_SIZE = 161;
+const REWARD_RECEIPT_ACCOUNT_SIZE = 121;
+const SEASON_PASS_ACCOUNT_SIZE = 57;
+const SEASON_XP_CLAIM_CURSOR_ACCOUNT_SIZE = 49;
+const TOKEN_ACCOUNT_SIZE = 165;
+
+/** Rent-bearing accounts whose identity and allocation the wallet expects for
+ * this intent. A server cannot add an unreviewed rent destination to a quote. */
+export function expectedPayerRentAccounts(intent: TransactionIntent): ExpectedPayerRentAccount[] {
+  if (!("user" in intent)) return [];
+  const user = new PublicKey(intent.user);
+  if (intent.kind === "playerInit") {
+    return [{ name: "player_profile", address: pda("player", user), size: PLAYER_ACCOUNT_SIZE, strategy: "init" }];
+  }
+  if (intent.kind === "seasonPassInit") {
+    const seasonBytes = new Uint8Array(4);
+    new DataView(seasonBytes.buffer).setUint32(0, intent.seasonId, true);
+    const seasonPass = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode("season_pass"), user.toBytes(), seasonBytes], new PublicKey(CORE_PROGRAM_ID),
+    )[0];
+    return [{ name: "season_pass", address: seasonPass, size: SEASON_PASS_ACCOUNT_SIZE, strategy: "init" }];
+  }
+  if (intent.kind === "seasonXpClaim") {
+    const seasonBytes = new Uint8Array(4);
+    new DataView(seasonBytes.buffer).setUint32(0, intent.seasonId, true);
+    const programId = new PublicKey(CORE_PROGRAM_ID);
+    const seasonPass = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode("season_pass"), user.toBytes(), seasonBytes], programId,
+    )[0];
+    const claimCursor = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode("season_xp_claim_cursor"), user.toBytes(), seasonBytes], programId,
+    )[0];
+    return [
+      { name: "season_pass", address: seasonPass, size: SEASON_PASS_ACCOUNT_SIZE, strategy: "init_if_needed" },
+      { name: "season_xp_claim_cursor", address: claimCursor, size: SEASON_XP_CLAIM_CURSOR_ACCOUNT_SIZE, strategy: "init_if_needed" },
+    ];
+  }
+  if (intent.kind === "toolMint") {
+    const mint = new PublicKey(intent.mint);
+    return [
+      { name: "recipient_ata", address: ata(mint, user), size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+      { name: "tool_data", address: pda("tool", mint), size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
+    ];
+  }
+  if (intent.kind === "rewardClaim") {
+    const mint = new PublicKey(intent.mint);
+    const rewardId = hexBytes(intent.rewardId);
+    const programId = new PublicKey(CORE_PROGRAM_ID);
+    const receipt = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode(REWARD_RECEIPT_SEED), user.toBytes(), rewardId], programId,
+    )[0];
+    return [
+      { name: "recipient_ata", address: ata(mint, user), size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+      { name: "player_profile", address: pda("player", user), size: PLAYER_ACCOUNT_SIZE, strategy: "init_if_needed" },
+      { name: "reward_receipt", address: receipt, size: REWARD_RECEIPT_ACCOUNT_SIZE, strategy: "init" },
+    ];
+  }
+  if (intent.kind === "resourceMint") {
+    return [{ name: "recipient_ata", address: ata(new PublicKey(intent.mint), user), size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" }];
+  }
+  return [];
+}
+
+function quoteInteger(value: unknown, label: string): bigint {
+  if (typeof value !== "string" || !/^(0|[1-9][0-9]{0,19})$/.test(value)) throw new Error(`Invalid payer quote ${label}`);
+  const parsed = BigInt(value);
+  if (parsed > (1n << 64n) - 1n) throw new Error(`Invalid payer quote ${label}`);
+  return parsed;
+}
+
+export function validatePayerQuoteForIntent(intent: TransactionIntent, user: PublicKey): void {
+  if (!("quote" in intent)) return;
+  const quote = intent.quote;
+  const expected = expectedPayerRentAccounts(intent);
+  if (!quote || quote.version !== 1 || quote.payer !== user.toBase58() ||
+      typeof quote.recentBlockhash !== "string" || !Number.isSafeInteger(quote.lastValidBlockHeight) ||
+      quote.lastValidBlockHeight <= 0 || !/^[0-9a-f]{64}$/.test(quote.messageSha256) ||
+      !Array.isArray(quote.rentAccounts) || quote.rentAccounts.length !== expected.length) {
+    throw new Error("Invalid or unbound payer quote");
+  }
+  // A Solana blockhash is a 32-byte public key; reject malformed expiry anchors.
+  if (new PublicKey(quote.recentBlockhash).toBase58() !== quote.recentBlockhash) throw new Error("Invalid payer quote blockhash");
+
+  const networkFee = quoteInteger(quote.networkFeeLamports, "network fee");
+  const quotedDue = quoteInteger(quote.rentLamports, "rent due");
+  const quotedMaxRent = quoteInteger(quote.maxRentLamports, "maximum rent");
+  const maxCost = quoteInteger(quote.maxCostLamports, "maximum cost");
+  if (networkFee > MAX_QUOTED_NETWORK_FEE_LAMPORTS || maxCost > MAX_QUOTED_PAYER_COST_LAMPORTS ||
+      maxCost !== networkFee + quotedMaxRent) throw new Error("Payer quote exceeds the local cost ceiling");
+
+  let dueSum = 0n;
+  let rentSum = 0n;
+  expected.forEach((account, index) => {
+    const line = quote.rentAccounts[index];
+    if (!line || line.name !== account.name || line.address !== account.address.toBase58() ||
+        line.size !== account.size || line.strategy !== account.strategy || typeof line.exists !== "boolean") {
+      throw new Error("Payer quote rent account differs from the local intent");
+    }
+    const due = quoteInteger(line.rentDueLamports, `${account.name} rent due`);
+    const max = quoteInteger(line.maxRentLamports, `${account.name} maximum rent`);
+    if (max <= 0n || due > max || due !== (line.exists ? 0n : max) ||
+        ((account.strategy === "init" || account.strategy === "create") && line.exists)) {
+      throw new Error("Payer quote contains an invalid rent charge");
+    }
+    dueSum += due;
+    rentSum += max;
+  });
+  if (dueSum !== quotedDue || rentSum !== quotedMaxRent) throw new Error("Payer quote totals do not reconcile");
+}
+
 /**
  * [AUDIT F-32] Generic aof-core instruction policy, applied to every
  * transaction the player is asked to sign.
@@ -130,11 +363,15 @@ function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
  * compromised) backend could swap the discriminator, append an instruction, or
  * move the player into the counterparty's account slot.
  */
-export function validateCoreInstructions(instructions: Instruction[], user: PublicKey): void {
+export function validateCoreInstructions(
+  instructions: Instruction[],
+  user: PublicKey,
+  allowedAuthorityInstructions: readonly string[] = [],
+): void {
   for (const ix of instructions) {
     const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
     if (!spec) continue; // not an aof-core call: txGuard's program policy covers it
-    if (spec.authorityOnly) {
+    if (spec.authorityOnly && !allowedAuthorityInstructions.includes(spec.name)) {
       throw new Error(`Authority-only instruction ${spec.name} cannot be signed by a player wallet`);
     }
     // `trailingAccounts: "pairs"` (reset_for_rebirth) — единственный случай,
@@ -169,15 +406,40 @@ export function validateTransactionIntent(
       [92, 247, 50, 140, 72, 120, 69, 249].every((byte, i) => ix.data[i] === byte))) {
     throw new Error("Unbounded legacy marketplace purchase is disabled");
   }
-  // [AUDIT F-32] Full intent validation exists only for marketplace_buy today,
+  // mint_tool has a dual-signature, player-funded path, but its on-chain
+  // operator/prepaid form permits payer != recipient. A player wallet must
+  // therefore present an explicit local intent that binds payer = recipient
+  // = connected wallet; the generic signer-slot check alone is insufficient.
+  const hasToolMint = instructions.some((ix) =>
+    coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID)?.name === "mint_tool");
+  if (hasToolMint && intent?.kind !== "toolMint") {
+    throw new Error("Tool mint requires a local user intent");
+  }
+  const hasResourceMint = instructions.some((ix) =>
+    coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID)?.name === "mint_resource");
+  if (hasResourceMint && intent?.kind !== "resourceMint") {
+    throw new Error("Resource mint requires a local user intent");
+  }
+  const hasSeasonXpGrant = instructions.some((ix) =>
+    coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID)?.name === "grant_season_xp");
+  if (hasSeasonXpGrant && intent?.kind !== "seasonXpClaim") {
+    throw new Error("Season XP grant requires a local player claim intent");
+  }
+
+  // [AUDIT F-32] Full intent validation exists only for selected flows,
   // but every aof-core instruction can now at least be *named*. Four checks run
   // for every transaction, with or without an intent object:
-  validateCoreInstructions(instructions, user);
+  const allowedAuthorityInstructions = intent?.kind === "resourceMint" ? ["mint_resource"]
+    : intent?.kind === "seasonXpClaim" ? ["grant_season_xp"] : [];
+  validateCoreInstructions(instructions, user, allowedAuthorityInstructions);
 
   if (!intent) {
     if (instructions.some(isMarketplaceBuy)) throw new Error("Marketplace purchase requires a local user intent");
     return; // Other operations still use the existing guard policy, not full intent validation.
   }
+  if ("quote" in intent) validatePayerQuoteForIntent(intent, user);
+  if (intent.kind === "playerInit") return validatePlayerInitIntent(instructions, intent, user);
+  if (intent.kind === "resourceMint") return validateResourceMintIntent(instructions, intent, user);
   if (intent.kind === "packOpen") return validatePackOpenIntent(instructions, intent, user);
   if (intent.kind === "seasonPass") return validateSeasonPassIntent(instructions, intent, user);
   if (intent.kind === "lotteryTicket") return validateLotteryTicketIntent(instructions, intent, user);
@@ -185,6 +447,10 @@ export function validateTransactionIntent(
   if (intent.kind === "collector") return validateCollectorIntent(instructions, intent, user);
   if (intent.kind === "orderbookV2") return validateOrderbookV2Intent(instructions, intent, user);
   if (intent.kind === "rebirth") return validateRebirthIntent(instructions, intent, user);
+  if (intent.kind === "toolMint") return validateToolMintIntent(instructions, intent, user);
+  if (intent.kind === "rewardClaim") return validateRewardClaimIntent(instructions, intent, user);
+  if (intent.kind === "seasonPassInit") return validateSeasonPassInitIntent(instructions, intent, user);
+  if (intent.kind === "seasonXpClaim") return validateSeasonXpClaimIntent(instructions, intent, user);
   if (intent.kind !== "marketplaceBuy") throw new Error("Unsupported transaction intent");
   positiveU64(intent.maxPriceLamports);
   if (!/^[1-9][0-9]{0,15}$/.test(intent.expiresAt) || !Number.isSafeInteger(Number(intent.expiresAt)) ||
@@ -346,6 +612,265 @@ function validateRebirthIntent(instructions: Instruction[], intent: RebirthInten
   ];
   if (!keysEqual(instructions[1].keys, expectedRebirthKeys)) throw new Error("Unexpected rebirth accounts");
   if (instructions[1].data.length !== 8) throw new Error("Unexpected rebirth payload");
+}
+
+/**
+ * [PAYER] Минт инструмента — единственный активный случай, когда игрок
+ * подписывает инструкцию, которую также подписывает authority: получатель
+ * платит за свои аккаунты. Проверяются точные аккаунты (получатель = плательщик
+ * = кошелёк), точный тип/редкость инструмента из payload и ровно одно ленивое
+ * создание ATA получателя; любая третья инструкция отменяет подпись.
+ */
+function validatePlayerInitIntent(instructions: Instruction[], intent: PlayerInitIntent, user: PublicKey): void {
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the player init intent");
+  if (instructions.length !== 1) throw new Error("Player profile init must be a single instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (spec?.name !== "init_player" || ix.data.length !== 8 ||
+      !keysEqual(ix.keys, [user, pda("player", user), new PublicKey(SYSTEM)])) {
+    throw new Error("Unexpected player profile init transaction");
+  }
+}
+
+function validateResourceMintIntent(instructions: Instruction[], intent: ResourceMintIntent, user: PublicKey): void {
+  const mint = new PublicKey(intent.mint);
+  const authority = new PublicKey(intent.authority);
+  const treasury = new PublicKey(intent.treasury);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the resource mint intent");
+  if (authority.equals(user)) throw new Error("Authority cannot pay for or receive a player resource mint");
+  if (!Number.isInteger(intent.resourceKind) || intent.resourceKind < 0 || intent.resourceKind > 26) {
+    throw new Error("Invalid resource kind");
+  }
+  positiveU64(intent.amountAtoms);
+  if (instructions.length !== 2) throw new Error("Resource mint must include exactly one ATA create and one mint");
+  const playerProfile = pda("player", user);
+  const issuanceCap = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("issuance_cap"), Uint8Array.of(intent.resourceKind)], new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+  const tokenAccount = ata(mint, user);
+  const expectedAccounts = [pda("config"), pda("material_mints"), authority, pda("auth"), mint,
+    tokenAccount, ata(mint, treasury), playerProfile, issuanceCap, TOKEN, new PublicKey(SYSTEM)];
+  let mints = 0;
+  let atas = 0;
+  for (const ix of instructions) {
+    const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+    if (spec?.name === "mint_resource") {
+      if (++mints !== 1 || !keysEqual(ix.keys, expectedAccounts) || ix.data.length !== 17 ||
+          ix.data[8] !== intent.resourceKind) throw new Error("Unexpected resource mint accounts or payload");
+      const amount = new Uint8Array(8);
+      new DataView(amount.buffer).setBigUint64(0, BigInt(intent.amountAtoms), true);
+      for (let i = 0; i < 8; i += 1) if (ix.data[9 + i] !== amount[i]) throw new Error("Resource amount differs from user intent");
+    } else if (ix.programId === ATA.toBase58()) {
+      if (++atas !== 1 || ix.data.length !== 1 || ix.data[0] !== 1 ||
+          !keysEqual(ix.keys, [user, tokenAccount, user, mint, new PublicKey(SYSTEM), TOKEN])) {
+        throw new Error("Unexpected resource ATA rent destination");
+      }
+    } else {
+      throw new Error("Extra instruction is outside the resource mint intent");
+    }
+  }
+  if (mints !== 1 || atas !== 1) throw new Error("Missing resource mint or ATA create");
+}
+
+function validateToolMintIntent(instructions: Instruction[], intent: ToolMintIntent, user: PublicKey): void {
+  const RARITY: Record<ToolMintIntent["rarity"], number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  const mint = new PublicKey(intent.mint);
+  const authority = new PublicKey(intent.authority);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the tool mint intent");
+  if (authority.equals(user)) throw new Error("Authority cannot pay for or receive a player tool mint");
+  if (!(intent.rarity in RARITY)) throw new Error("Unknown tool rarity");
+  if (typeof intent.toolType !== "string" || intent.toolType.length === 0 || intent.toolType.length > 32) {
+    throw new Error("Unknown tool type");
+  }
+  const tokenAccount = ata(mint, user);
+  const expected = [pda("config"), authority, pda("auth"), mint, tokenAccount, user, user,
+    pda("tool", mint), TOKEN, new PublicKey(SYSTEM)];
+  let mints = 0, atas = 0;
+  for (const ix of instructions) {
+    const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+    if (spec?.name === "mint_tool") {
+      mints += 1;
+      if (mints !== 1 || !keysEqual(ix.keys, expected)) throw new Error("Unexpected tool mint accounts");
+      const toolType = new TextEncoder().encode(intent.toolType);
+      if (ix.data.length !== 8 + 4 + toolType.length + 1) throw new Error("Unexpected tool mint payload");
+      const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+      if (view.getUint32(8, true) !== toolType.length) throw new Error("Unexpected tool type length");
+      for (let i = 0; i < toolType.length; i += 1) {
+        if (ix.data[12 + i] !== toolType[i]) throw new Error("Tool type differs from user intent");
+      }
+      if (ix.data[12 + toolType.length] !== RARITY[intent.rarity]) throw new Error("Tool rarity differs from user intent");
+    } else if (ix.programId === ATA.toBase58()) {
+      atas += 1;
+      if (atas !== 1 || ix.data.length !== 1 || ix.data[0] !== 1 ||
+          !keysEqual(ix.keys, [user, tokenAccount, user, mint, new PublicKey(SYSTEM), TOKEN])) {
+        throw new Error("Unexpected rent destination");
+      }
+    } else if (ix.programId !== COMPUTE) {
+      throw new Error("Extra instruction is outside the tool mint intent");
+    }
+  }
+  if (mints !== 1) throw new Error("Missing tool mint");
+}
+
+const REWARD_RECEIPT_SEED = "reward_receipt";
+
+/** sha256("AOF_INBOX_REWARD_V1\0" + id) — тот же домен, что у backend. */
+function hexBytes(hex: string): Uint8Array {
+  if (typeof hex !== "string" || hex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(hex)) {
+    throw new Error("Reward id must be hex");
+  }
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i += 1) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+/**
+ * [PAYER] Награда — claim игрока: ровно один `mint_resource_once`, где payer и
+ * владелец ATA — подключённый кошелёк, профиль и чек лежат на его PDA, и ровно
+ * одно идемпотентное создание его ATA (ленивое, за его счёт). Любая третья
+ * инструкция, чужой получатель, другой вид ресурса, сумма или reward_id
+ * отменяют подпись.
+ */
+function validateRewardClaimIntent(instructions: Instruction[], intent: RewardClaimIntent, user: PublicKey): void {
+  const mint = new PublicKey(intent.mint);
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the reward claim intent");
+  if (!Number.isInteger(intent.resourceKind) || intent.resourceKind < 0 || intent.resourceKind > 26) {
+    throw new Error("Invalid resource kind");
+  }
+  positiveU64(intent.amountAtoms);
+  const rewardId = hexBytes(intent.rewardId);
+  if (rewardId.length !== 32) throw new Error("Reward id must be 32 bytes");
+  const tokenAccount = ata(mint, user);
+  const programId = new PublicKey(CORE_PROGRAM_ID);
+  const playerProfile = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("player"), user.toBytes()], programId,
+  )[0];
+  const rewardReceipt = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode(REWARD_RECEIPT_SEED), user.toBytes(), rewardId], programId,
+  )[0];
+  const issuanceCap = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("issuance_cap"), Uint8Array.of(intent.resourceKind)], programId,
+  )[0];
+  const treasuryToken = ata(mint, new PublicKey(intent.treasury));
+  // Конкретный ключ оператора проверяет сама программа (`authority == config.operator`),
+  // поэтому он берётся из транзакции, а не из ответа backend.
+  const authority = instructions.find((ix) => coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID)?.name === "mint_resource_once")?.keys[2];
+  if (!authority) throw new Error("Missing reward claim authority");
+  const expected = [pda("config"), pda("material_mints"), authority, pda("auth"), mint, tokenAccount,
+    treasuryToken, user, playerProfile, issuanceCap, TOKEN, rewardReceipt, new PublicKey(SYSTEM)];
+  const amount = new Uint8Array(8);
+  new DataView(amount.buffer).setBigUint64(0, BigInt(intent.amountAtoms), true);
+  let mints = 0, atas = 0;
+  for (const ix of instructions) {
+    const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+    if (spec?.name === "mint_resource_once") {
+      mints += 1;
+      if (mints !== 1 || !keysEqual(ix.keys, expected)) throw new Error("Unexpected reward claim accounts");
+      if (ix.data.length !== 8 + 1 + 8 + 32 || ix.data[8] !== intent.resourceKind) {
+        throw new Error("Reward claim payload differs from user intent");
+      }
+      for (let i = 0; i < 8; i += 1) if (ix.data[9 + i] !== amount[i]) throw new Error("Reward amount differs from user intent");
+      for (let i = 0; i < 32; i += 1) if (ix.data[17 + i] !== rewardId[i]) throw new Error("Reward id differs from user intent");
+    } else if (ix.programId === ATA.toBase58()) {
+      atas += 1;
+      if (atas !== 1 || ix.data.length !== 1 || ix.data[0] !== 1 ||
+          !keysEqual(ix.keys, [user, tokenAccount, user, mint, new PublicKey(SYSTEM), TOKEN])) {
+        throw new Error("Unexpected rent destination");
+      }
+    } else if (ix.programId !== COMPUTE) {
+      throw new Error("Extra instruction is outside the reward claim intent");
+    }
+  }
+  if (mints !== 1) throw new Error("Missing reward claim");
+}
+
+/**
+ * [PAYER] Пропуск создаёт сам игрок: ровно одна `init_season_pass` с его
+ * подписью и его rent. Операторская выдача XP (`grant_season_xp`) в кошелёк
+ * игрока не попадает.
+ */
+function validateSeasonPassInitIntent(instructions: Instruction[], intent: SeasonPassInitIntent, user: PublicKey): void {
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the season pass intent");
+  if (!Number.isInteger(intent.seasonId) || intent.seasonId < 0 || intent.seasonId > 0xffffffff) {
+    throw new Error("Invalid season id");
+  }
+  const seasonId = new Uint8Array(4);
+  new DataView(seasonId.buffer).setUint32(0, intent.seasonId, true);
+  const programId = new PublicKey(CORE_PROGRAM_ID);
+  const season = PublicKey.findProgramAddressSync([new TextEncoder().encode("season"), seasonId], programId)[0];
+  const seasonPass = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("season_pass"), user.toBytes(), seasonId], programId,
+  )[0];
+  if (instructions.length !== 1) throw new Error("Season pass init must be a single instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  if (spec?.name !== "init_season_pass" || ix.data.length !== 12 ||
+      !keysEqual(ix.keys, [pda("config"), user, season, seasonPass, new PublicKey(SYSTEM)])) {
+    throw new Error("Unexpected season pass init transaction");
+  }
+  const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+  if (view.getUint32(8, true) !== intent.seasonId) throw new Error("Season id differs from user intent");
+}
+
+function validateSeasonXpClaimIntent(instructions: Instruction[], intent: SeasonXpClaimIntent, user: PublicKey): void {
+  if (!new PublicKey(intent.user).equals(user)) throw new Error("Wallet differs from the XP claim intent");
+  if (intent.programId !== CORE_PROGRAM_ID) throw new Error("XP entitlement targets a different program");
+  const authority = new PublicKey(intent.authority);
+  if (authority.equals(user)) throw new Error("XP authority cannot be the player fee payer");
+  if (new PublicKey(intent.clusterGenesisHash).toBase58() !== intent.clusterGenesisHash) {
+    throw new Error("Invalid XP claim cluster genesis hash");
+  }
+  if (!Number.isInteger(intent.seasonId) || intent.seasonId < 0 || intent.seasonId > 0xffff_ffff ||
+      !Number.isInteger(intent.amount) || intent.amount < 1 || intent.amount > 100_000 ||
+      !Number.isInteger(intent.nonce) || intent.nonce < 0 || intent.nonce >= 0xffff_ffff ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(intent.campaignId) ||
+      !/^[0-9a-f]{64}$/.test(intent.campaignDigest) ||
+      !/^[0-9a-f]{64}$/.test(intent.entitlementId) ||
+      !/^[0-9a-f]{64}$/.test(intent.genesisHashDigest) ||
+      !/^(0|[1-9][0-9]{0,19})$/.test(intent.expirySlot) || BigInt(intent.expirySlot) > (1n << 64n) - 1n) {
+    throw new Error("Invalid XP claim entitlement fields");
+  }
+  if (instructions.length !== 1) throw new Error("XP claim must contain exactly one instruction");
+  const ix = instructions[0];
+  const spec = ix && coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
+  const seasonBytes = new Uint8Array(4);
+  new DataView(seasonBytes.buffer).setUint32(0, intent.seasonId, true);
+  const programId = new PublicKey(CORE_PROGRAM_ID);
+  const season = PublicKey.findProgramAddressSync([new TextEncoder().encode("season"), seasonBytes], programId)[0];
+  const seasonPass = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("season_pass"), user.toBytes(), seasonBytes], programId,
+  )[0];
+  const claimCursor = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("season_xp_claim_cursor"), user.toBytes(), seasonBytes], programId,
+  )[0];
+  const expectedKeys = [pda("config"), authority, user, season, seasonPass, claimCursor, new PublicKey(SYSTEM)];
+  const expectedMetas = [
+    [false, false], // config
+    [true, false],  // operator authorization: signer only, never payer/writable
+    [true, true],   // player signer and fee payer
+    [false, false], // season
+    [false, true],  // player-funded SeasonPass init_if_needed
+    [false, true],  // player-funded per-season replay cursor init_if_needed
+    [false, false], // system program
+  ];
+  if (spec?.name !== "grant_season_xp" || ix.programId !== intent.programId ||
+      ix.data.length !== 124 || !keysEqual(ix.keys, expectedKeys) ||
+      !ix.metas || ix.metas.length !== expectedMetas.length ||
+      expectedMetas.some(([isSigner, isWritable], index) =>
+        ix.metas?.[index]?.isSigner !== isSigner || ix.metas?.[index]?.isWritable !== isWritable)) {
+    throw new Error("Unexpected XP claim accounts, privileges, or instruction");
+  }
+  const view = new DataView(ix.data.buffer, ix.data.byteOffset, ix.data.byteLength);
+  if (view.getUint32(8, true) !== intent.amount || view.getUint32(12, true) !== intent.seasonId ||
+      view.getUint32(16, true) !== intent.nonce || view.getBigUint64(20, true) !== BigInt(intent.expirySlot)) {
+    throw new Error("XP claim arguments differ from the authority-signed entitlement");
+  }
+  const matchesBytes = (offset: number, hex: string) =>
+    hexBytes(hex).every((byte, index) => ix.data[offset + index] === byte);
+  if (!matchesBytes(28, intent.campaignDigest) || !matchesBytes(60, intent.entitlementId) ||
+      !matchesBytes(92, intent.genesisHashDigest)) {
+    throw new Error("XP claim digest or entitlement ID differs from the signed intent");
+  }
 }
 
 function validateOrderbookV2Intent(instructions: Instruction[], intent: OrderbookV2Intent, user: PublicKey): void {

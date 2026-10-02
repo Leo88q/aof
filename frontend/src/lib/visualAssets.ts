@@ -77,24 +77,6 @@ export const SPECIAL_RESOURCES: ResourceVisual[] = [
 
 export const RESOURCES: ResourceVisual[] = [...PLAYABLE_RESOURCES, ...SPECIAL_RESOURCES];
 
-const LEGACY_RESOURCE_ID: Record<string, string> = {
-  food: "data", wood: "circuit", stone: "silicon", potato: "mind",
-  seeds: "neuron", wheat: "synapse", flour: "signal", bread: "model",
-  water: "power", coal: "compute", meat: "dataset",
-  stone_blue: "blueCore", stone_purple: "purpleCore", stone_red: "redCore",
-  sand_white: "clearQuartz", sand_pink: "roseQuartz", sand_yellow: "amberQuartz",
-  gem_blue: "quantumBit", gem_orange: "neuralChip", gem_white: "photonBit", gem_green: "bioChip",
-  flask_blue: "cryoFluid", flask_yellow: "voltFluid", flask_green: "bioFluid",
-  flask_pink: "nanoFluid", flask_purple: "quantumFluid",
-  love_heart: "soulCore", loveHeart: "soulCore",
-  // Historical spellings remain accepted even if the display catalog changes.
-  "Фотон-бит": "photonBit", "Био-чип": "bioChip",
-  "Ядро души": "soulCore", "Голубое ядро": "blueCore",
-  DATA: "data", CIRCUIT: "circuit", SILICON: "silicon", MIND: "mind",
-  NEURON: "neuron", SYNAPSE: "synapse", SIGNAL: "signal", MODEL: "model",
-  POWER: "power", COMPUTE: "compute", DATASET: "dataset",
-};
-
 const BY_ID = new Map(RESOURCES.map((r) => [r.id, r]));
 
 /** Canonical id -> UPPER_SNAKE form used by on-chain balance keys ("clearQuartz" -> "CLEAR_QUARTZ"). */
@@ -102,29 +84,9 @@ const BY_UPPER = new Map(
   RESOURCES.map((r) => [r.id.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase(), r]),
 );
 
-/**
- * Legacy alias -> resource. Aliases are stored lowercase, but balance and
- * portfolio keys arrive as FOOD / GEM_GREEN / FLASK_PINK, so the alias table
- * is indexed in upper case as well.
- */
-const LEGACY_BY_UPPER = new Map<string, ResourceVisual>();
-// Old recipe outputs and saved links may refer to Russian names. They are
-// aliases for lookup, never labels to render in another language.
-for (const visual of RESOURCES) LEGACY_BY_UPPER.set(visual.name.toUpperCase(), visual);
-for (const [alias, canon] of Object.entries(LEGACY_RESOURCE_ID)) {
-  const visual = BY_ID.get(canon);
-  if (visual) LEGACY_BY_UPPER.set(alias.toUpperCase(), visual);
-}
-
 export function resourceVisual(id?: string | null): ResourceVisual | undefined {
   if (!id) return undefined;
-  return (
-    BY_ID.get(id) ||
-    BY_UPPER.get(id) ||
-    BY_ID.get(LEGACY_RESOURCE_ID[id] || "") ||
-    BY_UPPER.get(LEGACY_RESOURCE_ID[id] || "") ||
-    LEGACY_BY_UPPER.get(id.toUpperCase())
-  );
+  return BY_ID.get(id) || BY_UPPER.get(id);
 }
 
 /** Chip art: dedicated icon when it exists, otherwise the full plate. */

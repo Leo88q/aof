@@ -73,13 +73,13 @@ export function readConstants() {
     maxDurability: c.num("MAX_DURABILITY"),
     forge: {
       success: c.arr("FORGE_SUCCESS_BPS"), partial: c.arr("FORGE_PARTIAL_FAIL_BPS"),
-      wood: c.arr("ENCHANT_WOOD_COST").map(u), stone: c.arr("ENCHANT_STONE_COST").map(u),
+      circuit: c.arr("ENCHANT_CIRCUIT_COST").map(u), silicon: c.arr("ENCHANT_SILICON_COST").map(u),
       fee: c.arr("ENCHANT_FEE_LAMPORTS"), protector: c.num("FORGE_PROTECTOR_PRICE_LAMPORTS"), maxLevel: c.num("ENCHANT_MAX_LEVEL"),
     },
     exploration: {
       success: c.arr("EXPLORATION_SUCCESS_BPS"), min: c.arr("EXPLORATION_SHARDS_MIN"), max: c.arr("EXPLORATION_SHARDS_MAX"),
       tripsPerDay: c.arr("EXPLORATION_TRIPS_PER_DAY"), cooldownHours: c.arr("EXPLORATION_COOLDOWN_HOURS"),
-      cost: { data: u(c.num("TRIP_COST_FOOD")), circuit: u(c.num("TRIP_COST_WOOD")), silicon: u(c.num("TRIP_COST_STONE")), dataset: u(c.num("TRIP_COST_MEAT")) },
+      cost: { data: u(c.num("TRIP_COST_DATA")), circuit: u(c.num("TRIP_COST_CIRCUIT")), silicon: u(c.num("TRIP_COST_SILICON")), dataset: u(c.num("TRIP_COST_DATASET")) },
     },
     lottery: {
       price: c.num("LOTTERY_TICKET_PRICE_LAMPORTS"), poolBps: c.num("LOTTERY_POOL_BPS"), devBps: c.num("LOTTERY_DEV_BPS"),
@@ -121,7 +121,7 @@ export function packStats(c, pack) {
 
 /**
  * Forge as an absorbing Markov chain over levels 0..max: expected attempts,
- * SOL and wood+stone to reach `max` from 0. Loss resets to 0, or to level-1
+ * SOL and Circuit+Silicon to reach `max` from 0. Loss resets to 0, or to level-1
  * with the protector (which is also charged on every attempt).
  */
 export function forgeExpectations(c, protector) {
@@ -154,7 +154,7 @@ export function forgeExpectations(c, protector) {
   return {
     attempts: solve(() => 1),
     sol: solve((L) => (f.fee[L] + extra) / 1e9),
-    resources: solve((L) => f.wood[L] + f.stone[L]),
+    resources: solve((L) => f.circuit[L] + f.silicon[L]),
   };
 }
 
@@ -245,7 +245,7 @@ export function render(c = readConstants()) {
   L.push("|---|---|---|---|---|---|");
   for (let lv = 0; lv < c.forge.maxLevel; lv++) {
     const s = c.forge.success[lv], p = c.forge.partial[lv];
-    L.push(`| ${lv} → ${lv + 1} | ${sol(c.forge.fee[lv], 3)} | ${c.forge.wood[lv] + c.forge.stone[lv]} | ${pct(s / 10_000)} | ${pct(p / 10_000)} | ${pct((10_000 - s - p) / 10_000)} |`);
+    L.push(`| ${lv} → ${lv + 1} | ${sol(c.forge.fee[lv], 3)} | ${c.forge.circuit[lv] + c.forge.silicon[lv]} | ${pct(s / 10_000)} | ${pct(p / 10_000)} | ${pct((10_000 - s - p) / 10_000)} |`);
   }
   L.push("");
   L.push(`Ожидаемо от 0 до ${c.forge.maxLevel} (поглощающая цепь Маркова):`);

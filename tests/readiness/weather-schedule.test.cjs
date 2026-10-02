@@ -9,7 +9,7 @@
  *
  * 1. Зеркало на бэкенде обязано совпадать с ядром **численно** (множитель,
  *    полосы, ставки колодца, границы суток и сезонов) — по этой же функции
- *    `well_accrual` начисляет воду за каждую секунду окна. Гейт читает исходник
+ *    `grid_accrual` начисляет воду за каждую секунду окна. Гейт читает исходник
  *    Rust и считает ожидания сам, а модуль подгружает как ESM-копию, чтобы не
  *    тянуть зависимости бэкенда.
  * 2. Ни в маршруте, ни в таблице ошибок не должно остаться утверждения, что
@@ -56,7 +56,7 @@ const RUST_WEATHER_INDICES = [
   rustNumber(CONSTANTS_RS, /pub const WEATHER_FRENZY: u8 = (\d+)/, 'WEATHER_FRENZY'),
 ];
 
-/** `WELL_RATE_*` в Rust: либо `0`, либо `N * RESOURCE_UNIT`. */
+/** `GRID_RATE_*` в Rust: либо `0`, либо `N * RESOURCE_UNIT`. */
 function rustWellRate(name) {
   const match = CONSTANTS_RS.match(new RegExp(`pub const ${name}: u64 = ([^;]+);`));
   assert.ok(match, `не найдено в Rust: ${name}`);
@@ -67,7 +67,7 @@ function rustWellRate(name) {
   return Number(expression);
 }
 
-const RUST_RATES = ['WELL_RATE_BLACKOUT', 'WELL_RATE_NOMINAL', 'WELL_RATE_SURGE', 'WELL_RATE_FRENZY']
+const RUST_RATES = ['GRID_RATE_BLACKOUT', 'GRID_RATE_NOMINAL', 'GRID_RATE_SURGE', 'GRID_RATE_FRENZY']
   .map(rustWellRate);
 
 /** Независимая реализация `weather_for_day` по разобранным значениям Rust. */
@@ -128,7 +128,7 @@ test('ставка колодца и описание дня собираютс�
     'индексы WEATHER_* в ядре разъехались с таблицей WeatherState',
   );
   assert.deepEqual(
-    [0, 1, 2, 3].map((index) => schedule.wellRatePerHourUnits(index).toString()),
+    [0, 1, 2, 3].map((index) => schedule.gridRatePerHourUnits(index).toString()),
     RUST_RATES.map(String),
     'ставка колодца по погоде разошлась с aof-core/src/constants.rs',
   );

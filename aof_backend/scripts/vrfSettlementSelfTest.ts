@@ -18,7 +18,7 @@ import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
 
-process.env.PROGRAM_ID ||= "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq";
+process.env.PROGRAM_ID ||= "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
 process.env.TREASURY_PUBKEY ||= "11111111111111111111111111111111";
 process.env.AUTHORITY_MODE = "read-only";
 delete process.env.AUTHORITY_SECRET_KEY;
@@ -55,8 +55,8 @@ function stub(client: any, name: string, rows: () => Row[]) {
 
 const wallet = Keypair.generate().publicKey;                                  // on-curve player
 const vaultUser = PublicKey.findProgramAddressSync([Buffer.from("vault")], k(33))[0]; // off-curve player (program-owned wallet)
-const cfg = { treasury: k(50), woodMint: k(51), stoneMint: k(52), foodMint: k(53) };
-const mm = { meat: k(54) };
+const cfg = { treasury: k(50), circuitMint: k(51), siliconMint: k(52), dataMint: k(53) };
+const mm = { dataset: k(54) };
 const qc = { treasuryMascot: k(60), mascotMint: k(61) };
 const bn = (n: number) => new BN(n);
 
@@ -216,8 +216,8 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     });
   }
   expectWiring(program, await reveal("exploration"), "exploreReveal", {
-    config, materialMints, cranker, explorationCommit: k(3), user: wallet, woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, wallet),
-    stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, wallet), auth, ...sbAta(program, k(73)),
+    config, materialMints, cranker, explorationCommit: k(3), user: wallet, circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet),
+    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), auth, ...sbAta(program, k(73)),
   });
   expectWiring(program, await reveal("forge"), "forgeAttemptReveal", {
     config, cranker, enchantSlot: pda.enchantSlotPda(k(80), 2)[0], forgeCommit: k(4), user: wallet, treasury: cfg.treasury, ...sb(program, k(74)),
@@ -250,12 +250,12 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   }
   expectWiring(program, await refund("exploration"), "exploreExpire", {
     config, materialMints, explorationCommit: k(3), user: wallet, vrfSlot: slot(program, k(73)), auth,
-    foodMint: cfg.foodMint, userFood: ata(cfg.foodMint, wallet), woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, wallet),
-    stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, wallet), meatMint: mm.meat, userMeat: ata(mm.meat, wallet), tokenProgram: TOKEN_PROGRAM_ID,
+    dataMint: cfg.dataMint, userData: ata(cfg.dataMint, wallet), circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet),
+    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), datasetMint: mm.dataset, userDataset: ata(mm.dataset, wallet), tokenProgram: TOKEN_PROGRAM_ID,
   });
   expectWiring(program, await refund("forge"), "forgeAttemptExpire", {
     config, materialMints, forgeCommit: k(4), user: wallet, vrfSlot: slot(program, k(74)), auth,
-    woodMint: cfg.woodMint, userWood: ata(cfg.woodMint, wallet), stoneMint: cfg.stoneMint, userStone: ata(cfg.stoneMint, wallet), tokenProgram: TOKEN_PROGRAM_ID,
+    circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet), siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), tokenProgram: TOKEN_PROGRAM_ID,
   });
   expectWiring(program, await refund("lottery"), "expireLotteryDraw", { config, lotteryRound: k(5), vrfSlot: slot(program, k(75)) });
   expectWiring(questsProgram, await refund("drum"), "drumExpire", {
