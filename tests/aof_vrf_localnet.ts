@@ -83,6 +83,10 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   };
   const u64le = (n: BN) => n.toArrayLike(Buffer, "le", 8);
   const configPda = pda([B("config")]);
+  const vaultPda = pda([B("vault")]);
+  const programDataPda = PublicKey.findProgramAddressSync(
+    [pid.toBuffer()], new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
+  )[0];
   const vrfAuthority = pda([B("vrf_authority")]);
   const packConfig = pda([B("pack_config"), Buffer.from([0])]);
   const authPda = pda([B("auth")]);
@@ -224,6 +228,21 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       console.log("      skipped: no Switchboard program on this validator (CI loads tests/mock-switchboard)");
       this.skip();
     }
+    // The CI expiry-only invocation starts a fresh validator and runs only the
+    // timeout case, so it cannot depend on aof_core.ts having seeded Config and
+    // pack_config first. The normal full-suite path already has these PDAs.
+    if (!(await connection.getAccountInfo(configPda, "confirmed"))) {
+      await sendWithPayer(program.methods.initialize(authority).accounts({
+        config: configPda, authority, auth: authPda, vault: vaultPda,
+        programData: programDataPda, systemProgram: SystemProgram.programId,
+      }), providerSigner);
+    }
+    if (!(await connection.getAccountInfo(packConfig, "confirmed"))) {
+      await sendWithPayer(program.methods.initPackConfig(0, new BN(100_000_000), [6000, 3200, 700, 100, 0]).accounts({
+        config: configPda, authority, packConfig, systemProgram: SystemProgram.programId,
+      }), providerSigner);
+    }
+
     for (let i = 0; i < 64 && index < 0; i += 1) {
       const r = pda([B("vrf_randomness"), u32le(i)]);
       if (!(await connection.getAccountInfo(pda([B("vrf_slot"), r.toBuffer()])))) index = i;
@@ -236,6 +255,22 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const pc = await program.account.packConfig.fetch(packConfig);
     price = pc.priceLamports;
     odds = pc.oddsBps.map(Number);
+
+    // The fast expiry-only CI invocation also starts a fresh validator and
+    // skips the vrf_pool_add test, so provision the one slot it needs here.
+    if (process.env.AOF_VRF_EXPIRY_ONLY === "1" && !(await connection.getAccountInfo(vrfSlot, "confirmed"))) {
+      const recentSlot = await connection.getSlot("finalized");
+      const lutSigner = pda([B("LutSigner"), randomness.toBuffer()], SB_PROGRAM);
+      await sendWithPayer(program.methods.vrfPoolAdd(index, new BN(recentSlot)).accounts({
+        config: configPda, operator: authority, vrfAuthority, randomness, vrfSlot,
+        rewardEscrow: getAssociatedTokenAddressSync(NATIVE_MINT, randomness, true),
+        queue: SB_QUEUE, programState: SB_STATE, lutSigner,
+        lut: pda([lutSigner.toBuffer(), new BN(recentSlot).toArrayLike(Buffer, "le", 8)], ALT_PROGRAM),
+        wrappedSolMint: NATIVE_MINT, switchboardProgram: SB_PROGRAM,
+        addressLookupTableProgram: ALT_PROGRAM, tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      }), providerSigner);
+    }
   });
 
   it("vrf_pool_add: only the operator, and the CPI creates a Switchboard-owned account with the program PDA as authority", async () => {
