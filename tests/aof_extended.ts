@@ -15,6 +15,7 @@ import {
 } from "@solana/spl-token";
 import { expect } from "chai";
 import fs from "fs";
+import { anchorErrorCode, submitWithPayer, waitForAccountOwner } from "./payer-transaction";
 
 const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 
@@ -26,6 +27,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   const program: any = new anchor.Program(idlJson as any, provider);
   const pid = program.programId as PublicKey;
   const authority = provider.wallet.publicKey;
+  const providerSigner = (provider.wallet as anchor.Wallet).payer;
 
   const pda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, pid)[0];
   const B = (s: string) => Buffer.from(s);
@@ -52,59 +54,44 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   };
 
   async function airdrop(kp: Keypair, sol = 5) {
-    const sig = await provider.connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL);
-    await provider.connection.confirmTransaction(sig);
+    const requested = sol * LAMPORTS_PER_SOL;
+    const sig = await provider.connection.requestAirdrop(kp.publicKey, requested);
+    const confirmation = await provider.connection.confirmTransaction(sig, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
   }
 
   async function ensureAta(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
+    await waitForAccountOwner(provider.connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
     const ata = getAssociatedTokenAddressSync(mint, owner, true);
     if (await provider.connection.getAccountInfo(ata)) return ata;
     const tx = new Transaction().add(createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint));
-    tx.feePayer = setupPayer.publicKey;
-    await provider.sendAndConfirm(tx, [setupPayer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    await submitWithPayer(provider.connection, tx, setupPayer);
     return ata;
   }
 
   async function sendWithPayer(builder: any, payer: Keypair) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    tx.recentBlockhash = (await provider.connection.getLatestBlockhash("confirmed")).blockhash;
-    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    return submitWithPayer(provider.connection, tx, payer, [providerSigner]);
   }
 
   async function sendWithExplicitSigners(builder: any, payer: Keypair, signers: Keypair[]) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    const lifetime = await provider.connection.getLatestBlockhash("confirmed");
-    tx.recentBlockhash = lifetime.blockhash;
-    tx.partialSign(...signers);
-    const signature = await provider.connection.sendRawTransaction(tx.serialize(), { preflightCommitment: "confirmed" });
-    await provider.connection.confirmTransaction({ ...lifetime, signature }, "confirmed");
-    return signature;
+    return submitWithPayer(provider.connection, tx, payer, signers);
   }
 
   async function sendPlayerClaim(builder: any, payer: Keypair) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    const lifetime = await provider.connection.getLatestBlockhash("confirmed");
-    tx.recentBlockhash = lifetime.blockhash;
-    tx.partialSign(payer);
-    const message = tx.compileMessage();
-    const required = message.accountKeys.slice(0, message.header.numRequiredSignatures);
-    if (required.some((key: PublicKey) => key.equals(provider.wallet.publicKey))) {
-      const signed = await provider.wallet.signTransaction(tx);
-      const signature = await provider.connection.sendRawTransaction(signed.serialize(), { preflightCommitment: "confirmed" });
-      await provider.connection.confirmTransaction({ ...lifetime, signature }, "confirmed");
-      return signature;
-    }
-    const signature = await provider.connection.sendRawTransaction(tx.serialize(), { preflightCommitment: "confirmed" });
-    await provider.connection.confirmTransaction({ ...lifetime, signature }, "confirmed");
-    return signature;
+    return submitWithPayer(provider.connection, tx, payer, [providerSigner]);
   }
 
   async function airdropLamports(kp: Keypair, lamports: number) {
     const signature = await provider.connection.requestAirdrop(kp.publicKey, lamports);
-    await provider.connection.confirmTransaction(signature, "confirmed");
+    const confirmation = await provider.connection.confirmTransaction(signature, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < lamports) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${lamports}, got ${credited}`);
   }
 
   // Admin faucet (mint_resource keeps a 7–10% treasury fee, so the user gets
@@ -136,7 +123,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   // which fails in the System Program, not with an Anchor code).
   async function expectError(p: Promise<any>, code?: string) {
     try { await p; } catch (e: any) {
-      const c = e?.error?.errorCode?.code ?? "";
+      const c = await anchorErrorCode(e, idlJson.errors ?? [], provider.connection);
       if (code && c !== code) throw new Error(`expected ${code}, got: ${c || "?"} | ${e?.message?.slice(0, 200)}`);
       return;
     }

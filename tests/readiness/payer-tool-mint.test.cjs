@@ -143,14 +143,21 @@ test('Anchor helpers cover a separate payer as well as the self-mint path', () =
       `${file}: operator-authorized mint to another recipient must carry a distinct non-authority payer`);
     assert.match(source, /sendWithPayer\(/,
       `${file}: distinct payer must submit the mint transaction`);
-    assert.match(source, /tx\.feePayer = payer\.publicKey/,
+    assert.ok(/tx\.feePayer = payer\.publicKey/.test(source) || /submitWithPayer\(/.test(source),
       `${file}: distinct payer must also pay network fees`);
   }
+  const sharedAnchorPayer = read('tests/payer-transaction.ts');
+  assert.match(sharedAnchorPayer, /transaction\.feePayer = payer\.publicKey/,
+    'shared signer helper assigns the explicit payer as fee payer');
+  assert.match(sharedAnchorPayer, /const signers = required\.map\(/,
+    'shared signer helper signs only transaction-required local signers');
+  assert.match(sharedAnchorPayer, /minContextSlot: context\.slot/,
+    'explicit payer submission cannot simulate before the latest confirmed state');
   const vrf = read('tests/aof_vrf_localnet.ts');
   assert.match(vrf, /recipient: owner\.publicKey,[\s\S]*?payer: owner\.publicKey/,
     'VRF self-mint explicitly uses the player as payer and recipient');
-  assert.match(vrf, /tx\.feePayer = payer\.publicKey/,
-    'VRF tool mint charges its explicit player payer for network fees');
+  assert.match(vrf, /submitWithPayer\(connection, tx, payer, \[\.\.\.extraSigners, providerSigner\]\)/,
+    'VRF tool mint delegates fee-payer signing to the shared explicit-payer helper');
   const playerPath = read('tests/aof_payer_funding.ts');
   assert.match(playerPath, /recipient: user\.publicKey, payer: user\.publicKey/,
     'self-service player mint explicitly uses payer = recipient');

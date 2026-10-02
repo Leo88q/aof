@@ -5,6 +5,7 @@ import { createMint, getMint, getAssociatedTokenAddressSync, createAssociatedTok
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
+import { anchorErrorCode, submitWithPayer, waitForAccountOwner } from "./payer-transaction";
 
 const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -17,6 +18,7 @@ describe("aof-core: security & core flows", () => {
   const program: any = new anchor.Program(idlJson as any, provider);
   const pid = program.programId as PublicKey;
   const authority = provider.wallet.publicKey;
+  const providerSigner = (provider.wallet as anchor.Wallet).payer;
 
   const pda = (seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, pid)[0];
   const B = (s: string) => Buffer.from(s);
@@ -102,27 +104,31 @@ describe("aof-core: security & core flows", () => {
     expect(actual - expected, `fee payer delta ${actual} vs ${expected}`).to.be.within(-FEE_PAYER_SLACK, FEE_PAYER_SLACK);
   }
 
-  const airdrop = async (kp: Keypair, sol = 5) =>
-    provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL));
+  const airdrop = async (kp: Keypair, sol = 5) => {
+    const requested = sol * LAMPORTS_PER_SOL;
+    const signature = await provider.connection.requestAirdrop(kp.publicKey, requested);
+    const confirmation = await provider.connection.confirmTransaction(signature, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
+  };
 
   async function ensureAta(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
+    await waitForAccountOwner(provider.connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
     const ata = getAssociatedTokenAddressSync(mint, owner, true); // allowOwnerOffCurve для PDA
     // Idempotent by construction (check-then-create) instead of swallowing every
     // error: a real failure (funding, wrong owner) must surface, not be hidden.
     if (await provider.connection.getAccountInfo(ata)) return ata;
     const tx = new Transaction().add(createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint));
-    tx.feePayer = setupPayer.publicKey;
-    await provider.sendAndConfirm(tx, [setupPayer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    await submitWithPayer(provider.connection, tx, setupPayer);
     return ata;
   }
 
-  /** Charge setup-payer rent and network fees to the same explicit signer. */
+  /** Charge setup-payer rent and network fees to the same explicit signer.
+   * Include the provider only when its authority signature is actually required. */
   async function sendWithPayer(builder: any, payer: Keypair) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    tx.recentBlockhash = (await provider.connection.getLatestBlockhash("confirmed")).blockhash;
-    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    return submitWithPayer(provider.connection, tx, payer, [providerSigner]);
   }
 
   // Bootstrap calls are allowed to fail only with "already initialised" (a
@@ -140,9 +146,9 @@ describe("aof-core: security & core flows", () => {
 
   async function expectError(p: Promise<any>, code: string) {
     try { await p; } catch (e: any) {
-      const c = e?.error?.errorCode?.code ?? "";
+      const c = await anchorErrorCode(e, idlJson.errors ?? [], provider.connection);
       if (c === code) return;
-      throw new Error(`expected ${code}, got: ${c} | ${e?.message?.slice(0, 120)}`);
+      throw new Error(`expected ${code}, got: ${c ?? "?"} | ${e?.message?.slice(0, 160)}`);
     }
     throw new Error(`expected ${code}, but call succeeded`);
   }
@@ -458,7 +464,7 @@ describe("aof-core: security & core flows", () => {
     await expectError(program.methods.marketplaceBuyBounded(price, new BN(1)).accounts(accounts).signers([buyer]).rpc(), "QuoteExpired");
     const legacy = await program.methods.marketplaceBuyBounded(price, deadline).accounts(accounts).instruction();
     legacy.data = legacy.data.subarray(0, 8);
-    await expectError(provider.sendAndConfirm(new Transaction().add(legacy), [buyer]).catch((error: any) => { throw anchor.AnchorError.parse(error.logs || []) || error; }), "InstructionDidNotDeserialize");
+    await expectError(submitWithPayer(provider.connection, new Transaction().add(legacy), buyer), "InstructionDidNotDeserialize");
     // [Шаг B п.12] легаси-инструкция marketplace_buy удалена из программы: дискриминатор
     // без trailing-аргументов теперь не десериализуется, а не возвращает FeatureDisabled.
     const removedDiscriminator = legacy.data.length >= 8 ? legacy.data : null;

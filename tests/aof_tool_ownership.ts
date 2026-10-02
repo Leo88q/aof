@@ -31,6 +31,7 @@ import {
 } from "@solana/spl-token";
 import { expect } from "chai";
 import fs from "fs";
+import { submitWithPayer, waitForAccountOwner } from "./payer-transaction";
 
 const CORE_ID = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
 
@@ -74,26 +75,28 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
   }
 
   async function airdrop(kp: Keypair, sol = 5) {
-    const sig = await connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(sig, "confirmed");
+    const requested = sol * LAMPORTS_PER_SOL;
+    const sig = await connection.requestAirdrop(kp.publicKey, requested);
+    const confirmation = await connection.confirmTransaction(sig, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
   }
 
   /** Идемпотентно создаёт ATA, переживая отставший bank локального валидатора. */
   async function ensureAta(mint: PublicKey, who: PublicKey): Promise<PublicKey> {
+    await waitForAccountOwner(connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
     const address = ata(mint, who);
     if (await connection.getAccountInfo(address, "confirmed")) return address;
     const ix = createAssociatedTokenAccountIdempotentInstruction(setupPayer.publicKey, address, who, mint);
     const tx = new anchor.web3.Transaction().add(ix);
-    tx.feePayer = setupPayer.publicKey;
-    await provider.sendAndConfirm(tx, [setupPayer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    await submitWithPayer(connection, tx, setupPayer);
     return address;
   }
 
   async function sendWithPayer(builder: any, payer: Keypair) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
-    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    return submitWithPayer(connection, tx, payer, [wallet.payer]);
   }
 
   const balance = async (address: PublicKey) =>
@@ -122,7 +125,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     const tx = new anchor.web3.Transaction().add(
       createTransferInstruction(source, destination, from.publicKey, 1, [], TOKEN_PROGRAM_ID),
     );
-    await provider.sendAndConfirm(tx, [from], { commitment: "confirmed" });
+    await submitWithPayer(connection, tx, from);
   }
 
   /** `mintResource` требует issuance cap по индексу ResourceKind из IDL. */

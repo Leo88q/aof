@@ -25,6 +25,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, createMint, getAssociatedTokenAddressSync,
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
+import { submitWithPayer, waitForAccountOwner } from "./payer-transaction";
 
 const SB_PROGRAM = new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv");
 const SB_QUEUE = new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w");
@@ -64,22 +65,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   const providerSigner = (provider.wallet as anchor.Wallet).payer;
   async function sendWithPayer(builder: any, payer: Keypair, extraSigners: Keypair[] = []) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    const latest = await connection.getLatestBlockhash("confirmed");
-    tx.recentBlockhash = latest.blockhash;
-    const message = tx.compileMessage();
-    const required = message.accountKeys.slice(0, message.header.numRequiredSignatures);
-    const candidates = [payer, ...extraSigners, providerSigner].filter((candidate, i, all) =>
-      all.findIndex((other) => other.publicKey.equals(candidate.publicKey)) === i,
-    );
-    const signers = required.map((key) => candidates.find((candidate) => candidate.publicKey.equals(key)));
-    const missing = required.filter((key) => !candidates.some((candidate) => candidate.publicKey.equals(key)));
-    if (missing.length) throw new Error(`missing local test signer(s): ${missing.map((key) => key.toBase58()).join(", ")}`);
-    tx.partialSign(...signers as Keypair[]);
-    const signature = await connection.sendRawTransaction(tx.serialize(), { preflightCommitment: "confirmed", maxRetries: 0 });
-    const confirmation = await connection.confirmTransaction({ signature, ...latest }, "confirmed");
-    if (confirmation.value.err) throw new Error(`player/cranker-paid transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-    return signature;
+    return submitWithPayer(connection, tx, payer, [...extraSigners, providerSigner]);
   }
   const idlJson = JSON.parse(fs.readFileSync(process.cwd() + "/target/idl/aof_core.json", "utf8"));
   if (!idlJson.address) idlJson.address = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx";
@@ -101,8 +87,14 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   const authPda = pda([B("auth")]);
   const zero = PublicKey.default.toBase58();
 
-  const airdrop = async (kp: Keypair, sol = 5) =>
-    connection.confirmTransaction(await connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL));
+  const airdrop = async (kp: Keypair, sol = 5) => {
+    const requested = sol * LAMPORTS_PER_SOL;
+    const signature = await connection.requestAirdrop(kp.publicKey, requested);
+    const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
+  };
 
   async function expectError(p: Promise<any>, code: string) {
     try {
@@ -198,6 +190,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   /** A tool NFT issued by the program, as tests/aof_core.ts mintTool does. */
   async function mintTool(owner: Keypair) {
     const mint = await createMint(connection, owner, authPda, null, 0);
+    await waitForAccountOwner(connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
     const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, owner, mint, owner.publicKey)).address;
     await sendWithPayer(program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: owner.publicKey,

@@ -33,6 +33,7 @@ import {
 } from "@solana/spl-token";
 import { expect } from "chai";
 import fs from "fs";
+import { submitWithPayer, waitForAccountOwner } from "./payer-transaction";
 
 const MARKET_ID = new PublicKey("A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY");
 const CORE_ID = new PublicKey("okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
@@ -81,35 +82,21 @@ describe("aof-market: горячий рынок покупает и продаё
   const ata = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true);
 
   async function airdrop(kp: Keypair, sol = 5) {
-    const sig = await connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(sig, "confirmed");
+    const requested = sol * LAMPORTS_PER_SOL;
+    const sig = await connection.requestAirdrop(kp.publicKey, requested);
+    const confirmation = await connection.confirmTransaction(sig, "confirmed");
+    if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
+    const credited = await connection.getBalance(kp.publicKey, "confirmed");
+    if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
   }
 
-  async function waitForTokenMint(mint: PublicKey, timeoutMs = 10_000): Promise<void> {
-    // `createMint` confirms through its own web3.js transaction.  The local
-    // validator can nevertheless answer the immediately following ATA
-    // simulation from an older bank where the new account is still owned by
-    // SystemProgram; Associated Token then reports the misleading
-    // `IncorrectProgramId`.  Do not retry the mutation blindly: wait until the
-    // same RPC reader observes the mint under Tokenkeg first.
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      const info = await connection.getAccountInfo(mint, "confirmed");
-      if (info?.owner.equals(TOKEN_PROGRAM_ID)) return;
-      if (Date.now() >= deadline) {
-        throw new Error(
-          `mint ${mint.toBase58()} was not observed under ${TOKEN_PROGRAM_ID.toBase58()}`,
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-
+  // The local validator may simulate an ATA CPI against a bank that predates
+  // the confirmed createMint; wait for Tokenkeg ownership before the CPI.
   async function ensureAta(mint: PublicKey, owner: PublicKey, payer: Keypair): Promise<PublicKey> {
     const address = ata(mint, owner);
     const info = await connection.getAccountInfo(address, "confirmed");
     if (!info) {
-      await waitForTokenMint(mint);
+      await waitForAccountOwner(connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
       const ix = createAssociatedTokenAccountIdempotentInstruction(
         payer.publicKey,
         address,
@@ -123,7 +110,7 @@ describe("aof-market: горячий рынок покупает и продаё
       // lost at the blockhash boundary.
       let lastError: unknown = null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const lifetime = await connection.getLatestBlockhash("confirmed");
+        const { context, value: lifetime } = await connection.getLatestBlockhashAndContext("confirmed");
         const tx = new anchor.web3.Transaction().add(ix);
         tx.feePayer = payer.publicKey;
         tx.recentBlockhash = lifetime.blockhash;
@@ -131,6 +118,7 @@ describe("aof-market: горячий рынок покупает и продаё
         try {
           const signature = await connection.sendRawTransaction(tx.serialize(), {
             preflightCommitment: "confirmed",
+            minContextSlot: context.slot,
           });
           const confirmation = await connection.confirmTransaction(
             { signature, ...lifetime },
@@ -156,9 +144,7 @@ describe("aof-market: горячий рынок покупает и продаё
 
   async function sendWithPayer(builder: any, payer: Keypair) {
     const tx = await builder.transaction();
-    tx.feePayer = payer.publicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
-    return provider.sendAndConfirm(tx, [payer], { commitment: "confirmed", preflightCommitment: "confirmed" });
+    return submitWithPayer(connection, tx, payer, [wallet.payer]);
   }
 
   /** Инструмент каноническим путём aof_core: 0-decimal минт с авторитетом auth-PDA. */
