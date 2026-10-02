@@ -20,8 +20,8 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, createMint, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createMint, getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
@@ -34,6 +34,7 @@ const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111")
 const ALT_PROGRAM = new PublicKey("AddressLookupTab1e1111111111111111111111111");
 // aof_core::constants::VRF_REFUND_AFTER_SLOTS; pinned in tests/readiness/vrf.test.cjs.
 const REFUND_AFTER_SLOTS = 18_000;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // aof-core constants::PACK_TOOL_TYPES and state::Rarity, in order.
 const PACK_TOOL_TYPES = ["plasma_cutter", "silicon_extractor", "data_harvester"];
 const RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
@@ -191,7 +192,12 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   async function mintTool(owner: Keypair) {
     const mint = await createMint(connection, owner, authPda, null, 0);
     await waitForAccountOwner(connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
-    const tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, owner, mint, owner.publicKey)).address;
+    const tokenAccount = getAssociatedTokenAddressSync(mint, owner.publicKey);
+    const createAta = new Transaction().add(createAssociatedTokenAccountIdempotentInstruction(
+      owner.publicKey, tokenAccount, owner.publicKey, mint, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+    ));
+    await submitWithPayer(connection, createAta, owner);
+    await waitForAccountOwner(connection, tokenAccount, TOKEN_PROGRAM_ID, "tool recipient ATA");
     await sendWithPayer(program.methods.mintTool("plasma_cutter", { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: owner.publicKey,
       payer: owner.publicKey, toolData: pda([B("tool"), mint.toBuffer()]), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
@@ -481,9 +487,19 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       "refund is unavailable before the reveal window closes");
 
     const targetSlot = commit.commitSlot.toNumber() + REFUND_AFTER_SLOTS;
-    const warpResponse = await (connection as any)._rpcRequest("warpSlot", [targetSlot]);
-    if (warpResponse?.error) throw new Error(`local-validator warpSlot failed: ${JSON.stringify(warpResponse.error)}`);
-    expect(await connection.getSlot("processed")).to.be.at.least(targetSlot,
+    // Agave 4.x does not expose the historical test-only warpSlot JSON-RPC
+    // method. Anchor.toml configures one tick per slot for localnet so the real
+    // validator advances the full on-chain timeout quickly without changing it.
+    const slotDeadline = Date.now() + 5 * 60_000;
+    let observedSlot = await connection.getSlot("processed");
+    while (observedSlot < targetSlot) {
+      if (Date.now() >= slotDeadline) {
+        throw new Error(`local-validator did not advance to refund slot ${targetSlot}; last observed ${observedSlot}`);
+      }
+      await sleep(100);
+      observedSlot = await connection.getSlot("processed");
+    }
+    expect(observedSlot).to.be.at.least(targetSlot,
       "validator clock reached commit_slot + VRF_REFUND_AFTER_SLOTS");
 
     const signature = await sendWithPayer(expireBuilder(), cranker);

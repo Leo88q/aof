@@ -60,6 +60,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
   const ata = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true);
 
   let setupPayer: Keypair;
+  const playerSigners = new Map<string, Keypair>();
   let owner: Keypair;
   let attacker: Keypair;
 
@@ -81,6 +82,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
     const credited = await connection.getBalance(kp.publicKey, "confirmed");
     if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
+    playerSigners.set(kp.publicKey.toBase58(), kp);
   }
 
   /** Идемпотентно создаёт ATA, переживая отставший bank локального валидатора. */
@@ -92,6 +94,18 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
     const tx = new anchor.web3.Transaction().add(ix);
     await submitWithPayer(connection, tx, setupPayer);
     return address;
+  }
+
+  async function ensurePlayer(user: PublicKey): Promise<PublicKey> {
+    const profile = playerPda(user);
+    if (await connection.getAccountInfo(profile, "confirmed")) return profile;
+    const signer = user.equals(wallet.publicKey) ? wallet.payer : playerSigners.get(user.toBase58());
+    if (!signer) throw new Error(`no local signer available to initialize Player for ${user}`);
+    const tx = await core.methods.initPlayer().accounts({
+      player: user, playerProfile: profile, systemProgram: SystemProgram.programId,
+    }).transaction();
+    await submitWithPayer(connection, tx, signer);
+    return profile;
   }
 
   async function sendWithPayer(builder: any, payer: Keypair) {
@@ -138,6 +152,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
   const UNIT = new BN(1_000_000_000);
 
   async function giveResource(kind: string, mint: PublicKey, user: PublicKey, units: number) {
+    await ensurePlayer(user);
     const tokenAccount = await ensureAta(mint, user);
     await core.methods
       .mintResource({ [kind]: {} }, UNIT.muln(units))
@@ -271,7 +286,10 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
       })
       .signers([attacker])
       .rpc();
-    expect((await balance(ata(mint, attacker.publicKey))).toString()).to.equal("0");
+    expect(await connection.getAccountInfo(ata(mint, attacker.publicKey), "confirmed"))
+      .to.equal(null, "burn_nft closes the empty NFT token account and returns its rent");
+    expect(await connection.getAccountInfo(toolPda(mint), "confirmed"))
+      .to.equal(null, "burn_nft closes the ToolData PDA and returns its rent");
   });
 
   // [5]: посторонний не должен уметь сбросить кэш (иначе он уводит operator).

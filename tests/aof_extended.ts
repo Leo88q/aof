@@ -41,6 +41,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   const UNIT = new BN(1_000_000_000); // RESOURCE_UNIT (9 decimals)
 
   let setupPayer: Keypair;
+  const playerSigners = new Map<string, Keypair>();
   let circuitMint: PublicKey, siliconMint: PublicKey, dataMint: PublicKey;
 
   // ResourceKind variants in enum order (seed = variant index), lowerCamel for
@@ -60,6 +61,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
     const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
     if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
+    playerSigners.set(kp.publicKey.toBase58(), kp);
   }
 
   async function ensureAta(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
@@ -69,6 +71,20 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const tx = new Transaction().add(createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint));
     await submitWithPayer(provider.connection, tx, setupPayer);
     return ata;
+  }
+
+  async function ensurePlayer(owner: PublicKey): Promise<PublicKey> {
+    const profile = playerPda(owner);
+    if (await provider.connection.getAccountInfo(profile, "confirmed")) return profile;
+    const signer = owner.equals(providerSigner.publicKey)
+      ? providerSigner
+      : playerSigners.get(owner.toBase58());
+    if (!signer) throw new Error(`no local signer available to initialize Player for ${owner}`);
+    const tx = await program.methods.initPlayer().accounts({
+      player: owner, playerProfile: profile, systemProgram: SystemProgram.programId,
+    }).transaction();
+    await submitWithPayer(provider.connection, tx, signer);
+    return profile;
   }
 
   async function sendWithPayer(builder: any, payer: Keypair) {
@@ -95,8 +111,9 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   }
 
   // Admin faucet (mint_resource keeps a 7–10% treasury fee, so the user gets
-  // a bit less than `units`). Also creates the user's Player PDA.
+  // a bit less than `units`). The player initializes their own profile first.
   async function giveResource(kind: string, mint: PublicKey, user: PublicKey, units: number): Promise<PublicKey> {
+    await ensurePlayer(user);
     const ata = await ensureAta(mint, user);
     await program.methods.mintResource({ [kind]: {} }, UNIT.muln(units)).accounts({
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda(kind), mint,
@@ -668,7 +685,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     }
 
     const listing = pda([B("listing"), mint.toBuffer()]);
-    const listingVault = getAssociatedTokenAddressSync(mint, listing, true);
+    let listingVault = await createTokenAccount(provider.connection, setupPayer, mint, listing, Keypair.generate());
     const list = (who: Keypair, whoToken: PublicKey, price: number) => program.methods.marketplaceList(new BN(price)).accounts({
       config: configPda, seller: who.publicKey, mint, tool: toolPda(mint), sellerToken: whoToken, listing, listingVault,
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
@@ -690,7 +707,9 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     expect(td.owner.toBase58()).to.equal(buyer.publicKey.toBase58());
     expect(td.operator.toBase58()).to.equal(buyer.publicKey.toBase58());
 
-    await ensureAta(mint, listing); // the sale closed the escrow ATA
+    // The sale closes both the listing PDA and escrow token account. A fresh
+    // classic token account can be owned by the listing PDA before it is re-inited.
+    listingVault = await createTokenAccount(provider.connection, setupPayer, mint, listing, Keypair.generate());
     await expectError(list(seller, sellerToken, 1), "NotToolOwner");
     await list(buyer, buyerToken, 2_000_000);
     expect((await program.account.listing.fetch(listing)).seller.toBase58()).to.equal(buyer.publicKey.toBase58());

@@ -160,7 +160,18 @@ describe("payer remediation: игрок платит за свои аккаун�
     return provider.sendAndConfirm(tx, [], { commitment: "confirmed", preflightCommitment: "confirmed" });
   };
   const transactionDeltas = async (signature: string) => {
-    await connection.confirmTransaction(signature, "confirmed");
+    try {
+      await connection.confirmTransaction(signature, "confirmed");
+    } catch (confirmationError) {
+      // web3.js rejects with the raw TransactionError when a confirmed
+      // transaction failed on-chain. That is an expected result for several
+      // payer regressions, so only suppress the rejection when history proves
+      // that this signature executed and recorded an on-chain error.
+      const failed = await connection.getTransaction(signature, {
+        commitment: "confirmed", maxSupportedTransactionVersion: 0,
+      });
+      if (!failed?.meta?.err) throw confirmationError;
+    }
     const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
     if (!tx?.meta) throw new Error(`transaction ${signature} not found`);
     const keys = tx.transaction.message.getAccountKeys().staticAccountKeys;

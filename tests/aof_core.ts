@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
-import { createMint, getMint, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createMint, getMint, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, createTransferInstruction, createAccount as createTokenAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
@@ -47,6 +47,7 @@ describe("aof-core: security & core flows", () => {
   const TEST_CAP_PER_EPOCH = UNIT_RAW.mul(new BN(1_000_000)); // generous default for the suite
 
   let setupPayer: Keypair;
+  const playerSigners = new Map<string, Keypair>();
   let dataMint: PublicKey, circuitMint: PublicKey, siliconMint: PublicKey, mindMint: PublicKey;
   let neuronMint: PublicKey, synapseMint: PublicKey;
   let signalMint: PublicKey, modelMint: PublicKey, powerMint: PublicKey, computeMint: PublicKey;
@@ -54,7 +55,23 @@ describe("aof-core: security & core flows", () => {
 
   // Admin faucet for resource tokens: mint_resource keeps a treasury fee, so
   // callers ask for `amount` and get amount - fee. Returns the user's ATA.
+  // MintResource deliberately never creates Player; tests initialize a profile
+  // with its real owner as signer/payer before using the admin faucet.
   async function giveResource(kind: string, mint: PublicKey, user: PublicKey, units: number): Promise<PublicKey> {
+    if (user.equals(vaultPda)) {
+      // A program-owned vault PDA cannot sign init_player. Mint to a real player,
+      // then move the requested amount into the vault's token account.
+      const donor = Keypair.generate();
+      await airdrop(donor);
+      const donorAta = await giveResource(kind, mint, donor.publicKey, units * 2);
+      const vaultAta = await ensureAta(mint, vaultPda);
+      const transfer = new Transaction().add(createTransferInstruction(
+        donorAta, vaultAta, donor.publicKey, UNIT.muln(units).toNumber(), [], TOKEN_PROGRAM_ID,
+      ));
+      await submitWithPayer(provider.connection, transfer, donor);
+      return vaultAta;
+    }
+    await ensurePlayer(user);
     const ata = await ensureAta(mint, user);
     const treasuryAta = await ensureAta(mint, authority);
     await program.methods.mintResource({ [kind]: {} }, UNIT.muln(units)).accounts({
@@ -111,6 +128,7 @@ describe("aof-core: security & core flows", () => {
     if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
     const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
     if (credited < requested) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${requested}, got ${credited}`);
+    playerSigners.set(kp.publicKey.toBase58(), kp);
   };
 
   async function ensureAta(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
@@ -122,6 +140,20 @@ describe("aof-core: security & core flows", () => {
     const tx = new Transaction().add(createAssociatedTokenAccountInstruction(setupPayer.publicKey, ata, owner, mint));
     await submitWithPayer(provider.connection, tx, setupPayer);
     return ata;
+  }
+
+  async function ensurePlayer(owner: PublicKey): Promise<PublicKey> {
+    const profile = playerPda(owner);
+    if (await provider.connection.getAccountInfo(profile, "confirmed")) return profile;
+    const signer = owner.equals(providerSigner.publicKey)
+      ? providerSigner
+      : playerSigners.get(owner.toBase58());
+    if (!signer) throw new Error(`no local signer available to initialize Player for ${owner}`);
+    const tx = await program.methods.initPlayer().accounts({
+      player: owner, playerProfile: profile, systemProgram: SystemProgram.programId,
+    }).transaction();
+    await submitWithPayer(provider.connection, tx, signer);
+    return profile;
   }
 
   /** Charge setup-payer rent and network fees to the same explicit signer.
@@ -279,6 +311,7 @@ describe("aof-core: security & core flows", () => {
   it("issuance cap: per-kind budget blocks over-issuance, cap=0 halts, set never resets the counter", async () => {
     const user = Keypair.generate(); await airdrop(user);
     const stranger = Keypair.generate(); await airdrop(stranger);
+    await ensurePlayer(user.publicKey);
     const ata = await ensureAta(mindMint, user.publicKey);
     const treasAta = await ensureAta(mindMint, authority);
     const cap = issuanceCapPda("mind");
@@ -395,10 +428,10 @@ describe("aof-core: security & core flows", () => {
       expect((ev as any).data.authority.toBase58()).to.equal(authority.toBase58());
     }
     const before = (await balance(userCircuit)).add(await balance(treasuryCircuit));
-    const userLamportsBefore = await balance(user.publicKey);
+    const userLamportsBefore = await provider.connection.getBalance(user.publicKey, "confirmed");
     await program.methods.mintResourceOnce({ circuit: {} }, gross, rewardId).accounts(accounts).signers([user]).rpc();
     // [PAYER] весь rent профиля и чека списан с игрока, а не с оператора.
-    expect(await balance(user.publicKey)).to.be.lessThan(userLamportsBefore);
+    expect(await provider.connection.getBalance(user.publicKey, "confirmed")).to.be.lessThan(userLamportsBefore);
     const receipt = await program.account.rewardReceipt.fetch(rewardReceipt);
     expect(receipt.recipient.toBase58()).to.equal(user.publicKey.toBase58());
     expect(receipt.mint.toBase58()).to.equal(circuitMint.toBase58());
@@ -634,6 +667,7 @@ describe("aof-core: security & core flows", () => {
     const { mint, tokenAccount } = await mintTool(owner.publicKey, "Neural_Seeder");
     const ownerNeuron = await ensureAta(neuronMint, owner.publicKey);
     const ownerNeuronTreasury = await ensureAta(neuronMint, authority);
+    await ensurePlayer(owner.publicKey);
     await program.methods.mintResource({ neuron: {} }, new BN(10_000_000_000)).accounts({
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("neuron"), mint: neuronMint,
       tokenAccount: ownerNeuron, treasuryToken: ownerNeuronTreasury, player: playerPda(owner.publicKey),
@@ -675,6 +709,7 @@ describe("aof-core: security & core flows", () => {
     }).signers([owner]).rpc(), "NotToolOperator");
 
     const renterNeuron = await ensureAta(neuronMint, renter.publicKey);
+    await ensurePlayer(renter.publicKey);
     await program.methods.mintResource({ neuron: {} }, new BN(10_000_000_000)).accounts({
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("neuron"), mint: neuronMint,
       tokenAccount: renterNeuron, treasuryToken: ownerNeuronTreasury, player: playerPda(renter.publicKey),
@@ -791,6 +826,7 @@ describe("aof-core: security & core flows", () => {
     const seller = Keypair.generate(); await airdrop(seller);
     const sellerCircuit = await ensureAta(circuitMint, seller.publicKey);
     const treasAta = await ensureAta(circuitMint, authority);
+    await ensurePlayer(seller.publicKey);
     await program.methods.mintResource({ circuit: {} }, new BN(1_000)).accounts({
       config: configPda, materialMints: materialMintsPda, authority, auth: authPda, issuanceCap: issuanceCapPda("circuit"), mint: circuitMint, tokenAccount: sellerCircuit,
       treasuryToken: treasAta, player: playerPda(seller.publicKey),
@@ -1085,7 +1121,7 @@ describe("aof-core: security & core flows", () => {
       };
       await expectError(
         sendWithPayer(program.methods.mintTool("plasma_cutter", { common: {} }).accounts(accounts), setupPayer),
-        "Unauthorized",
+        "ConstraintTokenOwner",
       );
       await sendWithPayer(program.methods.mintTool("plasma_cutter", { common: {} })
         .accounts({ ...accounts, recipient: to.publicKey }), setupPayer);
@@ -1146,6 +1182,7 @@ describe("aof-core: security & core flows", () => {
 
     it("F-03: the global supply cap blocks minting over the ceiling", async () => {
       const user = Keypair.generate(); await airdrop(user);
+      await ensurePlayer(user.publicKey);
       const mintInfo = await getMint(provider.connection, circuitMint);
       const supply = new BN(mintInfo.supply.toString());
       const setCap = (cap: BN) => program.methods.setSupplyCap({ circuit: {} }, cap)
@@ -1308,26 +1345,22 @@ describe("aof-core: security & core flows", () => {
       const seller = Keypair.generate(); await airdrop(seller);
       const { mint, tokenAccount } = await mintTool(seller.publicKey);
       const listing = pda([B("listing"), mint.toBuffer()]);
-      const listingVault = await ensureAta(mint, listing);
-      const listAcc = {
+      let listingVault = await createTokenAccount(provider.connection, setupPayer, mint, listing, Keypair.generate());
+      const listAccounts = () => ({
         config: configPda, seller: seller.publicKey, mint, tool: toolPda(mint),
         sellerToken: tokenAccount, listing, listingVault,
         tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
-      };
-      await program.methods.marketplaceList(new BN(1_000)).accounts(listAcc).signers([seller]).rpc();
+      });
+      await program.methods.marketplaceList(new BN(1_000)).accounts(listAccounts()).signers([seller]).rpc();
       await program.methods.marketplaceCancel().accounts({
         config: configPda, mint, listing, seller: seller.publicKey, listingVault,
         sellerToken: tokenAccount, tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([seller]).rpc();
-      // Before the fix the second `init` collided with the stale PDA and the
-      // NFT lost its liquidity permanently. `marketplace_cancel` now closes
-      // BOTH accounts it holds: the listing PDA (`close = seller`, which is
-      // what frees the seed for the second `init`) and the listing vault ATA
-      // (`token::close_account`, handing its rent back to the seller). The
-      // vault is a plain `Account<TokenAccount>` in `MarketplaceList`, so the
-      // client has to recreate the ATA at the same address before relisting.
-      await ensureAta(mint, listing);
-      await program.methods.marketplaceList(new BN(2_000)).accounts(listAcc).signers([seller]).rpc();
+      // Both the Listing PDA and escrow token account close on cancel. Use a
+      // fresh classic token account owned by the same PDA for the relist; the
+      // instruction only requires the correct mint/owner, not an associated ATA.
+      listingVault = await createTokenAccount(provider.connection, setupPayer, mint, listing, Keypair.generate());
+      await program.methods.marketplaceList(new BN(2_000)).accounts(listAccounts()).signers([seller]).rpc();
       expect((await program.account.listing.fetch(listing)).priceLamports.toString()).to.equal("2000");
       expect((await program.account.listing.fetch(listing)).active).to.equal(true);
     });

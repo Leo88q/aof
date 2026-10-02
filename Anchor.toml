@@ -53,6 +53,11 @@ wallet = "solana/keys/aof-authority-devnet.json"
 # подписанту. Без upgradeable-деплоя этого аккаунта нет, и bootstrap падает.
 upgradeable = true
 
+[test.validator]
+# Ускоряет только генерацию локальных слотов для активного 18k-slot VRF expiry
+# теста; on-chain VRF_REFUND_AFTER_SLOTS остаётся без изменений.
+ticks_per_slot = 1
+
 [scripts]
 # IDL builder is upstream-blocked (anchor-syn 0.30.1 + proc-macro2 1.0.94 vs newer rustc).
 # CI seeds target/idl from aof_backend/src/idl and runs with --skip-build.
