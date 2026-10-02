@@ -1275,7 +1275,7 @@ pub struct StartMiningDelegated<'info> {
 #[derive(Accounts)]
 pub struct CollectMiningDelegated<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(
