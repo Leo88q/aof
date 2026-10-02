@@ -459,64 +459,66 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(d(rerollCommit)).to.equal(-d.pre(rerollCommit));
   });
 
-  // Keep this slot-wait test last: advancing 18,000 slots invalidates the
-  // recent-slot state used by subsequent Switchboard commits.
-  it("pack timeout refund: the validator reaches expiry and returns price, capped deposit, and rent bond to the player", async function () {
-    this.timeout(40 * 60_000);
-    const oracle = Keypair.generate().publicKey;
-    const { user, packCommit } = await commitPack(oracle);
-    const commit = await program.account.packCommit.fetch(packCommit);
-    const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
-    expect(commitInfo).to.not.equal(null);
-    const commitRent = await connection.getMinimumBalanceForRentExemption(commitInfo!.data.length, "confirmed");
-    const settlementCap = await toolSettlementRent();
-    const escrowLamports = commitInfo!.lamports;
-    expect(commit.depositLamports.toNumber()).to.equal(settlementCap);
-    expect(escrowLamports).to.equal(commitRent + commit.paidLamports.toNumber() + settlementCap,
-      "the commit account holds rent bond + price + capped settlement rent");
-    const userBeforeExpiry = await connection.getBalance(user.publicKey, "confirmed");
-    const cranker = Keypair.generate();
-    await airdrop(cranker, 2);
-    const crankerBeforeExpiry = await connection.getBalance(cranker.publicKey, "confirmed");
-    const authorityBefore = await connection.getBalance(authority, "confirmed");
-    const expireBuilder = () => program.methods.packOpenExpire().accounts({
-      config: configPda, packCommit, user: user.publicKey, vrfSlot,
-    });
+  // Run this integration case in its own CI invocation so ordinary tests keep
+  // the validator's default blockhash lifetime and throughput.
+  if (process.env.AOF_TEST_VRF_EXPIRY === "1") {
+    it("pack timeout refund: the validator reaches expiry and returns price, capped deposit, and rent bond to the player", async function () {
+      this.timeout(40 * 60_000);
+      const oracle = Keypair.generate().publicKey;
+      const { user, packCommit } = await commitPack(oracle);
+      const commit = await program.account.packCommit.fetch(packCommit);
+      const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
+      expect(commitInfo).to.not.equal(null);
+      const commitRent = await connection.getMinimumBalanceForRentExemption(commitInfo!.data.length, "confirmed");
+      const settlementCap = await toolSettlementRent();
+      const escrowLamports = commitInfo!.lamports;
+      expect(commit.depositLamports.toNumber()).to.equal(settlementCap);
+      expect(escrowLamports).to.equal(commitRent + commit.paidLamports.toNumber() + settlementCap,
+        "the commit account holds rent bond + price + capped settlement rent");
+      const userBeforeExpiry = await connection.getBalance(user.publicKey, "confirmed");
+      const cranker = Keypair.generate();
+      await airdrop(cranker, 2);
+      const crankerBeforeExpiry = await connection.getBalance(cranker.publicKey, "confirmed");
+      const authorityBefore = await connection.getBalance(authority, "confirmed");
+      const expireBuilder = () => program.methods.packOpenExpire().accounts({
+        config: configPda, packCommit, user: user.publicKey, vrfSlot,
+      });
 
-    await expectError(expireBuilder().rpc(), "CommitNotExpired");
-    expect((await program.account.packCommit.fetch(packCommit)).user.toBase58()).to.equal(user.publicKey.toBase58(),
-      "refund is unavailable before the reveal window closes");
+      await expectError(expireBuilder().rpc(), "CommitNotExpired");
+      expect((await program.account.packCommit.fetch(packCommit)).user.toBase58()).to.equal(user.publicKey.toBase58(),
+        "refund is unavailable before the reveal window closes");
 
-    const targetSlot = commit.commitSlot.toNumber() + REFUND_AFTER_SLOTS;
-    // Agave 4.x does not expose the historical test-only warpSlot JSON-RPC
-    // method. Anchor.toml uses eight ticks per slot so the real local validator
-    // advances the full on-chain timeout without making transaction blockhashes
-    // too short-lived.
-    const slotDeadline = Date.now() + 35 * 60_000;
-    let observedSlot = await connection.getSlot("processed");
-    while (observedSlot < targetSlot) {
-      if (Date.now() >= slotDeadline) {
-        throw new Error(`local-validator did not advance to refund slot ${targetSlot}; last observed ${observedSlot}`);
+      const targetSlot = commit.commitSlot.toNumber() + REFUND_AFTER_SLOTS;
+      // Agave 4.x does not expose the historical test-only warpSlot JSON-RPC
+      // method. CI's expiry-only invocation uses eight ticks per slot so the
+      // real validator advances the on-chain timeout without shortening the
+      // blockhash window for the rest of the suite.
+      const slotDeadline = Date.now() + 35 * 60_000;
+      let observedSlot = await connection.getSlot("processed");
+      while (observedSlot < targetSlot) {
+        if (Date.now() >= slotDeadline) {
+          throw new Error(`local-validator did not advance to refund slot ${targetSlot}; last observed ${observedSlot}`);
+        }
+        await sleep(1_000);
+        observedSlot = await connection.getSlot("processed");
       }
-      await sleep(1_000);
-      observedSlot = await connection.getSlot("processed");
-    }
-    expect(observedSlot).to.be.at.least(targetSlot,
-      "validator clock reached commit_slot + VRF_REFUND_AFTER_SLOTS");
+      expect(observedSlot).to.be.at.least(targetSlot,
+        "validator clock reached commit_slot + VRF_REFUND_AFTER_SLOTS");
 
-    const signature = await sendWithPayer(expireBuilder(), cranker);
-    const d = await txDeltas(signature);
-    expect(d.pre(packCommit)).to.equal(escrowLamports);
-    expect(d(packCommit)).to.equal(-escrowLamports, "expiry closes the commit and empties its escrow");
-    expect(d(user.publicKey)).to.equal(escrowLamports,
-      "player receives price + unused deposit + refundable commit rent bond");
-    expect(d(cranker.publicKey)).to.equal(-d.fee, "permissionless expirer pays only its network fee");
-    expect(await connection.getBalance(user.publicKey, "confirmed")).to.equal(userBeforeExpiry + escrowLamports);
-    expect(await connection.getBalance(cranker.publicKey, "confirmed")).to.equal(crankerBeforeExpiry - d.fee);
-    expect(await connection.getBalance(authority, "confirmed")).to.equal(authorityBefore,
-      "authority neither funds expiry nor receives the player's refund");
-    expect(await connection.getAccountInfo(packCommit)).to.equal(null);
-    expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero,
-      "timeout refund releases the pooled randomness slot");
-  });
+      const signature = await sendWithPayer(expireBuilder(), cranker);
+      const d = await txDeltas(signature);
+      expect(d.pre(packCommit)).to.equal(escrowLamports);
+      expect(d(packCommit)).to.equal(-escrowLamports, "expiry closes the commit and empties its escrow");
+      expect(d(user.publicKey)).to.equal(escrowLamports,
+        "player receives price + unused deposit + refundable commit rent bond");
+      expect(d(cranker.publicKey)).to.equal(-d.fee, "permissionless expirer pays only its network fee");
+      expect(await connection.getBalance(user.publicKey, "confirmed")).to.equal(userBeforeExpiry + escrowLamports);
+      expect(await connection.getBalance(cranker.publicKey, "confirmed")).to.equal(crankerBeforeExpiry - d.fee);
+      expect(await connection.getBalance(authority, "confirmed")).to.equal(authorityBefore,
+        "authority neither funds expiry nor receives the player's refund");
+      expect(await connection.getAccountInfo(packCommit)).to.equal(null);
+      expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero,
+        "timeout refund releases the pooled randomness slot");
+    });
+  }
 });
