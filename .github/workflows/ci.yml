@@ -1457,6 +1457,19 @@ jobs:
           : > /tmp/anchor-test.log
           rc=0
           RUSTUP_TOOLCHAIN="$RUST_VERSION" anchor test --skip-build 2>&1 | tee -a /tmp/anchor-test.log || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            # Anchor redirects solana-test-validator output to this ledger log;
+            # include it so startup failures are diagnosable from the PR check.
+            for validator_log in .anchor/test-ledger/test-ledger-log.txt .anchor/test-ledger/validator.log; do
+              if [ -s "$validator_log" ]; then
+                {
+                  printf '\n===== tail of %s =====\n' "$validator_log"
+                  tail -n 120 "$validator_log"
+                  printf '\n===== end validator log =====\n'
+                } | tee -a /tmp/anchor-test.log
+              fi
+            done
+          fi
           echo "anchor test exit code: $rc" | tee -a /tmp/anchor-test.log
           # Belt and braces: `anchor test` has been observed to exit 0 while
           # mocha reported failures in some CLI/mocha combinations. Treat any
