@@ -459,9 +459,10 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(d(rerollCommit)).to.equal(-d.pre(rerollCommit));
   });
 
-  // Keep this warp test last: jumping 18,000 slots deliberately invalidates
-  // the recent-slot state used by subsequent Switchboard commits.
-  it("pack timeout refund: expiry warps to the threshold and returns price, capped deposit, and rent bond to the player", async () => {
+  // Keep this slot-wait test last: advancing 18,000 slots invalidates the
+  // recent-slot state used by subsequent Switchboard commits.
+  it("pack timeout refund: the validator reaches expiry and returns price, capped deposit, and rent bond to the player", async function () {
+    this.timeout(40 * 60_000);
     const oracle = Keypair.generate().publicKey;
     const { user, packCommit } = await commitPack(oracle);
     const commit = await program.account.packCommit.fetch(packCommit);
@@ -488,15 +489,16 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
 
     const targetSlot = commit.commitSlot.toNumber() + REFUND_AFTER_SLOTS;
     // Agave 4.x does not expose the historical test-only warpSlot JSON-RPC
-    // method. Anchor.toml configures one tick per slot for localnet so the real
-    // validator advances the full on-chain timeout quickly without changing it.
-    const slotDeadline = Date.now() + 5 * 60_000;
+    // method. Anchor.toml uses eight ticks per slot so the real local validator
+    // advances the full on-chain timeout without making transaction blockhashes
+    // too short-lived.
+    const slotDeadline = Date.now() + 35 * 60_000;
     let observedSlot = await connection.getSlot("processed");
     while (observedSlot < targetSlot) {
       if (Date.now() >= slotDeadline) {
         throw new Error(`local-validator did not advance to refund slot ${targetSlot}; last observed ${observedSlot}`);
       }
-      await sleep(100);
+      await sleep(1_000);
       observedSlot = await connection.getSlot("processed");
     }
     expect(observedSlot).to.be.at.least(targetSlot,

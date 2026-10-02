@@ -1464,7 +1464,7 @@ jobs:
               if [ -s "$validator_log" ]; then
                 {
                   printf '\n===== tail of %s =====\n' "$validator_log"
-                  tail -n 120 "$validator_log"
+                  tail -n 20 "$validator_log"
                   printf '\n===== end validator log =====\n'
                 } | tee -a /tmp/anchor-test.log
               fi

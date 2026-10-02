@@ -59,9 +59,9 @@ upgradeable = true
 [test.validator]
 # Agave 4.2.1 panics during startup when the bind address is unspecified.
 bind_address = "127.0.0.1"
-# Agave requires at least 2 ticks per slot; this advances the active 18k-slot
-# VRF expiry test in about four minutes without changing the on-chain threshold.
-ticks_per_slot = 2
+# Eight ticks leave normal transaction headroom while advancing the active
+# 18k-slot VRF expiry test; the on-chain threshold remains unchanged.
+ticks_per_slot = 8
 
 [scripts]
 # IDL builder is upstream-blocked (anchor-syn 0.30.1 + proc-macro2 1.0.94 vs newer rustc).
