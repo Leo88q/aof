@@ -214,7 +214,7 @@ test('устаревший markdown и отсутствие evidence — оши�
 
 test('инвентарь клиентов воспроизводим (требование шага A, замечание владельца)', () => {
   const inventory = read(CLIENT_INVENTORY);
-  assert.ok(inventory.includes('git ls-files -- frontend game'), `в ${CLIENT_INVENTORY} нет команды-источника`);
+  assert.ok(inventory.includes('git ls-tree -r HEAD -- frontend game'), `в ${CLIENT_INVENTORY} нет команды-источника committed HEAD`);
   assert.ok(inventory.includes('frontend/src/pages/farm'), 'инвентарь должен перечислять реальные файлы frontend');
   assert.ok(inventory.includes('game/godot/products/'), 'инвентарь должен перечислять реальные файлы game');
   assert.doesNotMatch(inventory, /find frontend -maxdepth|find game -maxdepth/, 'find-дамп больше не источник истины');
