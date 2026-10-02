@@ -1,15 +1,15 @@
 # Инвентарь клиентских файлов (шаг A пункта 12)
 
-Только tracked-файлы: генерируется из `git ls-files -- frontend game`.
-Сортировка байтовая (не зависит от локали), абсолютных путей, node_modules и
-сборочных каталогов нет — файл воспроизводим и является evidence, а не снимком
-рабочей копии.
+Только committed tracked-файлы из `git ls-tree -r HEAD -- frontend game`.
+Перед проверкой подтверждается чистое состояние HEAD/index/worktree; известное
+отставание текущей ветки от `origin/<branch>` блокирует сборку inventory.
+Сортировка по UTF-8 bytes; абсолютных путей, node_modules и build/cache-каталогов нет.
 
-Пересобрать: `node scripts/client-inventory.mjs --write`; проверить: `--check`
-(`tests/readiness/client-inventory.test.cjs`).
+Пересобрать явно: `node scripts/client-inventory.mjs --write`; проверить: `--check`.
+`--check` ничего не переписывает; после `--write` baseline нужно отдельно просмотреть и закоммитить.
 
-Файлов: 606 (frontend: 530, game: 76).
-sha256: 18be22444f882f209e53ef1cab44e03d463d774f7c5fd3ca8e1a0afce191aa20
+Файлов: 607 (frontend: 531, game: 76).
+sha256: 6cc50684b820502348b447f2772c58a5a37b918c20bbef25c4acbb746b8ed187
 
 ```
 frontend/.env.example
@@ -423,6 +423,7 @@ frontend/src/lib/craftReadings.ts
 frontend/src/lib/currentSeasonReadings.ts
 frontend/src/lib/drumTable.ts
 frontend/src/lib/economyBalances.ts
+frontend/src/lib/formatLamports.ts
 frontend/src/lib/gasTank.ts
 frontend/src/lib/hotMarketReadings.ts
 frontend/src/lib/listingReadings.ts
