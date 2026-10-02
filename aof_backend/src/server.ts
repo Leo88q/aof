@@ -8,6 +8,8 @@ import cors from "cors";
 import { PORT, TRUST_PROXY_HOPS } from "./config";
 import { connection } from "./provider";
 import admin from "./routes/admin";
+import adminXp from "./routes/adminXp";
+import seasonXpClaims from "./routes/seasonXpClaims";
 import gastank from "./routes/gastank";
 import resources from "./routes/resources";
 import tools from "./routes/tools";
@@ -105,6 +107,7 @@ app.use(requireMappedWalletProof());
 app.use(sentinelAutoAudit());
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/health" } }));
 app.use("/admin", txLimiter);
+app.use("/xp", txLimiter);
 // Read-heavy public endpoints proxy RPC / DB scans; they get the read limiter
 // on top of the general one so a single client cannot saturate the RPC quota.
 app.use("/query", readLimiter);
@@ -127,7 +130,9 @@ app.use("/reroll", txLimiter);
 app.use("/exploration", txLimiter);
 app.use("/drum", txLimiter);
 app.use("/vrf", readLimiter);
+app.use("/admin/xp", adminXp);
 app.use("/admin", admin);
+app.use("/xp", seasonXpClaims);
 app.use("/admin/audit", adminAudit);
 app.use("/admin/economy", adminEconomy);
 app.use("/admin/chain", adminChain);

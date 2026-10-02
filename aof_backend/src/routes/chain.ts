@@ -7,44 +7,44 @@ import {
   authPda,
   configPda,
   energyAccountPda,
-  farmTilePda,
+  labTilePda,
   materialMintsPda,
-  millStatePda,
-  ovenStatePda,
+  signalStatePda,
+  modelStatePda,
   playerPda,
   toolPda,
   weatherStatePda,
-  wellStatePda,
+  gridStatePda,
 } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 
 const r = Router();
 const RESOURCE_UNIT = new BN("1000000000");
 
-// ===== [БЛОК L] Ферма: посадка семян =====
-r.post("/farm/plant", async (req, res) => {
+// ===== Neural lab: plant Neuron =====
+r.post("/lab/plant-neuron", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const tileIndex = Number(req.body.tileIndex);
-    // Public API amount is in display seeds; SPL burn uses atomic units.
+    // Public API amount is in display neuron; SPL burn uses atomic units.
     const amount = new BN(req.body.amount).mul(RESOURCE_UNIT);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [energyAccount] = energyAccountPda(user);
-    const [farmTile] = farmTilePda(user, tileIndex);
-    const seedsMint = new PublicKey(req.body.seedsMint);
-    const userSeeds = getAssociatedTokenAddressSync(seedsMint, user);
+    const [labTile] = labTilePda(user, tileIndex);
+    const neuronMint = new PublicKey(req.body.neuronMint);
+    const userNeuron = getAssociatedTokenAddressSync(neuronMint, user);
 
     const ix = await (program.methods as any)
-      .plantSeeds(tileIndex, amount)
+      .plantNeuron(tileIndex, amount)
       .accounts({
         config,
         user,
         materialMints,
         energyAccount,
-        farmTile,
-        seedsMint,
-        userSeeds,
+        labTile,
+        neuronMint,
+        userNeuron,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -57,33 +57,33 @@ r.post("/farm/plant", async (req, res) => {
   }
 });
 
-// ===== [БЛОК L] Ферма: сбор пшеницы =====
-r.post("/farm/harvest", async (req, res) => {
+// ===== Neural lab: collect Synapse =====
+r.post("/lab/harvest-synapse", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const tileIndex = Number(req.body.tileIndex);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [energyAccount] = energyAccountPda(user);
-    const [farmTile] = farmTilePda(user, tileIndex);
+    const [labTile] = labTilePda(user, tileIndex);
     const [auth] = authPda();
-    const wheatMint = new PublicKey(req.body.wheatMint);
-    const userWheat = getAssociatedTokenAddressSync(wheatMint, user);
+    const synapseMint = new PublicKey(req.body.synapseMint);
+    const userSynapse = getAssociatedTokenAddressSync(synapseMint, user);
     const toolMint = pk(req.body.toolMint);
     const [toolData] = toolPda(toolMint);
 
     const ix = await (program.methods as any)
-      .harvestWheat(tileIndex)
+      .harvestSynapse(tileIndex)
       .accounts({
         config,
         user,
         materialMints,
         energyAccount,
-        farmTile,
+        labTile,
         toolData,
         auth,
-        wheatMint,
-        userWheat,
+        synapseMint,
+        userSynapse,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -96,32 +96,32 @@ r.post("/farm/harvest", async (req, res) => {
   }
 });
 
-// ===== [БЛОК L] Мельница: запуск помола =====
-r.post("/mill/start", async (req, res) => {
+// ===== Signal processing: start =====
+r.post("/signal/start-processing", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const batchSize = Number(req.body.batchSize);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [energyAccount] = energyAccountPda(user);
-    const [millState] = millStatePda(user);
-    const wheatMint = new PublicKey(req.body.wheatMint);
-    const stoneMint = new PublicKey(req.body.stoneMint);
-    const userWheat = getAssociatedTokenAddressSync(wheatMint, user);
-    const userStone = getAssociatedTokenAddressSync(stoneMint, user);
+    const [signalState] = signalStatePda(user);
+    const synapseMint = new PublicKey(req.body.synapseMint);
+    const siliconMint = new PublicKey(req.body.siliconMint);
+    const userSynapse = getAssociatedTokenAddressSync(synapseMint, user);
+    const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
 
     const ix = await (program.methods as any)
-      .startMilling(batchSize)
+      .startSignalProcessing(batchSize)
       .accounts({
         config,
         user,
         materialMints,
         energyAccount,
-        millState,
-        wheatMint,
-        stoneMint,
-        userWheat,
-        userStone,
+        signalState,
+        synapseMint,
+        siliconMint,
+        userSynapse,
+        userSilicon,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -134,27 +134,27 @@ r.post("/mill/start", async (req, res) => {
   }
 });
 
-// ===== [БЛОК L] Мельница: сбор муки =====
-r.post("/mill/collect", async (req, res) => {
+// ===== Signal processing: collect =====
+r.post("/signal/collect", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
-    const [millState] = millStatePda(user);
+    const [signalState] = signalStatePda(user);
     const [auth] = authPda();
-    const flourMint = new PublicKey(req.body.flourMint);
-    const userFlour = getAssociatedTokenAddressSync(flourMint, user);
+    const signalMint = new PublicKey(req.body.signalMint);
+    const userSignal = getAssociatedTokenAddressSync(signalMint, user);
 
     const ix = await (program.methods as any)
-      .collectFlour()
+      .collectSignal()
       .accounts({
         config,
         user,
         materialMints,
-        millState,
+        signalState,
         auth,
-        flourMint,
-        userFlour,
+        signalMint,
+        userSignal,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
@@ -166,41 +166,41 @@ r.post("/mill/collect", async (req, res) => {
   }
 });
 
-// ===== [БЛОК L] Печь: запуск выпечки =====
-r.post("/oven/start", async (req, res) => {
+// ===== Model training: start =====
+r.post("/model/start-training", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const batchSize = Number(req.body.batchSize);
-    const fuelKind = Number(req.body.fuelKind); // 0=дрова, 1=уголь
+    const fuelKind = Number(req.body.fuelKind); // 0=схемы, 1=вычислительные циклы
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [energyAccount] = energyAccountPda(user);
-    const [ovenState] = ovenStatePda(user);
-    const flourMint = new PublicKey(req.body.flourMint);
-    const waterMint = new PublicKey(req.body.waterMint);
-    const woodMint = new PublicKey(req.body.woodMint);
-    const coalMint = new PublicKey(req.body.coalMint);
-    const userFlour = getAssociatedTokenAddressSync(flourMint, user);
-    const userWater = getAssociatedTokenAddressSync(waterMint, user);
-    const userWood = getAssociatedTokenAddressSync(woodMint, user);
-    const userCoal = getAssociatedTokenAddressSync(coalMint, user);
+    const [modelState] = modelStatePda(user);
+    const signalMint = new PublicKey(req.body.signalMint);
+    const powerMint = new PublicKey(req.body.powerMint);
+    const circuitMint = new PublicKey(req.body.circuitMint);
+    const computeMint = new PublicKey(req.body.computeMint);
+    const userSignal = getAssociatedTokenAddressSync(signalMint, user);
+    const userPower = getAssociatedTokenAddressSync(powerMint, user);
+    const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
+    const userCompute = getAssociatedTokenAddressSync(computeMint, user);
 
     const ix = await (program.methods as any)
-      .startBaking(batchSize, fuelKind)
+      .startModelTraining(batchSize, fuelKind)
       .accounts({
         config,
         user,
         materialMints,
         energyAccount,
-        ovenState,
-        flourMint,
-        waterMint,
-        woodMint,
-        coalMint,
-        userFlour,
-        userWater,
-        userWood,
-        userCoal,
+        modelState,
+        signalMint,
+        powerMint,
+        circuitMint,
+        computeMint,
+        userSignal,
+        userPower,
+        userCircuit,
+        userCompute,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -213,27 +213,27 @@ r.post("/oven/start", async (req, res) => {
   }
 });
 
-// ===== [БЛОК L] Печь: сбор хлеба =====
-r.post("/oven/collect", async (req, res) => {
+// ===== Model training: collect =====
+r.post("/model/collect", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
-    const [ovenState] = ovenStatePda(user);
+    const [modelState] = modelStatePda(user);
     const [auth] = authPda();
-    const breadMint = new PublicKey(req.body.breadMint);
-    const userBread = getAssociatedTokenAddressSync(breadMint, user);
+    const modelMint = new PublicKey(req.body.modelMint);
+    const userModel = getAssociatedTokenAddressSync(modelMint, user);
 
     const ix = await (program.methods as any)
-      .collectBread()
+      .collectModel()
       .accounts({
         config,
         user,
         materialMints,
-        ovenState,
+        modelState,
         auth,
-        breadMint,
-        userBread,
+        modelMint,
+        userModel,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
@@ -269,33 +269,33 @@ r.post("/weather/crank", async (req, res) => {
   }
 });
 
-// ===== [БЛОК L] Колодец: сбор воды =====
-r.post("/well/collect", async (req, res) => {
+// ===== Grid station: collect Power =====
+r.post("/grid/collect", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
-    const [wellState] = wellStatePda(user);
+    const [gridState] = gridStatePda(user);
     const [weatherState] = weatherStatePda();
     const [auth] = authPda();
     // [AUDIT F-11] the well is no longer a faucet for throwaway wallets: the
     // wallet must already own a Player PDA with villagers.
     const [player] = playerPda(user);
-    const waterMint = new PublicKey(req.body.waterMint);
-    const userWater = getAssociatedTokenAddressSync(waterMint, user);
+    const powerMint = new PublicKey(req.body.powerMint);
+    const userPower = getAssociatedTokenAddressSync(powerMint, user);
 
     const ix = await (program.methods as any)
-      .collectWellWater()
+      .collectPower()
       .accounts({
         config,
         user,
         player,
         materialMints,
-        wellState,
+        gridState,
         weatherState,
         auth,
-        waterMint,
-        userWater,
+        powerMint,
+        userPower,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })

@@ -36,7 +36,7 @@ function workspace() {
 test('seedIdl patches the address to the deployed keypair and keeps it without a build', () => {
   const ws = workspace();
   try {
-    ws.write('aof_backend/src/idl/aof_core.json', { address: 'HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq', metadata: { name: 'aof_core', address: 'HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq' }, instructions: [] });
+    ws.write('aof_backend/src/idl/aof_core.json', { address: 'okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx', metadata: { name: 'aof_core', address: 'okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx' }, instructions: [] });
     ws.write('aof_backend/src/idl/aof_quests.json', { address: 'QuestsCommittedId1111111111111111111111111', instructions: [] });
     const keypair = [...Buffer.alloc(32, 7), ...Buffer.from(PROGRAM_HEX, 'hex')];
     ws.write('target/deploy/aof_core-keypair.json', keypair);

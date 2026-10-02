@@ -22,7 +22,7 @@
     "eventId": {
       "type": "string",
       "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,128}:(-?\\d+|tx):\\d+$",
-      "description": "signature:eventIndex:n \u2014 stable across replays"
+      "description": "signature:eventIndex:n — stable across replays"
     },
     "gameId": {
       "const": "aof"

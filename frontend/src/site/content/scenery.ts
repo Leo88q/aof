@@ -45,7 +45,7 @@ const PAGE_SCENERY: Record<string, SceneryId> = {
   seasons: 'vault',
   trust: 'vault',
   investors: 'vault',
-  potato: 'vault',
+  mind: 'vault',
   resources: 'vault',
 };
 

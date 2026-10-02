@@ -11,9 +11,9 @@ import { economyAdminCopy } from "../../i18n/economyAdminCopy";
 interface EconomySnapshot {
   id: string;
   timestamp: string;
-  potatoSupply: string;
-  potatoBurned24h: string | null;
-  potatoMinted24h: string | null;
+  mindSupply: string;
+  mindBurned24h: string | null;
+  mindMinted24h: string | null;
   inflation24h: number;
   activeCrafters24h: number;
   activeTraders24h: number;
@@ -130,7 +130,7 @@ export function EconomyDashboard() {
           <button
             onClick={takeSnapshot}
             type="button"
-            className="px-4 py-2 bg-wheat-600 text-white text-sm rounded-lg hover:bg-wheat-700 transition active:scale-95 [overflow-wrap:anywhere]"
+            className="px-4 py-2 bg-accent-600 text-white text-sm rounded-lg hover:bg-accent-700 transition active:scale-95 [overflow-wrap:anywhere]"
           >
             {text.snapshot}
           </button>
@@ -152,16 +152,16 @@ export function EconomyDashboard() {
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-soil-800/60">
-              <p className="text-straw text-xs mb-1">{text.supply}<QualityBadge label={text.quality} q={latest.fieldQuality?.potatoSupply} /></p>
-              <p className="text-wheat-500 text-xl font-bold">
-                {latest.fieldQuality?.potatoSupply === "unavailable" ? "—" : `${(Number(latest.potatoSupply) / 1e9).toFixed(2)}M`}
+              <p className="text-straw text-xs mb-1">{text.supply}<QualityBadge label={text.quality} q={latest.fieldQuality?.mindSupply} /></p>
+              <p className="text-accent-500 text-xl font-bold">
+                {latest.fieldQuality?.mindSupply === "unavailable" ? "—" : `${(Number(latest.mindSupply) / 1e9).toFixed(2)}M`}
               </p>
             </div>
 
             <div className="p-3 rounded-lg bg-soil-800/60">
-              <p className="text-straw text-xs mb-1">{text.mintedBurned}<QualityBadge label={text.quality} q={latest.fieldQuality?.potatoMinted24h} /></p>
+              <p className="text-straw text-xs mb-1">{text.mintedBurned}<QualityBadge label={text.quality} q={latest.fieldQuality?.mindMinted24h} /></p>
               <p className="text-parchment text-xl font-bold">
-                {latest.potatoMinted24h === null || latest.potatoMinted24h === undefined ? "—" : `${latest.potatoMinted24h} / ${latest.potatoBurned24h}`}
+                {latest.mindMinted24h === null || latest.mindMinted24h === undefined ? "—" : `${latest.mindMinted24h} / ${latest.mindBurned24h}`}
               </p>
             </div>
             
@@ -186,7 +186,7 @@ export function EconomyDashboard() {
             
             <div className="p-3 rounded-lg bg-soil-800/60">
               <p className="text-straw text-xs mb-1">{text.traders}</p>
-              <p className="text-water-400 text-xl font-bold">{latest.activeTraders24h}</p>
+              <p className="text-info-400 text-xl font-bold">{latest.activeTraders24h}</p>
             </div>
             
             <div className="p-3 rounded-lg bg-soil-800/60">
@@ -226,7 +226,7 @@ export function EconomyDashboard() {
               const severityColor = {
                 critical: "bg-ember-500/20 border-ember-500/40 text-ember-400",
                 warning: "bg-gold-500/20 border-gold-500/40 text-gold-400",
-                info: "bg-water-500/20 border-water-500/40 text-water-400",
+                info: "bg-info-500/20 border-info-500/40 text-info-400",
               }[alert.severity] || "bg-soil-800 border-straw/20 text-straw";
               
               return (
@@ -275,7 +275,7 @@ export function EconomyDashboard() {
               <div key={snap.id} className="p-2 rounded bg-soil-800/40 text-xs flex items-center justify-between">
                 <span className="text-straw">{new Date(snap.timestamp).toLocaleTimeString(language)}</span>
                 <div className="flex gap-3">
-                  <span className="text-wheat-500">{(Number(snap.potatoSupply) / 1e9).toFixed(2)}M</span>
+                  <span className="text-accent-500">{(Number(snap.mindSupply) / 1e9).toFixed(2)}M</span>
                   <span className={snap.inflation24h > 10 ? "text-ember-400" : snap.inflation24h > 5 ? "text-gold-400" : "text-sprout-500"}>
                     {snap.inflation24h.toFixed(1)}%
                   </span>

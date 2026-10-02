@@ -2,7 +2,7 @@
  * Скрипт автоматической инициализации MaterialMints
  * 
  * Что делает:
- * 1. Создаёт 27 канонических SPL-токенов (SEEDS, WHEAT, FLOUR, и т.д.)
+ * 1. Создаёт 27 канонических SPL-токенов (NEURON, SYNAPSE, SIGNAL, и т.д.)
  * 2. Собирает их адреса
  * 3. Вызывает /admin/init-material-mints для инициализации контракта
  * 4. Сохраняет адреса в mints.json для reference
@@ -147,12 +147,12 @@ async function main() {
       Authorization: `Bearer ${process.env.ADMIN_TOKEN || ""}`,
     },
     body: JSON.stringify({
-      foodMint: mints.food,
-      woodMint: mints.wood,
-      stoneMint: mints.stone,
-      seedsMint: mints.seeds,
-      waterMint: mints.water,
-      potatoMint: mints.potato,
+      dataMint: mints.data,
+      circuitMint: mints.circuit,
+      siliconMint: mints.silicon,
+      neuronMint: mints.neuron,
+      powerMint: mints.power,
+      mindMint: mints.mind,
     }),
   });
   const setMintsResult: any = await setMintsResp.json();

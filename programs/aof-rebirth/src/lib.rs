@@ -9,7 +9,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb");
+declare_id!("HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF");
 
 #[program]
 pub mod aof_rebirth {

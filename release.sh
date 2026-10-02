@@ -75,12 +75,12 @@ PROGRAMS=(aof_core aof_liquidity aof_rebirth aof_quests aof_market aof_session_k
 # ассоциативные массивы (ошибка "unbound variable" на строке declare).
 expected_id() {
   case "$1" in
-    aof_core)         echo "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq" ;;
-    aof_liquidity)    echo "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv" ;;
-    aof_rebirth)      echo "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb" ;;
-    aof_quests)       echo "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU" ;;
-    aof_market)       echo "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo" ;;
-    aof_session_keys) echo "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5" ;;
+    aof_core)         echo "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx" ;;
+    aof_liquidity)    echo "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S" ;;
+    aof_rebirth)      echo "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF" ;;
+    aof_quests)       echo "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc" ;;
+    aof_market)       echo "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY" ;;
+    aof_session_keys) echo "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5" ;;
     *) echo "unknown program: $1" >&2; return 1 ;;
   esac
 }

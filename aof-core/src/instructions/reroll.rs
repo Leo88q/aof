@@ -12,8 +12,8 @@ use crate::state::{canonical_tool_type, init_tool_data, Rarity};
 ///
 /// [AUDIT F-09] The gas fee alone let a player reach Legendary for 16 Common
 /// tools + 0.90 SOL with no resource sink at all, while the craft track for the
-/// same upgrade burns 2 750 WOOD / 2 120 STONE / 1 430 FOOD / 710 SEEDS /
-/// 540 WATER / 630 POTATO and gets more expensive with every craft. Reroll now
+/// same upgrade burns 2 750 CIRCUIT / 2 120 SILICON / 1 430 DATA / 710 NEURON /
+/// 540 POWER / 630 MIND and gets more expensive with every craft. Reroll now
 /// pays the craft bundle for the target rarity (same `CraftEconomy` table, same
 /// bonding-curve escalation) and increments `rarity_counter`, so the two
 /// progression tracks cannot be arbitraged against each other any more.
@@ -47,32 +47,32 @@ pub fn handler(ctx: Context<Reroll>, new_type: String) -> Result<()> {
     );
     let minted = ctx.accounts.rarity_counter.minted_count;
     let econ = &*ctx.accounts.craft_economy;
-    let wood_cost = econ.wood_base[idx]
-        .checked_add(minted.checked_mul(econ.wood_mult[idx]).ok_or(AofError::MathOverflow)?)
+    let circuit_cost = econ.circuit_base[idx]
+        .checked_add(minted.checked_mul(econ.circuit_mult[idx]).ok_or(AofError::MathOverflow)?)
         .ok_or(AofError::MathOverflow)?;
-    let stone_cost = econ.stone_base[idx]
-        .checked_add(minted.checked_mul(econ.stone_mult[idx]).ok_or(AofError::MathOverflow)?)
+    let silicon_cost = econ.silicon_base[idx]
+        .checked_add(minted.checked_mul(econ.silicon_mult[idx]).ok_or(AofError::MathOverflow)?)
         .ok_or(AofError::MathOverflow)?;
-    let food_cost = econ.food_base[idx]
-        .checked_add(minted.checked_mul(econ.food_mult[idx]).ok_or(AofError::MathOverflow)?)
+    let data_cost = econ.data_base[idx]
+        .checked_add(minted.checked_mul(econ.data_mult[idx]).ok_or(AofError::MathOverflow)?)
         .ok_or(AofError::MathOverflow)?;
-    let seeds_cost = econ.seeds_base[idx]
-        .checked_add(minted.checked_mul(econ.seeds_mult[idx]).ok_or(AofError::MathOverflow)?)
+    let neuron_cost = econ.neuron_base[idx]
+        .checked_add(minted.checked_mul(econ.neuron_mult[idx]).ok_or(AofError::MathOverflow)?)
         .ok_or(AofError::MathOverflow)?;
-    let water_cost = econ.water_base[idx]
-        .checked_add(minted.checked_mul(econ.water_mult[idx]).ok_or(AofError::MathOverflow)?)
+    let power_cost = econ.power_base[idx]
+        .checked_add(minted.checked_mul(econ.power_mult[idx]).ok_or(AofError::MathOverflow)?)
         .ok_or(AofError::MathOverflow)?;
-    let potato_cost = econ.potato_base[idx]
-        .checked_add(minted.checked_mul(econ.potato_mult[idx]).ok_or(AofError::MathOverflow)?)
+    let mind_cost = econ.mind_base[idx]
+        .checked_add(minted.checked_mul(econ.mind_mult[idx]).ok_or(AofError::MathOverflow)?)
         .ok_or(AofError::MathOverflow)?;
 
     for (mint, token_acc, cost) in [
-        (&*ctx.accounts.wood_mint, &*ctx.accounts.user_wood, wood_cost),
-        (&*ctx.accounts.stone_mint, &*ctx.accounts.user_stone, stone_cost),
-        (&*ctx.accounts.food_mint, &*ctx.accounts.user_food, food_cost),
-        (&*ctx.accounts.seeds_mint, &*ctx.accounts.user_seeds, seeds_cost),
-        (&*ctx.accounts.water_mint, &*ctx.accounts.user_water, water_cost),
-        (&*ctx.accounts.potato_mint, &*ctx.accounts.user_potato, potato_cost),
+        (&*ctx.accounts.circuit_mint, &*ctx.accounts.user_circuit, circuit_cost),
+        (&*ctx.accounts.silicon_mint, &*ctx.accounts.user_silicon, silicon_cost),
+        (&*ctx.accounts.data_mint, &*ctx.accounts.user_data, data_cost),
+        (&*ctx.accounts.neuron_mint, &*ctx.accounts.user_neuron, neuron_cost),
+        (&*ctx.accounts.power_mint, &*ctx.accounts.user_power, power_cost),
+        (&*ctx.accounts.mind_mint, &*ctx.accounts.user_mind, mind_cost),
     ] {
         if cost == 0 {
             continue;

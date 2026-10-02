@@ -63,7 +63,7 @@ const w = (i) => wallets[i % wallets.length];
 
 /** Client polling profile of one player sitting on the farm tab (ms). */
 const FARM_PROFILE = [
-  { name: "mill-state", every: 5_000, path: (i) => `/query/mill-state/${w(i)}` },      // MillPanel: 5 s
+  { name: "mill-state", every: 5_000, path: (i) => `/query/signal-state/${w(i)}` },      // MillPanel: 5 s
   { name: "farm-tiles", every: 10_000, path: (i) => `/query/farm-tiles/${w(i)}` },     // PlantingPanel: 10 s
   { name: "energy", every: 15_000, path: (i) => `/energy/balance/${w(i)}` },           // header widget
   { name: "weather", every: 15_000, path: () => `/weather/current` },                  // WellPanel: 15 s
@@ -88,7 +88,7 @@ const SCENARIOS = {
     { name: "config", path: () => "/query/config" },
     { name: "weather-state", path: () => "/query/weather-state" },
     { name: "player", path: (i) => `/query/player/${w(i)}` },
-    { name: "mill-state", path: (i) => `/query/mill-state/${w(i)}` },
+    { name: "mill-state", path: (i) => `/query/signal-state/${w(i)}` },
     { name: "balances", path: (i) => `/query/balances/${w(i)}` },
     { name: "farm-tiles", path: (i) => `/query/farm-tiles/${w(i)}` },
     { name: "my-tools(gPA)", path: (i) => `/query/my-tools/${w(i)}` }, // getProgramAccounts scan

@@ -8,7 +8,7 @@ export function WeatherOverlay({ type }: { type: string }) {
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-0.5 h-3 bg-water-500/40 rounded-full"
+            className="absolute w-0.5 h-3 bg-info-500/40 rounded-full"
             style={{ left: `${(i * 5) % 100}%` }}
             initial={{ top: "-10%" }}
             animate={{ top: "110%" }}
@@ -40,7 +40,7 @@ export function WeatherOverlay({ type }: { type: string }) {
 
   if (type === "drought") {
     return (
-      <div className="absolute inset-0 pointer-events-none z-10 bg-wheat-800/10" />
+      <div className="absolute inset-0 pointer-events-none z-10 bg-accent-800/10" />
     );
   }
 

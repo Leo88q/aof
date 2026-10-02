@@ -1,6 +1,7 @@
 {
   "address": "2dQsHg3oVKwyKHjemS2CbWkczv6sCRAY5r2WrGBv4vgC",
   "metadata": {
+    "description": "HISTORICAL raw pre-canonical IDL snapshot; not consumed by active tooling.",
     "name": "aof_core",
     "version": "0.1.0",
     "spec": "0.1.0"

@@ -48,8 +48,6 @@ pub enum AofError {
     RerollMismatchedRarity,
     #[msg("Program already initialized")]
     AlreadyInitialized,
-    #[msg("Invalid migration authority")]
-    InvalidMigrationAuthority,
     #[msg("Vault balance insufficient for payout")]
     VaultInsufficient,
     #[msg("Invalid lock seconds for stake")]
@@ -146,32 +144,32 @@ pub enum AofError {
     EnergyDepleted,
     #[msg("Energy cost exceeds available balance")]
     InsufficientEnergy,
-    #[msg("Farm tile is busy (growing)")]
-    FarmTileBusy,
-    #[msg("Farm tile is not ready for harvest")]
-    FarmTileNotReady,
-    #[msg("Farm tile is empty (nothing planted)")]
-    FarmTileEmpty,
+    #[msg("Neuro Lab tile is busy (growing)")]
+    LabTileBusy,
+    #[msg("Neuro Lab tile is not ready for harvest")]
+    LabTileNotReady,
+    #[msg("Neuro Lab tile is empty (nothing planted)")]
+    LabTileEmpty,
     #[msg("Tool is busy (mining), cannot harvest")]
     ToolBusy,
-    #[msg("Mill has active batch in progress")]
-    MillInProgress,
-    #[msg("Mill batch is not ready yet")]
-    MillNotReady,
-    #[msg("Oven has active batch in progress")]
-    OvenInProgress,
-    #[msg("Oven batch is not ready yet")]
-    OvenNotReady,
+    #[msg("Signal processor has an active batch")]
+    SignalInProgress,
+    #[msg("Signal processor batch is not ready yet")]
+    SignalNotReady,
+    #[msg("Model trainer has an active batch")]
+    ModelInProgress,
+    #[msg("Model trainer batch is not ready yet")]
+    ModelNotReady,
     #[msg("Invalid batch size (must be 1, 2, or 3)")]
     InvalidBatchSize,
-    #[msg("Invalid fuel kind (must be 0=wood or 1=coal)")]
+    #[msg("Invalid fuel kind (must be 0=circuit or 1=compute)")]
     InvalidFuelKind,
     #[msg("Material mint is not registered in MaterialMints PDA")]
     MaterialNotRegistered,
     #[msg("Weather state already updated for this day")]
     WeatherAlreadyUpdated,
-    #[msg("Well has no water to collect")]
-    WellEmpty,
+    #[msg("Grid station has no power to collect")]
+    GridEmpty,
     #[msg("Recipe not found in RecipeConfig")]
     RecipeNotFound,
     #[msg("Fortune boost has expired")]
@@ -302,4 +300,26 @@ pub enum AofError {
     // [transfer_tool] appended: existing codes must not move.
     #[msg("Recipient token account already holds a tool of this mint")]
     AlreadyOwnsTool,
+    // [rental delegation] appended: existing codes must not move. Арендатор
+    // получает право на mining/collect/repair только через активную запись
+    // аренды; эти коды описывают отказы такого делегирования.
+    #[msg("Signer is not the renter of the active rental for this tool")]
+    RentalDelegationMissing,
+    #[msg("Rental has expired; the delegated right is gone")]
+    RentalExpired,
+    #[msg("Mining session must end before the rental does")]
+    RentalSessionTooLong,
+    // [PAYER claim/season] appended: existing codes must not move. Пропуск
+    // сезона создаёт только сам игрок (`init_season_pass`), а выдача XP его не
+    // создаёт и не оплачивает.
+    #[msg("Season pass is not initialized; the player must call init_season_pass first")]
+    SeasonPassNotInitialized,
+    #[msg("Player profile is not initialized; the player must call init_player first")]
+    PlayerNotInitialized,
+    #[msg("Season XP entitlement is invalid or outside its configured bounds")]
+    InvalidSeasonXpEntitlement,
+    #[msg("Season XP entitlement has expired")]
+    SeasonXpEntitlementExpired,
+    #[msg("Season XP entitlement nonce does not match the player's claim cursor")]
+    SeasonXpNonceMismatch,
 }

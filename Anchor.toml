@@ -15,30 +15,30 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-aof_session_keys = "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5"
-aof_liquidity = "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv"
-aof_rebirth = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb"
-aof_quests = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
-aof_market = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
-aof_core = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+aof_session_keys = "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5"
+aof_liquidity = "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S"
+aof_rebirth = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF"
+aof_quests = "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc"
+aof_market = "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY"
+aof_core = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx"
 
 [programs.devnet]
-aof_session_keys = "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5"
-aof_liquidity = "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv"
-aof_rebirth = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb"
-aof_quests = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
-aof_market = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
-aof_core = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+aof_session_keys = "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5"
+aof_liquidity = "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S"
+aof_rebirth = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF"
+aof_quests = "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc"
+aof_market = "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY"
+aof_core = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx"
 
 # Канонические ID (те же declare_id!); нужны release.sh/verify-programs.sh
 # для mainnet-ветки. Сам деплой остаётся за release gates (NO-GO, docs/PRODUCTION_CHECKLIST.md).
 [programs.mainnet]
-aof_session_keys = "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5"
-aof_liquidity = "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv"
-aof_rebirth = "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb"
-aof_quests = "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU"
-aof_market = "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo"
-aof_core = "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq"
+aof_session_keys = "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5"
+aof_liquidity = "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S"
+aof_rebirth = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF"
+aof_quests = "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc"
+aof_market = "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY"
+aof_core = "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx"
 
 [registry]
 url = "https://api.apr.dev"
@@ -60,4 +60,4 @@ upgradeable = true
 # "Building IDL failed" / "cannot find type SourceFile".
 # Fallback chain: .mjs -> .js -> continue, so missing script doesn't break `anchor test`
 # Wallet is auto-created if missing (solana/keys/ is gitignored, CI creates throwaway one).
-test = "(node scripts/ensure-env.mjs 2>/dev/null || node scripts/ensure-env.js 2>/dev/null || node scripts/ensure-idl.mjs 2>/dev/null || node scripts/ensure-idl.js 2>/dev/null || echo '[warn] ensure-idl scripts not found, expecting target/idl to exist') && npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts tests/aof_extended.ts tests/aof_market.ts tests/aof_vrf_localnet.ts tests/aof_cu_report.ts"
+test = "(node scripts/ensure-env.mjs 2>/dev/null || node scripts/ensure-env.js 2>/dev/null || node scripts/ensure-idl.mjs 2>/dev/null || node scripts/ensure-idl.js 2>/dev/null || echo '[warn] ensure-idl scripts not found, expecting target/idl to exist') && npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts tests/aof_payer_funding.ts tests/aof_tool_ownership.ts tests/aof_extended.ts tests/aof_market.ts tests/aof_vrf_localnet.ts tests/aof_cu_report.ts"

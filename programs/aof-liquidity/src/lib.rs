@@ -9,7 +9,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv");
+declare_id!("Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S");
 
 #[program]
 pub mod aof_liquidity {

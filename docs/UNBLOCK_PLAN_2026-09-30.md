@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Что закрыто в игре и что нужно, чтобы включить (2026-09-30)
 
 ## 0. Первопричина: главной программы нет в сети
@@ -103,8 +104,9 @@ IDL (JSON и TS), `watchtower/addresses.json`, клиентские allowlist'ы
 
 ```sh
 # на своей машине, где есть solana CLI, ключ оператора и SOL на девнете
-AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон
-AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
+PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh            # сухой прогон
+PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
+# PROGRAM_MAX_LEN_POLICY обязателен: ёмкость программ — явное решение (docs/DEVNET_DEPLOY_COSTS.md)
 ```
 
 Тот же путь целиком (обновление из GitHub → уборка → ключи → тесты → сборка →
@@ -134,7 +136,7 @@ AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply    # включить
    Готовые `.so` из CI-артефакта для этого не годятся: CI переписывает
    `declare_id!` на временные ключи раннера, и Anchor отвергнет каждый вызов —
    скрипт деплоя такую сборку теперь отбраковывает явно.
-2. `AOF_DEPLOY_TARGET=devnet scripts/deploy-devnet.sh` — сухой прогон;
+2. `PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/deploy-devnet.sh` — сухой прогон (печатает таблицу стоимости и отказывает при нехватке SOL на все программы);
    `--apply` — деплой недостающих программ (`aof_core`, `aof_market`,
    `aof_session_keys`). Нужны ключ оператора и SOL на аренду аккаунтов.
 3. `cd aof_backend && npx ts-node scripts/initConfig.ts` — создать `Config`.

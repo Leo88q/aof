@@ -62,60 +62,60 @@ pub fn handler(ctx: Context<CraftRecipe>, recipe_id: u8) -> Result<()> {
     }
 
     match recipe_id {
-        // 0 = GemBlue: 1 StoneBlue → 1 GemBlue
+        // 0 = QuantumBit: 1 BlueCore → 1 QuantumBit
         0 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.stone_blue, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.blue_core, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::QuantumBit);
         }
-        // 1 = GemOrange: 1 StoneRed → 1 GemOrange
+        // 1 = NeuralChip: 1 RedCore → 1 NeuralChip
         1 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.stone_red, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.red_core, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::NeuralChip);
         }
-        // 2 = GemWhite: 1 SandWhite → 1 GemWhite
+        // 2 = PhotonBit: 1 ClearQuartz → 1 PhotonBit
         2 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.sand_white, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.clear_quartz, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::PhotonBit);
         }
-        // 3 = FlaskBlue: 2 GemBlue + 5 FOOD → 1
+        // 3 = CryoFluid: 2 QuantumBit + 5 Data → 1
         3 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.gem_blue, AofError::MaterialNotRegistered);
-            require!(ctx.accounts.input_2_mint.key() == cfg.food_mint, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.quantum_bit, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_2_mint.key() == cfg.data_mint, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 2 * RESOURCE_UNIT);
             burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::CryoFluid);
         }
-        // 4 = FlaskYellow: 2 GemOrange + 3 STONE → 1
+        // 4 = VoltFluid: 2 NeuralChip + 3 Silicon → 1
         4 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.gem_orange, AofError::MaterialNotRegistered);
-            require!(ctx.accounts.input_2_mint.key() == cfg.stone_mint, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.neural_chip, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_2_mint.key() == cfg.silicon_mint, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 2 * RESOURCE_UNIT);
             burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 3 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::VoltFluid);
         }
-        // 5 = FlaskGreen: 5 WOOD + 5 Seeds → 1
+        // 5 = BioFluid: 5 Circuit + 5 Neuron → 1
         5 => {
-            require!(ctx.accounts.input_1_mint.key() == cfg.wood_mint, AofError::MaterialNotRegistered);
-            require!(ctx.accounts.input_2_mint.key() == mm.seeds, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == cfg.circuit_mint, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_2_mint.key() == mm.neuron, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 5 * RESOURCE_UNIT);
             burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::BioFluid);
         }
-        // 6 = FlaskPink: 3 SandPink + 5 FOOD → 1
+        // 6 = NanoFluid: 3 RoseQuartz + 5 Data → 1
         6 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.sand_pink, AofError::MaterialNotRegistered);
-            require!(ctx.accounts.input_2_mint.key() == cfg.food_mint, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.rose_quartz, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_2_mint.key() == cfg.data_mint, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 3 * RESOURCE_UNIT);
             burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 5 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::NanoFluid);
         }
-        // 7 = FlaskPurple: 1 StonePurple + 1 GemGreen → 1
+        // 7 = QuantumFluid: 1 PurpleCore + 1 BioChip → 1
         7 => {
-            require!(ctx.accounts.input_1_mint.key() == mm.stone_purple, AofError::MaterialNotRegistered);
-            require!(ctx.accounts.input_2_mint.key() == mm.gem_green, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_1_mint.key() == mm.purple_core, AofError::MaterialNotRegistered);
+            require!(ctx.accounts.input_2_mint.key() == mm.bio_chip, AofError::MaterialNotRegistered);
             burn_in!(ctx.accounts.input_1_mint, ctx.accounts.input_1_acc, 1 * RESOURCE_UNIT);
             burn_in!(ctx.accounts.input_2_mint, ctx.accounts.input_2_acc, 1 * RESOURCE_UNIT);
             mint_out!(ctx.accounts.output_mint, ctx.accounts.output_acc, 1 * RESOURCE_UNIT, ResourceKind::QuantumFluid);

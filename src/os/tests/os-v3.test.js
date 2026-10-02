@@ -52,11 +52,11 @@ test("spec dedup decisions: Preset, RitArena, SolGuard", () => {
 test("program_ids: 6 real program crates (Anchor.toml) + 2 null placeholders [AOF-H2]", () => {
   assert.deepEqual(PROGRAM_IDS, [
     "AOF_CORE_PROGRAM_ID",
-    "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo",
-    "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU",
-    "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb",
-    "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv",
-    "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5",
+    "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY",
+    "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc",
+    "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF",
+    "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S",
+    "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5",
     "CgInv111...",
     "STrEaSuRy111...",
   ]);
@@ -69,7 +69,7 @@ test("program_ids: 6 real program crates (Anchor.toml) + 2 null placeholders [AO
   }
   // real entries carry registry addresses and honest verification status
   const core = PROGRAMS.find((p) => p.alias === "aof_core");
-  assert.equal(core.programId, "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq");
+  assert.equal(core.programId, "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
   assert.equal(core.status, "reference-unverified");
   assert.equal(core.rpcVerifiedAt, null);
   assert.equal(GAME.gameId, "aof");
@@ -80,7 +80,7 @@ test("program_ids: 6 real program crates (Anchor.toml) + 2 null placeholders [AO
 
 test("session keys: createSession AOF_CORE_PROGRAM_ID, topUp 0.01 SOL, expiry 60 min", () => {
   // [AOF-H2] session-keys program = real anchor id, not the legacy placeholder
-  assert.equal(SESSION_KEYS.program, "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5");
+  assert.equal(SESSION_KEYS.program, "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5");
   assert.equal(SESSION_KEYS.createSession.on, "AOF_CORE_PROGRAM_ID");
   assert.equal(SESSION_KEYS.topUpSol, 0.01);
   assert.equal(SESSION_KEYS.expiryMinutes, 60);

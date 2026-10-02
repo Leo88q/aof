@@ -10,8 +10,8 @@ import { pk } from "../lib/tx";
 import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda, seasonPda, rerollConfigPda,
-  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, farmTilePda, marketConfigPda,
-  weatherStatePda, wellStatePda, millStatePda, ovenStatePda } from "../lib/pda";
+  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, marketConfigPda,
+  weatherStatePda, gridStatePda, signalStatePda, modelStatePda } from "../lib/pda";
 import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 
 const r = Router();
@@ -36,7 +36,7 @@ r.get("/config", async (_req, res) => {
 // Экономика крафта (bonding curve)
 
 
-// [NEW] Балансы ресурсов FOOD/WOOD/STONE — читаем через SPL ATA владельца
+// [NEW] Балансы ресурсов DATA/CIRCUIT/SILICON — читаем через SPL ATA владельца
 r.get("/balances/:owner", async (req, res) => {
   try {
     const owner = new PublicKey(req.params.owner);
@@ -110,8 +110,26 @@ r.get("/season/:seasonId", async (req, res) => {
 
 // Профиль игрока (жители, энергия, перки)
 r.get("/player/:owner", async (req, res) => {
-  const [addr] = playerPda(new PublicKey(req.params.owner));
-  res.json(deep(await fetchOne("player", addr)));
+  let owner: PublicKey;
+  try {
+    owner = new PublicKey(req.params.owner);
+  } catch {
+    return res.status(400).json({ error: "INVALID_PLAYER_ADDRESS" });
+  }
+  const [addr] = playerPda(owner);
+  try {
+    // Do not use fetchOne here: it swallows RPC/decode errors as `null`, which
+    // would falsely present an outage as an uninitialized player profile.
+    const info = await connection.getAccountInfo(addr, "confirmed");
+    if (!info) return res.json({ exists: false });
+    if (!info.owner.equals(program.programId)) {
+      return res.status(503).json({ error: "PLAYER_ACCOUNT_OWNER_MISMATCH" });
+    }
+    const player = await (program.account as any).player.fetch(addr);
+    return res.json({ exists: true, player: deep(player) });
+  } catch (error: any) {
+    return res.status(503).json({ error: "PLAYER_READ_FAILED", details: error?.message || "unknown RPC/decode error" });
+  }
 });
 
 // Газ-бак игрока
@@ -154,25 +172,25 @@ r.get("/weather-state", async (_req, res) => {
   res.json(deep(await fetchOne("weatherState", addr)));
 });
 
-r.get("/well-state/:owner", async (req, res) => {
-  const [addr] = wellStatePda(new PublicKey(req.params.owner));
-  const state: any = await fetchOne("wellState", addr);
+r.get("/grid-state/:owner", async (req, res) => {
+  const [addr] = gridStatePda(new PublicKey(req.params.owner));
+  const state: any = await fetchOne("gridState", addr);
   if (!state) return res.json(null);
-  res.json({ ...deep(state), waterBuffer: resourceDisplay(state.waterBuffer) });
+  res.json({ ...deep(state), powerBuffer: resourceDisplay(state.powerBuffer) });
 });
 
-r.get("/mill-state/:owner", async (req, res) => {
-  const [addr] = millStatePda(new PublicKey(req.params.owner));
-  const state: any = await fetchOne("millState", addr);
+r.get("/signal-state/:owner", async (req, res) => {
+  const [addr] = signalStatePda(new PublicKey(req.params.owner));
+  const state: any = await fetchOne("signalState", addr);
   if (!state) return res.json(null);
-  res.json({ ...deep(state), outputFlour: resourceDisplay(state.outputFlour) });
+  res.json({ ...deep(state), outputSignal: resourceDisplay(state.outputSignal) });
 });
 
-r.get("/oven-state/:owner", async (req, res) => {
-  const [addr] = ovenStatePda(new PublicKey(req.params.owner));
-  const state: any = await fetchOne("ovenState", addr);
+r.get("/model-state/:owner", async (req, res) => {
+  const [addr] = modelStatePda(new PublicKey(req.params.owner));
+  const state: any = await fetchOne("modelState", addr);
   if (!state) return res.json(null);
-  res.json({ ...deep(state), outputBread: resourceDisplay(state.outputBread) });
+  res.json({ ...deep(state), outputModel: resourceDisplay(state.outputModel) });
 });
 
 // Данные инструмента по минту
@@ -468,10 +486,10 @@ r.get("/friend-farm/:address", async (req, res) => {
 
     // Балансы ресурсов через ATA
     const ataFor = (mintStr: string) => mintStr ? getAssociatedTokenAddressSync(pk(mintStr), owner, true) : null;
-    const foodAta = ataFor(cfg?.foodMint);
-    const woodAta = ataFor(cfg?.woodMint);
-    const stoneAta = ataFor(cfg?.stoneMint);
-    const potatoAta = ataFor(cfg?.potatoMint);
+    const dataAta = ataFor(cfg?.dataMint);
+    const circuitAta = ataFor(cfg?.circuitMint);
+    const siliconAta = ataFor(cfg?.siliconMint);
+    const mindAta = ataFor(cfg?.mindMint);
 
     const readAmt = async (ata: any) => {
       if (!ata) return 0;
@@ -482,11 +500,11 @@ r.get("/friend-farm/:address", async (req, res) => {
       } catch { return 0; }
     };
 
-    const [FOOD, WOOD, STONE, POTATO] = await Promise.all([
-      readAmt(foodAta),
-      readAmt(woodAta),
-      readAmt(stoneAta),
-      readAmt(potatoAta),
+    const [DATA, CIRCUIT, SILICON, MIND] = await Promise.all([
+      readAmt(dataAta),
+      readAmt(circuitAta),
+      readAmt(siliconAta),
+      readAmt(mindAta),
     ]);
 
     const activeMining = myTools.filter((t: any) => t.isMining);
@@ -495,7 +513,7 @@ r.get("/friend-farm/:address", async (req, res) => {
       address,
       player: player ? deep(player) : null,
       tools: myTools,
-      balances: { FOOD, WOOD, STONE, POTATO },
+      balances: { DATA, CIRCUIT, SILICON, MIND },
       gastank: gastank ? deep(gastank) : null,
       activeMining,
       stats: {
@@ -544,55 +562,55 @@ r.get("/pack-configs", async (req, res) => {
 
 
 
-// ===== Ферма: состояние тайлов =====
-r.get("/farm-tiles/:user", async (req, res) => {
+// ===== Lab tiles: canonical on-chain state =====
+r.get("/lab-tiles/:user", async (req, res) => {
   try {
     const user = new PublicKey(req.params.user);
     const tiles = [];
     let readError = false;
     
-    // The on-chain instructions accept tile indexes 0..9.
+    // The on-chain instructions accept laboratory cell indexes 0..9.
     // Read the full canonical ten-tile surface; returning six caused the
     // frontend to hide valid tiles and disagree with the program bounds.
     for (let i = 0; i < 10; i++) {
       try {
-        const [farmTile] = farmTilePda(user, i);
-        const account = await (program as any).account.farmTile.fetchNullable(farmTile);
+        const [labTile] = labTilePda(user, i);
+        const account = await (program as any).account.labTile.fetchNullable(labTile);
         
         if (account) {
           const state = Number(account.state || 0);
-          const plantedAt = Number(account.plantedAt || 0);
+          const startedAt = Number(account.startedAt || 0);
           const readyAt = Number(account.readyAt || 0);
           const now = Math.floor(Date.now() / 1000);
-          const planted = state !== 0;
-          const ready = planted && readyAt > 0 && now >= readyAt;
-          const duration = readyAt > plantedAt ? readyAt - plantedAt : 0;
-          const progress = !planted ? 0 : ready ? 100 : duration > 0
-            ? Math.max(0, Math.min(99, Math.floor(((now - plantedAt) / duration) * 100)))
+          const active = state !== 0;
+          const ready = active && readyAt > 0 && now >= readyAt;
+          const duration = readyAt > startedAt ? readyAt - startedAt : 0;
+          const progress = !active ? 0 : ready ? 100 : duration > 0
+            ? Math.max(0, Math.min(99, Math.floor(((now - startedAt) / duration) * 100)))
             : 0;
           tiles.push({
             index: i,
             state,
-            planted,
+            active,
             ready,
-            // On-chain farm amounts are atomic SPL units; API exposes display units.
-            seedsAmount: resourceDisplay(account.seedsAmount),
+            // On-chain Neuron amounts are atomic SPL units; API exposes display units.
+            neuronAmount: resourceDisplay(account.neuronAmount),
             progress,
-            plantedAt,
+            startedAt,
             readyAt,
-            cropType: "wheat",
+            outputKind: "synapse",
           });
         } else {
           tiles.push({
             index: i,
             state: 0,
-            planted: false,
+            active: false,
             ready: false,
-            seedsAmount: 0,
+            neuronAmount: 0,
             progress: 0,
-            plantedAt: 0,
+            startedAt: 0,
             readyAt: 0,
-            cropType: "wheat",
+            outputKind: "synapse",
           });
         }
       } catch (e) {
@@ -605,7 +623,7 @@ r.get("/farm-tiles/:user", async (req, res) => {
 
     if (readError) {
       return res.status(503).json({
-        error: "FARM_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN",
+        error: "LAB_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN",
       });
     }
     res.json({ tiles });

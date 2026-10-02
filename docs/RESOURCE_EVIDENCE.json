@@ -1,0 +1,3433 @@
+{
+  "schemaVersion": 1,
+  "note": "Product evidence по ресурсам: frontend, game-клиент, backend, рецепты, ассеты, on-chain источники/стоки.",
+  "resources": [
+    {
+      "kind": "Data",
+      "display": "Data",
+      "mintSource": "config.data_mint",
+      "legacyField": "data_mint",
+      "variants": [
+        "data",
+        "data_mint",
+        "data-mint"
+      ],
+      "frontend": [
+        "frontend/src/i18n/galleryBehaviorCopy.ts",
+        "frontend/src/i18n/galleryCryoCopy.ts",
+        "frontend/src/i18n/galleryMixCopy.ts",
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteChanceCopy.ts",
+        "frontend/src/i18n/siteFaq.ts",
+        "frontend/src/i18n/siteGlossary.ts",
+        "frontend/src/i18n/siteGuide.ts",
+        "frontend/src/i18n/siteMind.ts",
+        "frontend/src/i18n/siteMine.ts",
+        "frontend/src/i18n/siteSeasons.ts",
+        "frontend/src/i18n/siteWorkshop.ts",
+        "frontend/src/i18n/toolsCopy.ts",
+        "frontend/src/lib/api.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/transactionIntent.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/social/PlayerRatingPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/galleryBehaviorCopy.ts",
+          "variant": "data",
+          "line": "sample: { rule: 'RULE', honesty: 'NO GUESSWORK', unknownTitle: 'Unknown versus zero', balance: 'Balance', noConnection: 'network did not res"
+        },
+        {
+          "file": "frontend/src/i18n/galleryCryoCopy.ts",
+          "variant": "data",
+          "line": "'cryo-03': { title: 'Rack without readings', variant: 'no data — empty gauges', where: 'Laboratory · wallet data unavailable', note: 'A null"
+        },
+        {
+          "file": "frontend/src/i18n/galleryMixCopy.ts",
+          "variant": "data",
+          "line": "'mix-03': { title: 'Mixer without readings', variant: 'tool types visible, gauges empty', where: 'Tools · wallet data unavailable', note: 'T"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/chainIndexerCore.ts",
+        "aof_backend/src/routes/daily.ts",
+        "aof_backend/src/routes/portfolio.ts",
+        "aof_backend/src/routes/query.ts",
+        "aof_backend/src/routes/whaleAlerts.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/data.png",
+        "frontend/public/assets/icons/dataset.png",
+        "frontend/public/assets/icons/ui/building-data.png",
+        "frontend/public/assets/nfts/data-harvester-epic.jpg",
+        "frontend/public/assets/nfts/data-harvester-legendary.jpg",
+        "frontend/public/assets/nfts/data-harvester-rare.jpg",
+        "frontend/public/assets/nfts/data-harvester-uncommon.jpg",
+        "frontend/public/assets/nfts/data-harvester.jpg",
+        "frontend/public/assets/nfts/resources/data.jpg",
+        "frontend/public/assets/nfts/resources/dataset.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+        "aof-core/src/instructions/referral.rs#upgrade_handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(mm, ResourceKind::Data, ctx.accounts.data_mint.supply, data)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/initialize.rs",
+          "line": "cfg.data_mint = Pubkey::default();"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "0 => config.data_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/rebirth_reset.rs",
+          "line": "let (data_owner, data_mint, amount) = {"
+        },
+        {
+          "file": "aof-core/src/instructions/reroll.rs",
+          "line": "(&*ctx.accounts.data_mint, &*ctx.accounts.user_data, data_cost),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "data_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "data_mint: Pubkey,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft.rs#handler",
+          "aof-core/src/instructions/craft_recipe.rs#handler",
+          "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+          "aof-core/src/instructions/referral.rs#upgrade_handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 3",
+          "recipe 6"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "Circuit",
+      "display": "Circuit",
+      "mintSource": "config.circuit_mint",
+      "legacyField": "circuit_mint",
+      "variants": [
+        "circuit",
+        "circuit_mint",
+        "circuit-mint"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/pages/tools/RepairPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "circuit",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/siteToolsCatalog.ts",
+          "variant": "circuit",
+          "line": "plasma_cutter: 'circuit',"
+        },
+        {
+          "file": "frontend/src/lib/coreInstructions.ts",
+          "variant": "circuit_mint",
+          "line": "accounts: [\"config\", \"user\", \"tool\", \"mint\", \"silicon_mint\", \"user_silicon\", \"circuit_mint\", \"user_circuit\", \"tool_token\", \"token_program\"],"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/vrf.ts",
+        "aof_backend/src/routes/admin-config.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/circuit.png",
+        "frontend/public/assets/nfts/resources/circuit.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/forge.rs#expire_handler",
+        "aof-core/src/instructions/season.rs#claim_reward_handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+        "aof-core/src/instructions/forge.rs#commit_handler",
+        "aof-core/src/instructions/referral.rs#upgrade_handler",
+        "aof-core/src/instructions/rental_delegation.rs#repair_handler",
+        "aof-core/src/instructions/repair.rs#handler",
+        "aof-core/src/instructions/start_model_training.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"plasma_cutter\" => Some(ResourceKind::Circuit),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, reward)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/forge.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/initialize.rs",
+          "line": "cfg.circuit_mint = Pubkey::default();"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "1 => config.circuit_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/reroll.rs",
+          "line": "(&*ctx.accounts.circuit_mint, &*ctx.accounts.user_circuit, circuit_cost),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "circuit_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "circuit_mint: Pubkey,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler",
+          "aof-core/src/instructions/season.rs#claim_reward_handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/craft.rs#handler",
+          "aof-core/src/instructions/craft_recipe.rs#handler",
+          "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+          "aof-core/src/instructions/forge.rs#commit_handler",
+          "aof-core/src/instructions/referral.rs#upgrade_handler",
+          "aof-core/src/instructions/rental_delegation.rs#repair_handler",
+          "aof-core/src/instructions/repair.rs#handler",
+          "aof-core/src/instructions/start_model_training.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [
+          "aof-core/src/instructions/forge.rs#expire_handler"
+        ],
+        "craftInput": [
+          "recipe 5"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": true,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "Silicon",
+      "display": "Silicon",
+      "mintSource": "config.silicon_mint",
+      "legacyField": "silicon_mint",
+      "variants": [
+        "silicon",
+        "silicon_mint",
+        "silicon-mint"
+      ],
+      "frontend": [
+        "frontend/src/components/ToolMiningCard.tsx",
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/farm/MillPanel.tsx",
+        "frontend/src/pages/tools/RepairPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/components/ToolMiningCard.tsx",
+          "variant": "silicon",
+          "line": "? { icon: (resourceIcon(\"silicon\") || \"\"), label: copy.worn, color: \"#E2685F\" }"
+        },
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "silicon",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/siteToolsCatalog.ts",
+          "variant": "silicon",
+          "line": "silicon_extractor: 'silicon',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/silicon.png",
+        "frontend/public/assets/icons/ui/building-silicon.png",
+        "frontend/public/assets/nfts/resources/silicon.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-epic.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-legendary.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-rare.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-uncommon.jpg",
+        "frontend/public/assets/nfts/silicon-extractor.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/forge.rs#expire_handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+        "aof-core/src/instructions/forge.rs#commit_handler",
+        "aof-core/src/instructions/referral.rs#upgrade_handler",
+        "aof-core/src/instructions/rental_delegation.rs#repair_handler",
+        "aof-core/src/instructions/repair.rs#handler",
+        "aof-core/src/instructions/start_signal_processing.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"silicon_extractor\" => Some(ResourceKind::Silicon),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, reward)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/forge.rs",
+          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/initialize.rs",
+          "line": "cfg.silicon_mint = Pubkey::default();"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "2 => config.silicon_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/reroll.rs",
+          "line": "(&*ctx.accounts.silicon_mint, &*ctx.accounts.user_silicon, silicon_cost),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "silicon_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "silicon_mint: Pubkey,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/craft.rs#handler",
+          "aof-core/src/instructions/craft_recipe.rs#handler",
+          "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
+          "aof-core/src/instructions/forge.rs#commit_handler",
+          "aof-core/src/instructions/referral.rs#upgrade_handler",
+          "aof-core/src/instructions/rental_delegation.rs#repair_handler",
+          "aof-core/src/instructions/repair.rs#handler",
+          "aof-core/src/instructions/start_signal_processing.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [
+          "aof-core/src/instructions/forge.rs#expire_handler"
+        ],
+        "craftInput": [
+          "recipe 4"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": true,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "Neuron",
+      "display": "Neuron",
+      "mintSource": "material_mints.neuron",
+      "legacyField": "neuron",
+      "variants": [
+        "neuron"
+      ],
+      "frontend": [
+        "frontend/src/components/ToolMiningCard.tsx",
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/neuralLabCopy.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/NeuralLabPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/components/ToolMiningCard.tsx",
+          "variant": "neuron",
+          "line": "? { icon: (resourceIcon(\"neuron\") || \"\"), label: copy.healthy, color: \"#5FD3A8\" }"
+        },
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "neuron",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/neuralLabCopy.ts",
+          "variant": "neuron",
+          "line": "neuron: string; cost: string; energy: string; starting: string; error: string;"
+        }
+      ],
+      "game": [
+        "game/godot/products/inventory.gd"
+      ],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/lib/toolResourceMint.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/neuron.png",
+        "frontend/public/assets/nfts/resources/neuron.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/plant_neuron.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"neural_seeder\" => Some(ResourceKind::Neuron),"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.neuron = neuron;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "3 => materials.neuron,"
+        },
+        {
+          "file": "aof-core/src/instructions/reroll.rs",
+          "line": "(&*ctx.accounts.neuron_mint, &*ctx.accounts.user_neuron, neuron_cost),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "neuron_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "neuron_mint: Pubkey,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/craft.rs#handler",
+          "aof-core/src/instructions/craft_recipe.rs#handler",
+          "aof-core/src/instructions/plant_neuron.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 5"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": true,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": true,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "Synapse",
+      "display": "Synapse",
+      "mintSource": "material_mints.synapse",
+      "legacyField": "synapse",
+      "variants": [
+        "synapse"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/FarmPlot.tsx",
+        "frontend/src/pages/farm/MillPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "synapse",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "synapse",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/lib/marketUtils.ts",
+          "variant": "synapse",
+          "line": "{ key: \"SYNAPSE\", label: homeResourceNames.ru.synapse, icon: resourceIcon(\"SYNAPSE\") || \"\", mint: \"\", kind: 4 },"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/synapse.png",
+        "frontend/public/assets/nfts/resources/synapse.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/harvest_synapse.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/start_signal_processing.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/harvest_synapse.rs",
+          "line": "ResourceKind::Synapse,"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.synapse = synapse;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "4 => materials.synapse,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/harvest_synapse.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/start_signal_processing.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "Signal",
+      "display": "Signal",
+      "mintSource": "material_mints.signal",
+      "legacyField": "signal",
+      "variants": [
+        "signal"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteGuide.ts",
+        "frontend/src/i18n/siteLore.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/MillPanel.tsx",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "signal",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "signal",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/siteGuide.ts",
+          "variant": "signal",
+          "line": "{ id: 'model', title: 'From signal to model', action: 'Check the recipe, resource balance and separator status before starting. After a conf"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/signal.png",
+        "frontend/public/assets/nfts/resources/signal.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_signal.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/start_model_training.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_signal.rs",
+          "line": "ResourceKind::Signal,"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.signal = signal;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "5 => materials.signal,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_signal.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/start_model_training.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "Model",
+      "display": "Model",
+      "mintSource": "material_mints.model",
+      "legacyField": "model",
+      "variants": [
+        "model"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteEconomy.ts",
+        "frontend/src/i18n/siteGuide.ts",
+        "frontend/src/i18n/siteStrategies.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "model",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "model",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/siteEconomy.ts",
+          "variant": "model",
+          "line": "production: { title: 'The model chain', steps: ['Grow a sample', 'Separate the harvest', 'Train a model with a verified recipe'] },"
+        }
+      ],
+      "game": [
+        "game/godot/chain/candy_machine.gd"
+      ],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/model.png",
+        "frontend/public/assets/nfts/resources/model.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_model.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_model.rs",
+          "line": "ResourceKind::Model,"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.model = model;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "6 => materials.model,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_model.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": true,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "Power",
+      "display": "Power",
+      "mintSource": "material_mints.power",
+      "legacyField": "power",
+      "variants": [
+        "power"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/wellCopy.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/NeuralLabPanel.tsx",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "power",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "power",
+          "line": "neuron: 'The first link in the production chain.', synapse: 'A harvest from the wells, ready for separation.', signal: 'The link between har"
+        },
+        {
+          "file": "frontend/src/i18n/wellCopy.ts",
+          "variant": "power",
+          "line": "station: 'Network station', connectWallet: 'Connect your wallet', sourceNetwork: 'Source: on-chain', missingState: 'WeatherState was not fou"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/economySimulatorV2.ts",
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/power.png",
+        "frontend/public/assets/nfts/resources/power.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/collect_power.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/start_model_training.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_power.rs",
+          "line": "ResourceKind::Power,"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.power = power;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "7 => materials.power,"
+        },
+        {
+          "file": "aof-core/src/instructions/reroll.rs",
+          "line": "(&*ctx.accounts.power_mint, &*ctx.accounts.user_power, power_cost),"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "power_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "power_mint: Pubkey,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_power.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/craft.rs#handler",
+          "aof-core/src/instructions/start_model_training.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "Compute",
+      "display": "Compute",
+      "mintSource": "material_mints.compute",
+      "legacyField": "compute",
+      "variants": [
+        "compute"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "compute",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/lib/marketUtils.ts",
+          "variant": "compute",
+          "line": "{ key: \"COMPUTE\", label: homeResourceNames.ru.compute, icon: resourceIcon(\"COMPUTE\") || \"\", mint: \"\", kind: 8 },"
+        },
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "compute",
+          "line": "{ id: \"compute\", name: homeResourceNames.ru.compute, en: homeResourceNames.en.compute, plate: \"/assets/nfts/resources/compute.jpg\", icon: \"/"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/compute.png",
+        "frontend/public/assets/nfts/resources/compute.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/start_model_training.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.compute = compute;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "8 => materials.compute,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/start_model_training.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "Dataset",
+      "display": "Dataset",
+      "mintSource": "material_mints.dataset",
+      "legacyField": "dataset",
+      "variants": [
+        "dataset"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "dataset",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/siteToolsCatalog.ts",
+          "variant": "dataset",
+          "line": "data_harvester: 'dataset',"
+        },
+        {
+          "file": "frontend/src/lib/marketUtils.ts",
+          "variant": "dataset",
+          "line": "{ key: \"DATASET\", label: homeResourceNames.ru.dataset, icon: resourceIcon(\"DATASET\") || \"\", mint: \"\", kind: 9 },"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/resourceRegistryCore.ts",
+        "aof_backend/src/lib/toolResourceMint.ts",
+        "aof_backend/src/routes/admin.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/dataset.png",
+        "frontend/public/assets/nfts/resources/dataset.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/exploration.rs#start_commit_handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/collect_mining.rs",
+          "line": "\"data_harvester\" | \"quantum_transmitter\" => Some(ResourceKind::Dataset),"
+        },
+        {
+          "file": "aof-core/src/instructions/exploration.rs",
+          "line": "check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.dataset_mint.supply, dataset)?;"
+        },
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.dataset = dataset;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "9 => materials.dataset,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/exploration.rs#start_commit_handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [
+          "aof-core/src/instructions/collect_mining.rs#handler",
+          "aof-core/src/instructions/rental_delegation.rs#handler"
+        ],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": true,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "BlueCore",
+      "display": "Blue Core",
+      "mintSource": "material_mints.blue_core",
+      "legacyField": "blue_core",
+      "variants": [
+        "bluecore",
+        "blue_core",
+        "blue-core"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "blue-core",
+          "line": "{ id: \"blueCore\", name: homeResourceNames.ru.blueCore, en: homeResourceNames.en.blueCore, plate: \"/assets/nfts/resources/blue-core.jpg\", ico"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "blue-core",
+          "line": "{ id: 'blueCore', slug: 'blue-core', name: homeResourceNames.ru.blueCore, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/blue-core.png",
+        "frontend/public/assets/nfts/resources/blue-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.blue_core = blue_core;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "10 => materials.blue_core,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 0"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "PurpleCore",
+      "display": "Purple Core",
+      "mintSource": "material_mints.purple_core",
+      "legacyField": "purple_core",
+      "variants": [
+        "purplecore",
+        "purple_core",
+        "purple-core"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "purple-core",
+          "line": "{ id: \"purpleCore\", name: homeResourceNames.ru.purpleCore, en: homeResourceNames.en.purpleCore, plate: \"/assets/nfts/resources/purple-core.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "purple-core",
+          "line": "{ id: 'purpleCore', slug: 'purple-core', name: homeResourceNames.ru.purpleCore, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/purple-core.png",
+        "frontend/public/assets/nfts/resources/purple-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.purple_core = purple_core;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "11 => materials.purple_core,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 7"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "RedCore",
+      "display": "Red Core",
+      "mintSource": "material_mints.red_core",
+      "legacyField": "red_core",
+      "variants": [
+        "redcore",
+        "red_core",
+        "red-core"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "red-core",
+          "line": "{ id: \"redCore\", name: homeResourceNames.ru.redCore, en: homeResourceNames.en.redCore, plate: \"/assets/nfts/resources/red-core.jpg\", icon: \""
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "red-core",
+          "line": "{ id: 'redCore', slug: 'red-core', name: homeResourceNames.ru.redCore, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/red-core.png",
+        "frontend/public/assets/nfts/resources/red-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.red_core = red_core;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "12 => materials.red_core,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 1"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "ClearQuartz",
+      "display": "Clear Quartz",
+      "mintSource": "material_mints.clear_quartz",
+      "legacyField": "clear_quartz",
+      "variants": [
+        "clearquartz",
+        "clear_quartz",
+        "clear-quartz"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "clear-quartz",
+          "line": "{ id: \"clearQuartz\", name: homeResourceNames.ru.clearQuartz, en: homeResourceNames.en.clearQuartz, plate: \"/assets/nfts/resources/clear-quar"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "clear-quartz",
+          "line": "{ id: 'clearQuartz', slug: 'clear-quartz', name: homeResourceNames.ru.clearQuartz, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/clear-quartz.png",
+        "frontend/public/assets/nfts/resources/clear-quartz.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.clear_quartz = clear_quartz;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "13 => materials.clear_quartz,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 2"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "RoseQuartz",
+      "display": "Rose Quartz",
+      "mintSource": "material_mints.rose_quartz",
+      "legacyField": "rose_quartz",
+      "variants": [
+        "rosequartz",
+        "rose_quartz",
+        "rose-quartz"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "rose-quartz",
+          "line": "{ id: \"roseQuartz\", name: homeResourceNames.ru.roseQuartz, en: homeResourceNames.en.roseQuartz, plate: \"/assets/nfts/resources/rose-quartz.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "rose-quartz",
+          "line": "{ id: 'roseQuartz', slug: 'rose-quartz', name: homeResourceNames.ru.roseQuartz, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/rose-quartz.png",
+        "frontend/public/assets/nfts/resources/rose-quartz.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.rose_quartz = rose_quartz;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "14 => materials.rose_quartz,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 6"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "AmberQuartz",
+      "display": "Amber Quartz",
+      "mintSource": "material_mints.amber_quartz",
+      "legacyField": "amber_quartz",
+      "variants": [
+        "amberquartz",
+        "amber_quartz",
+        "amber-quartz"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "amber-quartz",
+          "line": "{ id: \"amberQuartz\", name: homeResourceNames.ru.amberQuartz, en: homeResourceNames.en.amberQuartz, plate: \"/assets/nfts/resources/amber-quar"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "amber-quartz",
+          "line": "{ id: 'amberQuartz', slug: 'amber-quartz', name: homeResourceNames.ru.amberQuartz, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/amber-quartz.png",
+        "frontend/public/assets/nfts/resources/amber-quartz.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.amber_quartz = amber_quartz;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "15 => materials.amber_quartz,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": false,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": false
+      },
+      "status": "candidate-dead",
+      "economyIssue": null
+    },
+    {
+      "kind": "QuantumBit",
+      "display": "Quantum Bit",
+      "mintSource": "material_mints.quantum_bit",
+      "legacyField": "quantum_bit",
+      "variants": [
+        "quantumbit",
+        "quantum_bit",
+        "quantum-bit"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "quantum-bit",
+          "line": "{ id: \"quantumBit\", name: homeResourceNames.ru.quantumBit, en: homeResourceNames.en.quantumBit, plate: \"/assets/nfts/resources/quantum-bit.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "quantum-bit",
+          "line": "{ id: 'quantumBit', slug: 'quantum-bit', name: homeResourceNames.ru.quantumBit, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/quantum-bit.png",
+        "frontend/public/assets/nfts/resources/quantum-bit.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.quantum_bit = quantum_bit;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "16 => materials.quantum_bit,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 3"
+        ],
+        "craftOutput": [
+          "recipe 0"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "NeuralChip",
+      "display": "Neural Chip",
+      "mintSource": "material_mints.neural_chip",
+      "legacyField": "neural_chip",
+      "variants": [
+        "neuralchip",
+        "neural_chip",
+        "neural-chip"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "neural-chip",
+          "line": "{ id: \"neuralChip\", name: homeResourceNames.ru.neuralChip, en: homeResourceNames.en.neuralChip, plate: \"/assets/nfts/resources/neural-chip.j"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "neural-chip",
+          "line": "{ id: 'neuralChip', slug: 'neural-chip', name: homeResourceNames.ru.neuralChip, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/neural-chip.png",
+        "frontend/public/assets/nfts/resources/neural-chip.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.neural_chip = neural_chip;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "17 => materials.neural_chip,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 4"
+        ],
+        "craftOutput": [
+          "recipe 1"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": null
+    },
+    {
+      "kind": "PhotonBit",
+      "display": "Photon Bit",
+      "mintSource": "material_mints.photon_bit",
+      "legacyField": "photon_bit",
+      "variants": [
+        "photonbit",
+        "photon_bit",
+        "photon-bit"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "photon-bit",
+          "line": "{ id: \"photonBit\", name: homeResourceNames.ru.photonBit, en: homeResourceNames.en.photonBit, plate: \"/assets/nfts/resources/photon-bit.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "photon-bit",
+          "line": "{ id: 'photonBit', slug: 'photon-bit', name: homeResourceNames.ru.photonBit, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/photon-bit.png",
+        "frontend/public/assets/nfts/resources/photon-bit.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.photon_bit = photon_bit;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "18 => materials.photon_bit,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [
+          "recipe 2"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "BioChip",
+      "display": "Bio Chip",
+      "mintSource": "material_mints.bio_chip",
+      "legacyField": "bio_chip",
+      "variants": [
+        "biochip",
+        "bio_chip",
+        "bio-chip"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "bio-chip",
+          "line": "{ id: \"bioChip\", name: homeResourceNames.ru.bioChip, en: homeResourceNames.en.bioChip, plate: \"/assets/nfts/resources/bio-chip.jpg\", icon: \""
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "bio-chip",
+          "line": "{ id: 'bioChip', slug: 'bio-chip', name: homeResourceNames.ru.bioChip, category: 'rare', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/bio-chip.png",
+        "frontend/public/assets/nfts/resources/bio-chip.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.bio_chip = bio_chip;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "19 => materials.bio_chip,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [
+          "recipe 7"
+        ],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": true,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    },
+    {
+      "kind": "CryoFluid",
+      "display": "Cryo Fluid",
+      "mintSource": "material_mints.cryo_fluid",
+      "legacyField": "cryo_fluid",
+      "variants": [
+        "cryofluid",
+        "cryo_fluid",
+        "cryo-fluid"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "cryo-fluid",
+          "line": "{ id: \"cryoFluid\", name: homeResourceNames.ru.cryoFluid, en: homeResourceNames.en.cryoFluid, plate: \"/assets/nfts/resources/cryo-fluid.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "cryo-fluid",
+          "line": "{ id: 'cryoFluid', slug: 'cryo-fluid', name: homeResourceNames.ru.cryoFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/cryo-fluid.png",
+        "frontend/public/assets/nfts/resources/cryo-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.cryo_fluid = cryo_fluid;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "20 => materials.cryo_fluid,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [
+          "recipe 3"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "VoltFluid",
+      "display": "Volt Fluid",
+      "mintSource": "material_mints.volt_fluid",
+      "legacyField": "volt_fluid",
+      "variants": [
+        "voltfluid",
+        "volt_fluid",
+        "volt-fluid"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "volt-fluid",
+          "line": "{ id: \"voltFluid\", name: homeResourceNames.ru.voltFluid, en: homeResourceNames.en.voltFluid, plate: \"/assets/nfts/resources/volt-fluid.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "volt-fluid",
+          "line": "{ id: 'voltFluid', slug: 'volt-fluid', name: homeResourceNames.ru.voltFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/volt-fluid.png",
+        "frontend/public/assets/nfts/resources/volt-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.volt_fluid = volt_fluid;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "21 => materials.volt_fluid,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [
+          "recipe 4"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "BioFluid",
+      "display": "Bio Fluid",
+      "mintSource": "material_mints.bio_fluid",
+      "legacyField": "bio_fluid",
+      "variants": [
+        "biofluid",
+        "bio_fluid",
+        "bio-fluid"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "bio-fluid",
+          "line": "{ id: \"bioFluid\", name: homeResourceNames.ru.bioFluid, en: homeResourceNames.en.bioFluid, plate: \"/assets/nfts/resources/bio-fluid.jpg\", ico"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "bio-fluid",
+          "line": "{ id: 'bioFluid', slug: 'bio-fluid', name: homeResourceNames.ru.bioFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/bio-fluid.png",
+        "frontend/public/assets/nfts/resources/bio-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.bio_fluid = bio_fluid;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "22 => materials.bio_fluid,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [
+          "recipe 5"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "NanoFluid",
+      "display": "Nano Fluid",
+      "mintSource": "material_mints.nano_fluid",
+      "legacyField": "nano_fluid",
+      "variants": [
+        "nanofluid",
+        "nano_fluid",
+        "nano-fluid"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "nano-fluid",
+          "line": "{ id: \"nanoFluid\", name: homeResourceNames.ru.nanoFluid, en: homeResourceNames.en.nanoFluid, plate: \"/assets/nfts/resources/nano-fluid.jpg\","
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "nano-fluid",
+          "line": "{ id: 'nanoFluid', slug: 'nano-fluid', name: homeResourceNames.ru.nanoFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/nano-fluid.png",
+        "frontend/public/assets/nfts/resources/nano-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.nano_fluid = nano_fluid;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "23 => materials.nano_fluid,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [
+          "recipe 6"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "QuantumFluid",
+      "display": "Quantum Fluid",
+      "mintSource": "material_mints.quantum_fluid",
+      "legacyField": "quantum_fluid",
+      "variants": [
+        "quantumfluid",
+        "quantum_fluid",
+        "quantum-fluid"
+      ],
+      "frontend": [
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/lib/visualAssets.ts",
+          "variant": "quantum-fluid",
+          "line": "{ id: \"quantumFluid\", name: homeResourceNames.ru.quantumFluid, en: homeResourceNames.en.quantumFluid, plate: \"/assets/nfts/resources/quantum"
+        },
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "quantum-fluid",
+          "line": "{ id: 'quantumFluid', slug: 'quantum-fluid', name: homeResourceNames.ru.quantumFluid, category: 'consumable', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/quantum-fluid.png",
+        "frontend/public/assets/nfts/resources/quantum-fluid.jpg"
+      ],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.quantum_fluid = quantum_fluid;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "24 => materials.quantum_fluid,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [
+          "recipe 7"
+        ],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": true,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": true,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": true,
+        "onchainSink": false
+      },
+      "status": "active-player",
+      "economyIssue": "missing_sink"
+    },
+    {
+      "kind": "SoulCore",
+      "display": "Soul Core",
+      "mintSource": "material_mints.soul_core",
+      "legacyField": "soul_core",
+      "variants": [
+        "soulcore",
+        "soul_core",
+        "soul-core"
+      ],
+      "frontend": [
+        "frontend/src/site/content/resources.ts"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/site/content/resources.ts",
+          "variant": "soul-core",
+          "line": "{ id: 'soulCore', slug: 'soul-core', name: homeResourceNames.ru.soulCore, category: 'social', status: 'live',"
+        }
+      ],
+      "game": [],
+      "backend": [],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/nfts/resources/soul-core.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/init_material_mints.rs",
+          "line": "mm.soul_core = soul_core;"
+        },
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "25 => materials.soul_core,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": false,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": false,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": false,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": false
+      },
+      "status": "candidate-dead",
+      "economyIssue": null
+    },
+    {
+      "kind": "Mind",
+      "display": "Mind",
+      "mintSource": "config.mind_mint",
+      "legacyField": "mind_mint",
+      "variants": [
+        "mind",
+        "mind_mint",
+        "mind-mint"
+      ],
+      "frontend": [
+        "frontend/src/i18n/homeDetail.ts",
+        "frontend/src/i18n/resourceLeads.ts",
+        "frontend/src/i18n/siteGlossary.ts",
+        "frontend/src/i18n/translations.ts",
+        "frontend/src/lib/craftReadings.ts",
+        "frontend/src/lib/marketUtils.ts",
+        "frontend/src/lib/visualAssets.ts",
+        "frontend/src/site/content/resources.ts",
+        "frontend/src/site/pages/ExtraSections.tsx"
+      ],
+      "frontendSamples": [
+        {
+          "file": "frontend/src/i18n/homeDetail.ts",
+          "variant": "mind",
+          "line": "const resourceIds = ['data','circuit','silicon','compute','dataset','neuron','synapse','signal','model','power','blueCore','purpleCore','red"
+        },
+        {
+          "file": "frontend/src/i18n/resourceLeads.ts",
+          "variant": "mind",
+          "line": "cryoFluid: 'A fluid for advanced stages.', voltFluid: 'A fluid for advanced stages.', bioFluid: 'A fluid from the organic chain.', nanoFluid"
+        },
+        {
+          "file": "frontend/src/i18n/siteGlossary.ts",
+          "variant": "mind",
+          "line": "'rebirth', 'crank', 'siteMark', 'mind',"
+        }
+      ],
+      "game": [],
+      "backend": [
+        "aof_backend/src/lib/questGenerator.ts"
+      ],
+      "recipe": [],
+      "assets": [
+        "frontend/public/assets/icons/mind.png",
+        "frontend/public/assets/nfts/resources/mind.jpg"
+      ],
+      "onchainSource": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft.rs#handler",
+        "aof-core/src/instructions/reroll.rs#handler"
+      ],
+      "onchainRefs": [
+        {
+          "file": "aof-core/src/instructions/orderbook.rs",
+          "line": "26 => config.mind_mint,"
+        },
+        {
+          "file": "aof-core/src/instructions/roles.rs",
+          "line": "mind_mint: Pubkey,"
+        },
+        {
+          "file": "aof-core/src/instructions/set_resource_mints.rs",
+          "line": "mind_mint: Pubkey,"
+        },
+        {
+          "file": "programs/aof-quests/src/instructions/drum/mind_bank.rs",
+          "line": "pub mind_mint: Account<'info, Mint>,"
+        },
+        {
+          "file": "programs/aof-quests/src/instructions/drum/mind_spin.rs",
+          "line": "pub mind_mint: Box<Account<'info, Mint>>,"
+        }
+      ],
+      "anyKindPath": [
+        "aof-core/src/instructions/craft_recipe.rs",
+        "aof-core/src/instructions/mint_resource.rs"
+      ],
+      "flow": {
+        "playerSource": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft.rs#handler",
+          "aof-core/src/instructions/reroll.rs#handler"
+        ],
+        "projectSink": [],
+        "refund": [],
+        "craftInput": [],
+        "craftOutput": [],
+        "tradable": [
+          "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
+        ],
+        "miningOutput": [],
+        "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+          "aof-core/src/instructions/burn_resource.rs#handler",
+          "aof-core/src/instructions/issuance_cap.rs#init_handler",
+          "aof-core/src/instructions/issuance_cap.rs#set_handler",
+          "aof-core/src/instructions/mint_resource.rs#handler",
+          "aof-core/src/lib.rs#burn_resource",
+          "aof-core/src/lib.rs#init_issuance_cap",
+          "aof-core/src/lib.rs#mint_resource",
+          "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_supply_cap"
+        ],
+        "playerClaim": [
+          "aof-core/src/instructions/mint_resource_once.rs#handler",
+          "aof-core/src/lib.rs#mint_resource_once"
+        ],
+        "flags": {
+          "player_held": true,
+          "ui_visible": true,
+          "tradable": true,
+          "has_player_source": false,
+          "has_player_sink": true,
+          "has_admin_source": true,
+          "recipe_input": false,
+          "recipe_output": false,
+          "mining_output": false,
+          "generic_claim_output": true,
+          "internal_only": false
+        }
+      },
+      "coverage": {
+        "frontend": true,
+        "game": false,
+        "backend": true,
+        "recipe": false,
+        "asset": true,
+        "onchainSource": false,
+        "onchainSink": true
+      },
+      "status": "active-player",
+      "economyIssue": "missing_source"
+    }
+  ],
+  "productGaps": {
+    "craftInputsWithoutPlayerSource": [
+      "BioChip",
+      "BlueCore",
+      "ClearQuartz",
+      "Data",
+      "PurpleCore",
+      "RedCore",
+      "RoseQuartz"
+    ],
+    "craftOutputsNeverConsumed": [
+      "BioFluid",
+      "CryoFluid",
+      "NanoFluid",
+      "PhotonBit",
+      "QuantumFluid",
+      "VoltFluid"
+    ],
+    "genericIssuance": {
+      "admin": true,
+      "playerClaim": true
+    }
+  },
+  "genericPaths": {
+    "adminMint": [
+      "aof-core/src/instructions/admin_config.rs#set_supply_cap",
+      "aof-core/src/instructions/burn_resource.rs#handler",
+      "aof-core/src/instructions/issuance_cap.rs#init_handler",
+      "aof-core/src/instructions/issuance_cap.rs#set_handler",
+      "aof-core/src/instructions/mint_resource.rs#handler",
+      "aof-core/src/lib.rs#burn_resource",
+      "aof-core/src/lib.rs#init_issuance_cap",
+      "aof-core/src/lib.rs#mint_resource",
+      "aof-core/src/lib.rs#set_issuance_cap",
+      "aof-core/src/lib.rs#set_supply_cap"
+    ],
+    "playerClaim": [
+      "aof-core/src/instructions/mint_resource_once.rs#handler",
+      "aof-core/src/lib.rs#mint_resource_once"
+    ],
+    "miningFiles": [
+      "aof-core/src/instructions/collect_mining.rs#handler",
+      "aof-core/src/instructions/rental_delegation.rs#handler"
+    ],
+    "miningKinds": [
+      "Circuit",
+      "Dataset",
+      "Neuron",
+      "Silicon"
+    ],
+    "orderbook": "aof-core/src/instructions/orderbook.rs#expected_resource_mint",
+    "orderbookKinds": 27,
+    "recipes": [
+      {
+        "id": 0,
+        "inputs": [
+          "blue_core"
+        ],
+        "outputs": [
+          "QuantumBit"
+        ]
+      },
+      {
+        "id": 1,
+        "inputs": [
+          "red_core"
+        ],
+        "outputs": [
+          "NeuralChip"
+        ]
+      },
+      {
+        "id": 2,
+        "inputs": [
+          "clear_quartz"
+        ],
+        "outputs": [
+          "PhotonBit"
+        ]
+      },
+      {
+        "id": 3,
+        "inputs": [
+          "quantum_bit",
+          "data_mint"
+        ],
+        "outputs": [
+          "CryoFluid"
+        ]
+      },
+      {
+        "id": 4,
+        "inputs": [
+          "neural_chip",
+          "silicon_mint"
+        ],
+        "outputs": [
+          "VoltFluid"
+        ]
+      },
+      {
+        "id": 5,
+        "inputs": [
+          "circuit_mint",
+          "neuron"
+        ],
+        "outputs": [
+          "BioFluid"
+        ]
+      },
+      {
+        "id": 6,
+        "inputs": [
+          "rose_quartz",
+          "data_mint"
+        ],
+        "outputs": [
+          "NanoFluid"
+        ]
+      },
+      {
+        "id": 7,
+        "inputs": [
+          "purple_core",
+          "bio_chip"
+        ],
+        "outputs": [
+          "QuantumFluid"
+        ]
+      }
+    ]
+  },
+  "statusSemantics": "active-player = ресурс бывает балансом игрока; active-internal = только protocol state; absence of source/sink — это economy_issue, а не смена статуса"
+}

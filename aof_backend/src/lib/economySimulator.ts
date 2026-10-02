@@ -8,9 +8,9 @@
 
 // === Типы ресурсов ===
 export type ResourceId = 
-  | "SEEDS" | "WHEAT" | "FLOUR" | "BREAD"
-  | "WOOD" | "STONE" | "COAL" | "MEAT"
-  | "WATER" | "FOOD";
+  | "NEURON" | "SYNAPSE" | "SIGNAL" | "MODEL"
+  | "CIRCUIT" | "SILICON" | "COMPUTE" | "DATASET"
+  | "POWER" | "DATA";
 
 // === Конфигурация ресурсов ===
 interface ResourceConfig {
@@ -23,16 +23,16 @@ interface ResourceConfig {
 }
 
 const RESOURCES: Record<ResourceId, ResourceConfig> = {
-  SEEDS:  { id: "SEEDS",  basePrice: 0.0001, supplyPerDay: 10000, demandPerDay: 3000 },
-  WHEAT:  { id: "WHEAT",  basePrice: 0.0005, supplyPerDay: 8000,  demandPerDay: 4000 },
-  FLOUR:  { id: "FLOUR",  basePrice: 0.0015, supplyPerDay: 3000,  demandPerDay: 2500, craftFrom: { resource: "WHEAT", amount: 2 }, craftTo: "BREAD" },
-  BREAD:  { id: "BREAD",  basePrice: 0.003,  supplyPerDay: 1500,  demandPerDay: 2000, craftFrom: { resource: "FLOUR", amount: 2 } },
-  WOOD:   { id: "WOOD",   basePrice: 0.0008, supplyPerDay: 5000,  demandPerDay: 2000 },
-  STONE:  { id: "STONE",  basePrice: 0.001,  supplyPerDay: 4000,  demandPerDay: 1800 },
-  COAL:   { id: "COAL",   basePrice: 0.0012, supplyPerDay: 2500,  demandPerDay: 2200 },
-  MEAT:   { id: "MEAT",   basePrice: 0.002,  supplyPerDay: 2000,  demandPerDay: 2500 },
-  WATER:  { id: "WATER",  basePrice: 0.0002, supplyPerDay: 15000, demandPerDay: 8000 },
-  FOOD:   { id: "FOOD",   basePrice: 0.0025, supplyPerDay: 1000,  demandPerDay: 3000 },
+  NEURON:  { id: "NEURON",  basePrice: 0.0001, supplyPerDay: 10000, demandPerDay: 3000 },
+  SYNAPSE:  { id: "SYNAPSE",  basePrice: 0.0005, supplyPerDay: 8000,  demandPerDay: 4000 },
+  SIGNAL:  { id: "SIGNAL",  basePrice: 0.0015, supplyPerDay: 3000,  demandPerDay: 2500, craftFrom: { resource: "SYNAPSE", amount: 2 }, craftTo: "MODEL" },
+  MODEL:  { id: "MODEL",  basePrice: 0.003,  supplyPerDay: 1500,  demandPerDay: 2000, craftFrom: { resource: "SIGNAL", amount: 2 } },
+  CIRCUIT:   { id: "CIRCUIT",   basePrice: 0.0008, supplyPerDay: 5000,  demandPerDay: 2000 },
+  SILICON:  { id: "SILICON",  basePrice: 0.001,  supplyPerDay: 4000,  demandPerDay: 1800 },
+  COMPUTE:   { id: "COMPUTE",   basePrice: 0.0012, supplyPerDay: 2500,  demandPerDay: 2200 },
+  DATASET:   { id: "DATASET",   basePrice: 0.002,  supplyPerDay: 2000,  demandPerDay: 2500 },
+  POWER:  { id: "POWER",  basePrice: 0.0002, supplyPerDay: 15000, demandPerDay: 8000 },
+  DATA:   { id: "DATA",   basePrice: 0.0025, supplyPerDay: 1000,  demandPerDay: 3000 },
 };
 
 // === Типы агентов ===
@@ -42,7 +42,7 @@ interface Agent {
   id: number;
   type: AgentType;
   wallet: string;
-  potato: number;        // баланс POTATO
+  mind: number;        // баланс MIND
   sol: number;           // баланс SOL
   inventory: Partial<Record<ResourceId, number>>;
   profit: number;        // накопленная прибыль
@@ -52,7 +52,7 @@ interface Agent {
 interface SimulationResult {
   days: number;
   totalAgents: number;
-  potatoInflation: number;      // % за период
+  mindInflation: number;      // % за период
   solInflation: number;         // % за период
   priceChanges: Record<ResourceId, number>;  // % изменение цен
   resourceImbalance: Record<ResourceId, number>; // дисбаланс спроса/предложения
@@ -66,7 +66,7 @@ interface SimulationResult {
   };
   timeline: Array<{
     day: number;
-    potatoSupply: number;
+    mindSupply: number;
     avgPrice: number;
     inflation: number;
     activeAgents: number;
@@ -97,7 +97,7 @@ function generateAgents(count: number): Agent[] {
       id: i,
       type,
       wallet: `AGENT_${i.toString().padStart(4, "0")}`,
-      potato: 100 + Math.random() * 900,     // 100-1000 POTATO
+      mind: 100 + Math.random() * 900,     // 100-1000 MIND
       sol: 0.05 + Math.random() * 0.45,       // 0.05-0.5 SOL
       inventory: {},
       profit: 0,
@@ -127,7 +127,7 @@ function getStrategyForType(type: AgentType): string {
 export function runSimulation(
   agentCount: number = 1000,
   days: number = 30,
-  dailyPotatoMint: number = 50000  // сколько POTATO минтится в день (награды, квесты)
+  dailyMindMint: number = 50000  // сколько MIND минтится в день (награды, квесты)
 ): SimulationResult {
   console.log(`🧪 [Sandbox] Запуск симуляции: ${agentCount} агентов, ${days} дней`);
   
@@ -144,26 +144,26 @@ export function runSimulation(
     supplies[resId] = RESOURCES[resId].supplyPerDay * 3; // начальный запас на 3 дня
   }
   
-  let potatoSupply = 1_000_000; // стартовый supply POTATO
+  let mindSupply = 1_000_000; // стартовый supply MIND
   let solSupply = 500; // стартовый SOL в экономике
   
   const timeline: SimulationResult["timeline"] = [];
   
   // Симуляция по дням
   for (let day = 1; day <= days; day++) {
-    const initialPotatoSupply = potatoSupply;
+    const initialMindSupply = mindSupply;
     
     // 1. Производство ресурсов
     for (const resId of Object.keys(RESOURCES) as ResourceId[]) {
       supplies[resId] += RESOURCES[resId].supplyPerDay;
     }
     
-    // 2. Минт POTATO (награды, квесты, стики)
-    potatoSupply += dailyPotatoMint;
+    // 2. Минт MIND (награды, квесты, стики)
+    mindSupply += dailyMindMint;
     
     // 3. Действия агентов
     for (const agent of agents) {
-      if (agent.sol < 0.01 && agent.potato < 10) continue; // банкрот
+      if (agent.sol < 0.01 && agent.mind < 10) continue; // банкрот
       
       simulateAgentDay(agent, supplies, prices);
     }
@@ -189,12 +189,12 @@ export function runSimulation(
     
     // 5. Считаем метрики дня
     const avgPrice = Object.values(prices).reduce((a, b) => a + b, 0) / Object.keys(prices).length;
-    const inflation = ((potatoSupply - initialPotatoSupply) / initialPotatoSupply) * 100;
-    const activeAgents = agents.filter(a => a.sol >= 0.01 || a.potato >= 10).length;
+    const inflation = ((mindSupply - initialMindSupply) / initialMindSupply) * 100;
+    const activeAgents = agents.filter(a => a.sol >= 0.01 || a.mind >= 10).length;
     
     timeline.push({
       day,
-      potatoSupply: Math.round(potatoSupply),
+      mindSupply: Math.round(mindSupply),
       avgPrice: Number(avgPrice.toFixed(6)),
       inflation: Number(inflation.toFixed(2)),
       activeAgents,
@@ -212,18 +212,18 @@ export function runSimulation(
     resourceImbalance[resId] = (supplies[resId] - config.demandPerDay) / config.demandPerDay;
   }
   
-  const totalPotatoInflation = ((potatoSupply - 1_000_000) / 1_000_000) * 100;
+  const totalMindInflation = ((mindSupply - 1_000_000) / 1_000_000) * 100;
   
   const warnings: string[] = [];
   const recommendations: string[] = [];
   
   // Анализ инфляции
-  if (totalPotatoInflation > 100) {
-    warnings.push(`🚨 Критическая инфляция: ${totalPotatoInflation.toFixed(0)}% за ${days} дней`);
+  if (totalMindInflation > 100) {
+    warnings.push(`🚨 Критическая инфляция: ${totalMindInflation.toFixed(0)}% за ${days} дней`);
     recommendations.push("Увеличить стоимость крафта на 50% или снизить награды за квесты");
-  } else if (totalPotatoInflation > 50) {
-    warnings.push(`⚠️ Высокая инфляция: ${totalPotatoInflation.toFixed(0)}% за ${days} дней`);
-    recommendations.push("Добавить механику сжигания POTATO (репит, улучшения)");
+  } else if (totalMindInflation > 50) {
+    warnings.push(`⚠️ Высокая инфляция: ${totalMindInflation.toFixed(0)}% за ${days} дней`);
+    recommendations.push("Добавить механику сжигания MIND (репит, улучшения)");
   }
   
   // Анализ дисбалансов
@@ -239,7 +239,7 @@ export function runSimulation(
   }
   
   // Анализ банкротств
-  const bankruptAgents = agents.filter(a => a.sol < 0.01 && a.potato < 10).length;
+  const bankruptAgents = agents.filter(a => a.sol < 0.01 && a.mind < 10).length;
   if (bankruptAgents > agentCount * 0.2) {
     warnings.push(`🚨 ${((bankruptAgents / agentCount) * 100).toFixed(0)}% агентов обанкротились`);
     recommendations.push("Увеличить стартовый капитал или снизить комиссии");
@@ -257,7 +257,7 @@ export function runSimulation(
   return {
     days,
     totalAgents: agentCount,
-    potatoInflation: Number(totalPotatoInflation.toFixed(2)),
+    mindInflation: Number(totalMindInflation.toFixed(2)),
     solInflation: 0, // TODO: посчитать если есть минт/бёрн SOL
     priceChanges,
     resourceImbalance,
@@ -282,7 +282,7 @@ function simulateAgentDay(
   switch (agent.type) {
     case "farmer":
       // Фермер производит сырьё
-      const rawResources: ResourceId[] = ["SEEDS", "WHEAT", "WATER", "WOOD"];
+      const rawResources: ResourceId[] = ["NEURON", "SYNAPSE", "POWER", "CIRCUIT"];
       const produced = rawResources[Math.floor(Math.random() * rawResources.length)];
       const amount = 5 + Math.floor(Math.random() * 20);
       agent.inventory[produced] = (agent.inventory[produced] || 0) + amount;
@@ -297,8 +297,8 @@ function simulateAgentDay(
     case "crafter":
       // Крафтер покупает сырьё и крафтит
       const craftPairs: Array<[ResourceId, ResourceId]> = [
-        ["WHEAT", "FLOUR"],
-        ["FLOUR", "BREAD"],
+        ["SYNAPSE", "SIGNAL"],
+        ["SIGNAL", "MODEL"],
       ];
       const [from, to] = craftPairs[Math.floor(Math.random() * craftPairs.length)];
       const craftAmount = Math.min(

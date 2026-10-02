@@ -27,7 +27,7 @@ import { LotteryPage } from "../market/LotteryPage";
 import { ExplorationPage } from "./ExplorationPage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
-import { PlantingPanel } from "./PlantingPanel";
+import { NeuralLabPanel } from "./NeuralLabPanel";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { LabHero } from "../../components/farm/LabHero";
 import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
@@ -290,7 +290,7 @@ export function FarmDashboard() {
       {subTab === "well" && <WellPanel />}
 
       {/* РЕНДЕР: ПОСАДКА */}
-      {subTab === "plant" && <PlantingPanel />}
+      {subTab === "plant" && <NeuralLabPanel />}
 
       {/* РЕНДЕР: МЕЛЬНИЦА */}
       {subTab === "mill" && <MillPanel />}

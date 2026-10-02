@@ -15,7 +15,7 @@ export interface QuestTemplate {
     action?: string;
   };
   reward: {
-    potato: number;
+    mind: number;
     xp: number;
     item?: string;
   };
@@ -26,50 +26,50 @@ export interface QuestTemplate {
 const QUEST_TEMPLATES: QuestTemplate[] = [
   // Сбор ресурсов
   {
-    id: "gather_food_1",
+    id: "gather_data_1",
     type: "gather",
     title: "Урожай пшеницы",
     description: "Соберите 100 единиц пшеницы для деревенской мельницы",
-    target: { resource: "WHEAT", amount: 100 },
-    reward: { potato: 50, xp: 10 },
+    target: { resource: "SYNAPSE", amount: 100 },
+    reward: { mind: 50, xp: 10 },
     difficulty: "easy",
   },
   {
-    id: "gather_stone_1",
+    id: "gather_silicon_1",
     type: "gather",
     title: "Каменоломня",
     description: "Добудьте 50 камня для строительства",
-    target: { resource: "STONE", amount: 50 },
-    reward: { potato: 75, xp: 15 },
+    target: { resource: "SILICON", amount: 50 },
+    reward: { mind: 75, xp: 15 },
     difficulty: "medium",
   },
   {
-    id: "gather_coal_1",
+    id: "gather_compute_1",
     type: "gather",
     title: "Угольная шахта",
     description: "Найдите 30 угля для кузницы",
-    target: { resource: "COAL", amount: 30 },
-    reward: { potato: 100, xp: 20 },
+    target: { resource: "COMPUTE", amount: 30 },
+    reward: { mind: 100, xp: 20 },
     difficulty: "hard",
   },
   
   // Крафт
   {
-    id: "craft_flour_1",
+    id: "craft_signal_1",
     type: "craft",
     title: "Мельник",
     description: "Смелите 50 муки на мельнице",
-    target: { resource: "FLOUR", amount: 50 },
-    reward: { potato: 120, xp: 25 },
+    target: { resource: "SIGNAL", amount: 50 },
+    reward: { mind: 120, xp: 25 },
     difficulty: "medium",
   },
   {
-    id: "craft_bread_1",
+    id: "craft_model_1",
     type: "craft",
     title: "Пекарь",
     description: "Испеките 20 буханок хлеба",
-    target: { resource: "BREAD", amount: 20 },
-    reward: { potato: 150, xp: 30 },
+    target: { resource: "MODEL", amount: 20 },
+    reward: { mind: 150, xp: 30 },
     difficulty: "hard",
   },
   
@@ -80,7 +80,7 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     title: "Закупщик",
     description: "Купите ресурсы на сумму 0.5 SOL",
     target: { action: "buy", amount: 0.5 },
-    reward: { potato: 80, xp: 20 },
+    reward: { mind: 80, xp: 20 },
     difficulty: "easy",
   },
   {
@@ -89,7 +89,7 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     title: "Торговец",
     description: "Продайте ресурсы на сумму 1 SOL",
     target: { action: "sell", amount: 1 },
-    reward: { potato: 100, xp: 25 },
+    reward: { mind: 100, xp: 25 },
     difficulty: "medium",
   },
   
@@ -100,7 +100,7 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     title: "Верный друг",
     description: "Заходите в игру 3 дня подряд",
     target: { action: "streak", amount: 3 },
-    reward: { potato: 200, xp: 50 },
+    reward: { mind: 200, xp: 50 },
     difficulty: "easy",
   },
   {
@@ -109,7 +109,7 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     title: "Коллекционер",
     description: "Откройте 5 новых записей в компендиуме",
     target: { action: "compendium", amount: 5 },
-    reward: { potato: 150, xp: 40 },
+    reward: { mind: 150, xp: 40 },
     difficulty: "medium",
   },
 ];
@@ -166,7 +166,7 @@ export async function generatePersonalizedQuest(
       title: "Мастер-ремесленник",
       description: `Странник Джо заметил ваше мастерство. Создайте 5 редких предметов.`,
       target: { action: "craft_rare", amount: 5 },
-      reward: { potato: 300, xp: 100, item: "rare_blueprint" },
+      reward: { mind: 300, xp: 100, item: "rare_blueprint" },
       difficulty: "hard",
     };
   }

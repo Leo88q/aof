@@ -124,7 +124,8 @@
         "OfferAccepted",
         "AuctionSettled",
         "RentalStarted",
-        "RentalEnded"
+        "RentalEnded",
+        "ToolTransferred"
       ]
     },
     {
@@ -309,7 +310,9 @@
         "CollectorMintRegistered",
         "PlayerCapacityChanged",
         "RebirthReset",
-        "RebirthPerformed"
+        "RebirthPerformed",
+        "ToolOwnershipSynced",
+        "SeasonPassInitialized"
       ]
     },
     {

@@ -9,7 +9,7 @@ use crate::state::check_supply_cap;
 use crate::ResourceKind;
 use crate::vrf::{self, VrfRevealParams};
 
-/// [F-06] Forge commit. Wood/stone are burned (amounts recorded for a refund),
+/// [F-06] Forge commit. Circuit and Silicon are burned (amounts recorded for a refund),
 /// the SOL fee (+protector) is escrowed on the commit PDA, the current level
 /// is snapshotted and a pool randomness account is committed (see vrf.rs).
 /// The operator co-signs as the backend gate.
@@ -27,11 +27,11 @@ pub fn commit_handler(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_prote
     let level_before = slot.level;
     let idx = level_before as usize; // level->level+1, индекс = текущий уровень
 
-    let wood_cost = ENCHANT_WOOD_COST[idx];
-    let stone_cost = ENCHANT_STONE_COST[idx];
+    let circuit_cost = ENCHANT_CIRCUIT_COST[idx];
+    let silicon_cost = ENCHANT_SILICON_COST[idx];
     for (mint, from, cost) in [
-        (&ctx.accounts.wood_mint, &ctx.accounts.user_wood, wood_cost),
-        (&ctx.accounts.stone_mint, &ctx.accounts.user_stone, stone_cost),
+        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit, circuit_cost),
+        (&ctx.accounts.silicon_mint, &ctx.accounts.user_silicon, silicon_cost),
     ] {
         require!(from.amount >= cost, AofError::InsufficientBalance);
         token::burn(
@@ -82,8 +82,8 @@ pub fn commit_handler(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_prote
     fc.level_before = level_before;
     fc.use_protector = use_protector;
     fc.paid_lamports = fee;
-    fc.wood_burned = wood_cost;
-    fc.stone_burned = stone_cost;
+    fc.circuit_burned = circuit_cost;
+    fc.silicon_burned = silicon_cost;
     fc.randomness = ctx.accounts.randomness.key();
     fc.seed_slot = seed_slot;
     fc.commit_slot = clock.slot;
@@ -196,8 +196,8 @@ fn release_escrow<'info>(from: &AccountInfo<'info>, to: &AccountInfo<'info>, amo
     crate::economics::transfer_owned_lamports(from, to, amount, reserve)
 }
 
-/// [F-06] Refund of a forge attempt the oracle never revealed: burned wood and
-/// stone are re-minted, the escrowed fee and the rent go back to the user.
+/// [F-06] Refund of a forge attempt the oracle never revealed: burned Circuit and
+/// Silicon are re-minted, the escrowed fee and rent go back to the user.
 /// Permissionless, only once the reveal window has closed.
 pub fn expire_handler(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
     let clock = Clock::get()?;
@@ -206,15 +206,15 @@ pub fn expire_handler(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
     vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
 
     let fc = &ctx.accounts.forge_commit;
-    let (paid, wood, stone) = (fc.paid_lamports, fc.wood_burned, fc.stone_burned);
-    check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.wood_mint.supply, wood)?;
-    check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.stone_mint.supply, stone)?;
+    let (paid, circuit, silicon) = (fc.paid_lamports, fc.circuit_burned, fc.silicon_burned);
+    check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;
+    check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;
 
     let auth_bump = ctx.bumps.auth;
     let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
     for (mint, to, amount) in [
-        (ctx.accounts.wood_mint.to_account_info(), ctx.accounts.user_wood.to_account_info(), wood),
-        (ctx.accounts.stone_mint.to_account_info(), ctx.accounts.user_stone.to_account_info(), stone),
+        (ctx.accounts.circuit_mint.to_account_info(), ctx.accounts.user_circuit.to_account_info(), circuit),
+        (ctx.accounts.silicon_mint.to_account_info(), ctx.accounts.user_silicon.to_account_info(), silicon),
     ] {
         if amount == 0 {
             continue;
@@ -231,15 +231,15 @@ pub fn expire_handler(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
 
     // The escrowed fee reaches the user with the rent through `close = user`.
     let fc = &mut ctx.accounts.forge_commit;
-    fc.wood_burned = 0;
-    fc.stone_burned = 0;
+    fc.circuit_burned = 0;
+    fc.silicon_burned = 0;
     emit!(ForgeCommitExpired {
         user: fc.user,
         tool_mint: fc.tool_mint,
         slot_type: fc.slot_type,
         refunded_lamports: paid,
-        wood_refunded: wood,
-        stone_refunded: stone,
+        circuit_refunded: circuit,
+        silicon_refunded: silicon,
     });
     emit!(VrfCommitRefunded {
         mechanic: VRF_MECHANIC_FORGE,

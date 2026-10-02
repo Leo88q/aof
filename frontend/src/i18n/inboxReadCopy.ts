@@ -19,6 +19,9 @@ type InboxUi = {
   letters: string; inBox: string; unread: string; lamps: string;
   rewardLetters: string; includeReward: string;
   reward: string; claim: string; claimed: string; close: string; original: string;
+  quoteTitle: string; quoteReview: string; quoteRent: (sol: string, lamports: string) => string;
+  quoteFee: (sol: string, lamports: string) => string; quoteMax: (sol: string, lamports: string) => string;
+  confirmClaim: string; refreshQuote: string;
 };
 export const inboxUiCopy: Record<Language, InboxUi> = {
   ru: {
@@ -27,6 +30,12 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'ЖДЁТ', read: 'ПРОЧИТАНО', fresh: 'НОВОЕ', empty: 'Ящик пуст — писем пока нет.',
     letters: 'Писем', inBox: 'в ящике', unread: 'Непрочитанных', lamps: 'светятся индикаторы', rewardLetters: 'С наградой', includeReward: 'письма с наградой',
     reward: 'Награда', claim: 'Получить награду', claimed: 'Награда подтверждена', close: 'Закрыть письмо', original: 'Текст письма показан на языке отправителя.',
+    quoteTitle: 'Расходы на claim (live)',
+    quoteReview: 'Перед подписью проверьте смету, привязанную к этой транзакции. Игровые токены за claim не списываются.',
+    quoteRent: (sol, lamports) => `Rent только для отсутствующих аккаунтов: ${sol} (${lamports} лампортов)`,
+    quoteFee: (sol, lamports) => `Сетевая комиссия: ${sol} (${lamports} лампортов)`,
+    quoteMax: (sol, lamports) => `Максимум сети и rent: ${sol} (${lamports} лампортов)`,
+    confirmClaim: 'Проверить смету и подписать claim', refreshQuote: 'Обновить смету',
   },
   en: {
     unreadCount: n => `${n} unread`,
@@ -34,6 +43,12 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'PENDING', read: 'READ', fresh: 'NEW', empty: 'Your inbox is empty. No messages yet.',
     letters: 'Messages', inBox: 'in your inbox', unread: 'Unread', lamps: 'indicator lights', rewardLetters: 'With rewards', includeReward: 'messages with rewards',
     reward: 'Reward', claim: 'Claim reward', claimed: 'Reward confirmed', close: 'Close message', original: 'Message text appears in the sender’s original language.',
+    quoteTitle: 'Claim costs (live)',
+    quoteReview: 'Review the quote bound to this transaction before signing. No in-game tokens are charged for claiming.',
+    quoteRent: (sol, lamports) => `Rent for missing accounts only: ${sol} (${lamports} lamports)`,
+    quoteFee: (sol, lamports) => `Network fee: ${sol} (${lamports} lamports)`,
+    quoteMax: (sol, lamports) => `Maximum network and rent cost: ${sol} (${lamports} lamports)`,
+    confirmClaim: 'Review costs and sign claim', refreshQuote: 'Refresh quote',
   },
   pt: {
     unreadCount: n => `${n} não lidas`,
@@ -41,6 +56,12 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'PENDENTE', read: 'LIDA', fresh: 'NOVA', empty: 'A caixa está vazia. Ainda não há mensagens.',
     letters: 'Mensagens', inBox: 'na caixa', unread: 'Não lidas', lamps: 'indicadores acesos', rewardLetters: 'Com recompensa', includeReward: 'mensagens com recompensa',
     reward: 'Recompensa', claim: 'Receber recompensa', claimed: 'Recompensa confirmada', close: 'Fechar mensagem', original: 'O texto da mensagem aparece no idioma original do remetente.',
+    quoteTitle: 'Custos do resgate (live)',
+    quoteReview: 'Revise a cotação vinculada à transação antes de assinar. O resgate não cobra tokens do jogo.',
+    quoteRent: (sol, lamports) => `Rent apenas para contas ausentes: ${sol} (${lamports} lamports)`,
+    quoteFee: (sol, lamports) => `Taxa de rede: ${sol} (${lamports} lamports)`,
+    quoteMax: (sol, lamports) => `Custo máximo de rede e rent: ${sol} (${lamports} lamports)`,
+    confirmClaim: 'Revisar custos e assinar resgate', refreshQuote: 'Atualizar cotação',
   },
   es: {
     unreadCount: n => `${n} sin leer`,
@@ -48,6 +69,12 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'PENDIENTE', read: 'LEÍDO', fresh: 'NUEVO', empty: 'El buzón está vacío. Aún no hay mensajes.',
     letters: 'Mensajes', inBox: 'en el buzón', unread: 'Sin leer', lamps: 'indicadores encendidos', rewardLetters: 'Con recompensa', includeReward: 'mensajes con recompensa',
     reward: 'Recompensa', claim: 'Recibir recompensa', claimed: 'Recompensa confirmada', close: 'Cerrar mensaje', original: 'El texto del mensaje aparece en el idioma original del remitente.',
+    quoteTitle: 'Costes del reclamo (live)',
+    quoteReview: 'Revisa la cotización vinculada a la transacción antes de firmar. Reclamar no cobra tokens del juego.',
+    quoteRent: (sol, lamports) => `Rent solo para cuentas inexistentes: ${sol} (${lamports} lamports)`,
+    quoteFee: (sol, lamports) => `Comisión de red: ${sol} (${lamports} lamports)`,
+    quoteMax: (sol, lamports) => `Coste máximo de red y rent: ${sol} (${lamports} lamports)`,
+    confirmClaim: 'Revisar costes y firmar reclamo', refreshQuote: 'Actualizar cotización',
   },
   vi: {
     unreadCount: n => `${n} tin chưa đọc`,
@@ -55,6 +82,12 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'CHỜ NHẬN', read: 'ĐÃ ĐỌC', fresh: 'MỚI', empty: 'Hộp thư trống. Chưa có tin nhắn.',
     letters: 'Tin nhắn', inBox: 'trong hộp thư', unread: 'Chưa đọc', lamps: 'đèn báo sáng', rewardLetters: 'Có phần thưởng', includeReward: 'tin nhắn có phần thưởng',
     reward: 'Phần thưởng', claim: 'Nhận phần thưởng', claimed: 'Đã xác nhận phần thưởng', close: 'Đóng tin nhắn', original: 'Nội dung tin nhắn được hiển thị bằng ngôn ngữ gốc của người gửi.',
+    quoteTitle: 'Chi phí nhận thưởng (live)',
+    quoteReview: 'Hãy kiểm tra báo giá gắn với giao dịch trước khi ký. Việc nhận thưởng không tốn token trong trò chơi.',
+    quoteRent: (sol, lamports) => `Rent chỉ cho tài khoản chưa tồn tại: ${sol} (${lamports} lamports)`,
+    quoteFee: (sol, lamports) => `Phí mạng: ${sol} (${lamports} lamports)`,
+    quoteMax: (sol, lamports) => `Tối đa phí mạng và rent: ${sol} (${lamports} lamports)`,
+    confirmClaim: 'Xem chi phí và ký nhận thưởng', refreshQuote: 'Làm mới báo giá',
   },
   id: {
     unreadCount: n => `${n} belum dibaca`,
@@ -62,6 +95,12 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'MENUNGGU', read: 'DIBACA', fresh: 'BARU', empty: 'Kotak masuk kosong. Belum ada pesan.',
     letters: 'Pesan', inBox: 'di kotak masuk', unread: 'Belum dibaca', lamps: 'lampu indikator menyala', rewardLetters: 'Dengan hadiah', includeReward: 'pesan dengan hadiah',
     reward: 'Hadiah', claim: 'Klaim hadiah', claimed: 'Hadiah dikonfirmasi', close: 'Tutup pesan', original: 'Isi pesan ditampilkan dalam bahasa asli pengirim.',
+    quoteTitle: 'Biaya klaim (live)',
+    quoteReview: 'Periksa kuotasi yang terikat pada transaksi sebelum menandatangani. Klaim tidak mengenakan token game.',
+    quoteRent: (sol, lamports) => `Rent hanya untuk akun yang belum ada: ${sol} (${lamports} lamports)`,
+    quoteFee: (sol, lamports) => `Biaya jaringan: ${sol} (${lamports} lamports)`,
+    quoteMax: (sol, lamports) => `Maksimum biaya jaringan dan rent: ${sol} (${lamports} lamports)`,
+    confirmClaim: 'Tinjau biaya dan tanda tangani klaim', refreshQuote: 'Perbarui kuotasi',
   },
   fil: {
     unreadCount: n => `${n} hindi pa nababasa`,
@@ -69,5 +108,11 @@ export const inboxUiCopy: Record<Language, InboxUi> = {
     waiting: 'NAGHIHINTAY', read: 'NABASA', fresh: 'BAGO', empty: 'Walang laman ang inbox. Wala pang mensahe.',
     letters: 'Mga mensahe', inBox: 'sa inbox', unread: 'Hindi pa nababasa', lamps: 'nakailaw ang mga palatandaan', rewardLetters: 'May gantimpala', includeReward: 'mga mensaheng may gantimpala',
     reward: 'Gantimpala', claim: 'Kunin ang gantimpala', claimed: 'Kumpirmado ang gantimpala', close: 'Isara ang mensahe', original: 'Ipinapakita ang mensahe sa orihinal na wika ng nagpadala.',
+    quoteTitle: 'Gastos sa pag-claim (live)',
+    quoteReview: 'Suriin ang quote na nakatali sa transaksyong ito bago pumirma. Walang game token na sinisingil sa pag-claim.',
+    quoteRent: (sol, lamports) => `Rent para lang sa mga nawawalang account: ${sol} (${lamports} lamports)`,
+    quoteFee: (sol, lamports) => `Network fee: ${sol} (${lamports} lamports)`,
+    quoteMax: (sol, lamports) => `Pinakamataas na gastos sa network at rent: ${sol} (${lamports} lamports)`,
+    confirmClaim: 'Suriin ang gastos at pirmahan ang claim', refreshQuote: 'I-refresh ang quote',
   },
 };

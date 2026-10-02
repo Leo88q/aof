@@ -9,10 +9,10 @@ import "dotenv/config";
  * AccountNotInitialized.
  *
  * Usage:
- *   CAP_PER_EPOCH=<base units> [EPOCH_SLOTS=216000] [KINDS=food,wood] [DRY_RUN=1] \
+ *   CAP_PER_EPOCH=<base units> [EPOCH_SLOTS=216000] [KINDS=data,circuit] [DRY_RUN=1] \
  *     npm run caps:init
  *
- * Per-kind overrides: CAP_<KIND>=<base units>, e.g. CAP_POTATO=5000000000000.
+ * Per-kind overrides: CAP_<KIND>=<base units>, e.g. CAP_MIND=5000000000000.
  * Already-initialised kinds are skipped (idempotent; use /admin/issuance-caps/set to change).
  */
 import { SystemProgram } from "@solana/web3.js";

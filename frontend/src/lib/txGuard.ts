@@ -5,7 +5,7 @@
 
 import { txGuardCopy } from "../i18n/txGuardCopy";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
-import { TransactionIntent, expectedSigners, validateTransactionIntent } from "./transactionIntent";
+import { TransactionIntent, expectedSigners, expectedPayerRentAccounts, validateTransactionIntent } from "./transactionIntent";
 import { Connection, Transaction, PublicKey, VersionedTransaction } from "@solana/web3.js";
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
@@ -52,12 +52,12 @@ const SAFE_PROGRAMS = new Set([
 // guard must not treat an arbitrary program as safe merely because simulation
 // succeeded: simulation proves execution, not user intent.
 const AOF_PROGRAMS = [
-  "6ZnnyKkv1kUE4AJqi5uwdh5ZX6VFGfbQiwhGSkfqZ9K5", // session keys
-  "Gvbo9wDEW6kCzzhjk3stEcZoVtcScbN8mGv9SNwTUJLv", // liquidity
-  "4rMWC1h9mt6JTfBsUPYLMCydPED4e31cffmix5nZyuRb", // rebirth
-  "4fNKhVw2nErWZBBw9hgWD3Metu1UKbDLdhFGWbCewdLU", // quests
-  "4BhD6spJHdvHQ9mgyaU6AUSLU37oJbTMCDcAXyWhMRVo", // market
-  "HtJg3R3Ki938QeSD98djwMgWESboDVEykuyKGtvRamEq", // core
+  "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5", // session keys
+  "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S", // liquidity
+  "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF", // rebirth
+  "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc", // quests
+  "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY", // market
+  "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx", // core
 ];
 
 // [F-06] Switchboard On-Demand (mainnet, devnet). The game programs CPI it to
@@ -86,6 +86,60 @@ const DEFAULT_CONFIG: GuardConfig = {
   blockedAddresses: [],
 };
 
+async function seasonXpDomainDigest(domain: string, value: string): Promise<string> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error("Cryptographic XP entitlement verification unavailable");
+  const bytes = new TextEncoder().encode(`${domain}\0${value}`);
+  const digest = new Uint8Array(await subtle.digest("SHA-256", bytes.buffer as ArrayBuffer));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyBoundPayerQuote(
+  tx: Transaction | VersionedTransaction,
+  intent: TransactionIntent,
+  connection: Pick<Connection, "getFeeForMessage" | "getBlockHeight" | "getAccountInfo" | "getMinimumBalanceForRentExemption">,
+  currentFeeLamports: number,
+): Promise<void> {
+  if (!("quote" in intent)) return;
+  const quote = intent.quote;
+  const message = tx instanceof Transaction ? tx.serializeMessage() : tx.message.serialize();
+  const recentBlockhash = tx instanceof Transaction ? tx.recentBlockhash : tx.message.recentBlockhash;
+  if (!recentBlockhash || recentBlockhash !== quote.recentBlockhash) throw new Error("Payer quote does not match transaction blockhash");
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error("Cryptographic payer quote verification unavailable");
+  // WebCrypto's BufferSource requires an ArrayBuffer-backed view; Solana's
+  // serializers may return a Buffer/Uint8Array typed over SharedArrayBuffer.
+  const hashInput = new Uint8Array(new ArrayBuffer(message.byteLength));
+  hashInput.set(message);
+  const digest = new Uint8Array(await subtle.digest("SHA-256", hashInput));
+  const messageSha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (messageSha256 !== quote.messageSha256) throw new Error("Payer quote is not bound to this transaction message");
+  if (BigInt(currentFeeLamports) > BigInt(quote.networkFeeLamports)) {
+    throw new Error("Current network fee exceeds the payer quote");
+  }
+  const currentHeight = await connection.getBlockHeight("confirmed");
+  if (currentHeight > quote.lastValidBlockHeight) throw new Error("Payer quote expired");
+
+  const expected = expectedPayerRentAccounts(intent);
+  if (expected.length !== quote.rentAccounts.length) throw new Error("Payer quote rent-account list mismatch");
+  for (let index = 0; index < expected.length; index += 1) {
+    const account = expected[index];
+    const line = quote.rentAccounts[index];
+    const [info, minimum] = await Promise.all([
+      connection.getAccountInfo(account.address, "confirmed"),
+      connection.getMinimumBalanceForRentExemption(account.size, "confirmed"),
+    ]);
+    if (!Number.isSafeInteger(minimum) || minimum < 0 || !!info !== line.exists) {
+      throw new Error(`Payer quote for ${account.name} is stale`);
+    }
+    if (info && info.data.length !== account.size) throw new Error(`Payer quote account size changed: ${account.name}`);
+    if (BigInt(line.maxRentLamports) < BigInt(minimum) ||
+        (!info && BigInt(line.rentDueLamports) < BigInt(minimum))) {
+      throw new Error(`Payer quote rent ceiling is below current minimum: ${account.name}`);
+    }
+  }
+}
+
 /**
  * Главная функция: симулирует транзакцию и проверяет риски
  */
@@ -93,7 +147,8 @@ export async function guardTransaction(
   tx: Transaction | VersionedTransaction,
   user: PublicKey,
   config: GuardConfig = {},
-  rpc?: Pick<Connection, "simulateTransaction" | "getFeeForMessage">,
+  rpc?: Pick<Connection, "simulateTransaction" | "getFeeForMessage" | "getBlockHeight" | "getAccountInfo" | "getMinimumBalanceForRentExemption">
+    & Partial<Pick<Connection, "getGenesisHash" | "getSlot">>,
 ): Promise<GuardResult> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const warnings: string[] = [];
@@ -107,6 +162,24 @@ export async function guardTransaction(
     validateInstructionPolicy(instructions, user, cfg);
     validateTransactionIntent(instructions, cfg.intent, user);
     const connection = rpc || (await import("./wallet")).connection;
+    if (cfg.intent?.kind === "seasonXpClaim") {
+      if (!connection.getGenesisHash || !connection.getSlot) throw new Error("XP claim cluster verification unavailable");
+      const [campaignDigest, genesisHashDigest] = await Promise.all([
+        seasonXpDomainDigest("AOF_SEASON_XP_CAMPAIGN_V1", cfg.intent.campaignId),
+        seasonXpDomainDigest("AOF_SEASON_XP_GENESIS_V1", cfg.intent.clusterGenesisHash),
+      ]);
+      if (campaignDigest !== cfg.intent.campaignDigest || genesisHashDigest !== cfg.intent.genesisHashDigest) {
+        throw new Error("XP entitlement domain digest mismatch");
+      }
+      const [genesisHash, currentSlot] = await Promise.all([
+        connection.getGenesisHash(),
+        connection.getSlot("confirmed"),
+      ]);
+      if (genesisHash !== cfg.intent.clusterGenesisHash) throw new Error("XP claim targets a different cluster");
+      if (!Number.isSafeInteger(currentSlot) || BigInt(currentSlot) > BigInt(cfg.intent.expirySlot)) {
+        throw new Error("XP entitlement expired");
+      }
+    }
     // web3.js legacy simulateTransaction does not accept the config overload.
     // A VersionedTransaction can carry a legacy Message without changing bytes.
     const simulationTx = tx instanceof Transaction
@@ -119,6 +192,9 @@ export async function guardTransaction(
     if (fee.value === null || !Number.isSafeInteger(fee.value) || fee.value < 0 ||
         fee.value > (cfg.maxNetworkFeeLamports ?? 150_000)) {
       throw new Error("Network fee unavailable or exceeds wallet fee limit");
+    }
+    if (cfg.intent && "quote" in cfg.intent) {
+      await verifyBoundPayerQuote(tx, cfg.intent, connection, fee.value);
     }
     const simulation = await connection.simulateTransaction(simulationTx, {
       sigVerify: false,
@@ -247,6 +323,7 @@ export async function guardTransaction(
 interface GuardInstruction {
   programId: string;
   keys: PublicKey[];
+  metas: { isSigner: boolean; isWritable: boolean }[];
   data: Uint8Array;
 }
 
@@ -298,6 +375,7 @@ function collectInstructions(tx: Transaction | VersionedTransaction): GuardInstr
     return candidate.instructions.map((instruction: any) => ({
       programId: instruction.programId.toBase58(),
       keys: instruction.keys.map((key: any) => key.pubkey),
+      metas: instruction.keys.map((key: any) => ({ isSigner: Boolean(key.isSigner), isWritable: Boolean(key.isWritable) })),
       data: instructionData(instruction.data),
     }));
   }
@@ -305,13 +383,23 @@ function collectInstructions(tx: Transaction | VersionedTransaction): GuardInstr
   const message = candidate.message;
   const staticKeys: PublicKey[] = message?.staticAccountKeys || [];
   if (!message || (message.addressTableLookups?.length || 0) > 0) return null;
+  const header = message.header;
+  const isSigner = (index: number) => typeof message.isAccountSigner === "function"
+    ? message.isAccountSigner(index)
+    : index < header.numRequiredSignatures;
+  const isWritable = (index: number) => typeof message.isAccountWritable === "function"
+    ? message.isAccountWritable(index)
+    : index < header.numRequiredSignatures - header.numReadonlySignedAccounts ||
+      (index >= header.numRequiredSignatures && index < staticKeys.length - header.numReadonlyUnsignedAccounts);
   return (message.compiledInstructions || []).map((instruction: any) => {
     const programId = staticKeys[instruction.programIdIndex];
-    const keys = (instruction.accountKeyIndexes || []).map((index: number) => staticKeys[index]);
+    const indexes = instruction.accountKeyIndexes || [];
+    const keys = indexes.map((index: number) => staticKeys[index]);
     if (!programId || keys.some((key: PublicKey) => !key)) throw new Error("Unresolved transaction account key");
     return {
       programId: programId.toBase58(),
       keys,
+      metas: indexes.map((index: number) => ({ isSigner: isSigner(index), isWritable: isWritable(index) })),
       data: instructionData(instruction.data),
     };
   });

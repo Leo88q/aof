@@ -7,13 +7,13 @@ export type { DataQuality, EconomyFieldQuality } from "./dataQuality";
 
 /**
  * OpenClaw Economy Monitor
- * Анализирует экономику POTATO и детектирует аномалии
+ * Анализирует экономику MIND и детектирует аномалии
  */
 
 export interface EconomyMetrics {
-  potatoSupply: bigint;
-  potatoBurned24h: bigint;
-  potatoMinted24h: bigint;
+  mindSupply: bigint;
+  mindBurned24h: bigint;
+  mindMinted24h: bigint;
   inflation24h: number;
   activeCrafters24h: number;
   activeTraders24h: number;
@@ -34,7 +34,7 @@ export interface EconomyMetrics {
 const THRESHOLDS = {
   inflationCritical: 10,    // >10% = critical
   inflationWarning: 5,      // >5% = warning
-  whaleMovement: 100_000,   // 100k POTATO за 1 tx
+  whaleMovement: 100_000,   // 100k MIND за 1 tx
   txSpike: 200,             // >200 failed tx за час
 };
 
@@ -48,9 +48,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   const last1h = new Date(now.getTime() - 3600 * 1000);
 
   // Параллельно собираем все метрики
-  const potatoMint = await getPotatoMint();
+  const mindMint = await getMindMint();
   const indexer = await getIndexerCoverage(last24h);
-  const topHolders = await getTopHolders(potatoMint);
+  const topHolders = await getTopHolders(mindMint);
   const [
     supplyData,
     burnEvents,
@@ -61,9 +61,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
     totalTxs,
     failedTxs,
   ] = await Promise.all([
-    getPOTATOSupply(potatoMint),
-    getBurnEvents(last24h, potatoMint),
-    getMintEvents(last24h, potatoMint),
+    getMINDSupply(mindMint),
+    getBurnEvents(last24h, mindMint),
+    getMintEvents(last24h, mindMint),
     // Compare with a snapshot at least 24h old. The previous implementation
     // compared to the latest five-minute snapshot while labelling the result
     // "24h", which made the alert metric materially wrong.
@@ -80,13 +80,13 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   const supply = supplyData.supply;
   const fieldQuality: EconomyFieldQuality = {
     ...ECONOMY_FIELD_QUALITY,
-    potatoSupply: supplyData.ok ? "complete" : "unavailable",
+    mindSupply: supplyData.ok ? "complete" : "unavailable",
     // Mint/burn come from the chain indexer's per-tx supply deltas. They are
     // complete only when the indexer has a contiguous window covering the
     // whole 24h; while backfill is running or the cursor is stale they are
     // partial; with no indexed data at all they stay unavailable.
-    potatoMinted24h: indexer.quality,
-    potatoBurned24h: indexer.quality,
+    mindMinted24h: indexer.quality,
+    mindBurned24h: indexer.quality,
     // Activity switches from the off-chain AuditLog to the on-chain ledger as
     // soon as the indexer fully covers the window; until then it is partial.
     activity24h: indexer.quality === "complete" ? "complete" : "partial",
@@ -100,7 +100,7 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
 
   // Считаем инфляцию
   const baselineSupply = baselineSnapshot
-    ? BigInt(baselineSnapshot.potatoSupply.toString())
+    ? BigInt(baselineSnapshot.mindSupply.toString())
     : supply;
   const inflation = baselineSupply > 0n
     ? Number((supply - baselineSupply) * 10000n / baselineSupply) / 100
@@ -108,9 +108,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
 
 
   const metrics: EconomyMetrics = {
-    potatoSupply: supply,
-    potatoBurned24h: burned,
-    potatoMinted24h: minted,
+    mindSupply: supply,
+    mindBurned24h: burned,
+    mindMinted24h: minted,
     inflation24h: inflation,
     activeCrafters24h: activeCrafters,
     activeTraders24h: activeTraders,
@@ -124,9 +124,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   // Сохраняем snapshot
   await db.economySnapshot.create({
     data: {
-      potatoSupply: supply,
-      potatoBurned24h: burned,
-      potatoMinted24h: minted,
+      mindSupply: supply,
+      mindBurned24h: burned,
+      mindMinted24h: minted,
       inflation24h: inflation,
       activeCrafters24h: activeCrafters,
       activeTraders24h: activeTraders,
@@ -146,9 +146,9 @@ export async function takeEconomySnapshot(): Promise<EconomyMetrics> {
   // [ФИКС] Конвертируем BigInt в string для JSON сериализации
   return {
     ...metrics,
-    potatoSupply: metrics.potatoSupply.toString(),
-    potatoBurned24h: metrics.potatoBurned24h.toString(),
-    potatoMinted24h: metrics.potatoMinted24h.toString(),
+    mindSupply: metrics.mindSupply.toString(),
+    mindBurned24h: metrics.mindBurned24h.toString(),
+    mindMinted24h: metrics.mindMinted24h.toString(),
     topHolders: metrics.topHolders.map(h => ({
       address: h.address,
       balance: h.balance.toString(),
@@ -165,8 +165,8 @@ async function checkAlerts(metrics: EconomyMetrics) {
     await createAlert({
       type: "inflation",
       severity: "critical",
-      message: `🚨 Критическая инфляция POTATO: ${metrics.inflation24h.toFixed(2)}% за 24ч`,
-      metadata: { inflation: metrics.inflation24h, supply: metrics.potatoSupply.toString() },
+      message: `🚨 Критическая инфляция MIND: ${metrics.inflation24h.toFixed(2)}% за 24ч`,
+      metadata: { inflation: metrics.inflation24h, supply: metrics.mindSupply.toString() },
     });
     // Automatic economic parameter changes are deliberately not performed:
     // this monitor has no authority-signed, reviewed set_craft_economy path.
@@ -174,7 +174,7 @@ async function checkAlerts(metrics: EconomyMetrics) {
     await createAlert({
       type: "inflation",
       severity: "warning",
-      message: `⚠️ Высокая инфляция POTATO: ${metrics.inflation24h.toFixed(2)}% за 24ч`,
+      message: `⚠️ Высокая инфляция MIND: ${metrics.inflation24h.toFixed(2)}% за 24ч`,
       metadata: { inflation: metrics.inflation24h },
     });
   }
@@ -224,22 +224,22 @@ async function createAlert(data: {
 
 // === Вспомогательные функции ===
 
-async function getPotatoMint(): Promise<PublicKey | null> {
+async function getMindMint(): Promise<PublicKey | null> {
   try {
     const { configPda } = await import("./pda");
     const { fetchOne } = await import("./decode");
     const [config] = configPda();
     const cfg: any = await fetchOne("config", config);
-    return cfg?.potatoMint ? new PublicKey(cfg.potatoMint.toString()) : null;
+    return cfg?.mindMint ? new PublicKey(cfg.mindMint.toString()) : null;
   } catch {
     return null;
   }
 }
 
-async function getPOTATOSupply(potatoMint: PublicKey | null): Promise<{ supply: bigint; ok: boolean }> {
+async function getMINDSupply(mindMint: PublicKey | null): Promise<{ supply: bigint; ok: boolean }> {
   try {
-    if (!potatoMint) return { supply: 0n, ok: false };
-    const mintInfo = await connection.getParsedAccountInfo(potatoMint);
+    if (!mindMint) return { supply: 0n, ok: false };
+    const mintInfo = await connection.getParsedAccountInfo(mindMint);
     const rawSupply = (mintInfo.value?.data as any)?.parsed?.info?.supply;
     if (rawSupply === undefined || rawSupply === null) return { supply: 0n, ok: false };
     return { supply: BigInt(rawSupply), ok: true };
@@ -287,12 +287,12 @@ async function sumMintDeltas(since: Date, mint: PublicKey | null, sign: 1 | -1):
   return total > 0n ? [{ amount: total }] : [];
 }
 
-async function getBurnEvents(since: Date, potatoMint: PublicKey | null): Promise<{ amount: bigint }[]> {
-  return sumMintDeltas(since, potatoMint, -1);
+async function getBurnEvents(since: Date, mindMint: PublicKey | null): Promise<{ amount: bigint }[]> {
+  return sumMintDeltas(since, mindMint, -1);
 }
 
-async function getMintEvents(since: Date, potatoMint: PublicKey | null): Promise<{ amount: bigint }[]> {
-  return sumMintDeltas(since, potatoMint, 1);
+async function getMintEvents(since: Date, mindMint: PublicKey | null): Promise<{ amount: bigint }[]> {
+  return sumMintDeltas(since, mindMint, 1);
 }
 
 // Event types that count as "crafting" / "trading" activity on-chain.
@@ -327,10 +327,10 @@ async function countTxs(quality: "complete" | "partial" | "unavailable", since: 
  * Top-20 holders straight from the RPC (getTokenLargestAccounts). Enough for
  * whale/concentration alerts; a full holder census needs a DAS provider.
  */
-async function getTopHolders(potatoMint: PublicKey | null): Promise<{ address: string; balance: bigint }[]> {
-  if (!potatoMint) return [];
+async function getTopHolders(mindMint: PublicKey | null): Promise<{ address: string; balance: bigint }[]> {
+  if (!mindMint) return [];
   try {
-    const largest = await connection.getTokenLargestAccounts(potatoMint, "confirmed");
+    const largest = await connection.getTokenLargestAccounts(mindMint, "confirmed");
     const accounts = largest.value.slice(0, 20);
     if (accounts.length === 0) return [];
     const infos = await connection.getMultipleParsedAccounts(accounts.map((a) => a.address), { commitment: "confirmed" });

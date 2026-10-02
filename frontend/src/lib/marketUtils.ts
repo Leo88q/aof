@@ -38,8 +38,8 @@ export const RARITY_LABEL: Record<string, string> = Object.fromEntries(
 export const RARITY_COLOR: Record<string, string> = {
   common: "text-straw",
   uncommon: "text-sprout-500",
-  rare: "text-water-500",
-  epic: "text-wheat-500",
+  rare: "text-info-500",
+  epic: "text-accent-500",
   legendary: "text-gold",
 };
 

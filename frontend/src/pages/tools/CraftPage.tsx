@@ -72,7 +72,7 @@ export function CraftPage() {
 
   // /query/material-mints validates Config, MaterialMints and every SPL mint
   // against the chain before returning HTTP 200. Use its canonical uppercase
-  // names; the old local WOOD/STONE/FOOD map was always empty on this API.
+  // names; the old local CIRCUIT/SILICON/DATA map was always empty on this API.
   useEffect(() => {
     let active = true;
     api.query.materialMints()
@@ -121,7 +121,7 @@ export function CraftPage() {
   const preparedMint = address && mintFor === address ? newMint : "";
 
   // The quote response contains {circuit,silicon,data,neuron,power,mind},
-  // not the deprecated {wood,stone,food,seeds,water,potato} field names.
+  // historical resource field aliases are never used for quote inputs.
   useEffect(() => {
     let active = true;
     if (!targetRk) { setCraftQuote(null); setQuoteLoading(false); return; }
@@ -203,13 +203,13 @@ export function CraftPage() {
         newMint: preparedMint,
         toolType: src.toolType,
         rarity: targetRk,
-        woodMint: resMints.circuit,
-        stoneMint: resMints.silicon,
-        foodMint: resMints.data,
-        seedsMint: resMints.neuron,
-        waterMint: resMints.power,
-        potatoMint: resMints.mind,
-        // SKR is not configured; the backend binds the compatibility slot to FOOD.
+        circuitMint: resMints.circuit,
+        siliconMint: resMints.silicon,
+        dataMint: resMints.data,
+        neuronMint: resMints.neuron,
+        powerMint: resMints.power,
+        mindMint: resMints.mind,
+        // SKR is not configured; the backend binds the compatibility slot to DATA.
       });
       const r = await handleTxResponse(resp);
       if (walletRef.current !== address) return;
@@ -293,7 +293,7 @@ export function CraftPage() {
             </div>
           ) : (
             <button type="button" onClick={prepMint} disabled={!canPrepare}
-              className="w-full py-3 rounded-2xl bg-wheat-600 text-soil-950 font-semibold active:scale-95 transition-transform disabled:opacity-50">
+              className="w-full py-3 rounded-2xl bg-accent-600 text-soil-950 font-semibold active:scale-95 transition-transform disabled:opacity-50">
               {busyPrep ? copy.preparing : copy.prepare}
             </button>
           )}
@@ -336,7 +336,7 @@ export function CraftPage() {
             <p className="text-straw text-[10px]">{copy.skrNote}</p>
           </div>
           <button type="button" onClick={doCraft} disabled={!preparedMint || !resMints || !quoteForTarget || !activeBalances || !sufficient || busyCraft || busyPrep}
-            className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-gold to-wheat-600 text-soil-950 font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
+            className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-gold to-accent-600 text-soil-950 font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
             {copy.forge.replace('{rarity}', rarityLabel(targetRk))}
           </button>
         </Card>

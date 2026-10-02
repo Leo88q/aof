@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # NeuroForge Rebrand Status — 2026-09-24
 
 Per `REBRAND_MAP.md` — AOF → NeuroForge — Age of Intelligence

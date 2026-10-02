@@ -181,14 +181,39 @@ def type_entry(name: str, src: str, enums: set[str]) -> dict:
     if em and name in enums:
         variants = [v.strip().rstrip(",") for v in drift.strip_comments(em.group(1)).splitlines()]
         return {"name": name, "type": {"kind": "enum", "variants": [{"name": v} for v in variants if v]}}
-    fields = [{"name": n, "type": drift.rust_idl_type(t)} for n, t in struct_fields_raw(src, name)]
+    sizes = drift.const_sizes(src)
+    fields = [{"name": n, "type": drift.rust_idl_type(t, sizes)} for n, t in struct_fields_raw(src, name)]
     return {"name": name, "type": {"kind": "struct", "fields": fields}}
+
+
+def carry_docs(old, new):
+    """Переносит `docs` из прежней записи IDL в новую (генератор их не сочиняет).
+
+    Комментарии полей/аккаунтов/аргументов — часть клиентского IDL; Anchor build их
+    сохраняет, поэтому при замене записи по исходникам мы не имеем права их терять.
+    Сопоставление идёт по позиции (порядок полей не меняется) и по имени, если оно
+    совпало; при переименовании поля docs остаются на своём месте.
+    """
+    if isinstance(new, dict) and isinstance(old, dict):
+        if "docs" in old and "docs" not in new:
+            new["docs"] = old["docs"]
+        for key, value in new.items():
+            if key in old:
+                carry_docs(old[key], value)
+    elif isinstance(new, list) and isinstance(old, list):
+        by_name = {e.get("name"): e for e in old if isinstance(e, dict) and "name" in e}
+        for index, element in enumerate(new):
+            if isinstance(element, dict) and element.get("name") in by_name:
+                carry_docs(by_name[element["name"]], element)
+            elif index < len(old):
+                carry_docs(old[index], element)
+    return new
 
 
 def upsert(items: list, entry: dict) -> str:
     for i, item in enumerate(items):
         if item["name"] == entry["name"]:
-            items[i] = entry
+            items[i] = carry_docs(item, entry)
             return "replaced"
     items.append(entry)
     return "appended"
@@ -224,6 +249,13 @@ def main() -> int:
     ap.add_argument("--accounts", default="", help="account types (discriminator + type entry)")
     ap.add_argument("--events", default="", help="event types (discriminator + type entry)")
     ap.add_argument("--remove-types", default="")
+    ap.add_argument("--rename-instructions", default="",
+                    help="пары old=new: инструкция переименовывается НА МЕСТЕ (порядок и docs сохраняются)")
+    ap.add_argument("--rename-types", default="",
+                    help="пары old=new: тип/аккаунт/событие переименовываются на месте (docs сохраняются)")
+    ap.add_argument("--remove-instructions", default="", help="comma-separated instruction names to drop")
+    ap.add_argument("--prune-orphans", action="store_true",
+                    help="drop accounts/types/events whose names no longer appear in the program source")
     ap.add_argument("--errors", action="store_true")
     args = ap.parse_args()
 
@@ -237,6 +269,20 @@ def main() -> int:
     def names(value):
         return [n for n in value.split(",") if n]
 
+    def rename_in_place(section: str, spec: str) -> None:
+        """Переименование записи на месте: сохраняет порядок и `docs` (generator их не сочиняет)."""
+        for pair in names(spec):
+            old, _, new = pair.partition("=")
+            for entry in idl.get(section, []):
+                if entry.get("name") == old:
+                    entry["name"] = new
+                    print(f"renamed {section}: {old} -> {new}")
+
+    rename_in_place("instructions", args.rename_instructions)
+    rename_in_place("types", args.rename_types)
+    rename_in_place("accounts", args.rename_types)
+    rename_in_place("events", args.rename_types)
+
     for name in names(args.instructions):
         print(f"instruction {name}: {upsert(idl['instructions'], instruction_entry(name, src, consts))}")
     for name in names(args.accounts):
@@ -247,12 +293,35 @@ def main() -> int:
         print(f"event {name}: {upsert(idl['types'], type_entry(name, src, enums))}")
     for name in names(args.types):
         print(f"type {name}: {upsert(idl['types'], type_entry(name, src, enums))}")
+    for name in names(args.remove_instructions):
+        before = len(idl["instructions"])
+        idl["instructions"] = [i for i in idl["instructions"] if i["name"] != name]
+        if len(idl["instructions"]) != before:
+            print(f"removed instruction {name}")
+        else:
+            print(f"instruction {name}: not present")
     for name in names(args.remove_types):
         for key in ("types", "events", "accounts"):
             before = len(idl.get(key, []))
             idl[key] = [t for t in idl.get(key, []) if t["name"] != name]
             if len(idl[key]) != before:
                 print(f"removed {key[:-1]} {name}")
+    if args.prune_orphans:
+        import os as _os
+        text = ""
+        for root, _dirs, files in _os.walk(path):
+            for f in files:
+                if f.endswith(".rs"):
+                    text += open(_os.path.join(root, f), encoding="utf-8").read()
+        # Удаляются только записи, имени которых больше нет ни в одном исходнике
+        # программы. Общий тип, который всё ещё используют другие инструкции,
+        # остаётся: критерий — не «использовался удалённой инструкцией», а
+        # «не встречается в коде вообще».
+        for key in ("accounts", "types", "events"):
+            before = len(idl.get(key, []))
+            idl[key] = [t for t in idl.get(key, []) if t["name"] in text]
+            if len(idl[key]) != before:
+                print(f"pruned {key}: {before - len(idl[key])} entrie(s)")
     if args.errors:
         idl["errors"] = error_entries(src)
         print(f"errors: {len(idl['errors'])}")

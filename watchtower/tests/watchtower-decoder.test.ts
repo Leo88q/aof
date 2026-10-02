@@ -16,7 +16,7 @@ const logs = (dataLines: string[]) => [`Program ${CORE} invoke [1]`, ...dataLine
 
 const decoder = new EventDecoder([{ programId: CORE, name: "aof_core", idl: coreIdl as any }]);
 const decoded = decoder.decode(logs([
-  encodeEvent("ResourceIssued", { kind: 26, mint: new PublicKey(M.potato), recipient: new PublicKey(W.bob), gross: new BN("5000000000"), fee: new BN("400000000"), minted_in_epoch: new BN(1), cap_per_epoch: new BN(2), epoch_start_slot: new BN(3), slot: new BN(4) }),
+  encodeEvent("ResourceIssued", { kind: 26, mint: new PublicKey(M.mind), recipient: new PublicKey(W.bob), gross: new BN("5000000000"), fee: new BN("400000000"), minted_in_epoch: new BN(1), cap_per_epoch: new BN(2), epoch_start_slot: new BN(3), slot: new BN(4) }),
   encodeEvent("ListingSold", { seller: new PublicKey(W.alice), buyer: new PublicKey(W.bob), mint: new PublicKey(M.tool1), price_lamports: new BN(250_000_000) }),
 ]));
 assert.equal(decoded.length, 2);

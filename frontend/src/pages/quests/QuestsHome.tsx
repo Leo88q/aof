@@ -31,7 +31,7 @@ export function QuestsHome() {
         aria-selected={activeTab === tab.id} aria-controls={`quest-${tab.id}`}
         onClick={() => setActiveTab(tab.id)}
         className={`inline-flex min-w-0 items-center gap-2 px-3 py-2 rounded-full text-sm whitespace-normal break-words text-left ${
-          activeTab === tab.id ? 'bg-wheat-600 text-soil-950 font-semibold' : 'bg-soil-850 text-straw'
+          activeTab === tab.id ? 'bg-accent-600 text-soil-950 font-semibold' : 'bg-soil-850 text-straw'
         }`}>
         <img src={tab.icon} alt="" className="w-4 h-4 shrink-0 object-contain" />
         {copy[tab.id]}

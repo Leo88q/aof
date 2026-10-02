@@ -136,7 +136,7 @@ export function FarmPlot() {
               <button key={i} type="button" disabled={!tool} aria-label={tool ? buildingName(tool.toolType) : locked ? copy.expansion : copy.emptySlot} onClick={() => tool && setSelected(tool)}
                 className={`aspect-square rounded-md flex items-center justify-center text-base sm:text-lg border ${
                   tool
-                    ? done ? "bg-gold/20 border-gold/50" : "bg-soil-600/70 border-wheat-600/30"
+                    ? done ? "bg-gold/20 border-gold/50" : "bg-soil-600/70 border-accent-600/30"
                     : locked
                       ? "bg-soil-900/80 border-soil-800"
                       : decor

@@ -248,7 +248,7 @@ export function AuctionPage() {
                     </p>
                     <p className="text-xs mt-1">
                       {topBid > 0 ? (
-                        <span className="text-wheat-500 font-bold">{copy.bidAmount}: {fmtSol(topBid, language)} ◎</span>
+                        <span className="text-accent-500 font-bold">{copy.bidAmount}: {fmtSol(topBid, language)} ◎</span>
                       ) : (
                         <span className="text-straw">{copy.noBids} · {copy.minimum} {fmtSol(a.minBid, language)} ◎</span>
                       )}
@@ -281,7 +281,7 @@ export function AuctionPage() {
 
                 {ended && (
                   <button onClick={() => settle(a)}
-                    className="mt-3 w-full py-2 rounded-xl bg-wheat-600 text-white text-sm font-semibold break-words">
+                    className="mt-3 w-full py-2 rounded-xl bg-accent-600 text-white text-sm font-semibold break-words">
                     {copy.settle}
                   </button>
                 )}
@@ -309,12 +309,12 @@ export function AuctionPage() {
               const rk = rarityKey(t.rarity);
               return (
                 <button key={t.mint} onClick={() => setSelMint(t.mint)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left ${selMint === t.mint ? "border-wheat-500 bg-wheat-500/10" : "border-straw/15 bg-soil-800/60"}`}>
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left ${selMint === t.mint ? "border-accent-500 bg-accent-500/10" : "border-straw/15 bg-soil-800/60"}`}>
                   <ArtPlate src={toolPlate(t.toolType, rk)} alt={toolName(language, t.toolType)} size={36} />
                   <span className="flex-1 min-w-0 text-sm text-parchment break-words">
                     {toolName(language, t.toolType)} <span className={`text-xs ${RARITY_COLOR[rk]}`}>({rarityLabel(rk)})</span>
                   </span>
-                  {selMint === t.mint && <span className="text-wheat-500">✓</span>}
+                  {selMint === t.mint && <span className="text-accent-500">✓</span>}
                 </button>
               );
             })}

@@ -77,7 +77,7 @@ export function ContentPage({ id }: { id: string }) {
   const trade = id === 'trade' ? siteTrade[language] : undefined;
   const docs = id === 'docs' ? siteDocs[language] : undefined;
   const recipes = id === 'recipes' ? siteRecipes[language] : undefined;
-  const mind = id === 'potato' ? siteMind[language] : undefined;
+  const mind = id === 'mind' ? siteMind[language] : undefined;
   const farmGuide = id === 'farm' ? siteWorkshop[language].farm : undefined;
   const craftGuide = id === 'craft' ? siteWorkshop[language].craft : undefined;
   const glossary = id === 'glossary' ? siteGlossary[language] : undefined;

@@ -16,7 +16,7 @@ export const languageOptions: { code: Language; native: string; english: string 
   { code: 'ru', native: 'Русский', english: 'Russian' },
 ];
 
-const ids = ['home','manifesto','start','world','energy','weather','farm','craft','tools','mine','packs','lottery','economy','market','seasons','trust','resources','guide','strategies','quests','recipes','trade','investors','potato','lore','glossary','docs','faq','roadmap','rules'] as const;
+const ids = ['home','manifesto','start','world','energy','weather','farm','craft','tools','mine','packs','lottery','economy','market','seasons','trust','resources','guide','strategies','quests','recipes','trade','investors','mind','lore','glossary','docs','faq','roadmap','rules'] as const;
 export type PageId = typeof ids[number];
 const toPages = (titles: readonly string[]): Record<PageId, string> => {
   if (titles.length !== ids.length) throw new Error('Incomplete navigation translation');

@@ -7,9 +7,10 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
 import {AUTHORITY_PUBKEY} from "../config";
 import { program, connection } from "../provider";
-import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
+import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda, resourceKindIndex } from "../lib/pda";
 import { fetchOne, fetchOneForSigner } from "../lib/decode";
-import { authorityOnly, pk } from "../lib/tx";
+import { authorityOnly, coSignQuoted, pk } from "../lib/tx";
+import { PLAYER_ACCOUNT_SIZE, REWARD_RECEIPT_ACCOUNT_SIZE, TOKEN_ACCOUNT_SIZE } from "../lib/accountSizes";
 import { logger } from "../lib/logger";
 import { RESOURCE_UNIT } from "../lib/miningPayout";
 import { requireIdempotency } from "../middleware/security";
@@ -70,36 +71,36 @@ const kindMap: Record<string, any> = {
 };
 
 const CONFIG_REWARD_MINT: Record<string, string> = {
-  DATA: "foodMint",
-  CIRCUIT: "woodMint",
-  SILICON: "stoneMint",
-  MIND: "potatoMint",
+  DATA: "dataMint",
+  CIRCUIT: "circuitMint",
+  SILICON: "siliconMint",
+  MIND: "mindMint",
 };
 
 const MATERIAL_REWARD_MINT: Record<string, string> = {
-  NEURON: "seeds",
-  SYNAPSE: "wheat",
-  SIGNAL: "flour",
-  MODEL: "bread",
-  POWER: "water",
-  COMPUTE: "coal",
-  DATASET: "meat",
-  STONE_BLUE: "stone_blue",
-  STONE_PURPLE: "stone_purple",
-  STONE_RED: "stone_red",
-  SAND_WHITE: "sand_white",
-  SAND_PINK: "sand_pink",
-  SAND_YELLOW: "sand_yellow",
-  GEM_BLUE: "gem_blue",
-  GEM_ORANGE: "gem_orange",
-  GEM_WHITE: "gem_white",
-  GEM_GREEN: "gem_green",
-  FLASK_BLUE: "flask_blue",
-  FLASK_YELLOW: "flask_yellow",
-  FLASK_GREEN: "flask_green",
-  FLASK_PINK: "flask_pink",
-  FLASK_PURPLE: "flask_purple",
-  LOVE_HEART: "love_heart",
+  NEURON: "neuron",
+  SYNAPSE: "synapse",
+  SIGNAL: "signal",
+  MODEL: "model",
+  POWER: "power",
+  COMPUTE: "compute",
+  DATASET: "dataset",
+  BLUE_CORE: "blueCore",
+  PURPLE_CORE: "purpleCore",
+  RED_CORE: "redCore",
+  CLEAR_QUARTZ: "clearQuartz",
+  ROSE_QUARTZ: "roseQuartz",
+  AMBER_QUARTZ: "amberQuartz",
+  QUANTUM_BIT: "quantumBit",
+  NEURAL_CHIP: "neuralChip",
+  PHOTON_BIT: "photonBit",
+  BIO_CHIP: "bioChip",
+  CRYO_FLUID: "cryoFluid",
+  VOLT_FLUID: "voltFluid",
+  BIO_FLUID: "bioFluid",
+  NANO_FLUID: "nanoFluid",
+  QUANTUM_FLUID: "quantumFluid",
+  SOUL_CORE: "soulCore",
 };
 
 // Inbox messages are private; a public wallet address is not authorization.
@@ -158,21 +159,23 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireNoFraudHold("
     }
     if (item.rewardVersion !== 1) return res.status(409).json({ error: "LEGACY_REWARD_REQUIRES_RECONCILIATION" });
     if (item.claimState === "quarantined") return res.status(409).json({ error: "REWARD_RECEIPT_CONFLICT" });
-    if (item.claimed) return res.status(400).json({ error: "Already claimed" });
+    if (item.claimed && item.claimState === "confirmed") return res.status(400).json({ error: "Already claimed" });
     if (item.expiresAt && new Date(item.expiresAt) < new Date()) {
       return res.status(400).json({ error: "Letter expired" });
     }
 
-    // Claim the row before signing the mint instruction. This closes the
-    // concurrent double-claim race; failures release the claim below.
+    // [PAYER] С отправкой транзакции игроком backend больше не завершает claim
+    // сам: он резервирует строку и возвращает кошельку частично подписанную
+    // транзакцию. Повторный запрос по ещё НЕ подписанной строке (`reserved` без
+    // claimSignature) выдаёт свежую транзакцию — иначе истёкший блокхаш навсегда
+    // блокировал бы награду. Настоящая защита от двойной выплаты — on-chain
+    // `RewardReceipt` (`init`), а не эта строка.
     const locked = await db.inboxItem.updateMany({
-      where: { id, claimed: false, rewardVersion: 1 },
-      data: { claimed: true, claimState: "reserved", claimSignature: null },
+      where: { id, rewardVersion: 1, claimState: { in: ["unclaimed", "reserved"] } },
+      data: { claimed: true, claimState: "reserved" },
     });
     if (locked.count !== 1) return res.status(409).json({ error: "Already claimed or in progress" });
 
-    // Реальное ончейн-начисление через mintResource (прямой вызов, без HTTP в себя)
-    let onchainSig: string | null = null;
     let rewardResult: any = { type: item.rewardType, amount: item.rewardAmount };
 
     try {
@@ -211,6 +214,11 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireNoFraudHold("
           const recovered = await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "confirmed", read: true } });
           return res.json({ item: recovered, reward: rewardResult, recoveredFromReceipt: rewardReceiptPda(id, ownerPk).toBase58() });
         }
+        // [PAYER] Награда — claim игрока. Fee payer и подписант — кошелёк
+        // получателя (`payer` в контексте, констрейнт `payer == token_account.owner`),
+        // его ATA создаётся лениво в этой же транзакции; `Player` и
+        // `RewardReceipt` тоже оплачивает он. Authority добавляет только
+        // авторизационную подпись, а не оплачивает чужие аккаунты.
         const ix = await (program.methods as any)
           .mintResourceOnce(kind, new BN(amount.toString()), Array.from(inboxRewardId(id)))
           .accounts({
@@ -221,6 +229,7 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireNoFraudHold("
             mint: mintPk,
             tokenAccount,
             treasuryToken,
+            payer: ownerPk,
             player,
             issuanceCap: issuanceCapPda(kind)[0],
             tokenProgram: TOKEN_PROGRAM_ID,
@@ -229,16 +238,38 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireNoFraudHold("
           })
           .instruction();
 
-        const createUserAta = createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY_PUBKEY, tokenAccount, ownerPk, mintPk,
-        );
-        const createTreasuryAta = createAssociatedTokenAccountIdempotentInstruction(
-          AUTHORITY_PUBKEY, treasuryToken, treasury, mintPk,
-        );
-        onchainSig = await authorityOnly([createUserAta, createTreasuryAta, ix], async (signature) => {
-          await db.inboxItem.update({
-            where: { id }, data: { claimSignature: signature, claimState: "submitted", claimMint: mintPk.toBase58() },
-          });
+        // ATA казны — инфраструктура проекта: её rent проект платит сам, вне
+        // транзакции игрока (иначе игрок оплатил бы чужой аккаунт). Существующая
+        // ATA не оплачивается повторно; в quote эта стоимость не входит.
+        const treasuryInfo = await connection.getAccountInfo(treasuryToken, "confirmed");
+        if (!treasuryInfo) {
+          await authorityOnly([
+            createAssociatedTokenAccountIdempotentInstruction(AUTHORITY_PUBKEY, treasuryToken, treasury, mintPk),
+          ]);
+        }
+        const createUserAta = createAssociatedTokenAccountIdempotentInstruction(ownerPk, tokenAccount, ownerPk, mintPk);
+        const prepared = await coSignQuoted([createUserAta, ix], ownerPk, [
+          { name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
+          { name: "player_profile", address: player, size: PLAYER_ACCOUNT_SIZE, strategy: "init_if_needed" },
+          { name: "reward_receipt", address: rewardReceiptPda(id, ownerPk), size: REWARD_RECEIPT_ACCOUNT_SIZE, strategy: "init" },
+        ]);
+        await db.inboxItem.update({
+          where: { id }, data: { claimState: "reserved", claimMint: mintPk.toBase58(), claimSignature: null },
+        });
+        return res.json({
+          tx: prepared.tx,
+          payerQuote: prepared.quote,
+          reward: rewardResult,
+          quote: {
+            rewardId: inboxRewardId(id).toString("hex"),
+            recipient: ownerPk.toBase58(),
+            mint: mintPk.toBase58(),
+            amount: amount.toString(),
+            // Вид ресурса и казна нужны кошельку, чтобы собрать локальный интент
+            // claim'а и проверить аккаунты транзакции до подписи.
+            resourceKind: resourceKindIndex(kind),
+            treasury: String(cfg.treasury),
+          },
         });
       } else {
         // Без канонического типа/положительной суммы письмо нельзя безопасно клеймить.
@@ -282,14 +313,60 @@ r.post("/claim", requireWalletProof("inbox_claim", "user"), requireNoFraudHold("
       });
     }
 
+    // Сюда управление не доходит: каждая ветка выше вернула ответ. Подтверждение
+    // claim'а теперь приходит от клиента вместе с подписью (см. /claim/confirm).
+    return res.status(500).json({ error: "UNREACHABLE_CLAIM_STATE" });
+  } catch (e: any) {
+    res.status(e?.status || 400).json({ error: e.message });
+  }
+});
+
+/**
+ * [PAYER] Подтверждение claim'а, который игрок подписал и отправил сам.
+ * Единственное доказательство — финализированный `RewardReceipt` на чейне:
+ * клиентская подпись без него ничего не подтверждает, а найденный чек с чужим
+ * mint/суммой уводит письмо в карантин (как и в остальных путях).
+ */
+r.post("/claim/confirm", requireWalletProof("inbox_claim_confirm", "user"), requireIdempotency, async (req, res) => {
+  try {
+    const { id, user, signature } = req.body;
+    const item = await db.inboxItem.findUnique({ where: { id } });
+    if (!item) return res.status(404).json({ error: "Not found" });
+    if (item.user !== user) return res.status(403).json({ error: "Not your inbox item" });
+    if (item.claimState === "quarantined") return res.status(409).json({ error: "REWARD_RECEIPT_CONFLICT" });
+    if (item.claimState === "confirmed") return res.json({ item, reward: { type: item.rewardType, amount: item.rewardAmount }, onchainSig: item.claimSignature });
+    if (typeof signature !== "string" || signature.length < 32) {
+      return res.status(400).json({ error: "Invalid transaction signature" });
+    }
+
+    const ownerPk = pk(user);
+    const receipt = await fetchRewardReceipt(connection, id, ownerPk);
+    if (!receipt) {
+      return res.status(202).json({ pending: true, reason: "REWARD_RECEIPT_NOT_FOUND" });
+    }
+    try {
+      assertRewardReceipt(receipt, {
+        recipient: user,
+        mint: String(item.claimMint ?? receipt.mint),
+        grossAmount: String(BigInt(item.rewardAmount ?? 0) * BigInt(RESOURCE_UNIT)),
+      });
+    } catch (e) {
+      if (e instanceof RewardReceiptConflict) {
+        await db.inboxItem.update({ where: { id }, data: { claimed: true, claimState: "quarantined" } });
+        logger.error({ inboxId: id }, "Reward receipt conflict; manual review required");
+        return res.status(409).json({ error: "REWARD_RECEIPT_CONFLICT" });
+      }
+      throw e;
+    }
+
     const updated = await db.inboxItem.update({
       where: { id },
-      data: { read: true, claimState: "confirmed" },
+      data: { claimed: true, read: true, claimState: "confirmed", claimSignature: signature },
     });
-
-    res.json({ item: updated, reward: rewardResult, onchainSig });
+    return res.json({ item: updated, reward: { type: item.rewardType, amount: item.rewardAmount }, onchainSig: signature });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    logger.warn({ err: e?.message, inboxId: req.body?.id }, "Reward claim confirmation failed");
+    return res.status(400).json({ error: e.message });
   }
 });
 

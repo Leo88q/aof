@@ -2,8 +2,8 @@ name: Read-only mining devnet preflight (not a release)
 on:
   workflow_dispatch:
     inputs:
-      potato_mint:
-        description: 'Optional PUBLIC devnet Potato mint address (never a keypair)'
+      mind_mint:
+        description: 'Optional PUBLIC devnet MIND mint address (never a keypair)'
         required: false
         type: string
 permissions:
@@ -29,19 +29,19 @@ jobs:
           npm run test:tool-mining
           npm run test:mining-flag
           npm run test:mining-preflight
-          npm run test:potato-inspect
-          npm run test:potato-economics
+          npm run test:mind-inspect
+          npm run test:mind-economics
       - name: Inspect public devnet with no signer
         env:
           # No keypair or transaction is used. The report contains public
           # addresses and is BLOCKED until the registry and RPC are verified.
           MINING_PREFLIGHT_REPORT: ${{ runner.temp }}/mining-devnet-preflight.json
         run: npm run preflight:mining-devnet
-      - name: Inspect optional public Potato mint (not a payment gate)
-        if: ${{ always() && inputs.potato_mint != '' }}
+      - name: Inspect optional public MIND mint (not a payment gate)
+        if: ${{ always() && inputs.mind_mint != '' }}
         env:
-          POTATO_DEVNET_MINT: ${{ inputs.potato_mint }}
-        run: npm run inspect:potato-devnet
+          MIND_DEVNET_MINT: ${{ inputs.mind_mint }}
+        run: npm run inspect:mind-devnet
       - name: Add public report to run summary
         if: always()
         env:

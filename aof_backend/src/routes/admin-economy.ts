@@ -28,9 +28,9 @@ r.get("/snapshots", async (req, res) => {
       const dataQuality = worstQuality(fieldQuality);
       return {
         ...s,
-        potatoSupply: s.potatoSupply.toString(),
-        potatoBurned24h: fieldQuality.potatoBurned24h === "unavailable" ? null : s.potatoBurned24h.toString(),
-        potatoMinted24h: fieldQuality.potatoMinted24h === "unavailable" ? null : s.potatoMinted24h.toString(),
+        mindSupply: s.mindSupply.toString(),
+        mindBurned24h: fieldQuality.mindBurned24h === "unavailable" ? null : s.mindBurned24h.toString(),
+        mindMinted24h: fieldQuality.mindMinted24h === "unavailable" ? null : s.mindMinted24h.toString(),
         dataQuality,
         fieldQuality,
       };

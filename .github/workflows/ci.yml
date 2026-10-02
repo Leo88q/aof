@@ -865,6 +865,10 @@ jobs:
           # never a .so whose declare_id! was rewritten (CI builds use
           # throwaway ids, so those binaries must not reach devnet).
           python3 scripts/test-deploy-devnet.py
+          # Deploy cost estimator: rent and fees come only from RPC answers (no
+          # per-byte rate in the code), max_len is an explicit policy, and the
+          # balance gate is computed over ALL programs before the first tx.
+          python3 scripts/test-devnet-deploy-estimator.py
           # Bringup runbook: one command from "no programs on devnet" to a
           # working game. Must never turn mining on before the payout mints
           # exist, never touch mainnet, and never POST in a dry run.
@@ -888,7 +892,11 @@ jobs:
           # original self-test only modeled replay in memory).
           npm run test:wallet-proof-middleware 2>&1 | tee -a /tmp/backend-build.log
           # [AUDIT 2026-09-23 AOF-H1] authority key custody gate matrix.
-          npm run test:authority-gate 2>&1 | tee -a /tmp/backend-build.log
+          npm run test:authority-gate 2>&1 | tee -a /tmp/backend-build.log || exit "${PIPESTATUS[0]}"
+          # Bootstrap preflight: GET /admin/config/bootstrap-preflight must work BEFORE
+          # deploy/Config exist (GET /mining answers 400 then), stay ops-token only,
+          # reveal no secrets and fail closed on an RPC error.
+          npm run test:bootstrap-preflight 2>&1 | tee -a /tmp/backend-build.log
           exit "${PIPESTATUS[0]}"
 
       - name: Self-test - reward receipts and bounded purchases
@@ -897,7 +905,7 @@ jobs:
       - name: Self-test - resource registry and mining gates
         run: |
           set -uo pipefail
-          for test in test:resource-registry test:tool-mining test:weather-schedule test:mining-flag test:mining-preflight test:potato-inspect test:potato-economics test:active-season; do
+          for test in test:resource-registry test:tool-mining test:weather-schedule test:mining-flag test:mining-preflight test:mind-inspect test:mind-economics test:active-season; do
             npm run "$test" 2>&1 | tee -a /tmp/backend-build.log
             status="${PIPESTATUS[0]}"
             [ "$status" -eq 0 ] || exit "$status"

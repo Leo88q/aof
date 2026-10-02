@@ -14,7 +14,7 @@ const r = Router();
 // Инициализация конфигурации ликвидности
 r.post("/config/init", requireAdmin, async (req, res) => {
   try {
-    const mascotMint = pk(req.body.mascotMint || req.body.potatoMint);
+    const mascotMint = pk(req.body.mascotMint || req.body.mindMint);
 
     const [lpConfig] = lpConfigPda();
     const [programData] = liquidityProgramDataPda();

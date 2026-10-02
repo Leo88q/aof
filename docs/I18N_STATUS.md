@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # Localization status — legal report is advisory
 
 **Current inventory (2026-09-29):** four historic input aliases in one file, **0 unreviewed UI candidates**. The 100 Russian legal-source strings and their archive have been removed from the working tree. `release:check` now reports missing operator details without blocking `build:release`. The build is not proof of legal approval or confidential blockchain activity; earlier numbers below are historical snapshots.

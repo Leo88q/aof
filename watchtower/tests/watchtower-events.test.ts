@@ -17,6 +17,51 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
   assert.equal(out[1].playerId, alice); assert.equal(out[2].asset, M.tool1);
   assert.deepEqual(out.map((e) => e.eventId), out.map((_, i) => `${by("ListingSold").signature}:0:${i}`));
 }
+// Initialization is distinct from a purchase; this event is telemetry only.
+{
+  const [initialized] = normalizeChainEvent({
+    ...by("Staked"),
+    eventType: "SeasonPassInitialized",
+    wallet: W.alice,
+    data: { owner: W.alice, season_id: "7" },
+  }, SALT);
+  assert.equal(initialized.type, "ConfigUpdated");
+  assert.equal(initialized.playerId, alice);
+  assert.equal(initialized.attributes.setting, "season_pass_initialized");
+  assert.equal(initialized.attributes.seasonId, "7");
+  assert.deepEqual(validateEvents([initialized]), []);
+  assert.ok(!JSON.stringify(initialized).includes(W.alice));
+}
+// sync_tool_owner updates the ToolData cache, not the SPL transfer itself.
+// It is security telemetry and must never be mislabeled as an asset transfer.
+{
+  const [synced] = normalizeChainEvent({
+    ...by("Staked"),
+    eventType: "ToolOwnershipSynced",
+    wallet: W.bob,
+    mint: M.tool1,
+    data: {
+      mint: M.tool1,
+      previous_owner: W.alice,
+      previous_operator: W.alice,
+      new_owner: W.bob,
+      slot: "400000020",
+    },
+  }, SALT);
+  assert.equal(synced.type, "ConfigUpdated");
+  assert.equal(synced.category, "security");
+  assert.equal(synced.playerId, bob);
+  assert.equal(synced.asset, M.tool1);
+  assert.deepEqual(synced.attributes, {
+    setting: "tool_ownership_cache_sync",
+    previousOwner: alice,
+    previousOperator: alice,
+    slot: "400000020",
+  });
+  assert.deepEqual(validateEvents([synced]), []);
+  assert.ok(!JSON.stringify(synced).includes(W.alice));
+  assert.ok(!JSON.stringify(synced).includes(W.bob));
+}
 // ResourceIssued: reward + mint + treasury fee leg; fee=0 suppresses the treasury leg.
 {
   const out = normalizeChainEvent(by("ResourceIssued"), SALT, { treasury: W.treasury });
@@ -38,7 +83,7 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
   const un = normalizeChainEvent({ ...by("PausedToggled"), data: { ...(by("PausedToggled").data as any), paused: false } }, SALT);
   assert.deepEqual(un.map((e) => e.type), ["PausedToggled"]);
   const [m] = normalizeChainEvent(by("ResourceMintsUpdated"), SALT);
-  assert.deepEqual(m.attributes.changed, ["potato"]); assert.equal(m.category, "security");
+  assert.deepEqual(m.attributes.changed, ["mind"]); assert.equal(m.category, "security");
 }
 // Crafting burns the input and creates the output.
 {
@@ -48,27 +93,27 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
 // Ignored events produce nothing; unknown events produce nothing (never guess).
 assert.equal(normalizeChainEvent(by("AuctionCreated"), SALT).length, 0);
 assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" }, SALT).length, 0);
-// V2 external Potato is never merged with MIND/resource events. Preserve the
+// V2 external MIND is never merged with MIND/resource events. Preserve the
 // actual SPL mint and atomic units, and never invent a jackpot liability amount
 // absent from the on-chain event.
 {
-  const base = { ...by("Staked"), eventType: "PotatoSpinCommitted", wallet: W.alice, mint: null,
+  const base = { ...by("Staked"), eventType: "MindSpinCommitted", wallet: W.alice, mint: null,
     data: { user: W.alice, mint: M.tool2, commit: M.tool1, price_atoms: "5000000000", seed_slot: "123" } };
   const [created] = normalizeChainEvent(base, SALT);
   assert.equal(created.type, "LiabilityCreated");
   assert.equal(created.playerId, alice);
   assert.equal(created.asset, M.tool2);
-  assert.notEqual(created.asset, M.potato); // historical fixture mint is MIND, not external Potato
-  assert.equal(created.currency, "POTATO_ATOMS");
+  assert.notEqual(created.asset, M.mind); // historical fixture mint is MIND, not an external MIND alias
+  assert.equal(created.currency, "MIND_ATOMS");
   assert.equal(created.amount, null);
   assert.equal(created.attributes.priceAtoms, "5000000000");
-  assert.equal(created.attributes.liability, "potato_spin_v2");
-  const [settled] = normalizeChainEvent({ ...base, eventType: "PotatoSpinRevealed",
+  assert.equal(created.attributes.liability, "mind_spin_v2");
+  const [settled] = normalizeChainEvent({ ...base, eventType: "MindSpinRevealed",
     data: { ...base.data, prize_atoms: "50000000000" } }, SALT);
   assert.equal(settled.type, "LiabilitySettled");
   assert.equal(settled.amount, "50000000000");
   assert.equal(settled.attributes.outcome, "settled");
-  const [refunded] = normalizeChainEvent({ ...base, eventType: "PotatoSpinRefunded",
+  const [refunded] = normalizeChainEvent({ ...base, eventType: "MindSpinRefunded",
     data: { ...base.data, amount_atoms: "5000000000" } }, SALT);
   assert.equal(refunded.amount, "5000000000");
   assert.equal(refunded.attributes.outcome, "refund");

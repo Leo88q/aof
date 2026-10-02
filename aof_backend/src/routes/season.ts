@@ -3,11 +3,13 @@ import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
-import { program } from "../provider";
+import { connection, program } from "../provider";
 import { authPda, configPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
-import { authorityOnly, pk } from "../lib/tx";
+import { authorityOnly, coSignQuoted, pk } from "../lib/tx";
+import { SEASON_PASS_ACCOUNT_SIZE } from "../lib/accountSizes";
 import { requireAdmin } from "../middleware/adminAuth";
 import { requireNoFraudHold } from "../security/fraudHold";
+import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
 
@@ -42,31 +44,41 @@ r.post("/pass/purchase", (_req, res) => {
   res.status(503).json({ error: "SEASON_PASS_PAID_TRACK_NOT_READY" });
 });
 
-r.post("/xp/grant", requireAdmin, async (req, res) => {
+/**
+ * [PAYER] Player may initialize a pass separately; an XP entitlement claim
+ * also creates the pass and its once-per-season replay cursor with player-paid
+ * rent when either account is absent.
+ */
+r.post("/pass/init", requireWalletProof("season_pass_init", "player"), async (req, res) => {
   try {
-    const user = pk(req.body.user);
+    const player = pk(req.body.player);
     const seasonId = Number(req.body.seasonId);
-    const amount = Number(req.body.amount);
     const [config] = configPda();
     const [season] = seasonPda(seasonId);
-    const [seasonPass] = seasonPassPda(user, seasonId);
+    const [seasonPass] = seasonPassPda(player, seasonId);
+    const existingPass = await connection.getAccountInfo(seasonPass, "confirmed");
+    if (existingPass) {
+      return res.status(409).json({ error: "SEASON_PASS_ALREADY_INITIALIZED" });
+    }
 
     const ix = await (program.methods as any)
-      .grantSeasonXp(amount)
+      .initSeasonPass(seasonId)
       .accounts({
         config,
-        authority: AUTHORITY_PUBKEY,
-        user,
+        player,
         season,
         seasonPass,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
 
-    const sig = await authorityOnly([ix]);
-    res.json({ sig });
+    // The quote is bound to this exact player-paid, authority-free message.
+    const prepared = await coSignQuoted([ix], player, [
+      { name: "season_pass", address: seasonPass, size: SEASON_PASS_ACCOUNT_SIZE, strategy: "init" },
+    ]);
+    res.json(prepared);
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
 
@@ -76,13 +88,13 @@ r.post("/reward/claim", requireAdmin, requireNoFraudHold("owner", "season_reward
     const seasonId = Number(req.body.seasonId);
     const level = Number(req.body.level);
     const premiumTrack = Boolean(req.body.premiumTrack);
-    const woodMint = pk(req.body.woodMint);
+    const circuitMint = pk(req.body.circuitMint);
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [season] = seasonPda(seasonId);
     const [seasonPass] = seasonPassPda(owner, seasonId);
     const [auth] = authPda();
-    const userWood = getAssociatedTokenAddressSync(woodMint, owner);
+    const userCircuit = getAssociatedTokenAddressSync(circuitMint, owner);
 
     const ix = await (program.methods as any)
       .claimSeasonReward(level, premiumTrack)
@@ -92,8 +104,8 @@ r.post("/reward/claim", requireAdmin, requireNoFraudHold("owner", "season_reward
         materialMints,
         season,
         seasonPass,
-        woodMint,
-        userWood,
+        circuitMint,
+        userCircuit,
         auth,
         tokenProgram: TOKEN_PROGRAM_ID,
       })

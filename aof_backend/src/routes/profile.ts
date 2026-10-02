@@ -1,9 +1,35 @@
 import { Router } from "express";
+import { SystemProgram } from "@solana/web3.js";
 import { db } from "../lib/db";
-import { pk } from "../lib/tx";
+import { connection, program } from "../provider";
+import { playerPda } from "../lib/pda";
+import { PLAYER_ACCOUNT_SIZE } from "../lib/accountSizes";
+import { coSignQuoted, pk } from "../lib/tx";
 import { requireWalletProof } from "../security/walletProof";
 
 const r = Router();
+
+/** Player-funded on-chain profile initialization. Username registration stays
+ * an independent off-chain profile operation. */
+r.post("/init-player", requireWalletProof("player_init", "player"), async (req, res) => {
+  try {
+    const player = pk(req.body.player);
+    const [playerProfile] = playerPda(player);
+    const existing = await connection.getAccountInfo(playerProfile, "confirmed");
+    if (existing) return res.status(409).json({ error: "PLAYER_ALREADY_INITIALIZED" });
+
+    const ix = await (program.methods as any)
+      .initPlayer()
+      .accounts({ player, playerProfile, systemProgram: SystemProgram.programId })
+      .instruction();
+    const prepared = await coSignQuoted([ix], player, [
+      { name: "player_profile", address: playerProfile, size: PLAYER_ACCOUNT_SIZE, strategy: "init" },
+    ]);
+    return res.json(prepared);
+  } catch (e: any) {
+    return res.status(e?.status || 400).json({ error: e.message });
+  }
+});
 
 // [NEW] Регистрация username (адрес + ник)
 r.post("/register", requireWalletProof("profile_register", "address"), async (req, res) => {

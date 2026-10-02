@@ -9,14 +9,46 @@
 import { BN } from "bn.js";
 import { Router } from "express";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { adminByMethod } from "../middleware/adminAuth";
+import { adminByMethod, requireAdminOps } from "../middleware/adminAuth";
 import { authorityOnly, pk } from "../lib/tx";
-import { program } from "../provider";
+import {
+  connection, program, PROGRAM_ID, MARKET_PROGRAM_ID, QUESTS_PROGRAM_ID, REBIRTH_PROGRAM_ID,
+  LIQUIDITY_PROGRAM_ID, SESSION_PROGRAM_ID,
+} from "../provider";
+import { AUTHORITY, AUTHORITY_PUBKEY } from "../config";
 import { collectorAllowPda, configPda, materialMintsPda, vaultGuardPda } from "../lib/pda";
 import { invalidateMiningFlag } from "../lib/configState";
+import { bootstrapPreflightHandler, sanitizeRpcError } from "../lib/bootstrapPreflight";
+import { logger } from "../lib/logger";
 
 const r = Router();
 r.use(adminByMethod);
+
+/**
+ * GET /admin/config/bootstrap-preflight — проверка ДО деплоя и инициализации.
+ *
+ * Не требует Config (в отличие от GET /mining, который до инициализации честно
+ * отвечает 400), ничего не подписывает и не раскрывает секретов. Нужен именно
+ * ops-токен: `adminByMethod` выше пропускает GET и с read-токеном, а здесь
+ * раскрываются ключ authority и режим подписи. Читает scripts/devnet-bringup.sh.
+ */
+r.get("/bootstrap-preflight", requireAdminOps, bootstrapPreflightHandler(() => ({
+  connection,
+  authorityMode: AUTHORITY ? "hot" : "read-only",
+  canSign: AUTHORITY !== null,
+  authorityPubkey: AUTHORITY_PUBKEY,
+  programs: {
+    aof_core: PROGRAM_ID,
+    aof_market: MARKET_PROGRAM_ID,
+    aof_quests: QUESTS_PROGRAM_ID,
+    aof_rebirth: REBIRTH_PROGRAM_ID,
+    aof_liquidity: LIQUIDITY_PROGRAM_ID,
+    aof_session_keys: SESSION_PROGRAM_ID,
+  },
+  coreProgramId: PROGRAM_ID,
+  configPda: configPda()[0],
+  expectedGenesisHash: process.env.EXPECTED_GENESIS_HASH,
+}), (error) => logger.warn({ rpcError: sanitizeRpcError(error) }, "bootstrap preflight: RPC read failed")));
 
 /** POST /admin/config/mining { enabled } — on-chain kill-switch (F-27). */
 r.post("/mining", async (req, res) => {
@@ -57,7 +89,7 @@ r.get("/mining", async (_req, res) => {
 /** POST /admin/config/supply-cap { kind, maxSupply } (F-03). */
 r.post("/supply-cap", async (req, res) => {
   try {
-    const kind = req.body.kind; // e.g. { wood: {} }
+    const kind = req.body.kind; // e.g. { circuit: {} }
     const maxSupply = new BN(String(req.body.maxSupply));
     const [config] = configPda();
     const [materialMints] = materialMintsPda();

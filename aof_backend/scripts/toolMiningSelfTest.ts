@@ -6,8 +6,8 @@ import { TOOL_RESOURCE_MINT, miningRewardMint } from '../src/lib/toolResourceMin
 
 const mint = () => Keypair.generate().publicKey;
 const circuit = mint(), silicon = mint(), dataset = mint(), neuron = mint();
-const config = { woodMint: circuit, stoneMint: silicon, foodMint: mint() };
-const materials = { meat: dataset, seeds: neuron, flour: mint() };
+const config = { circuitMint: circuit, siliconMint: silicon, dataMint: mint() };
+const materials = { dataset: dataset, neuron: neuron, signal: mint() };
 const expected: Record<string, PublicKey> = {
   plasma_cutter: circuit, silicon_extractor: silicon,
   data_harvester: dataset, quantum_transmitter: dataset, neural_seeder: neuron,
@@ -22,14 +22,14 @@ for (const old of ['axe', 'pick', 'spear', 'bow', 'reaper', 'sword', '', null]) 
 }
 assert.equal(miningRewardMint('plasma_cutter', null, materials), null);
 assert.equal(miningRewardMint('neural_seeder', config, null), null);
-assert.equal(miningRewardMint('plasma_cutter', { ...config, woodMint: PublicKey.default }, materials), null);
-assert.equal(miningRewardMint('neural_seeder', config, { ...materials, seeds: 'not a public key' }), null);
+assert.equal(miningRewardMint('plasma_cutter', { ...config, circuitMint: PublicKey.default }, materials), null);
+assert.equal(miningRewardMint('neural_seeder', config, { ...materials, neuron: 'not a public key' }), null);
 
 // Match the Rust program's five tool-to-kind arms and registry fields.
 const collect = readFileSync(join(__dirname, '../../aof-core/src/instructions/collect_mining.rs'), 'utf8');
 const state = readFileSync(join(__dirname, '../../aof-core/src/state.rs'), 'utf8');
 for (const tool of Object.keys(expected)) assert.ok(collect.includes(`"${tool}"`), tool);
-for (const [kind, field] of [['Circuit', 'wood_mint'], ['Silicon', 'stone_mint'], ['Dataset', 'meat'], ['Neuron', 'seeds']]) {
+for (const [kind, field] of [['Circuit', 'circuit_mint'], ['Silicon', 'silicon_mint'], ['Dataset', 'dataset'], ['Neuron', 'neuron']]) {
   assert.match(state, new RegExp(`ResourceKind::${kind}\\s*=>\\s*(?:config|material_mints)\\.${field}`));
 }
 console.log('Canonical mining payout mints: 5/5; historical/invalid/zero mints rejected.');

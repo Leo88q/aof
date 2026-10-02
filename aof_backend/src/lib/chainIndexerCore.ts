@@ -30,7 +30,7 @@ export type MintDelta = { mint: string; delta: bigint };
 // present key wins; anything else stays in `data`.
 const WALLET_FIELDS = ["user", "owner", "buyer", "seller", "bidder", "maker", "winner", "to", "from", "referrer", "referred", "creator", "fulfiller", "renter", "authority"];
 const MINT_FIELDS = ["mint", "toolMint", "resourceMint", "mintedMint", "newMint", "burnedMint", "mascotMint", "rewardMascot"];
-const AMOUNT_FIELDS = ["amount", "priceLamports", "price", "amountLamports", "refundedLamports", "premiumLamports", "poolLamports", "limitPrice", "medals", "woodReward", "stoneReward"];
+const AMOUNT_FIELDS = ["amount", "priceLamports", "price", "amountLamports", "refundedLamports", "premiumLamports", "poolLamports", "limitPrice", "medals", "circuitReward", "siliconReward"];
 
 export function hashWallet(wallet: string, salt = process.env.WALLET_HASH_SALT || ""): string {
   return createHash("sha256").update(`${salt}|${wallet}`).digest("hex");

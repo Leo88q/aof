@@ -98,14 +98,15 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
   TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
   LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted",
-    "DrumCommitted", "PotatoSpinCommitted"],
+    "DrumCommitted", "MindSpinCommitted"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched",
-    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded", "PotatoSpinRevealed", "PotatoSpinRefunded"],
+    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded", "MindSpinRevealed", "MindSpinRefunded"],
   ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
     "MaterialMintsInitialized", "ConfigMigrated", "CashoutFreezeChanged", "EmergencyStopActivated",
-    "VrfSlotAdded", "VrfSlotRetiredChanged", "VrfSlotRecovered", "RebirthReset", "RebirthPerformed"],
+    "VrfSlotAdded", "VrfSlotRetiredChanged", "VrfSlotRecovered", "RebirthReset", "RebirthPerformed",
+    "SeasonPassInitialized", "ToolOwnershipSynced"],
   // [AUDIT F-02] The two-step authority rotation is now emitted by every
   // program that has a Config, so both are native sources - the "unsupported,
   // no multisig yet" reason in the catalog is obsolete.
@@ -223,6 +224,9 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     case "SeasonPassPurchased":
       emit("PurchaseCompleted", { playerId: pid(d.owner), attributes: { venue: "season_pass", seasonId: str(d.seasonId) } });
       break;
+    case "SeasonPassInitialized":
+      emit("ConfigUpdated", { playerId: pid(d.owner), attributes: { setting: "season_pass_initialized", seasonId: str(d.season_id) } });
+      break;
     // ---- rentals --------------------------------------------------------------
     case "RentalStarted":
       emit("AssetTransferred", { playerId: pid(d.owner), counterpartyId: pid(d.renter), attributes: { reason: "rental_start", endTime: str(d.endTime) } });
@@ -241,21 +245,36 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
         attributes: { reason: "transfer" },
       });
       break;
+    // This records cache reconciliation after an ordinary SPL transfer. The
+    // previous owner is cached state, not proof of the token's former holder,
+    // so do not report this as another AssetTransferred event.
+    case "ToolOwnershipSynced":
+      emit("ConfigUpdated", {
+        playerId: pid(d.new_owner),
+        asset: str(d.mint),
+        attributes: {
+          setting: "tool_ownership_cache_sync",
+          previousOwner: pid(d.previous_owner),
+          previousOperator: pid(d.previous_operator),
+          slot: str(d.slot),
+        },
+      });
+      break;
     // ---- assets / crafting ----------------------------------------------------
     case "ToolMinted":
       emit("AssetCreated", { playerId: pid(d.to), attributes: { toolType: str(d.toolType), rarity: str(d.rarity) } });
       emit("TokenMinted", { playerId: pid(d.to), amount: "1", currency: "NFT" });
       break;
     case "ToolCrafted":
-      emit("CraftCompleted", { asset: str(d.mintedMint), attributes: { burned: str(d.burnedMint), rarity: str(d.rarity), woodCost: str(d.woodCost), stoneCost: str(d.stoneCost), mintedCountAfter: str(d.mintedCountAfter) } });
+      emit("CraftCompleted", { asset: str(d.mintedMint), attributes: { burned: str(d.burnedMint), rarity: str(d.rarity), circuitCost: str(d.circuitCost), siliconCost: str(d.siliconCost), mintedCountAfter: str(d.mintedCountAfter) } });
       emit("AssetCreated", { asset: str(d.mintedMint), attributes: { rarity: str(d.rarity) } });
       emit("TokenBurned", { asset: str(d.burnedMint), amount: "1", currency: "NFT" });
       break;
     case "CraftEvent":
-      emit("CraftCompleted", { attributes: { toolType: str(d.toolType), rarity: str(d.rarity), costs: { wood: str(d.woodCost), stone: str(d.stoneCost), food: str(d.foodCost), seeds: str(d.seedsCost), water: str(d.waterCost), potato: str(d.potatoCost) } } });
+      emit("CraftCompleted", { attributes: { toolType: str(d.toolType), rarity: str(d.rarity), costs: { circuit: str(d.circuitCost), silicon: str(d.siliconCost), data: str(d.dataCost), neuron: str(d.neuronCost), power: str(d.powerCost), mind: str(d.mindCost) } } });
       break;
     case "ToolRepaired":
-      emit("CraftCompleted", { asset: str(d.toolMint), attributes: { kind: "repair", repairedAmount: str(d.repairedAmount), newDurability: str(d.newDurability), stoneCost: str(d.stoneCost), woodCost: str(d.woodCost) } });
+      emit("CraftCompleted", { asset: str(d.toolMint), attributes: { kind: "repair", repairedAmount: str(d.repairedAmount), newDurability: str(d.newDurability), siliconCost: str(d.siliconCost), circuitCost: str(d.circuitCost) } });
       break;
     case "ToolBurned":
       emit("TokenBurned", { playerId: pid(d.from), amount: "1", currency: "NFT" });
@@ -277,7 +296,7 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       emit("LiabilitySettled", { amount: str(d.refundedLamports), currency: LAMPORTS, attributes: { liability: "pack_commit", outcome: "refund" } });
       break;
     case "ForgeCommitExpired":
-      emit("LiabilitySettled", { asset: str(d.toolMint), amount: str(d.refundedLamports), currency: LAMPORTS, attributes: { liability: "forge_commit", outcome: "refund", woodRefunded: str(d.woodRefunded), stoneRefunded: str(d.stoneRefunded) } });
+      emit("LiabilitySettled", { asset: str(d.toolMint), amount: str(d.refundedLamports), currency: LAMPORTS, attributes: { liability: "forge_commit", outcome: "refund", circuitRefunded: str(d.circuitRefunded), siliconRefunded: str(d.siliconRefunded) } });
       break;
     // ---- [F-06] Switchboard On-Demand settlement ------------------------------
     // A VrfCommitted without a VrfSettled / VrfCommitRefunded is a stuck
@@ -317,17 +336,17 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     // legacy MIND/RESOURCE or coalesce the two PDA/discriminator families.
     // The committed event exposes the price, NOT the entire reserved liability;
     // do not fabricate a 50-token amount in the event stream.
-    case "PotatoSpinCommitted":
-      emit("LiabilityCreated", { playerId: pid(d.user), asset: str(d.mint), currency: "POTATO_ATOMS",
-        attributes: { liability: "potato_spin_v2", commit: str(d.commit), priceAtoms: str(d.price_atoms), seedSlot: str(d.seed_slot) } });
+    case "MindSpinCommitted":
+      emit("LiabilityCreated", { playerId: pid(d.user), asset: str(d.mint), currency: "MIND_ATOMS",
+        attributes: { liability: "mind_spin_v2", commit: str(d.commit), priceAtoms: str(d.price_atoms), seedSlot: str(d.seed_slot) } });
       break;
-    case "PotatoSpinRevealed":
-      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.prize_atoms), currency: "POTATO_ATOMS",
-        attributes: { liability: "potato_spin_v2", outcome: "settled", commit: str(d.commit), seedSlot: str(d.seed_slot) } });
+    case "MindSpinRevealed":
+      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.prize_atoms), currency: "MIND_ATOMS",
+        attributes: { liability: "mind_spin_v2", outcome: "settled", commit: str(d.commit), seedSlot: str(d.seed_slot) } });
       break;
-    case "PotatoSpinRefunded":
-      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.amount_atoms), currency: "POTATO_ATOMS",
-        attributes: { liability: "potato_spin_v2", outcome: "refund", commit: str(d.commit) } });
+    case "MindSpinRefunded":
+      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.amount_atoms), currency: "MIND_ATOMS",
+        attributes: { liability: "mind_spin_v2", outcome: "refund", commit: str(d.commit) } });
       break;
     case "VrfSlotAdded":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "add", index: str(d.index), vrfSlot: str(d.vrfSlot) } });
@@ -353,7 +372,7 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "ExplorationCompleted":
       emit("QuestCompleted", { attributes: { kind: "exploration", success: bool(d.success), toolMint: str(d.toolMint) } });
-      if (bool(d.success)) emit("RewardGranted", { currency: "RESOURCE", attributes: { source: "exploration", woodReward: str(d.woodReward), stoneReward: str(d.stoneReward) } });
+      if (bool(d.success)) emit("RewardGranted", { currency: "RESOURCE", attributes: { source: "exploration", circuitReward: str(d.circuitReward), siliconReward: str(d.siliconReward) } });
       break;
     case "ReferralPayout":
       emit("RewardGranted", { playerId: pid(d.referrer), counterpartyId: pid(d.referred), amount: str(d.amount), currency: "RESOURCE", attributes: { source: "referral" } });
@@ -427,13 +446,13 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
       break;
     case "ResourceMintsUpdated": {
       const prev = (d.previous as unknown[]) ?? [], cur = (d.current as unknown[]) ?? [];
-      const names = ["food", "wood", "stone", "seeds", "water", "potato"];
+      const names = ["data", "circuit", "silicon", "neuron", "power", "mind"];
       const changed = names.filter((_, i) => str(prev[i]) !== str(cur[i]));
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "resource_mints", changed, previous: Object.fromEntries(names.map((n, i) => [n, str(prev[i])])), current: Object.fromEntries(names.map((n, i) => [n, str(cur[i])])) } });
       break;
     }
     case "CraftEconomyUpdated":
-      emit("ConfigUpdated", { playerId: null, attributes: { setting: "craft_economy", woodBase: d.woodBase, stoneBase: d.stoneBase, woodMult: d.woodMult, stoneMult: d.stoneMult } });
+      emit("ConfigUpdated", { playerId: null, attributes: { setting: "craft_economy", circuitBase: d.circuitBase, siliconBase: d.siliconBase, circuitMult: d.circuitMult, siliconMult: d.siliconMult } });
       break;
     case "QuestConfigInitialized":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "quest_config", authority: str(d.authority) ? "set" : null, mascotMint: str(d.mascotMint) } });

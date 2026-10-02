@@ -11,7 +11,7 @@ both directions:
   * healthy devnet state            -> dry-run prints the steps, makes no POST
   * healthy state + --apply         -> exactly one POST {"enabled": true}
   * already enabled                 -> no POST at all (idempotent)
-  * placeholder woodMint            -> refuse, no POST
+  * placeholder circuitMint            -> refuse, no POST
   * MaterialMints not canonical 503 -> refuse, no POST
   * PREFLIGHT_OK not set            -> refuse, no POST
   * target is not devnet            -> refuse, no POST
@@ -35,11 +35,11 @@ SCRIPT = HERE / "enable-mining-devnet.sh"
 PLACEHOLDER = "11111111111111111111111111111111"
 
 HEALTHY_CONFIG = {
-    "woodMint": "WooD1111111111111111111111111111111111111",
-    "stoneMint": "StoNe111111111111111111111111111111111111",
+    "circuitMint": "WooD1111111111111111111111111111111111111",
+    "siliconMint": "StoNe111111111111111111111111111111111111",
 }
-HEALTHY_MATERIALS = {"meat": "MeaT1111111111111111111111111111111111111",
-                     "seeds": "SeeDs111111111111111111111111111111111111"}
+HEALTHY_MATERIALS = {"dataset": "MeaT1111111111111111111111111111111111111",
+                     "neuron": "SeeDs111111111111111111111111111111111111"}
 
 
 class MockAdminApi:
@@ -142,8 +142,8 @@ class EnableMiningScript(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assert_no_posts(api)
         self.assertIn("сухой прогон", done.stdout)
-        self.assertIn("Config.woodMint", done.stdout)
-        self.assertIn("MaterialMints.seeds", done.stdout)
+        self.assertIn("Config.circuitMint", done.stdout)
+        self.assertIn("MaterialMints.neuron", done.stdout)
 
     def test_apply_enables_only_after_checks(self):
         with MockAdminApi() as api:
@@ -155,7 +155,7 @@ class EnableMiningScript(unittest.TestCase):
         self.assertTrue(enabled)
         self.assertIn("miningEnabled=true", done.stdout)
         # Порядок в выводе: проверка выплат идёт до включения.
-        self.assertLess(done.stdout.index("Config.woodMint"), done.stdout.index("5/6"))
+        self.assertLess(done.stdout.index("Config.circuitMint"), done.stdout.index("5/6"))
 
     def test_already_enabled_is_idempotent(self):
         with MockAdminApi(mining=True) as api:
@@ -165,12 +165,12 @@ class EnableMiningScript(unittest.TestCase):
         self.assertIn("уже включена", done.stdout)
 
     def test_missing_payout_mint_blocks_switch(self):
-        config = dict(HEALTHY_CONFIG, woodMint=PLACEHOLDER)
+        config = dict(HEALTHY_CONFIG, circuitMint=PLACEHOLDER)
         with MockAdminApi(config=config) as api:
             done = run_script(api.port, "--apply")
         self.assertEqual(done.returncode, 3, done.stderr)
         self.assert_no_posts(api)
-        self.assertIn("woodMint", done.stdout + done.stderr)
+        self.assertIn("circuitMint", done.stdout + done.stderr)
 
     def test_uninitialised_material_mints_block_switch(self):
         with MockAdminApi(materials_code=503) as api:

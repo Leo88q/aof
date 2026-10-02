@@ -1,18 +1,14 @@
 # [F-06] Real-network check of the Switchboard On-Demand path the game relies
 # on (aof_backend/scripts/vrfDevnetProbe.ts): oracle selection against the live
 # devnet queue, then commit -> gateway reveal WITHOUT an RPC URL -> on-chain
-# reveal, once per eligible oracle. The sandboxes used for development cannot
-# reach Solana RPCs; GitHub runners can.
+# reveal, once per eligible oracle. Push/schedule runs are fail-closed: they
+# never invoke the transaction probe. A manual run must set the explicit boolean
+# input and provide a funded DEVNET_PROBE_KEYPAIR secret.
 #
-# Funding: repository secret DEVNET_PROBE_KEYPAIR (solana-keygen JSON of a
-# devnet wallet with ~0.5 SOL; one run spends ~0.002 SOL of rent that is not
-# refunded plus fees). Without it the probe asks the faucet and, if refused,
-# reports SKIPPED (neutral) after the read-only oracle-selection checks.
+# The opted-in probe mutates devnet: it may request an airdrop, creates a
+# randomness account, submits commit/reveal transactions, then closes it. Do not
+# opt in unless a devnet transaction is explicitly authorized.
 # Optional secret DEVNET_RPC_URL overrides the public devnet endpoint.
-#
-# schedule and workflow_dispatch only fire once this file is on the default
-# branch; on feature branches the push trigger below runs it when the probe or
-# the code it exercises changes.
 name: VRF devnet probe
 on:
   push:
@@ -22,6 +18,12 @@ on:
       - aof_backend/package-lock.json
       - .github/workflows/vrf-devnet-probe.yml
   workflow_dispatch:
+    inputs:
+      allow_devnet_transactions:
+        description: 'Explicitly authorize devnet airdrop/account/commit/reveal/close transactions for this manual run.'
+        required: true
+        type: boolean
+        default: false
   schedule:
     - cron: "23 5 * * 1" # Mondays 05:23 UTC
 permissions:
@@ -45,9 +47,31 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: aof_backend/package-lock.json
-      - name: Install backend dependencies
+      - name: Install backend dependencies without package scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Probe
+      - name: Fail-closed report when no explicit manual opt-in was supplied
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.allow_devnet_transactions != true }}
+        env:
+          VRF_PROBE_REPORT: ${{ runner.temp }}/vrf-devnet-probe.md
+        run: |
+          cat > "$VRF_PROBE_REPORT" <<'EOF'
+          # SKIPPED — no devnet transactions authorized
+
+          Pushes and scheduled runs never submit transactions. A manual run must
+          explicitly set `allow_devnet_transactions: true` and provide the
+          funded `DEVNET_PROBE_KEYPAIR` repository secret.
+          EOF
+      - name: Require the explicit funded probe wallet
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_devnet_transactions == true }}
+        env:
+          DEVNET_PROBE_KEYPAIR: ${{ secrets.DEVNET_PROBE_KEYPAIR }}
+        run: |
+          if [ -z "$DEVNET_PROBE_KEYPAIR" ]; then
+            echo "::error::refusing to run: DEVNET_PROBE_KEYPAIR is required; faucet fallback is disabled in CI"
+            exit 1
+          fi
+      - name: Probe (manual opt-in only; submits devnet transactions)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_devnet_transactions == true }}
         id: probe
         env:
           DEVNET_PROBE_KEYPAIR: ${{ secrets.DEVNET_PROBE_KEYPAIR }}

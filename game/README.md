@@ -16,7 +16,7 @@ against Watchtower OS v3 (`src/os/`, `GET /api/os/config`). Same layout for both
 | L7 Ops | `layers/l7_ops.gd` | 19 control panels, handoff-v3, analytics feeds, security gates |
 
 ## v2 — 12 products (`products/`)
-farming · crafting · trading · marketplace · inventory (common seeds/crops/materials) ·
+farming · crafting · trading · marketplace · inventory (common components and materials) ·
 golden-tools-land · session-wallet · tournaments (RitArena crop tournament) ·
 crop-fighters (Husks) · craft-gamble (Gamba, house edge 5%, jackpot) ·
 workers-depin (stake 10 SOL, escrow 0.1 SOL/100 players) ·

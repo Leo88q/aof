@@ -408,12 +408,12 @@ impl World {
         let config = Config {
             authority,
             treasury,
-            food_mint: k(),
-            wood_mint: k(),
-            stone_mint: k(),
-            seeds_mint: k(),
-            water_mint: k(),
-            potato_mint: k(),
+            data_mint: k(),
+            circuit_mint: k(),
+            silicon_mint: k(),
+            neuron_mint: k(),
+            power_mint: k(),
+            mind_mint: k(),
             craft_fee: 0,
             unstake_fee: 0,
             paused: false,
@@ -427,29 +427,29 @@ impl World {
             reserved: [0u8; 32],
         };
         let mm = MaterialMints {
-            seeds: k(),
-            wheat: k(),
-            flour: k(),
-            bread: k(),
-            water: k(),
-            coal: k(),
-            meat: k(),
-            stone_blue: k(),
-            stone_purple: k(),
-            stone_red: k(),
-            sand_white: k(),
-            sand_pink: k(),
-            sand_yellow: k(),
-            gem_blue: k(),
-            gem_orange: k(),
-            gem_white: k(),
-            gem_green: k(),
-            flask_blue: k(),
-            flask_yellow: k(),
-            flask_green: k(),
-            flask_pink: k(),
-            flask_purple: k(),
-            love_heart: k(),
+            neuron: k(),
+            synapse: k(),
+            signal: k(),
+            model: k(),
+            power: k(),
+            compute: k(),
+            dataset: k(),
+            blue_core: k(),
+            purple_core: k(),
+            red_core: k(),
+            clear_quartz: k(),
+            rose_quartz: k(),
+            amber_quartz: k(),
+            quantum_bit: k(),
+            neural_chip: k(),
+            photon_bit: k(),
+            bio_chip: k(),
+            cryo_fluid: k(),
+            volt_fluid: k(),
+            bio_fluid: k(),
+            nano_fluid: k(),
+            quantum_fluid: k(),
+            soul_core: k(),
             bump: mm_bump,
             max_supply: [SUPPLY_CAP_UNLIMITED; RESOURCE_KIND_COUNT],
         };
@@ -625,66 +625,66 @@ fn fake_system_program_is_rejected_before_any_init_or_cpi() {
 /// #2 mint / token-account / PDA binding and #12 Token-2022 rejection on a
 /// user-callable minting instruction.
 #[test]
-fn collect_flour_binds_mint_token_account_and_mill_to_the_signer() {
+fn collect_signal_binds_mint_token_account_and_state_to_the_signer() {
     runtime();
     let w = World::new();
     let user = Pubkey::new_unique();
     let run = |signer: Pubkey,
                mill_owner: Pubkey,
-               flour_mint: AccountInfo<'static>,
-               user_flour: AccountInfo<'static>,
+               signal_mint: AccountInfo<'static>,
+               user_signal: AccountInfo<'static>,
                token_program: AccountInfo<'static>| {
-        let (mill_key, mill_bump) = pda(&[MILL_STATE_SEED, mill_owner.as_ref()]);
-        let mill = MillState {
+        let (signal_key, signal_bump) = pda(&[SIGNAL_STATE_SEED, mill_owner.as_ref()]);
+        let signal_state = SignalState {
             owner: mill_owner,
             in_progress: true,
             ready_at: NOW_TS - 1,
-            output_flour: 50,
-            bump: mill_bump,
+            output_signal: 50,
+            bump: signal_bump,
         };
-        validate::<CollectFlour>(
+        validate::<CollectSignal>(
             vec![
                 w.config_info(),
                 wallet(signer, true),
                 w.mm_info(),
-                program_account(mill_key, &mill, MILL_STATE_SPACE),
+                program_account(signal_key, &signal_state, SIGNAL_STATE_SPACE),
                 w.auth_info(),
-                flour_mint,
-                user_flour,
+                signal_mint,
+                user_signal,
                 token_program,
             ],
             &[],
         )
     };
-    let flour = || spl_mint(w.mm.flour, 0, Some(w.auth_key), None);
-    let users_flour = || token_account(Pubkey::new_unique(), w.mm.flour, user, 0);
+    let signal = || spl_mint(w.mm.signal, 0, Some(w.auth_key), None);
+    let users_signal = || token_account(Pubkey::new_unique(), w.mm.signal, user, 0);
 
-    run(user, user, flour(), users_flour(), token_program_info()).unwrap();
+    run(user, user, signal(), users_signal(), token_program_info()).unwrap();
 
     let foreign_mint = spl_mint(Pubkey::new_unique(), 0, Some(w.auth_key), None);
-    let err = rejected(run(user, user, foreign_mint, users_flour(), token_program_info()), "ConstraintAddress");
-    assert!(blames(&err, "flour_mint"), "{err}");
+    let err = rejected(run(user, user, foreign_mint, users_signal(), token_program_info()), "ConstraintAddress");
+    assert!(blames(&err, "signal_mint"), "{err}");
 
-    let someone_elses = token_account(Pubkey::new_unique(), w.mm.flour, Pubkey::new_unique(), 0);
-    let err = rejected(run(user, user, flour(), someone_elses, token_program_info()), "ConstraintRaw");
-    assert!(blames(&err, "user_flour"), "{err}");
+    let someone_elses = token_account(Pubkey::new_unique(), w.mm.signal, Pubkey::new_unique(), 0);
+    let err = rejected(run(user, user, signal(), someone_elses, token_program_info()), "ConstraintRaw");
+    assert!(blames(&err, "user_signal"), "{err}");
 
-    let other_token = token_account(Pubkey::new_unique(), w.mm.wheat, user, 0);
-    let err = rejected(run(user, user, flour(), other_token, token_program_info()), "ConstraintRaw");
-    assert!(blames(&err, "user_flour"), "{err}");
+    let other_token = token_account(Pubkey::new_unique(), w.mm.synapse, user, 0);
+    let err = rejected(run(user, user, signal(), other_token, token_program_info()), "ConstraintRaw");
+    assert!(blames(&err, "user_signal"), "{err}");
 
-    // Another player's mill cannot be collected by a different signer.
+    // Another player's signal_state cannot be collected by a different signer.
     let victim = Pubkey::new_unique();
-    let err = rejected(run(user, victim, flour(), users_flour(), token_program_info()), "ConstraintSeeds");
-    assert!(blames(&err, "mill_state"), "{err}");
+    let err = rejected(run(user, victim, signal(), users_signal(), token_program_info()), "ConstraintSeeds");
+    assert!(blames(&err, "signal_state"), "{err}");
 
     // #12: Token-2022 mints (transfer-fee / non-transferable extensions) and
     // the Token-2022 program are refused outright.
-    let t22_mint = mint_owned_by(token_2022_id(), w.mm.flour, 0, Some(w.auth_key), None);
-    let err = rejected(run(user, user, t22_mint, users_flour(), token_program_info()), "AccountOwnedByWrongProgram");
-    assert!(blames(&err, "flour_mint"), "{err}");
+    let t22_mint = mint_owned_by(token_2022_id(), w.mm.signal, 0, Some(w.auth_key), None);
+    let err = rejected(run(user, user, t22_mint, users_signal(), token_program_info()), "AccountOwnedByWrongProgram");
+    assert!(blames(&err, "signal_mint"), "{err}");
     let err = rejected(
-        run(user, user, flour(), users_flour(), executable_program(token_2022_id())),
+        run(user, user, signal(), users_signal(), executable_program(token_2022_id())),
         "InvalidProgramId",
     );
     assert!(blames(&err, "token_program"), "{err}");
@@ -849,11 +849,11 @@ fn referral_payout(case: PayoutCase) -> (Result<()>, usize, VaultGuard) {
     let mut w = World::new();
     w.config.cashout_frozen = case.cashout_frozen;
     let (referred, referrer) = (Pubkey::new_unique(), Pubkey::new_unique());
-    let mint = if case.non_resource_mint { Pubkey::new_unique() } else { w.config.food_mint };
+    let mint = if case.non_resource_mint { Pubkey::new_unique() } else { w.config.data_mint };
     let vault = pda(&[VAULT_SEED]).0;
     let (guard_key, guard_bump) = pda(&[VAULT_GUARD_SEED, mint.as_ref()]);
     let guard = VaultGuard {
-        mint: if case.guard_for_other_mint { w.mm.wheat } else { mint },
+        mint: if case.guard_for_other_mint { w.mm.synapse } else { mint },
         epoch_slots: 1_000,
         cap_per_epoch: GUARD_CAP_PER_EPOCH,
         max_per_tx: case.max_per_tx,
@@ -933,7 +933,7 @@ fn referral_payout_within_budget_charges_the_guard_before_transferring() {
 #[test]
 fn vault_brakes_are_one_shared_gate() {
     let w = World::new();
-    let resource = w.config.food_mint;
+    let resource = w.config.data_mint;
     let guard_for = |mint: Pubkey| VaultGuard {
         mint,
         epoch_slots: 1_000,
@@ -951,7 +951,7 @@ fn vault_brakes_are_one_shared_gate() {
         charge_vault_withdrawal(&w.config, &w.mm, &mut guard, &nft, 1, 10),
         Err(AofError::NotAResourceMint)
     ));
-    let mut foreign = guard_for(w.mm.wheat);
+    let mut foreign = guard_for(w.mm.synapse);
     assert!(matches!(
         charge_vault_withdrawal(&w.config, &w.mm, &mut foreign, &resource, 1, 10),
         Err(AofError::InvalidMint)
@@ -970,7 +970,7 @@ fn vault_brakes_are_one_shared_gate() {
         Err(AofError::VaultGuardLimitExceeded)
     ));
 
-    for mint in [w.mm.wheat, w.mm.love_heart, w.config.potato_mint] {
+    for mint in [w.mm.synapse, w.mm.soul_core, w.config.mind_mint] {
         let mut g = guard_for(mint);
         assert!(charge_vault_withdrawal(&w.config, &w.mm, &mut g, &mint, 1, 10).is_ok());
     }
@@ -990,13 +990,13 @@ struct HarvestOutcome {
     tile_state: u8,
 }
 
-/// Run the REAL `harvest_wheat` handler: a Common neural_seeder on a ready
+/// Run the REAL `harvest_synapse` handler: a Common neural_seeder on a ready
 /// tile with 100 seeds yields 100 x 1.5 = 150 Synapse.
-fn run_harvest(wheat_supply: u64, synapse_cap: u64) -> HarvestOutcome {
-    run_harvest_with(wheat_supply, synapse_cap, false)
+fn run_harvest(synapse_supply: u64, synapse_cap: u64) -> HarvestOutcome {
+    run_harvest_with(synapse_supply, synapse_cap, false)
 }
 
-fn run_harvest_with(wheat_supply: u64, synapse_cap: u64, cashout_frozen: bool) -> HarvestOutcome {
+fn run_harvest_with(synapse_supply: u64, synapse_cap: u64, cashout_frozen: bool) -> HarvestOutcome {
     runtime();
     let mut w = World::new();
     w.config.cashout_frozen = cashout_frozen;
@@ -1004,7 +1004,7 @@ fn run_harvest_with(wheat_supply: u64, synapse_cap: u64, cashout_frozen: bool) -
     let user = Pubkey::new_unique();
     let tool_mint = Pubkey::new_unique();
     let (energy_key, energy_bump) = pda(&[ENERGY_ACCOUNT_SEED, user.as_ref()]);
-    let (tile_key, tile_bump) = pda(&[FARM_TILE_SEED, user.as_ref(), &[TILE]]);
+    let (tile_key, tile_bump) = pda(&[LAB_TILE_SEED, user.as_ref(), &[TILE]]);
     let energy = EnergyAccount {
         owner: user,
         current: ENERGY_CAP,
@@ -1012,12 +1012,12 @@ fn run_harvest_with(wheat_supply: u64, synapse_cap: u64, cashout_frozen: bool) -
         cap: ENERGY_CAP,
         bump: energy_bump,
     };
-    let tile = FarmTile {
+    let tile = LabTile {
         owner: user,
         state: 2,
-        planted_at: NOW_TS - 7_200,
+        started_at: NOW_TS - 7_200,
         ready_at: NOW_TS - 1,
-        seeds_amount: 100,
+        neuron_amount: 100,
         bump: tile_bump,
     };
     let seeder = tool(tool_mint, user, user, "neural_seeder");
@@ -1026,23 +1026,23 @@ fn run_harvest_with(wheat_supply: u64, synapse_cap: u64, cashout_frozen: bool) -
         wallet(user, true),
         w.mm_info(),
         program_account(energy_key, &energy, ENERGY_ACCOUNT_SPACE),
-        program_account(tile_key, &tile, FARM_TILE_SPACE),
+        program_account(tile_key, &tile, LAB_TILE_SPACE),
         program_account(pda(&[TOOL_SEED, tool_mint.as_ref()]).0, &seeder, TOOL_DATA_SPACE),
         w.auth_info(),
-        spl_mint(w.mm.wheat, wheat_supply, Some(w.auth_key), None),
-        token_account(Pubkey::new_unique(), w.mm.wheat, user, 0),
+        spl_mint(w.mm.synapse, synapse_supply, Some(w.auth_key), None),
+        token_account(Pubkey::new_unique(), w.mm.synapse, user, 0),
         token_program_info(),
         system_program_info(),
     ];
-    let (mut accounts, bumps) = parse::<HarvestWheat>(infos, &[TILE]).unwrap();
+    let (mut accounts, bumps) = parse::<HarvestSynapse>(infos, &[TILE]).unwrap();
     let result =
-        crate::instructions::harvest_wheat::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), TILE);
+        crate::instructions::harvest_synapse::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), TILE);
     HarvestOutcome {
         result,
         cpis: cpi_calls(),
         durability: accounts.tool_data.durability,
         energy: accounts.energy_account.current,
-        tile_state: accounts.farm_tile.state,
+        tile_state: accounts.lab_tile.state,
     }
 }
 
@@ -1168,7 +1168,7 @@ fn order_matching_conserves_lamports_and_fees_stay_below_the_trade() {
     runtime();
     let w = World::new();
     let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
-    let mint = w.config.food_mint; // canonical mint of ResourceKind::Data
+    let mint = w.config.data_mint; // canonical mint of ResourceKind::Data
     let buy_key = pda(&[RESOURCE_ORDER_SEED, buyer.as_ref(), mint.as_ref()]).0;
     let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
     let order_rent = rent_exempt(RESOURCE_ORDER_SPACE);
@@ -1228,7 +1228,7 @@ fn an_order_cannot_be_matched_against_itself() {
     runtime();
     let w = World::new();
     let maker = Pubkey::new_unique();
-    let mint = w.config.food_mint;
+    let mint = w.config.data_mint;
     let order_key = pda(&[RESOURCE_ORDER_SEED, maker.as_ref(), mint.as_ref()]).0;
     let funded = rent_exempt(RESOURCE_ORDER_SPACE) + 50_000;
     for is_buy in [true, false] {
@@ -1426,20 +1426,20 @@ fn season_pass_stays_fail_closed_without_charging_or_changing_entitlement() {
 }
 
 fn accrual(last: i64, now: i64) -> u64 {
-    well_accrual(last, now).ok().expect("accrual overflow")
+    grid_accrual(last, now).ok().expect("accrual overflow")
 }
 
 /// F-D: every second of the window is priced at the weather of its own day.
 #[test]
-fn well_accrual_prices_each_second_at_its_own_days_weather() {
+fn grid_accrual_prices_each_second_at_its_own_days_weather() {
     let day = (20_000u32..30_000)
         .find(|&d| weather_for_day(d) == WEATHER_FRENZY && weather_for_day(d - 1) == WEATHER_NOMINAL)
         .expect("a nominal day followed by a frenzy day");
     let boundary = day as i64 * 86_400;
     let half = 12 * 3_600;
     let fair = accrual(boundary - half, boundary + half);
-    assert_eq!(fair, 12 * WELL_RATE_NOMINAL + 12 * WELL_RATE_FRENZY);
-    assert!(fair < 24 * WELL_RATE_FRENZY, "the old rule paid frenzy for the whole window");
+    assert_eq!(fair, 12 * GRID_RATE_NOMINAL + 12 * GRID_RATE_FRENZY);
+    assert!(fair < 24 * GRID_RATE_FRENZY, "the old rule paid frenzy for the whole window");
 
     assert_eq!(accrual(boundary - 5 * 86_400, boundary), accrual(boundary - 86_400, boundary), "24 h cap");
     assert_eq!(accrual(boundary, boundary), 0);
@@ -1460,16 +1460,16 @@ fn weather_distribution_matches_the_documented_odds() {
 }
 
 /// F-D end to end: a stale FRENZY cached in `weather_state` no longer decides
-/// what the well pays; the REAL handler mints exactly `well_accrual`.
+/// what the grid pays; the REAL handler mints exactly `grid_accrual`.
 #[test]
-fn collect_well_water_ignores_a_stale_cached_weather() {
+fn collect_grid_power_ignores_a_stale_cached_weather() {
     runtime();
     let w = World::new();
     let user = Pubkey::new_unique();
     let last = NOW_TS - 10 * 3_600;
-    let (well_key, well_bump) = pda(&[WELL_STATE_SEED, user.as_ref()]);
+    let (grid_key, grid_bump) = pda(&[GRID_STATE_SEED, user.as_ref()]);
     let (weather_key, weather_bump) = pda(&[WEATHER_STATE_SEED]);
-    let well = WellState { owner: user, water_buffer: 0, last_collected_at: last, bump: well_bump };
+    let grid = GridState { owner: user, power_buffer: 0, last_collected_at: last, bump: grid_bump };
     let stale = WeatherState { day_id: 1, weather: WEATHER_FRENZY, updated_at: 86_400, bump: weather_bump };
     let mut villager = player(user);
     villager.villagers = 1;
@@ -1478,25 +1478,25 @@ fn collect_well_water_ignores_a_stale_cached_weather() {
         wallet(user, true),
         program_account(pda(&[PLAYER_SEED, user.as_ref()]).0, &villager, PLAYER_SPACE),
         w.mm_info(),
-        program_account(well_key, &well, WELL_STATE_SPACE),
+        program_account(grid_key, &grid, GRID_STATE_SPACE),
         program_account(weather_key, &stale, WEATHER_STATE_SPACE),
         w.auth_info(),
-        spl_mint(w.mm.water, 0, Some(w.auth_key), None),
-        token_account(Pubkey::new_unique(), w.mm.water, user, 0),
+        spl_mint(w.mm.power, 0, Some(w.auth_key), None),
+        token_account(Pubkey::new_unique(), w.mm.power, user, 0),
         token_program_info(),
         system_program_info(),
     ];
-    let (mut accounts, bumps) = parse::<CollectWellWater>(infos, &[]).unwrap();
+    let (mut accounts, bumps) = parse::<CollectPower>(infos, &[]).unwrap();
     let result =
-        crate::instructions::collect_well_water::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+        crate::instructions::collect_power::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
     assert!(result.is_ok(), "{result:?}");
     let expected = accrual(last, NOW_TS);
     assert_eq!(last_minted_amount(), expected);
     let today = (NOW_TS / 86_400) as u32;
     if weather_for_day(today) != WEATHER_FRENZY || weather_for_day(today - 1) != WEATHER_FRENZY {
-        assert!(expected < 10 * WELL_RATE_FRENZY, "the stale frenzy rate was not applied");
+        assert!(expected < 10 * GRID_RATE_FRENZY, "the stale frenzy rate was not applied");
     }
-    assert_eq!(accounts.well_state.last_collected_at, NOW_TS);
+    assert_eq!(accounts.grid_state.last_collected_at, NOW_TS);
 }
 
 // ======================================================================
@@ -1672,7 +1672,7 @@ fn migrate_config_v2_grows_a_v1_config_in_place() {
     let migrated: Account<Config> = Account::try_from(config_ref).unwrap();
     assert_eq!((migrated.operator, migrated.guardian, migrated.cashout_frozen), (w.authority, w.authority, false));
     assert_eq!((migrated.authority, migrated.treasury, migrated.craft_fee, migrated.unstake_fee), (w.authority, w.treasury, 123, 45));
-    assert_eq!((migrated.food_mint, migrated.bump, migrated.mining_enabled), (w.config.food_mint, w.config.bump, true));
+    assert_eq!((migrated.data_mint, migrated.bump, migrated.mining_enabled), (w.config.data_mint, w.config.bump, true));
 
     // It cannot run twice...
     let (mut again, bumps) = parse::<MigrateConfigV2>(vec![config.clone(), wallet(w.authority, true), system_program_info()], &[]).unwrap();
@@ -1982,7 +1982,7 @@ fn order_matching_requires_the_buyers_canonical_ata() {
     runtime();
     let w = World::new();
     let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
-    let mint = w.config.food_mint;
+    let mint = w.config.data_mint;
     let buy_key = pda(&[RESOURCE_ORDER_SEED, buyer.as_ref(), mint.as_ref()]).0;
     let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
     let infos = |buyer_token: Pubkey| {
@@ -2545,31 +2545,31 @@ fn a_harvest_cannot_be_collected_twice() {
     let user = Pubkey::new_unique();
     let tool_mint = Pubkey::new_unique();
     let (energy_key, energy_bump) = pda(&[ENERGY_ACCOUNT_SEED, user.as_ref()]);
-    let (tile_key, tile_bump) = pda(&[FARM_TILE_SEED, user.as_ref(), &[TILE]]);
+    let (tile_key, tile_bump) = pda(&[LAB_TILE_SEED, user.as_ref(), &[TILE]]);
     let energy = EnergyAccount { owner: user, current: ENERGY_CAP, last_regen_at: NOW_TS, cap: ENERGY_CAP, bump: energy_bump };
-    let tile = FarmTile { owner: user, state: 2, planted_at: NOW_TS - 7_200, ready_at: NOW_TS - 1, seeds_amount: 100, bump: tile_bump };
+    let tile = LabTile { owner: user, state: 2, started_at: NOW_TS - 7_200, ready_at: NOW_TS - 1, neuron_amount: 100, bump: tile_bump };
     let infos = vec![
         w.config_info(),
         wallet(user, true),
         w.mm_info(),
         program_account(energy_key, &energy, ENERGY_ACCOUNT_SPACE),
-        program_account(tile_key, &tile, FARM_TILE_SPACE),
+        program_account(tile_key, &tile, LAB_TILE_SPACE),
         program_account(pda(&[TOOL_SEED, tool_mint.as_ref()]).0, &tool(tool_mint, user, user, "neural_seeder"), TOOL_DATA_SPACE),
         w.auth_info(),
-        spl_mint(w.mm.wheat, 0, Some(w.auth_key), None),
-        token_account(Pubkey::new_unique(), w.mm.wheat, user, 0),
+        spl_mint(w.mm.synapse, 0, Some(w.auth_key), None),
+        token_account(Pubkey::new_unique(), w.mm.synapse, user, 0),
         token_program_info(),
         system_program_info(),
     ];
     let harvest = |infos: Vec<AccountInfo<'static>>| -> Result<()> {
-        let (mut accounts, bumps) = parse::<HarvestWheat>(infos, &[TILE])?;
-        crate::instructions::harvest_wheat::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), TILE)?;
+        let (mut accounts, bumps) = parse::<HarvestSynapse>(infos, &[TILE])?;
+        crate::instructions::harvest_synapse::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), TILE)?;
         // Persist the new state exactly as the runtime would after the instruction.
         accounts.exit(&crate::ID)
     };
     assert!(harvest(infos.clone()).is_ok());
     assert_eq!(cpi_calls(), 1);
-    rejected(harvest(infos), "FarmTileEmpty");
+    rejected(harvest(infos), "LabTileEmpty");
     assert_eq!(cpi_calls(), 1, "the replay minted nothing");
 }
 
@@ -2640,7 +2640,7 @@ fn order_matching_invariants_hold_for_random_orders() {
     let taker = |x: u64| x * ORDERBOOK_TAKER_FEE_BPS as u64 / 10_000;
     for _ in 0..60 {
         let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
-        let mint = w.config.food_mint;
+        let mint = w.config.data_mint;
         let buy_price = 1 + rng.below(50_000);
         let sell_price = 1 + rng.below(buy_price);
         let buy_amount = 1 + rng.below(1_000);
@@ -2689,7 +2689,7 @@ fn order_matching_invariants_hold_for_random_orders() {
 // #111 закрывал нулевые суммы guard-ами в полусотне мест и оставлял открытым
 // вопрос: что каждый путь делает на КРАЮ диапазона. Здесь по одному
 // представителю каждого класса путей —
-//   * claim    — `collect_flour` (мельница) и `collect_well_water` (колодец);
+//   * claim    — `collect_signal` (обработка сигналов) и `collect_power` (сетевая станция);
 //   * deposit  — `deposit_gas` (лампорты -> микро-единицы газ-бака);
 //   * withdraw — `withdraw_gas` и `sweep_gas_fees`;
 //   * transfer — `match_handler` ордербука и `pay_out_with_referral` (казна) —
@@ -2791,72 +2791,72 @@ fn deposit_gas_matrix_zero_one_max_and_dust() {
 }
 
 // ----------------------------------------------------------------------
-// claim: `collect_flour` (мельница), `collect_well_water` (колодец)
+// claim: `collect_signal` (обработка сигналов), `collect_power` (сетевая станция)
 // ----------------------------------------------------------------------
 
-struct FlourClaim {
+struct SignalClaim {
     result: Result<()>,
     cpis: usize,
     in_progress: bool,
-    output_flour: u64,
+    output_signal: u64,
 }
 
-/// Реальный `collect_flour::handler`: `output_flour` — начисленная партия,
+/// Реальный `collect_signal::handler`: `output_signal` — начисленная партия,
 /// `signal_cap` — потолок выпуска сигнала, `mint_supply` — эмиссия сигнала.
-fn claim_flour(output_flour: u64, signal_cap: u64, mint_supply: u64) -> FlourClaim {
+fn claim_signal(output_signal: u64, signal_cap: u64, mint_supply: u64) -> SignalClaim {
     runtime();
     let mut w = World::new();
     w.mm.max_supply[ResourceKind::Signal as usize] = signal_cap;
     let user = Pubkey::new_unique();
-    let (mill_key, mill_bump) = pda(&[MILL_STATE_SEED, user.as_ref()]);
-    let mill = MillState {
+    let (signal_key, signal_bump) = pda(&[SIGNAL_STATE_SEED, user.as_ref()]);
+    let signal_state = SignalState {
         owner: user,
         in_progress: true,
         ready_at: NOW_TS - 1,
-        output_flour,
-        bump: mill_bump,
+        output_signal,
+        bump: signal_bump,
     };
-    let (mut accounts, bumps) = parse::<CollectFlour>(
+    let (mut accounts, bumps) = parse::<CollectSignal>(
         vec![
             w.config_info(),
             wallet(user, true),
             w.mm_info(),
-            program_account(mill_key, &mill, MILL_STATE_SPACE),
+            program_account(signal_key, &signal_state, SIGNAL_STATE_SPACE),
             w.auth_info(),
-            spl_mint(w.mm.flour, mint_supply, Some(w.auth_key), None),
-            token_account(Pubkey::new_unique(), w.mm.flour, user, 0),
+            spl_mint(w.mm.signal, mint_supply, Some(w.auth_key), None),
+            token_account(Pubkey::new_unique(), w.mm.signal, user, 0),
             token_program_info(),
         ],
         &[],
     )
     .unwrap();
     let result =
-        crate::instructions::collect_flour::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
-    FlourClaim {
+        crate::instructions::collect_signal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    SignalClaim {
         result,
         cpis: cpi_calls(),
-        in_progress: accounts.mill_state.in_progress,
-        output_flour: accounts.mill_state.output_flour,
+        in_progress: accounts.signal_state.in_progress,
+        output_signal: accounts.signal_state.output_signal,
     }
 }
 
-struct WellClaim {
+struct GridClaim {
     result: Result<()>,
     cpis: usize,
     last_collected_at: i64,
 }
 
-/// Реальный `collect_well_water::handler`: `last_collected_at` задаёт окно
+/// Реальный `collect_power::handler`: `last_collected_at` задаёт окно
 /// начисления, `water_cap` — потолок выпуска энергопотока, `mint_supply` —
 /// его эмиссия.
-fn claim_well(last_collected_at: i64, water_cap: u64, mint_supply: u64) -> WellClaim {
+fn claim_grid(last_collected_at: i64, power_cap: u64, mint_supply: u64) -> GridClaim {
     runtime();
     let mut w = World::new();
-    w.mm.max_supply[ResourceKind::Power as usize] = water_cap;
+    w.mm.max_supply[ResourceKind::Power as usize] = power_cap;
     let user = Pubkey::new_unique();
-    let (well_key, well_bump) = pda(&[WELL_STATE_SEED, user.as_ref()]);
+    let (grid_key, grid_bump) = pda(&[GRID_STATE_SEED, user.as_ref()]);
     let (weather_key, weather_bump) = pda(&[WEATHER_STATE_SEED]);
-    let well = WellState { owner: user, water_buffer: 0, last_collected_at, bump: well_bump };
+    let grid = GridState { owner: user, power_buffer: 0, last_collected_at, bump: grid_bump };
     let now_day = (NOW_TS / 86_400) as u32;
     let weather = WeatherState {
         day_id: now_day,
@@ -2866,17 +2866,17 @@ fn claim_well(last_collected_at: i64, water_cap: u64, mint_supply: u64) -> WellC
     };
     let mut villager = player(user);
     villager.villagers = 1;
-    let (mut accounts, bumps) = parse::<CollectWellWater>(
+    let (mut accounts, bumps) = parse::<CollectPower>(
         vec![
             w.config_info(),
             wallet(user, true),
             program_account(pda(&[PLAYER_SEED, user.as_ref()]).0, &villager, PLAYER_SPACE),
             w.mm_info(),
-            program_account(well_key, &well, WELL_STATE_SPACE),
+            program_account(grid_key, &grid, GRID_STATE_SPACE),
             program_account(weather_key, &weather, WEATHER_STATE_SPACE),
             w.auth_info(),
-            spl_mint(w.mm.water, mint_supply, Some(w.auth_key), None),
-            token_account(Pubkey::new_unique(), w.mm.water, user, 0),
+            spl_mint(w.mm.power, mint_supply, Some(w.auth_key), None),
+            token_account(Pubkey::new_unique(), w.mm.power, user, 0),
             token_program_info(),
             system_program_info(),
         ],
@@ -2884,47 +2884,47 @@ fn claim_well(last_collected_at: i64, water_cap: u64, mint_supply: u64) -> WellC
     )
     .unwrap();
     let result =
-        crate::instructions::collect_well_water::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
-    WellClaim {
+        crate::instructions::collect_power::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+    GridClaim {
         result,
         cpis: cpi_calls(),
-        last_collected_at: accounts.well_state.last_collected_at,
+        last_collected_at: accounts.grid_state.last_collected_at,
     }
 }
 
 #[test]
 fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
-    // --- мельница: 0 / 1 / max / потолок / максимум эмиссии -----------------
-    let zero = claim_flour(0, SUPPLY_CAP_UNLIMITED, 0);
+    // --- обработка сигналов: 0 / 1 / max / потолок / максимум эмиссии -----------------
+    let zero = claim_signal(0, SUPPLY_CAP_UNLIMITED, 0);
     rejected(zero.result, "ZeroAmount");
     assert_eq!(zero.cpis, 0, "ничего не начислено — ничего не выдается");
-    assert!(zero.in_progress, "отвергнутый сбор не сбрасывает мельницу");
+    assert!(zero.in_progress, "отвергнутый сбор не сбрасывает обработку сигналов");
 
-    let one = claim_flour(1, SUPPLY_CAP_UNLIMITED, 0);
+    let one = claim_signal(1, SUPPLY_CAP_UNLIMITED, 0);
     assert!(one.result.is_ok(), "{:?}", one.result);
     assert_eq!(last_minted_amount(), 1, "выдано ровно начисленное");
     assert_eq!(one.cpis, 1, "один минт-CPI");
-    assert_eq!((one.in_progress, one.output_flour), (false, 0), "партия дренируется целиком");
+    assert_eq!((one.in_progress, one.output_signal), (false, 0), "партия дренируется целиком");
 
-    let max_ok = claim_flour(u64::MAX, SUPPLY_CAP_UNLIMITED, 0);
+    let max_ok = claim_signal(u64::MAX, SUPPLY_CAP_UNLIMITED, 0);
     assert!(max_ok.result.is_ok(), "{:?}", max_ok.result);
     assert_eq!(last_minted_amount(), u64::MAX, "«нет потолка» — минтится ровно начисленное");
 
     // Потолок ниже начисленного: отказ до CPI, состояние не тронуто.
-    let capped = claim_flour(u64::MAX, u64::MAX - 1, 0);
+    let capped = claim_signal(u64::MAX, u64::MAX - 1, 0);
     rejected(capped.result, "SupplyCapExceeded");
     assert_eq!(capped.cpis, 0, "отвергнуто до минт-CPI");
     assert!(capped.in_progress, "выдано 0 ≤ начислено, партия ждёт решения");
 
     // Максимум эмиссии + начисленное: потолок не вычисляется — отказ, не перенос.
-    let overflow = claim_flour(2, u64::MAX - 1, u64::MAX);
+    let overflow = claim_signal(2, u64::MAX - 1, u64::MAX);
     rejected(overflow.result, "MathOverflow");
     assert_eq!(overflow.cpis, 0, "переполнение потолка отвергается до минта");
     assert!(overflow.in_progress, "партия не потеряна");
 
-    // --- колодец: окно начисления решает, сколько можно снять --------------
-    let fresh = claim_well(NOW_TS, SUPPLY_CAP_UNLIMITED, 0);
-    rejected(fresh.result, "WellEmpty");
+    // --- сетевая станция: окно начисления решает, сколько можно снять --------------
+    let fresh = claim_grid(NOW_TS, SUPPLY_CAP_UNLIMITED, 0);
+    rejected(fresh.result, "GridEmpty");
     assert_eq!(fresh.cpis, 0, "нулевое окно — ноль начислено, ноль выдано");
 
     // Самое маленькое снимаемое начисление: 1 секунда окна. Ноль секунд до
@@ -2939,89 +2939,89 @@ fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
     if elapsed > 1 {
         assert_eq!(accrual(NOW_TS - (elapsed - 1), NOW_TS), 0, "на секунду короче — ещё ноль");
     }
-    let tiny = claim_well(NOW_TS - elapsed, SUPPLY_CAP_UNLIMITED, 0);
+    let tiny = claim_grid(NOW_TS - elapsed, SUPPLY_CAP_UNLIMITED, 0);
     assert!(tiny.result.is_ok(), "{:?}", tiny.result);
     assert_eq!(last_minted_amount(), smallest, "выдано = начислено, до последней единицы");
     assert_eq!(tiny.last_collected_at, NOW_TS, "окно начисления стартует заново");
 
     // Максимум за один вызов ограничен суточным окном и лучшей ставкой.
-    let week = claim_well(NOW_TS - 5 * 86_400, SUPPLY_CAP_UNLIMITED, 0);
+    let week = claim_grid(NOW_TS - 5 * 86_400, SUPPLY_CAP_UNLIMITED, 0);
     assert!(week.result.is_ok(), "{:?}", week.result);
     let accrued_day = accrual(NOW_TS - 86_400, NOW_TS);
     assert_eq!(last_minted_amount(), accrued_day, "пятидневное окно обрезается сутками");
     assert_eq!(last_minted_amount(), accrual(NOW_TS - 5 * 86_400, NOW_TS));
     assert!(
-        accrued_day <= 24 * WELL_RATE_FRENZY,
+        accrued_day <= 24 * GRID_RATE_FRENZY,
         "сутки не могут начислить больше 480 единиц, начислено {accrued_day}"
     );
 
     // Потолок ниже начисленного: отказ, и окно начисления остаётся прежним.
     let window = NOW_TS - elapsed;
-    let capped_well = claim_well(window, smallest - 1, 0);
+    let capped_well = claim_grid(window, smallest - 1, 0);
     rejected(capped_well.result, "SupplyCapExceeded");
     assert_eq!(capped_well.cpis, 0);
     assert_eq!(capped_well.last_collected_at, window, "отвергнутый сбор не перезапускает окно");
 
     // Максимум эмиссии при потолке ниже начисленного: отказ до минта.
-    let well_overflow = claim_well(NOW_TS - elapsed, u64::MAX - 1, u64::MAX);
-    rejected(well_overflow.result, "MathOverflow");
-    assert_eq!(well_overflow.cpis, 0);
-    assert_eq!(well_overflow.last_collected_at, NOW_TS - elapsed, "окно не тронуто");
+    let grid_overflow = claim_grid(NOW_TS - elapsed, u64::MAX - 1, u64::MAX);
+    rejected(grid_overflow.result, "MathOverflow");
+    assert_eq!(grid_overflow.cpis, 0);
+    assert_eq!(grid_overflow.last_collected_at, NOW_TS - elapsed, "окно не тронуто");
 }
 
 /// Повторный сбор того же урожая не создаёт новую ценность: после первого
-/// сбора мельница пуста, и второй вызов отвергается без CPI. Состояние между
+/// сбора обработка сигналов пуста, и второй вызов отвергается без CPI. Состояние между
 /// вызовами переносится так, как его сохранил бы рантайм.
 #[test]
 fn a_claim_cannot_be_collected_twice() {
     runtime();
     let w = World::new();
     let user = Pubkey::new_unique();
-    let (mill_key, mill_bump) = pda(&[MILL_STATE_SEED, user.as_ref()]);
-    let mill = MillState {
+    let (signal_key, signal_bump) = pda(&[SIGNAL_STATE_SEED, user.as_ref()]);
+    let signal_state = SignalState {
         owner: user,
         in_progress: true,
         ready_at: NOW_TS - 1,
-        output_flour: 50,
-        bump: mill_bump,
+        output_signal: 50,
+        bump: signal_bump,
     };
-    let flour_mint = spl_mint(w.mm.flour, 0, Some(w.auth_key), None);
-    let user_flour = token_account(Pubkey::new_unique(), w.mm.flour, user, 0);
-    let infos = |mill_info: AccountInfo<'static>| {
+    let signal_mint = spl_mint(w.mm.signal, 0, Some(w.auth_key), None);
+    let user_signal = token_account(Pubkey::new_unique(), w.mm.signal, user, 0);
+    let infos = |signal_info: AccountInfo<'static>| {
         vec![
             w.config_info(),
             wallet(user, true),
             w.mm_info(),
-            mill_info,
+            signal_info,
             w.auth_info(),
-            flour_mint.clone(),
-            user_flour.clone(),
+            signal_mint.clone(),
+            user_signal.clone(),
             token_program_info(),
         ]
     };
 
     let (mut accounts, bumps) =
-        parse::<CollectFlour>(infos(program_account(mill_key, &mill, MILL_STATE_SPACE)), &[]).unwrap();
-    let result = crate::instructions::collect_flour::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
+        parse::<CollectSignal>(infos(program_account(signal_key, &signal_state, SIGNAL_STATE_SPACE)), &[]).unwrap();
+    let result = crate::instructions::collect_signal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
     assert!(result.is_ok(), "{result:?}");
     assert_eq!(last_minted_amount(), 50, "первый сбор отдаёт начисленное");
     let cpis_after_first = cpi_calls();
     assert_eq!(cpis_after_first, 1);
 
-    let drained = MillState::clone(&*accounts.mill_state);
+    let drained = SignalState::clone(&*accounts.signal_state);
     assert_eq!(
-        (drained.in_progress, drained.output_flour),
+        (drained.in_progress, drained.output_signal),
         (false, 0),
         "рантайм сохраняет дренаж партии"
     );
 
     let (mut again, bumps) =
-        parse::<CollectFlour>(infos(program_account(mill_key, &drained, MILL_STATE_SPACE)), &[]).unwrap();
+        parse::<CollectSignal>(infos(program_account(signal_key, &drained, SIGNAL_STATE_SPACE)), &[]).unwrap();
     let second =
-        crate::instructions::collect_flour::handler(Context::new(&crate::ID, &mut again, &[], bumps));
-    rejected(second, "MillNotReady");
+        crate::instructions::collect_signal::handler(Context::new(&crate::ID, &mut again, &[], bumps));
+    rejected(second, "SignalNotReady");
     assert_eq!(cpi_calls(), cpis_after_first, "повторный сбор не минтит ничего");
-    assert_eq!(again.mill_state.output_flour, 0, "начисленного больше нет");
+    assert_eq!(again.signal_state.output_signal, 0, "начисленного больше нет");
 }
 
 // ----------------------------------------------------------------------
@@ -3147,7 +3147,7 @@ fn match_orders(buy_price: u64, buy_amount: u64, sell_price: u64, sell_amount: u
     runtime();
     let w = World::new();
     let (buyer, seller) = (Pubkey::new_unique(), Pubkey::new_unique());
-    let mint = w.config.food_mint;
+    let mint = w.config.data_mint;
     let buy_key = pda(&[RESOURCE_ORDER_SEED, buyer.as_ref(), mint.as_ref()]).0;
     let sell_key = pda(&[RESOURCE_ORDER_SEED, seller.as_ref(), mint.as_ref()]).0;
     let rent = rent_exempt(RESOURCE_ORDER_SPACE);

@@ -1,3 +1,4 @@
+<!-- HISTORICAL — superseded snapshot; preserved for audit history, not active product instructions. -->
 # ANALYSIS.md — Полный аудит Age of Farming (2026-08-29)
 
 ## §1 Критические находки
