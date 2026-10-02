@@ -258,8 +258,11 @@ test('/profile/init-player: Player PDA создаёт и оплачивает т
   assert.match(intents, /strategy: "init"/);
 });
 
-test('приёмочные payer-тесты подключены к Anchor.toml (иначе они не запустятся)', () => {
+test('приёмочные payer-тесты подключены к Anchor runner (иначе они не запустятся)', () => {
   const anchor = read('Anchor.toml');
-  assert.match(anchor, /tests\/aof_payer_funding\.ts/,
-    'Anchor.toml [scripts] test обязан запускать tests/aof_payer_funding.ts');
+  const runner = read('scripts/run-anchor-tests.sh');
+  assert.match(anchor, /bash scripts\/run-anchor-tests\.sh/,
+    'Anchor.toml [scripts] test обязан запускать общий Anchor runner');
+  assert.match(runner, /tests\/aof_payer_funding\.ts/,
+    'общий Anchor runner обязан запускать tests/aof_payer_funding.ts');
 });
