@@ -429,9 +429,13 @@ describe("aof-core: security & core flows", () => {
       .accounts({ ...accounts, mint: siliconMint, tokenAccount: userSilicon, treasuryToken: treasurySilicon })
       .signers([user]).rpc(), "InvalidResourceKind");
     expect(await provider.connection.getAccountInfo(rewardReceipt)).to.equal(null);
-    const pauseSig = await program.methods.setPaused(true).accounts({ config: configPda, authority }).rpc();
+    const pauseSig = await sendWithPayer(
+      program.methods.setPaused(true).accounts({ config: configPda, authority }), providerSigner,
+    );
     await expectError(program.methods.mintResourceOnce({ circuit: {} }, gross, rewardId).accounts(accounts).signers([user]).rpc(), "Paused");
-    await program.methods.setPaused(false).accounts({ config: configPda, authority }).rpc();
+    await sendWithPayer(
+      program.methods.setPaused(false).accounts({ config: configPda, authority }), providerSigner,
+    );
     // set_paused must leave an on-chain event trail (Watchtower PausedToggled).
     {
       const tx = await provider.connection.getTransaction(pauseSig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
