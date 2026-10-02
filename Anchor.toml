@@ -57,6 +57,8 @@ startup_wait = 30000
 upgradeable = true
 
 [test.validator]
+# Agave 4.2.1 panics during startup when the bind address is unspecified.
+bind_address = "127.0.0.1"
 # Agave requires at least 2 ticks per slot; this advances the active 18k-slot
 # VRF expiry test in about four minutes without changing the on-chain threshold.
 ticks_per_slot = 2
