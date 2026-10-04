@@ -17,6 +17,16 @@
 #   PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/deploy-devnet.sh --apply  # деплой
 #   AOF_DEPLOY_TARGET=devnet ARTIFACTS=/path/to/artifact PROGRAM_MAX_LEN_POLICY=exact scripts/deploy-devnet.sh --apply
 #
+# Обновление уже развёрнутой программы (новый код в уже живущем адресе) — только
+# явным списком, потому что это замена работающего байткода:
+#   UPGRADE=aof_core PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/deploy-devnet.sh --apply
+#   UPGRADE=all      ... # обновить всё, что отличается от локальной сборки
+# Скрипт сам сверяет байткод в сети с локальным .so (upgrade-state) и обновляет
+# только отличающееся; совпавшее остаётся нетронутым. Ключ программы для upgrade
+# не нужен — аккаунт уже создан, подписывает upgrade authority. Ёмкость ProgramData
+# при этом не уменьшается (загрузчик умеет только расширять), поэтому пост-проверка
+# сверяется с фактической ёмкостью из сети, а не с policy-значением.
+#
 # Обязательные условия (без них выход 3 и ни одной транзакции):
 #   * цель ровно devnet — mainnet этим скриптом не деплоится; RPC обязан
 #     отвечать genesis-хешем devnet (имя URL ничего не доказывает);
@@ -31,9 +41,9 @@
 #     сразу (рента Program + ProgramData каждой, комиссии и явные резервы
 #     OPERATOR_RESERVE_SOL / DEPLOY_FEE_RESERVE_SOL) — это проверяется в шаге 5
 #     до первой транзакции; MIN_SOL=1 достаточностью не считается;
-#   * для каждого нового адреса — ключ программы target/deploy/<name>-keypair.json,
+#   * для каждого НОВОГО адреса — ключ программы target/deploy/<name>-keypair.json,
 #     чей pubkey РАВЕН объявленному адресу. Создать программу по адресу без её
-#     ключа нельзя: подписывает сам аккаунт программы. Если ключа нет, адрес
+#     ключа нельзя: подписывает сам аккаунт программы. Для UPGRADE ключ не нужен. Если ключа нет, адрес
 #     придётся менять во всех местах разом (declare_id!, Anchor.toml, реестр,
 #     IDL, клиент) — скрипт об этом честно скажет и остановится.
 #
@@ -58,6 +68,9 @@ RPC_URL="${RPC_URL:-https://api.devnet.solana.com}"
 AUTHORITY_KEYPAIR="${AUTHORITY_KEYPAIR:-solana/keys/aof-authority-devnet.json}"
 ARTIFACTS="${ARTIFACTS:-target/deploy}"
 ONLY="${ONLY:-}"                     # список имён через запятую; пусто = все недостающие
+UPGRADE="${UPGRADE:-}"               # имена через запятую или all: обновить уже развёрнутые программы,
+                                     # у которых байткод в сети отличается от локальной сборки (без этого
+                                     # программа в сети считается «готовой» и скрипт её не трогает)
 MIN_SOL="${MIN_SOL:-1}"               # минимум на ключе перед деплоем
 PROBE="${PROBE:-scripts/devnet-program-probe.py}"
 ESTIMATOR="${ESTIMATOR:-scripts/devnet-deploy-estimator.py}"
@@ -67,6 +80,25 @@ DEVNET_GENESIS_HASH="EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 OPERATOR_RESERVE_SOL="${OPERATOR_RESERVE_SOL:-$MIN_SOL}"
 DEPLOY_FEE_RESERVE_SOL="${DEPLOY_FEE_RESERVE_SOL:-0.1}"
 estimator() { python3 "$ESTIMATOR" "$@"; }
+
+# UPGRADE=all|имя1,имя2 — выбрано ли имя к обновлению. Пробелы убираются, чтобы
+# «aof_core, aof_market» не превращалось в неизвестное имя « aof_market».
+UPGRADE="$(printf '%s' "$UPGRADE" | tr -d ' ')"
+upgrade_requested() { # $1 — имя программы
+  case ",$UPGRADE," in
+    *,all,*) return 0 ;;
+    *",$1,"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+# Имена всех программ реестра — чтобы опечатка в UPGRADE отказывала, а не молчала.
+registry_names() {
+  python3 - <<'PY'
+import json
+registry = json.load(open('watchtower/addresses.json'))
+print(' '.join(p['name'] for p in registry['programs']))
+PY
+}
 
 # Проверяет, что в собранной программе действительно зашит объявленный адрес.
 # Зачем: `declare_id!` попадает в бинарник, и Anchor сверяет его на каждом вызове
@@ -120,9 +152,39 @@ case "${BALANCE:-0}" in 0|0.0*) die "на ключе нет SOL: аренда а
 
 step "3/7 Что уже есть в сети"
 MISSING=()
+UPGRADES=()   # "имя адрес" — уже в сети, но байткод отличается от локальной сборки
+if [ -n "$UPGRADE" ]; then
+  ALL_NAMES="$(registry_names)"
+  for want in $(printf '%s' "$UPGRADE" | tr ',' ' '); do
+    [ "$want" = "all" ] && continue
+    case " $ALL_NAMES " in
+      *" $want "*) ;;
+      *) die "UPGRADE=$want, но такой программы нет в реестре watchtower/addresses.json (есть: $ALL_NAMES)" ;;
+    esac
+  done
+  info "UPGRADE=$UPGRADE: уже развёрнутые программы будут обновлены, если байткод в сети отличается от локальной сборки"
+fi
 while read -r name address; do
   if solana account "$address" --url "$RPC_URL" >/dev/null 2>&1; then
-    ok "$name уже отвечает на $address"
+    if upgrade_requested "$name"; then
+      so="$ARTIFACTS/$name.so"
+      [ -f "$so" ] || die "UPGRADE=$name, но нет локальной сборки $so: соберите 'anchor build --no-idl' или уберите $name из UPGRADE"
+      report="$(estimator upgrade-state --rpc "$RPC_URL" --program "$name:$address:$so" 2>&1)" || die "UPGRADE=$name: состояние программы в сети не прочиталось:
+$report"
+      state="$(printf '%s\n' "$report" | awk '/^state:/{print $2}')"
+      case "$state" in
+        same)
+          ok "$name уже в сети, байткод совпадает с $so — upgrade не нужен" ;;
+        different)
+          info "⇪ $name уже в сети, но байткод отличается от $so — будет upgrade (ёмкость в сети не уменьшается: загрузчик умеет только расширять ProgramData)"
+          UPGRADES+=("$name $address") ;;
+        *)
+          die "UPGRADE=$name: не понял состояние '$state' (ожидалось same|different):
+$report" ;;
+      esac
+    else
+      ok "$name уже отвечает на $address"
+    fi
   else
     echo "   ✗ $name отсутствует: $address"
     MISSING+=("$name $address")
@@ -137,11 +199,19 @@ for p in registry['programs']:
     print(p['name'], p['address'])
 PY
 )
-[ "${#MISSING[@]}" -gt 0 ] || { step "готово"; echo "   Все выбранные программы уже в сети — деплоить нечего."; python3 "$PROBE" "$RPC_URL" || true; exit 0; }
-echo "   К деплою: ${#MISSING[@]}"
+if [ "${#MISSING[@]}" -eq 0 ] && [ "${#UPGRADES[@]}" -eq 0 ]; then
+  step "готово"; echo "   Все выбранные программы уже в сети — деплоить нечего."
+  python3 "$PROBE" "$RPC_URL" || true; exit 0
+fi
+[ "${#MISSING[@]}" -eq 0 ] || echo "   К деплою: ${#MISSING[@]}"
+[ "${#UPGRADES[@]}" -eq 0 ] || echo "   К обновлению: ${#UPGRADES[@]}"
 
 step "4/7 Ключи программ и собранные .so"
 TO_DEPLOY=()
+# Оба цикла под защитой длины массива: в bash 3.2 (macOS) `"${arr[@]}"` у пустого
+# массива при `set -u` — ошибка «unbound variable» (исправлено только в 4.4), а
+# после появления UPGRADE возможен запуск без единой отсутствующей программы.
+if [ "${#MISSING[@]}" -gt 0 ]; then
 for entry in "${MISSING[@]}"; do
   name="${entry%% *}"; address="${entry##* }"
   so="$ARTIFACTS/$name.so"
@@ -161,8 +231,33 @@ for entry in "${MISSING[@]}"; do
    и Anchor отвергнет каждый вызов (DeclaredProgramIdMismatch). Соберите локально: 'anchor build --no-idl',
    положив свои target/deploy/$name-keypair.json на место — тогда адрес в бинарнике совпадёт."
   ok "$name: $so + ключ, и адрес действительно зашит в программу"
-  TO_DEPLOY+=("$name $address $so $keypair")
+  TO_DEPLOY+=("$name $address $so $keypair new")
 done
+fi
+
+# Обновление уже развёрнутой программы: ключ программы не нужен — аккаунт создан,
+# финальную транзакцию подписывает upgrade authority (тот же ключ оператора).
+# Если файл ключа есть, он всё равно сверяется с объявленным адресом.
+if [ "${#UPGRADES[@]}" -gt 0 ]; then
+for entry in "${UPGRADES[@]}"; do
+  name="${entry%% *}"; address="${entry##* }"
+  so="$ARTIFACTS/$name.so"
+  keypair="$ARTIFACTS/$name-keypair.json"
+  [ -f "$so" ] || die "обновление $name: нет собранной программы $so (соберите 'anchor build --no-idl')"
+  if [ -f "$keypair" ]; then
+    actual="$(solana address -k "$keypair" 2>/dev/null)" || die "ключ программы $keypair не читается"
+    [ "$actual" = "$address" ] || die "ключ $keypair принадлежит адресу $actual, а объявлен $address — обновление в чужой адрес запрещено"
+    program_id_arg="$keypair"
+  else
+    program_id_arg="$address"
+  fi
+  verify_so_id "$so" "$address" || die "в собранной программе $so нет объявленного адреса $address.
+   Так бывает, когда .so взят из CI-артефакта: сборка в CI переписывает declare_id! на временные ключи раннера,
+   и Anchor отвергнет каждый вызов (DeclaredProgramIdMismatch). Соберите локально: 'anchor build --no-idl'."
+  ok "$name: $so, upgrade поверх $address (ключ программы: ${program_id_arg})"
+  TO_DEPLOY+=("$name $address $so $program_id_arg upgrade")
+done
+fi
 
 step "5/7 Ёмкость программ и баланс до первой транзакции"
 PLAN_ARGS=()
@@ -172,6 +267,11 @@ for entry in "${TO_DEPLOY[@]}"; do
 done
 echo "   rent и комиссии берутся только из RPC; политика: $POLICY_LABEL;"
 echo "   резерв оператора $OPERATOR_RESERVE_SOL SOL и резерв комиссий $DEPLOY_FEE_RESERVE_SOL SOL — отдельными строками"
+if [ "${#UPGRADES[@]}" -gt 0 ]; then
+  echo "   среди ${#TO_DEPLOY[@]} программ ${#UPGRADES[@]} — обновление уже развёрнутых:"
+  echo "   для них таблица считает полную аренду буфера (столько нужно иметь на ключе на время транзакции);"
+  echo "   загрузчик вернёт плательщику всё, что не уйдёт в ренту ProgramData, — постоянная доплата это разница, а не вся сумма"
+fi
 estimator plan --rpc "$RPC_URL" --expect-genesis "$DEVNET_GENESIS_HASH" --payer "$AUTHORITY_PUBKEY" \
   --operator-reserve-sol "$OPERATOR_RESERVE_SOL" --fee-reserve-sol "$DEPLOY_FEE_RESERVE_SOL" \
   "${PLAN_ARGS[@]}" \
@@ -186,7 +286,9 @@ if [ "$APPLY" != 1 ]; then
   echo "   сухой прогон, транзакций не будет. Команды, которые выполнились бы:"
   for entry in "${TO_DEPLOY[@]}"; do
     set -- $entry
+    kind="${5:-new}"
     MAXLEN="$(estimator max-len --so "$3")" || die "не удалось вычислить max-len для $1"
+    if [ "$kind" = "upgrade" ]; then echo "   upgrade уже развёрнутой программы (ёмкость в сети не уменьшится):"; fi
     echo "   solana program deploy --url $RPC_URL --keypair $AUTHORITY_KEYPAIR --program-id $4 --max-len $MAXLEN $3"
   done
   echo "   повторите с --apply, чтобы выполнить"
@@ -194,15 +296,39 @@ if [ "$APPLY" != 1 ]; then
 fi
 for entry in "${TO_DEPLOY[@]}"; do
   set -- $entry
+  kind="${5:-new}"
   MAXLEN="$(estimator max-len --so "$3")" || die "не удалось вычислить max-len для $1"
-  echo "   деплой $1 → $2 (max-len $MAXLEN)"
+  if [ "$kind" = "upgrade" ]; then
+    echo "   upgrade $1 → $2 (max-len $MAXLEN)"
+  else
+    echo "   деплой $1 → $2 (max-len $MAXLEN)"
+  fi
   solana program deploy --url "$RPC_URL" --keypair "$AUTHORITY_KEYPAIR" --program-id "$4" --max-len "$MAXLEN" "$3" \
     || die "деплой $1 не прошёл: смотрите вывод выше (частая причина — не хватает SOL на аренду).
-   Повторный запуск безопасен: уже развёрнутые программы пропускаются. Недогруженный buffer скрипт НЕ закрывает —
-   он будет показан в шаге 5 (seed phrase буфера CLI печатает выше; решение — за владельцем)."
+   Повторный запуск безопасен: уже развёрнутые программы пропускаются, а совпавшие по байткоду — не обновляются.
+   Недогруженный buffer скрипт НЕ закрывает — он будет показан в шаге 5
+   (seed phrase буфера CLI печатает выше; решение — за владельцем)."
   ok "$1 задеплоен"
-  estimator verify-deployed --rpc "$RPC_URL" --program "$1:$2:$3" --max-len "$MAXLEN" --authority "$AUTHORITY_PUBKEY" \
-    || die "$1 задеплоен, но состояние в сети не сошлось с ожидаемым (причина выше): дальше не идём"
+  if [ "$kind" = "upgrade" ]; then
+    # Ёмкость после upgrade не равна policy-значению: ProgramData уменьшать нельзя,
+    # а CLI расширяет её минимум на 10 KiB (SIMD-0431). Поэтому сверяемся с тем,
+    # что реально в сети: байткод совпал, authority наша, ёмкости хватает.
+    report="$(estimator upgrade-state --rpc "$RPC_URL" --program "$1:$2:$3" 2>&1)" \
+      || die "$1 обновлён, но состояние в сети не прочиталось:
+$report"
+    ustate="$(printf '%s\n' "$report" | awk '/^state:/{print $2}')"
+    capacity="$(printf '%s\n' "$report" | awk '/^capacity:/{print $2}')"
+    uauth="$(printf '%s\n' "$report" | awk '/^authority:/{print $2}')"
+    [ "$ustate" = "same" ] || die "$1 обновлён, но байткод в сети всё ещё не совпадает с $3 — код §3.8 на chain не уехал"
+    [ "$uauth" = "$AUTHORITY_PUBKEY" ] || die "$1: upgrade authority в сети $uauth, ожидалась $AUTHORITY_PUBKEY"
+    case "$capacity" in ''|*[!0-9]*) die "$1: ёмкость ProgramData не прочиталась ('$capacity')" ;; esac
+    [ "$capacity" -ge "$MAXLEN" ] || die "$1: ёмкость ProgramData $capacity Б меньше max-len $MAXLEN"
+    estimator verify-deployed --rpc "$RPC_URL" --program "$1:$2:$3" --max-len "$capacity" --authority "$AUTHORITY_PUBKEY" \
+      || die "$1 обновлён, но состояние в сети не сошлось с ожидаемым (причина выше): дальше не идём"
+  else
+    estimator verify-deployed --rpc "$RPC_URL" --program "$1:$2:$3" --max-len "$MAXLEN" --authority "$AUTHORITY_PUBKEY" \
+      || die "$1 задеплоен, но состояние в сети не сошлось с ожидаемым (причина выше): дальше не идём"
+  fi
 done
 
 step "7/7 Проверка после деплоя"

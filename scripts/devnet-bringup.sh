@@ -42,6 +42,9 @@
 # Переменные окружения:
 #   RPC_URL, AUTHORITY_KEYPAIR, ARTIFACTS, BACKEND_URL, ADMIN_TOKEN, MIN_SOL,
 #   PROGRAM_MAX_LEN_POLICY, PROGRAM_MAX_LEN_HEADROOM_PERCENT,
+#   UPGRADE=aof_core,aof_market|all — обновить уже развёрнутые программы, у которых
+#     байткод отличается от локальной сборки (без этого шаг 4 пропускает их: новый
+#     код остался бы только в репозитории);
 #   OPERATOR_RESERVE_SOL (по умолчанию MIN_SOL), DEPLOY_FEE_RESERVE_SOL (по умолчанию 0.1),
 #   COLLECTOR_MINTS,
 #   SKIP=build,deploy,config,mints,caps,craft,mechanics,market,mining,collectors,report
@@ -246,7 +249,7 @@ else
   fi
 fi
 
-step "4/10 Деплой недостающих программ"
+step "4/10 Деплой недостающих программ и обновление изменившихся"
 if skipped deploy; then
   info "деплой пропущен (SKIP=deploy)"
 elif [ "$APPLY" = 1 ]; then

@@ -622,6 +622,44 @@ class Verification(unittest.TestCase):
             self.assertEqual(code, est.EXIT_VERIFY)
             self.assertIn("НЕ совпадает", err)
 
+    def upgrade_state(self, rpc):
+        return run_main(["upgrade-state", "--program", self.arg], rpc.url)
+
+    def test_upgrade_state_reports_same_and_different(self):
+        self.deploy_state()
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+            self.assertEqual(code, 0, err)
+            self.assertIn("state: same", out)
+            self.assertIn("capacity: 20000", out)
+            self.assertIn(f"authority: {PAYER}", out)
+        self.deploy_state(corrupt=True)
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+            self.assertEqual(code, 0, err)
+            self.assertIn("state: different", out)
+
+    def test_upgrade_state_ignores_a_larger_capacity_but_reports_the_authority(self):
+        # уменьшить ProgramData нельзя, а CLI при upgrade расширяет её сам (минимум 10 KiB):
+        # «ёмкость больше policy» — не повод отказывать, а вот чужая authority — повод.
+        self.deploy_state(max_len=40_000)
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+        self.assertEqual(code, 0, err)
+        self.assertIn("state: same", out)
+        self.assertIn("capacity: 40000", out)
+        self.deploy_state(authority=ADDRESSES["aof_market"])
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+        self.assertEqual(code, 0, err)
+        self.assertIn(f"authority: {ADDRESSES['aof_market']}", out)
+
+    def test_upgrade_state_refuses_when_there_is_nothing_to_upgrade(self):
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, _, err = self.upgrade_state(rpc)
+            self.assertEqual(code, est.EXIT_VERIFY)
+            self.assertIn("не найден", err)
+
     def test_verify_deployed_rejects_a_foreign_owner_and_non_executable(self):
         info = {"lamports": 1, "owner": ADDRESSES["aof_market"], "executable": True,
                 "data": struct.pack("<I", 2) + b"\x01" * 32}

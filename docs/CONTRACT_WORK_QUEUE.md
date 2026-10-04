@@ -17,9 +17,11 @@
 `cancel_sell_order_v2`, `match_resource_orders_v2`, `buy_lottery_ticket(max_price)`,
 `reset_for_rebirth`, `transfer_tool`) есть в `aof_backend/src/idl/aof_core.json`,
 а строки зонда `scripts/devnet-program-probe.py` для них читаются из IDL
-репозитория. Что сделать: `PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet
-scripts/devnet-bringup.sh --apply`, затем проверить байткод (см. «Проверка
-деплоя» ниже).
+репозитория. Что сделать: `UPGRADE=aof_core,aof_market PROGRAM_MAX_LEN_POLICY=exact
+AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply` (`UPGRADE` нужен потому,
+что `aof_core`/`aof_market` уже развёрнуты: без него деплой честно пропускает
+существующий аккаунт, и новый байткод не уезжает), затем проверить байткод
+(см. «Проверка деплоя» ниже).
 
 ## §3.3 Сессионные ключи: единственная механика, закрытая в коде
 
@@ -153,6 +155,11 @@ NFT-инструментами, передача владения — `transfer_
 ```sh
 # 1) сборка и деплой (ключи программ — на машине владельца)
 PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply
+
+# 1б) уже развёрнутые программы: без UPGRADE деплой их пропускает, а новый код
+#     (например, §3.8 use_flask/exchange_data_energy) остаётся только в репозитории.
+#     Скрипт сам сверяет байткод в сети с локальным .so и обновляет только отличающееся.
+UPGRADE=aof_core PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply
 
 # 2) доказательство, что в сети лежит байткод из этого репозитория
 scripts/verify-programs.sh devnet <authority-pubkey> target/deploy --require-bytecode

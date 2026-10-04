@@ -259,8 +259,9 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
             row(title, "ждёт деплоя",
                 f"инструкция {'/'.join(present)} есть в IDL репозитория, маршрут {route} собирает транзакцию; "
                 "сеть не подтверждает версию байткода",
-                "собрать и задеплоить aof_core (PROGRAM_MAX_LEN_POLICY=exact "
-                "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply), затем "
+                "собрать и доставить новый байткод: UPGRADE=aof_core "
+                "PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply "
+                "(уже развёрнутую программу деплой пропускает — нужен upgrade), затем "
                 "scripts/verify-programs.sh devnet <authority> target/deploy --require-bytecode")
         else:
             row(title, "выключено",

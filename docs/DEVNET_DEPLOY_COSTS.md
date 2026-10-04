@@ -165,6 +165,15 @@ PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/deploy-devnet.sh
 * При **upgrade** (`solana program deploy` поверх существующей программы) CLI ≥ 2.1 по умолчанию сам расширяет
   ProgramData, если новый `.so` не помещается (`auto_extend`, отключается `--no-auto-extend`; в `v1.18.26` его нет).
   Поэтому `exact` на devnet — рабочая политика: рост оплачивается в момент роста, по тогдашней ставке.
+* **Как это делает `deploy-devnet.sh`.** Обычный запуск трогает только отсутствующие программы — существующий
+  аккаунт для него доказательство «уже готово», поэтому новый код в нём сам не появится. Обновление включается
+  явно: `UPGRADE=aof_core` (или `UPGRADE=all`). Скрипт сначала читает байткод из сети
+  (`devnet-deploy-estimator.py upgrade-state`, read-only) и вызывает `solana program deploy` только если sha256
+  отличается от локального `.so`; совпавшая программа не трогается вовсе. Ключ программы для upgrade не нужен
+  (аккаунт уже создан, подписывает upgrade authority), но `--max-len` передаётся как обычно. Пост-проверка для
+  upgrade идёт по **фактической** ёмкости из сети (`verify-deployed --max-len <capacity>`), потому что ёмкость
+  уменьшить нельзя, а авто-расширение добавляет минимум 10 KiB — сравнивать её с policy-значением было бы неверно.
+  Полная проверка релиза — по-прежнему `scripts/verify-programs.sh devnet <authority> target/deploy --require-bytecode`.
 
 ## 6. Прерванные деплои и buffer-аккаунты
 
