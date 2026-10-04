@@ -4,6 +4,11 @@
  * оператора. Проверяется офлайн, на временных файлах: скрипт трогает секреты,
  * поэтому его контракт (что печатается, что пишется, какие коды выхода) должен
  * быть зафиксирован, а не «проверен руками один раз».
+ *
+ * Поведенческие тесты запускают сам скрипт, а он берёт bs58/@solana/web3.js из
+ * aof_backend/node_modules. В CI у job'а readiness этих зависимостей нет (npm ci
+ * там не выполняется), поэтому такие тесты честно пропускаются, а статический
+ * контракт проверяется всегда.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,8 +20,21 @@ const { spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '../..');
 const SCRIPT = path.join(ROOT, 'scripts/set-backend-authority.mjs');
 const require_ = require('node:module').createRequire(path.join(ROOT, 'aof_backend/package.json'));
-const bs58 = require_('bs58');
-const { Keypair } = require_('@solana/web3.js');
+
+let bs58 = null;
+let Keypair = null;
+try {
+  bs58 = require_('bs58');
+  ({ Keypair } = require_('@solana/web3.js'));
+} catch {
+  // Нет зависимостей backend'а — поведенческие тесты ниже пропускаются.
+}
+
+function skipWithoutDeps(t) {
+  if (bs58 && Keypair) return false;
+  t.skip('нужен aof_backend/node_modules (bs58, @solana/web3.js) — в CI readiness этих зависимостей нет');
+  return true;
+}
 
 function tempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'aof-auth-'));
@@ -38,7 +56,19 @@ function run(args) {
   return spawnSync(process.execPath, [SCRIPT, ...args], { cwd: ROOT, encoding: 'utf8' });
 }
 
-test('расхождение authority и ключа оператора: --check называет его и выходит с кодом 1', () => {
+test('статический контракт скрипта: ключи не печатаются, режим hot, обе команды', () => {
+  const source = fs.readFileSync(SCRIPT, 'utf8');
+  for (const needle of ['--check', '--apply', '--backend-env', 'AUTHORITY_SECRET_KEY', 'AUTHORITY_PUBKEY',
+                        'AUTHORITY_MODE', 'hot', 'РАСХОЖДЕНИЕ', 'set-backend-authority.mjs --apply']) {
+    assert.ok(source.includes(needle), `в скрипте нет ${needle}`);
+  }
+  assert.ok(!/console\.log\([^)]*(secret|secretKey)/i.test(source),
+    'скрипт не должен печатать секрет (только pubkey)');
+  assert.ok(!/console\.(log|error)\([^)]*\.secretKey/i.test(source), 'утечка секрета в вывод');
+});
+
+test('расхождение authority и ключа оператора: --check называет его и выходит с кодом 1', (t) => {
+  if (skipWithoutDeps(t)) return;
   const dir = tempDir();
   const operator = Keypair.generate();
   const backend = Keypair.generate();
@@ -52,7 +82,8 @@ test('расхождение authority и ключа оператора: --check
   assert.ok(done.stdout.includes('set-backend-authority.mjs --apply'), 'нет команды исправления');
 });
 
-test('--apply записывает base58-секрет оператора, сохраняя остальные строки, и не печатает секрет', () => {
+test('--apply записывает base58-секрет оператора, сохраняя остальные строки, и не печатает секрет', (t) => {
+  if (skipWithoutDeps(t)) return;
   const dir = tempDir();
   const operator = Keypair.generate();
   const backend = Keypair.generate();
@@ -82,7 +113,8 @@ test('--apply записывает base58-секрет оператора, со�
   assert.ok(again.stdout.includes('совпадают'));
 });
 
-test('--quiet молчит при совпадении и молчит при расхождении (код выхода — сигнал)', () => {
+test('--quiet молчит при совпадении и молчит при расхождении (код выхода — сигнал)', (t) => {
+  if (skipWithoutDeps(t)) return;
   const dir = tempDir();
   const operator = Keypair.generate();
   const keypair = writeKeypair(dir, 'operator.json', operator);
@@ -96,7 +128,8 @@ test('--quiet молчит при совпадении и молчит при р
   assert.equal(bad.stdout.trim(), '');
 });
 
-test('негодный вход отказывает понятно: нет файла, не keypair, нет .env, лишний аргумент', () => {
+test('негодный вход отказывает понятно: нет файла, не keypair, нет .env, лишний аргумент', (t) => {
+  if (skipWithoutDeps(t)) return;
   const dir = tempDir();
   const operator = Keypair.generate();
   const keypair = writeKeypair(dir, 'operator.json', operator);
@@ -121,7 +154,8 @@ test('негодный вход отказывает понятно: нет фа
   assert.ok(badArg.stderr.includes('неизвестный аргумент'));
 });
 
-test('unreadable секрет в .env не выдаётся за совпадение', () => {
+test('unreadable секрет в .env не выдаётся за совпадение', (t) => {
+  if (skipWithoutDeps(t)) return;
   const dir = tempDir();
   const operator = Keypair.generate();
   const keypair = writeKeypair(dir, 'operator.json', operator);
