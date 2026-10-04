@@ -208,7 +208,8 @@ if [ "$NEED_BACKEND" = 1 ]; then
     || die "backend не в hot-режиме подписи (mode=$(jq -r '.authority.mode' "$PREFLIGHT_BODY"), canSign=$(jq -r '.authority.canSign' "$PREFLIGHT_BODY")): Config, минты и тумблер подписываются его ключом. Запустите backend с AUTHORITY_MODE=hot и AUTHORITY_SECRET_KEY (read-only для bootstrap не годится)"
   BACKEND_AUTHORITY="$(jq -r '.authority.pubkey' "$PREFLIGHT_BODY")"
   [ "$BACKEND_AUTHORITY" = "$AUTHORITY_PUBKEY" ] \
-    || die "authority backend'а $BACKEND_AUTHORITY не совпадает с ключом оператора $AUTHORITY_PUBKEY (AUTHORITY_KEYPAIR): Config привязывается к upgrade authority, и деплой одним ключом с инициализацией другим закончился бы отказом ПОСЛЕ траты SOL"
+    || die "authority backend'а $BACKEND_AUTHORITY не совпадает с ключом оператора $AUTHORITY_PUBKEY (AUTHORITY_KEYPAIR): Config привязывается к upgrade authority, и деплой одним ключом с инициализацией другим закончился бы отказом ПОСЛЕ траты SOL.
+   Выровнять (в .env попадёт секрет ключа оператора, в вывод — только pubkey): node scripts/set-backend-authority.mjs --apply, затем перезапустить backend"
   BACKEND_GENESIS="$(jq -r '.rpc.genesisHash' "$PREFLIGHT_BODY")"
   [ "$BACKEND_GENESIS" = "$DEVNET_GENESIS_HASH" ] \
     || die "RPC backend'а отвечает genesis $BACKEND_GENESIS — это не devnet ($DEVNET_GENESIS_HASH). mainnet этим скриптом не включается"

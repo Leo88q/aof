@@ -486,6 +486,15 @@ cmd_up() {
   if [ "$SKIP_BACKEND" != "1" ]; then
     ensure_backend_env
     prepare_backend_db
+    # Ключ backend'а обязан совпадать с ключом оператора: Config привязывается к
+    # upgrade authority, и на чистом клоне dev-local.sh генерирует throwaway-ключ,
+    # которым ни одна девнет-механика подписаться не сможет. Предупреждаем здесь,
+    # а не посреди включения девнета.
+    if [ -f "$ROOT/solana/keys/aof-authority-devnet.json" ] && [ -f "$BE/.env" ]; then
+      if ! node "$ROOT/scripts/set-backend-authority.mjs" --quiet; then
+        warn "authority backend'а ≠ ключ оператора (solana/keys/aof-authority-devnet.json): подписывающие шаги девнета откажут. Выровнять: node scripts/set-backend-authority.mjs --apply, затем перезапустить."
+      fi
+    fi
     local rpc_for_backend rpc_source
     rpc_for_backend="$(backend_rpc_url)"
     if [ -n "${RPC_URL:-}" ] && [ "${RPC_URL:-}" != "$(sed -n 's/^RPC_URL=//p' "$BE/.env" 2>/dev/null | head -1)" ]; then

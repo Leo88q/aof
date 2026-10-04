@@ -179,6 +179,34 @@ curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
 backend». «Любой 404 — ок» он не принимает намеренно: иначе чужой сервис был бы неотличим от
 нашего, и `initConfig`/минты подписывались бы неизвестно чем.
 
+## Authority backend'а не совпадает с ключом оператора
+
+Симптом (шаг 1/10 включения девнета):
+
+```
+ОТКАЗ: authority backend'а GE6jwnX8… не совпадает с ключом оператора C8MS1G3g7… (AUTHORITY_KEYPAIR)
+```
+
+Это правильный отказ: `Config` в aof_core привязывается к upgrade authority программы, а подписывающие
+маршруты backend'а идут ключом `AUTHORITY_SECRET_KEY`. На чистом клоне `dev-local.sh up` создаёт
+`aof_backend/.env` с throwaway-ключом — он не имеет отношения к программам, которые в девнете
+принадлежат операторскому `solana/keys/aof-authority-devnet.json`.
+
+```bash
+# что сейчас (секрет не печатается, только pubkey)
+node scripts/set-backend-authority.mjs
+
+# выровнять: в .env запишется base58-секрет ключа оператора (AUTHORITY_SECRET_KEY,
+# AUTHORITY_PUBKEY, AUTHORITY_MODE=hot); остальные строки не меняются
+node scripts/set-backend-authority.mjs --apply
+
+# перезапустить backend, чтобы он прочитал ключ
+bash scripts/dev-local.sh up
+```
+
+Коды выхода: `0` — совпадают, `1` — расходятся (годится для проверки в скриптах), `2` — негодный вход.
+`dev-local.sh up` сам предупреждает о расхождении, если ключ оператора лежит на месте.
+
 ## Если всё равно падает
 
 1. Убедитесь что `rustup show` показывает `active toolchain: 1.89.0`
