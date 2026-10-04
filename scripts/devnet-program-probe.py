@@ -31,6 +31,7 @@ import hashlib
 import json
 import pathlib
 import sys
+import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -69,6 +70,15 @@ def b58(raw: bytes) -> str:
 def discriminator(account_name: str) -> bytes:
     """Anchor: первые 8 байт sha256("account:<ИмяСтруктуры>")."""
     return hashlib.sha256(f"account:{account_name}".encode()).digest()[:8]
+
+
+def redact_url(url: str) -> str:
+    """В отчёте только схема и хост: в пути/query провайдера бывает API-ключ.
+
+    Зонд печатают в терминал, в issue и в CI-логи, поэтому ключ не должен
+    попадать ни в текст, ни в --json, ни в поле report["rpc"]."""
+    parts = urllib.parse.urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc.rsplit('@', 1)[-1]}" if parts.netloc else "<rpc>"
 
 
 def call(rpc: str, method: str, params: list) -> dict:
@@ -376,13 +386,13 @@ def main(argv: list[str]) -> int:
     rpc = positional[0] if positional else DEFAULT_RPC
     registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
 
-    report: dict = {"rpc": rpc, "network": registry.get("network"), "programs": [], "mechanics": []}
+    report: dict = {"rpc": redact_url(rpc), "network": registry.get("network"), "programs": [], "mechanics": []}
 
     def say(text: str = "") -> None:
         if not as_json:
             print(text)
 
-    say(f"RPC: {rpc}")
+    say(f"RPC: {redact_url(rpc)}")
     say(f"Реестр: network={registry.get('network')} (в репозитории это только адреса, не доказательство деплоя)")
     try:
         genesis = call(rpc, "getGenesisHash", []).get("result")
@@ -390,6 +400,8 @@ def main(argv: list[str]) -> int:
         report["genesis"] = genesis
     except Exception as exc:  # сеть недоступна — это тоже ответ
         say(f"genesis: не прочитан ({exc})")
+        if any(ord(ch) > 127 for ch in rpc):
+            say("причина похожа на плейсхолдер вместо api-key: в адресе есть не-ASCII символы")
         if as_json:
             report["error"] = f"rpc unavailable: {exc}"
             print(json.dumps(report, ensure_ascii=False, indent=2))

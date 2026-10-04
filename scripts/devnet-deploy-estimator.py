@@ -323,10 +323,23 @@ class Rpc:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
         except urllib.error.HTTPError as exc:
-            raise EstimatorError(f"RPC {where} ответил HTTP {exc.code} на {method}", EXIT_RPC)
+            hint = ""
+            if exc.code in (401, 403):
+                hint = " — провайдер отклонил доступ: проверьте ключ в RPC_URL (?api-key=…)"
+            elif exc.code == 429:
+                hint = " — слишком много запросов: публичный api.devnet.solana.com не выдерживает прогон, возьмите RPC с ключом провайдера"
+            raise EstimatorError(f"RPC {where} ответил HTTP {exc.code} на {method}{hint}", EXIT_RPC)
         except (urllib.error.URLError, OSError, ValueError) as exc:
             reason = getattr(exc, "reason", exc)
-            raise EstimatorError(f"RPC {where} недоступен ({type(reason).__name__}) на {method}", EXIT_RPC)
+            detail = str(reason)[:160] or type(reason).__name__
+            # Частая ошибка: в URL остался плейсхолдер («ВАШ_КЛЮЧ», «<key>»). urllib
+            # падает на первом же не-ASCII символе и отдаёт причину строкой, поэтому
+            # без этой проверки отказ читается как «недоступен (str)» и не помогает.
+            if any(ord(ch) > 127 for ch in self.url):
+                raise EstimatorError(
+                    f"RPC {where} ({detail}): в адресе есть не-ASCII символы — похоже, вместо api-key остался плейсхолдер. "
+                    "Подставьте настоящий ключ провайдера (ключ в чат не присылайте)", EXIT_RPC)
+            raise EstimatorError(f"RPC {where} недоступен на {method}: {detail}", EXIT_RPC)
         try:
             payload = json.loads(raw)
         except ValueError:

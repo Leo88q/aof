@@ -159,7 +159,13 @@ test('обновление уже развёрнутой программы во
   // 5) пост-проверка upgrade — по фактической ёмкости (уменьшить её нельзя, авто-расширение ≥ 10 KiB)
   assert.match(source, /--max-len "\$capacity"/, 'upgrade нельзя проверять по policy-значению max-len');
   assert.match(source, /upgrade authority в сети/);
-  // 6) документация называет ту же команду
+  // 6) ключ провайдера не печатается: ни в отчёте зонда, ни в отчёте оценщика
+  const probe = read('scripts/devnet-program-probe.py');
+  assert.match(estimator, /def redact_url\(url: str\) -> str:/);
+  assert.match(probe, /def redact_url\(url: str\) -> str:/);
+  assert.match(probe, /report: dict = \{"rpc": redact_url\(rpc\)/);
+  assert.match(probe, /say\(f"RPC: \{redact_url\(rpc\)\}"\)/);
+  // 7) документация называет ту же команду
   const docs = read('docs/DEVNET_DEPLOY_COSTS.md');
   assert.ok(docs.includes('UPGRADE=aof_core'), 'в описании стоимости нет команды обновления');
   assert.match(read('docs/CONTRACT_WORK_QUEUE.md'), /UPGRADE=aof_core/);

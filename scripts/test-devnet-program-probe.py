@@ -333,12 +333,34 @@ def check_filters_and_encoding() -> None:
     check(probe.LISTING_ACTIVE_OFFSET == 80, "смещение active в Listing = 80 (проверено по struct в state.rs)")
 
 
+def check_url_redaction_and_mechanics_rows() -> None:
+    """Ключ провайдера не должен попадать ни в текст отчёта, ни в --json.
+
+    Зонд печатают в терминал, в issue и в CI-логи; URL с ?api-key=… — обычная
+    форма записи RPC у Helius и подобных. Проверяем и redact_url, и report["rpc"].
+    """
+    keyed = "https://devnet.helius-rpc.com/?api-key=SECRET123"
+    check(probe.redact_url(keyed) == "https://devnet.helius-rpc.com",
+          "redact_url оставляет только схему и хост")
+    check("SECRET123" not in probe.redact_url(keyed), "ключ не попадает в отчёт")
+    check(probe.redact_url("https://user:pass@rpc.example.com/path?k=v") == "https://rpc.example.com",
+          "креденшелы в userinfo тоже скрываются")
+    fake = FakeRpc({})
+    probe.mechanics("https://devnet.helius-rpc.com/?api-key=SECRET123", REGISTRY, call_fn=fake)
+    # механики — читающая часть: строка про байткод не должна звучать как «включено»
+    rows = rows_for(fake)
+    for name in ("Фляги: применение", "Обмен ресурсов на энергию"):
+        check(rows.get(name, {}).get("state") == "ждёт деплоя",
+              f"{name}: IDL репозитория не доказывает версию байткода в сети")
+
+
 if __name__ == "__main__":
     scenario_empty()
     scenario_configured_partially()
     scenario_everything_on()
     scenario_contract_blocked_rows()
     check_filters_and_encoding()
+    check_url_redaction_and_mechanics_rows()
     if failures:
         print(f"\nПРОВАЛ: {len(failures)} проверк(и)")
         for message in failures:

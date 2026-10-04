@@ -556,6 +556,31 @@ class RpcFailures(unittest.TestCase):
         self.assertIn("недоступен", err)
         self.assertEqual(out, "")
 
+    def test_provider_rejecting_the_key_is_named(self):
+        # Реальный случай: ключ провайдера неверен/не подставлен — 401/403.
+        for status in ("http401", "http403"):
+            code, out, err = self.run_with(broken={"getMinimumBalanceForRentExemption": status})
+            self.assertEqual(code, est.EXIT_RPC, err)
+            self.assertIn(f"HTTP {status[4:]}", err)
+            self.assertIn("ключ", err)
+            self.assertNotIn("RPC_URL?", err)  # ключ никогда не печатается
+            self.assertEqual(out, "")
+
+    def test_rate_limited_public_rpc_gets_the_provider_hint(self):
+        code, _, err = self.run_with(broken={"getMinimumBalanceForRentExemption": "http429"})
+        self.assertEqual(code, est.EXIT_RPC)
+        self.assertIn("HTTP 429", err)
+        self.assertIn("RPC с ключом провайдера", err)
+
+    def test_a_placeholder_left_in_the_url_is_named_as_such(self):
+        # Именно так выглядел отказ на macOS: https://…/?api-key=ВАШ_КЛЮЧ →
+        # «недоступен (str)», из чего причина не читалась.
+        code, out, err = run_main(self.args, "https://devnet.helius-rpc.com/?api-key=ВАШ_КЛЮЧ")
+        self.assertEqual(code, est.EXIT_RPC, err)
+        self.assertIn("не-ASCII", err)
+        self.assertIn("плейсхолдер", err)
+        self.assertEqual(out, "")
+
     def test_wrong_scheme_is_a_refusal(self):
         code, _, err = run_main(self.args, "ftp://example.invalid")
         self.assertEqual(code, est.EXIT_RPC)
