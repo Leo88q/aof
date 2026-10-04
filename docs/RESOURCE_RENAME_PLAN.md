@@ -15,7 +15,7 @@
 |---|---:|---:|---|
 | Rust (aof-core/src, programs/*/src) | 137 | 0 | ✅ чисто |
 | IDL и TS-типы (aof_backend/src/idl) | 7 | 0 | ✅ чисто |
-| Backend (aof_backend/src, aof_backend/scripts) | 178 | 0 | ✅ чисто |
+| Backend (aof_backend/src, aof_backend/scripts) | 179 | 0 | ✅ чисто |
 | Frontend (frontend/src) | 269 | 0 | ✅ чисто |
 | Game (game/) | 72 | 0 | ✅ чисто |
 | Тесты и скрипты (tests, scripts) | 120 | 0 | ✅ чисто |

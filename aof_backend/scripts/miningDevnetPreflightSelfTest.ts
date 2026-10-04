@@ -2,6 +2,11 @@ import { strict as assert } from 'assert';
 import { spawn } from 'child_process';
 import { createServer } from 'http';
 import { once } from 'events';
+import { BorshAccountsCoder } from '@coral-xyz/anchor';
+import BN from 'bn.js';
+import { PublicKey } from '@solana/web3.js';
+import idl from '../src/idl/aof_core.json';
+import { normalizeMiningPreflightAccounts } from '../src/lib/miningPreflightAccounts';
 
 // Local JSON-RPC fixture proves a non-devnet endpoint is rejected before
 // fetching any program account. This never signs or transmits a transaction.
@@ -13,11 +18,57 @@ const server = createServer(async (req, res) => {
   res.end(JSON.stringify({ jsonrpc: '2.0', id: request.id, result: 'not-the-devnet-genesis' }));
 });
 
+async function assertSnakeCaseNormalization() {
+  const coder = new BorshAccountsCoder(idl as any);
+  const zero = PublicKey.default;
+  const circuitMint = new PublicKey(Buffer.alloc(32, 1));
+  const siliconMint = new PublicKey(Buffer.alloc(32, 2));
+  const datasetMint = new PublicKey(Buffer.alloc(32, 3));
+  const neuronMint = new PublicKey(Buffer.alloc(32, 4));
+  const rawConfig = {
+    authority: zero, treasury: zero, data_mint: zero, circuit_mint: circuitMint,
+    silicon_mint: siliconMint, neuron_mint: zero, power_mint: zero, mind_mint: zero,
+    craft_fee: new BN(0), unstake_fee: new BN(0), paused: false, bump: 0,
+    mining_enabled: false, pending_authority: zero, authority_updated_at: new BN(0),
+    operator: zero, guardian: zero, cashout_frozen: false, reserved: new Uint8Array(32),
+  };
+  const rawMaterialMints = {
+    neuron: neuronMint, synapse: zero, signal: zero, model: zero, power: zero,
+    compute: zero, dataset: datasetMint, blue_core: zero, purple_core: zero,
+    red_core: zero, clear_quartz: zero, rose_quartz: zero, amber_quartz: zero,
+    quantum_bit: zero, neural_chip: zero, photon_bit: zero, bio_chip: zero,
+    cryo_fluid: zero, volt_fluid: zero, bio_fluid: zero, nano_fluid: zero,
+    quantum_fluid: zero, soul_core: zero, bump: 0,
+    max_supply: Array.from({ length: 27 }, (_, index) => new BN(index + 1)),
+  };
+  const configBytes = await coder.encode('Config', rawConfig);
+  const materialsBytes = await coder.encode('MaterialMints', rawMaterialMints);
+  const decodedConfig = coder.decode('Config', configBytes) as any;
+  const decodedMaterials = coder.decode('MaterialMints', materialsBytes) as any;
+
+  // This is the important edge: the direct Borsh coder returns the literal
+  // snake_case IDL names, unlike Program's converted account client.
+  assert.equal(decodedConfig.mining_enabled, false);
+  assert.equal(decodedConfig.miningEnabled, undefined);
+  assert.equal(decodedMaterials.max_supply.length, 27);
+  assert.equal(decodedMaterials.maxSupply, undefined);
+
+  const normalized = normalizeMiningPreflightAccounts(decodedConfig, decodedMaterials);
+  assert.equal(normalized.config.miningEnabled, false);
+  assert.equal(normalized.config.circuitMint.toBase58(), circuitMint.toBase58());
+  assert.equal(normalized.config.siliconMint.toBase58(), siliconMint.toBase58());
+  assert.equal(normalized.materialMints.dataset.toBase58(), datasetMint.toBase58());
+  assert.equal(normalized.materialMints.neuron.toBase58(), neuronMint.toBase58());
+  assert.equal(normalized.materialMints.maxSupply.length, 27);
+  assert.equal(normalized.materialMints.maxSupply[9].toString(), '10');
+}
+
 async function main() {
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const port = (server.address() as { port: number }).port;
   try {
+    await assertSnakeCaseNormalization();
     const child = spawn(process.execPath, [require.resolve('ts-node/dist/bin.js'), '--project', 'tsconfig.json', '--transpile-only', 'scripts/miningDevnetPreflight.ts'], {
       cwd: process.cwd(), env: { ...process.env, DEVNET_RPC_URL: `http://127.0.0.1:${port}` },
       stdio: ['ignore', 'pipe', 'pipe'],

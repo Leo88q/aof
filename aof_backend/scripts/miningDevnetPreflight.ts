@@ -8,6 +8,7 @@ import { BorshAccountsCoder } from '@coral-xyz/anchor';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { unpackMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { miningRewardMint, TOOL_RESOURCE_MINT } from '../src/lib/toolResourceMint';
+import { normalizeMiningPreflightAccounts } from '../src/lib/miningPreflightAccounts';
 import idl from '../src/idl/aof_core.json';
 
 // Indices in aof-core::ResourceKind / aof_backend/src/lib/pda.ts::RESOURCE_KIND_ORDER.
@@ -97,11 +98,15 @@ async function preflight() {
       fail('core_config_or_material_registry_missing'); return;
     }
     const coder = new BorshAccountsCoder(idl as any);
-    const cfg = coder.decode('Config', cfgInfo.data) as any;
-    const mm = coder.decode('MaterialMints', mmInfo.data) as any;
+    const rawConfig = coder.decode('Config', cfgInfo.data) as any;
+    const rawMaterialMints = coder.decode('MaterialMints', mmInfo.data) as any;
+    const { config: cfg, materialMints: mm } = normalizeMiningPreflightAccounts(rawConfig, rawMaterialMints);
     report.observations.miningEnabled = cfg.miningEnabled;
-    if (cfg.miningEnabled !== false) fail('mining_already_enabled:pause_before_pilot');
-    if (cfg.paused === true) fail('core_paused');
+    report.observations.paused = cfg.paused;
+    if (typeof cfg.miningEnabled !== 'boolean') fail('mining_flag_unreadable');
+    else if (cfg.miningEnabled) fail('mining_already_enabled:pause_before_pilot');
+    if (typeof cfg.paused !== 'boolean') fail('core_pause_flag_unreadable');
+    else if (cfg.paused) fail('core_paused');
     const byMint = new Map<string, { pubkey: PublicKey; resource: string }>();
     for (const tool of Object.keys(TOOL_RESOURCE_MINT)) {
       const mint = miningRewardMint(tool, cfg, mm);

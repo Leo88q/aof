@@ -70,8 +70,16 @@ RPC URL с API-ключом). Нужен **ops-токен** (`ADMIN_TOKEN`); rea
 программы как `reference-unverified`: это намеренный gate, а не ошибка сети. Не меняйте статус по
 одному лишь ответу `executable`. Сначала подтвердите все шесть ID, upgrade authority и байткод
 локальных `.so` против devnet командой `scripts/verify-programs.sh <RPC_URL> <authority> target/deploy
---require-bytecode`, изучите результат, и только затем фиксируйте реестровую верификацию. Пока оба
-условия не пройдены, шаг 8 должен оставить `Config.mining_enabled=false`.
+--require-bytecode`, изучите результат, и только затем фиксируйте реестровую верификацию.
+
+Отдельно: `CAP_PER_EPOCH` и `caps:init` задают **эпохальный** бюджет `IssuanceCap`, но не lifetime
+потолок `MaterialMints.max_supply`. Новый `MaterialMints` стартует с `u64::MAX` для всех видов;
+для добычи код требует конечный total-supply предел. Значения для `CIRCUIT`, `SILICON`, `DATASET`
+и `NEURON` должен выбрать оператор с учётом уже выпущенного supply, затем установить через
+`POST /admin/config/supply-cap` (`kind`, `maxSupply`). Не считайте успешный `caps:init` доказательством
+того, что lifetime-пределы заданы.
+
+Пока реестр, байткод и конечные лимиты не подтверждены, шаг 8 должен оставить добычу закрытой.
 
 ### Шаг 5 (Config, минты, потолки)
 
