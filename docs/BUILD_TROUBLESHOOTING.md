@@ -130,6 +130,55 @@ anchor build --no-idl
 anchor test --skip-build
 ```
 
+## Порт 8080 занят чужим сервисом: `{"detail":"Not Found"}` вместо ответа backend
+
+Симптом: backend поднялся (`aof-backend started`, `/health` в логе отвечает), а снаружи
+
+```
+curl -sS -i http://localhost:8080/__who_are_you__
+HTTP/1.1 404 Not Found
+server: uvicorn
+{"detail":"Not Found"}
+```
+
+`server: uvicorn` и JSON с полем `detail` — это **не наш backend**: Express отдаёт `Cannot GET …`
+или `{"error": …}`. Причина видна в `lsof`:
+
+```
+lsof -nP -iTCP:8080 -sTCP:LISTEN
+com.docke 18466 zlata … TCP 127.0.0.1:8080 (LISTEN)   # проброс Docker (чужой сервис)
+node      61749 zlata … TCP *:8080 (LISTEN)           # наш backend
+```
+
+На macOS `localhost` — это 127.0.0.1, и запрос уходит в более конкретный bind (контейнер), хотя наш
+backend слушает `*:8080` и жив. Тот же эффект даёт любой чужой процесс, занявший 8080 раньше.
+
+Лечится двумя способами:
+
+```bash
+# 1) не трогая чужой сервис — отдать нашему backend другой порт;
+#    фронт (vite) сам проксирует /api на 127.0.0.1:$BACKEND_PORT
+BACKEND_PORT=8081 bash scripts/dev-local.sh up
+BACKEND_URL=http://127.0.0.1:8081 bash scripts/devnet-bringup.sh --apply
+
+# 2) освободить 8080, если контейнер не нужен:
+docker ps --format '{{.Names}}\t{{.Ports}}' | grep 8080
+docker stop <имя>
+```
+
+Проверка, что перед вами именно наш backend (до любых скриптов):
+
+```bash
+curl -sS -o /dev/null -w 'health=%{http_code}\n' "$BACKEND_URL/health"     # 200
+curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$BACKEND_URL/admin/config/bootstrap-preflight" | head -c 200            # {"kind":"aof.bootstrap-preflight",…}
+```
+
+`devnet-bringup.sh` ловит эту ситуацию сам и называет её: «по адресу … нет
+/admin/config/bootstrap-preflight (HTTP 404): это посторонний сервис на порту или старая сборка
+backend». «Любой 404 — ок» он не принимает намеренно: иначе чужой сервис был бы неотличим от
+нашего, и `initConfig`/минты подписывались бы неизвестно чем.
+
 ## Если всё равно падает
 
 1. Убедитесь что `rustup show` показывает `active toolchain: 1.89.0`
