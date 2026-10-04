@@ -1053,9 +1053,25 @@ test("фляги обещают ровно тот эффект, который �
     "копирайт не должен обещать эффекты фляг, которых в программе нет");
   assert.match(detailCopy, /Цены нет/, "русская версия обязана показывать неизвестную цену");
 
+  // [§3.8] Каталог обязан быть действием, а не витриной: применение фляги и
+  // обмен DATA→энергия идут через живые маршруты, баланс читается из сети, а
+  // неудачное чтение остаётся «неизвестно», а не превращается в ноль.
+  assert.match(page, /api\.tools\.useFlask/, "кнопка применения фляги обязана звать /tools/use-flask");
+  assert.match(page, /api\.resources\.exchangeEnergy/, "обмен обязан звать /resources/exchange-energy");
+  assert.match(page, /api\.energy\.balance/, "баланс энергии читается из сети, а не выдумывается");
+  assert.match(page, /copy\.exchangeSubmit/, "у обмена обязана быть подпись кнопки из каталога");
+  assert.match(page, /copy\.useSubmit/, "у применения фляги обязана быть подпись кнопки из каталога");
+  assert.match(page, /setEnergy\(null\)/, "неудачное чтение энергии обязано оставлять состояние неизвестным");
+
   // Эффект копирайта обязан совпадать с таблицей программы, а не жить сам по себе.
   const constants = read("../aof-core/src/constants.rs");
   assert.match(constants, /pub const FLASK_ENERGY_GAIN: \[u8; 5\] = \[5, 5, 8, 10, ENERGY_CAP\];/);
+  // И та же лестница обязана стоять в UI: цифры на кнопке — не маркетинг.
+  const uiLadder = page.match(/FLASK_ENERGY_GAIN = \[([^\]]+)\]/);
+  const rustLadder = constants.match(/pub const FLASK_ENERGY_GAIN: \[u8; 5\] = \[([^\]]+)\];/);
+  assert.ok(uiLadder && rustLadder, "лестница тиров обязана существовать и в UI, и в программе");
+  const norm = (value: string) => value.split(",").map((part) => part.trim().replace("ENERGY_CAP", "20")).join(",");
+  assert.equal(norm(uiLadder![1]), norm(rustLadder![1]), "лестница тиров в UI разошлась с программой");
 });
 
 test("знак сайта — прибор, а не сеть узлов, и в палитре нет неона", () => {
