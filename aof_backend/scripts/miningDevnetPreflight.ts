@@ -1,6 +1,7 @@
 // READ-ONLY devnet preflight. No signer, transaction, airdrop, keypair or DB.
 // Does not prove bytecode parity: scripts/verify-programs.sh and a smoke run
 // are still mandatory before enabling Config.mining_enabled.
+import 'dotenv/config';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BorshAccountsCoder } from '@coral-xyz/anchor';
@@ -49,7 +50,10 @@ async function preflight() {
   }
   // No hidden mainnet fallback: require both an explicit devnet genesis hash
   // AND the expected core program id, including when using a private RPC.
-  const rpc = process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+  // The umbrella bringup uses RPC_URL; allow a dedicated read-only endpoint to
+  // override it, but never silently fall back to the public RPC when an operator
+  // has already selected a trusted provider for the same devnet run.
+  const rpc = process.env.DEVNET_RPC_URL || process.env.RPC_URL || 'https://api.devnet.solana.com';
   const connection = new Connection(rpc, 'confirmed');
   let genesis: string;
   try { genesis = await withTimeout('genesis', connection.getGenesisHash()); }

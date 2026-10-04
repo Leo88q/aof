@@ -58,6 +58,21 @@ RPC URL с API-ключом). Нужен **ops-токен** (`ADMIN_TOKEN`); rea
 развёрнутые программы не деплоятся, существующий Config не пересоздаётся (шаг 5 пропускает `initConfig.ts`), повторный
 запуск ничего не меняет.
 
+### Шаг 8 (preflight добычи): RPC и честная блокировка реестра
+
+`miningDevnetPreflight.ts` выбирает RPC в таком порядке: `DEVNET_RPC_URL`, затем `RPC_URL`, затем
+публичный devnet endpoint. Он загружает `aof_backend/.env`; в общем запуске `devnet-bringup.sh`
+переменная `RPC_URL` поэтому должна направить и preflight на тот же Helius/частный endpoint, а не
+на публичный RPC, который часто отвечает 429. Для отдельного ручного запуска можно явно задать
+`DEVNET_RPC_URL="$RPC_URL" npm run preflight:mining-devnet` из `aof_backend/`.
+
+Даже при рабочем RPC preflight останется `BLOCKED`, пока `watchtower/addresses.json` помечает
+программы как `reference-unverified`: это намеренный gate, а не ошибка сети. Не меняйте статус по
+одному лишь ответу `executable`. Сначала подтвердите все шесть ID, upgrade authority и байткод
+локальных `.so` против devnet командой `scripts/verify-programs.sh <RPC_URL> <authority> target/deploy
+--require-bytecode`, изучите результат, и только затем фиксируйте реестровую верификацию. Пока оба
+условия не пройдены, шаг 8 должен оставить `Config.mining_enabled=false`.
+
 ### Шаг 5 (Config, минты, потолки)
 
 `initConfig.ts` и `initMintsV2.ts` запускаются ts-node'ом с проверкой типов: скрипты с guard'ом
