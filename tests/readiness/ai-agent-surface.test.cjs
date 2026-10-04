@@ -107,3 +107,16 @@ test('#75 hot authority key is bounded by infrastructure, not by a prompt: gate 
   const security = read('aof_backend/src/middleware/security.ts');
   assert.match(security, /circuit/i);
 });
+
+test('/ready не печатает креденшелы RPC: ключ провайдера и userinfo маскируются', () => {
+  const src = read('aof_backend/src/server.ts');
+  assert.match(src, /export function redactSecrets\(text: string\): string/);
+  assert.match(src, /error: redactSecrets\(String\(e\?\.message \|\| e\)\)/, '/ready обязан маскировать текст ошибки');
+  // поведение самой функции: ключ в query и пароль в userinfo
+  const body = /export function redactSecrets\(text: string\): string \{([\s\S]*?)\n\}/.exec(src)[1];
+  const fn = new Function(`return (text) => {${body}}`)();
+  assert.equal(fn('fetch failed: https://devnet.helius-rpc.com/?api-key=SECRET123&x=1'),
+    'fetch failed: https://devnet.helius-rpc.com/?api-key=***&x=1');
+  assert.equal(fn('https://user:pass@rpc.example.com/path'), 'https://user:***@rpc.example.com/path');
+  assert.equal(fn('no secrets here'), 'no secrets here');
+});

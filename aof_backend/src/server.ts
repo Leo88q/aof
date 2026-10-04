@@ -207,6 +207,17 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 // Readiness: can this instance serve real traffic right now? Checks the DB
 // and the RPC with short timeouts; 503 on any failure so a load balancer
 // drains the instance instead of routing users into errors.
+/**
+ * `/ready` — публичный маршрут (без токена), и его вывод копируют в issue/CI.
+ * Ошибки RPC-библиотек иногда несут в тексте полный URL, а у провайдеров ключ
+ * стоит в query (`?api-key=…`). Поэтому в текст ошибки попадают только маски.
+ */
+export function redactSecrets(text: string): string {
+  return text
+    .replace(/([?&](?:api[-_]?key|apikey|token|key)=)[^&\s'"]+/gi, "$1***")
+    .replace(/(:\/\/[^/\s:@]+):[^/\s@]+@/g, "$1:***@");
+}
+
 app.get("/ready", async (_req, res) => {
   const withTimeout = <T,>(p: Promise<T>, ms: number) =>
     Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
@@ -214,7 +225,7 @@ app.get("/ready", async (_req, res) => {
   const run = async (name: string, fn: () => Promise<unknown>) => {
     const t = Date.now();
     try { await withTimeout(fn(), 3000); checks[name] = { ok: true, ms: Date.now() - t }; }
-    catch (e: any) { checks[name] = { ok: false, ms: Date.now() - t, error: String(e?.message || e) }; }
+    catch (e: any) { checks[name] = { ok: false, ms: Date.now() - t, error: redactSecrets(String(e?.message || e)) }; }
   };
   await Promise.all([
     run("db", async () => { const { db } = await import("./lib/db"); await db.$queryRaw`SELECT 1`; }),
