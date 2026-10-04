@@ -114,13 +114,18 @@ describe("aof-core: security & core flows", () => {
     return Object.assign(delta, { fee: meta.fee });
   }
 
-  // The validator's clock, not the runner's: they drift apart, so waiting a
-  // fixed number of wall-clock seconds for an on-chain deadline is flaky.
+  // The validator's clock, not the runner's: they drift apart, so deadlines
+  // must be based on the Clock sysvar rather than Date.now().
+  async function chainUnixTimestamp(): Promise<number> {
+    const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
+    if (!clock || clock.data.length < 40) throw new Error("Clock sysvar unavailable or truncated");
+    return Number(clock.data.readBigInt64LE(32));
+  }
+
   async function waitForChainTime(unixTimestamp: number, timeoutMs = 30_000) {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
-      const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
-      if (clock && Number(clock.data.readBigInt64LE(32)) >= unixTimestamp) return;
+      if (await chainUnixTimestamp() >= unixTimestamp) return;
       if (Date.now() > deadline) throw new Error(`chain clock did not reach ${unixTimestamp}`);
       await sleep(500);
     }
@@ -511,7 +516,7 @@ describe("aof-core: security & core flows", () => {
     const accounts = { config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority,
       mint, tool: toolPda(mint), listing, listingVault, buyerToken,
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId };
-    const deadline = new BN(Math.floor(Date.now() / 1000) + 120);
+    const deadline = new BN((await chainUnixTimestamp()) + 120);
     const before = await provider.connection.getBalance(buyer.publicKey);
     await expectError(program.methods.marketplaceBuyBounded(price.subn(1), deadline).accounts(accounts).signers([buyer]).rpc(), "PriceLimitExceeded");
     await expectError(program.methods.marketplaceBuyBounded(price, new BN(1)).accounts(accounts).signers([buyer]).rpc(), "QuoteExpired");

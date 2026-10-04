@@ -8,7 +8,7 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createMint, getMint, mintTo, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction,
   createAccount as createTokenAccount, TOKEN_PROGRAM_ID,
@@ -108,6 +108,14 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
     const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
     if (credited < lamports) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${lamports}, got ${credited}`);
+  }
+
+  // Quote deadlines are enforced against the validator's Clock sysvar, not the
+  // test runner's wall clock; those clocks can drift during the long suite.
+  async function chainUnixTimestamp(): Promise<number> {
+    const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY, "confirmed");
+    if (!clock || clock.data.length < 40) throw new Error("Clock sysvar unavailable or truncated");
+    return Number(clock.data.readBigInt64LE(32));
   }
 
   // Admin faucet (mint_resource keeps a 7–10% treasury fee, so the user gets
@@ -701,8 +709,10 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     await expectError(cancel(stranger, await ensureAta(mint, stranger.publicKey)), "Unauthorized");
 
     const buyerToken = await ensureAta(mint, buyer.publicKey);
-    // A quote may live at most 300 s by the chain clock; stay well inside it.
-    await program.methods.marketplaceBuyBounded(new BN(1_000_000), new BN(Math.floor(Date.now() / 1000) + 120)).accounts({
+    // A quote may live at most 300 s by the chain clock; derive its deadline
+    // from that same Clock sysvar, not Date.now() on the test runner.
+    const deadline = new BN((await chainUnixTimestamp()) + 120);
+    await program.methods.marketplaceBuyBounded(new BN(1_000_000), deadline).accounts({
       config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority, mint, tool: toolPda(mint),
       listing, listingVault, buyerToken, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([buyer]).rpc();
