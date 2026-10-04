@@ -41,6 +41,7 @@
     "test:chain-indexer": "ts-node --project tsconfig.json --transpile-only scripts/chainIndexerSelfTest.ts",
     "chain-indexer": "ts-node services/chain-indexer/index.ts",
     "caps:init": "ts-node --project tsconfig.json --transpile-only scripts/initIssuanceCaps.ts",
+    "typecheck:bootstrap": "tsc -p tsconfig.bootstrap.json",
     "reconcile:inbox": "ts-node --project tsconfig.json scripts/reconcileInboxClaims.ts",
     "build:workers": "tsc -p tsconfig.workers.json",
     "build:watchtower": "tsc -p ../watchtower/tsconfig.json --outDir ../watchtower/dist",

@@ -169,7 +169,9 @@ mint не двигает счётчик. Учитывается `amount` (gross)
 
 1. `anchor build` в CI → сверить IDL с ручной копией → `anchor upgrade` программы.
 2. **Сразу после upgrade** (до перезапуска backend на новой IDL): `CAP_PER_EPOCH=… npm run caps:init`
-   (все 27 kinds; per-kind `CAP_<KIND>`; `DRY_RUN=1` для проверки). До этого шага любой mint падает
+   (все 27 kinds; per-kind `CAP_<KIND>`; `DRY_RUN=1` для проверки; повторный прогон пропускает уже
+   созданные потолки. В `scripts/devnet-bringup.sh` шаг `caps` берёт значение из окружения или
+   `aof_backend/.env` и отказывает без него, пока потолки не созданы). До этого шага любой mint падает
    с `AccountNotInitialized` — это ожидаемо и безопасно (inbox-item остаётся `unclaimed`, повтор позже).
 3. Перезапустить backend; `GET /admin/issuance-caps` — все `configured: true`.
 4. Дальнейшая калибровка — `POST /admin/issuance-caps/set`; экстренная остановка kind'а — `capPerEpoch: 0`.

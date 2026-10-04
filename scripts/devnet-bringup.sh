@@ -47,6 +47,10 @@
 #     код остался бы только в репозитории);
 #   OPERATOR_RESERVE_SOL (по умолчанию MIN_SOL), DEPLOY_FEE_RESERVE_SOL (по умолчанию 0.1),
 #   COLLECTOR_MINTS,
+#   CAP_PER_EPOCH (базовые единицы; 1 unit = 1e9) — потолок выпуска на вид за эпоху
+#     для шага caps. Значение выбирает оператор, скрипт его не угадывает: если его нет
+#     и потолки ещё не созданы, шаг отказывает с подсказкой (per-kind CAP_<KIND>,
+#     EPOCH_SLOTS — aof_backend/scripts/initIssuanceCaps.ts, docs/ISSUANCE_CAPS_DESIGN.md);
 #   SKIP=build,deploy,config,mints,caps,craft,mechanics,market,mining,collectors,report
 #   SKIP=backend — сокращение для всех шагов, которым нужен backend по HTTP
 #   ($BACKEND_STEPS см. ниже): деплой/upgrade без запуска backend и без ADMIN_TOKEN;
@@ -148,6 +152,25 @@ api() { # METHOD PATH [BODY]
   [ -n "$ADMIN_TOKEN" ] && args+=(-H "Authorization: Bearer $ADMIN_TOKEN")
   [ -n "$body" ] && args+=(-d "$body")
   curl "${args[@]}"
+}
+
+# caps:init читает CAP_PER_EPOCH (или per-kind CAP_<KIND>) из окружения и из
+# aof_backend/.env (dotenv внутри скрипта) — проверяем те же два источника:
+# потолок выпуска выбирает оператор, скрипт его не угадывает.
+caps_value() {
+  if [ -n "${CAP_PER_EPOCH:-}" ]; then printf '%s' "$CAP_PER_EPOCH"; return 0; fi
+  if [ -f "$ROOT/aof_backend/.env" ]; then
+    local line
+    line="$(grep -E '^[[:space:]]*CAP_PER_EPOCH=[^[:space:]]' "$ROOT/aof_backend/.env" | tail -1 || true)"
+    if [ -n "$line" ]; then printf '%s' "${line#*=}"; return 0; fi
+  fi
+  return 1
+}
+
+caps_configured() { # все виды уже имеют IssuanceCap в сети (GET /admin/issuance-caps)
+  local body
+  body="$(api GET /admin/issuance-caps)" || return 1
+  printf '%s' "$body" | jq -e '(.caps | type == "array") and ([.caps[] | select(.configured == false)] | length == 0)' >/dev/null 2>&1
 }
 
 echo "Включение девнета: режим=$([ "$APPLY" = 1 ] && echo ПРИМЕНЕНИЕ || echo 'сухой прогон'), RPC=$RPC_URL, backend=$BACKEND_URL"
@@ -298,10 +321,14 @@ else
 fi
 if skipped caps; then
   info "потолки выпуска пропущены (SKIP=caps)"
+elif caps_configured; then
+  ok "потолки выпуска уже инициализированы (все виды configured) — шаг пропущен"
+elif [ -z "$(caps_value || true)" ]; then
+  die "caps:init требует CAP_PER_EPOCH (базовые единицы; 1 единица = 1e9): потолок выпуска не угадывается. Пример для devnet: CAP_PER_EPOCH=1000000000000 (1000 единиц на вид за эпоху). Задайте его в окружении или в aof_backend/.env; per-kind — CAP_<KIND> (docs/ISSUANCE_CAPS_DESIGN.md). Если потолки уже заданы per-kind, выполните caps:init сами и повторите с SKIP=caps"
 elif [ "$APPLY" = 1 ]; then
   ( cd aof_backend && npm run caps:init ) || die "caps:init не прошёл"
 else
-  echo "   сухой прогон: cd aof_backend && npm run caps:init"
+  echo "   сухой прогон: cd aof_backend && CAP_PER_EPOCH=<базовые единицы> npm run caps:init"
 fi
 
 # Экономика крафта и счётчики редкости — то, без чего крафт инструментов

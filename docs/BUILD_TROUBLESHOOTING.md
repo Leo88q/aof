@@ -207,6 +207,53 @@ bash scripts/dev-local.sh up
 Коды выхода: `0` — совпадают, `1` — расходятся (годится для проверки в скриптах), `2` — негодный вход.
 `dev-local.sh up` сам предупреждает о расхождении, если ключ оператора лежит на месте.
 
+## Шаг 5/10: `TS18047: 'AUTHORITY' is possibly 'null'` в bootstrap-скриптах
+
+Симптом (сухой прогон или `--apply`, до создания Config):
+
+```
+scripts/initConfig.ts(47,20): error TS18047: 'AUTHORITY' is possibly 'null'.
+scripts/initConfig.ts(59,19): error TS18047: 'AUTHORITY' is possibly 'null'.
+scripts/initConfig.ts(61,13): error TS2345: Argument of type 'Keypair | null' is not assignable to parameter of type 'Signer'.
+ОТКАЗ: initConfig.ts не прошёл
+```
+
+Причина не в девнете и не в RPC: `AUTHORITY` в `aof_backend/src/config.ts` имеет тип
+`Keypair | null` (в `read-only` режиме ключа в процессе нет), а проверка `if (!AUTHORITY)` стоит на
+верхнем уровне модуля. TypeScript **не** сужает импортированную привязку внутри функций, а ts-node
+компилирует скрипты с проверкой типов — поэтому каждое обращение к `AUTHORITY` в `main()` падало.
+Так были сломаны четыре скрипта: `initConfig.ts`, `initMints.ts`, `initMintsV2.ts`,
+`initIssuanceCaps.ts` (последний запускается с `--transpile-only`, поэтому падал бы позже и иначе).
+
+Исправление в репо: после guard'а значение фиксируется локальной константой
+(`const authority = AUTHORITY;`), дальше используется только она. Новый скрипт с тем же guard'ом
+обязан повторить приём, иначе ошибка вернётся.
+
+Офлайн-проверка (она же в гейте `tests/readiness/backend-bootstrap-typecheck.test.cjs`):
+
+```bash
+cd aof_backend && npm run typecheck:bootstrap   # tsc -p tsconfig.bootstrap.json, ожидается пустой вывод
+```
+
+## Шаг 5/10: `no cap for <kind>: set CAP_PER_EPOCH ...` (caps:init)
+
+Потолки выпуска (`IssuanceCap` на каждый ResourceKind) — единственная часть включения, значение
+которой выбирает оператор: без потолка mint отклоняется `IssuanceCapNotConfigured` (fail-closed),
+поэтому `caps:init` не подставляет «разумное» число молча.
+
+```bash
+# базовые единицы: 1 единица = 1e9; пример — 1000 единиц на вид за эпоху (24ч = 216000 слотов)
+export CAP_PER_EPOCH=1000000000000
+# либо строкой в aof_backend/.env (caps:init читает dotenv), либо per-kind: CAP_MIND=…, CAP_DATA=…
+cd aof_backend && npm run caps:init      # повторный прогон пропускает уже созданные потолки
+```
+
+`devnet-bringup.sh` проверяет переменную сам (окружение или `aof_backend/.env`) и отказывает
+**до** вызова `caps:init` с этой подсказкой; когда `GET /admin/issuance-caps` показывает все виды
+`configured: true`, шаг пропускается и переменная не нужна. Калибровка после запуска —
+`POST /admin/issuance-caps/set`, экстренная остановка вида — `capPerEpoch: 0`
+(docs/ISSUANCE_CAPS_DESIGN.md).
+
 ## Если всё равно падает
 
 1. Убедитесь что `rustup show` показывает `active toolchain: 1.89.0`

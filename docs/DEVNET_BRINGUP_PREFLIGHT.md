@@ -58,6 +58,14 @@ RPC URL с API-ключом). Нужен **ops-токен** (`ADMIN_TOKEN`); rea
 развёрнутые программы не деплоятся, существующий Config не пересоздаётся (шаг 5 пропускает `initConfig.ts`), повторный
 запуск ничего не меняет.
 
+### Шаг 5 (Config, минты, потолки)
+
+`initConfig.ts` и `initMintsV2.ts` запускаются ts-node'ом с проверкой типов: скрипты с guard'ом
+`if (!AUTHORITY)` обязаны сужать ключ в локальной константе (иначе `TS18047`, см.
+docs/BUILD_TROUBLESHOOTING.md). Шаг `caps:init` требует `CAP_PER_EPOCH` (или per-kind `CAP_<KIND>`):
+значение выбирает оператор, и bringup отказывает без него, пока потолки выпуска не созданы; когда все
+виды уже `configured`, шаг пропускается (docs/ISSUANCE_CAPS_DESIGN.md).
+
 ## Тесты
 
 * `npm run test:bootstrap-preflight` (backend): логика на поддельном соединении; настоящий роутер `admin-config` по HTTP

@@ -18,6 +18,9 @@ if (!AUTHORITY) {
     + "read-only mode cannot bootstrap programs.",
   );
 }
+// ts-node компилирует с проверкой типов, но TS не сужает импортированную
+// привязку внутри функций (TS18047) — фиксируем не-null значение локально.
+const authority = AUTHORITY;
 
 
 // Используем Helius RPC если есть, иначе devnet (публичный)
@@ -42,7 +45,7 @@ async function createMintWithRetry(
     try {
       const mint = await createMint(
         connection,
-        AUTHORITY,
+        authority,
         MINT_AUTHORITY,
         null,
         9,
@@ -63,13 +66,13 @@ async function createMintWithRetry(
 async function main() {
   console.log("🎮 Инициализация MaterialMints (v2 с retry)...");
   console.log(`📡 RPC: ${RPC_URL}`);
-  console.log(`🔑 Authority: ${AUTHORITY.publicKey.toBase58()}`);
+  console.log(`🔑 Authority: ${authority.publicKey.toBase58()}`);
   console.log("");
   
   const connection = new Connection(RPC_URL, "confirmed");
   
   // Проверяем баланс
-  const balance = await connection.getBalance(AUTHORITY.publicKey);
+  const balance = await connection.getBalance(authority.publicKey);
   console.log(`💰 Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL\n`);
   
   if (balance < 0.1 * LAMPORTS_PER_SOL) {

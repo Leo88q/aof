@@ -133,6 +133,12 @@ case "$url" in
       echo '{"miningEnabled":false}'
     fi;;
   */admin/config/collector-mint) echo '{"sig":"mock-collector-sig"}';;
+  */admin/issuance-caps)
+    if [ "${MOCK_CAPS_CONFIGURED:-0}" = "1" ]; then
+      echo '{"caps":[{"kind":"data","configured":true},{"kind":"mind","configured":true}]}'
+    else
+      echo '{"caps":[{"kind":"data","configured":false},{"kind":"mind","configured":false}]}'
+    fi;;
   */query/config) echo "{\\"circuitMint\\":\\"$MOCK_MINT\\",\\"siliconMint\\":\\"$MOCK_MINT\\",\\"mindMint\\":\\"$MOCK_MINT\\",\\"treasury\\":\\"$MOCK_MINT\\"}";;
   */query/material-mints) echo "{\\"initialized\\":true,\\"mints\\":{\\"dataset\\":\\"$MOCK_MINT\\",\\"neuron\\":\\"$MOCK_MINT\\",\\"QUANTUM_BIT\\":\\"$MOCK_MINT\\"}}";;
   */query/hot-market-config)
@@ -299,10 +305,12 @@ class BringupBase(unittest.TestCase):
             "REAL_CURL": REAL_CURL or "",
             "FAKE_BACKEND_URL": self.default_backend.url,
             "PROGRAM_MAX_LEN_POLICY": "exact",
+            "CAP_PER_EPOCH": "1000000000000",
         })
         env.pop("PROGRAM_MAX_LEN_HEADROOM_PERCENT", None)
         env.update(env_overrides or {})
-        for key in ("AOF_DEPLOY_TARGET", "ADMIN_TOKEN", "SKIP", "COLLECTOR_MINTS", "PROGRAM_MAX_LEN_POLICY"):
+        for key in ("AOF_DEPLOY_TARGET", "ADMIN_TOKEN", "SKIP", "COLLECTOR_MINTS", "PROGRAM_MAX_LEN_POLICY",
+                    "CAP_PER_EPOCH"):
             if env.get(key) == "":
                 env.pop(key, None)
         return subprocess.run(["bash", str(SCRIPT), *extra], capture_output=True, text=True,
@@ -486,6 +494,23 @@ class BringupScript(BringupBase):
         fresh = [line for line in self.log()[before:]
                  if "curl" in line and "-X POST" in line and "/hot-market/" in line]
         self.assertEqual(fresh, [], "повторный прогон не должен создавать аккаунты заново")
+
+    def test_caps_without_a_value_refuses_and_names_the_variable(self):
+        # Потолок выпуска выбирает оператор: пустой CAP_PER_EPOCH — отказ с подсказкой
+        # ДО вызова caps:init, а не TSError в середине шага.
+        done = self.run_script("--apply", env_overrides={"CAP_PER_EPOCH": "", "COLLECTOR_MINTS": ""})
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("CAP_PER_EPOCH", done.stderr)
+        self.assertIn("docs/ISSUANCE_CAPS_DESIGN.md", done.stderr)
+        self.assertNotIn("run caps:init", self.log(), "caps:init не должен вызываться без значения")
+
+    def test_caps_already_configured_skip_without_a_value(self):
+        # Идемпотентность: когда все потолки созданы, повторный запуск не требует значения.
+        done = self.run_script("--apply", env_overrides={
+            "CAP_PER_EPOCH": "", "COLLECTOR_MINTS": "", "MOCK_CAPS_CONFIGURED": "1"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertIn("потолки выпуска уже инициализированы", done.stdout)
+        self.assertNotIn("run caps:init", self.log())
 
     def test_craft_step_creates_economy_and_rarity_counters(self):
         done = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
