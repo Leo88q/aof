@@ -48,6 +48,8 @@
 #   OPERATOR_RESERVE_SOL (по умолчанию MIN_SOL), DEPLOY_FEE_RESERVE_SOL (по умолчанию 0.1),
 #   COLLECTOR_MINTS,
 #   SKIP=build,deploy,config,mints,caps,craft,mechanics,market,mining,collectors,report
+#   SKIP=backend — сокращение для всех шагов, которым нужен backend по HTTP
+#   ($BACKEND_STEPS см. ниже): деплой/upgrade без запуска backend и без ADMIN_TOKEN;
 #   SKIP_BUILD=1 — не собирать, взять готовые .so из target/deploy.
 #
 #   Экономика крафта (шаг 5): CRAFT_RARITY_COUNTERS (по умолчанию 1,2,3,4) —
@@ -113,7 +115,20 @@ die()  { echo >&2; echo "ОТКАЗ: $*" >&2; exit "${2:-3}"; }
 step() { echo; echo "== $*"; }
 ok()   { echo "   ✓ $*"; }
 info() { echo "   $*"; }
-skipped() { case ",${SKIP}," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
+# Шаги, которым нужен backend: они читают/пишут через его маршруты, а минты,
+# капы и тумблер добычи подписываются ключом backend'а в hot-режиме. `config` и
+# `mints`/`caps` ходят в сеть локальными скриптами, но читают тот же
+# aof_backend/.env через src/config.ts, который без PROGRAM_ID/TREASURY_PUBKEY и
+# authority-gate падает — поэтому «только деплой» обязан выключать и их.
+# SKIP=backend — деплой/upgrade без backend, без .env и без ADMIN_TOKEN.
+BACKEND_STEPS="config mints caps craft mechanics market mining collectors"
+skipped() { # $1 — имя шага; SKIP=backend — сокращение для всех $BACKEND_STEPS
+  case ",${SKIP}," in
+    *",$1,"*) return 0 ;;
+    *,backend,*) case " $BACKEND_STEPS " in *" $1 "*) return 0 ;; esac ;;
+  esac
+  return 1
+}
 
 # В сухом прогоне глаголы не выполняются — печатаются как «что было бы».
 do_or_tell() { # ОПИСАНИЕ КОМАНДА [АРГУМЕНТЫ...]
@@ -160,14 +175,14 @@ GENESIS_REPORT="$(python3 "$ESTIMATOR" cluster --rpc "$RPC_URL" --expect-genesis
   || die "RPC не подтверждён как devnet: ${GENESIS_REPORT#ОТКАЗ: }"
 ok "RPC отвечает genesis-хешем devnet"
 NEED_BACKEND=0
-for s in mints caps market mining collectors; do skipped "$s" || NEED_BACKEND=1; done
+for s in $BACKEND_STEPS; do skipped "$s" || NEED_BACKEND=1; done
 if [ "$NEED_BACKEND" = 1 ]; then
   command -v jq >/dev/null || die "нет jq (нужен для шагов минтов/тумблера: brew install jq / apt-get install jq)"
   command -v npx >/dev/null || die "нет npx (нужен для scripts/initConfig.ts и scripts/initMintsV2.ts)"
   # Backend проверяем ДО первой транзакции: деплой без возможности включить —
   # это половина работы, а отказ после деплоя труднее откатывать.
   [ -n "$ADMIN_TOKEN" ] || die \
-    "не задан ADMIN_TOKEN: минты и тумблер добычи подписываются ключом backend'а в hot-режиме. Запустите backend (cd aof_backend && npm run dev) с AUTHORITY_MODE=hot/AUTHORITY_SECRET_KEY/RPC_URL и ADMIN_TOKEN, затем повторите с ADMIN_TOKEN=<токен>. Если сейчас нужен только деплой — SKIP=mints,caps,mining,collectors"
+    "не задан ADMIN_TOKEN: Config, минты, капы, рынок, крафт, паки и тумблер добычи подписываются ключом backend'а в hot-режиме. Запустите backend (cd aof_backend && npm run dev) с AUTHORITY_MODE=hot/AUTHORITY_SECRET_KEY/RPC_URL и ADMIN_TOKEN, затем повторите с ADMIN_TOKEN=<токен>. Если сейчас нужен только деплой/upgrade — SKIP=backend (все шаги, которым нужен backend: $BACKEND_STEPS) либо отдельные имена."
   # ВАЖНО: раньше здесь был GET /admin/config/mining со строгим «200». Но этот маршрут читает Config, которого
   # до деплоя нет, и честно отвечает 400 — запуск упирался в замкнутый круг. «Принять любой 400» нельзя
   # (так проходят и неверный токен, и чужой сервис), поэтому backend отдаёт отдельный маршрут, который не
@@ -213,7 +228,7 @@ if [ "$NEED_BACKEND" = 1 ]; then
   ok "backend проверен без Config: ops-токен принят, hot-режим, authority $AUTHORITY_PUBKEY, devnet"
   ok "program ID backend'а совпали с реестром; в сети программ: $BACKEND_DEPLOYED из $BACKEND_PROGRAM_COUNT, Config: $([ "$CONFIG_EXISTS" = "true" ] && echo есть || echo 'ещё нет (создаётся в шаге 5)')"
 else
-  ok "backend-шаги пропущены (SKIP) — ADMIN_TOKEN не нужен"
+  ok "backend-шаги пропущены (SKIP=backend или имена шагов) — ADMIN_TOKEN не нужен"
 fi
 ok "цель devnet, CLI на месте, ключ найден"
 

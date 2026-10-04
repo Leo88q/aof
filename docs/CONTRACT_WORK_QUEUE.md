@@ -161,6 +161,14 @@ PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh 
 #     Скрипт сам сверяет байткод в сети с локальным .so и обновляет только отличающееся.
 UPGRADE=aof_core PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply
 
+# 1в) если backend не запущен и нужно только доставить байткод — SKIP=backend
+#     (или scripts/deploy-devnet.sh --apply): ни Config, ни минты, ни тумблер
+#     добычи не трогаются, ADMIN_TOKEN и aof_backend/.env не нужны.
+UPGRADE=aof_core SKIP=backend PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet \
+  scripts/devnet-bringup.sh --apply
+UPGRADE=aof_core PROGRAM_MAX_LEN_POLICY=exact AOF_DEPLOY_TARGET=devnet \
+  scripts/deploy-devnet.sh --apply
+
 # 2) доказательство, что в сети лежит байткод из этого репозитория
 scripts/verify-programs.sh devnet <authority-pubkey> target/deploy --require-bytecode
 

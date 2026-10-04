@@ -63,6 +63,25 @@ test('bringup — сухой прогон по умолчанию и не вкл
   }
 });
 
+test('bringup: SKIP=backend — деплой без backend, и он покрывает все backend-шаги', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/devnet-bringup.sh'), 'utf8');
+  // Сокращение обязано существовать и включать каждый шаг, который ходит в backend:
+  // иначе «только деплой» упадёт на середине (после деплоя) из-за маршрута,
+  // который читает .env backend'а.
+  const steps = /BACKEND_STEPS="([^"]+)"/.exec(source);
+  assert.ok(steps, 'в bringup нет списка backend-шагов');
+  for (const name of ['config', 'mints', 'caps', 'craft', 'mechanics', 'market', 'mining', 'collectors']) {
+    assert.ok(steps[1].split(/\s+/).includes(name), `BACKEND_STEPS не содержит ${name}`);
+  }
+  assert.match(source, /\*,backend,\*\) case " \$BACKEND_STEPS "/, 'SKIP=backend не обрабатывается в skipped()');
+  // Гард на требование токена обязан считать по тому же списку, а не по своему
+  assert.match(source, /for s in \$BACKEND_STEPS; do skipped "\$s" \|\| NEED_BACKEND=1; done/);
+  assert.match(source, /SKIP\$?\{?\}?=|SKIP=backend/);
+  assert.ok(source.includes('SKIP=backend'), 'в отказе нет рабочего совета');
+  assert.ok(fs.readFileSync(path.join(root, 'scripts/test-devnet-bringup.py'), 'utf8')
+    .includes('test_skip_backend_deploys_without_a_backend_and_without_posting'));
+});
+
 test('bringup-тест существует и пинит отказы', () => {
   const source = fs.readFileSync(path.join(root, 'scripts/test-devnet-bringup.py'), 'utf8');
   for (const caseName of [
@@ -81,6 +100,8 @@ test('bringup-тест существует и пинит отказы', () => {
     'test_mechanics_step_is_idempotent',
     'test_mechanics_failure_refuses',
     'test_skip_mechanics_leaves_configs_unset',
+    'test_the_refusal_names_a_skip_list_that_actually_works',
+    'test_skip_backend_deploys_without_a_backend_and_without_posting',
   ]) {
     assert.ok(source.includes(caseName), `нет теста ${caseName}`);
   }

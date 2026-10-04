@@ -385,6 +385,34 @@ class BringupScript(BringupBase):
         self.assertIn("ADMIN_TOKEN", done.stderr)
         self.assertEqual(self.deploys(), [])
 
+    def test_the_refusal_names_a_skip_list_that_actually_works(self):
+        # Раньше сообщение предлагало SKIP=mints,caps,mining,collectors, но с ним
+        # market/craft/mechanics оставались включёнными и всё равно требовали
+        # ADMIN_TOKEN: совет не работал. Теперь в отказе есть SKIP=backend, и он
+        # обязан действительно снимать требование.
+        done = self.run_script("--apply", env_overrides={"ADMIN_TOKEN": ""})
+        self.assertIn("SKIP=backend", done.stderr)
+        again = self.run_script("--apply", env_overrides={"ADMIN_TOKEN": "", "SKIP": "backend"})
+        self.assertEqual(again.returncode, 0, again.stderr + again.stdout)
+        self.assertIn("ADMIN_TOKEN не нужен", again.stdout)
+
+    def test_skip_backend_deploys_without_a_backend_and_without_posting(self):
+        for path in self.chain.glob("*.json"):
+            path.unlink()
+        done = self.run_script("--apply", env_overrides={"ADMIN_TOKEN": "", "SKIP": "backend"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(len(self.deploys()), len(PROGRAMS), "деплой обязан остаться в силе")
+        self.assertEqual(self.posts(), [])
+        self.assertEqual(self.craft_posts(), [])
+        self.assertEqual(self.mechanics_posts(), [])
+        self.assertFalse([l for l in self.log() if l.startswith("npx")], self.log())
+
+    def test_skip_backend_dry_run_needs_no_backend(self):
+        done = self.run_script(env_overrides={"ADMIN_TOKEN": "", "SKIP": "backend"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys(), [])
+        self.assertIn("сухой прогон", done.stdout)
+
     def test_dry_run_changes_nothing(self):
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
@@ -562,9 +590,11 @@ class BringupScript(BringupBase):
         self.assertEqual(self.market_posts(), [])
 
     def test_skip_backend_steps_needs_no_token(self):
+        # SKIP=backend — сокращение: раньше приходилось перечислять имена, и легко
+        # было забыть craft/mechanics/market, которые тоже ходят в backend.
         done = self.run_script("--apply", env_overrides={
             "ADMIN_TOKEN": "",
-            "SKIP": "config,mints,caps,market,mining,collectors,report",
+            "SKIP": "backend,report",
         })
         self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
         self.assertEqual(len(self.deploys()), len(PROGRAMS), self.log())
@@ -821,7 +851,7 @@ class BootstrapPreflight(BringupBase):
         backend = self.backend()
         done = self.run_script("--apply", env_overrides={
             "BACKEND_URL": backend.url, "ADMIN_TOKEN": "", "FAKE_BACKEND_URL": "",
-            "SKIP": "config,mints,caps,market,mining,collectors,report"})
+            "SKIP": "backend,report"})
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(backend.requests, [])
 
