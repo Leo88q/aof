@@ -165,7 +165,14 @@ test('обновление уже развёрнутой программы во
   assert.match(probe, /def redact_url\(url: str\) -> str:/);
   assert.match(probe, /report: dict = \{"rpc": redact_url\(rpc\)/);
   assert.match(probe, /say\(f"RPC: \{redact_url\(rpc\)\}"\)/);
-  // 7) документация называет ту же команду
+  // 7) upgrade не может начаться с чужой authority: CLI сначала фиксирует SOL
+  //    в буфере и только потом получает Incorrect upgrade authority
+  assert.match(source, /UPGRADE=\$name: upgrade authority/, 'нет отказа при чужой authority');
+  const pricing = read('docs/DEVNET_DEPLOY_COSTS.md');
+  for (const needle of ['Incorrect upgrade authority', 'faucet.solana.com', 'OPERATOR_RESERVE_SOL']) {
+    assert.ok(pricing.includes(needle), `в описании стоимости нет «${needle}»`);
+  }
+  // 8) документация называет ту же команду
   const docs = read('docs/DEVNET_DEPLOY_COSTS.md');
   assert.ok(docs.includes('UPGRADE=aof_core'), 'в описании стоимости нет команды обновления');
   assert.match(read('docs/CONTRACT_WORK_QUEUE.md'), /UPGRADE=aof_core/);

@@ -172,11 +172,20 @@ while read -r name address; do
       report="$(estimator upgrade-state --rpc "$RPC_URL" --program "$name:$address:$so" 2>&1)" || die "UPGRADE=$name: состояние программы в сети не прочиталось:
 $report"
       state="$(printf '%s\n' "$report" | awk '/^state:/{print $2}')"
+      uauth="$(printf '%s\n' "$report" | awk '/^authority:/{print $2}')"
       case "$state" in
         same)
           ok "$name уже в сети, байткод совпадает с $so — upgrade не нужен" ;;
         different)
-          info "⇪ $name уже в сети, но байткод отличается от $so — будет upgrade (ёмкость в сети не уменьшается: загрузчик умеет только расширять ProgramData)"
+          # Authority сверяется ДО деплоя: CLI сначала фиксирует SOL в буфере и
+          # только потом отправляет upgrade, а загрузчик отвергнет чужую authority
+          # (Incorrect upgrade authority) — то есть рента 2.6-МБ программы
+          # осталась бы заперта в буфере из-за ошибки, которую видно одним
+          # read-only запросом.
+          [ "$uauth" = "$AUTHORITY_PUBKEY" ] || die "UPGRADE=$name: upgrade authority в сети $uauth, а ключ оператора $AUTHORITY_PUBKEY (AUTHORITY_KEYPAIR) — обновление запрещено.
+   Обновлять программу может только её upgrade authority. Ни одной транзакции не отправлено:
+   иначе CLI запер бы SOL в буфере и отказ пришёл бы уже после траты."
+          info "⇪ $name уже в сети, но байткод отличается от $so — будет upgrade (authority $uauth; ёмкость в сети не уменьшается: загрузчик умеет только расширять ProgramData)"
           UPGRADES+=("$name $address") ;;
         *)
           die "UPGRADE=$name: не понял состояние '$state' (ожидалось same|different):

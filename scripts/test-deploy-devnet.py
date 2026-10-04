@@ -323,6 +323,24 @@ class Upgrade(DeployBase):
         self.assertEqual(done.returncode, 3)
         self.assertIn("не совпадает", done.stderr)
 
+    def test_upgrade_refuses_when_the_operator_is_not_the_authority(self):
+        # CLI сначала фиксирует SOL в буфере и только потом отправляет upgrade:
+        # чужая authority обнаружилась бы после траты. Проверка — read-only, до.
+        self.seed_chain(CORE_ID, self.old_so, 60, OTHER_ID)
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 3)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("upgrade authority", done.stderr)
+        self.assertIn(OTHER_ID, done.stderr)
+
+    def test_matching_bytecode_with_a_foreign_authority_is_not_an_error(self):
+        # Байткод совпал — обновлять нечего, значит и authority не важна.
+        self.seed_chain(CORE_ID, self.artifacts / "aof_core.so", 52, OTHER_ID)
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("upgrade не нужен", done.stdout)
+
     def test_dry_run_shows_the_upgrade_and_sends_nothing(self):
         done = self.run_script(env_overrides={"UPGRADE": "aof_core"})
         self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
