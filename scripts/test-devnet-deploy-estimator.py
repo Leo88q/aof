@@ -583,7 +583,21 @@ class RpcFailures(unittest.TestCase):
 
     def test_wrong_scheme_is_a_refusal(self):
         code, _, err = run_main(self.args, "ftp://example.invalid")
-        self.assertEqual(code, est.EXIT_RPC)
+        self.assertEqual(code, est.EXIT_USAGE)
+
+    def test_a_url_that_is_not_a_url_is_refused_without_a_traceback(self):
+        # Пустой RPC_URL и строка без схемы раньше падали голым ValueError из
+        # Request(): «unknown url type: ''» — по такому выводу нельзя понять,
+        # что не так с адресом. Теперь это отказ с названной причиной.
+        for bad in ("", "   ", "devnet.helius-rpc.com/?api-key=x", "/tmp/socket", "http://"):
+            # пустую строку helper пропускает как «нет override» — передаём явно
+            argv = list(self.args) + ["--rpc", bad] if bad == "" else self.args
+            code, out, err = run_main(argv, None if bad == "" else bad)
+            self.assertEqual(code, est.EXIT_USAGE, f"{bad!r}: {err}")
+            self.assertIn("негодный", err)
+            self.assertIn("api-key", err, "подсказка обязана показывать форму записи с ключом")
+            self.assertEqual(out, "", f"{bad!r}: отчёта быть не должно")
+            self.assertNotIn("Traceback", err, f"{bad!r}: traceback недопустим")
 
     def test_non_monotonic_rent_is_not_trusted(self):
         code, out, err = self.run_with(rent_fn=lambda length: 1_000_000)

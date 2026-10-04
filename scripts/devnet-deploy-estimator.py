@@ -311,6 +311,15 @@ class Rpc:
     """Минимальный JSON-RPC клиент. Любая неисправность — EstimatorError(EXIT_RPC)."""
 
     def __init__(self, url: str, timeout: float = 20.0) -> None:
+        # Разбор адреса — до сети и до Request(): пустой URL или строка без схемы
+        # иначе вылетают голым traceback'ом ValueError, из которого неясно, что
+        # именно не так с RPC_URL.
+        parts = urllib.parse.urlsplit(url)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise EstimatorError(
+                f"RPC URL негодный ({redact_url(url)}): нужен адрес вида http(s)://хост. "
+                "У провайдеров ключ стоит в query — подставьте настоящий: "
+                "RPC_URL='https://devnet.helius-rpc.com/?api-key=…'", EXIT_USAGE)
         self.url = url
         self.timeout = timeout
         self.audit: List[Dict[str, Any]] = []
