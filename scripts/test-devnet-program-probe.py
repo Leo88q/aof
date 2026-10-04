@@ -258,37 +258,63 @@ def scenario_everything_on() -> None:
 
 
 def scenario_contract_blocked_rows() -> None:
-    print("3.5 механики, которым нужна новая инструкция")
-    rows = rows_for(FakeRpc({"aof_core": [config_blob(mining=True, circuit="Wood11111111111111111111111111111111111111",
-                                                      silicon="Stone1111111111111111111111111111111111")]}))
+    print("3.5 механики, которым нужна новая инструкция, и снятый предмет")
+    import json as _json
+
+    real = pathlib.Path(probe.__file__).resolve().parent.parent / "aof_backend" / "src" / "idl" / "aof_core.json"
+    backup = real.read_text(encoding="utf-8")
+    committed = _json.loads(backup)
+    names = {ix.get("name") for ix in committed.get("instructions", [])}
+
+    # (а) Инструкция есть в IDL репозитория. Это НЕ доказательство, что в сети
+    # лежит байткод из этого репозитория, поэтому строка обязана говорить
+    # «ждёт деплоя», а действие — называть сборку и verify-programs.sh. Гейт
+    # держит именно это: «включено» из одного лишь IDL не выводится.
     for title, instruction in (("Фляги: применение", "use_flask"),
-                               ("Обмен ресурсов на энергию", "exchange_data_energy"),
-                               ("Награда за лук (устаревший предмет)", "bow_reward_commit")):
+                               ("Обмен ресурсов на энергию", "exchange_data_energy")):
+        check(instruction in names, f"{title}: инструкция {instruction} обязана быть в IDL репозитория")
+        rows = rows_for(FakeRpc({"aof_core": [config_blob(mining=True)]}))
         row = rows[title]
-        check(row["state"] == "выключено", f"{title}: инструкции нет в IDL — механика не может быть включена")
-        check(instruction in row["evidence"], f"{title}: в причине названа отсутствующая инструкция")
-        check("§3.8" in row["action"], f"{title}: в действии указан раздел плана")
-    season = rows["Платный трек сезонного пропуска"]
+        check(row["state"] == "ждёт деплоя",
+              f"{title}: IDL репозитория не доказывает версию байткода в сети — только «ждёт деплоя»")
+        check("не подтверждает версию байткода" in row["evidence"],
+              f"{title}: в доказательстве сказано, чего именно не хватает")
+        check("verify-programs.sh" in row["action"], f"{title}: действие называет проверку байткода")
+        check("/tools/use-flask" in row["evidence"] or "/resources/exchange-energy" in row["evidence"],
+              f"{title}: доказательство называет маршрут механики")
+
+    # (б) Снятый предмет: луков и скинов в программе нет, строки в отчёте быть
+    # не должно — иначе владелец будет искать работу, которой не существует.
+    rows = rows_for(FakeRpc({"aof_core": [config_blob(mining=True)]}))
+    check(all("лук" not in title.lower() for title in rows),
+          "снятая награда за лук не выдаётся за механику")
+    probe_source = (ROOT / "scripts" / "devnet-program-probe.py").read_text(encoding="utf-8")
+    check("bow_reward" not in probe_source,
+          "зонд больше не ждёт инструкцию для снятого предмета")
+
+    # (в) Инструкции нет в IDL (ветка «работа по контракту» и её адрес в доке).
+    try:
+        without = dict(committed)
+        without["instructions"] = [ix for ix in committed["instructions"]
+                                   if ix.get("name") not in ("use_flask", "exchange_data_energy")]
+        real.write_text(_json.dumps(without), encoding="utf-8")
+        rows2 = rows_for(FakeRpc({"aof_core": [config_blob(mining=True)]}))
+        for title, instruction in (("Фляги: применение", "use_flask"),
+                                   ("Обмен ресурсов на энергию", "exchange_data_energy")):
+            row = rows2[title]
+            check(row["state"] == "выключено", f"{title}: без инструкции механика не может быть включена")
+            check(instruction in row["evidence"], f"{title}: в причине названа отсутствующая инструкция")
+            check("CONTRACT_WORK_QUEUE.md" in row["action"] and "§3.8" in row["action"],
+                  f"{title}: в действии указан живой документ и раздел, а не historical-план")
+    finally:
+        real.write_text(backup, encoding="utf-8")
+
+    season = rows_for(FakeRpc({"aof_core": [config_blob(mining=True)]}))["Платный трек сезонного пропуска"]
     check(season["state"] == "выключено", "платный трек не выдаётся за рабочий")
     check("SEASON_PASS_PAID_TRACK_NOT_READY" in season["evidence"],
           "причина платного трека — не отсутствие инструкции покупки, а незакрытые требования")
-    check("§3.6" in season["action"], "у платного трека указан раздел плана")
-
-    # Инструкция появилась → строка обязана стать «включено» сама, без правок.
-    import json as _json, pathlib as _pathlib, tempfile as _tempfile
-    real = _pathlib.Path(probe.__file__).resolve().parent.parent / "aof_backend" / "src" / "idl" / "aof_core.json"
-    backup = real.read_text(encoding="utf-8")
-    try:
-        data = _json.loads(backup)
-        data["instructions"].append({"name": "use_flask", "accounts": [], "args": []})
-        real.write_text(_json.dumps(data), encoding="utf-8")
-        rows2 = rows_for(FakeRpc({"aof_core": [config_blob(mining=True)]}))
-        check(rows2["Фляги: применение"]["state"] == "включено",
-              "появилась инструкция use_flask — строка обязана включиться сама")
-        check(rows2["Фляги: применение"]["action"] == "",
-              "у включённой механики не должно оставаться подсказки «как включить»")
-    finally:
-        real.write_text(backup, encoding="utf-8")
+    check("CONTRACT_WORK_QUEUE.md" in season["action"] and "§3.6" in season["action"],
+          "у платного трека указан живой документ и раздел")
 
 
 def check_filters_and_encoding() -> None:

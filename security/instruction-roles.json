@@ -17,6 +17,11 @@
   ],
   "programs": {
     "aof_core": {
+      "accept_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
+      },
       "adjust_player_capacity": {
         "role": "admin",
         "status": "active",
@@ -26,6 +31,11 @@
         "role": "gameplay",
         "status": "active",
         "note": "Ставка в аукционе инструмента."
+      },
+      "auction_cancel": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена аукциона владельцем."
       },
       "auction_create": {
         "role": "gameplay",
@@ -62,10 +72,25 @@
         "status": "active",
         "note": "Отмена ордера v1; нужна, чтобы снять ранее выставленные v1-ордера (v2 заменил размещение)."
       },
+      "cancel_buy_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена покупки v2."
+      },
+      "cancel_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Отмена ротации authority (имя общее у всех шести программ)."
+      },
       "cancel_sell_order": {
         "role": "compatibility",
         "status": "active",
         "note": "Отмена ордера v1; нужна, чтобы снять ранее выставленные v1-ордера (v2 заменил размещение)."
+      },
+      "cancel_sell_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отмена продажи v2."
       },
       "claim_lottery_prize": {
         "role": "gameplay",
@@ -77,25 +102,30 @@
         "status": "active",
         "note": "Получение сезонной награды (выпуск ограничен IssuanceCap)."
       },
-      "collect_model": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Сбор готового хлеба с пекарни."
-      },
-      "collect_signal": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Сбор готовой муки с мельницы."
-      },
       "collect_mining": {
         "role": "gameplay",
         "status": "active",
         "note": "Сбор добычи инструментом; работает только при включённом mining_enabled."
       },
+      "collect_mining_delegated": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор добычи арендатором по активной записи аренды (RentalAgreement); награда уходит арендатору."
+      },
+      "collect_model": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор готового хлеба с пекарни."
+      },
       "collect_power": {
         "role": "gameplay",
         "status": "active",
         "note": "Сбор воды из колодца (ставка зависит от погоды дня)."
+      },
+      "collect_signal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Сбор готовой муки с мельницы."
       },
       "collector_stake": {
         "role": "gameplay",
@@ -147,6 +177,26 @@
         "status": "active",
         "note": "Reveal розыгрыша лотереи с подписью оракула."
       },
+      "emergency_stop": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Guardian: пауза игры и/или заморозка выводов одним действием."
+      },
+      "exchange_data_energy": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Обмен DATA на энергию: сжигает целые DATA, начисляет энергию не выше потолка бака (§3.8)."
+      },
+      "expire_lottery_draw": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: переоткрыть раунд, чей розыгрыш оракул не раскрыл (путь восстановления VRF)."
+      },
+      "explore_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за экспедицию, которую оракул не раскрыл."
+      },
       "explore_reveal": {
         "role": "gameplay",
         "status": "active",
@@ -157,15 +207,15 @@
         "status": "active",
         "note": "Commit попытки кузницы (VRF)."
       },
-      "forge_attempt_reveal": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Reveal попытки кузницы."
-      },
       "forge_attempt_expire": {
         "role": "gameplay",
         "status": "active",
         "note": "Permissionless: возврат за попытку кузницы без reveal."
+      },
+      "forge_attempt_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal попытки кузницы."
       },
       "grant_season_xp": {
         "role": "admin",
@@ -182,10 +232,10 @@
         "status": "active",
         "note": "Одноразовая инициализация CraftEconomy (bringup шаг 5)."
       },
-      "init_player": {
+      "init_issuance_cap": {
         "role": "initialization",
         "status": "active",
-        "note": "Игрок создаёт собственный профиль; подписывает и оплачивает инициализацию."
+        "note": "Потолок выпуска ресурса: создаётся один раз на вид (npm run caps:init)."
       },
       "init_lottery_round": {
         "role": "admin",
@@ -201,6 +251,11 @@
         "role": "initialization",
         "status": "active",
         "note": "Конфиг пака на тип: small/medium/big, одноразово (bringup)."
+      },
+      "init_player": {
+        "role": "initialization",
+        "status": "active",
+        "note": "Игрок создаёт собственный профиль; подписывает и оплачивает инициализацию."
       },
       "init_rarity_counter": {
         "role": "initialization",
@@ -222,10 +277,20 @@
         "status": "active",
         "note": "[PAYER] Игрок отдельно создаёт SeasonPass за собственный rent; первый XP claim также может создать SeasonPass и replay cursor через init_if_needed с payer=user."
       },
+      "init_vault_guard": {
+        "role": "initialization",
+        "status": "active",
+        "note": "VaultGuard на mint: лимит вывода из vault (F-01)."
+      },
       "initialize": {
         "role": "initialization",
         "status": "active",
         "note": "Создаёт Config/auth/vault и привязывает authority к upgrade authority (bringup шаг 5)."
+      },
+      "marketplace_buy_bounded": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Покупка с потолком цены и сроком действия."
       },
       "marketplace_cancel": {
         "role": "gameplay",
@@ -242,10 +307,25 @@
         "status": "active",
         "note": "Матчинг ордербука v1; новый код использует match_resource_orders_v2 (цена за целый ресурс, эскроу с округлением вверх). Обработчик активен."
       },
+      "match_resource_orders_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Матчинг ордербука ресурсов v2."
+      },
+      "migrate_config_v2": {
+        "role": "migration",
+        "status": "active",
+        "note": "Одноразовый перевод Config на раскладку v2 (роли operator/guardian)."
+      },
       "mint_resource": {
         "role": "gameplay",
         "status": "active",
         "note": "Выпуск ресурса ключом backend (награды, добыча); ограничен IssuanceCap."
+      },
+      "mint_resource_once": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Идемпотентный выпуск ресурса по reward_id (защита от двойной выплаты)."
       },
       "mint_tool": {
         "role": "gameplay",
@@ -272,15 +352,15 @@
         "status": "active",
         "note": "Commit открытия пака (VRF)."
       },
-      "pack_open_reveal": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Reveal открытия пака."
-      },
       "pack_open_expire": {
         "role": "gameplay",
         "status": "active",
         "note": "Permissionless: возврат за пак без reveal."
+      },
+      "pack_open_reveal": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Reveal открытия пака."
       },
       "pay_out": {
         "role": "gameplay",
@@ -297,10 +377,20 @@
         "status": "active",
         "note": "Размещение ордера v1; новый код использует place_buy_order_v2. Обработчик активен — ждёт решения владельца."
       },
+      "place_buy_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Размещение покупки v2: цена за целый ресурс, эскроу с округлением вверх."
+      },
       "place_sell_order": {
         "role": "compatibility",
         "status": "active",
         "note": "Размещение ордера v1; новый код использует place_sell_order_v2. Обработчик активен — ждёт решения владельца."
+      },
+      "place_sell_order_v2": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Размещение продажи v2."
       },
       "plant_neuron": {
         "role": "gameplay",
@@ -322,6 +412,26 @@
         "status": "active",
         "note": "Повышение реферального уровня."
       },
+      "refund_lottery_round": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Восстановление: возврат билетов раунда, который не удалось разыграть (аудит F-23)."
+      },
+      "refund_lottery_ticket": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Возврат билета при неразыгранном раунде."
+      },
+      "register_collector_mint": {
+        "role": "admin",
+        "status": "active",
+        "note": "Добавление mint'а в allowlist коллекционеров (F-16)."
+      },
+      "rental_delist": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Снятие инструмента с аренды."
+      },
       "rental_end": {
         "role": "gameplay",
         "status": "active",
@@ -337,25 +447,20 @@
         "status": "active",
         "note": "Досрочный отзыв аренды владельцем."
       },
+      "rental_start_bounded": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Старт аренды с потолком суммарной комиссии."
+      },
       "repair": {
         "role": "gameplay",
         "status": "active",
         "note": "Ремонт инструмента ресурсами."
       },
-      "collect_mining_delegated": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Сбор добычи арендатором по активной записи аренды (RentalAgreement); награда уходит арендатору."
-      },
       "repair_delegated": {
         "role": "gameplay",
         "status": "active",
         "note": "Ремонт арендованного инструмента арендатором за свои ресурсы, пока аренда активна."
-      },
-      "start_mining_delegated": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Запуск добычи арендатором по активной аренде; сессия обязана завершиться до конца аренды."
       },
       "reroll": {
         "role": "gameplay",
@@ -367,10 +472,30 @@
         "status": "active",
         "note": "Commit случайного реролла (VRF)."
       },
+      "reroll_random_expire": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Permissionless: возврат за случайный реролл без reveal."
+      },
       "reroll_random_reveal": {
         "role": "gameplay",
         "status": "active",
         "note": "Reveal случайного реролла."
+      },
+      "reset_for_rebirth": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Полный сброс прогресса; вызывается в одной транзакции с aof_rebirth::do_rebirth."
+      },
+      "revoke_collector_mint": {
+        "role": "admin",
+        "status": "active",
+        "note": "Исключение mint'а из allowlist коллекционеров (F-16)."
+      },
+      "set_cashout_frozen": {
+        "role": "emergency",
+        "status": "active",
+        "note": "Заморозка/разморозка выводов (operator/guardian)."
       },
       "set_craft_economy": {
         "role": "admin",
@@ -382,6 +507,16 @@
         "status": "active",
         "note": "Комиссии крафта и unstake (имя общее с aof_market)."
       },
+      "set_issuance_cap": {
+        "role": "admin",
+        "status": "active",
+        "note": "Изменение потолка выпуска ресурса; не сбрасывает счётчик эпохи."
+      },
+      "set_mining_enabled": {
+        "role": "emergency",
+        "status": "active",
+        "note": "On-chain kill-switch добычи (F-27); bringup включает его последним, после выплатных минтов."
+      },
       "set_pack_config": {
         "role": "admin",
         "status": "active",
@@ -391,6 +526,11 @@
         "role": "emergency",
         "status": "active",
         "note": "Глобальная пауза игры (имя общее с aof_market)."
+      },
+      "set_pending_authority": {
+        "role": "admin",
+        "status": "active",
+        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
       },
       "set_reroll_config": {
         "role": "admin",
@@ -402,35 +542,65 @@
         "status": "active",
         "note": "Адреса ресурсных минтов Config."
       },
+      "set_roles": {
+        "role": "admin",
+        "status": "active",
+        "note": "Назначение operator и guardian."
+      },
+      "set_supply_cap": {
+        "role": "admin",
+        "status": "active",
+        "note": "Потолок общего предложения материала (F-03)."
+      },
+      "set_vault_guard": {
+        "role": "admin",
+        "status": "active",
+        "note": "Изменение лимитов VaultGuard."
+      },
       "stake": {
         "role": "gameplay",
         "status": "active",
         "note": "Стейк инструмента на срок."
-      },
-      "start_model_training": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Запуск выпечки."
       },
       "start_exploration_commit": {
         "role": "gameplay",
         "status": "active",
         "note": "Commit старта экспедиции (VRF)."
       },
-      "start_signal_processing": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Запуск помола."
-      },
       "start_mining": {
         "role": "gameplay",
         "status": "active",
         "note": "Запуск добычи инструментом."
       },
+      "start_mining_delegated": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск добычи арендатором по активной аренде; сессия обязана завершиться до конца аренды."
+      },
+      "start_model_training": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск выпечки."
+      },
+      "start_signal_processing": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Запуск помола."
+      },
       "sweep_gas_fees": {
         "role": "admin",
         "status": "active",
         "note": "Вывод накопленных комиссий газ-бака в казну."
+      },
+      "sync_tool_owner": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof."
+      },
+      "transfer_tool": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Канонический перенос инструмента (NFT и ToolData.owner одним действием); зовётся из aof_market по CPI."
       },
       "unstake": {
         "role": "gameplay",
@@ -442,120 +612,10 @@
         "status": "active",
         "note": "Повышение уровня экспедиций."
       },
-      "weather_crank": {
+      "use_flask": {
         "role": "gameplay",
         "status": "active",
-        "note": "Permissionless раз в сутки: значение погоды дня."
-      },
-      "withdraw_gas": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Вывод остатка газ-бака игроком."
-      },
-      "mint_resource_once": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Идемпотентный выпуск ресурса по reward_id (защита от двойной выплаты)."
-      },
-      "marketplace_buy_bounded": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Покупка с потолком цены и сроком действия."
-      },
-      "init_issuance_cap": {
-        "role": "initialization",
-        "status": "active",
-        "note": "Потолок выпуска ресурса: создаётся один раз на вид (npm run caps:init)."
-      },
-      "set_issuance_cap": {
-        "role": "admin",
-        "status": "active",
-        "note": "Изменение потолка выпуска ресурса; не сбрасывает счётчик эпохи."
-      },
-      "set_pending_authority": {
-        "role": "admin",
-        "status": "active",
-        "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
-      },
-      "accept_authority": {
-        "role": "admin",
-        "status": "active",
-        "note": "Шаг 2 ротации authority (имя общее у всех шести программ)."
-      },
-      "cancel_pending_authority": {
-        "role": "admin",
-        "status": "active",
-        "note": "Отмена ротации authority (имя общее у всех шести программ)."
-      },
-      "set_mining_enabled": {
-        "role": "emergency",
-        "status": "active",
-        "note": "On-chain kill-switch добычи (F-27); bringup включает его последним, после выплатных минтов."
-      },
-      "init_vault_guard": {
-        "role": "initialization",
-        "status": "active",
-        "note": "VaultGuard на mint: лимит вывода из vault (F-01)."
-      },
-      "set_vault_guard": {
-        "role": "admin",
-        "status": "active",
-        "note": "Изменение лимитов VaultGuard."
-      },
-      "set_supply_cap": {
-        "role": "admin",
-        "status": "active",
-        "note": "Потолок общего предложения материала (F-03)."
-      },
-      "register_collector_mint": {
-        "role": "admin",
-        "status": "active",
-        "note": "Добавление mint'а в allowlist коллекционеров (F-16)."
-      },
-      "revoke_collector_mint": {
-        "role": "admin",
-        "status": "active",
-        "note": "Исключение mint'а из allowlist коллекционеров (F-16)."
-      },
-      "refund_lottery_round": {
-        "role": "emergency",
-        "status": "active",
-        "note": "Восстановление: возврат билетов раунда, который не удалось разыграть (аудит F-23)."
-      },
-      "migrate_config_v2": {
-        "role": "migration",
-        "status": "active",
-        "note": "Одноразовый перевод Config на раскладку v2 (роли operator/guardian)."
-      },
-      "set_roles": {
-        "role": "admin",
-        "status": "active",
-        "note": "Назначение operator и guardian."
-      },
-      "emergency_stop": {
-        "role": "emergency",
-        "status": "active",
-        "note": "Guardian: пауза игры и/или заморозка выводов одним действием."
-      },
-      "set_cashout_frozen": {
-        "role": "emergency",
-        "status": "active",
-        "note": "Заморозка/разморозка выводов (operator/guardian)."
-      },
-      "rental_start_bounded": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Старт аренды с потолком суммарной комиссии."
-      },
-      "rental_delist": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Снятие инструмента с аренды."
-      },
-      "auction_cancel": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Отмена аукциона владельцем."
+        "note": "Применение фляги: сжигает один флюид, возвращает энергию по тиру (§3.8)."
       },
       "vrf_pool_add": {
         "role": "admin",
@@ -572,65 +632,15 @@
         "status": "active",
         "note": "Оператор снимает блокировку слота VRF, чей держатель исчез."
       },
-      "reroll_random_expire": {
+      "weather_crank": {
         "role": "gameplay",
         "status": "active",
-        "note": "Permissionless: возврат за случайный реролл без reveal."
+        "note": "Permissionless раз в сутки: значение погоды дня."
       },
-      "explore_expire": {
+      "withdraw_gas": {
         "role": "gameplay",
         "status": "active",
-        "note": "Permissionless: возврат за экспедицию, которую оракул не раскрыл."
-      },
-      "expire_lottery_draw": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Permissionless: переоткрыть раунд, чей розыгрыш оракул не раскрыл (путь восстановления VRF)."
-      },
-      "refund_lottery_ticket": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Возврат билета при неразыгранном раунде."
-      },
-      "place_buy_order_v2": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Размещение покупки v2: цена за целый ресурс, эскроу с округлением вверх."
-      },
-      "place_sell_order_v2": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Размещение продажи v2."
-      },
-      "cancel_buy_order_v2": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Отмена покупки v2."
-      },
-      "cancel_sell_order_v2": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Отмена продажи v2."
-      },
-      "match_resource_orders_v2": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Матчинг ордербука ресурсов v2."
-      },
-      "reset_for_rebirth": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Полный сброс прогресса; вызывается в одной транзакции с aof_rebirth::do_rebirth."
-      },
-      "transfer_tool": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Канонический перенос инструмента (NFT и ToolData.owner одним действием); зовётся из aof_market по CPI."
-      },
-      "sync_tool_owner": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof."
+        "note": "Вывод остатка газ-бака игроком."
       }
     },
     "aof_market": {

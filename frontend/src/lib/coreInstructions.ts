@@ -1148,6 +1148,24 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     authorityOnly: false,
     trailingAccounts: null,
   },
+  {
+    name: "exchange_data_energy",
+    discriminator: [120, 159, 79, 186, 250, 65, 83, 195],
+    accounts: ["config", "user", "energy_account", "data_mint", "user_data", "token_program", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+    trailingAccounts: null,
+  },
+  {
+    name: "use_flask",
+    discriminator: [195, 18, 130, 61, 57, 11, 101, 135],
+    accounts: ["config", "user", "material_mints", "energy_account", "flask_mint", "user_flask", "token_program", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+    trailingAccounts: null,
+  },
 
 ];
 

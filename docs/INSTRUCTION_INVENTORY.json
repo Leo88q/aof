@@ -13,7 +13,7 @@
     },
     {
       "file": "frontend/src/lib/coreInstructions.ts",
-      "distinctInstructions": 123
+      "distinctInstructions": 125
     },
     {
       "file": "frontend/src/lib/transactionIntent.ts",
@@ -25,9 +25,9 @@
     }
   ],
   "totals": {
-    "instructions": 171,
+    "instructions": 173,
     "byRole": {
-      "gameplay": 101,
+      "gameplay": 103,
       "admin": 40,
       "emergency": 8,
       "migration": 1,
@@ -44,9 +44,9 @@
   },
   "programs": {
     "aof_core": {
-      "instructions": 123,
+      "instructions": 125,
       "byRole": {
-        "gameplay": 81,
+        "gameplay": 83,
         "admin": 21,
         "emergency": 6,
         "migration": 1,
@@ -2315,10 +2315,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_vrf_localnet.ts"
           ]
         }
       },
@@ -2519,10 +2520,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_vrf_localnet.ts"
           ]
         },
         "readiness": {
@@ -7002,6 +7004,13 @@
       "note": "Канонический перенос инструмента (NFT и ToolData.owner одним действием); зовётся из aof_market по CPI.",
       "evidence": null,
       "callSites": {
+        "backend": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/pda.ts"
+          ]
+        },
         "rustCpi": {
           "calls": 1,
           "mentions": 0,
@@ -7032,7 +7041,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -7177,10 +7186,13 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 4,
           "mentions": 0,
           "files": [
-            "tests/aof_payer_funding.ts"
+            "tests/aof_core.ts",
+            "tests/aof_extended.ts",
+            "tests/aof_payer_funding.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "readiness": {
@@ -7197,6 +7209,135 @@
       "summary": {
         "callSiteCount": 1,
         "validatorTested": true,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "exchange_data_energy",
+      "camel": "exchangeDataEnergy",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::exchange_data_energy::handler",
+        "file": "aof-core/src/instructions/exchange_data_energy.rs",
+        "line": 27
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Обмен DATA на энергию: сжигает целые DATA, начисляет энергию не выше потолка бака (§3.8).",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/resourceRegistry.ts",
+            "aof_backend/src/routes/resources.ts"
+          ]
+        },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/devnet-program-probe.py"
+          ]
+        },
+        "platform": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "functions/index.js"
+          ]
+        }
+      },
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
+      "bringup": [],
+      "tests": {
+        "selfTests": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/test-devnet-program-probe.py"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/contract-work-3-8.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 4,
+        "validatorTested": false,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "use_flask",
+      "camel": "useFlask",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::use_flask::handler",
+        "file": "aof-core/src/instructions/use_flask.rs",
+        "line": 27
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Применение фляги: сжигает один флюид, возвращает энергию по тиру (§3.8).",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/resourceRegistry.ts",
+            "aof_backend/src/routes/tools.ts"
+          ]
+        },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/devnet-program-probe.py"
+          ]
+        }
+      },
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
+      "bringup": [],
+      "tests": {
+        "selfTests": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/test-devnet-program-probe.py"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/contract-work-3-8.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 3,
+        "validatorTested": false,
         "anyTest": true
       }
     },

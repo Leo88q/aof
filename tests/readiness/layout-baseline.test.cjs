@@ -49,8 +49,11 @@ test('базис фиксирует порядок enum, дискриминан�
   assert.deepEqual(baseline.resourceKind.slice(0, 5), ['Data', 'Circuit', 'Silicon', 'Neuron', 'Synapse']);
   const core = baseline.programs.find((p) => p.name === 'aof_core');
   const xpClaimAdditions = baseline.approvedAdditions?.aof_core;
-  assert.deepEqual(xpClaimAdditions?.instructions, [{ name: 'init_player', discriminator: '721bdb90320fe442' }],
-    'новая инструкция зафиксирована отдельно от исторического списка и с точным discriminator');
+  assert.deepEqual(xpClaimAdditions?.instructions, [
+    { name: 'init_player', discriminator: '721bdb90320fe442' },
+    { name: 'exchange_data_energy', discriminator: '789f4fbafa4153c3' },
+    { name: 'use_flask', discriminator: 'c312823d390b6587' },
+  ], 'новая инструкция зафиксирована отдельно от исторического списка и с точным discriminator');
   assert.deepEqual(xpClaimAdditions?.errors?.AofError, [
     'PlayerNotInitialized', 'InvalidSeasonXpEntitlement', 'SeasonXpEntitlementExpired', 'SeasonXpNonceMismatch',
   ], 'новые error codes только appended — старые ordinal-коды сохраняются');

@@ -3308,6 +3308,68 @@ pub struct CollectModel<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+// [§3.8] Обмен DATA на энергию. DATA — канонический минт из Config
+// (`mint_for_kind(Data) == config.data_mint`), поэтому адресная проверка минта
+// идёт констрейнтом, а не телом обработчика.
+#[derive(Accounts)]
+pub struct ExchangeDataEnergy<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = ENERGY_ACCOUNT_SPACE,
+        seeds = [ENERGY_ACCOUNT_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub energy_account: Box<Account<'info, EnergyAccount>>,
+    // `mut`: token::burn уменьшает supply минта, поэтому минт обязан быть writable.
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        constraint = user_data.mint == data_mint.key(),
+        constraint = user_data.owner == user.key()
+    )]
+    pub user_data: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+// [§3.8] Применение флякона: сжигает один флюид и возвращает энергию по тиру.
+// Минт флякона зависит от `flask_kind`, поэтому каноничность проверяется в
+// обработчике через `mint_for_kind` — до сжигания.
+#[derive(Accounts)]
+pub struct UseFlask<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = ENERGY_ACCOUNT_SPACE,
+        seeds = [ENERGY_ACCOUNT_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub energy_account: Box<Account<'info, EnergyAccount>>,
+    // `mut`: token::burn уменьшает supply минта, поэтому минт обязан быть writable.
+    #[account(mut)]
+    pub flask_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        constraint = user_flask.mint == flask_mint.key(),
+        constraint = user_flask.owner == user.key()
+    )]
+    pub user_flask: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
 // [БЛОК L] Обновление погоды (permissionless)
 #[derive(Accounts)]
 pub struct WeatherCrank<'info> {
@@ -4055,6 +4117,18 @@ pub mod aof_core {
     /// [БЛОК L] Сбор готового хлеба с печи
     pub fn collect_model(ctx: Context<CollectModel>) -> Result<()> {
         instructions::collect_model::handler(ctx)
+    }
+
+    /// [§3.8] Обмен DATA на энергию: целое DATA → 1 энергия, не выше потолка.
+    /// DATA сжигается, поэтому потолок выпуска освобождается.
+    pub fn exchange_data_energy(ctx: Context<ExchangeDataEnergy>, data_amount: u64) -> Result<()> {
+        instructions::exchange_data_energy::handler(ctx, data_amount)
+    }
+
+    /// [§3.8] Применение флякона: сжигает одну флягу (1..=5) и возвращает
+    /// энергию по тиру. Единственный объявленный эффект флюидов.
+    pub fn use_flask(ctx: Context<UseFlask>, flask_kind: u8) -> Result<()> {
+        instructions::use_flask::handler(ctx, flask_kind)
     }
 
     /// [БЛОК L] Обновление погоды (permissionless, раз в сутки)

@@ -96,6 +96,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/xp/claims", subject: "season_xp_claim", field: "player" },
   { path: "/xp/claims/", subject: "season_xp_claim", field: "player" },
   { path: "/tools/prep-mint", subject: "tools_prep_mint", field: "owner" },
+  { path: "/tools/use-flask", subject: "tools_use_flask", field: "user" },
   { path: "/tools/craft", subject: "tools_craft", field: "user" },
   { path: "/tools/repair", subject: "tools_repair", field: "user" },
   { path: "/tools/stake", subject: "tools_stake", field: "user" },
@@ -112,8 +113,6 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/liquidity/withdraw", subject: "liquidity_withdraw", field: "user" },
   { path: "/forge/commit", subject: "forge_commit", field: "user" },
   { path: "/forge/reveal", subject: "forge_reveal", field: "user" },
-  { path: "/forge/bow/commit", subject: "forge_bow_commit", field: "user" },
-  { path: "/forge/bow/reveal", subject: "forge_bow_reveal", field: "user" },
   { path: "/drum/commit", subject: "drum_commit", field: "user" },
   { path: "/drum/reveal", subject: "drum_reveal", field: "user" },
   { path: "/exploration/start/commit", subject: "exploration_commit", field: "user" },
@@ -379,8 +378,6 @@ export const api = {
     commit: (v: any) => post("/forge/commit", v),
     status: (forgeCommit: string) => get(`/forge/status/${forgeCommit}`),
     reveal: (v: any) => post("/forge/reveal", v),
-    bowCommit: (v: any) => post("/forge/bow/commit", v),
-    bowReveal: (v: any) => post("/forge/bow/reveal", v),
   },
 
   // === Лотерея ===

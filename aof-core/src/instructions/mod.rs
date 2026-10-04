@@ -10,6 +10,8 @@ pub mod init_rarity_counter;
 pub mod init_material_mints;
 pub mod plant_neuron;
 pub mod harvest_synapse;
+pub mod use_flask;
+pub mod exchange_data_energy;
 pub mod start_signal_processing;
 pub mod collect_signal;
 pub mod start_model_training;

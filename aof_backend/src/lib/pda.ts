@@ -203,9 +203,9 @@ export const lpPoolPda = (rarity: number) =>
 export const lpPositionPda = (user: PublicKey, rarity: number) =>
   findLiquidity([enc("lp_position"), user.toBuffer(), u8(rarity)]);
 
-// Bow/скины (добавлено из aof_solana_fixed)
-export const bowCommitPda = (toolMint: PublicKey) => find([enc("bow_commit"), toolMint.toBuffer()]);
-export const skinPda = (skinMint: PublicKey) => find([enc("skin"), skinMint.toBuffer()]);
+// §3.8: bowCommitPda/skinPda удалены вместе со скинами — в программе нет ни
+// seeds `bow_commit`/`skin`, ни аккаунтов скинов. Инструмент передаётся
+// `transfer_tool`, награда за попытку — `forge_attempt_*`.
 
 // =====================================================================
 // Laboratory and resource-production PDA helpers

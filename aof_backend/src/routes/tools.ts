@@ -8,6 +8,7 @@ import {
   authPda,
   configPda,
   craftEconomyPda,
+  energyAccountPda,
   gastankPda,
   playerPda,
   rarityCounterPda,
@@ -30,6 +31,16 @@ import { connection } from "../provider";
 import { criticalOperationGuard, requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
 import { assertNoFraudHold, sendFraudHold } from "../security/fraudHold";
+import { materialMintField, validateSingleCanonicalResourceMint, type ResourceMintKey } from "../lib/resourceRegistry";
+
+/** flaskType (1..5) → канонический ключ ресурса флюида в `MaterialMints`. */
+const FLASK_KIND_BY_TYPE: Record<number, ResourceMintKey> = {
+  1: "CRYO_FLUID",
+  2: "VOLT_FLUID",
+  3: "BIO_FLUID",
+  4: "NANO_FLUID",
+  5: "QUANTUM_FLUID",
+};
 
 /**
  * [AUDIT F-01] Resolve the wallet that owns a token account (SPL layout:
@@ -681,44 +692,54 @@ r.post("/prep-mint", requireCircuitOpen, requireWalletLimits("tools_prep_mint"),
 });
 
 
-// Disabled because aof-core does not expose a verified use_flask instruction.
-r.post("/use-flask", (_req, res) => {
-  res.status(503).json({ error: "FLASK_USE_DISABLED_UNTIL_ONCHAIN_INSTRUCTION_EXISTS" });
-});
-
-/*
-r.post("/use-flask", async (req, res) => {
+// [§3.8] Применение флякона: одна фляга сжигается, энергия начисляется по тиру
+// (константы программы `FLASK_ENERGY_GAIN`, не выше `ENERGY_CAP`). Тело:
+// `flaskType` 1..5 и адрес владельца — канонический минт флюида маршрут
+// достаёт из `MaterialMints`, а не из тела запроса.
+r.post("/use-flask", requireCircuitOpen, requireWalletLimits("tools_use_flask"), async (req, res) => {
   try {
     const user = pk(req.body.user);
-    const flaskType = Number(req.body.flaskType); // 1-5
-    const flaskMint = pk(req.body.flaskMint);
-    
-    // Валидация типа флакона
-    if (flaskType < 1 || flaskType > 5) {
-      return res.status(400).json({ error: "Invalid flask type (must be 1-5)" });
+    const flaskType = Number(req.body.flaskType);
+    if (!Number.isInteger(flaskType) || flaskType < 1 || flaskType > 5) {
+      throw new Error("flaskType must be 1..5 (Cryo, Volt, Bio, Nano, Quantum)");
     }
-    
-    const [playerState] = playerPda(user);
+    const flaskKind = FLASK_KIND_BY_TYPE[flaskType];
+    const [config] = configPda();
+    const [materialMints] = materialMintsPda();
+    const [energyAccount] = energyAccountPda(user);
+    const mm: any = await fetchOne("materialMints", materialMints);
+    if (!mm) return res.status(503).json({ error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+
+    const materialField = materialMintField(flaskKind);
+    if (!materialField) throw new Error(`no canonical MaterialMints field for ${flaskKind}`);
+    const flaskMint = new PublicKey(mm[materialField]);
+    if (flaskMint.equals(PublicKey.default)) {
+      return res.status(503).json({ error: "RESOURCE_REGISTRY_INCOMPLETE", details: [`${flaskKind}:missing_or_default`] });
+    }
+    const mintCheck = await validateSingleCanonicalResourceMint(connection, flaskKind, flaskMint);
+    if (!mintCheck.ok) {
+      return res.status(503).json({ error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_OR_INVALID", details: mintCheck.errors });
+    }
+
     const userFlask = getAssociatedTokenAddressSync(flaskMint, user);
-    
     const ix = await (program.methods as any)
       .useFlask(flaskType)
       .accounts({
-        player: user,
-        playerState,
-        userFlask,
+        config,
+        user,
+        materialMints,
+        energyAccount,
         flaskMint,
+        userFlask,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
-    
     const tx = await coSign([ix], user);
-    res.json({ tx, message: `Flask type ${flaskType} used! Buff active for 1 hour.` });
+    res.json({ tx });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
-*/
 
 export default r;

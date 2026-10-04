@@ -138,8 +138,11 @@ def repo_instruction_names(program: str) -> set[str] | None:
 def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
     """Таблица «механика → включена или нет» с доказательством из сети.
 
-    Каждая строка: name, state ("включено" / "выключено" / "нет данных"),
-    evidence (что именно прочитано) и action (что сделать, если выключено).
+    Каждая строка: name, state ("включено" / "ждёт деплоя" / "выключено" /
+    "нет данных"),
+    evidence (что именно прочитано) и action (что сделать, если включить
+    нельзя). «Ждёт деплоя» — код в репозитории есть, а версия байткода в сети
+    не подтверждена; строки «включено» из IDL не выводятся.
     """
     ids = program_ids(registry)
     core = ids.get("aof_core", "")
@@ -233,29 +236,36 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
                                else "scripts/devnet-bringup.sh --apply (шаг 5/10: initMintsV2.ts задаёт адреса ресурсов)")),
     )
 
-    # Механики, которым нужен НОВЫЙ код программы: инструкции в aof_core нет,
-    # поэтому ни один аккаунт не сделает их включёнными. Строка читает IDL
-    # репозитория и сама станет «включено», когда инструкция появится (тогда же
-    # снимется 503 в соответствующем маршруте бэкенда).
+    # Механики, которым нужен НОВЫЙ код программы. Такую вещь нельзя прочитать
+    # из сети: ни один аккаунт не скажет «инструкции нет», а наличие аккаунта
+    # программы не доказывает, что байткод собран из этого репозитория. Поэтому
+    # строка честно разделяет два состояния:
+    #   * инструкции нет в IDL репозитория  -> «выключено»      (нужна работа по контракту);
+    #   * инструкция есть в IDL репозитория -> «ждёт деплоя»    (нужна сборка и деплой,
+    #     а версию байткода в сети подтверждает только verify-programs.sh).
+    # Третьего состояния «включено» здесь не будет: его нельзя доказать.
     core_instructions = repo_instruction_names("aof_core")
     contract_blocked = [
-        ("Фляги: применение", ("use_flask",), "§3.8", "/tools/use-flask"),
-        ("Обмен ресурсов на энергию", ("exchange_data_energy",), "§3.8", "/resources/exchange-energy"),
-        ("Награда за лук (устаревший предмет)", ("bow_reward_commit", "bow_reward_reveal"), "§3.8", "/forge/bow/*"),
+        ("Фляги: применение", ("use_flask",), "/tools/use-flask"),
+        ("Обмен ресурсов на энергию", ("exchange_data_energy",), "/resources/exchange-energy"),
     ]
-    for title, instructions, section, route in contract_blocked:
+    for title, instructions, route in contract_blocked:
         if core_instructions is None:
             row(title, "нет данных", "IDL репозитория не читается — нечем проверить наличие инструкции",
                 "проверьте aof_backend/src/idl/aof_core.json")
             continue
         present = [name for name in instructions if name in core_instructions]
         if present:
-            row(title, "включено", f"инструкция {'/'.join(present)} есть в IDL программы",
-                "" if present else f"проверьте маршрут {route}")
+            row(title, "ждёт деплоя",
+                f"инструкция {'/'.join(present)} есть в IDL репозитория, маршрут {route} собирает транзакцию; "
+                "сеть не подтверждает версию байткода",
+                "собрать и задеплоить aof_core (PROGRAM_MAX_LEN_POLICY=exact "
+                "AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply), затем "
+                "scripts/verify-programs.sh devnet <authority> target/deploy --require-bytecode")
         else:
             row(title, "выключено",
                 f"в IDL aof_core нет инструкции {'/'.join(instructions)}: маршрут {route} отвечает 503",
-                f"работа по контракту (docs/UNBLOCK_PLAN_2026-09-30.md {section}): дописать инструкцию, собрать и задеплоить")
+                "работа по контракту (docs/CONTRACT_WORK_QUEUE.md §3.8): дописать инструкцию, собрать и задеплоить")
 
     # Платный трек сезонного пропуска: инструкция purchase_season_pass в
     # программе уже есть, закрыт не она — нужны раздельные треки, детерминированный
@@ -263,7 +273,7 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
     row("Платный трек сезонного пропуска", "выключено",
         "маршрут /season/pass/purchase отвечает 503 SEASON_PASS_PAID_TRACK_NOT_READY: "
         "покупка закрыта до раздельных треков и проверяемых льгот (инструкция покупки в программе есть)",
-        "работа по контракту (docs/UNBLOCK_PLAN_2026-09-30.md §3.6): раздельные треки, идемпотентные начисления, потолки")
+        "работа по контракту (docs/CONTRACT_WORK_QUEUE.md §3.6): раздельные треки, идемпотентные начисления, потолки")
 
     # Остальные account-типы: есть ли хоть один аккаунт этого вида.
     others = [
@@ -341,7 +351,7 @@ def mechanics(rpc: str, registry: dict, *, call_fn=call) -> list[dict]:
             row("Сессионные ключи", "выключено",
                 f"SkConfig: {cfg}; session_create/session_check_and_spend в коде требуют "
                 "атомарной привязки к целевой инструкции",
-                "работа по контракту (§3.3): привязка резерва к целевому CPI")
+                "работа по контракту (docs/CONTRACT_WORK_QUEUE.md §3.3): привязка резерва к целевому CPI")
         except Exception as exc:
             row("Сессионные ключи", "нет данных", f"aof-session-keys: {exc}")
     if rebirth and not deployed.get("aof_rebirth"):
@@ -426,17 +436,20 @@ def main(argv: list[str]) -> int:
     rows = mechanics(rpc, registry)
     report["mechanics"] = rows
     width = max((len(r["name"]) for r in rows), default=10)
-    on = 0
+    counters = {"включено": 0, "ждёт деплоя": 0, "выключено": 0, "нет данных": 0}
     for item in rows:
-        marker = {"включено": "ВКЛ ", "выключено": "выкл", "нет данных": "??  "}.get(item["state"], "??  ")
-        if item["state"] == "включено":
-            on += 1
+        counters[item["state"]] = counters.get(item["state"], 0) + 1
+        marker = {"включено": "ВКЛ ", "ждёт деплоя": "ДЕПЛ", "выключено": "выкл",
+                  "нет данных": "??  "}.get(item["state"], "??  ")
         say(f"  [{marker}] {item['name']:<{width}}  {item['evidence']}")
         if item["action"]:
             say(f"          ↳ {item['action']}")
     say()
-    say(f"Включено механизмов: {on} из {len(rows)}. «Выключено» — это либо не пройденный шаг"
+    say(f"Включено механизмов: {counters['включено']} из {len(rows)}. «Выключено» — это либо не пройденный шаг"
         " включения, либо работа по контракту; причина и действие напечатаны рядом.")
+    if counters["ждёт деплоя"]:
+        say(f"Ждут деплоя: {counters['ждёт деплоя']} — инструкция есть в IDL репозитория,"
+            " но версия байткода в сети не подтверждена (scripts/verify-programs.sh).")
 
     if as_json:
         print(json.dumps(report, ensure_ascii=False, indent=2))

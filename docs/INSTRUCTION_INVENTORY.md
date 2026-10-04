@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 123 | 1 | 94 (76%) | 13 | 1 |
+| aof_core | 125 | 1 | 94 (75%) | 13 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 2 | 2 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **171** | **7** | **100** (58%) | **19** | **3** |
+| **всего** | **173** | **7** | **100** (58%) | **19** | **3** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -31,7 +31,7 @@
 
 | Роль | aof_core | aof_market | aof_quests | aof_rebirth | aof_liquidity | aof_session_keys | всего |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| gameplay | 81 | 4 | 9 | 1 | 2 | 4 | 101 |
+| gameplay | 83 | 4 | 9 | 1 | 2 | 4 | 103 |
 | admin | 21 | 5 | 7 | 3 | 3 | 1 | 40 |
 | emergency | 6 | 1 | 1 | 0 | 0 | 0 | 8 |
 | migration | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -123,11 +123,11 @@
 | aof_core | init_craft_economy | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_lottery_round | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_material_mints | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
-| aof_core | init_pack_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
+| aof_core | init_pack_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | ✓ |
 | aof_core | init_rarity_counter | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_reroll_config | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_season | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 | ✓ |
-| aof_core | initialize | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | ✓ |
+| aof_core | initialize | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 0 | 4 | 0 | ✓ |
 | aof_core | marketplace_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 1 | 0 |  |
 | aof_core | marketplace_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | match_resource_orders | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 |  |
@@ -207,10 +207,12 @@
 | aof_core | cancel_sell_order_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
 | aof_core | match_resource_orders_v2 | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | reset_for_rebirth | gameplay | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
-| aof_core | transfer_tool | gameplay | active | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | 0 |  |
+| aof_core | transfer_tool | gameplay | active | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | 0 |  |
 | aof_core | sync_tool_owner | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | init_season_pass | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 0 | ✓ |
-| aof_core | init_player | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 4 | 0 |  |
+| aof_core | init_player | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 4 | 0 |  |
+| aof_core | exchange_data_energy | gameplay | active | 2 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 1 | 0 |  |
+| aof_core | use_flask | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |  |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_market | hot_market_sell_into_queue | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
