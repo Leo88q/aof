@@ -69,6 +69,22 @@ for arg in "$@"; do [ "$arg" = "--apply" ] && APPLY=1; done
 PROGRAMS="${PROGRAMS:-}"
 
 log() { printf '\n\033[1;36m== %s ==\033[0m\n' "$*"; }
+
+# Схема и хост без пути/query: у провайдеров RPC ключ стоит в query, а этот
+# вывод попадает в терминал, issue и логи.
+masked_url() { # $1 — URL
+  printf '%s' "$1" | sed -E -e 's#(\?[^/]*)$##' -e 's#^([a-zA-Z][a-zA-Z0-9+.-]*://[^/]*).*$#\1#'
+}
+
+# Куда backend пойдёт за сетью: переменная окружения важнее файла, потому что
+# dotenv не перезаписывает уже заданные переменные. Именно из-за этого «RPC
+# поправлен в .env», а backend продолжает ходить старым адресом.
+backend_rpc_url() {
+  if [ -n "${RPC_URL:-}" ]; then printf '%s' "$RPC_URL"; return 0; fi
+  local from_envfile
+  from_envfile="$(sed -n 's/^RPC_URL=//p' "$BE/.env" 2>/dev/null | head -1 | tr -d '\r' | tr -d '"' | tr -d "'" | sed -e 's/[[:space:]]*$//')"
+  printf '%s' "${from_envfile:-https://api.devnet.solana.com}"
+}
 warn() { printf '\033[1;33m⚠️  %s\033[0m\n' "$*" >&2; }
 die() { printf '\033[1;31m❌ %s\033[0m\n' "$*" >&2; exit 1; }
 
@@ -470,7 +486,19 @@ cmd_up() {
   if [ "$SKIP_BACKEND" != "1" ]; then
     ensure_backend_env
     prepare_backend_db
+    local rpc_for_backend rpc_source
+    rpc_for_backend="$(backend_rpc_url)"
+    if [ -n "${RPC_URL:-}" ] && [ "${RPC_URL:-}" != "$(sed -n 's/^RPC_URL=//p' "$BE/.env" 2>/dev/null | head -1)" ]; then
+      rpc_source="окружение переопределяет aof_backend/.env"
+    else
+      rpc_source="из aof_backend/.env"
+    fi
     log "backend: npm run dev (ts-node src/server.ts) на :$BACKEND_PORT"
+    printf '   backend RPC: %s (%s)\n' "$(masked_url "$rpc_for_backend")" "$rpc_source"
+    case "$rpc_for_backend" in
+      *api.devnet.solana.com*)
+        warn "backend ходит на публичный api.devnet.solana.com: он часто отвечает 429, и /ready покажет rpc.ok=false, а деплой-скрипты — 502 BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE. Возьмите RPC провайдера и перезапустите: RPC_URL='https://…/?api-key=…' bash scripts/dev-local.sh up (кавычки обязательны), либо впишите его в aof_backend/.env." ;;
+    esac
     (cd "$BE" && PORT="$BACKEND_PORT" npm run -s dev) &
     be_pid=$!; pids+=("$be_pid")
     local i

@@ -613,7 +613,9 @@ class FakeBackend:
       old-backend  — старая сборка без маршрута: Express-подобный 404 «Cannot GET …»;
       foreign-json — посторонний сервис отвечает 200 JSON чужого формата;
       foreign-html — 200 HTML;
-      legacy-400   — 400 с JSON-ошибкой (то, что раньше возвращал GET /mining до деплоя).
+      legacy-400   — 400 с JSON-ошибкой (то, что раньше возвращал GET /mining до деплоя);
+      rpc-down     — 502 BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE: backend жив, но сам не читает сеть
+                     (реальный случай: в .env остался публичный/старый RPC_URL).
     Состояние берётся из файлов, которые пишут моки solana/npx: после первого --apply повторный
     запуск видит развёрнутые программы и созданный Config.
     """
@@ -666,6 +668,8 @@ class FakeBackend:
                     return self._reply(200, b"<html><body>It works!</body></html>", "text/html")
                 if backend.behavior == "legacy-400":
                     return self._reply(400, {"error": "Account does not exist or has no data"})
+                if backend.behavior == "rpc-down" and self.path.startswith("/admin/config/bootstrap-preflight"):
+                    return self._reply(502, {"error": "BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE"})
                 if method != "GET" or self.path != "/admin/config/bootstrap-preflight":
                     return self._reply(404, {"error": "Not found"})
                 if self.headers.get("Authorization", "") != f"Bearer {backend.token}":
@@ -732,6 +736,18 @@ class BootstrapPreflight(BringupBase):
             backend = self.backend(behavior=behavior)
             done = self.run_with(backend.url, "--apply")
             self.assert_refused_before_any_transaction(done, needle)
+
+    def test_backend_with_a_dead_rpc_names_how_to_check_it(self):
+        # 502 BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE значит «backend жив, но сам не читает сеть».
+        # Сообщение обязано вести к /ready и к тому, что dotenv не перезаписывает
+        # уже заданные переменные окружения (backend не перезапускался после правки .env).
+        backend = self.backend(behavior="rpc-down")
+        done = self.run_with(backend.url, "--apply")
+        self.assert_refused_before_any_transaction(done, "BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE")
+        self.assertIn("/ready", done.stderr)
+        self.assertIn("dotenv", done.stderr)
+        self.assertIn("rpcEndpoint", done.stderr)
+        self.assertIn("dev-local.sh up", done.stderr)
 
     def test_http_400_is_never_accepted_as_ready(self):
         # Корень исходной проблемы: «принять любой 400» пропустило бы и чужой сервис, и неверный токен.

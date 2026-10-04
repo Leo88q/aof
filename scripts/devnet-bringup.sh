@@ -199,6 +199,7 @@ if [ "$NEED_BACKEND" = 1 ]; then
     200) ;;
     401|403) die "backend отклонил ADMIN_TOKEN (HTTP $PREFLIGHT_HTTP): нужен ops-токен ADMIN_TOKEN, а не ADMIN_READ_TOKEN и не чужой токен" ;;
     404) die "по адресу $BACKEND_URL нет /admin/config/bootstrap-preflight (HTTP 404): это посторонний сервис на порту или старая сборка backend — обновите и перезапустите backend из этого репозитория" ;;
+    502) die "backend ответил 502 BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE: он сам не может прочитать сеть. Проверьте, куда он ходит: curl -sS $BACKEND_URL/ready | jq '{rpc: .checks.rpc, rpcEndpoint}' — в rpcEndpoint видно адрес (ключ маскируется). Если там публичный api.devnet.solana.com или старый адрес/ключ, а в .env уже новый — backend не перезапускался после правки: dotenv не перезаписывает уже заданные переменные окружения. Перезапустите его с явным RPC: RPC_URL='https://…/?api-key=…' BACKEND_PORT=<порт> bash scripts/dev-local.sh up" ;;
     *) die "GET $BACKEND_URL/admin/config/bootstrap-preflight вернул HTTP $PREFLIGHT_HTTP вместо 200: backend не готов (смотрите его лог, чаще всего недоступен RPC) либо это посторонний сервис" ;;
   esac
   jq -e '.kind == "aof.bootstrap-preflight" and .schemaVersion == 1 and .service == "aof-backend"' "$PREFLIGHT_BODY" >/dev/null 2>&1 \

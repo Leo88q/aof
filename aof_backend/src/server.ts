@@ -5,7 +5,7 @@ import { logger } from "./lib/logger";
 import { generalLimiter, txLimiter, readLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
 import cors from "cors";
-import { PORT, TRUST_PROXY_HOPS } from "./config";
+import { PORT, RPC_URL, TRUST_PROXY_HOPS } from "./config";
 import { connection } from "./provider";
 import admin from "./routes/admin";
 import adminXp from "./routes/adminXp";
@@ -212,6 +212,16 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
  * Ошибки RPC-библиотек иногда несут в тексте полный URL, а у провайдеров ключ
  * стоит в query (`?api-key=…`). Поэтому в текст ошибки попадают только маски.
  */
+/** Только схема и хост: путь/query провайдера могут нести ключ. */
+export function redactEndpoint(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return "<rpc>";
+  }
+}
+
 export function redactSecrets(text: string): string {
   return text
     .replace(/([?&](?:api[-_]?key|apikey|token|key)=)[^&\s'"]+/gi, "$1***")
@@ -233,7 +243,14 @@ app.get("/ready", async (_req, res) => {
   ]);
   const ok = Object.values(checks).every((c) => c.ok);
   const { queryCacheStats, QUERY_CACHE_TTL_MS } = await import("./lib/decode");
-  res.status(ok ? 200 : 503).json({ ok, checks, queryCache: { ttlMs: QUERY_CACHE_TTL_MS, ...queryCacheStats() } });
+  // Куда backend ходит за сетью, видно прямо здесь: при rpc.ok=false это первое,
+  // что нужно, а ключ провайдера в ответ не попадает (только схема и хост).
+  res.status(ok ? 200 : 503).json({
+    ok,
+    checks,
+    rpcEndpoint: redactEndpoint(RPC_URL),
+    queryCache: { ttlMs: QUERY_CACHE_TTL_MS, ...queryCacheStats() },
+  });
 });
 // Validate the actual cluster before any signing worker can start. URL names
 // are not proof of network identity (a custom RPC can point at any cluster).

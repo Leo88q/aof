@@ -119,4 +119,21 @@ test('/ready не печатает креденшелы RPC: ключ прова
     'fetch failed: https://devnet.helius-rpc.com/?api-key=***&x=1');
   assert.equal(fn('https://user:pass@rpc.example.com/path'), 'https://user:***@rpc.example.com/path');
   assert.equal(fn('no secrets here'), 'no secrets here');
+  // /ready обязан называть, куда ходит backend, но только схема+хост
+  assert.match(src, /export function redactEndpoint\(url: string\): string/);
+  assert.match(src, /rpcEndpoint: redactEndpoint\(RPC_URL\)/);
+  const endBody = /export function redactEndpoint\(url: string\): string \{([\s\S]*?)\n\}/.exec(src)[1];
+  const endpoint = new Function(`return (url) => {${endBody}}`)();
+  assert.equal(endpoint('https://devnet.helius-rpc.com/?api-key=SECRET123'), 'https://devnet.helius-rpc.com');
+  assert.equal(endpoint('not a url'), '<rpc>');
+});
+
+test('dev-local.sh печатает, куда backend пойдёт за сетью, и предупреждает о публичном RPC', () => {
+  const src = read('scripts/dev-local.sh');
+  assert.match(src, /masked_url\(\) \{/, 'нет маскирующей функции');
+  assert.match(src, /backend_rpc_url\(\) \{/, 'не видно, откуда берётся RPC для backend');
+  assert.match(src, /printf '   backend RPC: %s \(%s\)\\n' "\$\(masked_url "\$rpc_for_backend"\)"/);
+  assert.match(src, /api\.devnet\.solana\.com\*\)/, 'нет предупреждения про публичный эндпоинт');
+  // переменная окружения важнее файла: dotenv не перезаписывает уже заданные
+  assert.match(src, /if \[ -n "\$\{RPC_URL:-\}" \]; then printf '%s' "\$RPC_URL"; return 0; fi/);
 });
