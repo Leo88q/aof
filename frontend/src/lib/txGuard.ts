@@ -6,7 +6,7 @@
 import { txGuardCopy } from "../i18n/txGuardCopy";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
 import { TransactionIntent, expectedSigners, expectedPayerRentAccounts, validateTransactionIntent } from "./transactionIntent";
-import { Connection, Transaction, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { AddressLookupTableAccount, Connection, Transaction, PublicKey, VersionedTransaction } from "@solana/web3.js";
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 
@@ -148,7 +148,7 @@ export async function guardTransaction(
   user: PublicKey,
   config: GuardConfig = {},
   rpc?: Pick<Connection, "simulateTransaction" | "getFeeForMessage" | "getBlockHeight" | "getAccountInfo" | "getMinimumBalanceForRentExemption">
-    & Partial<Pick<Connection, "getGenesisHash" | "getSlot">>,
+    & Partial<Pick<Connection, "getGenesisHash" | "getSlot" | "getAddressLookupTable">>,
 ): Promise<GuardResult> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const warnings: string[] = [];
@@ -156,12 +156,14 @@ export async function guardTransaction(
   let risk: RiskLevel = "LOW";
 
   try {
-    // Decode and reject dangerous opcodes BEFORE contacting the RPC.
-    const instructions = collectInstructions(tx);
+    // Resolve v0 address lookups before inspecting any program/account keys.
+    // A missing, inactive or deactivated table fails closed rather than letting
+    // policy checks run against an incomplete static-key list.
+    const connection = rpc || (await import("./wallet")).connection;
+    const instructions = await collectInstructions(tx, connection);
     if (!instructions || instructions.length === 0) throw new Error("Unsupported or empty transaction");
     validateInstructionPolicy(instructions, user, cfg);
     validateTransactionIntent(instructions, cfg.intent, user);
-    const connection = rpc || (await import("./wallet")).connection;
     if (cfg.intent?.kind === "seasonXpClaim") {
       if (!connection.getGenesisHash || !connection.getSlot) throw new Error("XP claim cluster verification unavailable");
       const [campaignDigest, genesisHashDigest] = await Promise.all([
@@ -354,7 +356,7 @@ function decodeBase58(value: string): Uint8Array {
   }
   bytes.reverse();
   let leadingZeros = 0;
-  while (leadingZeros < value.length || value[leadingZeros] === "1") leadingZeros++;
+  while (leadingZeros < value.length && value[leadingZeros] === "1") leadingZeros++;
   return Uint8Array.from([...new Array(leadingZeros).fill(0), ...bytes]);
 }
 
@@ -364,12 +366,11 @@ function instructionData(data: unknown): Uint8Array {
   throw new Error("Unsupported instruction data");
 }
 
-/**
- * Convert both legacy and lookup-table-free versioned transactions to one
- * representation. A lookup-table transaction is rejected by the guard rather
- * than checked against an incomplete account-key list.
- */
-function collectInstructions(tx: Transaction | VersionedTransaction): GuardInstruction[] | null {
+/** Resolve and decode legacy, v0-without-lookups, and v0+ALT messages. */
+async function collectInstructions(
+  tx: Transaction | VersionedTransaction,
+  rpc: Partial<Pick<Connection, "getSlot" | "getAddressLookupTable">>,
+): Promise<GuardInstruction[] | null> {
   const candidate = tx as any;
   if (Array.isArray(candidate.instructions)) {
     return candidate.instructions.map((instruction: any) => ({
@@ -381,25 +382,61 @@ function collectInstructions(tx: Transaction | VersionedTransaction): GuardInstr
   }
 
   const message = candidate.message;
-  const staticKeys: PublicKey[] = message?.staticAccountKeys || [];
-  if (!message || (message.addressTableLookups?.length || 0) > 0) return null;
+  if (!message?.header) return null;
+  const staticKeys: PublicKey[] = message.staticAccountKeys || message.accountKeys || [];
+  const lookupDescriptors: Array<{ accountKey: PublicKey; writableIndexes: number[]; readonlyIndexes: number[] }> =
+    message.addressTableLookups || [];
+  const lookupTables: AddressLookupTableAccount[] = [];
+  if (lookupDescriptors.length) {
+    if (!rpc.getAddressLookupTable || !rpc.getSlot) return null;
+    const [currentSlot, responses] = await Promise.all([
+      rpc.getSlot("confirmed"),
+      Promise.all(lookupDescriptors.map(({ accountKey }) => rpc.getAddressLookupTable!(accountKey, "confirmed"))),
+    ]);
+    if (!Number.isSafeInteger(currentSlot)) return null;
+    for (let index = 0; index < responses.length; index += 1) {
+      const table = responses[index]?.value;
+      if (!table || !table.key.equals(lookupDescriptors[index].accountKey)) return null;
+      if (BigInt(table.state.deactivationSlot) !== (1n << 64n) - 1n) return null;
+      // Addresses added in the current slot cannot be used until the next slot.
+      if (BigInt(currentSlot) <= BigInt(table.state.lastExtendedSlot)) return null;
+      lookupTables.push(table);
+    }
+  }
+
+  const accountKeys = typeof message.getAccountKeys === "function"
+    ? message.getAccountKeys(lookupDescriptors.length ? { addressLookupTableAccounts: lookupTables } : undefined)
+    : null;
+  const keyAt = (index: number): PublicKey | null => {
+    const key = accountKeys && typeof accountKeys.get === "function"
+      ? accountKeys.get(index)
+      : staticKeys[index];
+    return key || null;
+  };
   const header = message.header;
-  const isSigner = (index: number) => typeof message.isAccountSigner === "function"
-    ? message.isAccountSigner(index)
-    : index < header.numRequiredSignatures;
-  const isWritable = (index: number) => typeof message.isAccountWritable === "function"
-    ? message.isAccountWritable(index)
-    : index < header.numRequiredSignatures - header.numReadonlySignedAccounts ||
-      (index >= header.numRequiredSignatures && index < staticKeys.length - header.numReadonlyUnsignedAccounts);
-  return (message.compiledInstructions || []).map((instruction: any) => {
-    const programId = staticKeys[instruction.programIdIndex];
-    const indexes = instruction.accountKeyIndexes || [];
-    const keys = indexes.map((index: number) => staticKeys[index]);
-    if (!programId || keys.some((key: PublicKey) => !key)) throw new Error("Unresolved transaction account key");
+  const staticKeyCount = staticKeys.length;
+  const lookupWritableCount = lookupDescriptors.reduce((sum, table) => sum + table.writableIndexes.length, 0);
+  const isSigner = (index: number) => index >= 0 && index < header.numRequiredSignatures;
+  const isWritable = (index: number) => {
+    if (index < 0) return false;
+    if (index < staticKeyCount) {
+      return index < header.numRequiredSignatures
+        ? index < header.numRequiredSignatures - header.numReadonlySignedAccounts
+        : index < staticKeyCount - header.numReadonlyUnsignedAccounts;
+    }
+    // V0 loaded writable addresses precede all loaded readonly addresses.
+    return index < staticKeyCount + lookupWritableCount;
+  };
+  const compiledInstructions = message.compiledInstructions || message.instructions || [];
+  return compiledInstructions.map((instruction: any) => {
+    const programId = keyAt(instruction.programIdIndex);
+    const indexes: number[] = instruction.accountKeyIndexes || instruction.accounts || [];
+    const keys = indexes.map((index) => keyAt(index));
+    if (!programId || keys.some((key) => !key)) throw new Error("Unresolved transaction account key");
     return {
       programId: programId.toBase58(),
-      keys,
-      metas: indexes.map((index: number) => ({ isSigner: isSigner(index), isWritable: isWritable(index) })),
+      keys: keys as PublicKey[],
+      metas: indexes.map((index) => ({ isSigner: isSigner(index), isWritable: isWritable(index) })),
       data: instructionData(instruction.data),
     };
   });
@@ -408,7 +445,7 @@ function collectInstructions(tx: Transaction | VersionedTransaction): GuardInstr
 function transactionFeePayer(tx: Transaction | VersionedTransaction): PublicKey | null {
   const candidate = tx as any;
   if (candidate.feePayer) return candidate.feePayer;
-  return candidate.message?.staticAccountKeys?.[0] || null;
+  return candidate.message?.staticAccountKeys?.[0] || candidate.message?.accountKeys?.[0] || null;
 }
 
 function readU32(data: Uint8Array, offset: number): number | null {

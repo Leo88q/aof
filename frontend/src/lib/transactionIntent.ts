@@ -12,6 +12,7 @@ export const REBIRTH_PROGRAM_ID = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF"
 export const REBIRTH_DO_DISCRIMINATOR = [76, 11, 54, 198, 197, 72, 21, 13] as const;
 const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ATA = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+const TOKEN_METADATA_PROGRAM = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const SYSTEM = "11111111111111111111111111111111";
 const COMPUTE = "ComputeBudget111111111111111111111111111111";
 export const MARKETPLACE_BUY_DISCRIMINATOR = [219, 1, 7, 251, 90, 189, 167, 48] as const;
@@ -237,6 +238,13 @@ const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
   [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID),
 )[0];
 const ata = (mint: PublicKey, owner: PublicKey) => PublicKey.findProgramAddressSync([owner.toBytes(), TOKEN.toBytes(), mint.toBytes()], ATA)[0];
+const metaplexMetadataPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
+  [new TextEncoder().encode("metadata"), TOKEN_METADATA_PROGRAM.toBytes(), mint.toBytes()], TOKEN_METADATA_PROGRAM,
+)[0];
+const metaplexMasterEditionPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
+  [new TextEncoder().encode("metadata"), TOKEN_METADATA_PROGRAM.toBytes(), mint.toBytes(), new TextEncoder().encode("edition")],
+  TOKEN_METADATA_PROGRAM,
+)[0];
 function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
   return actual.length === expected.length && expected.every((key, i) => key.equals(actual[i]));
 }
@@ -249,6 +257,9 @@ const REWARD_RECEIPT_ACCOUNT_SIZE = 121;
 const SEASON_PASS_ACCOUNT_SIZE = 57;
 const SEASON_XP_CLAIM_CURSOR_ACCOUNT_SIZE = 49;
 const TOKEN_ACCOUNT_SIZE = 165;
+// Metaplex upper-bound account data sizes, matching the backend payer quote.
+const METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679;
+const METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE = 282;
 
 /** Rent-bearing accounts whose identity and allocation the wallet expects for
  * this intent. A server cannot add an unreviewed rent destination to a quote. */
@@ -286,6 +297,8 @@ export function expectedPayerRentAccounts(intent: TransactionIntent): ExpectedPa
     return [
       { name: "recipient_ata", address: ata(mint, user), size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
       { name: "tool_data", address: pda("tool", mint), size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
+      { name: "metaplex_metadata", address: metaplexMetadataPda(mint), size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+      { name: "metaplex_master_edition", address: metaplexMasterEditionPda(mint), size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
     ];
   }
   if (intent.kind === "rewardClaim") {
@@ -684,7 +697,8 @@ function validateToolMintIntent(instructions: Instruction[], intent: ToolMintInt
   }
   const tokenAccount = ata(mint, user);
   const expected = [pda("config"), authority, pda("auth"), mint, tokenAccount, user, user,
-    pda("tool", mint), TOKEN, new PublicKey(SYSTEM)];
+    pda("tool", mint), TOKEN, new PublicKey(SYSTEM), pda("tool_metadata_registry"),
+    metaplexMetadataPda(mint), metaplexMasterEditionPda(mint), TOKEN_METADATA_PROGRAM];
   let mints = 0, atas = 0;
   for (const ix of instructions) {
     const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);

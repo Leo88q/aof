@@ -3,8 +3,9 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { program, connection } from "../provider";
-import { configPda, explorationCommitPda, explorationStatePda, materialMintsPda, toolPda } from "../lib/pda";
+import { authPda, configPda, explorationCommitPda, explorationStatePda, materialMintsPda, resourceEscrowAta, toolPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
+import { coSignWithVrfLookupTable } from "../lib/vrfLookupTableTransactions";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
@@ -40,6 +41,7 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
         explorationState: explorationStatePda(user)[0],
         toolMint,
         tool: toolPda(toolMint)[0],
+        auth: authPda()[0],
         explorationCommit,
         dataMint: cfg.dataMint,
         userData: ata(cfg.dataMint),
@@ -49,12 +51,16 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
         userSilicon: ata(cfg.siliconMint),
         datasetMint: mm.dataset,
         userDataset: ata(mm.dataset),
+        escrowData: resourceEscrowAta(cfg.dataMint),
+        escrowCircuit: resourceEscrowAta(cfg.circuitMint),
+        escrowSilicon: resourceEscrowAta(cfg.siliconMint),
+        escrowDataset: resourceEscrowAta(mm.dataset),
         ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
-    const tx = await coSign([ix], user);
+    const tx = await coSignWithVrfLookupTable([ix], user);
     res.json({ tx, explorationCommit: explorationCommit.toBase58() });
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });

@@ -4,7 +4,7 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { connection, program } from "../provider";
-import { authPda, configPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
+import { authPda, configPda, issuanceCapPda, materialMintsPda, seasonPassPda, seasonPda } from "../lib/pda";
 import { authorityOnly, coSignQuoted, pk } from "../lib/tx";
 import { SEASON_PASS_ACCOUNT_SIZE } from "../lib/accountSizes";
 import { requireAdmin } from "../middleware/adminAuth";
@@ -107,6 +107,7 @@ r.post("/reward/claim", requireAdmin, requireNoFraudHold("owner", "season_reward
         circuitMint,
         userCircuit,
         auth,
+        issuanceCapCircuit: issuanceCapPda("circuit")[0],
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();

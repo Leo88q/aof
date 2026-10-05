@@ -38,6 +38,7 @@ AUTHORITY_ONLY = {
     "migrate_config_v2", "set_roles", "set_cashout_frozen", "emergency_stop",
     # [F-06] operator-only Switchboard pool management.
     "vrf_pool_add", "vrf_pool_set_retired", "vrf_slot_recover",
+    "set_tool_metadata_uris",
 }
 
 # Account names that denote the acting wallet.

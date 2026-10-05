@@ -18,10 +18,21 @@ import {
   sessionProgramDataPda,
   programDataPda,
   issuanceCapPda,
+  toolMetadataRegistryPda,
+  tokenMetadataPda,
+  masterEditionPda,
+  TOKEN_METADATA_PROGRAM_ID,
   RESOURCE_KIND_ORDER,
 } from "../lib/pda";
 import { authorityOnly, pk, coSign, coSignQuoted } from "../lib/tx";
-import { PLAYER_ACCOUNT_SIZE, TOKEN_ACCOUNT_SIZE, TOKEN_MINT_SIZE, TOOL_DATA_ACCOUNT_SIZE } from "../lib/accountSizes";
+import {
+  PLAYER_ACCOUNT_SIZE,
+  TOKEN_ACCOUNT_SIZE,
+  TOKEN_MINT_SIZE,
+  TOOL_DATA_ACCOUNT_SIZE,
+  METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
+  METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE,
+} from "../lib/accountSizes";
 import { requireExistingPlayer } from "../lib/playerAccount";
 import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
 import { simulateTransaction } from "../security/txSimulator";
@@ -564,12 +575,11 @@ r.post("/test-grant-mind", nonProductionOnly, async (req, res) => {
   }
 });
 
-// Выдача инструментов (только вне продакшена). Раньше здесь стояла заглушка
-// «нет карты аккаунтов»: актуальная карта — config, authority, auth-PDA, минт,
-// ATA получателя, сам получатель и ToolData-PDA. Минт создаётся 0-decimal с
+// Выдача инструментов (только вне продакшена). Минт создаётся 0-decimal с
 // авторитетом auth-PDA (иначе mint_tool отклонит его по mint_authority), а
 // `token_account.owner == recipient` проверяет уже сама программа: инструмент
-// нельзя навязать кошельку, который его не просил.
+// нельзя навязать кошельку, который его не просил. Получатель оплачивает mint,
+// ATA, ToolData и обе создаваемые Metaplex accounts; их rent включён в quote.
 const TOOL_KIND_IDS = [
   "plasma_cutter", "silicon_extractor", "data_harvester", "quantum_transmitter", "neural_seeder",
 ] as const;
@@ -592,7 +602,10 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
     }
     const toolType = String(req.body.toolType || "plasma_cutter").toLowerCase();
     const rarity = TOOL_RARITY_ARG[String(req.body.rarity || "common").toLowerCase()];
-    const count = Math.min(Math.max(Number(req.body.count ?? 1) || 1, 1), 5);
+    const count = Number(req.body.count ?? 1);
+    if (!Number.isSafeInteger(count) || count !== 1) {
+      return res.status(400).json({ error: "Tool mints must be built one per transaction to remain within the packet limit" });
+    }
     if (!(TOOL_KIND_IDS as readonly string[]).includes(toolType)) {
       return res.status(400).json({ error: "Unknown tool type" });
     }
@@ -632,6 +645,8 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
         { name: `tool_mint_${index}`, address: mint, size: MINT_SIZE, strategy: "create" },
         { name: `recipient_ata_${index}`, address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
         { name: `tool_data_${index}`, address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
+        { name: `metaplex_metadata_${index}`, address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+        { name: `metaplex_master_edition_${index}`, address: masterEditionPda(mint)[0], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
       );
       instructions.push(await (program.methods as any)
         .mintTool(toolType, rarity)
@@ -646,6 +661,10 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
           toolData,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
+          toolMetadataRegistry: toolMetadataRegistryPda()[0],
+          metadata: tokenMetadataPda(mint)[0],
+          masterEdition: masterEditionPda(mint)[0],
+          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
         })
         .instruction());
       mintKeypairs.push(mintKp);

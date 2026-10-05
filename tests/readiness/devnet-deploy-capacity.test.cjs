@@ -76,6 +76,16 @@ test('скрипты деплоя и bringup совместимы с bash 3.2 (m
     assert.doesNotMatch(code, /\b(mapfile|readarray)\b/, `${rel}: mapfile/readarray нет в bash 3.2`);
     assert.doesNotMatch(code, /\$\{[A-Za-z_]+(,,|\^\^)\}/, `${rel}: преобразование регистра в ${'${var,,}'} нет в bash 3.2`);
     assert.doesNotMatch(code, /&>>|\|&/, `${rel}: &>> и |& нет в bash 3.2`);
+    // `${arr[@]}` у пустого массива при `set -u` в bash 3.2 — «unbound variable»
+    // (исправлено только в 4.4), а после появления UPGRADE запуск без единой
+    // отсутствующей программы — обычное дело.
+    for (const name of ['MISSING', 'UPGRADES']) {
+      const loop = `for entry in "\${${name}[@]}"`;
+      if (code.includes(loop)) {
+        assert.ok(code.includes(`if [ "\${#${name}[@]}" -gt 0 ]; then`),
+          `${rel}: ${loop} без guard по длине ломает macOS bash 3.2 при set -u`);
+      }
+    }
   }
 });
 
@@ -127,4 +137,43 @@ test('эксперимент жизненного цикла — только н
   // процедура не трогает репозиторные ключи
   const procedure = doc.slice(doc.indexOf('## 8. Эксперимент'));
   assert.doesNotMatch(procedure, /solana\/keys\/|target\/deploy\/[a-z_]+-keypair/, 'эксперимент не должен использовать ключи репозитория');
+});
+
+test('обновление уже развёрнутой программы возможно, но только явно и по расхождению байткода', () => {
+  const source = read(DEPLOY);
+  const estimator = read(ESTIMATOR);
+  // 1) без UPGRADE поведение прежнее: существующий аккаунт — «готово», новый код сам не уезжает
+  assert.match(source, /UPGRADE="\$\{UPGRADE:-\}"/, 'UPGRADE должен быть явным входом, без значения по умолчанию');
+  assert.match(source, /Все выбранные программы уже в сети — деплоить нечего/);
+  // 2) решение об upgrade принимает read-only сверка байткода, а не сам факт запуска
+  assert.match(source, /estimator upgrade-state --rpc/, 'шаг 3 обязан сверять байткод в сети с локальным .so');
+  assert.match(estimator, /def upgrade_state\(rpc: Any, spec: ProgramSpec, commitment: str\) -> Tuple\[str, int, str\]:/);
+  assert.match(estimator, /add_parser\("upgrade-state"/);
+  assert.match(estimator, /state = "same" if hashlib\.sha256\(on_chain\)\.hexdigest\(\) == hashlib\.sha256\(local\)\.hexdigest\(\) else "different"/);
+  // 3) совпадение не трогается, опечатка отказывает
+  assert.match(source, /upgrade не нужен/);
+  assert.match(source, /нет в реестре/, 'неизвестное имя в UPGRADE обязано отказывать');
+  // 4) ключ программы для upgrade не обязателен, но чужой ключ по-прежнему запрещён
+  assert.match(source, /ключ программы не нужен/, 'для upgrade достаточно upgrade authority');
+  assert.match(source, /обновление в чужой адрес запрещено/);
+  // 5) пост-проверка upgrade — по фактической ёмкости (уменьшить её нельзя, авто-расширение ≥ 10 KiB)
+  assert.match(source, /--max-len "\$capacity"/, 'upgrade нельзя проверять по policy-значению max-len');
+  assert.match(source, /upgrade authority в сети/);
+  // 6) ключ провайдера не печатается: ни в отчёте зонда, ни в отчёте оценщика
+  const probe = read('scripts/devnet-program-probe.py');
+  assert.match(estimator, /def redact_url\(url: str\) -> str:/);
+  assert.match(probe, /def redact_url\(url: str\) -> str:/);
+  assert.match(probe, /report: dict = \{"rpc": redact_url\(rpc\)/);
+  assert.match(probe, /say\(f"RPC: \{redact_url\(rpc\)\}"\)/);
+  // 7) upgrade не может начаться с чужой authority: CLI сначала фиксирует SOL
+  //    в буфере и только потом получает Incorrect upgrade authority
+  assert.match(source, /UPGRADE=\$name: upgrade authority/, 'нет отказа при чужой authority');
+  const pricing = read('docs/DEVNET_DEPLOY_COSTS.md');
+  for (const needle of ['Incorrect upgrade authority', 'faucet.solana.com', 'OPERATOR_RESERVE_SOL']) {
+    assert.ok(pricing.includes(needle), `в описании стоимости нет «${needle}»`);
+  }
+  // 8) документация называет ту же команду
+  const docs = read('docs/DEVNET_DEPLOY_COSTS.md');
+  assert.ok(docs.includes('UPGRADE=aof_core'), 'в описании стоимости нет команды обновления');
+  assert.match(read('docs/CONTRACT_WORK_QUEUE.md'), /UPGRADE=aof_core/);
 });

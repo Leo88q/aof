@@ -67,21 +67,19 @@ pub fn execute_mint<'info>(
     require!(amount > 0, AofError::ZeroAmount);
     let expected = mint_for_kind(config, material_mints, &kind);
     require!(mint.key() == expected, AofError::InvalidResourceKind);
-    // [AUDIT F-03] Global supply ceiling, on top of the per-epoch budget. This
-    // is the only bound that also applies to the paths that never touch
-    // IssuanceCap (collect_*, craft_recipe, claim_season_reward).
-    check_supply_cap(material_mints, kind, mint.supply, amount)?;
+    // [AUDIT F-03] Enforce both current supply and cumulative lifetime issuance.
+    // The latter is stored in IssuanceCap and is not reduced by token burns.
+    check_supply_cap(material_mints, issuance_cap, kind, amount)?;
     require!(
         mint.mint_authority == COption::Some(auth.key()),
         AofError::Unauthorized
     );
 
-    // Charge the per-kind budget BEFORE any CPI: a rejected mint must not
-    // move the counter, and the counter must be charged for the gross amount
-    // (the treasury fee is issuance too). Errors abort the whole instruction,
-    // so the epoch roll performed inside charge() is also discarded on failure.
+    // Charge the epoch budget for the gross amount (the treasury fee is
+    // issuance too). Cumulative lifetime amount was recorded by the shared
+    // supply-cap check above. Transaction failure rolls both back atomically.
     let slot = Clock::get()?.slot;
-    issuance_cap.charge(kind as u8, amount, slot)?;
+    issuance_cap.charge_epoch(kind as u8, amount, slot)?;
 
     // Profile creation is owned by player-funded instructions; every mint path
     // passes the existing Player explicitly.

@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 /**
- * [SECURITY_CHECKLIST #58, decision 2026-09-26] Propose per-resource supply
- * caps from the on-chain economy constants and emit the `set_supply_cap`
- * instructions for the admin multisig (Squads) to review and sign.
- *
- *   npm ci   # workspace root: provides @solana/web3.js for PDAs/messages
- *   node scripts/economy/propose-caps.mjs --vault <SQUADS_VAULT_PUBKEY> \
- *        [--dau 1000] [--days 42] [--safety 1.5] [--other-daily 100] \
- *        [--rpc https://...] [--out caps-plan.json]
+ * [SECURITY_CHECKLIST #58] Legacy emission model, retained for offline math
+ * tests only. Its former CLI used current SPL supply and emitted set_supply_cap
+ * transactions, which is NOT a safe baseline for cumulative lifetime caps
+ * because burns erase outstanding supply. The CLI is deliberately disabled.
+ * Lifetime-cap setup uses the complete history scanner and the explicit
+ * operator-selected caps documented in DEVNET_BRINGUP_PREFLIGHT.md.
  *
  * Model (display units per player per day, all constants read from
  * aof-core/src/constants.rs so the model cannot drift from the program):
@@ -19,9 +17,9 @@
  *   season   Circuit += SEASON_REWARD_UNITS_PER_LEVEL x (1+..+max level) x 2
  *            tracks per player per season (claim_season_reward)
  *   other    --other-daily for crafted / operator-issued kinds
- * cap = current supply + daily x DAU x days x safety (in atomic units).
+ * cap = gross lifetime baseline + daily x DAU x days x safety (in atomic units).
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -77,7 +75,7 @@ export function seasonRewardPerPlayer(c) {
   return c.rewardPerLevel * ((c.maxLevel * (c.maxLevel + 1)) / 2) * 2;
 }
 
-export function proposeCaps({ c, dau, days, safety, otherDaily, supply = [] }) {
+export function proposeCaps({ c, dau, days, safety, otherDaily, baseline = [] }) {
   if (!(dau > 0 && days > 0 && safety >= 1 && otherDaily >= 0)) throw new Error("invalid model parameters");
   const daily = dailyPerPlayer(c, otherDaily);
   const seasons = Math.ceil(days / c.seasonDays);
@@ -85,7 +83,7 @@ export function proposeCaps({ c, dau, days, safety, otherDaily, supply = [] }) {
     let units = perDay * dau * days;
     if (kind === 1) units += seasonRewardPerPlayer(c) * dau * seasons;
     const capUnits = Math.ceil(units * safety);
-    const capAtomic = BigInt(supply[kind] ?? 0) + BigInt(capUnits) * BigInt(c.unit);
+    const capAtomic = BigInt(baseline[kind] ?? 0n) + BigInt(capUnits) * BigInt(c.unit);
     if (capAtomic > U64_MAX) throw new Error(`${KIND_NAMES[kind]}: cap exceeds u64`);
     return { kind, name: KIND_NAMES[kind], dailyPerPlayer: perDay, capUnits, capAtomic };
   });
@@ -116,71 +114,13 @@ export function base58(bytes) {
   return out;
 }
 
-// ---------------------------------------------------------------- CLI
-
-function args(argv) {
-  const o = { dau: 1000, days: 42, safety: 1.5, otherDaily: 100, out: "caps-plan.json" };
-  for (let i = 0; i < argv.length; i += 2) {
-    const k = argv[i].replace(/^--/, "").replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    o[k] = ["vault", "rpc", "out"].includes(k) ? argv[i + 1] : Number(argv[i + 1]);
-  }
-  return o;
-}
-
-async function rpc(url, method, params) {
-  const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-  const j = await r.json();
-  if (j.error) throw new Error(`${method}: ${j.error.message}`);
-  return j.result;
-}
-
-async function currentSupply(url, web3, programId) {
-  const pda = (seed) => web3.PublicKey.findProgramAddressSync([Buffer.from(seed)], programId)[0];
-  const [cfg, mm] = (await rpc(url, "getMultipleAccounts", [[pda("config").toBase58(), pda("material_mints").toBase58()], { encoding: "base64" }])).value
-    .map((a) => Buffer.from(a.data[0], "base64"));
-  const key = (buf, at) => new web3.PublicKey(buf.subarray(at, at + 32)).toBase58();
-  // ResourceKind -> mint, as state::mint_for_kind / orderbook::expected_resource_mint.
-  const mints = [key(cfg, 72), key(cfg, 104), key(cfg, 136), ...Array.from({ length: 23 }, (_, i) => key(mm, 8 + 32 * i)), key(cfg, 232)];
-  const accounts = (await rpc(url, "getMultipleAccounts", [mints, { encoding: "base64" }])).value;
-  return accounts.map((a) => (a ? Buffer.from(a.data[0], "base64").readBigUInt64LE(36) : 0n));
-}
-
-async function main() {
-  const o = args(process.argv.slice(2));
-  if (!o.vault) throw new Error("--vault <Squads vault pubkey> is required (it is the admin authority)");
-  const web3 = await import("@solana/web3.js");
-  const idl = JSON.parse(readFileSync(path.join(root, "aof_backend/src/idl/aof_core.json"), "utf8"));
-  const programId = new web3.PublicKey(idl.address);
-  const supply = o.rpc ? await currentSupply(o.rpc, web3, programId) : [];
-  if (!o.rpc) console.warn("[warn] no --rpc: current supply assumed 0 (devnet/fresh deployment only)");
-  const caps = proposeCaps({ c: readConstants(), dau: o.dau, days: o.days, safety: o.safety, otherDaily: o.otherDaily, supply });
-  const vault = new web3.PublicKey(o.vault);
-  const pda = (seed) => web3.PublicKey.findProgramAddressSync([Buffer.from(seed)], programId)[0];
-  const blockhash = o.rpc ? (await rpc(o.rpc, "getLatestBlockhash", [])).value.blockhash : web3.PublicKey.default.toBase58();
-  const batches = [];
-  for (let i = 0; i < caps.length; i += 9) {
-    const tx = new web3.Transaction({ feePayer: vault, recentBlockhash: blockhash });
-    for (const cap of caps.slice(i, i + 9)) {
-      const enc = encodeSetSupplyCap(cap.kind, cap.capAtomic, idl);
-      tx.add(new web3.TransactionInstruction({
-        programId,
-        keys: [
-          { pubkey: pda("config"), isSigner: false, isWritable: false },
-          { pubkey: vault, isSigner: true, isWritable: false },
-          { pubkey: pda("material_mints"), isSigner: false, isWritable: true },
-        ],
-        data: enc.data,
-      }));
-    }
-    batches.push(base58(tx.compileMessage().serialize()));
-  }
-  console.table(caps.map((c) => ({ kind: c.kind, name: c.name, perPlayerPerDay: c.dailyPerPlayer, capUnits: c.capUnits })));
-  const plan = { generatedAt: new Date().toISOString(), params: { dau: o.dau, days: o.days, safety: o.safety, otherDaily: o.otherDaily, rpc: !!o.rpc },
-    caps: caps.map((c) => ({ ...c, capAtomic: c.capAtomic.toString() })), squadsMessagesBase58: batches };
-  writeFileSync(o.out, JSON.stringify(plan, null, 2));
-  console.log(`wrote ${o.out}: ${caps.length} caps in ${batches.length} unsigned messages for the Squads vault ${o.vault}`);
-}
-
+// The old CLI read current Mint.supply and could not prove lifetime issuance.
+// Keep the pure model above for offline sizing tests, but never emit a cap plan.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(e.message); process.exit(1); });
+  console.error(
+    "Disabled: current SPL supply is not cumulative lifetime issuance after burns. " +
+    "Use npm run issuance:history:scan, npm run issuance:baseline:apply, then " +
+    "npm run issuance:lifetime-caps:apply with operator-selected LIFETIME_CAP_* values.",
+  );
+  process.exitCode = 2;
 }

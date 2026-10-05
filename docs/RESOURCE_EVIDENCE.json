@@ -32,6 +32,7 @@
         "frontend/src/lib/transactionIntent.ts",
         "frontend/src/lib/visualAssets.ts",
         "frontend/src/pages/farm/ExplorationPage.tsx",
+        "frontend/src/pages/market/FlaskMarketplace.tsx",
         "frontend/src/pages/social/PlayerRatingPage.tsx",
         "frontend/src/site/content/resources.ts"
       ],
@@ -77,13 +78,14 @@
       "onchainSink": [
         "aof-core/src/instructions/craft.rs#handler",
         "aof-core/src/instructions/craft_recipe.rs#handler",
+        "aof-core/src/instructions/exchange_data_energy.rs#handler",
         "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
         "aof-core/src/instructions/referral.rs#upgrade_handler"
       ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(mm, ResourceKind::Data, ctx.accounts.data_mint.supply, data)?;"
+          "line": "(&ctx.accounts.user_data, &ctx.accounts.escrow_data, TRIP_COST_DATA),"
         },
         {
           "file": "aof-core/src/instructions/initialize.rs",
@@ -119,11 +121,14 @@
         "playerSink": [
           "aof-core/src/instructions/craft.rs#handler",
           "aof-core/src/instructions/craft_recipe.rs#handler",
+          "aof-core/src/instructions/exchange_data_energy.rs#handler",
           "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
           "aof-core/src/instructions/referral.rs#upgrade_handler"
         ],
         "projectSink": [],
-        "refund": [],
+        "refund": [
+          "aof-core/src/instructions/exploration.rs#expire_handler"
+        ],
         "craftInput": [
           "recipe 3",
           "recipe 6"
@@ -134,6 +139,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -143,6 +149,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -225,14 +232,12 @@
         "frontend/public/assets/nfts/resources/circuit.jpg"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/forge.rs#expire_handler",
         "aof-core/src/instructions/season.rs#claim_reward_handler"
       ],
       "onchainSink": [
         "aof-core/src/instructions/craft.rs#handler",
         "aof-core/src/instructions/craft_recipe.rs#handler",
         "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
-        "aof-core/src/instructions/forge.rs#commit_handler",
         "aof-core/src/instructions/referral.rs#upgrade_handler",
         "aof-core/src/instructions/rental_delegation.rs#repair_handler",
         "aof-core/src/instructions/repair.rs#handler",
@@ -245,11 +250,11 @@
         },
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, reward)?;"
+          "line": "(&ctx.accounts.user_circuit, &ctx.accounts.escrow_circuit, TRIP_COST_CIRCUIT),"
         },
         {
           "file": "aof-core/src/instructions/forge.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;"
+          "line": "(&ctx.accounts.user_circuit, &ctx.accounts.escrow_circuit, circuit_cost),"
         },
         {
           "file": "aof-core/src/instructions/initialize.rs",
@@ -286,7 +291,6 @@
           "aof-core/src/instructions/craft.rs#handler",
           "aof-core/src/instructions/craft_recipe.rs#handler",
           "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
-          "aof-core/src/instructions/forge.rs#commit_handler",
           "aof-core/src/instructions/referral.rs#upgrade_handler",
           "aof-core/src/instructions/rental_delegation.rs#repair_handler",
           "aof-core/src/instructions/repair.rs#handler",
@@ -294,6 +298,7 @@
         ],
         "projectSink": [],
         "refund": [
+          "aof-core/src/instructions/exploration.rs#expire_handler",
           "aof-core/src/instructions/forge.rs#expire_handler"
         ],
         "craftInput": [
@@ -308,6 +313,7 @@
           "aof-core/src/instructions/rental_delegation.rs#handler"
         ],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -317,6 +323,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -402,14 +409,11 @@
         "frontend/public/assets/nfts/silicon-extractor-uncommon.jpg",
         "frontend/public/assets/nfts/silicon-extractor.jpg"
       ],
-      "onchainSource": [
-        "aof-core/src/instructions/forge.rs#expire_handler"
-      ],
+      "onchainSource": [],
       "onchainSink": [
         "aof-core/src/instructions/craft.rs#handler",
         "aof-core/src/instructions/craft_recipe.rs#handler",
         "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
-        "aof-core/src/instructions/forge.rs#commit_handler",
         "aof-core/src/instructions/referral.rs#upgrade_handler",
         "aof-core/src/instructions/rental_delegation.rs#repair_handler",
         "aof-core/src/instructions/repair.rs#handler",
@@ -422,11 +426,11 @@
         },
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, reward)?;"
+          "line": "(&ctx.accounts.user_silicon, &ctx.accounts.escrow_silicon, TRIP_COST_SILICON),"
         },
         {
           "file": "aof-core/src/instructions/forge.rs",
-          "line": "check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;"
+          "line": "(&ctx.accounts.user_silicon, &ctx.accounts.escrow_silicon, silicon_cost),"
         },
         {
           "file": "aof-core/src/instructions/initialize.rs",
@@ -462,7 +466,6 @@
           "aof-core/src/instructions/craft.rs#handler",
           "aof-core/src/instructions/craft_recipe.rs#handler",
           "aof-core/src/instructions/exploration.rs#upgrade_tier_handler",
-          "aof-core/src/instructions/forge.rs#commit_handler",
           "aof-core/src/instructions/referral.rs#upgrade_handler",
           "aof-core/src/instructions/rental_delegation.rs#repair_handler",
           "aof-core/src/instructions/repair.rs#handler",
@@ -470,6 +473,7 @@
         ],
         "projectSink": [],
         "refund": [
+          "aof-core/src/instructions/exploration.rs#expire_handler",
           "aof-core/src/instructions/forge.rs#expire_handler"
         ],
         "craftInput": [
@@ -484,6 +488,7 @@
           "aof-core/src/instructions/rental_delegation.rs#handler"
         ],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -493,6 +498,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -519,7 +525,7 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": true,
+        "onchainSource": false,
         "onchainSink": true
       },
       "status": "active-player",
@@ -595,6 +601,10 @@
           "line": "3 => materials.neuron,"
         },
         {
+          "file": "aof-core/src/instructions/plant_neuron.rs",
+          "line": "require!(ctx.accounts.user_neuron.amount >= amount, AofError::InsufficientBalance);"
+        },
+        {
           "file": "aof-core/src/instructions/reroll.rs",
           "line": "(&*ctx.accounts.neuron_mint, &*ctx.accounts.user_neuron, neuron_cost),"
         },
@@ -635,6 +645,7 @@
           "aof-core/src/instructions/rental_delegation.rs#handler"
         ],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -644,6 +655,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -760,6 +772,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -769,6 +782,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -887,6 +901,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -896,6 +911,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1012,6 +1028,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1021,6 +1038,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1070,6 +1088,7 @@
         "frontend/src/lib/visualAssets.ts",
         "frontend/src/pages/farm/NeuralLabPanel.tsx",
         "frontend/src/pages/farm/OvenPanel.tsx",
+        "frontend/src/pages/market/FlaskMarketplace.tsx",
         "frontend/src/site/content/resources.ts"
       ],
       "frontendSamples": [
@@ -1154,6 +1173,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1163,6 +1183,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1269,6 +1290,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1278,6 +1300,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1355,9 +1378,7 @@
         "frontend/public/assets/nfts/resources/dataset.jpg"
       ],
       "onchainSource": [],
-      "onchainSink": [
-        "aof-core/src/instructions/exploration.rs#start_commit_handler"
-      ],
+      "onchainSink": [],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/collect_mining.rs",
@@ -1365,7 +1386,7 @@
         },
         {
           "file": "aof-core/src/instructions/exploration.rs",
-          "line": "check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.dataset_mint.supply, dataset)?;"
+          "line": "(&ctx.accounts.user_dataset, &ctx.accounts.escrow_dataset, TRIP_COST_DATASET),"
         },
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -1385,11 +1406,11 @@
           "aof-core/src/instructions/collect_mining.rs#handler",
           "aof-core/src/instructions/rental_delegation.rs#handler"
         ],
-        "playerSink": [
-          "aof-core/src/instructions/exploration.rs#start_commit_handler"
-        ],
+        "playerSink": [],
         "projectSink": [],
-        "refund": [],
+        "refund": [
+          "aof-core/src/instructions/exploration.rs#expire_handler"
+        ],
         "craftInput": [],
         "craftOutput": [],
         "tradable": [
@@ -1400,6 +1421,7 @@
           "aof-core/src/instructions/rental_delegation.rs#handler"
         ],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1409,6 +1431,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1420,7 +1443,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": true,
+          "has_player_sink": false,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": false,
@@ -1436,10 +1459,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": false,
-        "onchainSink": true
+        "onchainSink": false
       },
       "status": "active-player",
-      "economyIssue": null
+      "economyIssue": "missing_sink"
     },
     {
       "kind": "BlueCore",
@@ -1508,6 +1531,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1517,6 +1541,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1616,6 +1641,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1625,6 +1651,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1724,6 +1751,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1733,6 +1761,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1832,6 +1861,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1841,6 +1871,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -1940,6 +1971,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -1949,6 +1981,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2042,6 +2075,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2051,6 +2085,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2156,6 +2191,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2165,6 +2201,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2270,6 +2307,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2279,6 +2317,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2378,6 +2417,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2387,6 +2427,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2486,6 +2527,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2495,6 +2537,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2572,6 +2615,10 @@
         {
           "file": "aof-core/src/instructions/orderbook.rs",
           "line": "20 => materials.cryo_fluid,"
+        },
+        {
+          "file": "aof-core/src/instructions/use_flask.rs",
+          "line": "assert_eq!(flask_kind_reward(1).unwrap().0, ResourceKind::CryoFluid);"
         }
       ],
       "anyKindPath": [
@@ -2594,6 +2641,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2603,6 +2651,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2680,6 +2729,10 @@
         {
           "file": "aof-core/src/instructions/orderbook.rs",
           "line": "21 => materials.volt_fluid,"
+        },
+        {
+          "file": "aof-core/src/instructions/use_flask.rs",
+          "line": "assert_eq!(flask_kind_reward(2).unwrap().0, ResourceKind::VoltFluid);"
         }
       ],
       "anyKindPath": [
@@ -2702,6 +2755,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2711,6 +2765,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2788,6 +2843,10 @@
         {
           "file": "aof-core/src/instructions/orderbook.rs",
           "line": "22 => materials.bio_fluid,"
+        },
+        {
+          "file": "aof-core/src/instructions/use_flask.rs",
+          "line": "assert_eq!(flask_kind_reward(3).unwrap().0, ResourceKind::BioFluid);"
         }
       ],
       "anyKindPath": [
@@ -2810,6 +2869,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2819,6 +2879,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -2896,6 +2957,10 @@
         {
           "file": "aof-core/src/instructions/orderbook.rs",
           "line": "23 => materials.nano_fluid,"
+        },
+        {
+          "file": "aof-core/src/instructions/use_flask.rs",
+          "line": "assert_eq!(flask_kind_reward(4).unwrap().0, ResourceKind::NanoFluid);"
         }
       ],
       "anyKindPath": [
@@ -2918,6 +2983,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -2927,6 +2993,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -3004,6 +3071,10 @@
         {
           "file": "aof-core/src/instructions/orderbook.rs",
           "line": "24 => materials.quantum_fluid,"
+        },
+        {
+          "file": "aof-core/src/instructions/use_flask.rs",
+          "line": "assert_eq!(flask_kind_reward(5).unwrap().0, ResourceKind::QuantumFluid);"
         }
       ],
       "anyKindPath": [
@@ -3026,6 +3097,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -3035,6 +3107,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -3121,6 +3194,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -3130,6 +3204,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -3233,7 +3308,7 @@
         },
         {
           "file": "programs/aof-quests/src/instructions/drum/mind_spin.rs",
-          "line": "pub mind_mint: Box<Account<'info, Mint>>,"
+          "line": "pub user_mind: Box<Account<'info, TokenAccount>>,"
         }
       ],
       "anyKindPath": [
@@ -3255,6 +3330,7 @@
         ],
         "miningOutput": [],
         "adminMint": [
+          "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
           "aof-core/src/instructions/admin_config.rs#set_supply_cap",
           "aof-core/src/instructions/burn_resource.rs#handler",
           "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -3264,6 +3340,7 @@
           "aof-core/src/lib.rs#init_issuance_cap",
           "aof-core/src/lib.rs#mint_resource",
           "aof-core/src/lib.rs#set_issuance_cap",
+          "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
           "aof-core/src/lib.rs#set_supply_cap"
         ],
         "playerClaim": [
@@ -3322,6 +3399,7 @@
   },
   "genericPaths": {
     "adminMint": [
+      "aof-core/src/instructions/admin_config.rs#set_issuance_lifetime_baseline",
       "aof-core/src/instructions/admin_config.rs#set_supply_cap",
       "aof-core/src/instructions/burn_resource.rs#handler",
       "aof-core/src/instructions/issuance_cap.rs#init_handler",
@@ -3331,6 +3409,7 @@
       "aof-core/src/lib.rs#init_issuance_cap",
       "aof-core/src/lib.rs#mint_resource",
       "aof-core/src/lib.rs#set_issuance_cap",
+      "aof-core/src/lib.rs#set_issuance_lifetime_baseline",
       "aof-core/src/lib.rs#set_supply_cap"
     ],
     "playerClaim": [

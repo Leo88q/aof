@@ -57,29 +57,50 @@ case "$1" in
   account)
     [ -f "$MOCK_CHAIN/$2.json" ] && exit 0
     exit ${MOCK_ACCOUNT_CODE:-1};;
-  *) [ "$1" = "program" ] && [ "$2" = "deploy" ] || exit 1
-     echo "@@deploy $*" >> "$MOCK_CALLS"
-     shift 2; maxlen=""; progid=""; payer=""; so=""
-     while [ $# -gt 0 ]; do
-       case "$1" in
-         --url) shift 2;;
-         --keypair) payer="$(cat "$2")"; shift 2;;
-         --program-id) progid="$(cat "$2")"; shift 2;;
-         --max-len) maxlen="$2"; shift 2;;
-         *) so="$1"; shift;;
-       esac
-     done
-     # как настоящий CLI: без --max-len ёмкость равна размеру .so
-     [ -n "$maxlen" ] || maxlen="$(wc -c < "$so" | tr -d ' ')"
-     printf '{"max_len": %s, "so": "%s", "authority": "%s", "corrupt": false}\\n' "$maxlen" "$so" "$payer" > "$MOCK_CHAIN/$progid.json"
-     exit 0;;
+  program)
+    case "${2:-}" in
+      show)
+        [ -f "$MOCK_CHAIN/$3.json" ] || exit 1
+        cat "$MOCK_CHAIN/$3.json";;
+      dump)
+        pid="$3"; destination="$4"; name=""
+        for keypair in "$MOCK_ARTIFACTS"/*-keypair.json; do
+          [ -f "$keypair" ] || continue
+          if [ "$(cat "$keypair")" = "$pid" ]; then
+            name="$(basename "$keypair" -keypair.json)"
+            break
+          fi
+        done
+        [ -n "$name" ] && [ -f "$MOCK_ARTIFACTS/$name.so" ] || exit 1
+        cp "$MOCK_ARTIFACTS/$name.so" "$destination"
+        if [ "$name" = "${MOCK_CORRUPT_PROGRAM:-}" ]; then
+          printf 'X' | dd of="$destination" bs=1 seek=0 conv=notrunc 2>/dev/null
+        fi;;
+      deploy)
+        echo "@@deploy $*" >> "$MOCK_CALLS"
+        shift 2; maxlen=""; progid=""; payer=""; so=""
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --url) shift 2;;
+            --keypair) payer="$(cat "$2")"; shift 2;;
+            --program-id) progid="$(cat "$2")"; shift 2;;
+            --max-len) maxlen="$2"; shift 2;;
+            *) so="$1"; shift;;
+          esac
+        done
+        # как настоящий CLI: без --max-len ёмкость равна размеру .so
+        [ -n "$maxlen" ] || maxlen="$(wc -c < "$so" | tr -d ' ')"
+        printf '{"max_len": %s, "so": "%s", "authority": "%s", "corrupt": false}\\n' "$maxlen" "$so" "$payer" > "$MOCK_CHAIN/$progid.json";;
+      *) exit 1;;
+    esac;;
+  *) exit 1;;
 esac
 """
 
 MOCK_ANCHOR = """#!/usr/bin/env bash
 printf 'anchor %s\\n' "$*" >> "$MOCK_CALLS"
 [ "${1:-}" = "build" ] || exit 1
-for name in aof_core aof_market aof_session_keys; do
+for name in aof_core aof_market aof_quests aof_rebirth aof_liquidity aof_session_keys; do
   cp "$MOCK_BUILT/$name.so" "$MOCK_ARTIFACTS/$name.so" 2>/dev/null || true
 done
 """
@@ -133,6 +154,12 @@ case "$url" in
       echo '{"miningEnabled":false}'
     fi;;
   */admin/config/collector-mint) echo '{"sig":"mock-collector-sig"}';;
+  */admin/issuance-caps)
+    if [ "${MOCK_CAPS_CONFIGURED:-0}" = "1" ]; then
+      echo '{"caps":[{"kind":"data","configured":true},{"kind":"mind","configured":true}]}'
+    else
+      echo '{"caps":[{"kind":"data","configured":false},{"kind":"mind","configured":false}]}'
+    fi;;
   */query/config) echo "{\\"circuitMint\\":\\"$MOCK_MINT\\",\\"siliconMint\\":\\"$MOCK_MINT\\",\\"mindMint\\":\\"$MOCK_MINT\\",\\"treasury\\":\\"$MOCK_MINT\\"}";;
   */query/material-mints) echo "{\\"initialized\\":true,\\"mints\\":{\\"dataset\\":\\"$MOCK_MINT\\",\\"neuron\\":\\"$MOCK_MINT\\",\\"QUANTUM_BIT\\":\\"$MOCK_MINT\\"}}";;
   */query/hot-market-config)
@@ -258,7 +285,11 @@ class BringupBase(unittest.TestCase):
         self.addCleanup(default_backend.__exit__, None, None, None)
         self.probe = self.dir / "probe.py"
         self.probe.write_text(
-            "import sys\nprint('ЗОНД: программы проверены')\n", encoding="utf-8")
+            "import json, sys\n"
+            "print(json.dumps({'programs': [], 'mechanics': [{"
+            "'name': 'Добыча инструментов', 'state': 'выключено', "
+            "'evidence': 'Config есть: mining_enabled=false'}]}))\n",
+            encoding="utf-8")
         (self.dir / "pools").mkdir()
         self.calls = self.dir / "calls.log"
 
@@ -299,14 +330,24 @@ class BringupBase(unittest.TestCase):
             "REAL_CURL": REAL_CURL or "",
             "FAKE_BACKEND_URL": self.default_backend.url,
             "PROGRAM_MAX_LEN_POLICY": "exact",
+            "CAP_PER_EPOCH": "1000000000000",
         })
         env.pop("PROGRAM_MAX_LEN_HEADROOM_PERCENT", None)
         env.update(env_overrides or {})
-        for key in ("AOF_DEPLOY_TARGET", "ADMIN_TOKEN", "SKIP", "COLLECTOR_MINTS", "PROGRAM_MAX_LEN_POLICY"):
+        for key in ("AOF_DEPLOY_TARGET", "ADMIN_TOKEN", "SKIP", "COLLECTOR_MINTS", "PROGRAM_MAX_LEN_POLICY",
+                    "CAP_PER_EPOCH"):
             if env.get(key) == "":
                 env.pop(key, None)
         return subprocess.run(["bash", str(SCRIPT), *extra], capture_output=True, text=True,
                               env=env, cwd=str(REPO))
+
+    def seed_deployed_programs(self):
+        for name, address in PROGRAMS:
+            so = self.artifacts / f"{name}.so"
+            (self.chain / f"{address}.json").write_text(json.dumps({
+                "so": str(so), "max_len": so.stat().st_size,
+                "authority": CORE_ADDRESS, "corrupt": False,
+            }), encoding="utf-8")
 
     def log(self) -> list[str]:
         return self.calls.read_text(encoding="utf-8").splitlines() if self.calls.exists() else []
@@ -360,10 +401,11 @@ class BringupScript(BringupBase):
         for line in deploys:
             self.assertRegex(line, r" --max-len 65 ", line)  # ceil(52 * 1.25) для 52-байтной фикстуры
 
-    def test_skip_deploy_does_not_need_a_policy(self):
+    def test_skip_deploy_does_not_need_a_policy_but_requires_onchain_bytecode(self):
         done = self.run_script("--apply", env_overrides={
             "PROGRAM_MAX_LEN_POLICY": "", "SKIP": "deploy", "COLLECTOR_MINTS": ""})
-        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertNotEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertIn("bytecode gate", done.stderr)
         self.assertEqual(self.deploys(), [])
 
     def test_missing_operator_key_refuses(self):
@@ -372,7 +414,7 @@ class BringupScript(BringupBase):
         self.assertIn("ключ", done.stderr)
 
     def test_missing_so_with_skip_build_refuses(self):
-        for name in ("aof_core", "aof_market", "aof_session_keys"):
+        for name, _ in PROGRAMS:
             (self.artifacts / f"{name}.so").unlink()
         done = self.run_script("--apply", env_overrides={"SKIP": "build"})
         self.assertEqual(done.returncode, 3)
@@ -384,6 +426,34 @@ class BringupScript(BringupBase):
         self.assertEqual(done.returncode, 3)
         self.assertIn("ADMIN_TOKEN", done.stderr)
         self.assertEqual(self.deploys(), [])
+
+    def test_the_refusal_names_a_skip_list_that_actually_works(self):
+        # Раньше сообщение предлагало SKIP=mints,caps,mining,collectors, но с ним
+        # market/craft/mechanics оставались включёнными и всё равно требовали
+        # ADMIN_TOKEN: совет не работал. Теперь в отказе есть SKIP=backend, и он
+        # обязан действительно снимать требование.
+        done = self.run_script("--apply", env_overrides={"ADMIN_TOKEN": ""})
+        self.assertIn("SKIP=backend", done.stderr)
+        again = self.run_script("--apply", env_overrides={"ADMIN_TOKEN": "", "SKIP": "backend"})
+        self.assertEqual(again.returncode, 0, again.stderr + again.stdout)
+        self.assertIn("ADMIN_TOKEN не нужен", again.stdout)
+
+    def test_skip_backend_deploys_without_a_backend_and_without_posting(self):
+        for path in self.chain.glob("*.json"):
+            path.unlink()
+        done = self.run_script("--apply", env_overrides={"ADMIN_TOKEN": "", "SKIP": "backend"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(len(self.deploys()), len(PROGRAMS), "деплой обязан остаться в силе")
+        self.assertEqual(self.posts(), [])
+        self.assertEqual(self.craft_posts(), [])
+        self.assertEqual(self.mechanics_posts(), [])
+        self.assertFalse([l for l in self.log() if l.startswith("npx")], self.log())
+
+    def test_skip_backend_dry_run_needs_no_backend(self):
+        done = self.run_script(env_overrides={"ADMIN_TOKEN": "", "SKIP": "backend"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys(), [])
+        self.assertIn("сухой прогон", done.stdout)
 
     def test_dry_run_changes_nothing(self):
         done = self.run_script()
@@ -403,7 +473,11 @@ class BringupScript(BringupBase):
             "deploy": log.find("@@deploy"),
             "config": log.find("scripts/initConfig.ts"),
             "mints": log.find("scripts/initMintsV2.ts"),
+            "vrf_lut": log.find("run vrf:lut:init"),
             "caps": log.find("run caps:init"),
+            "issuance_scan": log.find("issuance:history:scan"),
+            "lifetime_baseline": log.find("issuance:baseline:apply"),
+            "lifetime_caps": log.find("issuance:lifetime-caps:apply"),
             "packs": log.find("/packs/config/init"),
             "reroll": log.find("/reroll/config/init"),
             "lottery": log.find("/lottery/round/init"),
@@ -421,7 +495,7 @@ class BringupScript(BringupBase):
         self.assertIn("historian", log)
 
     def test_build_runs_when_so_missing_and_anchor_present(self):
-        for name in ("aof_core", "aof_market", "aof_session_keys"):
+        for name, _ in PROGRAMS:
             (self.artifacts / f"{name}.so").unlink()
         done = self.run_script("--apply", env_overrides={
             "COLLECTOR_MINTS": f"{COLLECTOR_MINT}:medallion",
@@ -431,6 +505,54 @@ class BringupScript(BringupBase):
         self.assertIn("anchor build", log)
         self.assertLess(log.find("anchor build"), log.find("@@deploy"))
         self.assertTrue((self.artifacts / "aof_core.so").exists())
+
+    def test_pre_upgrade_mining_on_refuses_before_build_or_deploy(self):
+        self.probe.write_text(
+            "import json\nprint(json.dumps({'programs': [], 'mechanics': [{"
+            "'name': 'Добыча инструментов', 'state': 'включено', "
+            "'evidence': 'Config есть: mining_enabled=true'}]}))\n",
+            encoding="utf-8")
+        done = self.run_script("--apply")
+        self.assertEqual(done.returncode, 3, done.stderr + done.stdout)
+        self.assertIn("mining_enabled уже true", done.stderr)
+        self.assertEqual(self.deploys(), [])
+        self.assertFalse(any(line.startswith("anchor build") for line in self.log()))
+
+    def test_pre_upgrade_unprovable_mining_state_refuses_before_build_or_deploy(self):
+        self.probe.write_text(
+            "import json\nprint(json.dumps({'programs': [], 'mechanics': [{"
+            "'name': 'Добыча инструментов', 'state': 'нет данных', "
+            "'evidence': 'ошибка чтения Config'}]}))\n",
+            encoding="utf-8")
+        done = self.run_script("--apply")
+        self.assertEqual(done.returncode, 3, done.stderr + done.stdout)
+        self.assertIn("не удалось доказать выключенное состояние", done.stderr)
+        self.assertEqual(self.deploys(), [])
+        self.assertFalse(any(line.startswith("anchor build") for line in self.log()))
+
+    def test_pre_upgrade_accepts_python_false_boolean_evidence(self):
+        # The real Python probe formats bools as `False`; the gate must still
+        # prove the kill-switch is off before allowing a program upgrade.
+        self.probe.write_text(
+            "import json\nprint(json.dumps({'programs': [], 'mechanics': [{"
+            "'name': 'Добыча инструментов', 'state': 'выключено', "
+            "'evidence': 'Config есть: paused=False, mining_enabled=False'}]}))\n",
+            encoding="utf-8")
+        done = self.run_script("--apply", env_overrides={"SKIP": "backend"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(len(self.deploys()), len(PROGRAMS))
+        self.assertNotIn("не удалось доказать выключенное состояние", done.stderr)
+
+    def test_bytecode_mismatch_blocks_config_and_mining(self):
+        done = self.run_script("--apply", env_overrides={"MOCK_CORRUPT_PROGRAM": "aof_market"})
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertIn("bytecode gate", done.stderr)
+        self.assertIn("aof_market", done.stdout)
+        self.assertIn("MISMATCH(hash)", done.stdout)
+        self.assertFalse(any(line.startswith("npx ") for line in self.log()),
+                         "Config and mint setup must not run before all six bytecodes match")
+        self.assertFalse(any("-X POST" in line and "/mining" in line for line in self.log()),
+                         "mining must never be enabled after a bytecode mismatch")
 
     def test_preflight_blocked_never_turns_mining_on(self):
         done = self.run_script("--apply", env_overrides={"MOCK_PREFLIGHT_BLOCKED": "1"})
@@ -458,6 +580,23 @@ class BringupScript(BringupBase):
         fresh = [line for line in self.log()[before:]
                  if "curl" in line and "-X POST" in line and "/hot-market/" in line]
         self.assertEqual(fresh, [], "повторный прогон не должен создавать аккаунты заново")
+
+    def test_caps_without_a_value_refuses_and_names_the_variable(self):
+        # Потолок выпуска выбирает оператор: пустой CAP_PER_EPOCH — отказ с подсказкой
+        # ДО вызова caps:init, а не TSError в середине шага.
+        done = self.run_script("--apply", env_overrides={"CAP_PER_EPOCH": "", "COLLECTOR_MINTS": ""})
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("CAP_PER_EPOCH", done.stderr)
+        self.assertIn("docs/ISSUANCE_CAPS_DESIGN.md", done.stderr)
+        self.assertNotIn("run caps:init", self.log(), "caps:init не должен вызываться без значения")
+
+    def test_caps_already_configured_skip_without_a_value(self):
+        # Идемпотентность: когда все потолки созданы, повторный запуск не требует значения.
+        done = self.run_script("--apply", env_overrides={
+            "CAP_PER_EPOCH": "", "COLLECTOR_MINTS": "", "MOCK_CAPS_CONFIGURED": "1"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertIn("потолки выпуска уже инициализированы", done.stdout)
+        self.assertNotIn("run caps:init", self.log())
 
     def test_craft_step_creates_economy_and_rarity_counters(self):
         done = self.run_script("--apply", env_overrides={"COLLECTOR_MINTS": ""})
@@ -562,9 +701,11 @@ class BringupScript(BringupBase):
         self.assertEqual(self.market_posts(), [])
 
     def test_skip_backend_steps_needs_no_token(self):
+        # SKIP=backend — сокращение: раньше приходилось перечислять имена, и легко
+        # было забыть craft/mechanics/market, которые тоже ходят в backend.
         done = self.run_script("--apply", env_overrides={
             "ADMIN_TOKEN": "",
-            "SKIP": "config,mints,caps,market,mining,collectors,report",
+            "SKIP": "backend,report",
         })
         self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
         self.assertEqual(len(self.deploys()), len(PROGRAMS), self.log())
@@ -583,7 +724,9 @@ class FakeBackend:
       old-backend  — старая сборка без маршрута: Express-подобный 404 «Cannot GET …»;
       foreign-json — посторонний сервис отвечает 200 JSON чужого формата;
       foreign-html — 200 HTML;
-      legacy-400   — 400 с JSON-ошибкой (то, что раньше возвращал GET /mining до деплоя).
+      legacy-400   — 400 с JSON-ошибкой (то, что раньше возвращал GET /mining до деплоя);
+      rpc-down     — 502 BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE: backend жив, но сам не читает сеть
+                     (реальный случай: в .env остался публичный/старый RPC_URL).
     Состояние берётся из файлов, которые пишут моки solana/npx: после первого --apply повторный
     запуск видит развёрнутые программы и созданный Config.
     """
@@ -636,6 +779,8 @@ class FakeBackend:
                     return self._reply(200, b"<html><body>It works!</body></html>", "text/html")
                 if backend.behavior == "legacy-400":
                     return self._reply(400, {"error": "Account does not exist or has no data"})
+                if backend.behavior == "rpc-down" and self.path.startswith("/admin/config/bootstrap-preflight"):
+                    return self._reply(502, {"error": "BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE"})
                 if method != "GET" or self.path != "/admin/config/bootstrap-preflight":
                     return self._reply(404, {"error": "Not found"})
                 if self.headers.get("Authorization", "") != f"Bearer {backend.token}":
@@ -702,6 +847,18 @@ class BootstrapPreflight(BringupBase):
             backend = self.backend(behavior=behavior)
             done = self.run_with(backend.url, "--apply")
             self.assert_refused_before_any_transaction(done, needle)
+
+    def test_backend_with_a_dead_rpc_names_how_to_check_it(self):
+        # 502 BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE значит «backend жив, но сам не читает сеть».
+        # Сообщение обязано вести к /ready и к тому, что dotenv не перезаписывает
+        # уже заданные переменные окружения (backend не перезапускался после правки .env).
+        backend = self.backend(behavior="rpc-down")
+        done = self.run_with(backend.url, "--apply")
+        self.assert_refused_before_any_transaction(done, "BOOTSTRAP_PREFLIGHT_RPC_UNAVAILABLE")
+        self.assertIn("/ready", done.stderr)
+        self.assertIn("dotenv", done.stderr)
+        self.assertIn("rpcEndpoint", done.stderr)
+        self.assertIn("dev-local.sh up", done.stderr)
 
     def test_http_400_is_never_accepted_as_ready(self):
         # Корень исходной проблемы: «принять любой 400» пропустило бы и чужой сервис, и неверный токен.
@@ -773,8 +930,7 @@ class BootstrapPreflight(BringupBase):
 
     # 8. программы уже есть, Config нет
     def test_programs_deployed_but_no_config_proceeds_to_initialize(self):
-        for _, address in PROGRAMS:
-            (self.chain / f"{address}.json").write_text("{}", encoding="utf-8")
+        self.seed_deployed_programs()
         backend = self.backend()
         done = self.run_with(backend.url, "--apply")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -785,8 +941,7 @@ class BootstrapPreflight(BringupBase):
 
     # 9. Config уже инициализирован
     def test_initialized_config_is_not_recreated(self):
-        for _, address in PROGRAMS:
-            (self.chain / f"{address}.json").write_text("{}", encoding="utf-8")
+        self.seed_deployed_programs()
         self.config_marker.write_text("", encoding="utf-8")
         backend = self.backend()
         done = self.run_with(backend.url, "--apply")
@@ -821,7 +976,7 @@ class BootstrapPreflight(BringupBase):
         backend = self.backend()
         done = self.run_script("--apply", env_overrides={
             "BACKEND_URL": backend.url, "ADMIN_TOKEN": "", "FAKE_BACKEND_URL": "",
-            "SKIP": "config,mints,caps,market,mining,collectors,report"})
+            "SKIP": "backend,report"})
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(backend.requests, [])
 

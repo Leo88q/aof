@@ -74,7 +74,7 @@ case "$1" in
        case "$1" in
          --url) shift 2;;
          --keypair) payer="$(cat "$2")"; shift 2;;
-         --program-id) progid="$(cat "$2")"; shift 2;;
+         --program-id) progid="$(cat "$2" 2>/dev/null || echo "$2")"; shift 2;;
          --max-len) maxlen="$2"; shift 2;;
          *) so="$1"; shift;;
        esac
@@ -161,6 +161,12 @@ class DeployBase(unittest.TestCase):
         env.update(env_overrides or {})
         return subprocess.run(["bash", str(SCRIPT), *extra], capture_output=True, text=True,
                               env=env, cwd=str(REPO))
+
+    def seed_chain(self, address: str, so_path: pathlib.Path, max_len: int, authority: str, corrupt: bool = False):
+        """Состояние «программа уже в сети»: его читает и зондирует оценщик."""
+        (self.chain / f"{address}.json").write_text(json.dumps(
+            {"max_len": max_len, "so": str(so_path), "authority": authority, "corrupt": corrupt}),
+            encoding="utf-8")
 
     def deploys_made(self) -> list[str]:
         return self.deploys.read_text(encoding="utf-8").splitlines() if self.deploys.exists() else []
@@ -251,6 +257,116 @@ class DeployScript(DeployBase):
         done = self.run_script("--apply")
         self.assertEqual(done.returncode, 3)
         self.assertEqual(self.deploys_made(), [])
+
+
+class Upgrade(DeployBase):
+    """UPGRADE=... — обновление уже живущего адреса: скрипт сам сверяет байткод.
+
+    Без этого шага новый код в уже развёрнутой программе не доехал бы до сети:
+    шаг 3 считает существующий аккаунт доказательством и пропускает его.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.old_so = self.dir / "old-aof-core.so"
+        old = bytearray(self.elf(CORE_ID, 60))           # прошлая сборка: те же 36 байт заголовка,
+        old[40] = 0xAA                                   # но другие байты тела — байткод отличается
+        self.old_so.write_bytes(bytes(old))
+        self.seed_chain(CORE_ID, self.old_so, 60, CORE_ID)
+
+    def test_upgrade_of_a_present_program_replaces_the_bytecode(self):
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        deploys = self.deploys_made()
+        self.assertEqual(len(deploys), 1, deploys)
+        self.assertIn("upgrade", done.stdout)
+        state = json.loads((self.chain / f"{CORE_ID}.json").read_text(encoding="utf-8"))
+        self.assertEqual(pathlib.Path(state["so"]).read_bytes(), (self.artifacts / "aof_core.so").read_bytes())
+        self.assertEqual(state["max_len"], 52, "exact-политика: ёмкость обязана быть равна новой сборке")
+
+    def test_matching_bytecode_is_left_alone(self):
+        self.seed_chain(CORE_ID, self.artifacts / "aof_core.so", 52, CORE_ID)
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("upgrade не нужен", done.stdout)
+
+    def test_all_upgrades_everything_that_differs(self):
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "all"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(len(self.deploys_made()), 1)
+
+    def test_aof_market_mismatch_is_replaced_by_upgrade_all(self):
+        market_id = next(address for name, address in ALL_PROGRAMS if name == "aof_market")
+        market_so = self.dir / "aof-market-old.so"
+        old = bytearray(self.elf(market_id, 60))
+        old[40] = 0xAA
+        market_so.write_bytes(bytes(old))
+        self.add_program("aof_market", market_id, 52)
+        self.seed_chain(market_id, market_so, 60, CORE_ID)
+
+        done = self.run_script("--apply", env_overrides={
+            "UPGRADE": "all", "ONLY": "aof_market",
+        })
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        deploys = self.deploys_made()
+        self.assertEqual(len(deploys), 1, deploys)
+        self.assertIn("aof_market", deploys[0])
+        state = json.loads((self.chain / f"{market_id}.json").read_text(encoding="utf-8"))
+        self.assertEqual(pathlib.Path(state["so"]).read_bytes(),
+                         (self.artifacts / "aof_market.so").read_bytes())
+
+    def test_upgrade_refuses_without_a_local_build(self):
+        (self.artifacts / "aof_core.so").unlink()
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 3)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("anchor build", done.stderr)
+
+    def test_unknown_upgrade_name_refuses(self):
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_nope"})
+        self.assertEqual(done.returncode, 3)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("нет в реестре", done.stderr)
+
+    def test_upgrade_without_the_program_keypair_uses_the_address(self):
+        (self.artifacts / "aof_core-keypair.json").unlink()
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        deploys = self.deploys_made()
+        self.assertEqual(len(deploys), 1, deploys)
+        self.assertIn("--program-id " + CORE_ID, deploys[0])
+        self.assertNotIn("--program-id " + str(self.artifacts / "aof_core-keypair.json"), deploys[0])
+
+    def test_upgrade_that_lands_the_wrong_bytecode_is_caught(self):
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core", "MOCK_DEPLOY_CORRUPT": "1"})
+        self.assertEqual(done.returncode, 3)
+        self.assertIn("не совпадает", done.stderr)
+
+    def test_upgrade_refuses_when_the_operator_is_not_the_authority(self):
+        # CLI сначала фиксирует SOL в буфере и только потом отправляет upgrade:
+        # чужая authority обнаружилась бы после траты. Проверка — read-only, до.
+        self.seed_chain(CORE_ID, self.old_so, 60, OTHER_ID)
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 3)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("upgrade authority", done.stderr)
+        self.assertIn(OTHER_ID, done.stderr)
+
+    def test_matching_bytecode_with_a_foreign_authority_is_not_an_error(self):
+        # Байткод совпал — обновлять нечего, значит и authority не важна.
+        self.seed_chain(CORE_ID, self.artifacts / "aof_core.so", 52, OTHER_ID)
+        done = self.run_script("--apply", env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("upgrade не нужен", done.stdout)
+
+    def test_dry_run_shows_the_upgrade_and_sends_nothing(self):
+        done = self.run_script(env_overrides={"UPGRADE": "aof_core"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(self.deploys_made(), [])
+        self.assertIn("upgrade", done.stdout)
+        self.assertIn("--max-len 52", done.stdout)
 
 
 class MaxLenPolicy(DeployBase):

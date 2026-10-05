@@ -45,7 +45,7 @@ pub fn handler(ctx: Context<CraftRecipe>, recipe_id: u8) -> Result<()> {
                 $mint.key() == mint_for_kind(cfg, mm, &$kind),
                 AofError::MaterialNotRegistered
             );
-            check_supply_cap(mm, $kind, $mint.supply, $amt)?;
+            check_supply_cap(mm, &mut ctx.accounts.issuance_cap, $kind, $amt)?;
             token::mint_to(
                 CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),

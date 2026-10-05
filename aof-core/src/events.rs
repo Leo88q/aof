@@ -78,6 +78,15 @@ pub struct IssuanceCapChanged {
     pub slot: u64,
 }
 
+#[event]
+pub struct IssuanceLifetimeBaselineSet {
+    pub kind: u8,
+    pub mint: Pubkey,
+    pub previous: u128,
+    pub baseline: u128,
+    pub slot: u64,
+}
+
 /// Emitted by set_paused. `authority` identifies who flipped the switch.
 #[event]
 pub struct PausedToggled {

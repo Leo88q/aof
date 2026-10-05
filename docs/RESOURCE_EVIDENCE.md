@@ -33,16 +33,16 @@
 
 | Canonical ID | Display name | Frontend | Recipe | Asset | Backend | Game | playerSource | playerSink | tradable | admin/claim | Статус | economy_issue |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Data | Data | ✅ | — | ✅ | ✅ | — | 0 | 4 | ✅ | admin/claim | active-player | missing_source |
-| Circuit | Circuit | ✅ | — | ✅ | ✅ | — | 3 | 8 | ✅ | admin/claim | active-player | — |
-| Silicon | Silicon | ✅ | — | ✅ | — | — | 2 | 8 | ✅ | admin/claim | active-player | — |
+| Data | Data | ✅ | — | ✅ | ✅ | — | 0 | 5 | ✅ | admin/claim | active-player | missing_source |
+| Circuit | Circuit | ✅ | — | ✅ | ✅ | — | 3 | 7 | ✅ | admin/claim | active-player | — |
+| Silicon | Silicon | ✅ | — | ✅ | — | — | 2 | 7 | ✅ | admin/claim | active-player | — |
 | Neuron | Neuron | ✅ | — | ✅ | ✅ | ✅ | 2 | 3 | ✅ | admin/claim | active-player | — |
 | Synapse | Synapse | ✅ | — | ✅ | ✅ | — | 1 | 1 | ✅ | admin/claim | active-player | — |
 | Signal | Signal | ✅ | — | ✅ | ✅ | — | 1 | 1 | ✅ | admin/claim | active-player | — |
 | Model | Model | ✅ | — | ✅ | ✅ | ✅ | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
 | Power | Power | ✅ | — | ✅ | ✅ | — | 1 | 2 | ✅ | admin/claim | active-player | — |
 | Compute | Compute | ✅ | — | ✅ | ✅ | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| Dataset | Dataset | ✅ | — | ✅ | ✅ | — | 2 | 1 | ✅ | admin/claim | active-player | — |
+| Dataset | Dataset | ✅ | — | ✅ | ✅ | — | 2 | 0 | ✅ | admin/claim | active-player | missing_sink |
 | BlueCore | Blue Core | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
 | PurpleCore | Purple Core | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
 | RedCore | Red Core | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
@@ -89,7 +89,7 @@
 | Model | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
 | Power | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Compute | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| Dataset | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| Dataset | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
 | BlueCore | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
 | PurpleCore | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
 | RedCore | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
@@ -112,17 +112,18 @@
 
 ### Data — active-player
 
-* frontend: 21 файл(ов) (frontend/src/i18n/galleryBehaviorCopy.ts, frontend/src/i18n/galleryCryoCopy.ts, frontend/src/i18n/galleryMixCopy.ts, frontend/src/i18n/homeDetail.ts, …)
+* frontend: 22 файл(ов) (frontend/src/i18n/galleryBehaviorCopy.ts, frontend/src/i18n/galleryCryoCopy.ts, frontend/src/i18n/galleryMixCopy.ts, frontend/src/i18n/homeDetail.ts, …)
 * game: —
 * backend: 5 файл(ов) (aof_backend/src/lib/chainIndexerCore.ts, aof_backend/src/routes/daily.ts, aof_backend/src/routes/portfolio.ts, aof_backend/src/routes/query.ts, …)
 * recipes: —
 * assets: frontend/public/assets/icons/data.png, frontend/public/assets/icons/dataset.png, frontend/public/assets/icons/ui/building-data.png, frontend/public/assets/nfts/data-harvester-epic.jpg, frontend/public/assets/nfts/data-harvester-legendary.jpg, frontend/public/assets/nfts/data-harvester-rare.jpg, frontend/public/assets/nfts/data-harvester-uncommon.jpg, frontend/public/assets/nfts/data-harvester.jpg, frontend/public/assets/nfts/resources/data.jpg, frontend/public/assets/nfts/resources/dataset.jpg
 * on-chain source (литерал): —
-* on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler
+* on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exchange_data_energy.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler
 * рецепты: вход recipe 3, recipe 6; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -133,12 +134,13 @@
 * backend: 2 файл(ов) (aof_backend/src/lib/vrf.ts, aof_backend/src/routes/admin-config.ts)
 * recipes: —
 * assets: frontend/public/assets/icons/circuit.png, frontend/public/assets/nfts/resources/circuit.jpg
-* on-chain source (литерал): aof-core/src/instructions/forge.rs#expire_handler, aof-core/src/instructions/season.rs#claim_reward_handler
-* on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/forge.rs#commit_handler, aof-core/src/instructions/referral.rs#upgrade_handler, aof-core/src/instructions/rental_delegation.rs#repair_handler, aof-core/src/instructions/repair.rs#handler, aof-core/src/instructions/start_model_training.rs#handler
+* on-chain source (литерал): aof-core/src/instructions/season.rs#claim_reward_handler
+* on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler, aof-core/src/instructions/rental_delegation.rs#repair_handler, aof-core/src/instructions/repair.rs#handler, aof-core/src/instructions/start_model_training.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler, aof-core/src/instructions/season.rs#claim_reward_handler
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler, aof-core/src/instructions/forge.rs#expire_handler
 * рецепты: вход recipe 5; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
@@ -149,12 +151,13 @@
 * backend: 0 файл(ов)
 * recipes: —
 * assets: frontend/public/assets/icons/silicon.png, frontend/public/assets/icons/ui/building-silicon.png, frontend/public/assets/nfts/resources/silicon.jpg, frontend/public/assets/nfts/silicon-extractor-epic.jpg, frontend/public/assets/nfts/silicon-extractor-legendary.jpg, frontend/public/assets/nfts/silicon-extractor-rare.jpg, frontend/public/assets/nfts/silicon-extractor-uncommon.jpg, frontend/public/assets/nfts/silicon-extractor.jpg
-* on-chain source (литерал): aof-core/src/instructions/forge.rs#expire_handler
-* on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/forge.rs#commit_handler, aof-core/src/instructions/referral.rs#upgrade_handler, aof-core/src/instructions/rental_delegation.rs#repair_handler, aof-core/src/instructions/repair.rs#handler, aof-core/src/instructions/start_signal_processing.rs#handler
+* on-chain source (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler, aof-core/src/instructions/rental_delegation.rs#repair_handler, aof-core/src/instructions/repair.rs#handler, aof-core/src/instructions/start_signal_processing.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler, aof-core/src/instructions/forge.rs#expire_handler
 * рецепты: вход recipe 4; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
@@ -170,7 +173,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 5; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
@@ -186,7 +190,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/harvest_synapse.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -202,7 +207,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_signal.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -218,13 +224,14 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_model.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### Power — active-player
 
-* frontend: 9 файл(ов) (frontend/src/i18n/homeDetail.ts, frontend/src/i18n/resourceLeads.ts, frontend/src/i18n/wellCopy.ts, frontend/src/lib/craftReadings.ts, …)
+* frontend: 10 файл(ов) (frontend/src/i18n/homeDetail.ts, frontend/src/i18n/resourceLeads.ts, frontend/src/i18n/wellCopy.ts, frontend/src/lib/craftReadings.ts, …)
 * game: —
 * backend: 3 файл(ов) (aof_backend/src/lib/economySimulatorV2.ts, aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
@@ -234,7 +241,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_power.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -250,7 +258,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -262,13 +271,14 @@
 * recipes: —
 * assets: frontend/public/assets/icons/dataset.png, frontend/public/assets/nfts/resources/dataset.jpg
 * on-chain source (литерал): —
-* on-chain sink (литерал): aof-core/src/instructions/exploration.rs#start_commit_handler
+* on-chain sink (литерал): —
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler
 * рецепты: вход —; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
 ### BlueCore — active-player
 
@@ -282,7 +292,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 0; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -298,7 +309,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 7; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -314,7 +326,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 1; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -330,7 +343,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 2; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -346,7 +360,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 6; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -362,7 +377,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=false, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -378,7 +394,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 3; выход recipe 0
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -394,7 +411,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 4; выход recipe 1
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -410,7 +428,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 2
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -426,7 +445,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход recipe 7; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -442,7 +462,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 3
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -458,7 +479,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 4
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -474,7 +496,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 5
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -490,7 +513,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 6
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -506,7 +530,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 7
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -522,7 +547,8 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=false, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
@@ -538,6 +564,7 @@
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): —
 * майнинг-выдача: —
-* проектный сток (VRF/refund): —
+* проектный сток (VRF): —
+* возврат из эскроу (refund): —
 * рецепты: вход —; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false

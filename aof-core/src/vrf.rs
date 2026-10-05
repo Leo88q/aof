@@ -342,7 +342,6 @@ pub struct RevealAccounts<'info> {
     pub system_program: AccountInfo<'info>,
     pub reward_escrow: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
-    pub wrapped_sol_mint: AccountInfo<'info>,
     pub program_state: AccountInfo<'info>,
 }
 
@@ -433,7 +432,6 @@ fn cpi_reveal(a: &RevealAccounts, params: &VrfRevealParams, authority_bump: u8) 
             a.system_program.clone(),
             a.reward_escrow.clone(),
             a.token_program.clone(),
-            a.wrapped_sol_mint.clone(),
             a.program_state.clone(),
             a.switchboard_program.clone(),
         ],
@@ -539,11 +537,13 @@ pub fn bps(x: u64) -> u64 {
     below(x, 10_000)
 }
 
-/// Rent the settler of a tool-producing commit fronts for the new NFT: mint,
-/// its associated token account and the ToolData PDA. The player prepays it
-/// at commit so that whoever cranks the reveal is made whole.
+/// Maximum rent the settler of a tool-producing commit may front: mint, ATA,
+/// ToolData, Metaplex Metadata and Master Edition. The player prepays this
+/// bound; reveal/expire reimburses actual post-CPI account sizes only.
 pub fn tool_settlement_rent(rent: &Rent) -> u64 {
     rent.minimum_balance(anchor_spl::token::Mint::LEN)
         .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
         .saturating_add(rent.minimum_balance(crate::constants::TOOL_DATA_SPACE))
+        .saturating_add(rent.minimum_balance(crate::constants::TOOL_METADATA_ACCOUNT_MAX_SPACE))
+        .saturating_add(rent.minimum_balance(crate::constants::TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE))
 }

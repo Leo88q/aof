@@ -139,6 +139,16 @@ export function buildCanonicalResourceMints(
   return { mints, errors: [] };
 }
 
+/**
+ * Canonical `MaterialMints` field name for a resource key, or null when the
+ * resource lives in `Config` (DATA/CIRCUIT/SILICON/MIND) or has no field yet.
+ * Exported so a route that needs one fluid does not re-type the field name.
+ */
+export function materialMintField(key: ResourceMintKey): string | null {
+  const field = MATERIAL_FIELDS[key];
+  return field ? field : null;
+}
+
 export function resourceMintEntries(mints: CanonicalResourceMints): [ResourceMintKey, PublicKey][] {
   return RESOURCE_MINT_KEYS.map((key) => [key, mints[key]]);
 }

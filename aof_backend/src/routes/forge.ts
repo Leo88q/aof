@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { program, connection } from "../provider";
-import { authPda, configPda, enchantSlotPda, forgeCommitPda, toolPda, bowCommitPda, skinPda } from "../lib/pda";
-import { authorityOnly, coSign, pk } from "../lib/tx";
+import { authPda, configPda, enchantSlotPda, forgeCommitPda, resourceEscrowAta, toolPda } from "../lib/pda";
+import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
-import { newCommit, peekSecret, markUsed } from "../lib/secretStore";
 import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 
@@ -36,6 +35,7 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
         config,
         authority: AUTHORITY_PUBKEY,
         user,
+        auth: authPda()[0],
         tool: toolPda(toolMint)[0],
         toolMint,
         enchantSlot: enchantSlotPda(toolMint, slotType)[0],
@@ -44,6 +44,8 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
         userCircuit: getAssociatedTokenAddressSync(cfg.circuitMint, user),
         siliconMint: cfg.siliconMint,
         userSilicon: getAssociatedTokenAddressSync(cfg.siliconMint, user),
+        escrowCircuit: resourceEscrowAta(cfg.circuitMint),
+        escrowSilicon: resourceEscrowAta(cfg.siliconMint),
         ...vrf,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -78,79 +80,22 @@ r.post("/reveal", requireCircuitOpen, requireWalletLimits("forge_reveal"), async
 });
 
 
-// Disabled: no bow_reward_commit/reveal entrypoints exist in aof-core.
+// §3.8: маршруты сняты вместе с предметом. «Лук» и скины — доребрендовая
+// механика Age of Farming: в текущей программе нет ни `SkinAccount`, ни
+// констант seeds для скина, ни инструкций `bow_reward_commit/reveal`;
+// «bow» остался только в списке старых имён инструментов, которые миграция
+// переименовывает в инструменты (`aof-core/src/state.rs`,
+// `canonical_tool_type`). Скины заменены обычными NFT-инструментами, а награда
+// за попытку крафта выдаётся инструкциями `forge_attempt_*`.
+//
+// 410, а не 404: старый клиент должен получить объяснение, а не «страница не
+// найдена», и не ждать, пока механика «включится». Инструкцию для этого
+// маршрута писать не будут — предмета нет.
 r.post("/bow/commit", (_req, res) => {
-  res.status(503).json({ error: "BOW_REWARD_DISABLED_UNTIL_ONCHAIN_INSTRUCTION_EXISTS" });
+  res.status(410).json({ error: "BOW_REWARD_ROUTE_RETIRED_LEGACY_ITEM" });
 });
 r.post("/bow/reveal", (_req, res) => {
-  res.status(503).json({ error: "BOW_REWARD_DISABLED_UNTIL_ONCHAIN_INSTRUCTION_EXISTS" });
+  res.status(410).json({ error: "BOW_REWARD_ROUTE_RETIRED_LEGACY_ITEM" });
 });
-
-/*
-// Bow: шанс на скин (коммит)
-r.post("/bow/commit", async (req, res) => {
-  try {
-    const user = pk(req.body.user);
-    const toolMint = pk(req.body.toolMint);
-    const [config] = configPda();
-    const [tool] = toolPda(toolMint);
-    const [bowCommit] = bowCommitPda(toolMint);
-    const { hash } = await newCommit(`bow:${toolMint.toBase58()}`);
-    const ix = await (program.methods as any)
-      .bowRewardCommit(hash)
-      .accounts({
-        config,
-        user,
-        tool,
-        toolMint,
-        bowCommit,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const tx = await coSign([ix], user);
-    res.json({ tx });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// Bow: раскрытие результата (сервер)
-r.post("/bow/reveal", async (req, res) => {
-  try {
-    const toolMint = pk(req.body.toolMint);
-    const user = pk(req.body.user);
-    const skinMint = pk(req.body.skinMint);
-    const skinId = Number(req.body.skinId);
-    const key = `bow:${toolMint.toBase58()}`;
-    const secret = await peekSecret(key);
-    const [config] = configPda();
-    const [bowCommit] = bowCommitPda(toolMint);
-    const [skin] = skinPda(skinMint);
-    const [auth] = authPda();
-    const userSkinToken = getAssociatedTokenAddressSync(skinMint, user);
-    const ix = await (program.methods as any)
-      .bowRewardReveal(secret, skinId)
-      .accounts({
-        config,
-        authority: AUTHORITY_PUBKEY,
-        bowCommit,
-        payer: user,
-        skinMint,
-        userSkinToken,
-        skin,
-        auth,
-        slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const sig = await authorityOnly([ix]);
-    await markUsed(key);
-    res.json({ sig });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-*/
 
 export default r;

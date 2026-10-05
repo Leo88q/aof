@@ -150,6 +150,45 @@ pub struct ToolData {
     pub operator: Pubkey,           // 32
 }
 
+/// Immutable after freeze: maps TOOL_KINDS-major, Rarity-minor order to the
+/// 25 distinct Arweave JSON URIs used by every tool issuance path.
+#[account]
+#[derive(InitSpace)]
+pub struct ToolMetadataRegistry {
+    pub authority: Pubkey,
+    pub initialized: bool,
+    pub frozen: bool,
+    pub populated_mask: u32,
+    pub seller_fee_basis_points: u16,
+    pub bump: u8,
+    #[max_len(25, 80)]
+    pub metadata_uris: Vec<String>,
+}
+
+impl ToolMetadataRegistry {
+    pub fn metadata_uri(&self, tool_type: &str, rarity: Rarity) -> Result<&str> {
+        require!(
+            self.initialized && self.frozen,
+            crate::AofError::ToolMetadataRegistryNotFrozen
+        );
+        require!(
+            self.metadata_uris.len() == TOOL_METADATA_URI_COUNT,
+            crate::AofError::InvalidToolMetadataRegistry
+        );
+        let kind_index = TOOL_KINDS
+            .iter()
+            .position(|kind| *kind == tool_type)
+            .ok_or(crate::AofError::InvalidToolMetadataRegistry)?;
+        let index = kind_index * 5 + rarity.to_u8() as usize;
+        require!(
+            index < self.metadata_uris.len()
+                && self.populated_mask & (1u32 << index) != 0,
+            crate::AofError::InvalidToolMetadataRegistry
+        );
+        Ok(self.metadata_uris[index].as_str())
+    }
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct GasTank {
@@ -744,20 +783,11 @@ pub struct MaterialMints {
     pub quantum_fluid: Pubkey,
     pub soul_core: Pubkey,
     pub bump: u8,
-    /// [AUDIT F-03] Hard ceiling on the total supply of every resource,
-    /// indexed by `ResourceKind as u8` (see `RESOURCE_KIND_COUNT`).
-    ///
-    /// `IssuanceCap` only ever guarded `mint_resource`/`mint_resource_once`,
-    /// so `collect_mining`, `collect_signal`, `collect_model`,
-    /// `collect_power`, `explore_reveal`, `craft_recipe` and
-    /// `claim_season_reward` could emit without any bound. This array is
-    /// checked by every minting path, whatever the caller, because the check
-    /// is a pure function of the mint account supply.
-    ///
-    /// `SUPPLY_CAP_UNLIMITED` (u64::MAX) means "no ceiling configured"; the
-    /// authority is expected to lower the interesting kinds right after
-    /// `init_material_mints`, and can tighten them at any time with
-    /// `set_supply_cap`. Lowering below the current supply halts that kind.
+    /// [AUDIT F-03] Hard ceiling on cumulative lifetime mint emissions per
+    /// ResourceKind, indexed by `ResourceKind as u8`. Unlike an SPL mint's
+    /// outstanding supply, this monotonic allowance is never restored by burns.
+    /// `SUPPLY_CAP_UNLIMITED` (u64::MAX) is the explicit no-cap sentinel; the
+    /// authority sets finite values with `set_supply_cap` before mining opens.
     pub max_supply: [u64; RESOURCE_KIND_COUNT],
 }
 
@@ -823,26 +853,16 @@ pub fn mint_for_kind(config: &Config, material_mints: &MaterialMints, kind: &Res
     }
 }
 
-/// Check the global supply ceiling for `kind` BEFORE the mint CPI runs, so a
-/// rejected mint leaves no state change behind. `u64::MAX` means unlimited.
+/// Record cumulative lifetime issuance before a resource mint CPI. The
+/// counter lives in the per-kind IssuanceCap PDA; burns never restore allowance.
 pub fn check_supply_cap(
     material_mints: &MaterialMints,
+    issuance_cap: &mut IssuanceCap,
     kind: ResourceKind,
-    current_supply: u64,
     amount: u64,
 ) -> core::result::Result<(), crate::errors::AofError> {
-    use crate::errors::AofError;
-    let cap = material_mints.max_supply[kind as usize];
-    if cap == SUPPLY_CAP_UNLIMITED {
-        return Ok(());
-    }
-    let next = current_supply
-        .checked_add(amount)
-        .ok_or(AofError::MathOverflow)?;
-    if next > cap {
-        return Err(AofError::SupplyCapExceeded);
-    }
-    Ok(())
+    let lifetime_cap = material_mints.max_supply[kind as usize];
+    issuance_cap.record_lifetime_mint(kind as u8, amount, lifetime_cap)
 }
 
 /// Per-mint rate limiter for authority withdrawals from the staking vault
@@ -1154,16 +1174,70 @@ impl IssuanceCap {
         self.minted_in_epoch = 0;
     }
 
-    /// Reserve `amount` from the current epoch budget. Errors leave state
-    /// unchanged except for the (idempotent) epoch roll.
-    pub fn charge(&mut self, kind: u8, amount: u64, slot: u64) -> core::result::Result<(), crate::errors::AofError> {
+    /// Raise a historical gross-issuance baseline. It is intentionally
+    /// monotonic: an admin may conservatively add missed historical emissions,
+    /// but can never reset allowance by lowering the counter.
+    pub fn raise_lifetime_baseline(
+        &mut self,
+        total_minted: u128,
+    ) -> core::result::Result<(), crate::errors::AofError> {
+        use crate::errors::AofError;
+        if total_minted < self.lifetime_minted {
+            return Err(AofError::InvalidIssuanceCapParams);
+        }
+        self.lifetime_minted = total_minted;
+        Ok(())
+    }
+
+    /// Record cumulative resource issuance against `MaterialMints.max_supply`.
+    /// The cap is checked against the monotonic counter, never SPL Mint.supply,
+    /// so burns cannot create new lifetime allowance.
+    pub fn record_lifetime_mint(
+        &mut self,
+        kind: u8,
+        amount: u64,
+        max_lifetime_minted: u64,
+    ) -> core::result::Result<(), crate::errors::AofError> {
+        use crate::errors::AofError;
+        if self.kind != kind { return Err(AofError::InvalidResourceKind); }
+        let lifetime = self.lifetime_minted
+            .checked_add(amount as u128)
+            .ok_or(AofError::MathOverflow)?;
+        if max_lifetime_minted != SUPPLY_CAP_UNLIMITED && lifetime > max_lifetime_minted as u128 {
+            return Err(AofError::SupplyCapExceeded);
+        }
+        self.lifetime_minted = lifetime;
+        Ok(())
+    }
+
+    /// Reserve `amount` from the current epoch budget only. The global
+    /// cumulative amount has already been recorded by `check_supply_cap`.
+    pub fn charge_epoch(
+        &mut self,
+        kind: u8,
+        amount: u64,
+        slot: u64,
+    ) -> core::result::Result<(), crate::errors::AofError> {
         use crate::errors::AofError;
         if self.kind != kind { return Err(AofError::InvalidResourceKind); }
         if self.cap_per_epoch == 0 || self.epoch_slots == 0 { return Err(AofError::IssuanceCapNotConfigured); }
         self.roll_epoch(slot);
         let next = self.minted_in_epoch.checked_add(amount).ok_or(AofError::MathOverflow)?;
         if next > self.cap_per_epoch { return Err(AofError::IssuanceCapExceeded); }
+        self.minted_in_epoch = next;
+        Ok(())
+    }
+
+    /// Reserve both the current epoch budget and the monotonic counter. This
+    /// remains useful to state-level tests and callers without MaterialMints.
+    pub fn charge(&mut self, kind: u8, amount: u64, slot: u64) -> core::result::Result<(), crate::errors::AofError> {
+        use crate::errors::AofError;
+        if self.kind != kind { return Err(AofError::InvalidResourceKind); }
+        if self.cap_per_epoch == 0 || self.epoch_slots == 0 { return Err(AofError::IssuanceCapNotConfigured); }
         let lifetime = self.lifetime_minted.checked_add(amount as u128).ok_or(AofError::MathOverflow)?;
+        self.roll_epoch(slot);
+        let next = self.minted_in_epoch.checked_add(amount).ok_or(AofError::MathOverflow)?;
+        if next > self.cap_per_epoch { return Err(AofError::IssuanceCapExceeded); }
         self.minted_in_epoch = next;
         self.lifetime_minted = lifetime;
         Ok(())
@@ -1204,6 +1278,16 @@ mod issuance_cap_tests {
         assert!(matches!(c.charge(3, 1, 101_300), Err(AofError::IssuanceCapExceeded)));
         assert_eq!(c.lifetime_minted, 200);
     }
+    #[test]
+    fn historical_lifetime_baseline_is_monotonic() {
+        let mut c = cap(100, 50);
+        c.lifetime_minted = 40;
+        c.raise_lifetime_baseline(100).unwrap();
+        assert_eq!(c.lifetime_minted, 100);
+        assert!(matches!(c.raise_lifetime_baseline(99), Err(AofError::InvalidIssuanceCapParams)));
+        assert_eq!(c.lifetime_minted, 100, "a rejected lowering must preserve the counter");
+    }
+
     #[test]
     fn unconfigured_wrong_kind_and_overflow_are_rejected() {
         let mut c = cap(100, 0);
@@ -1309,21 +1393,40 @@ mod state_tests {
         with_supply_cap(ResourceKind::Circuit, cap)
     }
 
+    fn issuance_cap(kind: ResourceKind, lifetime_minted: u128) -> IssuanceCap {
+        IssuanceCap {
+            kind: kind as u8,
+            epoch_slots: 100,
+            cap_per_epoch: 1_000,
+            epoch_start_slot: 1_000,
+            minted_in_epoch: 0,
+            lifetime_minted,
+            bump: 0,
+        }
+    }
+
     #[test]
-    fn supply_cap_is_inclusive_and_unlimited_is_open() {
+    fn lifetime_supply_cap_is_inclusive_monotonic_and_unlimited_is_open() {
         let capped = mm(1_000);
-        assert!(check_supply_cap(&capped, ResourceKind::Circuit, 999, 1).is_ok(), "exactly at the cap must pass");
-        assert!(check_supply_cap(&capped, ResourceKind::Circuit, 1_000, 1).is_err(), "one unit over the cap must fail");
+        let mut cap = issuance_cap(ResourceKind::Circuit, 999);
+        assert!(check_supply_cap(&capped, &mut cap, ResourceKind::Circuit, 1).is_ok());
+        assert_eq!(cap.lifetime_minted, 1_000);
         assert!(matches!(
-            check_supply_cap(&capped, ResourceKind::Circuit, 0, 1_001).unwrap_err(),
+            check_supply_cap(&capped, &mut cap, ResourceKind::Circuit, 1).unwrap_err(),
             AofError::SupplyCapExceeded
         ));
-        // Unlimited kinds never block, whatever the supply.
-        assert!(check_supply_cap(&capped, ResourceKind::Power, u64::MAX - 1, 1).is_ok());
-        // Overflowing supply+amount is an error, not a panic - on a CAPPED
-        // kind. An unlimited kind returns before the addition (there is no
-        // ceiling to compare against), so it stays Ok by design.
-        assert!(check_supply_cap(&capped, ResourceKind::Circuit, u64::MAX, u64::MAX).is_err());
+        assert_eq!(cap.lifetime_minted, 1_000, "rejected emission must not advance the monotonic counter");
+
+        // Burns are not represented by this counter: a subsequent emission
+        // still compares against 1,000 even if the SPL outstanding supply fell.
+        let mut after_burn = issuance_cap(ResourceKind::Circuit, 1_000);
+        assert!(check_supply_cap(&capped, &mut after_burn, ResourceKind::Circuit, 1).is_err());
+        assert_eq!(after_burn.lifetime_minted, 1_000);
+
+        // Unlimited kinds still increment the audit counter, but never block.
+        let mut unlimited = issuance_cap(ResourceKind::Power, u128::MAX - 1);
+        assert!(check_supply_cap(&capped, &mut unlimited, ResourceKind::Power, 1).is_ok());
+        assert_eq!(unlimited.lifetime_minted, u128::MAX);
     }
 
     fn guard(cap: u64, max_tx: u64) -> VaultGuard {
@@ -1450,11 +1553,13 @@ mod state_tests {
             assert!(idx < RESOURCE_KIND_COUNT, "{kind:?} index {idx} is outside max_supply");
             // Distinct mints must not silently collapse onto one registry slot.
             mints.max_supply[idx] = idx as u64 + 1;
+            let mut cap = issuance_cap(kind, 0);
             assert_eq!(
-                check_supply_cap(&mints, kind, 0, idx as u64 + 1).is_ok(),
+                check_supply_cap(&mints, &mut cap, kind, idx as u64 + 1).is_ok(),
                 true,
                 "{kind:?} cap lookup reads the wrong slot"
             );
+            assert_eq!(cap.lifetime_minted, (idx as u64 + 1) as u128);
         }
         assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Circuit), cfg.circuit_mint);
         assert_eq!(mint_for_kind(&cfg, &mints, &ResourceKind::Silicon), cfg.silicon_mint);
@@ -1509,22 +1614,26 @@ mod property_tests {
         }
     }
 
-    /// [F-03] The cap must be exactly `supply + amount <= cap`, nothing more
-    /// and nothing less, for every input including the overflow edges.
+    /// [F-03] The cap predicate is exactly `lifetime_minted + amount <= cap`
+    /// for every input; any burn is intentionally absent from the arithmetic.
     #[test]
-    fn supply_cap_is_exactly_the_arithmetic_predicate() {
+    fn lifetime_supply_cap_is_exactly_the_arithmetic_predicate() {
         let mut rng = Rng::new(0xA0F_2026);
         for _ in 0..20_000 {
             let cap = rng.extreme();
-            let supply = rng.extreme();
+            let lifetime = rng.extreme() as u128;
             let amount = rng.extreme();
             let mints = with_supply_cap(ResourceKind::Circuit, cap);
-            let sum = supply.checked_add(amount);
-            let expected = cap == SUPPLY_CAP_UNLIMITED || matches!(sum, Some(total) if total <= cap);
-            let got = check_supply_cap(&mints, ResourceKind::Circuit, supply, amount);
-            assert_eq!(got.is_ok(), expected, "cap={cap} supply={supply} amount={amount}");
-            if !expected {
-                match sum {
+            let next = lifetime.checked_add(amount as u128);
+            let expected = next.is_some_and(|n| cap == SUPPLY_CAP_UNLIMITED || n <= cap as u128);
+            let mut issuance = issuance_cap(ResourceKind::Circuit, lifetime);
+            let got = check_supply_cap(&mints, &mut issuance, ResourceKind::Circuit, amount);
+            assert_eq!(got.is_ok(), expected, "cap={cap} lifetime={lifetime} amount={amount}");
+            if expected {
+                assert_eq!(issuance.lifetime_minted, lifetime + amount as u128);
+            } else {
+                assert_eq!(issuance.lifetime_minted, lifetime, "rejected emission changed the counter");
+                match next {
                     None => assert!(matches!(got.unwrap_err(), AofError::MathOverflow)),
                     Some(_) => assert!(matches!(got.unwrap_err(), AofError::SupplyCapExceeded)),
                 }
