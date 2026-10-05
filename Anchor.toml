@@ -57,6 +57,9 @@ startup_wait = 30000
 upgradeable = true
 
 [test.validator]
+# Anchor needs an explicit source RPC for every validator clone entry below.
+# This read-only source supplies Metaplex Token Metadata for the local validator.
+url = "https://api.mainnet-beta.solana.com"
 # Agave 4.2.1 panics during startup when the bind address is unspecified.
 bind_address = "127.0.0.1"
 
