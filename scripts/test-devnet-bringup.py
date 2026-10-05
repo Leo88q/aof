@@ -530,6 +530,19 @@ class BringupScript(BringupBase):
         self.assertEqual(self.deploys(), [])
         self.assertFalse(any(line.startswith("anchor build") for line in self.log()))
 
+    def test_pre_upgrade_accepts_python_false_boolean_evidence(self):
+        # The real Python probe formats bools as `False`; the gate must still
+        # prove the kill-switch is off before allowing a program upgrade.
+        self.probe.write_text(
+            "import json\nprint(json.dumps({'programs': [], 'mechanics': [{"
+            "'name': 'Добыча инструментов', 'state': 'выключено', "
+            "'evidence': 'Config есть: paused=False, mining_enabled=False'}]}))\n",
+            encoding="utf-8")
+        done = self.run_script("--apply", env_overrides={"SKIP": "backend"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        self.assertEqual(len(self.deploys()), len(PROGRAMS))
+        self.assertNotIn("не удалось доказать выключенное состояние", done.stderr)
+
     def test_bytecode_mismatch_blocks_config_and_mining(self):
         done = self.run_script("--apply", env_overrides={"MOCK_CORRUPT_PROGRAM": "aof_market"})
         self.assertEqual(done.returncode, 3, done.stdout + done.stderr)

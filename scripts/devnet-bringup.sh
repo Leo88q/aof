@@ -275,6 +275,9 @@ printf '%s' "$PROBE_REPORT" | jq -e '.mechanics | type == "array"' >/dev/null 2>
   || die "зонд не подтвердил чтение механик; не обновляйте программу и не меняйте caps без проверенного kill-switch"
 MINING_STATE="$(printf '%s' "$PROBE_REPORT" | jq -r '.mechanics[]? | select(.name == "Добыча инструментов") | .state' | head -n 1)"
 MINING_EVIDENCE="$(printf '%s' "$PROBE_REPORT" | jq -r '.mechanics[]? | select(.name == "Добыча инструментов") | .evidence' | head -n 1)"
+# Python prints booleans as `False`, while older mocks/other probe versions may
+# serialize them as lowercase JSON-like text. Compare the flag case-insensitively.
+MINING_EVIDENCE_LOWER="$(printf '%s' "$MINING_EVIDENCE" | tr '[:upper:]' '[:lower:]')"
 case "$MINING_STATE:$MINING_EVIDENCE" in
   "включено:"*)
     if [ "$APPLY" = "1" ]; then
@@ -282,7 +285,7 @@ case "$MINING_STATE:$MINING_EVIDENCE" in
     fi
     info "обнаружено mining_enabled=true: dry-run только показывает состояние; перед --apply выключите on-chain kill-switch" ;;
   "выключено:Config есть:"*)
-    [[ "$MINING_EVIDENCE" == *"mining_enabled=false"* ]] || die "Config state does not prove mining_enabled=false: $MINING_EVIDENCE" ;;
+    [[ "$MINING_EVIDENCE_LOWER" == *"mining_enabled=false"* ]] || die "Config state does not prove mining_enabled=false: $MINING_EVIDENCE" ;;
   "выключено:аккаунта Config нет ("*) ;;
   "выключено:программа не задеплоена"*) ;;
   *) die "не удалось доказать выключенное состояние mining kill-switch (state=${MINING_STATE:-нет}, evidence=${MINING_EVIDENCE:-нет}); bringup остановлен до upgrade" ;;
