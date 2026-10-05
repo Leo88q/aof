@@ -10267,22 +10267,6 @@ export type AofCore = {
           }
         },
         {
-          "name": "auth",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  116,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "explorationCommit",
           "writable": true,
           "pda": {
