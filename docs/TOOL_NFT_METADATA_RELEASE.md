@@ -18,10 +18,10 @@ Run locally from the backend directory after installing the locked backend depen
 ```sh
 cd aof_backend
 npm ci
-npm run nft:arweave:tool-metadata
+npm run nft:arweave:tool-metadata -- --estimate --seller-fee-bps 0
 ```
 
-The default command estimates Arweave-mainnet transaction rewards for all still-pending images and JSON files. It does not read a wallet, write a transaction, or send anything to Solana. The estimate is a point-in-time price and can change. The resumable manifest is written under the repository's ignored `out/` directory.
+This explicit estimate includes the approved 0 bps field in the pending JSON and prices all still-pending images and metadata for Arweave mainnet. Estimate mode does not read a wallet, write a transaction, or send anything to Solana. The estimate is a point-in-time price and can change. The resumable manifest is written under the repository's ignored `out/` directory.
 
 Arweave is mainnet storage, so uploads can incur real cost even though the NFTs are intended for Solana Devnet. The owner approved a hard maximum of **0.20 AR** for the 25 image + 25 JSON uploads, with `seller_fee_basis_points = 0`. Re-estimate immediately before uploading; if the pending total exceeds the cap, stop and obtain a new approval. The user runs the command locally with an owner-only JWK file:
 
