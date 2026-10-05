@@ -37,14 +37,11 @@ export function arweaveUrl(txId) {
   return `https://arweave.net/${txId}`;
 }
 
-export function createToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBasisPoints }) {
+function buildToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBasisPoints }) {
   const tool = TOOL_BY_ID.get(toolType);
   const tier = RARITY_BY_ID.get(rarity);
   if (!tool) throw new Error(`Unknown tool type: ${String(toolType)}`);
   if (!tier) throw new Error(`Unknown tool rarity: ${String(rarity)}`);
-  if (typeof imageUri !== "string" || !/^https:\/\/arweave\.net\/[A-Za-z0-9_-]{43}$/.test(imageUri)) {
-    throw new Error("imageUri must be an Arweave gateway URL for a valid transaction ID");
-  }
 
   // Symbol, creators and collection are deliberately omitted: none are approved.
   // The Devnet pilot's seller fee is explicitly approved at 0 bps, but draft
@@ -71,6 +68,26 @@ export function createToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBas
     metadata.seller_fee_basis_points = sellerFeeBasisPoints;
   }
   return metadata;
+}
+
+export function createToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBasisPoints }) {
+  if (typeof imageUri !== "string" || !/^https:\/\/arweave\.net\/[A-Za-z0-9_-]{43}$/.test(imageUri)) {
+    throw new Error("imageUri must be an Arweave gateway URL for a valid transaction ID");
+  }
+  return buildToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBasisPoints });
+}
+
+export function createToolNftMetadataForHttps({ toolType, rarity, imageUri, sellerFeeBasisPoints }) {
+  let parsed;
+  try {
+    parsed = new URL(imageUri);
+  } catch {
+    throw new Error("imageUri must be a valid public HTTPS URL");
+  }
+  if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password) {
+    throw new Error("imageUri must be a valid public HTTPS URL without embedded credentials");
+  }
+  return buildToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBasisPoints });
 }
 
 export function serializeToolNftMetadata(metadata) {

@@ -1,6 +1,31 @@
 # Tool NFT metadata release (staged)
 
-**Current state: preparation only.** The repository contains 25 tool illustrations and now has a local metadata builder/uploader with estimate-only-by-default behavior. No Arweave transaction, Solana transaction, mint, deployment, registry change, or mining activation has been made by this work.
+**Current state: local preparation only.** The repository contains 25 tool illustrations and has local Arweave and Cloudflare Pages preparation/verification tooling. No Arweave transaction, Cloudflare project creation/deployment, Solana transaction, mint, registry change, or mining activation has been made by this work.
+
+## Cloudflare Pages Devnet release (separate project)
+
+Cloudflare Pages can host these Devnet NFT images and JSON metadata without purchasing AR. This is a separate static-content project; it must not replace the existing NeuroForge game at `aof.pages.dev`. The proposed new project slug is `aof-devnet-nft-metadata`; its availability has not been checked. If Cloudflare reports that the slug is unavailable, stop and agree on another separate slug before preparing/deploying. Never substitute the existing project name `aof`.
+
+The generated bundle contains the canonical 25 JPEG artworks and 25 Metaplex-style JSON documents with the approved `seller_fee_basis_points = 0`, plus a release manifest, an index, and immutable caching headers. Each asset is under a content-versioned `releases/<release-id>/...` path. The release ID is deterministic for the chosen base URL, artwork bytes, and metadata schema. The builder and verifier are local/read-only with respect to external services: they do not need Cloudflare credentials, read a wallet, spend AR, or submit Solana transactions.
+
+After authenticating to Cloudflare locally with Wrangler and confirming the separate project slug is available, run from `aof_backend`:
+
+```sh
+npx wrangler login
+npx wrangler pages project create aof-devnet-nft-metadata --production-branch main
+npm run nft:cloudflare:tool-metadata:prepare -- --base-url https://aof-devnet-nft-metadata.pages.dev
+npx wrangler pages deploy ../out/tool-nft-cloudflare --project-name aof-devnet-nft-metadata --branch main
+```
+
+Wrangler may open a browser for the local Cloudflare login; do not put API tokens or other secrets in chat. Confirm the created project is named exactly `aof-devnet-nft-metadata` before deployment. If Cloudflare assigns a different public base URL or a different slug is approved, use that exact stable project URL in `--base-url` when preparing the bundle, and redeploy that newly prepared bundle. The Pages bundle should be deployed as a directory to the new metadata project only.
+
+After the production deployment is available, run:
+
+```sh
+npm run nft:cloudflare:tool-metadata:verify -- --manifest ../out/tool-nft-cloudflare/tool-nft-cloudflare-manifest.json
+```
+
+The verifier makes public HTTPS GET requests for all 25 image URLs and 25 JSON URLs. It checks HTTP 200, expected MIME types, all 50 SHA-256 digests, exact local/source bytes, canonical metadata fields, and the 0 bps fee. Do not mint or write any metadata URI to Solana unless all 50 checks pass and the separate Solana bytecode/smoke gates are also complete. The manifest records the verified `metadataUri` for each tool/rarity pair.
 
 ## Metadata contract for the 5 × 5 tool set
 
