@@ -47,7 +47,7 @@ pub fn handler(ctx: Context<CollectPower>) -> Result<()> {
     // sybil model produced 78.8 M POWER/year with no bound at all.
     check_supply_cap(
         &ctx.accounts.material_mints,
-        &mut ctx.accounts.issuance_cap,
+        &mut ctx.accounts.issuance_cap_power,
         ResourceKind::Power,
         power_amount,
     )?;

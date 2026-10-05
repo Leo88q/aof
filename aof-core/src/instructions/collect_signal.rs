@@ -24,7 +24,7 @@ pub fn handler(ctx: Context<CollectSignal>) -> Result<()> {
     // ceiling is checked before the CPI so a rejected mint changes nothing.
     check_supply_cap(
         &ctx.accounts.material_mints,
-        &mut ctx.accounts.issuance_cap,
+        &mut ctx.accounts.issuance_cap_signal,
         ResourceKind::Signal,
         output,
     )?;
