@@ -110,6 +110,11 @@ test('uploader defaults to estimate-only, bounds explicit uploads and never send
   assert.match(script, /async function getPriceWithRetry\(/);
   assert.match(script, /async function getTransactionAnchorWithRetry\(/);
   assert.match(script, /mapWithConcurrency\(tasks, 1,/);
+  assert.match(script, /Preserve each failure and continue/);
+  assert.match(script, /priceError: error/);
+  assert.match(script, /failedPriceLookups = estimates\.filter/);
+  assert.match(script, /Complete estimate unavailable/);
+  assert.match(script, /NOT a complete estimate/);
   assert.match(script, /causeCode = error\?\.cause\?\.code/);
   assert.match(script, /last_tx: lastTx/);
   assert.match(script, /reward: rewardWinston\.toString\(\)/);

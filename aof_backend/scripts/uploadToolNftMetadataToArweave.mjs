@@ -337,10 +337,17 @@ async function getTransactionAnchorWithRetry(arweave, task) {
 async function getCostEstimates(arweave, tasks) {
   // Keep requests sequential: the gateway is reachable for isolated lookups,
   // while bursts of parallel price queries can fail with an opaque `fetch failed`.
-  return mapWithConcurrency(tasks, 1, async (task) => ({
-    ...task,
-    priceWinston: await getPriceWithRetry(arweave, task),
-  }));
+  // Preserve each failure and continue so the full pending matrix is reported.
+  return mapWithConcurrency(tasks, 1, async (task) => {
+    try {
+      return {
+        ...task,
+        priceWinston: await getPriceWithRetry(arweave, task),
+      };
+    } catch (error) {
+      return { ...task, priceError: error };
+    }
+  });
 }
 
 function printEstimate(rows, totalWinston) {
@@ -348,11 +355,21 @@ function printEstimate(rows, totalWinston) {
   console.log("-".repeat(76));
   for (const row of rows) {
     const label = `${row.variant.toolType} / ${row.variant.displayRarity}`;
-    console.log(`${label.padEnd(32)} ${row.stage.padEnd(14)} ${String(row.bytes.length).padStart(8)} ${formatWinstonAsAr(row.priceWinston)}`);
+    const price = row.priceError
+      ? `UNAVAILABLE: ${priceLookupErrorSummary(row.priceError)}`
+      : formatWinstonAsAr(row.priceWinston);
+    console.log(`${label.padEnd(32)} ${row.stage.padEnd(14)} ${String(row.bytes.length).padStart(8)} ${price}`);
   }
   console.log("-".repeat(76));
+  const failedCount = rows.filter((row) => row.priceError).length;
+  const successCount = rows.length - failedCount;
   console.log(`Pending transactions: ${rows.length}`);
-  console.log(`Estimated transaction rewards: ${formatWinstonAsAr(totalWinston)} AR`);
+  console.log(`Price lookups: ${successCount} succeeded, ${failedCount} failed`);
+  if (failedCount === 0) {
+    console.log(`Estimated transaction rewards: ${formatWinstonAsAr(totalWinston)} AR`);
+  } else {
+    console.log(`Partial sum for ${successCount} priced transactions: ${formatWinstonAsAr(totalWinston)} AR; this is NOT a complete estimate.`);
+  }
   console.log("Estimate only: Arweave prices can change before signing; no transaction has been submitted.\n");
 }
 
@@ -525,12 +542,21 @@ async function main() {
   const tasks = pendingTasks(variants, manifest, sourceByKey, args.sellerFeeBps);
   const arweave = createArweaveClient();
   const estimates = await getCostEstimates(arweave, tasks);
-  const totalWinston = estimates.reduce((sum, row) => sum + row.priceWinston, 0n);
+  const failedPriceLookups = estimates.filter((row) => row.priceError);
+  const totalWinston = estimates
+    .filter((row) => !row.priceError)
+    .reduce((sum, row) => sum + row.priceWinston, 0n);
   printEstimate(estimates, totalWinston);
   if (args.sellerFeeBps === null) {
     console.log("Draft only: seller_fee_basis_points is omitted because no --seller-fee-bps was supplied; this quote does not include that field.\n");
   } else {
     console.log(`Metadata JSON includes the explicitly supplied seller fee: ${args.sellerFeeBps} bps.\n`);
+  }
+
+  if (failedPriceLookups.length > 0) {
+    throw new Error(
+      `Complete estimate unavailable: ${failedPriceLookups.length} of ${tasks.length} pending price lookups failed after retries; no upload was attempted`,
+    );
   }
 
   const projectedCumulativeWinston = alreadySpentWinston + totalWinston;
