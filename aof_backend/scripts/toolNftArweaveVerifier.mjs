@@ -15,6 +15,7 @@ export const DEFAULT_TOOL_NFT_MANIFEST = path.join(TOOL_NFT_REPO_ROOT, "out/tool
 export const DEFAULT_TOOL_NFT_GATEWAY = "https://arweave.net";
 const SHA256_HEX = /^[a-f0-9]{64}$/i;
 const TX_ID = /^[A-Za-z0-9_-]{43}$/;
+const APPROVED_MAX_REWARDS_WINSTON = 200_000_000_000n;
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -25,15 +26,17 @@ function fail(message) {
 }
 
 export function validateToolNftReleaseManifest(manifest) {
-  if (!manifest || manifest.schemaVersion !== 1 || manifest.network !== "Arweave mainnet") {
-    fail("manifest must be schemaVersion 1 for Arweave mainnet");
+  if (!manifest || manifest.schemaVersion !== 2 || manifest.network !== "Arweave mainnet") {
+    fail("manifest must be schemaVersion 2 for Arweave mainnet");
   }
   if (!manifest.entries || typeof manifest.entries !== "object" || Array.isArray(manifest.entries)) {
     fail("manifest entries must be an object");
   }
-  const fee = manifest.sellerFeeBasisPoints;
-  if (!Number.isInteger(fee) || fee < 0 || fee > 10_000) {
-    fail("manifest must contain the explicitly approved sellerFeeBasisPoints (0..10000)");
+  if (manifest.inFlightTransaction) {
+    fail("manifest has an unresolved in-flight Arweave transaction; reconcile it before verification");
+  }
+  if (manifest.sellerFeeBasisPoints !== 0) {
+    fail("manifest must use the approved sellerFeeBasisPoints value of 0");
   }
 
   const variants = listToolNftVariants();
@@ -50,6 +53,7 @@ export function validateToolNftReleaseManifest(manifest) {
   }
 
   const transactionIds = new Set();
+  let totalRewardsWinston = 0n;
   const validated = variants.map((variant) => {
     const entry = manifest.entries[variant.key];
     if (entry.toolType !== variant.toolType || entry.rarity !== variant.rarity || entry.imageFile !== variant.imageFile) {
@@ -57,6 +61,13 @@ export function validateToolNftReleaseManifest(manifest) {
     }
     if (!TX_ID.test(entry.imageTxId || "") || !TX_ID.test(entry.metadataTxId || "")) {
       fail(`${variant.key} is missing a valid image or JSON transaction ID`);
+    }
+    for (const rewardField of ["imageRewardWinston", "metadataRewardWinston"]) {
+      const reward = entry[rewardField];
+      if (typeof reward !== "string" || !/^\d+$/.test(reward)) {
+        fail(`${variant.key} is missing a valid ${rewardField} receipt`);
+      }
+      totalRewardsWinston += BigInt(reward);
     }
     if (entry.metadataImageTxId !== entry.imageTxId) {
       fail(`${variant.key} JSON is not bound to its recorded image transaction`);
@@ -76,6 +87,9 @@ export function validateToolNftReleaseManifest(manifest) {
     return { variant, entry, imageUri, metadataUri };
   });
   if (transactionIds.size !== 50) fail(`expected 50 distinct Arweave transaction IDs; found ${transactionIds.size}`);
+  if (totalRewardsWinston > APPROVED_MAX_REWARDS_WINSTON) {
+    fail("recorded cumulative Arweave rewards exceed the approved 0.20 AR maximum");
+  }
   return validated;
 }
 

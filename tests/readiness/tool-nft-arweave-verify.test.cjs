@@ -17,10 +17,11 @@ async function releaseFixture() {
   const variants = metadataTools.listToolNftVariants();
   const gateway = new Map();
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     network: 'Arweave mainnet',
     status: 'submitted',
     sellerFeeBasisPoints: 0,
+    inFlightTransaction: null,
     entries: {},
   };
   variants.forEach((variant, index) => {
@@ -46,6 +47,8 @@ async function releaseFixture() {
       metadataTxId,
       metadataUri: metadataTools.arweaveUrl(metadataTxId),
       metadataSha256: digest(metadataBytes),
+      imageRewardWinston: '1000000000',
+      metadataRewardWinston: '1000000000',
     };
     gateway.set(imageUri, { bytes: imageBytes, type: 'image/jpeg' });
     gateway.set(manifest.entries[variant.key].metadataUri, { bytes: metadataBytes, type: 'application/json' });
@@ -79,6 +82,28 @@ test('read-only verifier checks exactly 25 image/JSON pairs and byte-for-byte me
   assert.equal(fixture.calls.length, 50);
   assert.equal(new Set(fixture.calls).size, 50);
   assert.ok(fixture.calls.every((url) => url.startsWith('https://arweave.net/')));
+});
+
+test('manifest enforces the 0 bps release setting, cumulative 0.20 AR cap, and no unresolved submission', async () => {
+  const { validateToolNftReleaseManifest } = await verifierPromise;
+  const fixture = await releaseFixture();
+  assert.doesNotThrow(() => validateToolNftReleaseManifest(fixture.manifest));
+
+  const overBudget = structuredClone(fixture.manifest);
+  overBudget.entries['plasma_cutter/common'].imageRewardWinston = '151000000001';
+  assert.throws(() => validateToolNftReleaseManifest(overBudget), /exceed the approved 0\.20 AR maximum/);
+
+  const wrongFee = structuredClone(fixture.manifest);
+  wrongFee.sellerFeeBasisPoints = 1;
+  assert.throws(() => validateToolNftReleaseManifest(wrongFee), /approved sellerFeeBasisPoints value of 0/);
+
+  const unresolved = structuredClone(fixture.manifest);
+  unresolved.inFlightTransaction = { txId: txId('P', 0), variantKey: 'plasma_cutter/common', stage: 'image' };
+  assert.throws(() => validateToolNftReleaseManifest(unresolved), /unresolved in-flight/);
+
+  const missingReceipt = structuredClone(fixture.manifest);
+  delete missingReceipt.entries['plasma_cutter/common'].imageRewardWinston;
+  assert.throws(() => validateToolNftReleaseManifest(missingReceipt), /missing a valid imageRewardWinston receipt/);
 });
 
 test('verifier fails closed before network access if the matrix is incomplete or reuses a transaction ID', async () => {

@@ -38,7 +38,7 @@ test('catalog covers exactly the 5 × 5 English tool variants and every artwork 
   );
 });
 
-test('metadata uses English variant traits and Arweave images without inventing a tool symbol or royalties', async () => {
+test('metadata uses English traits and Arweave images; draft omits symbol/royalty fields until release values are explicit', async () => {
   const metadataTools = await metadataToolsPromise;
   const variants = metadataTools.listToolNftVariants();
   for (const variant of variants) {
@@ -51,15 +51,14 @@ test('metadata uses English variant traits and Arweave images without inventing 
     assert.equal(metadata.name, variant.toolName);
     assert.ok(Buffer.byteLength(metadata.name, 'utf8') <= 32, `${variant.key} exceeds Metaplex's 32-byte name limit`);
     assert.equal(metadata.image, imageUri);
-    assert.equal(Object.hasOwn(metadata, 'seller_fee_basis_points'), false, 'no tool-NFT royalty basis points have been approved');
-    // Test fixture only; this value is not a project recommendation or release setting.
+    assert.equal(Object.hasOwn(metadata, 'seller_fee_basis_points'), false, 'draft helper does not silently apply release terms');
     const withApprovedFee = metadataTools.createToolNftMetadata({
       toolType: variant.toolType,
       rarity: variant.rarity,
       imageUri,
-      sellerFeeBasisPoints: 375,
+      sellerFeeBasisPoints: 0,
     });
-    assert.equal(withApprovedFee.seller_fee_basis_points, 375);
+    assert.equal(withApprovedFee.seller_fee_basis_points, 0, 'the approved Devnet release setting is zero bps');
     assert.throws(() => metadataTools.createToolNftMetadata({
       toolType: variant.toolType,
       rarity: variant.rarity,
@@ -93,6 +92,27 @@ test('uploader defaults to estimate-only, bounds explicit uploads and never send
   assert.match(script, /--max-cost-ar <AR>/);
   assert.match(script, /--seller-fee-bps <bps>/);
   assert.match(script, /args\.mode === "upload" && args\.sellerFeeBps === null/);
+  assert.match(script, /APPROVED_MAX_COST_AR = "0\.20"/);
+  assert.match(script, /costLimitWinston > APPROVED_MAX_COST_WINSTON/);
+  assert.match(script, /APPROVED_SELLER_FEE_BPS = 0/);
+  assert.match(script, /args\.sellerFeeBps !== APPROVED_SELLER_FEE_BPS/);
+  assert.match(script, /schemaVersion: 2/);
+  assert.match(script, /function getManifestSpentWinston\(/);
+  assert.match(script, /projectedCumulativeWinston = alreadySpentWinston \+ totalWinston/);
+  assert.match(script, /manifest\.inFlightTransaction = \{/);
+  assert.match(script, /Arweave POST outcome is unknown/);
+  assert.match(script, /imageRewardWinston/);
+  assert.match(script, /metadataRewardWinston/);
+  assert.match(script, /manifest\.inFlightTransaction/);
+  assert.match(script, /READ_RETRY_MAX_ATTEMPTS = 5/);
+  assert.match(script, /READ_RETRY_DELAYS_MS = \[500, 1_000, 2_000, 4_000\]/);
+  assert.match(script, /async function retryRead\(/);
+  assert.match(script, /async function getPriceWithRetry\(/);
+  assert.match(script, /async function getTransactionAnchorWithRetry\(/);
+  assert.match(script, /mapWithConcurrency\(tasks, 1,/);
+  assert.match(script, /causeCode = error\?\.cause\?\.code/);
+  assert.match(script, /last_tx: lastTx/);
+  assert.match(script, /reward: rewardWinston\.toString\(\)/);
   assert.match(script, /transactions\.post\(transaction\)/);
   assert.doesNotMatch(script, /@solana\/web3\.js|sendTransaction\(|sendAndConfirmTransaction\(/);
   assert.match(script, /Arweave mainnet/);

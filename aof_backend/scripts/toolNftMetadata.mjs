@@ -46,9 +46,9 @@ export function createToolNftMetadata({ toolType, rarity, imageUri, sellerFeeBas
     throw new Error("imageUri must be an Arweave gateway URL for a valid transaction ID");
   }
 
-  // Symbol and royalty basis points remain omitted until their values are
-  // approved. An explicit `sellerFeeBasisPoints` argument is accepted for a
-  // reviewed release build; creators and collection are not claimed here.
+  // Symbol, creators and collection are deliberately omitted: none are approved.
+  // The Devnet pilot's seller fee is explicitly approved at 0 bps, but draft
+  // metadata still requires the caller to pass that release value intentionally.
   const metadata = {
     name: tool.name,
     description: `${tool.name} (${tier.displayName}) is an in-game tool NFT for NeuroForge. Its gameplay state is maintained on Solana.`,

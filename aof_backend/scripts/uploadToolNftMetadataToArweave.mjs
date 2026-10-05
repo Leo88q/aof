@@ -18,6 +18,9 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, "../..");
 const DEFAULT_MANIFEST = path.join(REPO_ROOT, "out/tool-nft-arweave-manifest.json");
 const PLACEHOLDER_TX_ID = "A".repeat(43);
+const APPROVED_MAX_COST_AR = "0.20";
+const APPROVED_MAX_COST_WINSTON = parseArAsWinston(APPROVED_MAX_COST_AR);
+const APPROVED_SELLER_FEE_BPS = 0;
 
 function usage() {
   console.log(`
@@ -30,8 +33,8 @@ Usage:
 Options:
   --estimate              Estimate pending image + JSON transactions (default; no wallet needed)
   --upload                Explicitly submit pending transactions to Arweave mainnet
-  --max-cost-ar <amount>  Maximum total AR-denominated transaction rewards for this run; required with --upload
-  --seller-fee-bps <bps>  Explicitly selected seller-fee basis points (0..10000); required with --upload
+  --max-cost-ar <amount>  Cumulative release ceiling; required with --upload and hard-capped at 0.20 AR
+  --seller-fee-bps <bps>  Seller-fee basis points; required with --upload (this release permits only 0)
   --jwk <local-file>      Local Arweave JWK path (or set ARWEAVE_JWK_PATH); never put key contents in chat
   --manifest <file>       Local resumable manifest (default: <repo>/out/tool-nft-arweave-manifest.json)
   --help                  Show this help
@@ -97,10 +100,11 @@ function sha256(data) {
 
 function newManifest() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     network: "Arweave mainnet",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    inFlightTransaction: null,
     entries: {},
   };
 }
@@ -123,8 +127,24 @@ function loadManifest(filePath, variants, sourceByKey, sellerFeeBps) {
     } catch (error) {
       throw new Error(`Cannot parse local manifest ${absolute}: ${error.message}`);
     }
-    if (manifest.schemaVersion !== 1 || manifest.network !== "Arweave mainnet" || !manifest.entries || typeof manifest.entries !== "object") {
+    if (manifest.network !== "Arweave mainnet" || !manifest.entries || typeof manifest.entries !== "object" || Array.isArray(manifest.entries)) {
       throw new Error(`Unsupported or malformed Arweave manifest: ${absolute}`);
+    }
+    if (manifest.schemaVersion === 1) {
+      const containsPreviousUploads = Object.values(manifest.entries).some((entry) => entry?.imageTxId || entry?.metadataTxId);
+      if (containsPreviousUploads) {
+        throw new Error("Legacy manifest contains uploaded transaction IDs but no reward receipts; reconcile prior Arweave spend before resuming under the cumulative cap");
+      }
+      manifest.schemaVersion = 2;
+    } else if (manifest.schemaVersion !== 2) {
+      throw new Error(`Unsupported or malformed Arweave manifest: ${absolute}`);
+    }
+    manifest.inFlightTransaction ??= null;
+    if (manifest.inFlightTransaction) {
+      const pending = manifest.inFlightTransaction;
+      throw new Error(
+        `Manifest has an unresolved in-flight Arweave transaction ${pending.txId} (${pending.variantKey} ${pending.stage}); reconcile its network status before any estimate or upload`,
+      );
     }
   }
 
@@ -141,7 +161,10 @@ function loadManifest(filePath, variants, sourceByKey, sellerFeeBps) {
 
   for (const variant of variants) {
     const source = sourceByKey.get(variant.key);
-    const record = manifest.entries[variant.key] || {};
+    const record = manifest.entries[variant.key] === undefined ? {} : manifest.entries[variant.key];
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      throw new Error(`${variant.key}: malformed manifest entry`);
+    }
     if (record.imageFile && record.imageFile !== variant.imageFile) throw new Error(`${variant.key}: artwork path changed; use a new manifest rather than overwrite release history`);
     if (record.imageSha256 && record.imageSha256 !== source.sha256) throw new Error(`${variant.key}: artwork bytes changed; use a new manifest for the new artwork`);
     record.toolType = variant.toolType;
@@ -152,11 +175,26 @@ function loadManifest(filePath, variants, sourceByKey, sellerFeeBps) {
     record.metadataTxId ??= null;
     record.metadataSha256 ??= null;
     record.metadataImageTxId ??= null;
+    record.imageRewardWinston ??= null;
+    record.metadataRewardWinston ??= null;
     if (record.imageTxId !== null && !/^[A-Za-z0-9_-]{43}$/.test(record.imageTxId)) {
       throw new Error(`${variant.key}: invalid image transaction ID in manifest`);
     }
     if (record.metadataTxId !== null && !/^[A-Za-z0-9_-]{43}$/.test(record.metadataTxId)) {
       throw new Error(`${variant.key}: invalid metadata transaction ID in manifest`);
+    }
+    for (const [txIdField, rewardField] of [
+      ["imageTxId", "imageRewardWinston"],
+      ["metadataTxId", "metadataRewardWinston"],
+    ]) {
+      const hasTransaction = record[txIdField] !== null;
+      const reward = record[rewardField];
+      if (hasTransaction && (typeof reward !== "string" || !/^\d+$/.test(reward))) {
+        throw new Error(`${variant.key}: ${rewardField} must record the accepted transaction reward in Winston`);
+      }
+      if (!hasTransaction && reward !== null) {
+        throw new Error(`${variant.key}: ${rewardField} exists without its transaction ID`);
+      }
     }
     if (record.metadataTxId && (!record.imageTxId || record.metadataImageTxId !== record.imageTxId)) {
       throw new Error(`${variant.key}: metadata manifest entry does not reference its recorded image transaction`);
@@ -177,6 +215,15 @@ function loadManifest(filePath, variants, sourceByKey, sellerFeeBps) {
     manifest.entries[variant.key] = record;
   }
   return manifest;
+}
+
+function getManifestSpentWinston(manifest) {
+  let total = 0n;
+  for (const record of Object.values(manifest.entries)) {
+    if (record.imageRewardWinston !== null) total += BigInt(record.imageRewardWinston);
+    if (record.metadataRewardWinston !== null) total += BigInt(record.metadataRewardWinston);
+  }
+  return total;
 }
 
 function collectSources(variants) {
@@ -231,11 +278,69 @@ function createArweaveClient() {
   return Arweave.init({ host: "arweave.net", port: 443, protocol: "https", timeout: 60_000, logging: false });
 }
 
+const READ_RETRY_MAX_ATTEMPTS = 5;
+const READ_RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000];
+const RETRYABLE_NETWORK_CODES = new Set([
+  "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "ECONNREFUSED", "ENETUNREACH",
+  "EHOSTUNREACH", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_SOCKET",
+]);
+
+function priceLookupErrorSummary(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const causeCode = error?.cause?.code;
+  return causeCode ? `${message} (cause ${causeCode})` : message;
+}
+
+function isRetryableReadError(error) {
+  if (RETRYABLE_NETWORK_CODES.has(error?.cause?.code ?? error?.code)) return true;
+  if (error?.name === "TypeError" && /fetch failed/i.test(error.message ?? "")) return true;
+  return /(?:status|http)\s*(?:code\s*)?(?:429|502|503|504)\b/i.test(error?.message ?? "");
+}
+
+async function retryRead(label, request) {
+  let lastError;
+  for (let attempt = 1; attempt <= READ_RETRY_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await request();
+    } catch (error) {
+      lastError = error;
+      if (attempt === READ_RETRY_MAX_ATTEMPTS || !isRetryableReadError(error)) break;
+      const delayMs = READ_RETRY_DELAYS_MS[attempt - 1];
+      console.warn(
+        `${label} failed (attempt ${attempt}/${READ_RETRY_MAX_ATTEMPTS}): ` +
+        `${priceLookupErrorSummary(error)}; retrying in ${delayMs} ms.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw new Error(
+    `${label} failed after at most ${READ_RETRY_MAX_ATTEMPTS} attempts: ${priceLookupErrorSummary(lastError)}`,
+    { cause: lastError },
+  );
+}
+
+async function getPriceWithRetry(arweave, task) {
+  const label = `Price lookup for ${task.variant.key} ${task.stage} (${task.bytes.length} bytes)`;
+  const price = await retryRead(label, () => arweave.transactions.getPrice(task.bytes.length));
+  const priceText = price.toString();
+  if (!/^\d+$/.test(priceText)) throw new Error(`${label}: Arweave returned a non-integer transaction price`);
+  return BigInt(priceText);
+}
+
+async function getTransactionAnchorWithRetry(arweave, task) {
+  return retryRead(
+    `Anchor lookup for ${task.variant.key} ${task.stage}`,
+    () => arweave.transactions.getTransactionAnchor(),
+  );
+}
+
 async function getCostEstimates(arweave, tasks) {
-  return mapWithConcurrency(tasks, 4, async (task) => {
-    const price = await arweave.transactions.getPrice(task.bytes.length);
-    return { ...task, priceWinston: BigInt(price.toString()) };
-  });
+  // Keep requests sequential: the gateway is reachable for isolated lookups,
+  // while bursts of parallel price queries can fail with an opaque `fetch failed`.
+  return mapWithConcurrency(tasks, 1, async (task) => ({
+    ...task,
+    priceWinston: await getPriceWithRetry(arweave, task),
+  }));
 }
 
 function printEstimate(rows, totalWinston) {
@@ -265,44 +370,106 @@ function loadWallet(filePath) {
   return wallet;
 }
 
-async function postTransaction(arweave, wallet, bytes, mimeType, costLimitWinston, alreadySpentWinston) {
-  const transaction = await arweave.createTransaction({ data: bytes }, wallet);
+async function postTransaction(arweave, wallet, task, mimeType, costLimitWinston, alreadySpentWinston, manifest, manifestPath) {
+  // Use retry-wrapped, fresh read calls explicitly: createTransaction otherwise
+  // performs its own un-retried GETs for reward and tx anchor.
+  const rewardWinston = await getPriceWithRetry(arweave, task);
+  const lastTx = await getTransactionAnchorWithRetry(arweave, task);
+  const transaction = await arweave.createTransaction({
+    data: task.bytes,
+    reward: rewardWinston.toString(),
+    last_tx: lastTx,
+  }, wallet);
   transaction.addTag("Content-Type", mimeType);
   transaction.addTag("App-Name", "NeuroForge-Tool-NFT-Metadata");
   await arweave.transactions.sign(transaction, wallet);
 
-  const rewardWinston = BigInt(transaction.reward);
-  if (alreadySpentWinston + rewardWinston > costLimitWinston) {
+  const signedRewardWinston = BigInt(transaction.reward);
+  if (signedRewardWinston !== rewardWinston) {
+    throw new Error(`Transaction reward changed after signing for ${task.variant.key} ${task.stage}; nothing was posted`);
+  }
+  if (alreadySpentWinston + signedRewardWinston > costLimitWinston) {
     throw new Error(
-      `Actual reward ${formatWinstonAsAr(rewardWinston)} AR would exceed the remaining --max-cost-ar allowance; transaction ${transaction.id} was not posted`,
+      `Actual cumulative reward ${formatWinstonAsAr(alreadySpentWinston + signedRewardWinston)} AR would exceed the --max-cost-ar ceiling; transaction ${transaction.id} was not posted`,
     );
   }
-  const response = await arweave.transactions.post(transaction);
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`Arweave node returned HTTP ${response.status} for transaction ${transaction.id}; inspect the local manifest before retrying`);
+  if (manifest.inFlightTransaction) {
+    throw new Error(`Manifest already has unresolved transaction ${manifest.inFlightTransaction.txId}; refusing to submit another transaction`);
   }
-  return { txId: transaction.id, rewardWinston };
+
+  // Persist a transaction ID and cost reservation before POST. If the process or
+  // network fails ambiguously, the next run will stop rather than duplicate spend.
+  manifest.status = "uploading";
+  manifest.inFlightTransaction = {
+    variantKey: task.variant.key,
+    stage: task.stage,
+    txId: transaction.id,
+    rewardWinston: signedRewardWinston.toString(),
+    preparedAt: new Date().toISOString(),
+  };
+  saveManifest(manifestPath, manifest);
+
+  let response;
+  try {
+    response = await arweave.transactions.post(transaction);
+  } catch (error) {
+    throw new Error(
+      `Arweave POST outcome is unknown for ${transaction.id}; the transaction reservation is saved in ${path.resolve(manifestPath)}. Reconcile this ID before retrying: ${priceLookupErrorSummary(error)}`,
+      { cause: error },
+    );
+  }
+  if (!response || !Number.isInteger(response.status) || response.status < 200 || response.status >= 300) {
+    throw new Error(
+      `Arweave node returned HTTP ${response?.status ?? "no status"} for ${transaction.id}; its saved manifest reservation must be reconciled before another upload`,
+    );
+  }
+
+  const record = manifest.entries[task.variant.key];
+  if (task.stage === "image") {
+    record.imageTxId = transaction.id;
+    record.imageUri = arweaveUrl(transaction.id);
+    record.imageRewardWinston = signedRewardWinston.toString();
+  } else if (task.stage === "metadata JSON") {
+    if (!record.imageTxId) throw new Error(`${task.variant.key}: refusing metadata upload without a recorded image transaction`);
+    record.metadataImageTxId = record.imageTxId;
+    record.metadataSha256 = sha256(task.bytes);
+    record.metadataTxId = transaction.id;
+    record.metadataUri = arweaveUrl(transaction.id);
+    record.metadataRewardWinston = signedRewardWinston.toString();
+  } else {
+    throw new Error(`Unsupported upload stage: ${task.stage}`);
+  }
+  manifest.inFlightTransaction = null;
+  saveManifest(manifestPath, manifest);
+  return { txId: transaction.id, rewardWinston: signedRewardWinston };
 }
 
-async function runUpload({ arweave, wallet, variants, sourceByKey, manifest, manifestPath, costLimitWinston, estimatedTotalWinston, pendingCount, sellerFeeBps }) {
+async function runUpload({ arweave, wallet, variants, sourceByKey, manifest, manifestPath, costLimitWinston, alreadySpentWinston, estimatedTotalWinston, pendingCount, sellerFeeBps }) {
   const address = await arweave.wallets.getAddress(wallet);
   console.log(`Arweave uploader: ${address}`);
-  console.log(`Estimated pending rewards: ${formatWinstonAsAr(estimatedTotalWinston)} AR; user-set ceiling: ${formatWinstonAsAr(costLimitWinston)} AR`);
+  console.log(`Previously recorded rewards: ${formatWinstonAsAr(alreadySpentWinston)} AR`);
+  console.log(`Estimated pending rewards: ${formatWinstonAsAr(estimatedTotalWinston)} AR; cumulative release ceiling: ${formatWinstonAsAr(costLimitWinston)} AR`);
   console.log(`Pending transactions: ${pendingCount}. Submitting only after explicit --upload and --max-cost-ar flags. This writes to Arweave mainnet.\n`);
 
-  let spentWinston = 0n;
+  let spentWinston = alreadySpentWinston;
   let acceptedTransactions = 0;
   for (const variant of variants) {
     const record = manifest.entries[variant.key];
     if (!record.imageTxId) {
       const image = sourceByKey.get(variant.key).bytes;
-      const result = await postTransaction(arweave, wallet, image, "image/jpeg", costLimitWinston, spentWinston);
+      const result = await postTransaction(
+        arweave,
+        wallet,
+        { variant, stage: "image", bytes: image },
+        "image/jpeg",
+        costLimitWinston,
+        spentWinston,
+        manifest,
+        manifestPath,
+      );
       spentWinston += result.rewardWinston;
       acceptedTransactions += 1;
-      record.imageTxId = result.txId;
-      record.imageUri = arweaveUrl(result.txId);
       console.log(`${variant.key}: image submitted ${result.txId} (${formatWinstonAsAr(result.rewardWinston)} AR)`);
-      saveManifest(manifestPath, manifest);
     }
     if (!record.metadataTxId) {
       const metadataBytes = serializeToolNftMetadata(createToolNftMetadata({
@@ -311,21 +478,24 @@ async function runUpload({ arweave, wallet, variants, sourceByKey, manifest, man
         imageUri: arweaveUrl(record.imageTxId),
         sellerFeeBasisPoints: sellerFeeBps ?? undefined,
       }));
-      const metadataHash = sha256(metadataBytes);
-      const result = await postTransaction(arweave, wallet, metadataBytes, "application/json", costLimitWinston, spentWinston);
+      const result = await postTransaction(
+        arweave,
+        wallet,
+        { variant, stage: "metadata JSON", bytes: metadataBytes },
+        "application/json",
+        costLimitWinston,
+        spentWinston,
+        manifest,
+        manifestPath,
+      );
       spentWinston += result.rewardWinston;
       acceptedTransactions += 1;
-      record.metadataImageTxId = record.imageTxId;
-      record.metadataSha256 = metadataHash;
-      record.metadataTxId = result.txId;
-      record.metadataUri = arweaveUrl(result.txId);
       console.log(`${variant.key}: JSON submitted ${result.txId} (${formatWinstonAsAr(result.rewardWinston)} AR)`);
-      saveManifest(manifestPath, manifest);
     }
   }
   manifest.status = "submitted";
   saveManifest(manifestPath, manifest);
-  console.log(`\n${acceptedTransactions} pending transactions were accepted by an Arweave node; spent rewards: ${formatWinstonAsAr(spentWinston)} AR.`);
+  console.log(`\n${acceptedTransactions} pending transactions were accepted by an Arweave node; total cumulative release rewards: ${formatWinstonAsAr(spentWinston)} AR.`);
   console.log("Node acceptance is not final confirmation. Wait for Arweave confirmation and verify the gateway URLs before using metadata URIs on Solana.");
   console.log(`Local manifest: ${path.resolve(manifestPath)}`);
 }
@@ -337,29 +507,44 @@ async function main() {
     return;
   }
   const costLimitWinston = args.mode === "upload" ? parseArAsWinston(args.maxCostAr) : null;
+  if (args.mode === "upload" && costLimitWinston > APPROVED_MAX_COST_WINSTON) {
+    throw new Error(`--max-cost-ar cannot exceed the approved hard ceiling of ${APPROVED_MAX_COST_AR} AR`);
+  }
+  if (args.mode === "upload" && args.sellerFeeBps !== APPROVED_SELLER_FEE_BPS) {
+    throw new Error(`Only the approved ${APPROVED_SELLER_FEE_BPS} bps seller fee is enabled for this release`);
+  }
 
   const variants = listToolNftVariants();
   if (variants.length !== 25) throw new Error(`Expected 25 tool variants, found ${variants.length}`);
   const sourceByKey = collectSources(variants);
   const manifest = loadManifest(args.manifestPath, variants, sourceByKey, args.sellerFeeBps);
+  const alreadySpentWinston = getManifestSpentWinston(manifest);
+  if (args.mode === "upload" && alreadySpentWinston > costLimitWinston) {
+    throw new Error(`Recorded cumulative rewards ${formatWinstonAsAr(alreadySpentWinston)} AR already exceed --max-cost-ar ${args.maxCostAr}`);
+  }
   const tasks = pendingTasks(variants, manifest, sourceByKey, args.sellerFeeBps);
   const arweave = createArweaveClient();
   const estimates = await getCostEstimates(arweave, tasks);
   const totalWinston = estimates.reduce((sum, row) => sum + row.priceWinston, 0n);
   printEstimate(estimates, totalWinston);
   if (args.sellerFeeBps === null) {
-    console.log("Draft only: seller_fee_basis_points is omitted because no tool-NFT royalty value is approved; this quote does not include that field.\n");
+    console.log("Draft only: seller_fee_basis_points is omitted because no --seller-fee-bps was supplied; this quote does not include that field.\n");
   } else {
-    console.log(`Metadata JSON includes the explicitly supplied seller fee: ${args.sellerFeeBps} bps. Confirm that value is approved before any upload.\n`);
+    console.log(`Metadata JSON includes the explicitly supplied seller fee: ${args.sellerFeeBps} bps.\n`);
   }
 
+  const projectedCumulativeWinston = alreadySpentWinston + totalWinston;
+  console.log(`Previously recorded release rewards: ${formatWinstonAsAr(alreadySpentWinston)} AR`);
+  console.log(`Projected cumulative release rewards: ${formatWinstonAsAr(projectedCumulativeWinston)} AR\n`);
   if (args.mode === "estimate") {
     console.log(`Local manifest (read-only in estimate mode): ${path.resolve(args.manifestPath)}\n`);
     return;
   }
 
-  if (totalWinston > costLimitWinston) {
-    throw new Error(`Estimated cost ${formatWinstonAsAr(totalWinston)} AR exceeds --max-cost-ar ${args.maxCostAr}; nothing was uploaded`);
+  if (projectedCumulativeWinston > costLimitWinston) {
+    throw new Error(
+      `Projected cumulative cost ${formatWinstonAsAr(projectedCumulativeWinston)} AR exceeds --max-cost-ar ${args.maxCostAr}; nothing was uploaded`,
+    );
   }
   const wallet = loadWallet(expandHome(args.jwkPath));
   await runUpload({
@@ -370,6 +555,7 @@ async function main() {
     manifest,
     manifestPath: args.manifestPath,
     costLimitWinston,
+    alreadySpentWinston,
     estimatedTotalWinston: totalWinston,
     pendingCount: tasks.length,
     sellerFeeBps: args.sellerFeeBps,
