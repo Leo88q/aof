@@ -87,8 +87,8 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
     // it never touched IssuanceCap. The global supply ceiling closes that.
     check_supply_cap(
         &ctx.accounts.material_mints,
+        &mut ctx.accounts.issuance_cap,
         kind,
-        ctx.accounts.payout_mint.supply,
         amount,
     )?;
 

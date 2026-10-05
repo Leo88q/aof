@@ -13,12 +13,12 @@
 
 | Слой | Файлов проверено | Остатков | Статус |
 |---|---:|---:|---|
-| Rust (aof-core/src, programs/*/src) | 135 | 0 | ✅ чисто |
+| Rust (aof-core/src, programs/*/src) | 137 | 0 | ✅ чисто |
 | IDL и TS-типы (aof_backend/src/idl) | 7 | 0 | ✅ чисто |
-| Backend (aof_backend/src, aof_backend/scripts) | 178 | 0 | ✅ чисто |
+| Backend (aof_backend/src, aof_backend/scripts) | 185 | 0 | ✅ чисто |
 | Frontend (frontend/src) | 269 | 0 | ✅ чисто |
 | Game (game/) | 72 | 0 | ✅ чисто |
-| Тесты и скрипты (tests, scripts) | 114 | 0 | ✅ чисто |
+| Тесты и скрипты (tests, scripts) | 123 | 0 | ✅ чисто |
 
 Правило гейта: остаток — это имя ресурса или старое имя инструкции, использованное как идентификатор.
 Шаг C переименовал все farming-инструкции (deployment не выполнялся, дискриминаторы пересчитаны

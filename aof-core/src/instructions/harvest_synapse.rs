@@ -76,8 +76,8 @@ pub fn handler(ctx: Context<HarvestSynapse>, tile_index: u8) -> Result<()> {
     // rejected harvest changes nothing, exactly like collect_signal/collect_model.
     check_supply_cap(
         &ctx.accounts.material_mints,
+        &mut ctx.accounts.issuance_cap,
         ResourceKind::Synapse,
-        ctx.accounts.synapse_mint.supply,
         synapse_amount,
     )?;
 

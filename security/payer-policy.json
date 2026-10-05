@@ -56,6 +56,12 @@
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     },
+    "aof_core.ExchangeDataEnergy.energy_account": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "энергия — аккаунт игрока (seed energy_account), лениво создаётся в его транзакции; тот же паттерн, что у PlantNeuron/HarvestSynapse"
+    },
     "aof_core.ExploreReveal.user_circuit": {
       "owner": "player",
       "payer": "cranker-deposit",
@@ -83,6 +89,18 @@
       "payer": "player",
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.GrantSeasonXp.claim_cursor": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "первый authority-авторизованный XP claim создаёт per-player/per-season cursor за счёт подписанта-игрока; существующий PDA повторно не оплачивается"
+    },
+    "aof_core.GrantSeasonXp.season_pass": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "authority только авторизует XP entitlement; игрок подписывает и оплачивает rent SeasonPass, если аккаунта ещё нет"
     },
     "aof_core.HarvestSynapse.energy_account": {
       "owner": "player",
@@ -119,18 +137,6 @@
       "payer": "operator",
       "status": "ok",
       "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
-    },
-    "aof_core.GrantSeasonXp.claim_cursor": {
-      "owner": "player",
-      "payer": "player",
-      "status": "ok",
-      "reason": "первый authority-авторизованный XP claim создаёт per-player/per-season cursor за счёт подписанта-игрока; существующий PDA повторно не оплачивается"
-    },
-    "aof_core.GrantSeasonXp.season_pass": {
-      "owner": "player",
-      "payer": "player",
-      "status": "ok",
-      "reason": "authority только авторизует XP entitlement; игрок подписывает и оплачивает rent SeasonPass, если аккаунта ещё нет"
     },
     "aof_core.InitPlayer.player_profile": {
       "owner": "player",
@@ -413,6 +419,12 @@
       "payer": "player",
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.UseFlask.energy_account": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "энергия — аккаунт игрока (seed energy_account), лениво создаётся в его транзакции; тот же паттерн, что у PlantNeuron/HarvestSynapse"
     },
     "aof_core.VrfPoolAdd.vrf_slot": {
       "owner": "global",

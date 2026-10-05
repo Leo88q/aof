@@ -3745,6 +3745,18 @@
         {
           "name": "init_player",
           "discriminator": "721bdb90320fe442"
+        },
+        {
+          "name": "exchange_data_energy",
+          "discriminator": "789f4fbafa4153c3"
+        },
+        {
+          "name": "use_flask",
+          "discriminator": "c312823d390b6587"
+        },
+        {
+          "name": "set_issuance_lifetime_baseline",
+          "discriminator": "5fa1444d0ed7cd55"
         }
       ],
       "accounts": [

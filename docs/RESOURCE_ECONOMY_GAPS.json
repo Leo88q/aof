@@ -16,6 +16,7 @@
     ],
     "missingSink": [
       "Model",
+      "Dataset",
       "PhotonBit",
       "CryoFluid",
       "VoltFluid",
@@ -57,6 +58,7 @@
       "sinks": [
         "craft.rs#handler",
         "craft_recipe.rs#handler",
+        "exchange_data_energy.rs#handler",
         "exploration.rs#upgrade_tier_handler",
         "recipe 3 (вход)",
         "recipe 6 (вход)",
@@ -67,6 +69,7 @@
         "recipe 6: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -76,6 +79,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -101,7 +105,6 @@
         "craft.rs#handler",
         "craft_recipe.rs#handler",
         "exploration.rs#upgrade_tier_handler",
-        "forge.rs#commit_handler",
         "recipe 5 (вход)",
         "referral.rs#upgrade_handler",
         "rental_delegation.rs#repair_handler",
@@ -112,6 +115,7 @@
         "recipe 5: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -121,6 +125,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -145,7 +150,6 @@
         "craft.rs#handler",
         "craft_recipe.rs#handler",
         "exploration.rs#upgrade_tier_handler",
-        "forge.rs#commit_handler",
         "recipe 4 (вход)",
         "referral.rs#upgrade_handler",
         "rental_delegation.rs#repair_handler",
@@ -156,6 +160,7 @@
         "recipe 4: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -165,6 +170,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -195,6 +201,7 @@
         "recipe 5: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -204,6 +211,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -228,6 +236,7 @@
       ],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -237,6 +246,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -261,6 +271,7 @@
       ],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -270,6 +281,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -292,6 +304,7 @@
       "sinks": [],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -301,6 +314,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -326,6 +340,7 @@
       ],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -335,6 +350,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -357,6 +373,7 @@
       ],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -366,6 +383,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -386,11 +404,10 @@
         "collect_mining.rs#handler",
         "rental_delegation.rs#handler"
       ],
-      "sinks": [
-        "exploration.rs#start_commit_handler"
-      ],
+      "sinks": [],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -400,6 +417,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -408,8 +426,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": null,
-      "blocker": null
+      "gap": "missing_sink",
+      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
     },
     {
       "kind": "BlueCore",
@@ -425,6 +443,7 @@
         "recipe 0: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -434,6 +453,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -459,6 +479,7 @@
         "recipe 7: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -468,6 +489,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -493,6 +515,7 @@
         "recipe 1: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -502,6 +525,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -527,6 +551,7 @@
         "recipe 2: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -536,6 +561,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -561,6 +587,7 @@
         "recipe 6: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -570,6 +597,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -590,6 +618,7 @@
       "sinks": [],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -599,6 +628,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -628,6 +658,7 @@
         "recipe 3: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -637,6 +668,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -666,6 +698,7 @@
         "recipe 4: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -675,6 +708,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -700,6 +734,7 @@
         "recipe 2: выход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -709,6 +744,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -734,6 +770,7 @@
         "recipe 7: вход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -743,6 +780,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -768,6 +806,7 @@
         "recipe 3: выход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -777,6 +816,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -802,6 +842,7 @@
         "recipe 4: выход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -811,6 +852,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -836,6 +878,7 @@
         "recipe 5: выход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -845,6 +888,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -870,6 +914,7 @@
         "recipe 6: выход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -879,6 +924,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -904,6 +950,7 @@
         "recipe 7: выход"
       ],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -913,6 +960,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -933,6 +981,7 @@
       "sinks": [],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -942,6 +991,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"
@@ -965,6 +1015,7 @@
       ],
       "recipes": [],
       "genericPaths": [
+        "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
         "burn_resource.rs#handler",
         "issuance_cap.rs#init_handler",
@@ -974,6 +1025,7 @@
         "lib.rs#init_issuance_cap",
         "lib.rs#mint_resource",
         "lib.rs#set_issuance_cap",
+        "lib.rs#set_issuance_lifetime_baseline",
         "lib.rs#set_supply_cap",
         "mint_resource_once.rs#handler",
         "lib.rs#mint_resource_once"

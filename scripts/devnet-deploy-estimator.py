@@ -18,6 +18,7 @@ program.rs`, строки 1414–1423) говорят обратное: без `
     buffers       «осиротевшие» buffer-аккаунты оператора (ничего не закрывает)
     verify-layout размеры метаданных Program/ProgramData/Buffer на живом RPC
     verify-deployed  что реально лежит в сети после деплоя
+    upgrade-state    нужен ли upgrade уже развёрнутой программы: same | different
     analyze-history  ТОЛЬКО локальный валидатор: измеренный пик/итог оттока плательщика и сверка с моделью
 
 Модель стоимости (проверена по исходникам, см. docs/DEVNET_DEPLOY_COSTS.md):
@@ -310,6 +311,15 @@ class Rpc:
     """Минимальный JSON-RPC клиент. Любая неисправность — EstimatorError(EXIT_RPC)."""
 
     def __init__(self, url: str, timeout: float = 20.0) -> None:
+        # Разбор адреса — до сети и до Request(): пустой URL или строка без схемы
+        # иначе вылетают голым traceback'ом ValueError, из которого неясно, что
+        # именно не так с RPC_URL.
+        parts = urllib.parse.urlsplit(url)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise EstimatorError(
+                f"RPC URL негодный ({redact_url(url)}): нужен адрес вида http(s)://хост. "
+                "У провайдеров ключ стоит в query — подставьте настоящий: "
+                "RPC_URL='https://devnet.helius-rpc.com/?api-key=…'", EXIT_USAGE)
         self.url = url
         self.timeout = timeout
         self.audit: List[Dict[str, Any]] = []
@@ -322,10 +332,23 @@ class Rpc:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
         except urllib.error.HTTPError as exc:
-            raise EstimatorError(f"RPC {where} ответил HTTP {exc.code} на {method}", EXIT_RPC)
+            hint = ""
+            if exc.code in (401, 403):
+                hint = " — провайдер отклонил доступ: проверьте ключ в RPC_URL (?api-key=…)"
+            elif exc.code == 429:
+                hint = " — слишком много запросов: публичный api.devnet.solana.com не выдерживает прогон, возьмите RPC с ключом провайдера"
+            raise EstimatorError(f"RPC {where} ответил HTTP {exc.code} на {method}{hint}", EXIT_RPC)
         except (urllib.error.URLError, OSError, ValueError) as exc:
             reason = getattr(exc, "reason", exc)
-            raise EstimatorError(f"RPC {where} недоступен ({type(reason).__name__}) на {method}", EXIT_RPC)
+            detail = str(reason)[:160] or type(reason).__name__
+            # Частая ошибка: в URL остался плейсхолдер («ВАШ_КЛЮЧ», «<key>»). urllib
+            # падает на первом же не-ASCII символе и отдаёт причину строкой, поэтому
+            # без этой проверки отказ читается как «недоступен (str)» и не помогает.
+            if any(ord(ch) > 127 for ch in self.url):
+                raise EstimatorError(
+                    f"RPC {where} ({detail}): в адресе есть не-ASCII символы — похоже, вместо api-key остался плейсхолдер. "
+                    "Подставьте настоящий ключ провайдера (ключ в чат не присылайте)", EXIT_RPC)
+            raise EstimatorError(f"RPC {where} недоступен на {method}: {detail}", EXIT_RPC)
         try:
             payload = json.loads(raw)
         except ValueError:
@@ -985,6 +1008,62 @@ def cmd_verify_deployed(args: argparse.Namespace, rpc_factory: Callable[..., Any
     return EXIT_OK
 
 
+def upgrade_state(rpc: Any, spec: ProgramSpec, commitment: str) -> Tuple[str, int, str]:
+    """Чем байткод в сети отличается от локальной сборки: `same` или `different`.
+
+    Зачем отдельная команда. `verify-deployed` строго требует, чтобы ёмкость
+    ProgramData совпала с `--max-len`. Для уже развёрнутой программы это неверно:
+    ёмкость уменьшить нельзя (у загрузчика есть только ExtendProgram), а CLI при
+    upgrade сам расширяет ProgramData, если новая сборка не помещается
+    (`cli/src/program.rs` v4.2.1, `auto_extend`; минимум расширения — 10 KiB,
+    SIMD-0431). Поэтому здесь сверяется то, что действительно решает, нужен ли
+    upgrade: исполняемый аккаунт, upgradeable-загрузчик, читаемая authority,
+    валидный заголовок ProgramData и sha256 байткода против локального .so.
+    """
+    info = _account_info(rpc, spec.address, commitment)
+    if info is None:
+        raise EstimatorError(f"{spec.name}: аккаунт {spec.address} не найден в сети", EXIT_VERIFY)
+    if info.get("owner") != LOADER:
+        raise EstimatorError(f"{spec.name}: владелец {info.get('owner')} — не upgradeable-загрузчик", EXIT_VERIFY)
+    if info.get("executable") is not True:
+        raise EstimatorError(f"{spec.name}: аккаунт не помечен исполняемым", EXIT_VERIFY)
+    data = _account_bytes(info)
+    check_state_header(data, STATE_PROGRAM, f"{spec.name}: Program")
+    if len(data) != PROGRAM_SIZE:
+        raise EstimatorError(f"{spec.name}: Program-аккаунт {len(data)} Б вместо {PROGRAM_SIZE}", EXIT_VERIFY)
+    programdata = b58encode(data[ACCOUNT_TYPE_SIZE:PROGRAM_SIZE])
+    head = _account_info(rpc, programdata, commitment, {"offset": 0, "length": PROGRAMDATA_METADATA_SIZE})
+    if head is None:
+        raise EstimatorError(f"{spec.name}: ProgramData {programdata} не найден", EXIT_VERIFY)
+    raw = _account_bytes(head)
+    check_state_header(raw, STATE_PROGRAMDATA, f"{spec.name}: ProgramData")
+    option_tag = raw[ACCOUNT_TYPE_SIZE + SLOT_SIZE]
+    authority = b58encode(raw[ACCOUNT_TYPE_SIZE + SLOT_SIZE + OPTION_TAG_SIZE:PROGRAMDATA_METADATA_SIZE]) if option_tag == 1 else "none"
+    if authority == "none":
+        raise EstimatorError(f"{spec.name}: upgrade authority снята (--final) — обновить программу нельзя", EXIT_VERIFY)
+    space = head.get("space")
+    if not isinstance(space, int) or isinstance(space, bool) or space < PROGRAMDATA_METADATA_SIZE:
+        raise EstimatorError(f"{spec.name}: RPC не вернул размер ProgramData (space) — ёмкость не прочитать", EXIT_VERIFY)
+    body = _account_info(rpc, programdata, commitment, {"offset": PROGRAMDATA_METADATA_SIZE, "length": spec.size})
+    if body is None:
+        raise EstimatorError(f"{spec.name}: не удалось прочитать байткод из ProgramData", EXIT_VERIFY)
+    on_chain = _account_bytes(body)
+    local = pathlib.Path(spec.so_path).read_bytes()
+    state = "same" if hashlib.sha256(on_chain).hexdigest() == hashlib.sha256(local).hexdigest() else "different"
+    return state, space - PROGRAMDATA_METADATA_SIZE, authority
+
+
+def cmd_upgrade_state(args: argparse.Namespace, rpc_factory: Callable[..., Any], out: Any) -> int:
+    spec = parse_program_arg(args.program[0])
+    rpc = rpc_factory(args.rpc, timeout=args.timeout)
+    state, capacity, authority = upgrade_state(rpc, spec, args.commitment)
+    out.write(f"state: {state}\n")
+    out.write(f"capacity: {capacity}\n")
+    out.write(f"authority: {authority}\n")
+    out.write(f"so: {spec.so_path}\n")
+    return EXIT_OK
+
+
 # --- измерение на локальном валидаторе ----------------------------------------
 def require_local_validator(rpc: Any, url: str) -> str:
     """Эксперимент с жизненным циклом — только на локальном валидаторе: по адресу И по genesis."""
@@ -1202,6 +1281,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_deployed.add_argument("--max-len", type=int, required=True)
     p_deployed.add_argument("--authority", required=True)
     p_deployed.add_argument("--wait-seconds", type=float, default=30.0)
+
+    p_upgrade = sub.add_parser("upgrade-state", help="нужен ли upgrade уже развёрнутой программы (read-only)")
+    common(p_upgrade)
+    p_upgrade.add_argument("--program", action="append", required=True, metavar="ИМЯ:АДРЕС:SO")
     return parser
 
 
@@ -1227,6 +1310,8 @@ def main(argv: Optional[Sequence[str]] = None, rpc_factory: Callable[..., Any] =
             return cmd_verify_layout(args, rpc_factory, out)
         if args.command == "verify-deployed":
             return cmd_verify_deployed(args, rpc_factory, out)
+        if args.command == "upgrade-state":
+            return cmd_upgrade_state(args, rpc_factory, out)
         if args.command == "analyze-history":
             return cmd_analyze_history(args, rpc_factory, out)
     except EstimatorError as exc:

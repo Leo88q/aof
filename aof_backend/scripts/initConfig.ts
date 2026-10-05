@@ -13,6 +13,9 @@ if (!AUTHORITY) {
     + "read-only mode cannot bootstrap programs.",
   );
 }
+// ts-node компилирует с проверкой типов, но TS не сужает импортированную
+// привязку внутри функций (TS18047) — фиксируем не-null значение локально.
+const authority = AUTHORITY;
 
 import { SystemProgram } from "@solana/web3.js";
 
@@ -44,7 +47,7 @@ async function main() {
       .initialize(TREASURY)
       .accounts({
         config,
-        authority: AUTHORITY.publicKey,
+        authority: authority.publicKey,
         auth,
         vault,
         programData,
@@ -56,9 +59,9 @@ async function main() {
     
     const { Transaction } = await import("@solana/web3.js");
     const tx = new Transaction().add(ix);
-    tx.feePayer = AUTHORITY.publicKey;
+    tx.feePayer = authority.publicKey;
     tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx.sign(AUTHORITY);
+    tx.sign(authority);
     
     const signature = await connection.sendRawTransaction(tx.serialize());
     console.log("⏳ Ожидание подтверждения...");

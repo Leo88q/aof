@@ -18,8 +18,10 @@ export class TransactionExecutionFailed extends Error {
 
 /** Use the versioned overload even for legacy messages: it doesn't replace
  * the blockhash or strip signatures like the legacy web3.js overload can. */
-export function simulationTransaction(tx: Transaction): VersionedTransaction {
-  return VersionedTransaction.deserialize(tx.serialize({ requireAllSignatures: false }));
+export function simulationTransaction(tx: Transaction | VersionedTransaction): VersionedTransaction {
+  return tx instanceof VersionedTransaction
+    ? tx
+    : VersionedTransaction.deserialize(tx.serialize({ requireAllSignatures: false }));
 }
 
 export async function sendConfirmedTransaction(
@@ -31,8 +33,33 @@ export async function sendConfirmedTransaction(
   if (!tx.signature || tx.recentBlockhash !== lifetime.blockhash) {
     throw new Error("Signed transaction and blockhash lifetime must match");
   }
-  const bytes = tx.serialize();
-  const signature = bs58.encode(tx.signature);
+  return sendConfirmedBytes(rpc, tx.serialize(), bs58.encode(tx.signature), lifetime, beforeBroadcast);
+}
+
+/** Same crash-safe confirmation lifecycle for a native v0 message. */
+export async function sendConfirmedVersionedTransaction(
+  rpc: Pick<Connection, "sendRawTransaction" | "confirmTransaction">,
+  tx: VersionedTransaction,
+  lifetime: { blockhash: string; lastValidBlockHeight: number },
+  beforeBroadcast?: (signature: string) => Promise<void>,
+): Promise<string> {
+  if (!("staticAccountKeys" in tx.message)) throw new Error("Only a v0 message is supported by the versioned sender");
+  const payer = tx.message.staticAccountKeys[0];
+  const payerSignature = tx.signatures[0];
+  if (!payer || tx.message.recentBlockhash !== lifetime.blockhash || !payerSignature ||
+      payerSignature.length !== 64 || payerSignature.every((byte) => byte === 0)) {
+    throw new Error("Signed v0 transaction and blockhash lifetime must match");
+  }
+  return sendConfirmedBytes(rpc, tx.serialize(), bs58.encode(payerSignature), lifetime, beforeBroadcast);
+}
+
+async function sendConfirmedBytes(
+  rpc: Pick<Connection, "sendRawTransaction" | "confirmTransaction">,
+  bytes: Buffer | Uint8Array,
+  signature: string,
+  lifetime: { blockhash: string; lastValidBlockHeight: number },
+  beforeBroadcast?: (signature: string) => Promise<void>,
+): Promise<string> {
   // Persist the signature BEFORE the first network call (crash-safe reservation).
   await beforeBroadcast?.(signature);
   let confirmation;

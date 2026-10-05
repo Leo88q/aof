@@ -53,16 +53,29 @@ solana program show <PROGRAM_ID>   # Authority должен быть <UPGRADE_VA
 
 ## 4. Лимиты эмиссии
 
+`MaterialMints.max_supply` — конечный cumulative lifetime ceiling по gross mint, а не потолок текущего
+SPL `Mint.supply`: burn не возвращает allowance. Поэтому не используйте старые планы,
+основанные на outstanding supply. `scripts/economy/propose-caps.mjs` оставлен только для offline
+модельных тестов и его CLI отказывает, поскольку не доказывает историю mint/burn.
+
+Порядок на devnet: после проверки байткода всех шести программ из `aof_backend/` выполните:
+
 ```bash
-npm ci                                             # корень: @solana/web3.js
-node scripts/economy/propose-caps.mjs --vault <ADMIN_VAULT> --rpc <RPC_URL> \
-  --dau 1000 --days 42 --safety 1.5 --other-daily 100 --out caps-plan.json
+npm run issuance:history:scan
+# Проверьте: complete=true и для всех 27 resource mints gross mints − burns == finalized Mint.supply
+npm run issuance:baseline:apply
+# Оператор выбирает и задаёт значения LIFETIME_CAP_*; здесь намеренно нет примеров-значений.
+npm run issuance:lifetime-caps:apply
+npm run preflight:mining-devnet
 ```
 
-- Проверить таблицу. Особенно **Circuit**: сезонная награда (уровень L даёт L × 100 Circuit, до 180 600 на премиум-игрока за сезон) превышает весь майнинг этого ресурса. Это продуктовый вопрос.
-- `caps-plan.json → squadsMessagesBase58`: три неподписанных сообщения по 9 инструкций `set_supply_cap`. Импортировать их в Squads как vault-транзакции Admin, подписать 2 из 3, исполнить после time lock.
-- `IssuanceCap` (награды `mint_resource_once`) и `VaultGuard` (выплаты) задаются по ожидаемому объёму наград с запасом ×2 (`init_issuance_cap`, `init_vault_guard`).
-- Каждый сезон пересчитывать и поднимать лимиты через тот же процесс. Мониторинг предупреждает при заполнении лимита на 80%.
+Только после baseline оператор задаёт **свои** конечные значения для CIRCUIT, SILICON, DATASET и
+NEURON через `LIFETIME_CAP_CIRCUIT`, `LIFETIME_CAP_SILICON`, `LIFETIME_CAP_DATASET` и
+`LIFETIME_CAP_NEURON`. Никакие численные lifetime caps в runbook не предписываются.
+
+`CAP_PER_EPOCH` / `caps:init` отдельно настраивают rate budget `IssuanceCap.cap_per_epoch`;
+это не lifetime ceiling. Не включайте mining, пока полный байткод gate и mining preflight не
+пройдены; см. `docs/DEVNET_BRINGUP_PREFLIGHT.md`.
 
 ## 5. Секреты
 

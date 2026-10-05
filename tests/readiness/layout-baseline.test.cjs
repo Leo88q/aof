@@ -48,13 +48,18 @@ test('базис фиксирует порядок enum, дискриминан�
   assert.equal(baseline.resourceKindCount, 27);
   assert.deepEqual(baseline.resourceKind.slice(0, 5), ['Data', 'Circuit', 'Silicon', 'Neuron', 'Synapse']);
   const core = baseline.programs.find((p) => p.name === 'aof_core');
-  const xpClaimAdditions = baseline.approvedAdditions?.aof_core;
-  assert.deepEqual(xpClaimAdditions?.instructions, [{ name: 'init_player', discriminator: '721bdb90320fe442' }],
-    'новая инструкция зафиксирована отдельно от исторического списка и с точным discriminator');
-  assert.deepEqual(xpClaimAdditions?.errors?.AofError, [
+  const approvedAdditions = baseline.approvedAdditions?.aof_core;
+  assert.deepEqual(approvedAdditions?.instructions, [
+    { name: 'init_player', discriminator: '721bdb90320fe442' },
+    { name: 'exchange_data_energy', discriminator: '789f4fbafa4153c3' },
+    { name: 'use_flask', discriminator: 'c312823d390b6587' },
+    { name: 'set_issuance_lifetime_baseline', discriminator: '5fa1444d0ed7cd55' },
+  ], 'все новые инструкции зафиксированы в порядке их appended IDL entries и с точным discriminator');
+  assert.deepEqual(approvedAdditions?.errors?.AofError, [
+
     'PlayerNotInitialized', 'InvalidSeasonXpEntitlement', 'SeasonXpEntitlementExpired', 'SeasonXpNonceMismatch',
   ], 'новые error codes только appended — старые ordinal-коды сохраняются');
-  const cursor = xpClaimAdditions?.accounts?.find((account) => account.name === 'SeasonXpClaimCursor');
+  const cursor = approvedAdditions?.accounts?.find((account) => account.name === 'SeasonXpClaimCursor');
   assert.deepEqual(cursor?.typeSequence, ['Pubkey', 'u32', 'u32', 'u8']);
   assert.equal(cursor?.size, 49);
   const startMining = core.instructions.find((i) => i.name === 'start_mining');

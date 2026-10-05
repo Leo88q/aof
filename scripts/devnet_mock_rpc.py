@@ -243,8 +243,9 @@ class MockRpc:
                 mock.requests.append({"method": request.get("method"), "params": request.get("params")})
                 method = request.get("method", "")
                 mode = mock.broken.get(method)
-                if mode == "http500":
-                    self.send_response(500)
+                # http500 / http401 / http403 / http429 … — сколько провайдеры реально отдают
+                if mode and mode.startswith("http") and mode[4:].isdigit():
+                    self.send_response(int(mode[4:]))
                     self.end_headers()
                     return
                 if mode == "badjson":

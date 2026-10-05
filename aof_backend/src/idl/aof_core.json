@@ -954,6 +954,37 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuance_cap_circuit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  1
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1084,6 +1115,37 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuance_cap_model",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [],
@@ -1209,6 +1271,37 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuance_cap_signal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  5
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [],
@@ -1374,6 +1467,10 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuance_cap",
+          "writable": true
         }
       ],
       "args": []
@@ -1545,6 +1642,37 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "issuance_cap_power",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  7
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [],
@@ -2552,6 +2680,10 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuance_cap",
+          "writable": true
         }
       ],
       "args": [
@@ -2832,6 +2964,14 @@
           "writable": true
         },
         {
+          "name": "data_mint",
+          "writable": true
+        },
+        {
+          "name": "dataset_mint",
+          "writable": true
+        },
+        {
           "name": "circuit_mint",
           "writable": true
         },
@@ -2862,6 +3002,22 @@
               }
             ]
           }
+        },
+        {
+          "name": "escrow_data",
+          "writable": true
+        },
+        {
+          "name": "escrow_circuit",
+          "writable": true
+        },
+        {
+          "name": "escrow_silicon",
+          "writable": true
+        },
+        {
+          "name": "escrow_dataset",
+          "writable": true
         },
         {
           "name": "vrf_slot",
@@ -2935,6 +3091,68 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "issuance_cap_circuit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  1
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "issuance_cap_silicon",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  2
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2989,6 +3207,22 @@
           "signer": true
         },
         {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "tool",
           "pda": {
             "seeds": [
@@ -3033,6 +3267,14 @@
         },
         {
           "name": "user_silicon",
+          "writable": true
+        },
+        {
+          "name": "escrow_circuit",
+          "writable": true
+        },
+        {
+          "name": "escrow_silicon",
           "writable": true
         },
         {
@@ -3153,6 +3395,38 @@
               }
             ]
           }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "circuit_mint",
+          "writable": true
+        },
+        {
+          "name": "escrow_circuit",
+          "writable": true
+        },
+        {
+          "name": "silicon_mint",
+          "writable": true
+        },
+        {
+          "name": "escrow_silicon",
+          "writable": true
         },
         {
           "name": "cranker",
@@ -3288,32 +3562,6 @@
           }
         },
         {
-          "name": "material_mints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "forge_commit",
           "writable": true
         },
@@ -3350,11 +3598,19 @@
           "writable": true
         },
         {
+          "name": "escrow_circuit",
+          "writable": true
+        },
+        {
           "name": "silicon_mint",
           "writable": true
         },
         {
           "name": "user_silicon",
+          "writable": true
+        },
+        {
+          "name": "escrow_silicon",
           "writable": true
         },
         {
@@ -3598,6 +3854,37 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "issuance_cap_synapse",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  4
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -7115,6 +7402,10 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuance_cap",
+          "writable": true
         }
       ],
       "args": []
@@ -8722,6 +9013,22 @@
           }
         },
         {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "exploration_commit",
           "writable": true,
           "pda": {
@@ -8786,6 +9093,22 @@
         },
         {
           "name": "user_dataset",
+          "writable": true
+        },
+        {
+          "name": "escrow_data",
+          "writable": true
+        },
+        {
+          "name": "escrow_circuit",
+          "writable": true
+        },
+        {
+          "name": "escrow_silicon",
+          "writable": true
+        },
+        {
+          "name": "escrow_dataset",
           "writable": true
         },
         {
@@ -11543,11 +11866,19 @@
           "writable": true
         },
         {
+          "name": "escrow_data",
+          "writable": true
+        },
+        {
           "name": "circuit_mint",
           "writable": true
         },
         {
           "name": "user_circuit",
+          "writable": true
+        },
+        {
+          "name": "escrow_circuit",
           "writable": true
         },
         {
@@ -11559,11 +11890,19 @@
           "writable": true
         },
         {
+          "name": "escrow_silicon",
+          "writable": true
+        },
+        {
           "name": "dataset_mint",
           "writable": true
         },
         {
           "name": "user_dataset",
+          "writable": true
+        },
+        {
+          "name": "escrow_dataset",
           "writable": true
         },
         {
@@ -12499,6 +12838,298 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "exchange_data_energy",
+      "discriminator": [
+        120,
+        159,
+        79,
+        186,
+        250,
+        65,
+        83,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "energy_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  101,
+                  114,
+                  103,
+                  121,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "data_mint",
+          "writable": true
+        },
+        {
+          "name": "user_data",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "data_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "use_flask",
+      "discriminator": [
+        195,
+        18,
+        130,
+        61,
+        57,
+        11,
+        101,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "energy_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  101,
+                  114,
+                  103,
+                  121,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "flask_mint",
+          "writable": true
+        },
+        {
+          "name": "user_flask",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "flask_kind",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "set_issuance_lifetime_baseline",
+      "discriminator": [
+        95,
+        161,
+        68,
+        77,
+        14,
+        215,
+        205,
+        85
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "issuance_cap",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "ResourceKind"
+            }
+          }
+        },
+        {
+          "name": "total_minted",
+          "type": "u128"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -14062,6 +14693,19 @@
         241,
         250,
         231
+      ]
+    },
+    {
+      "name": "IssuanceLifetimeBaselineSet",
+      "discriminator": [
+        199,
+        30,
+        77,
+        102,
+        84,
+        43,
+        148,
+        222
       ]
     }
   ],
@@ -18536,6 +19180,34 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IssuanceLifetimeBaselineSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": "u128"
+          },
+          {
+            "name": "baseline",
+            "type": "u128"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

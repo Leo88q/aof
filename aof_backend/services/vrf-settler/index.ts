@@ -36,6 +36,7 @@ import { connection } from "../../src/provider";
 import { AUTHORITY } from "../../src/config";
 import { resolveSettlerSigner, settlerStandbySlots } from "../../src/lib/settlerSigner";
 import { sendSignedBy } from "../../src/lib/tx";
+import { sendSignedByWithVrfLookupTable } from "../../src/lib/vrfLookupTableTransactions";
 import {
   buildRefundInstructions,
   buildRevealInstructions,
@@ -99,7 +100,9 @@ async function settle(c: PendingCommit, currentSlot: number): Promise<void> {
     const ixs = phase === "revealable"
       ? await buildRevealInstructions(c, CRANKER)
       : await buildRefundInstructions(c, CRANKER);
-    const sig = await sendSignedBy(SIGNER.keypair, ixs);
+    const sig = c.mechanic === "exploration"
+      ? await sendSignedByWithVrfLookupTable(SIGNER.keypair, ixs)
+      : await sendSignedBy(SIGNER.keypair, ixs);
     failures.delete(key);
     nextAttempt.delete(key);
     log("log", phase === "revealable" ? "settled" : "refunded", { commit: key, ageSlots: currentSlot - c.commitSlot, sig });

@@ -960,6 +960,37 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuanceCapCircuit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  1
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1090,6 +1121,37 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuanceCapModel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [],
@@ -1215,6 +1277,37 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuanceCapSignal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  5
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [],
@@ -1380,6 +1473,10 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuanceCap",
+          "writable": true
         }
       ],
       "args": []
@@ -1551,6 +1648,37 @@ export type AofCore = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "issuanceCapPower",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  7
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [],
@@ -2558,6 +2686,10 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuanceCap",
+          "writable": true
         }
       ],
       "args": [
@@ -2838,6 +2970,14 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "dataMint",
+          "writable": true
+        },
+        {
+          "name": "datasetMint",
+          "writable": true
+        },
+        {
           "name": "circuitMint",
           "writable": true
         },
@@ -2868,6 +3008,22 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "escrowData",
+          "writable": true
+        },
+        {
+          "name": "escrowCircuit",
+          "writable": true
+        },
+        {
+          "name": "escrowSilicon",
+          "writable": true
+        },
+        {
+          "name": "escrowDataset",
+          "writable": true
         },
         {
           "name": "vrfSlot",
@@ -2941,6 +3097,68 @@ export type AofCore = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "issuanceCapCircuit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  1
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "issuanceCapSilicon",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  2
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2995,6 +3213,22 @@ export type AofCore = {
           "signer": true
         },
         {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "tool",
           "pda": {
             "seeds": [
@@ -3039,6 +3273,14 @@ export type AofCore = {
         },
         {
           "name": "userSilicon",
+          "writable": true
+        },
+        {
+          "name": "escrowCircuit",
+          "writable": true
+        },
+        {
+          "name": "escrowSilicon",
           "writable": true
         },
         {
@@ -3159,6 +3401,38 @@ export type AofCore = {
               }
             ]
           }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "circuitMint",
+          "writable": true
+        },
+        {
+          "name": "escrowCircuit",
+          "writable": true
+        },
+        {
+          "name": "siliconMint",
+          "writable": true
+        },
+        {
+          "name": "escrowSilicon",
+          "writable": true
         },
         {
           "name": "cranker",
@@ -3294,32 +3568,6 @@ export type AofCore = {
           }
         },
         {
-          "name": "materialMints",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  116,
-                  101,
-                  114,
-                  105,
-                  97,
-                  108,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "forgeCommit",
           "writable": true
         },
@@ -3356,11 +3604,19 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "escrowCircuit",
+          "writable": true
+        },
+        {
           "name": "siliconMint",
           "writable": true
         },
         {
           "name": "userSilicon",
+          "writable": true
+        },
+        {
+          "name": "escrowSilicon",
           "writable": true
         },
         {
@@ -3604,6 +3860,37 @@ export type AofCore = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "issuanceCapSynapse",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  115,
+                  115,
+                  117,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  97,
+                  112
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  4
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -7121,6 +7408,10 @@ export type AofCore = {
         {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "issuanceCap",
+          "writable": true
         }
       ],
       "args": []
@@ -8728,6 +9019,22 @@ export type AofCore = {
           }
         },
         {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "explorationCommit",
           "writable": true,
           "pda": {
@@ -8792,6 +9099,22 @@ export type AofCore = {
         },
         {
           "name": "userDataset",
+          "writable": true
+        },
+        {
+          "name": "escrowData",
+          "writable": true
+        },
+        {
+          "name": "escrowCircuit",
+          "writable": true
+        },
+        {
+          "name": "escrowSilicon",
+          "writable": true
+        },
+        {
+          "name": "escrowDataset",
           "writable": true
         },
         {
@@ -11549,11 +11872,19 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "escrowData",
+          "writable": true
+        },
+        {
           "name": "circuitMint",
           "writable": true
         },
         {
           "name": "userCircuit",
+          "writable": true
+        },
+        {
+          "name": "escrowCircuit",
           "writable": true
         },
         {
@@ -11565,11 +11896,19 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "escrowSilicon",
+          "writable": true
+        },
+        {
           "name": "datasetMint",
           "writable": true
         },
         {
           "name": "userDataset",
+          "writable": true
+        },
+        {
+          "name": "escrowDataset",
           "writable": true
         },
         {
@@ -12505,6 +12844,298 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "exchangeDataEnergy",
+      "discriminator": [
+        120,
+        159,
+        79,
+        186,
+        250,
+        65,
+        83,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "energyAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  101,
+                  114,
+                  103,
+                  121,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dataMint",
+          "writable": true
+        },
+        {
+          "name": "userData",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "dataAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "useFlask",
+      "discriminator": [
+        195,
+        18,
+        130,
+        61,
+        57,
+        11,
+        101,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "energyAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  101,
+                  114,
+                  103,
+                  121,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "flaskMint",
+          "writable": true
+        },
+        {
+          "name": "userFlask",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "flaskKind",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "setIssuanceLifetimeBaseline",
+      "discriminator": [
+        95,
+        161,
+        68,
+        77,
+        14,
+        215,
+        205,
+        85
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "issuanceCap",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "resourceKind"
+            }
+          }
+        },
+        {
+          "name": "totalMinted",
+          "type": "u128"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -14068,6 +14699,19 @@ export type AofCore = {
         241,
         250,
         231
+      ]
+    },
+    {
+      "name": "issuanceLifetimeBaselineSet",
+      "discriminator": [
+        199,
+        30,
+        77,
+        102,
+        84,
+        43,
+        148,
+        222
       ]
     }
   ],
@@ -18542,6 +19186,34 @@ export type AofCore = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "issuanceLifetimeBaselineSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": "u128"
+          },
+          {
+            "name": "baseline",
+            "type": "u128"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

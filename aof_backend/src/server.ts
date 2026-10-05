@@ -5,7 +5,7 @@ import { logger } from "./lib/logger";
 import { generalLimiter, txLimiter, readLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
 import cors from "cors";
-import { PORT, TRUST_PROXY_HOPS } from "./config";
+import { PORT, RPC_URL, TRUST_PROXY_HOPS } from "./config";
 import { connection } from "./provider";
 import admin from "./routes/admin";
 import adminXp from "./routes/adminXp";
@@ -207,6 +207,27 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 // Readiness: can this instance serve real traffic right now? Checks the DB
 // and the RPC with short timeouts; 503 on any failure so a load balancer
 // drains the instance instead of routing users into errors.
+/**
+ * `/ready` — публичный маршрут (без токена), и его вывод копируют в issue/CI.
+ * Ошибки RPC-библиотек иногда несут в тексте полный URL, а у провайдеров ключ
+ * стоит в query (`?api-key=…`). Поэтому в текст ошибки попадают только маски.
+ */
+/** Только схема и хост: путь/query провайдера могут нести ключ. */
+export function redactEndpoint(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return "<rpc>";
+  }
+}
+
+export function redactSecrets(text: string): string {
+  return text
+    .replace(/([?&](?:api[-_]?key|apikey|token|key)=)[^&\s'"]+/gi, "$1***")
+    .replace(/(:\/\/[^/\s:@]+):[^/\s@]+@/g, "$1:***@");
+}
+
 app.get("/ready", async (_req, res) => {
   const withTimeout = <T,>(p: Promise<T>, ms: number) =>
     Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
@@ -214,7 +235,7 @@ app.get("/ready", async (_req, res) => {
   const run = async (name: string, fn: () => Promise<unknown>) => {
     const t = Date.now();
     try { await withTimeout(fn(), 3000); checks[name] = { ok: true, ms: Date.now() - t }; }
-    catch (e: any) { checks[name] = { ok: false, ms: Date.now() - t, error: String(e?.message || e) }; }
+    catch (e: any) { checks[name] = { ok: false, ms: Date.now() - t, error: redactSecrets(String(e?.message || e)) }; }
   };
   await Promise.all([
     run("db", async () => { const { db } = await import("./lib/db"); await db.$queryRaw`SELECT 1`; }),
@@ -222,7 +243,14 @@ app.get("/ready", async (_req, res) => {
   ]);
   const ok = Object.values(checks).every((c) => c.ok);
   const { queryCacheStats, QUERY_CACHE_TTL_MS } = await import("./lib/decode");
-  res.status(ok ? 200 : 503).json({ ok, checks, queryCache: { ttlMs: QUERY_CACHE_TTL_MS, ...queryCacheStats() } });
+  // Куда backend ходит за сетью, видно прямо здесь: при rpc.ok=false это первое,
+  // что нужно, а ключ провайдера в ответ не попадает (только схема и хост).
+  res.status(ok ? 200 : 503).json({
+    ok,
+    checks,
+    rpcEndpoint: redactEndpoint(RPC_URL),
+    queryCache: { ttlMs: QUERY_CACHE_TTL_MS, ...queryCacheStats() },
+  });
 });
 // Validate the actual cluster before any signing worker can start. URL names
 // are not proof of network identity (a custom RPC can point at any cluster).

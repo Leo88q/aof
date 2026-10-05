@@ -10,6 +10,8 @@ pub mod init_rarity_counter;
 pub mod init_material_mints;
 pub mod plant_neuron;
 pub mod harvest_synapse;
+pub mod use_flask;
+pub mod exchange_data_energy;
 pub mod start_signal_processing;
 pub mod collect_signal;
 pub mod start_model_training;
@@ -72,7 +74,7 @@ pub mod roles;
 // so re-export them at the crate-instructions root. Without this the crate does
 // not compile: `instructions::set_pending_authority` would be unresolved.
 pub use authority::{accept_authority, cancel_pending_authority, set_pending_authority};
-pub use admin_config::{set_mining_enabled, set_supply_cap};
+pub use admin_config::{set_issuance_lifetime_baseline, set_mining_enabled, set_supply_cap};
 pub mod tool_transfer;
 pub mod tool_ownership;
 pub mod sync_tool_owner;

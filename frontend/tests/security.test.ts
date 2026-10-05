@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction, MessageV0, ComputeBudgetProgram } from "@solana/web3.js";
+import { AddressLookupTableAccount, ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { createApproveInstruction, createSetAuthorityInstruction, AuthorityType, createInitializeMintInstruction, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 import { confirmSignature } from "../src/lib/confirmation";
@@ -66,15 +66,36 @@ test("user-funded prep-mint permits only canonical zero-decimal, non-freezable m
   tx.instructions[1] = createInitializeMintInstruction(mint.publicKey, 0, other, other);
   assert.equal((await guard(tx)).safe, false);
 });
-test("lookup table messages are rejected rather than partially inspected", async () => {
-  const legacy = transaction(new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) }));
-  const message = legacy.compileMessage();
-  const tx = new VersionedTransaction(new MessageV0({
-    header: message.header, staticAccountKeys: message.accountKeys,
-    recentBlockhash: message.recentBlockhash, compiledInstructions: [],
-    addressTableLookups: [{ accountKey: other, writableIndexes: [0], readonlyIndexes: [] }],
-  }));
-  assert.equal((await guard(tx)).safe, false);
+test("v0 lookup keys are resolved before the wallet guard inspects and simulates them", async () => {
+  const lookupTable = new AddressLookupTableAccount({
+    key: Keypair.generate().publicKey,
+    state: {
+      deactivationSlot: (1n << 64n) - 1n,
+      lastExtendedSlot: 1n,
+      lastExtendedSlotStartIndex: 0,
+      authority: undefined,
+      addresses: [other],
+    },
+  });
+  const ix = new TransactionInstruction({
+    programId: core,
+    keys: [{ pubkey: other, isSigner: false, isWritable: false }],
+    data: Buffer.alloc(8),
+  });
+  const tx = new VersionedTransaction(new TransactionMessage({
+    payerKey: user.publicKey,
+    recentBlockhash: other.toBase58(),
+    instructions: [ix],
+  }).compileToV0Message([lookupTable]));
+  assert.equal((await guard(tx)).safe, false, "missing lookup RPC support must fail closed");
+  const altRpc = {
+    ...rpc,
+    getSlot: async () => 100,
+    getAddressLookupTable: async (key: PublicKey) => ({
+      value: lookupTable.key.equals(key) ? lookupTable : null,
+    }),
+  };
+  assert.equal((await guard(tx, {}, altRpc)).safe, true);
 });
 test("confirmation rejects failed/unknown outcomes and waits for confirmed status", async () => {
   const signature = "2".repeat(88);

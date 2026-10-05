@@ -28,6 +28,7 @@ describe("aof-core: security & core flows", () => {
     new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
   )[0];
   const authPda = pda([B("auth")]);
+  const resourceEscrowAta = (mint: PublicKey) => getAssociatedTokenAddressSync(mint, authPda, true);
   const vaultPda = pda([B("vault")]);
   const materialMintsPda = pda([B("material_mints")]);
   const toolPda = (m: PublicKey) => pda([B("tool"), m.toBuffer()]);
@@ -114,13 +115,18 @@ describe("aof-core: security & core flows", () => {
     return Object.assign(delta, { fee: meta.fee });
   }
 
-  // The validator's clock, not the runner's: they drift apart, so waiting a
-  // fixed number of wall-clock seconds for an on-chain deadline is flaky.
+  // The validator's clock, not the runner's: they drift apart, so deadlines
+  // must be based on the Clock sysvar rather than Date.now().
+  async function chainUnixTimestamp(): Promise<number> {
+    const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
+    if (!clock || clock.data.length < 40) throw new Error("Clock sysvar unavailable or truncated");
+    return Number(clock.data.readBigInt64LE(32));
+  }
+
   async function waitForChainTime(unixTimestamp: number, timeoutMs = 30_000) {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
-      const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
-      if (clock && Number(clock.data.readBigInt64LE(32)) >= unixTimestamp) return;
+      if (await chainUnixTimestamp() >= unixTimestamp) return;
       if (Date.now() > deadline) throw new Error(`chain clock did not reach ${unixTimestamp}`);
       await sleep(500);
     }
@@ -511,7 +517,7 @@ describe("aof-core: security & core flows", () => {
     const accounts = { config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority,
       mint, tool: toolPda(mint), listing, listingVault, buyerToken,
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId };
-    const deadline = new BN(Math.floor(Date.now() / 1000) + 120);
+    const deadline = new BN((await chainUnixTimestamp()) + 120);
     const before = await provider.connection.getBalance(buyer.publicKey);
     await expectError(program.methods.marketplaceBuyBounded(price.subn(1), deadline).accounts(accounts).signers([buyer]).rpc(), "PriceLimitExceeded");
     await expectError(program.methods.marketplaceBuyBounded(price, new BN(1)).accounts(accounts).signers([buyer]).rpc(), "QuoteExpired");
@@ -659,6 +665,7 @@ describe("aof-core: security & core flows", () => {
         player: playerPda(user.publicKey),
         materialMints: materialMintsPda,
         auth: authPda,
+        issuanceCap: issuanceCapPda("circuit"),
         payoutMint: circuitMint,
         payoutToken,
         vault: vaultPda, vaultToken,
@@ -672,7 +679,7 @@ describe("aof-core: security & core flows", () => {
       await expectError(program.methods.collectMining().accounts({
         config: configPda, user: user.publicKey, tool: toolPda(mint), mint,
         player: playerPda(user.publicKey), materialMints: materialMintsPda,
-        auth: authPda, payoutMint: circuitMint, payoutToken,
+        auth: authPda, issuanceCap: issuanceCapPda("circuit"), payoutMint: circuitMint, payoutToken,
         vault: vaultPda, vaultToken, tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([user]).rpc(), "MiningDisabled");
       expect((await program.account.toolData.fetch(toolPda(mint))).isMining).to.equal(true);
@@ -725,7 +732,7 @@ describe("aof-core: security & core flows", () => {
       config: configPda, user: owner.publicKey, materialMints: materialMintsPda,
       energyAccount: pda([B("energy_account"), owner.publicKey.toBuffer()]), labTile: ownerTile,
       toolData: toolPda(mint), auth: authPda, synapseMint, userSynapse: ownerSynapse,
-      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      issuanceCapSynapse: issuanceCapPda("synapse"), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([owner]).rpc(), "NotToolOperator");
 
     const renterNeuron = await ensureAta(neuronMint, renter.publicKey);
@@ -746,7 +753,7 @@ describe("aof-core: security & core flows", () => {
       config: configPda, user: renter.publicKey, materialMints: materialMintsPda,
       energyAccount: pda([B("energy_account"), renter.publicKey.toBuffer()]), labTile: renterTile,
       toolData: toolPda(mint), auth: authPda, synapseMint, userSynapse: renterSynapse,
-      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      issuanceCapSynapse: issuanceCapPda("synapse"), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([renter]).rpc(), "LabTileNotReady");
   });
 
@@ -1013,9 +1020,11 @@ describe("aof-core: security & core flows", () => {
     const enchantSlot = pda([B("enchant_slot"), toolMint.toBuffer(), Buffer.from([slotType])]);
     const forgeCommit = pda([B("forge_commit"), toolMint.toBuffer(), Buffer.from([slotType])]);
     await expectAccountError(program.methods.forgeAttemptCommit(slotType, true).accountsStrict({
-      config: configPda, authority, user: user.publicKey, tool: toolPda(toolMint), toolMint, enchantSlot, forgeCommit,
-      circuitMint, userCircuit, siliconMint, userSilicon, ...vrfCommitAccounts(),
-      tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      config: configPda, authority, user: user.publicKey, auth: authPda, tool: toolPda(toolMint), toolMint, enchantSlot, forgeCommit,
+      circuitMint, userCircuit, siliconMint, userSilicon,
+      escrowCircuit: resourceEscrowAta(circuitMint), escrowSilicon: resourceEscrowAta(siliconMint),
+      ...vrfCommitAccounts(), tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
     }).signers([user]).rpc(), "AccountNotInitialized", "vrf_slot");
     expect((await balance(userCircuit)).toString()).to.equal(circuitBefore.toString());
     expect((await balance(userSilicon)).toString()).to.equal(siliconBefore.toString());
@@ -1080,7 +1089,7 @@ describe("aof-core: security & core flows", () => {
     const userSignal = await ensureAta(signalMint, user.publicKey);
     await expectError(program.methods.collectSignal().accounts({
       config: configPda, user: user.publicKey, materialMints: materialMintsPda, signalState,
-      auth: authPda, signalMint, userSignal, tokenProgram: TOKEN_PROGRAM_ID,
+      auth: authPda, signalMint, userSignal, issuanceCapSignal: issuanceCapPda("signal"), tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([user]).rpc(), "SignalNotReady");
     expect((await balance(userSignal)).toString()).to.equal("0");
   });
@@ -1117,7 +1126,7 @@ describe("aof-core: security & core flows", () => {
       const userModel = await ensureAta(modelMint, user.publicKey);
       await expectError(program.methods.collectModel().accounts({
         config: configPda, user: user.publicKey, materialMints: materialMintsPda, modelState,
-        auth: authPda, modelMint: modelMint, userModel, tokenProgram: TOKEN_PROGRAM_ID,
+        auth: authPda, modelMint: modelMint, userModel, issuanceCapModel: issuanceCapPda("model"), tokenProgram: TOKEN_PROGRAM_ID,
       }).signers([user]).rpc(), "ModelNotReady");
       expect((await balance(userModel)).toString()).to.equal("0");
     }
@@ -1429,7 +1438,7 @@ describe("aof-core: security & core flows", () => {
     const output = await ensureAta(outputMint, user.publicKey);
     const accounts = { config: configPda, user: user.publicKey, materialMints: materialMintsPda, auth: authPda,
       input1Mint: gemMint, input1Acc: gems, input2Mint: dataMint, input2Acc: data,
-      outputMint, outputAcc: output, tokenProgram: TOKEN_PROGRAM_ID };
+      outputMint, outputAcc: output, issuanceCap: issuanceCapPda("cryoFluid"), tokenProgram: TOKEN_PROGRAM_ID };
     const snapshot = async () => ({
       gems: (await balance(gems)).toString(), data: (await balance(data)).toString(), output: (await balance(output)).toString(),
       gemSupply: (await getMint(provider.connection, gemMint)).supply.toString(),

@@ -376,6 +376,73 @@ pub const ENERGY_COST_COLLECTION: u8 = 1;
 pub const ENERGY_COST_SIGNAL_PROCESSING: u8 = 2;
 pub const ENERGY_COST_MODEL_TRAINING: u8 = 2;
 
+/// Сколько атомов DATA сжигается за одну единицу энергии в
+/// `exchange_data_energy`. 1 целый DATA (10^9 атомов) → 1 энергия.
+///
+/// Это единственный источник энергии, кроме времени (1 за 30 минут), поэтому
+/// цена задана константой, а не полем `Config`: иначе оператор мог бы в одиночку
+/// переоценить топливо для всей лабораторной цепочки. Сжигание уменьшает
+/// `mint.supply`, значит потолок выпуска освобождается — отдельного учёта нет.
+pub const DATA_ATOMS_PER_ENERGY: u64 = RESOURCE_UNIT;
+
+/// Сколько энергии возвращает одна фляга, по тирам
+/// `[CryoFluid, VoltFluid, BioFluid, NanoFluid, QuantumFluid]`
+/// (индекс — `flask_kind - 1` в `use_flask`). Лестница строго неубывающая, а
+/// верхний тир закрывает бак целиком: `ENERGY_CAP`. Значения — тоже константы,
+/// а не конфиг, по той же причине, что и выше: применение расходника нельзя
+/// переоценить одним админ-вызовом.
+pub const FLASK_ENERGY_GAIN: [u8; 5] = [5, 5, 8, 10, ENERGY_CAP];
+
+/// Тип флакона в `use_flask`: 1..=5 → (ResourceKind, энергия).
+/// Вынесено сюда, чтобы и проверка типа, и таблица наград были в одном месте
+/// и проверялись тестами без валидатора.
+pub fn flask_kind_reward(flask_kind: u8) -> Option<(crate::ResourceKind, u8)> {
+    use crate::ResourceKind;
+    let kind = match flask_kind {
+        1 => ResourceKind::CryoFluid,
+        2 => ResourceKind::VoltFluid,
+        3 => ResourceKind::BioFluid,
+        4 => ResourceKind::NanoFluid,
+        5 => ResourceKind::QuantumFluid,
+        _ => return None,
+    };
+    Some((kind, FLASK_ENERGY_GAIN[(flask_kind - 1) as usize]))
+}
+
+#[cfg(test)]
+mod energy_exchange_constants_tests {
+    use super::*;
+
+    #[test]
+    fn flask_ladder_is_defined_for_every_tier_and_never_zero() {
+        for kind in 1..=5u8 {
+            let (_, gain) = flask_kind_reward(kind).expect("все пять тиров обязаны быть заданы");
+            assert!(gain > 0, "фляга обязана возвращать хотя бы одну энергию");
+            assert!(gain <= ENERGY_CAP, "награда выше потолка энергии невозможна");
+        }
+        assert_eq!(flask_kind_reward(5).unwrap().1, ENERGY_CAP);
+    }
+
+    #[test]
+    fn flask_ladder_does_not_decrease_with_tier() {
+        let gains: Vec<u8> = (1..=5u8).map(|k| flask_kind_reward(k).unwrap().1).collect();
+        assert!(gains.windows(2).all(|w| w[0] <= w[1]), "лестница тиров не должна падать: {gains:?}");
+    }
+
+    #[test]
+    fn unknown_flask_kinds_are_rejected() {
+        assert!(flask_kind_reward(0).is_none());
+        assert!(flask_kind_reward(6).is_none());
+        assert!(flask_kind_reward(u8::MAX).is_none());
+    }
+
+    #[test]
+    fn one_energy_costs_exactly_one_whole_data() {
+        assert_eq!(DATA_ATOMS_PER_ENERGY, 1_000_000_000);
+        assert_eq!(DATA_ATOMS_PER_ENERGY, RESOURCE_UNIT);
+    }
+}
+
 // Погода (enum значения)
 pub const WEATHER_BLACKOUT: u8 = 0;
 pub const WEATHER_NOMINAL: u8 = 1;

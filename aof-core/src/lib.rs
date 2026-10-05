@@ -317,6 +317,26 @@ pub struct SetSupplyCap<'info> {
     pub material_mints: Box<Account<'info, MaterialMints>>,
 }
 
+/// Monotonic admin baseline for historical gross issuance, populated from a
+/// complete pre-activation SPL `MintTo` history scan. It can never lower the
+/// live counter, and the configured canonical mint must match `kind`.
+#[derive(Accounts)]
+#[instruction(kind: ResourceKind, total_minted: u128)]
+pub struct SetIssuanceLifetimeBaseline<'info> {
+    #[account(
+        seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ AofError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[kind as u8]], bump = issuance_cap.bump)]
+    pub issuance_cap: Box<Account<'info, IssuanceCap>>,
+    #[account(constraint = mint.key() == crate::state::mint_for_kind(&config, &material_mints, &kind) @ AofError::InvalidResourceKind)]
+    pub mint: Account<'info, Mint>,
+}
+
 // =====================================================================
 // [AUDIT F-16] Collector perk allowlist
 // =====================================================================
@@ -1179,6 +1199,9 @@ pub struct CollectMining<'info> {
     #[account(mut, constraint = vault_token.owner == vault.key() @ AofError::NotToolOwner, constraint = vault_token.mint == mint.key() @ AofError::InvalidMint)]
     pub vault_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+    /// Dynamic kind is selected from ToolData; the handler verifies the PDA kind.
+    #[account(mut)]
+    pub issuance_cap: Box<Account<'info, IssuanceCap>>,
 }
 
 #[derive(Accounts)]
@@ -1320,6 +1343,9 @@ pub struct CollectMiningDelegated<'info> {
     )]
     pub rental_vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+    /// Dynamic kind is selected from ToolData; the handler verifies the PDA kind.
+    #[account(mut)]
+    pub issuance_cap: Box<Account<'info, IssuanceCap>>,
 }
 
 #[derive(Accounts)]
@@ -1986,6 +2012,9 @@ pub struct StartExplorationCommit<'info> {
         constraint = !tool.is_mining @ AofError::ToolBusy
     )]
     pub tool: Box<Account<'info, ToolData>>,
+    /// CHECK: auth PDA owns shared resource escrow token accounts.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
     #[account(
         init, payer = user, space = EXPLORATION_COMMIT_SPACE,
         seeds = [EXPLORATION_COMMIT_SEED, tool_mint.key().as_ref()], bump
@@ -2012,6 +2041,14 @@ pub struct StartExplorationCommit<'info> {
     pub dataset_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_dataset.mint == dataset_mint.key(), constraint = user_dataset.owner == user.key())]
     pub user_dataset: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = data_mint, associated_token::authority = auth)]
+    pub escrow_data: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = auth)]
+    pub escrow_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
+    pub escrow_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = auth)]
+    pub escrow_dataset: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
@@ -2054,6 +2091,10 @@ pub struct ExploreReveal<'info> {
     /// CHECK: the committing player (rent + rewards).
     #[account(mut, address = exploration_commit.user)]
     pub user: UncheckedAccount<'info>,
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(mut, address = material_mints.dataset)]
+    pub dataset_mint: Box<Account<'info, Mint>>,
     #[account(mut, address = config.circuit_mint)]
     pub circuit_mint: Box<Account<'info, Mint>>,
     #[account(init_if_needed, payer = cranker, associated_token::mint = circuit_mint, associated_token::authority = user)]
@@ -2062,9 +2103,17 @@ pub struct ExploreReveal<'info> {
     pub silicon_mint: Box<Account<'info, Mint>>,
     #[account(init_if_needed, payer = cranker, associated_token::mint = silicon_mint, associated_token::authority = user)]
     pub user_silicon: Box<Account<'info, TokenAccount>>,
-    /// CHECK: auth PDA
+    /// CHECK: auth PDA owns shared resource escrow token accounts.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
+    #[account(mut, associated_token::mint = data_mint, associated_token::authority = auth)]
+    pub escrow_data: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = auth)]
+    pub escrow_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
+    pub escrow_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = auth)]
+    pub escrow_dataset: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, exploration_commit.randomness.as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
@@ -2098,13 +2147,16 @@ pub struct ExploreReveal<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Circuit as u8]], bump = issuance_cap_circuit.bump)]
+    pub issuance_cap_circuit: Box<Account<'info, IssuanceCap>>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Silicon as u8]], bump = issuance_cap_silicon.bump)]
+    pub issuance_cap_silicon: Box<Account<'info, IssuanceCap>>,
 }
 
-/// [F-06] Refund of a trip the oracle never revealed: the burned trip cost is
-/// re-minted to the player's canonical ATAs. No outcome is at stake any more
-/// (the reveal window is closed), so a closed ATA only delays the player's own
-/// refund until they re-create it; no `init_if_needed` here keeps the account
-/// validation inside the SBF stack frame.
+/// [F-06] Refund of a trip the oracle never revealed: inputs remain in the
+/// program escrow until settlement, so this path transfers them back instead
+/// of minting. The settlement transaction creates any missing canonical user
+/// ATAs in top-level idempotent ATA instructions before calling this handler.
 #[derive(Accounts)]
 pub struct ExploreExpire<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
@@ -2130,18 +2182,26 @@ pub struct ExploreExpire<'info> {
     pub data_mint: Box<Account<'info, Mint>>,
     #[account(mut, associated_token::mint = data_mint, associated_token::authority = user)]
     pub user_data: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = data_mint, associated_token::authority = auth)]
+    pub escrow_data: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.circuit_mint)]
     pub circuit_mint: Box<Account<'info, Mint>>,
     #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = user)]
     pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = auth)]
+    pub escrow_circuit: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.silicon_mint)]
     pub silicon_mint: Box<Account<'info, Mint>>,
     #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = user)]
     pub user_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
+    pub escrow_silicon: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = material_mints.dataset)]
     pub dataset_mint: Box<Account<'info, Mint>>,
     #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = user)]
     pub user_dataset: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = auth)]
+    pub escrow_dataset: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -2278,6 +2338,9 @@ pub struct ForgeAttemptCommit<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
+    /// CHECK: auth PDA owns shared resource escrow token accounts.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
     #[account(seeds = [TOOL_SEED, tool_mint.key().as_ref()], bump, constraint = tool.owner == user.key() @ AofError::NotToolOwner)]
     pub tool: Box<Account<'info, ToolData>>,
     pub tool_mint: Box<Account<'info, Mint>>,
@@ -2301,6 +2364,10 @@ pub struct ForgeAttemptCommit<'info> {
     pub silicon_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == user.key())]
     pub user_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = auth)]
+    pub escrow_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
+    pub escrow_silicon: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
     /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
@@ -2327,6 +2394,17 @@ pub struct ForgeAttemptCommit<'info> {
 pub struct ForgeAttemptReveal<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
+    /// CHECK: auth PDA signs the burn from resource escrow.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut, address = config.circuit_mint)]
+    pub circuit_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = auth)]
+    pub escrow_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
+    pub escrow_silicon: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub cranker: Signer<'info>,
     #[account(mut, seeds = [ENCHANT_SLOT_SEED, forge_commit.tool_mint.as_ref(), &[forge_commit.slot_type]], bump)]
@@ -2378,15 +2456,13 @@ pub struct ForgeAttemptReveal<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// [F-06] Refund of a forge attempt the oracle never revealed: burned Circuit and
-/// Silicon are re-minted to the player's canonical ATAs, the escrowed fee and
-/// the rent go back. Permissionless; only once the reveal window has closed.
+/// [F-06] Refund of a forge attempt the oracle never revealed: Circuit and
+/// Silicon are transferred back from the resource escrow; no resource mint is
+/// needed. Permissionless; only once the reveal window has closed.
 #[derive(Accounts)]
 pub struct ForgeAttemptExpire<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
-    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
-    pub material_mints: Box<Account<'info, MaterialMints>>,
     #[account(
         mut,
         close = user,
@@ -2406,10 +2482,14 @@ pub struct ForgeAttemptExpire<'info> {
     pub circuit_mint: Box<Account<'info, Mint>>,
     #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = user)]
     pub user_circuit: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = circuit_mint, associated_token::authority = auth)]
+    pub escrow_circuit: Box<Account<'info, TokenAccount>>,
     #[account(mut, address = config.silicon_mint)]
     pub silicon_mint: Box<Account<'info, Mint>>,
     #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = user)]
     pub user_silicon: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
+    pub escrow_silicon: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -3164,6 +3244,8 @@ pub struct HarvestSynapse<'info> {
     pub user_synapse: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Synapse as u8]], bump = issuance_cap_synapse.bump)]
+    pub issuance_cap_synapse: Box<Account<'info, IssuanceCap>>,
 }
 
 // [БЛОК L] Запуск партии помола
@@ -3230,6 +3312,8 @@ pub struct CollectSignal<'info> {
     #[account(mut, constraint = user_signal.mint == signal_mint.key(), constraint = user_signal.owner == user.key())]
     pub user_signal: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Signal as u8]], bump = issuance_cap_signal.bump)]
+    pub issuance_cap_signal: Box<Account<'info, IssuanceCap>>,
 }
 
 // [БЛОК L] Запуск партии выпечки в печи
@@ -3306,6 +3390,70 @@ pub struct CollectModel<'info> {
     #[account(mut, constraint = user_model.mint == model_mint.key(), constraint = user_model.owner == user.key())]
     pub user_model: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Model as u8]], bump = issuance_cap_model.bump)]
+    pub issuance_cap_model: Box<Account<'info, IssuanceCap>>,
+}
+
+// [§3.8] Обмен DATA на энергию. DATA — канонический минт из Config
+// (`mint_for_kind(Data) == config.data_mint`), поэтому адресная проверка минта
+// идёт констрейнтом, а не телом обработчика.
+#[derive(Accounts)]
+pub struct ExchangeDataEnergy<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = ENERGY_ACCOUNT_SPACE,
+        seeds = [ENERGY_ACCOUNT_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub energy_account: Box<Account<'info, EnergyAccount>>,
+    // `mut`: token::burn уменьшает supply минта, поэтому минт обязан быть writable.
+    #[account(mut, address = config.data_mint)]
+    pub data_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        constraint = user_data.mint == data_mint.key(),
+        constraint = user_data.owner == user.key()
+    )]
+    pub user_data: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+// [§3.8] Применение флякона: сжигает один флюид и возвращает энергию по тиру.
+// Минт флякона зависит от `flask_kind`, поэтому каноничность проверяется в
+// обработчике через `mint_for_kind` — до сжигания.
+#[derive(Accounts)]
+pub struct UseFlask<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = ENERGY_ACCOUNT_SPACE,
+        seeds = [ENERGY_ACCOUNT_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub energy_account: Box<Account<'info, EnergyAccount>>,
+    // `mut`: token::burn уменьшает supply минта, поэтому минт обязан быть writable.
+    #[account(mut)]
+    pub flask_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        constraint = user_flask.mint == flask_mint.key(),
+        constraint = user_flask.owner == user.key()
+    )]
+    pub user_flask: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 // [БЛОК L] Обновление погоды (permissionless)
@@ -3364,6 +3512,8 @@ pub struct CollectPower<'info> {
     pub user_power: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Power as u8]], bump = issuance_cap_power.bump)]
+    pub issuance_cap_power: Box<Account<'info, IssuanceCap>>,
 }
 
 // [БЛОК L] Универсальный мгновенный крафт (гемы/баночки)
@@ -3396,6 +3546,9 @@ pub struct CraftRecipe<'info> {
     #[account(mut, constraint = output_acc.mint == output_mint.key(), constraint = output_acc.owner == user.key())]
     pub output_acc: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
+    /// Output kind is selected by recipe_id; check_supply_cap validates the stored kind.
+    #[account(mut)]
+    pub issuance_cap: Box<Account<'info, IssuanceCap>>,
 }
 
 // ----- Ордербук ресурсов -----
@@ -3821,6 +3974,8 @@ pub struct ClaimSeasonReward<'info> {
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Circuit as u8]], bump = issuance_cap_circuit.bump)]
+    pub issuance_cap_circuit: Box<Account<'info, IssuanceCap>>,
 }
 
 /// [§3.4] Полный сброс прогресса перерождения. Отдельные инструкции
@@ -3960,6 +4115,15 @@ pub mod aof_core {
         instructions::set_supply_cap(ctx, kind, max_supply)
     }
 
+    /// Set or raise the historical gross-mint baseline; never lowers the live counter.
+    pub fn set_issuance_lifetime_baseline(
+        ctx: Context<SetIssuanceLifetimeBaseline>,
+        kind: ResourceKind,
+        total_minted: u128,
+    ) -> Result<()> {
+        instructions::set_issuance_lifetime_baseline(ctx, kind, total_minted)
+    }
+
     // =================================================================
     // [AUDIT F-16] Collector perk allowlist
     // =================================================================
@@ -4055,6 +4219,18 @@ pub mod aof_core {
     /// [БЛОК L] Сбор готового хлеба с печи
     pub fn collect_model(ctx: Context<CollectModel>) -> Result<()> {
         instructions::collect_model::handler(ctx)
+    }
+
+    /// [§3.8] Обмен DATA на энергию: целое DATA → 1 энергия, не выше потолка.
+    /// DATA сжигается, поэтому потолок выпуска освобождается.
+    pub fn exchange_data_energy(ctx: Context<ExchangeDataEnergy>, data_amount: u64) -> Result<()> {
+        instructions::exchange_data_energy::handler(ctx, data_amount)
+    }
+
+    /// [§3.8] Применение флякона: сжигает одну флягу (1..=5) и возвращает
+    /// энергию по тиру. Единственный объявленный эффект флюидов.
+    pub fn use_flask(ctx: Context<UseFlask>, flask_kind: u8) -> Result<()> {
+        instructions::use_flask::handler(ctx, flask_kind)
     }
 
     /// [БЛОК L] Обновление погоды (permissionless, раз в сутки)

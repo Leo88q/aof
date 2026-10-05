@@ -13,7 +13,7 @@
     },
     {
       "file": "frontend/src/lib/coreInstructions.ts",
-      "distinctInstructions": 123
+      "distinctInstructions": 125
     },
     {
       "file": "frontend/src/lib/transactionIntent.ts",
@@ -25,10 +25,10 @@
     }
   ],
   "totals": {
-    "instructions": 171,
+    "instructions": 174,
     "byRole": {
-      "gameplay": 101,
-      "admin": 40,
+      "gameplay": 103,
+      "admin": 41,
       "emergency": 8,
       "migration": 1,
       "initialization": 16,
@@ -44,10 +44,10 @@
   },
   "programs": {
     "aof_core": {
-      "instructions": 123,
+      "instructions": 126,
       "byRole": {
-        "gameplay": 81,
-        "admin": 21,
+        "gameplay": 83,
+        "admin": 22,
         "emergency": 6,
         "migration": 1,
         "initialization": 9,
@@ -1758,7 +1758,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::reveal_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 130
+        "line": 133
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1813,7 +1813,7 @@
         "kind": "delegate",
         "path": "instructions::forge::commit_handler",
         "file": "aof-core/src/instructions/forge.rs",
-        "line": 16
+        "line": 14
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1874,7 +1874,7 @@
         "kind": "delegate",
         "path": "instructions::forge::reveal_handler",
         "file": "aof-core/src/instructions/forge.rs",
-        "line": 123
+        "line": 121
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1930,7 +1930,7 @@
         "kind": "delegate",
         "path": "instructions::forge::expire_handler",
         "file": "aof-core/src/instructions/forge.rs",
-        "line": 202
+        "line": 262
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1962,9 +1962,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
+            "tests/readiness/vrf-tx-size.test.cjs",
             "tests/readiness/vrf.test.cjs"
           ]
         }
@@ -2315,10 +2316,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_vrf_localnet.ts"
           ]
         }
       },
@@ -2519,10 +2521,11 @@
       ],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "tests/aof_core.ts"
+            "tests/aof_core.ts",
+            "tests/aof_vrf_localnet.ts"
           ]
         },
         "readiness": {
@@ -5026,7 +5029,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::upgrade_tier_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 228
+        "line": 246
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -5764,9 +5767,10 @@
           ]
         },
         "adminScripts": {
-          "calls": 0,
+          "calls": 1,
           "mentions": 1,
           "files": [
+            "aof_backend/scripts/applyMiningLifetimeCaps.ts",
             "scripts/economy/propose-caps.mjs"
           ]
         }
@@ -5796,7 +5800,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 2,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6496,7 +6500,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::expire_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 199
+        "line": 223
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6527,9 +6531,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 3,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
+            "tests/readiness/vrf-tx-size.test.cjs",
             "tests/readiness/vrf.test.cjs"
           ]
         }
@@ -7002,6 +7007,13 @@
       "note": "Канонический перенос инструмента (NFT и ToolData.owner одним действием); зовётся из aof_market по CPI.",
       "evidence": null,
       "callSites": {
+        "backend": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/pda.ts"
+          ]
+        },
         "rustCpi": {
           "calls": 1,
           "mentions": 0,
@@ -7032,7 +7044,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -7177,10 +7189,13 @@
       "bringup": [],
       "tests": {
         "validator": {
-          "calls": 1,
+          "calls": 4,
           "mentions": 0,
           "files": [
-            "tests/aof_payer_funding.ts"
+            "tests/aof_core.ts",
+            "tests/aof_extended.ts",
+            "tests/aof_payer_funding.ts",
+            "tests/aof_tool_ownership.ts"
           ]
         },
         "readiness": {
@@ -7197,6 +7212,181 @@
       "summary": {
         "callSiteCount": 1,
         "validatorTested": true,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "exchange_data_energy",
+      "camel": "exchangeDataEnergy",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::exchange_data_energy::handler",
+        "file": "aof-core/src/instructions/exchange_data_energy.rs",
+        "line": 27
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Обмен DATA на энергию: сжигает целые DATA, начисляет энергию не выше потолка бака (§3.8).",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/resourceRegistry.ts",
+            "aof_backend/src/routes/resources.ts"
+          ]
+        },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/devnet-program-probe.py"
+          ]
+        },
+        "platform": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "functions/index.js"
+          ]
+        }
+      },
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
+      "bringup": [],
+      "tests": {
+        "selfTests": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/test-devnet-program-probe.py"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 2,
+          "files": [
+            "tests/readiness/contract-work-3-8.test.cjs",
+            "tests/readiness/layout-baseline.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 4,
+        "validatorTested": false,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "use_flask",
+      "camel": "useFlask",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::use_flask::handler",
+        "file": "aof-core/src/instructions/use_flask.rs",
+        "line": 27
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Применение фляги: сжигает один флюид, возвращает энергию по тиру (§3.8).",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/resourceRegistry.ts",
+            "aof_backend/src/routes/tools.ts"
+          ]
+        },
+        "adminScripts": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/devnet-program-probe.py"
+          ]
+        }
+      },
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
+      "bringup": [],
+      "tests": {
+        "selfTests": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "scripts/test-devnet-program-probe.py"
+          ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 2,
+          "files": [
+            "tests/readiness/contract-work-3-8.test.cjs",
+            "tests/readiness/layout-baseline.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 3,
+        "validatorTested": false,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "set_issuance_lifetime_baseline",
+      "camel": "setIssuanceLifetimeBaseline",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::set_issuance_lifetime_baseline",
+        "file": "aof-core/src/instructions/admin_config.rs",
+        "line": 41
+      },
+      "disabledOnChain": false,
+      "role": "admin",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Монотонное установление gross-mint baseline после полной сверки исторического MintTo-скана; счётчик нельзя понизить.",
+      "evidence": null,
+      "callSites": {
+        "adminScripts": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/scripts/applyIssuanceBaselines.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/layout-baseline.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 1,
+        "validatorTested": false,
         "anyTest": true
       }
     },
@@ -8906,8 +9096,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
+            "tests/readiness/backend-bootstrap-typecheck.test.cjs",
             "tests/readiness/bringup-entrypoints.test.cjs",
             "tests/readiness/market-currency-binding.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
