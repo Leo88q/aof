@@ -253,7 +253,39 @@ async function buildMissingRefundAtaInstructions(c: PendingCommit, payer: Public
   return instructions;
 }
 
-async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction> {
+/**
+ * Expired exploration/forge commits refund escrowed SPL resources. If a player
+ * closed an ATA after committing, create it as a top-level idempotent ATA ix,
+ * paid by the refund transaction's fee payer. Keeping account creation outside
+ * aof_core's SBF frame avoids another init CPI there and makes player self-settle
+ * and third-party settlement use the same refund-safe path.
+ */
+async function buildMissingRefundAtaInstructions(c: PendingCommit, payer: PublicKey): Promise<TransactionInstruction[]> {
+  if (c.mechanic !== "exploration" && c.mechanic !== "forge") return [];
+  if (!c.user) throw new Error(`${c.mechanic} refund is missing its committing user`);
+  const cfg = await coreConfig();
+  const mints = c.mechanic === "exploration"
+    ? [cfg.dataMint, cfg.circuitMint, cfg.siliconMint, (await materialMints()).dataset as PublicKey]
+    : [cfg.circuitMint, cfg.siliconMint];
+  const addresses = mints.map((mint: PublicKey) => ata(mint, c.user!));
+  const infos = await connection.getMultipleAccountsInfo(addresses, "confirmed");
+  const instructions: TransactionInstruction[] = [];
+  for (let i = 0; i < mints.length; i++) {
+    const info = infos[i];
+    if (info) {
+      if (!info.owner.equals(TOKEN_PROGRAM_ID)) {
+        throw new Error(`${c.mechanic} refund ATA ${addresses[i].toBase58()} is owned by ${info.owner.toBase58()}, not SPL Token`);
+      }
+      continue;
+    }
+    instructions.push(createAssociatedTokenAccountIdempotentInstruction(
+      payer, addresses[i], c.user, mints[i], TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+    ));
+  }
+  return instructions;
+}
+
+async function refundInstruction(c: PendingCommit): Promise<TransactionInstruction> {
   const prog = programFor(c.mechanic);
   const vrfSlot = vrfSlotPda(prog.programId, c.randomness);
   const config = configPda()[0];
