@@ -1,15 +1,12 @@
 'use strict';
 /*
- * Коммит 6 payer-remediation: backend перестаёт оплачивать ATA игрока.
+ * Backend-funded player ATAs are forbidden except for season reward claims, whose
+ * approved operator-paid model requires the authority to pay the recipient CIRCUIT
+ * ATA rent and transaction fee. Resource/mint paths still keep player ATAs player-paid;
+ * treasury and pool ATAs are project infrastructure.
  *
- * Что закрывал долг: роуты собирали `createAssociatedTokenAccountIdempotentInstruction(
- * AUTHORITY_PUBKEY, <ata игрока>, <игрок>, ...)` и отправляли это `authorityOnly` — rent
- * пользовательского ATA платил кошелёк проекта. Теперь ATA игрока создаётся лениво в
- * транзакции самого игрока (fee payer = payer = игрок), authority подписывает только
- * авторизацию, а ATA казны/пула остаётся инфраструктурой проекта.
- *
- * Source-level тесты: Rust/Anchor не компилировались, validator не запускался, TS не
- * собирался (`pending compilation` в docs/PAYER_REMEDIATION.md).
+ * Source-level tests: Rust/Anchor and the full TypeScript build remain separate
+ * local-toolchain checks.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -121,23 +118,36 @@ const AUTHORITY_PAID_ATAS = [
   'hotMarket.ts|pool',
   'inbox.ts|treasury',
   'resources.ts|treasury',
+  'season.ts|owner', // explicitly operator-paid season reward claim
 ].sort();
 
-test('ни один ATA игрока не оплачивается кошельком проекта', () => {
+function isAllowedOperatorPaidSeasonRewardAta(c) {
+  return c.file === 'season.ts' && c.payer === 'AUTHORITY_PUBKEY' &&
+    c.ata === 'userCircuit' && c.owner === 'owner';
+}
+
+test('player ATAs are player-paid except the approved operator-paid season reward', () => {
   const violations = allCreations()
-    .filter((c) => c.payer === 'AUTHORITY_PUBKEY' && !INFRA_OWNERS.has(c.owner))
+    .filter((c) => c.payer === 'AUTHORITY_PUBKEY' && !INFRA_OWNERS.has(c.owner) && !isAllowedOperatorPaidSeasonRewardAta(c))
     .map((c) => `${c.file}:${c.line} payer=authority owner=${c.owner}`);
   assert.deepEqual(violations, [],
-    'authority оплачивает ATA игрока: user ATA обязан создаваться в транзакции игрока');
+    'authority-paid player ATAs must be the single approved season reward claim exception');
 });
 
-test('authority-funded ATA — ровно инфраструктурный allowlist (казны и пулы)', () => {
+test('authority-funded ATA — exact infra allowlist plus season reward claim exception', () => {
   const actual = allCreations()
     .filter((c) => c.payer === 'AUTHORITY_PUBKEY')
     .map((c) => `${c.file}|${c.owner}`)
     .sort();
   assert.deepEqual(actual, AUTHORITY_PAID_ATAS,
-    'изменился список ATA, которые оплачивает проект: проверьте, что это инфраструктура, а не аккаунт игрока');
+    'изменился список ATA, которые оплачивает проект: проверьте инфраструктуру и разрешённый сезонный exception');
+});
+
+test('/season/reward/claim: operator pays the idempotent CIRCUIT ATA and claim transaction', () => {
+  const body = routeBody(read('aof_backend/src/routes/season.ts'), '/reward/claim');
+  assert.match(body, /createAssociatedTokenAccountIdempotentInstruction\(\s*AUTHORITY_PUBKEY,\s*userCircuit,\s*owner,\s*circuitMint/);
+  assert.match(body, /authorityOnly\(\[ataIx, rewardIx\]\)/);
+  assert.doesNotMatch(body, /coSignQuoted\(/, 'player never receives a payer quote/sign transaction for a reward claim');
 });
 
 test('/resources/mint: ATA игрока — в его транзакции, ATA казны — лениво и за проект', () => {

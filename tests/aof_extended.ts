@@ -338,14 +338,13 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       config: configPda, user: user.publicKey, treasury: authority, season, seasonPass, premiumClaims,
       systemProgram: SystemProgram.programId,
     }).signers([user]).rpc();
+    const playerBeforePurchase = await lamports(user.publicKey);
     const treasuryBeforePurchase = await lamports(authority);
-    await purchase();
-    expect((await lamports(authority)) - treasuryBeforePurchase).to.equal(150_000_000);
-    expect((await program.account.seasonPass.fetch(seasonPass)).premium).to.equal(true);
-    expect((await program.account.seasonPremiumClaims.fetch(premiumClaims)).owner.toBase58()).to.equal(user.publicKey.toBase58());
-    const treasuryAfterPurchase = await lamports(authority);
-    await expectError(purchase(), "SeasonPassAlreadyPremium");
-    expect(await lamports(authority)).to.equal(treasuryAfterPurchase);
+    await expectError(purchase(), "SeasonPremiumRequired");
+    expect(await lamports(user.publicKey)).to.equal(playerBeforePurchase);
+    expect(await lamports(authority)).to.equal(treasuryBeforePurchase);
+    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
+    expect(await provider.connection.getAccountInfo(premiumClaims)).to.equal(null);
     expect(await provider.connection.getAccountInfo(claimCursor)).to.equal(null);
 
     const xpExpirySlot = (await provider.connection.getSlot("confirmed")) + 20_000;
@@ -476,25 +475,14 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, circuitMint, userCircuit, auth: authPda,
       issuanceCapCircuit: issuanceCapPda("circuit"), tokenProgram: TOKEN_PROGRAM_ID,
     }).rpc();
-    const claimPremiumReward = (level: number) => program.methods.claimPremiumSeasonReward(level).accounts({
-      config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, premiumClaims,
-      circuitMint, userCircuit, auth: authPda, issuanceCapCircuit: issuanceCapPda("circuit"), tokenProgram: TOKEN_PROGRAM_ID,
-    }).rpc();
     const circuitBefore = await balance(userCircuit);
     await expectError(claimReward(1, true), "SeasonPremiumRequired");
     expect((await balance(userCircuit)).toString()).to.equal(circuitBefore.toString());
     await claimReward(1, false);
-    const afterFreeClaim = await balance(userCircuit);
-    expect(afterFreeClaim.sub(circuitBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
+    expect((await balance(userCircuit)).sub(circuitBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
     await expectError(claimReward(1, false), "SeasonRewardAlreadyClaimed");
     await expectError(claimReward(2, false), "SeasonInsufficientXp"); // 1 501 XP < 2 000
-    await claimPremiumReward(1);
-    const afterPremiumClaim = await balance(userCircuit);
-    expect(afterPremiumClaim.sub(afterFreeClaim).toString()).to.equal(UNIT.muln(100).toString());
-    await expectError(claimPremiumReward(1), "SeasonRewardAlreadyClaimed");
-    await expectError(claimPremiumReward(2), "SeasonInsufficientXp");
     expect((await program.account.seasonPass.fetch(seasonPass)).claimedBitmap.toString()).to.equal("1");
-    expect((await program.account.seasonPremiumClaims.fetch(premiumClaims)).claimedBitmap.toString()).to.equal("1");
   });
 
   // ========== LOTTERY / QUANTUM DRAW ==========

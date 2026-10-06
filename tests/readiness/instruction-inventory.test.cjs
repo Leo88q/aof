@@ -116,11 +116,11 @@ test('запись о несуществующей инструкции, неи�
 
 test('статус в классификации обязан совпадать с кодом: отключённое не может быть «active» и наоборот', () => {
   withRoot((tmp) => {
-    // Активный purchase path нельзя снова описывать как disabled.
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.purchase_season_pass.status = 'disabled-on-chain'; return roles; });
+    // A disabled purchase path cannot be classified as active.
+    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.purchase_season_pass.status = 'active'; return roles; });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
-    assert.match(result.out, /aof_core\.purchase_season_pass: в классификации инструкция отключена, но в коде этого не видно/);
+    assert.match(result.out, /aof_core\.purchase_season_pass: код отключает инструкцию .* статус 'active'/);
   });
   withRoot((tmp) => {
     editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.set_fees.status = 'disabled-on-chain'; return roles; });
@@ -129,14 +129,14 @@ test('статус в классификации обязан совпадать
     assert.match(result.out, /aof_core\.set_fees: в классификации инструкция отключена, но в коде этого не видно/);
   });
   withRoot((tmp) => {
-    // A newly reintroduced unconditional guard must be detected against active classification.
+    // Removing the fail-closed guard must be detected against disabled classification.
     edit(tmp, 'aof-core/src/instructions/season.rs', (src) => src.replace(
-      'pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {',
-      'pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {\n    require!(false, AofError::SeasonPremiumRequired);',
+      '    require!(false, AofError::SeasonPremiumRequired);\n',
+      '',
     ));
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
-    assert.match(result.out, /aof_core\.purchase_season_pass: код отключает инструкцию .* статус 'active'/);
+    assert.match(result.out, /aof_core\.purchase_season_pass: в классификации инструкция отключена, но в коде этого не видно/);
   });
 });
 

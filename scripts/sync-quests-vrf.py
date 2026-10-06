@@ -50,7 +50,7 @@ def render(core: str) -> str:
     out = out.replace("crate::randomness::SLOT_HASHES_ID", "SLOT_HASHES_ID")
     for name in ("VRF_AUTHORITY_SEED", "VRF_RANDOMNESS_SEED", "VRF_REFUND_AFTER_SLOTS"):
         out = out.replace(f"crate::constants::{name}", name)
-    cut = out.find("/// Rent the settler of a tool-producing commit fronts")
+    cut = out.find("/// Maximum rent the settler")
     if cut >= 0:
         out = out[:cut].rstrip("\n") + "\n"
     if "crate::constants" in out or "crate::randomness" in out:

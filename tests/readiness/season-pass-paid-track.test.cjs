@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '../..');
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 const idl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
 
-test('paid season pass is priced, quoted, replay-guarded, and uses independent premium claims', () => {
+test('paid season sales stay fail-closed while claims use independent premium ledgers', () => {
   const rust = read('aof-core/src/instructions/season.rs');
   const lib = read('aof-core/src/lib.rs');
   const route = read('aof_backend/src/routes/season.ts');
@@ -17,7 +17,10 @@ test('paid season pass is priced, quoted, replay-guarded, and uses independent p
   const purchase = rust.slice(rust.indexOf('pub fn purchase_pass_handler'), rust.indexOf('/// XP is earned'));
   const premiumClaim = rust.slice(rust.indexOf('pub fn claim_premium_reward_handler'));
 
-  assert.doesNotMatch(purchase, /require!\(false/);
+  assert.match(purchase, /require!\(false, AofError::SeasonPremiumRequired\)/,
+    'the on-chain purchase instruction stays closed until the separate acceptance gate passes');
+  assert.ok(purchase.indexOf('require!(false') < purchase.indexOf('system_program::transfer'),
+    'the closed purchase path must fail before any SOL transfer');
   for (const guard of ['SeasonNotStarted', 'SeasonEnded', 'SeasonPassAlreadyPremium', 'SEASON_LENGTH_SECONDS']) {
     assert.ok(purchase.includes(guard), `purchase handler is missing ${guard}`);
   }

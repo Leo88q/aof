@@ -38,6 +38,9 @@ pub fn init_pass_handler(ctx: Context<InitSeasonPass>, season_id: u32) -> Result
 }
 
 pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
+    // Keep direct-RPC sales closed until the 42-day / 0.15 SOL Devnet acceptance
+    // gate is complete; the HTTP sales gate alone is not a contract boundary.
+    require!(false, AofError::SeasonPremiumRequired);
     // [SECURITY_CHECKLIST_REVIEW] A pass used to be sold for any season id at any
     // time (including seasons that had ended) and a second purchase silently
     // charged 0.15 SOL again for a flag that was already set. Validate every

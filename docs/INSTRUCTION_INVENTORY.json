@@ -36,8 +36,8 @@
       "deprecated": 0,
       "candidate-dead-code": 0
     },
-    "disabledOnChain": 6,
-    "validatorTested": 101,
+    "disabledOnChain": 7,
+    "validatorTested": 100,
     "sharedNames": 23,
     "withoutAnyCallSite": 18,
     "withoutCallSiteAndTest": 3
@@ -55,8 +55,8 @@
         "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 0,
-      "validatorTested": 95,
+      "disabledOnChain": 1,
+      "validatorTested": 94,
       "sharedNames": 7,
       "withoutAnyCallSite": 12,
       "withoutCallSiteAndTest": 1
@@ -781,7 +781,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 166
+        "line": 169
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1992,7 +1992,7 @@
         "kind": "delegate",
         "path": "instructions::season::grant_xp_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 94
+        "line": 97
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -3543,11 +3543,11 @@
         "file": "aof-core/src/instructions/season.rs",
         "line": 40
       },
-      "disabledOnChain": false,
+      "disabledOnChain": true,
       "role": "gameplay",
-      "status": "active",
+      "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Платный апгрейд в активном сезоне: фиксированные 0.15 SOL в config.treasury, одноразовая покупка, игрок оплачивает quote rent; отдельный premium-claim ledger. UI остаётся закрыт до devnet acceptance.",
+      "note": "Fail-closed до Devnet acceptance: on-chain guard возвращает SeasonPremiumRequired до SOL transfer; HTTP sales gate и UI также закрыты.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -7475,7 +7475,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_premium_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 227
+        "line": 230
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7500,13 +7500,6 @@
         "aof_backend/src/routes/season.ts"
       ],
       "tests": {
-        "validator": {
-          "calls": 1,
-          "mentions": 0,
-          "files": [
-            "tests/aof_extended.ts"
-          ]
-        },
         "readiness": {
           "calls": 0,
           "mentions": 4,
@@ -7520,7 +7513,7 @@
       },
       "summary": {
         "callSiteCount": 1,
-        "validatorTested": true,
+        "validatorTested": false,
         "anyTest": true
       }
     },

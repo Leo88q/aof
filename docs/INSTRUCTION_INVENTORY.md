@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 128 | 0 | 95 (74%) | 12 | 1 |
+| aof_core | 128 | 1 | 94 (73%) | 12 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 2 | 2 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **176** | **6** | **101** (57%) | **18** | **3** |
+| **всего** | **176** | **7** | **100** (57%) | **18** | **3** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -40,12 +40,13 @@
 | deprecated | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | candidate-dead-code | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-## Отключены в коде (6)
+## Отключены в коде (7)
 
 Первая команда обработчика — `require!(false, …)` или `err!(…)`: инструкция есть в IDL, но на цепи всегда отказывает.
 
 | Инструкция | Роль | Заметка |
 |---|---|---|
+| aof_core.purchase_season_pass | gameplay | Fail-closed до Devnet acceptance: on-chain guard возвращает SeasonPremiumRequired до SOL transfer; HTTP sales gate и UI также закрыты. |
 | aof_quests.achievement_unlock | gameplay | disabled / product decision pending — Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора. |
 | aof_quests.challenge_contribute | gameplay | disabled / product decision pending — Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации. |
 | aof_quests.drum_commit | gameplay | disabled / product decision pending — Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного MIND mint. |
@@ -142,7 +143,7 @@
 | aof_core | place_buy_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | place_sell_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | plant_neuron | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | purchase_season_pass | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 | ✓ |
+| aof_core | purchase_season_pass | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 | ✓ |
 | aof_core | referral_bind | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | referral_upgrade | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
@@ -213,7 +214,7 @@
 | aof_core | use_flask | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | set_issuance_lifetime_baseline | admin | active | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_core | set_tool_metadata_uris | admin | active | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |  |
-| aof_core | claim_premium_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | ✓ |
+| aof_core | claim_premium_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | ✓ |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_market | hot_market_sell_into_queue | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |

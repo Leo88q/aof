@@ -402,11 +402,11 @@
         "status": "active",
         "note": "Посадка семян."
       },
-      "purchase_season_pass": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Платный апгрейд в активном сезоне: фиксированные 0.15 SOL в config.treasury, одноразовая покупка, игрок оплачивает quote rent; отдельный premium-claim ledger. UI остаётся закрыт до devnet acceptance."
-      },
+  "purchase_season_pass": {
+    "role": "gameplay",
+    "status": "disabled-on-chain",
+    "note": "Fail-closed до Devnet acceptance: on-chain guard возвращает SeasonPremiumRequired до SOL transfer; HTTP sales gate и UI также закрыты."
+  },
       "referral_bind": {
         "role": "gameplay",
         "status": "active",

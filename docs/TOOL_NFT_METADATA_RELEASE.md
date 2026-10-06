@@ -92,6 +92,6 @@ The verifier makes only public HTTPS `GET` requests to the Arweave gateway. It v
 3. Before using any metadata URI on Solana, deploy the chosen host and pass its read-only verifier on all 25 image/JSON pairs. Cloudflare verification proves the current public deployment's bytes but does not make those URLs permanently immutable. The prior Arweave budget and the 0 bps royalty do not constitute approval to mint or change on-chain registry state.
 4. Issue exactly one NFT per type × rarity to the supplied Devnet recipient, then verify owner, mint supply/decimals, `ToolData`, metadata PDA, and fetched image/JSON for all 25.
 5. Exercise the broader game modules in the staged Devnet smoke matrix; this tool-NFT pilot does not establish whole-game readiness.
-6. Keep mining disabled until the four finite cumulative lifetime caps are explicitly approved, all six program bytecodes match, and all required local bytecode and smoke gates pass. Bringup must not alter registry statuses automatically.
+6. Keep mining disabled until all six program bytecodes match, the clean Devnet preflight covers payout mints and the valid material-mint registry, and the separate smoke gate passes. The explicitly accepted uncapped-lifetime-issuance policy is Devnet-only and still requires its preflight acknowledgement; the four finite cap values remain unapproved and unapplied. Do not run `issuance:lifetime-caps:apply`. Bringup must not alter registry statuses automatically.
 
 Cap values are intentionally absent here: repository scenarios are not approved lifetime caps.

@@ -51,38 +51,40 @@ AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply` (`UPGRADE` нуже�
 расходуется только вместе с целевой инструкцией», обновить маршруты `/session/*`
 (сейчас 503) и запись `SESSION_KEYS_DISABLED_UNTIL_ATOMIC_TARGET_BINDING`.
 
-## §3.6 Сезонный пропуск: платный трек (source implementation; acceptance still pending)
+## §3.6 Сезонный пропуск: платный трек (source implementation; sale gate closed)
 
-Source path is now implemented without changing the existing `SeasonPass` layout:
+Source path uses the existing `SeasonPass` layout and a separate
+`SeasonPremiumClaims` ledger:
 
-* `purchase_season_pass` validates the active 42-day window, rejects a repeat
-  purchase before transfer, sends the existing fixed `0.15 SOL` price to the
-  configured treasury, and initializes the independent `SeasonPremiumClaims`
-  PDA in the same atomic transaction. The player pays any rent for the pass and
-  premium-claim PDA.
-* `POST /season/pass/purchase` requires the existing wallet proof and fraud-hold
-  checks, reads the canonical treasury from `Config`, builds one instruction,
-  simulates it, and returns a payer quote bound to the exact message. The
-  frontend intent checks the 0.15-SOL transfer destination, both PDAs, account
-  sizes, and quote; purchase now has separate prepare/review and sign steps.
-* The old `claim_season_reward(level, premium_track)` ABI remains compatible,
-  but only serves the free ledger. `claim_premium_season_reward(level)` checks
-  the premium flag and its independent bitmap, then mints the same existing
-  per-level CIRCUIT amount through `IssuanceCap`. Both tracks require XP and
-  each can claim a level at most once. A new account, event, and appended IDL
-  instruction are recorded in the hand-maintained IDL and layout baseline.
+* `purchase_season_pass` retains the 42-day, duplicate-purchase, price, and
+  premium-ledger logic, but starts with an on-chain fail-closed
+  `SeasonPremiumRequired` guard **before any SOL transfer**. This blocks direct
+  RPC purchases as well as HTTP sales until the acceptance gate is complete.
+  The HTTP middleware also rejects unless `PAID_PASS_SALES_ENABLED=true`, and
+  the frontend keeps `PAID_PASS_READY=false`.
+* The old `claim_season_reward(level, premium_track)` ABI serves only the free
+  ledger; premium requests through it fail. The separate
+  `claim_premium_season_reward(level)` checks the premium flag and independent
+  bitmap, then mints the existing per-level CIRCUIT amount through `IssuanceCap`.
+  Both tracks require XP and each can claim a level at most once. The new account,
+  event, and appended instruction entries remain in the hand-maintained IDL and
+  layout baseline.
+* Reward claims use a wallet proof to authenticate player intent. The backend
+  authority submits the claim and pays the transaction fee and any recipient ATA
+  rent. The UI has no player-paid claim quote/sign flow and keeps ambiguous
+  outcomes pending while signature/claim status is checked.
 * XP entitlements remain individually signed, replay-protected and player-funded
   through the existing `grant_season_xp` path. VIP styling is still cosmetic;
   it does not change yields or rewards.
 
-**Release status:** `PAID_PASS_READY` stays `false`; the UI will not offer the
-purchase until the Devnet acceptance pass is complete. No build/deploy/RPC/smoke
-or live purchase was performed in this code-only session. Before changing that
-flag or describing the feature as ready, run the pinned Mac toolchain and
-purchase/free-track/premium-track/duplicate/expiry/quote smoke tests against a
-verified matching program. The separate premium bitmap is now the prerequisite
-that was missing from the previous single-bitmap design, not a claim that the
-acceptance gate has passed.
+**Release status:** paid-pass sales remain closed; the on-chain guard and
+`PAID_PASS_READY=false` stay in place until the separate Devnet acceptance gate
+passes. No build/deploy/RPC/smoke or live purchase was performed in this
+code-only session. Before changing the gate or describing the feature as ready,
+run the pinned Mac toolchain and purchase/free-track/premium-track/duplicate/
+expiry/quote smoke tests against verified matching bytecode. The separate
+premium bitmap enables independent claims; it does not mean that paid sales or
+acceptance have been enabled.
 
 ## §3.7 MIND
 

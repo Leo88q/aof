@@ -143,7 +143,7 @@ test('F-06 the aof-quests copy of vrf.rs is the aof-core module, not a fork', ()
     .replace(/crate::constants::|crate::randomness::/g, '')
     .replace(/pub const (VRF_AUTHORITY_SEED|VRF_SLOT_SEED|VRF_RANDOMNESS_SEED|VRF_REFUND_AFTER_SLOTS|SLOT_HASHES_ID)[^\n]*\n/g, '')
     .replace(/\/\/\/ (Same reveal window|SlotHashes sysvar)[^\n]*\n/g, '')
-    .replace(/\n\/\/\/ Rent the settler[\s\S]*$/, '\n')
+    .replace(/\n\/\/\/ Maximum rent the settler[\s\S]*$/, '\n')
     .replace(/\n\s*\n/g, '\n')
     .trim();
   assert.equal(normalize(read(QUESTS)), normalize(read(CORE)), 'regenerate programs/aof-quests/src/vrf.rs from aof-core/src/vrf.rs');

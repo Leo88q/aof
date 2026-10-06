@@ -355,7 +355,6 @@ pub struct RevealAccounts<'info> {
     pub system_program: AccountInfo<'info>,
     pub reward_escrow: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
-    pub wrapped_sol_mint: AccountInfo<'info>,
     pub program_state: AccountInfo<'info>,
 }
 
@@ -446,7 +445,6 @@ fn cpi_reveal(a: &RevealAccounts, params: &VrfRevealParams, authority_bump: u8) 
             a.system_program.clone(),
             a.reward_escrow.clone(),
             a.token_program.clone(),
-            a.wrapped_sol_mint.clone(),
             a.program_state.clone(),
             a.switchboard_program.clone(),
         ],

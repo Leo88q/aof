@@ -12,7 +12,7 @@ test('paid Mind stays fail-closed; season purchase uses separate ledgers and rem
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/config\/init"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/quest\/init"[^\n]*\n\s*res\.status\(503\)/);
   const seasonRoute = source('aof_backend/src/routes/season.ts');
-  assert.match(seasonRoute, /r\.post\("\/pass\/purchase", requireWalletProof/);
+  assert.match(seasonRoute, /r\.post\("\/pass\/purchase", requirePaidSeasonPassSales, requireWalletProof/);
   assert.match(seasonRoute, /SEASON_PREMIUM_CLAIMS_ACCOUNT_SIZE/);
   assert.match(seasonRoute, /coSignQuoted\(\[ix\], user/);
   assert.match(source('programs/aof-quests/src/instructions/drum/drum_commit.rs'), /pub fn handler[^\n]*\{[\s\S]{0,360}require!\(false, QuestError::Paused\)/);
@@ -25,7 +25,8 @@ test('paid Mind stays fail-closed; season purchase uses separate ledgers and rem
   assert.doesNotMatch(v2, /DrumCommitted|DrumRevealed|DrumRefunded/);
   assert.match(source('programs/aof-quests/src/instructions/drum/mind_bank.rs'), /bank\.paused = true/);
   const seasonProgram = source('aof-core/src/instructions/season.rs');
-  assert.doesNotMatch(seasonProgram, /require!\(false, AofError::SeasonPremiumRequired\)/);
+  assert.match(seasonProgram, /require!\(false, AofError::SeasonPremiumRequired\)/,
+    'direct on-chain pass purchases remain closed until the Devnet acceptance gate passes');
   assert.match(seasonProgram, /pub fn claim_premium_reward_handler/);
   assert.match(seasonProgram, /premium_claims\.claimed_bitmap/);
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/reveal", requireWalletLimits/);
