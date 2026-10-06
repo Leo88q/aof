@@ -55,7 +55,7 @@ function configuredLookupTableAddress(): PublicKey {
 /** Read the configured table from chain and refuse stale, inactive or closed tables. */
 export async function loadVrfAddressLookupTable(): Promise<AddressLookupTableAccount> {
   const key = configuredLookupTableAddress();
-  const { value } = await connection.getAddressLookupTable(key, "confirmed");
+  const { value } = await connection.getAddressLookupTable(key, { commitment: "confirmed" });
   if (!value || !value.key.equals(key)) throw new Error("Configured VRF address lookup table was not found on chain");
   if (value.state.deactivationSlot !== U64_MAX) {
     throw new Error("Configured VRF address lookup table is deactivated; provision a live table before retrying");

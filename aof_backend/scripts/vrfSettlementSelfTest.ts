@@ -196,6 +196,11 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   const materialMints = pda.materialMintsPda()[0];
   const sb = (prog: any, randomness: PublicKey) => ({ ...sbAccounts(prog, randomness), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SYSTEM });
   const sbAta = (prog: any, randomness: PublicKey) => ({ ...sb(prog, randomness), associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID });
+  const sbMetadataAta = (prog: any, randomness: PublicKey) => {
+    const { wrappedSolMint: unused, ...accounts } = sbAta(prog, randomness);
+    void unused;
+    return accounts;
+  };
   async function reveal(mechanic: Mechanic) {
     revealCalls = [];
     const commit = (await settlement.fetchPendingCommit(mechanic, commits[mechanic].publicKey))!;
@@ -211,7 +216,9 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     const mint = pda.packMintPda(k(1))[0];
     expectWiring(program, await reveal("pack"), "packOpenReveal", {
       config, cranker, packCommit: k(1), user: wallet, treasury: cfg.treasury, mint, userToken: ata(mint, wallet),
-      toolData: pda.toolPda(mint)[0], auth, ...sbAta(program, k(71)),
+      toolData: pda.toolPda(mint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
+      metadata: pda.tokenMetadataPda(mint)[0], masterEdition: pda.masterEditionPda(mint)[0],
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbMetadataAta(program, k(71)),
     });
     assert.ok(revealCalls[0].program.equals(CORE));
   }
@@ -221,15 +228,24 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     assert.throws(() => getAssociatedTokenAddressSync(newMint, vaultUser, false), /TokenOwnerOffCurveError/);
     expectWiring(program, await reveal("reroll"), "rerollRandomReveal", {
       config, cranker, rerollCommit: k(2), user: vaultUser, treasury: cfg.treasury, newMint, newToken: ata(newMint, vaultUser),
-      newToolData: pda.toolPda(newMint)[0], auth, ...sbAta(program, k(72)),
+      newToolData: pda.toolPda(newMint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
+      metadata: pda.tokenMetadataPda(newMint)[0], masterEdition: pda.masterEditionPda(newMint)[0],
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbMetadataAta(program, k(72)),
     });
   }
   expectWiring(program, await reveal("exploration"), "exploreReveal", {
-    config, materialMints, cranker, explorationCommit: k(3), user: wallet, circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet),
-    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), auth, ...sbAta(program, k(73)),
+    config, materialMints, cranker, explorationCommit: k(3), user: wallet, dataMint: cfg.dataMint, datasetMint: mm.dataset,
+    circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet),
+    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), auth,
+    escrowData: pda.resourceEscrowAta(cfg.dataMint), escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
+    escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint), escrowDataset: pda.resourceEscrowAta(mm.dataset),
+    issuanceCapCircuit: pda.issuanceCapPda("circuit")[0], issuanceCapSilicon: pda.issuanceCapPda("silicon")[0],
+    ...sbAta(program, k(73)),
   });
   expectWiring(program, await reveal("forge"), "forgeAttemptReveal", {
-    config, cranker, enchantSlot: pda.enchantSlotPda(k(80), 2)[0], forgeCommit: k(4), user: wallet, treasury: cfg.treasury, ...sb(program, k(74)),
+    config, auth, circuitMint: cfg.circuitMint, escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
+    siliconMint: cfg.siliconMint, escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint), cranker,
+    enchantSlot: pda.enchantSlotPda(k(80), 2)[0], forgeCommit: k(4), user: wallet, treasury: cfg.treasury, ...sb(program, k(74)),
   });
   expectWiring(program, await reveal("lottery"), "drawLottery", { config, cranker, lotteryRound: k(5), treasury: cfg.treasury, ...sb(program, k(75)) });
   {
@@ -262,7 +278,10 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     const newMint = pda.rerollMintPda(k(2))[0];
     expectWiring(program, await refund("reroll"), "rerollRandomExpire", {
       config, cranker, rerollCommit: k(2), user: vaultUser, vrfSlot: slot(program, k(72)), newMint, newToken: ata(newMint, vaultUser),
-      newToolData: pda.toolPda(newMint)[0], auth, tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SYSTEM,
+      newToolData: pda.toolPda(newMint)[0], auth, tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SYSTEM,
+      toolMetadataRegistry: pda.toolMetadataRegistryPda()[0], metadata: pda.tokenMetadataPda(newMint)[0],
+      masterEdition: pda.masterEditionPda(newMint)[0], tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID,
     });
   }
   expectWiring(program, await refund("exploration"), "exploreExpire", {
@@ -290,8 +309,8 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   {
     currentSlot = 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS - 1;
     const revealable = await settlement.selfSettleTransaction("pack", k(1), wallet);
-    assert.deepEqual(revealable, { tx: "base64-tx", phase: "revealable" });
-    assert.deepEqual(coSigned, { count: vrfModule.vrfComputeBudget().length + 1, payer: wallet.toBase58(), lastDisc: disc(program, "packOpenReveal") });
+    assert.deepEqual(revealable, { tx: "v0-base64-tx", phase: "revealable" });
+    assert.deepEqual(v0CoSigned, { count: vrfModule.vrfComputeBudget().length + 1, payer: wallet.toBase58(), lastDisc: disc(program, "packOpenReveal") });
 
     currentSlot = 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS;
     const refundable = await settlement.selfSettleTransaction("pack", k(1), wallet);

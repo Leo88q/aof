@@ -358,7 +358,7 @@ cmd_build() {
   fi
   if [ "$SKIP_BACKEND" != "1" ]; then
     log "backend: prisma generate + tsc -> aof_backend/dist"
-    (cd "$BE" && npm run -s build) || die "сборка backend не прошла (prisma generate требует доступ к binaries.prisma.sh)"
+    (cd "$BE" && npm run -s build) || die "сборка backend не прошла; смотри первую ошибку выше (Prisma generate или TypeScript)"
   fi
   if [ "$WITH_ANCHOR" = "1" ]; then cmd_anchor_build; fi
   log "Сборка готова"

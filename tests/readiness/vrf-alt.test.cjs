@@ -14,7 +14,7 @@ test('shared Devnet ALT bootstrap is idempotent, active-read-back verified, and 
   assert.match(source, /DEVNET_GENESIS_HASH/);
   assert.match(source, /AddressLookupTableProgram\.createLookupTable/);
   assert.match(source, /AddressLookupTableProgram\.extendLookupTable/);
-  assert.match(source, /getAddressLookupTable\(address, "confirmed"\)/);
+  assert.match(source, /getAddressLookupTable\(address, \{ commitment: "confirmed" \}\)/);
   assert.match(source, /waitUntilActive\(tableAddress\)/);
   assert.match(source, /const absent = desired\.filter/);
   assert.match(source, /persistTableAddress\(tableAddress\)/);

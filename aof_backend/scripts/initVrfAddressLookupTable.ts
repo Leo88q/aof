@@ -111,7 +111,7 @@ async function explorationAddresses(): Promise<PublicKey[]> {
 }
 
 async function readTable(address: PublicKey): Promise<AddressLookupTableAccount | null> {
-  const response: LookupTableResponse = await connection.getAddressLookupTable(address, "confirmed");
+  const response: LookupTableResponse = await connection.getAddressLookupTable(address, { commitment: "confirmed" });
   return response.value;
 }
 
