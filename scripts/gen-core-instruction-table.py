@@ -28,7 +28,7 @@ AUTHORITY_ONLY = {
     # интент — он проверяет точный состав инструкции.
     "pay_out", "pay_out_with_referral",
     "sweep_gas_fees", "adjust_player_capacity", "init_season",
-    "init_issuance_cap", "set_issuance_cap", "set_pending_authority", "accept_authority",
+    "init_issuance_cap", "set_issuance_cap", "set_issuance_lifetime_baseline", "set_pending_authority", "accept_authority",
     "cancel_pending_authority", "set_mining_enabled", "init_vault_guard", "set_vault_guard",
     "set_supply_cap", "register_collector_mint", "revoke_collector_mint",
     # Operator-signed and sent by the backend (authorityOnly([...]) in

@@ -391,7 +391,7 @@ async function collectInstructions(
     if (!rpc.getAddressLookupTable || !rpc.getSlot) return null;
     const [currentSlot, responses] = await Promise.all([
       rpc.getSlot("confirmed"),
-      Promise.all(lookupDescriptors.map(({ accountKey }) => rpc.getAddressLookupTable!(accountKey, "confirmed"))),
+      Promise.all(lookupDescriptors.map(({ accountKey }) => rpc.getAddressLookupTable!(accountKey, { commitment: "confirmed" }))),
     ]);
     if (!Number.isSafeInteger(currentSlot)) return null;
     for (let index = 0; index < responses.length; index += 1) {

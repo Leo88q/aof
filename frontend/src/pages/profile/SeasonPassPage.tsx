@@ -79,7 +79,7 @@ export function SeasonPassPage() {
   const c = seasonPassCopy[language];
   const treasury = useTreasury();
   const { user, reading, seasonId, refresh } = useVipStatus();
-  const snapshot = reading?.kind === 'ready' ? reading.snapshot : null;
+  const snapshot: VipSnapshot | null = reading?.kind === 'ready' ? reading.snapshot ?? null : null;
   const [txStatus, flash] = useFlash(language);
   const [busy, setBusy] = useState(false);
   // Once a transaction has been sent, don't invite a second payment even if

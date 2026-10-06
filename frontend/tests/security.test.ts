@@ -318,11 +318,18 @@ function toolMintFixture() {
   data.writeUInt32LE(Buffer.byteLength(toolType), 8);
   data.write(toolType, 12, "utf8");
   data[12 + Buffer.byteLength(toolType)] = rarity;
+  const metadataProgram = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const metadataSeeds = [Buffer.from("metadata"), metadataProgram.toBuffer(), mint.toBuffer()];
+  const metadata = PublicKey.findProgramAddressSync(metadataSeeds, metadataProgram)[0];
+  const masterEdition = PublicKey.findProgramAddressSync(
+    [...metadataSeeds, Buffer.from("edition")], metadataProgram,
+  )[0];
   const ix = {
     programId: core.toBase58(),
     keys: [pda("config"), authority, pda("auth"), mint,
       getAssociatedTokenAddressSync(mint, user.publicKey), user.publicKey, user.publicKey,
-      pda("tool", mint), TOKEN_PROGRAM_ID, SystemProgram.programId],
+      pda("tool", mint), TOKEN_PROGRAM_ID, SystemProgram.programId, pda("tool_metadata_registry"),
+      metadata, masterEdition, metadataProgram],
     data,
   };
   const intent = { kind: "toolMint" as const, user: user.publicKey.toBase58(),

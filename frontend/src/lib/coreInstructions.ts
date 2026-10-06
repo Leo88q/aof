@@ -1172,7 +1172,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     accounts: ["config", "authority", "material_mints", "issuance_cap", "mint"],
     actorIndexes: [],
     signerIndexes: [1],
-    authorityOnly: false,
+    authorityOnly: true,
     trailingAccounts: null,
   },
   {
