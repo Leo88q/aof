@@ -1,5 +1,5 @@
 {
-  "label": "Illustrative 10k assets, NOT a live quote. Rent assumptions use current 82-byte Mint + 165-byte ATA + 161-byte ToolData; compressed state cost is only a placeholder benchmark. Zero operations budget EXCLUDES hosting/indexer costs.",
+  "label": "Illustrative 10k assets, NOT a live quote. This 2026-09-20 snapshot models 82-byte Mint + 165-byte ATA + 161-byte ToolData and predates the immutable Metaplex Metadata/Master Edition CPI; it is not a release-cost estimate. Compressed state cost is only a placeholder benchmark. Zero operations budget EXCLUDES hosting/indexer costs.",
   "assets": 10000,
   "current_spl": {
     "capacity": 1, "tree_lamports": 0, "fixed_lamports": 0,

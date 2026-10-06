@@ -556,9 +556,48 @@ class RpcFailures(unittest.TestCase):
         self.assertIn("недоступен", err)
         self.assertEqual(out, "")
 
+    def test_provider_rejecting_the_key_is_named(self):
+        # Реальный случай: ключ провайдера неверен/не подставлен — 401/403.
+        for status in ("http401", "http403"):
+            code, out, err = self.run_with(broken={"getMinimumBalanceForRentExemption": status})
+            self.assertEqual(code, est.EXIT_RPC, err)
+            self.assertIn(f"HTTP {status[4:]}", err)
+            self.assertIn("ключ", err)
+            self.assertNotIn("RPC_URL?", err)  # ключ никогда не печатается
+            self.assertEqual(out, "")
+
+    def test_rate_limited_public_rpc_gets_the_provider_hint(self):
+        code, _, err = self.run_with(broken={"getMinimumBalanceForRentExemption": "http429"})
+        self.assertEqual(code, est.EXIT_RPC)
+        self.assertIn("HTTP 429", err)
+        self.assertIn("RPC с ключом провайдера", err)
+
+    def test_a_placeholder_left_in_the_url_is_named_as_such(self):
+        # Именно так выглядел отказ на macOS: https://…/?api-key=ВАШ_КЛЮЧ →
+        # «недоступен (str)», из чего причина не читалась.
+        code, out, err = run_main(self.args, "https://devnet.helius-rpc.com/?api-key=ВАШ_КЛЮЧ")
+        self.assertEqual(code, est.EXIT_RPC, err)
+        self.assertIn("не-ASCII", err)
+        self.assertIn("плейсхолдер", err)
+        self.assertEqual(out, "")
+
     def test_wrong_scheme_is_a_refusal(self):
         code, _, err = run_main(self.args, "ftp://example.invalid")
-        self.assertEqual(code, est.EXIT_RPC)
+        self.assertEqual(code, est.EXIT_USAGE)
+
+    def test_a_url_that_is_not_a_url_is_refused_without_a_traceback(self):
+        # Пустой RPC_URL и строка без схемы раньше падали голым ValueError из
+        # Request(): «unknown url type: ''» — по такому выводу нельзя понять,
+        # что не так с адресом. Теперь это отказ с названной причиной.
+        for bad in ("", "   ", "devnet.helius-rpc.com/?api-key=x", "/tmp/socket", "http://"):
+            # пустую строку helper пропускает как «нет override» — передаём явно
+            argv = list(self.args) + ["--rpc", bad] if bad == "" else self.args
+            code, out, err = run_main(argv, None if bad == "" else bad)
+            self.assertEqual(code, est.EXIT_USAGE, f"{bad!r}: {err}")
+            self.assertIn("негодный", err)
+            self.assertIn("api-key", err, "подсказка обязана показывать форму записи с ключом")
+            self.assertEqual(out, "", f"{bad!r}: отчёта быть не должно")
+            self.assertNotIn("Traceback", err, f"{bad!r}: traceback недопустим")
 
     def test_non_monotonic_rent_is_not_trusted(self):
         code, out, err = self.run_with(rent_fn=lambda length: 1_000_000)
@@ -621,6 +660,44 @@ class Verification(unittest.TestCase):
             code, _, err = self.verify(rpc)
             self.assertEqual(code, est.EXIT_VERIFY)
             self.assertIn("НЕ совпадает", err)
+
+    def upgrade_state(self, rpc):
+        return run_main(["upgrade-state", "--program", self.arg], rpc.url)
+
+    def test_upgrade_state_reports_same_and_different(self):
+        self.deploy_state()
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+            self.assertEqual(code, 0, err)
+            self.assertIn("state: same", out)
+            self.assertIn("capacity: 20000", out)
+            self.assertIn(f"authority: {PAYER}", out)
+        self.deploy_state(corrupt=True)
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+            self.assertEqual(code, 0, err)
+            self.assertIn("state: different", out)
+
+    def test_upgrade_state_ignores_a_larger_capacity_but_reports_the_authority(self):
+        # уменьшить ProgramData нельзя, а CLI при upgrade расширяет её сам (минимум 10 KiB):
+        # «ёмкость больше policy» — не повод отказывать, а вот чужая authority — повод.
+        self.deploy_state(max_len=40_000)
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+        self.assertEqual(code, 0, err)
+        self.assertIn("state: same", out)
+        self.assertIn("capacity: 40000", out)
+        self.deploy_state(authority=ADDRESSES["aof_market"])
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, out, err = self.upgrade_state(rpc)
+        self.assertEqual(code, 0, err)
+        self.assertIn(f"authority: {ADDRESSES['aof_market']}", out)
+
+    def test_upgrade_state_refuses_when_there_is_nothing_to_upgrade(self):
+        with mockrpc.MockRpc(chain_dir=self.chain) as rpc:
+            code, _, err = self.upgrade_state(rpc)
+            self.assertEqual(code, est.EXIT_VERIFY)
+            self.assertIn("не найден", err)
 
     def test_verify_deployed_rejects_a_foreign_owner_and_non_executable(self):
         info = {"lamports": 1, "owner": ADDRESSES["aof_market"], "executable": True,

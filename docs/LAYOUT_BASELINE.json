@@ -3745,6 +3745,26 @@
         {
           "name": "init_player",
           "discriminator": "721bdb90320fe442"
+        },
+        {
+          "name": "exchange_data_energy",
+          "discriminator": "789f4fbafa4153c3"
+        },
+        {
+          "name": "use_flask",
+          "discriminator": "c312823d390b6587"
+        },
+        {
+          "name": "set_issuance_lifetime_baseline",
+          "discriminator": "5fa1444d0ed7cd55"
+        },
+        {
+          "name": "set_tool_metadata_uris",
+          "discriminator": "c6622920403298aa"
+        },
+        {
+          "name": "claim_premium_season_reward",
+          "discriminator": "e8218c145fee48c7"
         }
       ],
       "accounts": [
@@ -3777,6 +3797,81 @@
             "u8"
           ],
           "size": 49
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "ToolMetadataRegistry",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "authority",
+              "type": "Pubkey"
+            },
+            {
+              "name": "initialized",
+              "type": "bool"
+            },
+            {
+              "name": "frozen",
+              "type": "bool"
+            },
+            {
+              "name": "populated_mask",
+              "type": "u32"
+            },
+            {
+              "name": "seller_fee_basis_points",
+              "type": "u16"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            },
+            {
+              "name": "metadata_uris",
+              "type": "Vec<String>"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "bool",
+            "bool",
+            "u32",
+            "u16",
+            "u8",
+            "Vec<String>"
+          ],
+          "size": null
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "SeasonPremiumClaims",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "season_id",
+              "type": "u32"
+            },
+            {
+              "name": "claimed_bitmap",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "u64",
+            "u8"
+          ],
+          "size": 53
         }
       ],
       "errors": {
@@ -3784,7 +3879,12 @@
           "PlayerNotInitialized",
           "InvalidSeasonXpEntitlement",
           "SeasonXpEntitlementExpired",
-          "SeasonXpNonceMismatch"
+          "SeasonXpNonceMismatch",
+          "ToolMetadataRegistryFrozen",
+          "ToolMetadataRegistryNotFrozen",
+          "InvalidToolMetadataRegistry",
+          "InvalidToolMetadataUris",
+          "InvalidSellerFeeBasisPoints"
         ]
       }
     }

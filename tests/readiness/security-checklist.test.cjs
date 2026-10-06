@@ -415,6 +415,10 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
   // audited exception for raw invoke_signed: Switchboard ships no Anchor CPI
   // crate for this toolchain. Every raw CPI there targets the trusted program.
   const VRF = { aof_core: 'aof-core/src/vrf.rs', aof_quests: 'programs/aof-quests/src/vrf.rs' };
+  // Metaplex's generated instruction builders have no Anchor CPI wrappers in
+  // this toolchain. The two raw calls in settlement.rs are allowed only after
+  // the MintTool context pins the canonical metadata/edition PDAs and program.
+  const METAPLEX_SETTLEMENT = 'aof-core/src/instructions/settlement.rs';
   // [§3.4] reset_for_rebirth — единственное место, где список аккаунтов задаёт
   // бэкенд: излишков у игрока может быть 0..16 пар (mint, token_account), и
   // фиксированная структура их не выражает. Это не «невалидированный
@@ -454,12 +458,25 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
     for (const [re, why] of banned) {
       let scope = code;
       if (vrf && /raw invoke/.test(why)) scope = scope.replace(vrf, '');
+      if (program === 'aof_core' && /raw invoke/.test(why)) {
+        scope = scope.replace(fnBody(read(METAPLEX_SETTLEMENT), 'mint_tool_nft'), '');
+      }
       if (/unvalidated remaining_accounts/.test(why) && program === 'aof_core') {
         scope = scope.replace(stripComments(withoutInlineTests(read(REMAINING_ACCOUNTS))), '');
       }
       assert.doesNotMatch(scope, re, `${program}: ${why}`);
     }
   }
+  const metaplexSettlement = fnBody(read(METAPLEX_SETTLEMENT), 'mint_tool_nft');
+  assert.equal([...metaplexSettlement.matchAll(/invoke_signed\(/g)].length, 2,
+    'only metadata and master-edition creation may use the explicit Metaplex CPI exception');
+  assert.match(metaplexSettlement, /CreateMetadataAccountV3/);
+  assert.match(metaplexSettlement, /CreateMasterEditionV3/);
+  assert.match(metaplexSettlement, /token_metadata_program\.clone\(\)/);
+  const mintToolContext = core('lib.rs').slice(core('lib.rs').indexOf('pub struct MintTool<'), core('lib.rs').indexOf('pub struct BurnTool<'));
+  assert.match(mintToolContext, /metadata\.key\(\) == .*Metadata::find_pda/);
+  assert.match(mintToolContext, /master_edition\.key\(\) == .*MasterEdition::find_pda/);
+  assert.match(mintToolContext, /pub token_metadata_program: Program<'info, TokenMetadataProgram>/);
   for (const file of Object.values(VRF)) {
     const vrf = stripComments(read(file));
     const invokes = [...vrf.matchAll(/invoke_signed\(/g)].length;
@@ -476,6 +493,7 @@ test('#18 no unbounded per-call input: collection arguments are allowlisted and 
     ['aof_core::mint_tool.tool_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::craft.tool_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::reroll.new_type', 'canonicalised to TOOL_KINDS'],
+    ['aof_core::set_tool_metadata_uris.metadata_uris', 'batch length and each HTTPS URI are bounded in the handler'],
   ]);
   let args = 0;
   for (const [program, { dir }] of Object.entries(sources)) {
@@ -626,7 +644,7 @@ test('migrate_tool is gone from the program, the IDL and the clients (plan item 
 
 test('F-C routine operations need the operator; rule changes need the admin', () => {
   const OPERATOR = ['MintResource', 'MintResourceOnce', 'MintTool', 'Craft', 'PayOut', 'PayOutWithReferral',
-    'AdjustPlayerCapacity', 'GrantSeasonXp', 'ClaimSeasonReward', 'SweepGasFees',
+    'AdjustPlayerCapacity', 'GrantSeasonXp', 'ClaimSeasonReward', 'ClaimPremiumSeasonReward', 'SweepGasFees',
     // [F-06] paid VRF commits are co-signed by the operator (backend gate).
     'PackOpenCommit', 'RerollRandomCommit', 'StartExplorationCommit', 'ForgeAttemptCommit'];
   for (const ctx of OPERATOR) {

@@ -53,10 +53,10 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn, withPolicy = true) => { const tmp = makeRoot(withPolicy); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('статический payer-audit: 92 init-аккаунта, debt=0 не закрывает пять owner-tracked live debts', () => {
+test('статический payer-audit: 96 init-аккаунта, debt=0 не закрывает пять owner-tracked live debts', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /92 инициализац[а-я]*/);
+  assert.match(result.out, /96 инициализац[а-я]*/);
   assert.match(result.out, /долг \(платит оператор вместо игрока\): 0/);
   assert.match(read('docs/PAYER_AUDIT.md'), /5 live payer debts/,
     'source-level debt=0 не является закрытием owner acceptance');
@@ -64,11 +64,11 @@ test('статический payer-audit: 92 init-аккаунта, debt=0 не 
     'remediation status must keep all five live debts open until validator proof');
 });
 
-test('политика и матрица покрывают одни и те же 92 аккаунта', () => {
+test('политика и матрица покрывают одни и те же 96 аккаунта', () => {
   const policy = JSON.parse(read(POLICY));
   const matrix = JSON.parse(read(MATRIX_JSON));
-  assert.equal(Object.keys(policy.entries).length, 92);
-  assert.equal(matrix.rows.length, 92);
+  assert.equal(Object.keys(policy.entries).length, 96);
+  assert.equal(matrix.rows.length, 96);
   assert.equal(policy.entries['aof_core.InitPlayer.player_profile'].payer, 'player');
   // Операторская выдача больше не создаёт профиль игрока: записи
   // `aof_core.MintResource.player` в политике быть не должно — иначе гейт

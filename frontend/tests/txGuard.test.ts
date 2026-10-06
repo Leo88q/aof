@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
-  ComputeBudgetProgram, Keypair, MessageV0, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction,
+  AddressLookupTableAccount, ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction,
@@ -27,8 +27,12 @@ const auth = PublicKey.findProgramAddressSync([Buffer.from("auth")], core)[0];
 const coreIx = () => new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) });
 const transaction = (...ix: TransactionInstruction[]) =>
   new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }).add(...ix);
-const rpcWith = (over: { fee?: number | null; logs?: string[] } = {}): any => ({
+const rpcWith = (over: { fee?: number | null; logs?: string[]; lookupTable?: AddressLookupTableAccount | null } = {}): any => ({
   getFeeForMessage: async () => ({ value: over.fee === undefined ? 10_000 : over.fee }),
+  getSlot: async () => 100,
+  getAddressLookupTable: async (key: PublicKey) => ({
+    value: over.lookupTable?.key.equals(key) ? over.lookupTable : null,
+  }),
   simulateTransaction: async () => ({ value: { err: null, logs: over.logs || [] } }),
 });
 const guard = (tx: Transaction | VersionedTransaction, overrides: any = {}, rpc = rpcWith()) =>
@@ -171,23 +175,56 @@ test("program allowlist is always enforced: CPI programs seen only in simulation
   assert.equal((await guardTransaction(transaction(new TransactionInstruction({ programId: other, keys: [], data: Buffer.alloc(8) })), user.publicKey, {}, rpcWith())).safe, false, "…and nothing else");
 });
 
-test("fee payer and message shape: the wallet must pay; one lookup table is enough to refuse", async () => {
-  const legacy = transaction(coreIx());
-  const message = legacy.compileMessage();
+test("fee payer and v0 address lookups: the wallet must pay and resolved ALT keys are inspected", async () => {
   const paidByOther = new Transaction({ feePayer: other, recentBlockhash: other.toBase58() }).add(coreIx());
   const versionedOther = new VersionedTransaction(paidByOther.compileMessage());
   const result = await guard(versionedOther);
   assert.equal(result.safe, false);
   assert.match(result.reason || "", /Плательщик/);
-  const oneLookup = new VersionedTransaction(new MessageV0({
-    header: message.header, staticAccountKeys: message.accountKeys, recentBlockhash: message.recentBlockhash,
-    compiledInstructions: message.compiledInstructions, addressTableLookups: [{ accountKey: other, writableIndexes: [0], readonlyIndexes: [] }],
-  }));
-  assert.equal((await guard(oneLookup)).safe, false);
-  const noLookup = new VersionedTransaction(new MessageV0({
-    header: message.header, staticAccountKeys: message.accountKeys, recentBlockhash: message.recentBlockhash,
-    compiledInstructions: message.compiledInstructions, addressTableLookups: [],
-  }));
+  const legacyMessageWithBinaryData = new VersionedTransaction(transaction(new TransactionInstruction({
+    programId: core, keys: [], data: Buffer.from([0, 7, 19, 23, 31, 42, 51, 60]),
+  })).compileMessage());
+  assert.equal((await guard(legacyMessageWithBinaryData)).safe, true, "legacy compiled instruction data is base58-decoded exactly");
+
+  const lookupTable = new AddressLookupTableAccount({
+    key: Keypair.generate().publicKey,
+    state: {
+      deactivationSlot: (1n << 64n) - 1n,
+      lastExtendedSlot: 1n,
+      lastExtendedSlotStartIndex: 0,
+      authority: undefined,
+      addresses: [other],
+    },
+  });
+  const instruction = new TransactionInstruction({
+    programId: core,
+    keys: [{ pubkey: other, isSigner: false, isWritable: false }],
+    data: Buffer.alloc(8),
+  });
+  const oneLookup = new VersionedTransaction(new TransactionMessage({
+    payerKey: user.publicKey,
+    recentBlockhash: other.toBase58(),
+    instructions: [instruction],
+  }).compileToV0Message([lookupTable]));
+  assert.equal(oneLookup.message.addressTableLookups.length, 1);
+  assert.equal((await guard(oneLookup)).safe, false, "an unresolved/missing lookup table must fail closed");
+  assert.equal((await guard(oneLookup, {}, rpcWith({ lookupTable }))).safe, true, "resolved readonly lookup account is decoded and simulated");
+  const deactivated = new AddressLookupTableAccount({
+    key: lookupTable.key,
+    state: { ...lookupTable.state, deactivationSlot: 99n },
+  });
+  assert.equal((await guard(oneLookup, {}, rpcWith({ lookupTable: deactivated }))).safe, false, "deactivated tables are refused");
+  const notYetActive = new AddressLookupTableAccount({
+    key: lookupTable.key,
+    state: { ...lookupTable.state, lastExtendedSlot: 100n },
+  });
+  assert.equal((await guard(oneLookup, {}, rpcWith({ lookupTable: notYetActive }))).safe, false, "same-slot table extensions are refused");
+
+  const noLookup = new VersionedTransaction(new TransactionMessage({
+    payerKey: user.publicKey,
+    recentBlockhash: other.toBase58(),
+    instructions: [coreIx()],
+  }).compileToV0Message());
   assert.equal((await guard(noLookup)).safe, true);
   assert.equal((await guard(new Transaction({ feePayer: user.publicKey, recentBlockhash: other.toBase58() }))).safe, false, "empty transaction");
 });

@@ -130,6 +130,8 @@ test('backend /tools/mint: player — payer, authority только подпис
     'fee payer — игрок, authority добавляет подпись, route возвращает transaction-bound payer quote');
   assert.match(body, /name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent"/);
   assert.match(body, /name: "tool_data", address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed"/);
+  assert.match(body, /name: "metaplex_metadata", address: tokenMetadataPda\(mint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(body, /name: "metaplex_master_edition", address: masterEditionPda\(mint\)\[0\], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init"/);
   assert.match(body, /res\.json\(prepared\)/, 'клиент получает tx и quote');
   assert.doesNotMatch(body, /authorityOnly/, 'authorityOnly отправил бы транзакцию без подписи получателя');
   assert.doesNotMatch(body, /createAssociatedTokenAccountIdempotentInstruction\(\s*AUTHORITY_PUBKEY/,
@@ -169,22 +171,58 @@ test('backend /test-grant-tools: минт, ATA и ToolData оплачивает 
   assert.doesNotMatch(body, /createMint\(connection, AUTHORITY/, 'mint-аккаунт больше не оплачивается authority');
   assert.match(body, /fromPubkey: recipient/, 'mint-аккаунт создаётся со счёта получателя');
   assert.match(body, /recipient\.equals\(AUTHORITY_PUBKEY\)/, 'authority запрещено быть получателем');
+  assert.match(body, /count !== 1/, 'mint route limits packet to one tool because Metadata/Edition make multi-mint messages oversized');
   assert.match(body, /payer: recipient/, 'dev grant выбирает recipient как player payer');
+  assert.match(body, /name: `metaplex_metadata_\$\{index\}`, address: tokenMetadataPda\(mint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(body, /name: `metaplex_master_edition_\$\{index\}`, address: masterEditionPda\(mint\)\[0\], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init"/);
   assert.match(body, /coSignQuoted\(instructions, recipient, rentAccounts, mintKeypairs\)/,
     'payer=recipient платит сам, authority добавляет только partial signature и quote');
   assert.doesNotMatch(body, /authorityOnly/, 'authority не имеет права завершить транзакцию сам');
+});
+
+test('Metaplex rent quote sizes stay aligned across Rust, backend, and wallet validation', () => {
+  const rust = read('aof-core/src/constants.rs');
+  const backend = read('aof_backend/src/lib/accountSizes.ts');
+  const wallet = read('frontend/src/lib/transactionIntent.ts');
+  assert.match(rust, /TOOL_METADATA_ACCOUNT_MAX_SPACE: usize = 679/);
+  assert.match(rust, /TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE: usize = 282/);
+  assert.match(backend, /METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679/);
+  assert.match(backend, /METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE = 282/);
+  assert.match(wallet, /METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679/);
+  assert.match(wallet, /METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE = 282/);
+});
+
+test('craft и fuse возвращают quote с rent новых ToolData/Metadata/Master Edition аккаунтов', () => {
+  const tools = read('aof_backend/src/routes/tools.ts');
+  const craft = routeBody(tools, '/craft');
+  assert.match(craft, /toolMetadataRegistry: toolMetadataRegistryPda\(\)\[0\]/);
+  assert.match(craft, /metadata: tokenMetadataPda\(newMint\)\[0\]/);
+  assert.match(craft, /masterEdition: masterEditionPda\(newMint\)\[0\]/);
+  assert.match(craft, /coSignWithVrfLookupTableQuoted\(\[ix\], user, \[/);
+  assert.match(craft, /name: "metaplex_metadata", address: tokenMetadataPda\(newMint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(craft, /name: "metaplex_master_edition", address: masterEditionPda\(newMint\)\[0\], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(craft, /res\.json\(prepared\)/);
+
+  const reroll = routeBody(read('aof_backend/src/routes/reroll.ts'), '/fuse');
+  assert.match(reroll, /toolMetadataRegistry: toolMetadataRegistryPda\(\)\[0\]/);
+  assert.match(reroll, /metadata: tokenMetadataPda\(newMint\)\[0\]/);
+  assert.match(reroll, /masterEdition: masterEditionPda\(newMint\)\[0\]/);
+  assert.match(reroll, /coSignWithVrfLookupTableQuoted\(\[ix\], user, \[/);
+  assert.match(reroll, /name: "metaplex_metadata", address: tokenMetadataPda\(newMint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(reroll, /name: "metaplex_master_edition", address: masterEditionPda\(newMint\)\[0\], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(reroll, /res\.json\(prepared\)/);
 });
 
 test('IDL и таблица фронтенда: у mint_tool появился payer, и он не authority-only', () => {
   const idl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
   const ix = idl.instructions.find((i) => i.name === 'mint_tool');
   assert.deepEqual(ix.accounts.map((a) => a.name),
-    ['config', 'authority', 'auth', 'mint', 'token_account', 'recipient', 'payer', 'tool_data', 'token_program', 'system_program']);
+    ['config', 'authority', 'auth', 'mint', 'token_account', 'recipient', 'payer', 'tool_data', 'token_program', 'system_program', 'tool_metadata_registry', 'metadata', 'master_edition', 'token_metadata_program']);
   assert.deepEqual([ix.accounts[6].writable, ix.accounts[6].signer], [true, true]);
   const table = read('frontend/src/lib/coreInstructions.ts');
   const spec = table.slice(table.indexOf('name: "mint_tool"'), table.indexOf('name: "mint_tool"') + 700);
   assert.match(spec, /authorityOnly: false/, 'игрок подписывает минт в свой кошелёк за свой счёт');
-  assert.match(spec, /accounts: \["config", "authority", "auth", "mint", "token_account", "recipient", "payer", "tool_data"/);
+  assert.match(spec, /accounts: \["config", "authority", "auth", "mint", "token_account", "recipient", "payer", "tool_data", "token_program", "system_program", "tool_metadata_registry", "metadata", "master_edition", "token_metadata_program"\]/);
   // Таблица и IDL не разъехались с Rust.
   execFileSync('python3', ['scripts/check-idl-drift.py'], { cwd: root, stdio: 'pipe' });
   execFileSync('python3', ['scripts/gen-core-instruction-table.py', '--check'], { cwd: root, stdio: 'pipe' });
@@ -203,6 +241,10 @@ test('кошелёк игрока подписывает минт инструм
   assert.match(src, /hasToolMint[\s\S]*intent\?\.kind !== "toolMint"[\s\S]*local user intent/,
     'MintTool cannot reach a player wallet without explicit self-mint intent');
   assert.match(body, /keysEqual\(ix\.keys, expected\)/, 'аккаунты сверяются позиционно');
+  assert.match(body, /pda\("tool_metadata_registry"\),\s*metaplexMetadataPda\(mint\),\s*metaplexMasterEditionPda\(mint\), TOKEN_METADATA_PROGRAM/,
+    'wallet intent binds the registry, Metadata PDA, Master Edition PDA, and canonical Metaplex program');
+  assert.match(src, /name: "metaplex_metadata", address: metaplexMetadataPda\(mint\), size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(src, /name: "metaplex_master_edition", address: metaplexMasterEditionPda\(mint\), size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init"/);
   assert.match(body, /ix\.data\[12 \+ toolType\.length\] !== RARITY\[intent\.rarity\]/, 'редкость из payload сверяется с интентом');
   assert.match(body, /ix\.data\[0\] !== 1/, 'принимается только идемпотентное создание ATA');
 });

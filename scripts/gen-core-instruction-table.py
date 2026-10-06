@@ -33,11 +33,12 @@ AUTHORITY_ONLY = {
     "set_supply_cap", "register_collector_mint", "revoke_collector_mint",
     # Operator-signed and sent by the backend (authorityOnly([...]) in
     # routes/season.ts and routes/lottery.ts): a player wallet never signs them.
-    "claim_season_reward", "init_lottery_round",
+    "claim_season_reward", "claim_premium_season_reward", "init_lottery_round",
     # [SECURITY_CHECKLIST_REVIEW F-C] admin / guardian role instructions.
     "migrate_config_v2", "set_roles", "set_cashout_frozen", "emergency_stop",
     # [F-06] operator-only Switchboard pool management.
     "vrf_pool_add", "vrf_pool_set_retired", "vrf_slot_recover",
+    "set_tool_metadata_uris",
 }
 
 # Account names that denote the acting wallet.

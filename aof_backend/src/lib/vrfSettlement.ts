@@ -7,7 +7,12 @@
  * on-chain programs re-check every account, so a mistake here fails closed.
  */
 import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
 import BN from "bn.js";
 import { program, questsProgram, connection } from "../provider";
 import {
@@ -15,14 +20,21 @@ import {
   configPda,
   drumCommitPda,
   enchantSlotPda,
+  issuanceCapPda,
   materialMintsPda,
   packMintPda,
   questConfigPda,
   rerollMintPda,
+  resourceEscrowAta,
   toolPda,
+  toolMetadataRegistryPda,
+  tokenMetadataPda,
+  masterEditionPda,
+  TOKEN_METADATA_PROGRAM_ID,
 } from "./pda";
 import { VRF_REFUND_AFTER_SLOTS, vrfComputeBudget, vrfReveal, vrfSlotPda } from "./vrf";
 import { coSign } from "./tx";
+import { coSignWithVrfLookupTable } from "./vrfLookupTableTransactions";
 
 export type Mechanic = "pack" | "reroll" | "exploration" | "forge" | "lottery" | "drum";
 export const MECHANICS: Mechanic[] = ["pack", "reroll", "exploration", "forge", "lottery", "drum"];
@@ -125,6 +137,9 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
     systemProgram: SystemProgram.programId,
   };
   const withAta = { ...common, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID };
+  // These two reveal contexts no longer pass the unused wrapped-SOL mint from
+  // Switchboard's pool-initialization instruction.
+  const { wrappedSolMint: _wrappedSolMint, ...metadataAta } = withAta;
   const config = configPda()[0];
   const a = c.account;
   let ix: TransactionInstruction;
@@ -134,7 +149,10 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
       const [mint] = packMintPda(c.address);
       ix = await (program.methods as any).packOpenReveal(params).accounts({
         config, cranker, packCommit: c.address, user: a.user, treasury: cfg.treasury,
-        mint, userToken: ata(mint, a.user), toolData: toolPda(mint)[0], auth: authPda()[0], ...withAta,
+        mint, userToken: ata(mint, a.user), toolData: toolPda(mint)[0], auth: authPda()[0],
+        toolMetadataRegistry: toolMetadataRegistryPda()[0],
+        metadata: tokenMetadataPda(mint)[0], masterEdition: masterEditionPda(mint)[0],
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...metadataAta,
       }).instruction();
       break;
     }
@@ -143,16 +161,25 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
       const [newMint] = rerollMintPda(c.address);
       ix = await (program.methods as any).rerollRandomReveal(params).accounts({
         config, cranker, rerollCommit: c.address, user: a.user, treasury: cfg.treasury,
-        newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0], ...withAta,
+        newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0],
+        toolMetadataRegistry: toolMetadataRegistryPda()[0],
+        metadata: tokenMetadataPda(newMint)[0], masterEdition: masterEditionPda(newMint)[0],
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...metadataAta,
       }).instruction();
       break;
     }
     case "exploration": {
       const cfg = await coreConfig();
+      const mm = await materialMints();
       ix = await (program.methods as any).exploreReveal(params).accounts({
         config, materialMints: materialMintsPda()[0], cranker, explorationCommit: c.address, user: a.user,
+        dataMint: cfg.dataMint, datasetMint: mm.dataset,
         circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
-        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user), auth: authPda()[0], ...withAta,
+        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user), auth: authPda()[0],
+        escrowData: resourceEscrowAta(cfg.dataMint), escrowCircuit: resourceEscrowAta(cfg.circuitMint),
+        escrowSilicon: resourceEscrowAta(cfg.siliconMint), escrowDataset: resourceEscrowAta(mm.dataset),
+        issuanceCapCircuit: issuanceCapPda("circuit")[0], issuanceCapSilicon: issuanceCapPda("silicon")[0],
+        ...withAta,
       }).instruction();
       break;
     }
@@ -160,7 +187,9 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
       const cfg = await coreConfig();
       ix = await (program.methods as any).forgeAttemptReveal(params).accounts({
         config, cranker, enchantSlot: enchantSlotPda(a.toolMint, Number(a.slotType))[0], forgeCommit: c.address,
-        user: a.user, treasury: cfg.treasury, ...common,
+        user: a.user, treasury: cfg.treasury, auth: authPda()[0],
+        circuitMint: cfg.circuitMint, escrowCircuit: resourceEscrowAta(cfg.circuitMint),
+        siliconMint: cfg.siliconMint, escrowSilicon: resourceEscrowAta(cfg.siliconMint), ...common,
       }).instruction();
       break;
     }
@@ -188,10 +217,75 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
 
 /** The permissionless refund of a commit whose reveal window has closed. */
 export async function buildRefundInstructions(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction[]> {
-  return [...vrfComputeBudget(), await refundInstruction(c, cranker)];
+  const ataSetup = await buildMissingRefundAtaInstructions(c, cranker);
+  return [...vrfComputeBudget(), ...ataSetup, await refundInstruction(c, cranker)];
 }
 
-async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction> {
+/**
+ * Expired exploration/forge commits refund escrowed SPL resources. If a player
+ * closed an ATA after committing, create it as a top-level idempotent ATA ix,
+ * paid by the refund transaction's fee payer. Keeping account creation outside
+ * aof_core's SBF frame avoids another init CPI there and makes player self-settle
+ * and third-party settlement use the same refund-safe path.
+ */
+async function buildMissingRefundAtaInstructions(c: PendingCommit, payer: PublicKey): Promise<TransactionInstruction[]> {
+  if (c.mechanic !== "exploration" && c.mechanic !== "forge") return [];
+  if (!c.user) throw new Error(`${c.mechanic} refund is missing its committing user`);
+  const cfg = await coreConfig();
+  const mints = c.mechanic === "exploration"
+    ? [cfg.dataMint, cfg.circuitMint, cfg.siliconMint, (await materialMints()).dataset as PublicKey]
+    : [cfg.circuitMint, cfg.siliconMint];
+  const addresses = mints.map((mint: PublicKey) => ata(mint, c.user!));
+  const infos = await connection.getMultipleAccountsInfo(addresses, "confirmed");
+  const instructions: TransactionInstruction[] = [];
+  for (let i = 0; i < mints.length; i++) {
+    const info = infos[i];
+    if (info) {
+      if (!info.owner.equals(TOKEN_PROGRAM_ID)) {
+        throw new Error(`${c.mechanic} refund ATA ${addresses[i].toBase58()} is owned by ${info.owner.toBase58()}, not SPL Token`);
+      }
+      continue;
+    }
+    instructions.push(createAssociatedTokenAccountIdempotentInstruction(
+      payer, addresses[i], c.user, mints[i], TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+    ));
+  }
+  return instructions;
+}
+
+/**
+ * Expired exploration/forge commits refund escrowed SPL resources. If a player
+ * closed an ATA after committing, create it as a top-level idempotent ATA ix,
+ * paid by the refund transaction's fee payer. Keeping account creation outside
+ * aof_core's SBF frame avoids another init CPI there and makes player self-settle
+ * and third-party settlement use the same refund-safe path.
+ */
+async function buildMissingRefundAtaInstructions(c: PendingCommit, payer: PublicKey): Promise<TransactionInstruction[]> {
+  if (c.mechanic !== "exploration" && c.mechanic !== "forge") return [];
+  if (!c.user) throw new Error(`${c.mechanic} refund is missing its committing user`);
+  const cfg = await coreConfig();
+  const mints = c.mechanic === "exploration"
+    ? [cfg.dataMint, cfg.circuitMint, cfg.siliconMint, (await materialMints()).dataset as PublicKey]
+    : [cfg.circuitMint, cfg.siliconMint];
+  const addresses = mints.map((mint: PublicKey) => ata(mint, c.user!));
+  const infos = await connection.getMultipleAccountsInfo(addresses, "confirmed");
+  const instructions: TransactionInstruction[] = [];
+  for (let i = 0; i < mints.length; i++) {
+    const info = infos[i];
+    if (info) {
+      if (!info.owner.equals(TOKEN_PROGRAM_ID)) {
+        throw new Error(`${c.mechanic} refund ATA ${addresses[i].toBase58()} is owned by ${info.owner.toBase58()}, not SPL Token`);
+      }
+      continue;
+    }
+    instructions.push(createAssociatedTokenAccountIdempotentInstruction(
+      payer, addresses[i], c.user, mints[i], TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+    ));
+  }
+  return instructions;
+}
+
+async function refundInstruction(c: PendingCommit): Promise<TransactionInstruction> {
   const prog = programFor(c.mechanic);
   const vrfSlot = vrfSlotPda(prog.programId, c.randomness);
   const config = configPda()[0];
@@ -210,7 +304,10 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
       const [newMint] = rerollMintPda(c.address);
       return await (program.methods as any).rerollRandomExpire().accounts({
         config, cranker, rerollCommit: c.address, user: a.user, vrfSlot,
-        newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0], ...withAta,
+        newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0],
+        toolMetadataRegistry: toolMetadataRegistryPda()[0],
+        metadata: tokenMetadataPda(newMint)[0], masterEdition: masterEditionPda(newMint)[0],
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...withAta,
       }).instruction();
     }
     case "exploration": {
@@ -220,18 +317,21 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
       return await (program.methods as any).exploreExpire().accounts({
         config, materialMints: materialMintsPda()[0], explorationCommit: c.address, user: a.user, vrfSlot,
         auth: authPda()[0],
-        dataMint: cfg.dataMint, userData: ata(cfg.dataMint, a.user),
-        circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
-        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user),
-        datasetMint: mm.dataset, userDataset: ata(mm.dataset, a.user), tokenProgram: TOKEN_PROGRAM_ID,
+        dataMint: cfg.dataMint, userData: ata(cfg.dataMint, a.user), escrowData: resourceEscrowAta(cfg.dataMint),
+        circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user), escrowCircuit: resourceEscrowAta(cfg.circuitMint),
+        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user), escrowSilicon: resourceEscrowAta(cfg.siliconMint),
+        datasetMint: mm.dataset, userDataset: ata(mm.dataset, a.user), escrowDataset: resourceEscrowAta(mm.dataset),
+        tokenProgram: TOKEN_PROGRAM_ID,
       }).instruction();
     }
     case "forge": {
       const cfg = await coreConfig();
       return await (program.methods as any).forgeAttemptExpire().accounts({
-        config, materialMints: materialMintsPda()[0], forgeCommit: c.address, user: a.user, vrfSlot,
+        config, forgeCommit: c.address, user: a.user, vrfSlot,
         auth: authPda()[0], circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
-        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user), tokenProgram: TOKEN_PROGRAM_ID,
+        escrowCircuit: resourceEscrowAta(cfg.circuitMint),
+        siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user),
+        escrowSilicon: resourceEscrowAta(cfg.siliconMint), tokenProgram: TOKEN_PROGRAM_ID,
       }).instruction();
     }
     case "lottery":
@@ -313,7 +413,12 @@ export async function selfSettleTransaction(mechanic: Mechanic, address: PublicK
   const ixs = phase === "revealable"
     ? await buildRevealInstructions(commit, player)
     : await buildRefundInstructions(commit, player);
-  return { tx: await coSign(ixs, player), phase };
+  const requiresV0 = mechanic === "exploration"
+    || (phase === "revealable" && (mechanic === "pack" || mechanic === "reroll"));
+  const tx = requiresV0
+    ? await coSignWithVrfLookupTable(ixs, player)
+    : await coSign(ixs, player);
+  return { tx, phase };
 }
 
 export type CommitStatus =

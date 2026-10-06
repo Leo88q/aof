@@ -14,8 +14,18 @@ import {
   rerollConfigPda,
   rerollMintPda,
   toolPda,
+  toolMetadataRegistryPda,
+  tokenMetadataPda,
+  masterEditionPda,
+  TOKEN_METADATA_PROGRAM_ID,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
+import { coSignWithVrfLookupTableQuoted } from "../lib/vrfLookupTableTransactions";
+import {
+  TOOL_DATA_ACCOUNT_SIZE,
+  METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
+  METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE,
+} from "../lib/accountSizes";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
 import { randomNonce, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
@@ -100,10 +110,20 @@ r.post("/fuse", async (req, res) => {
         userMind: ata(resourceMints.mind),
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+        toolMetadataRegistry: toolMetadataRegistryPda()[0],
+        metadata: tokenMetadataPda(newMint)[0],
+        masterEdition: masterEditionPda(newMint)[0],
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       })
       .instruction();
-    const tx = await coSign([ix], user);
-    res.json({ tx });
+    // User funds ToolData and both new Metaplex accounts; expose those rent
+    // maxima in a quote bound to this exact transaction message.
+    const prepared = await coSignWithVrfLookupTableQuoted([ix], user, [
+      { name: "new_tool_data", address: newToolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
+      { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+      { name: "metaplex_master_edition", address: masterEditionPda(newMint)[0], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
+    ]);
+    res.json(prepared);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

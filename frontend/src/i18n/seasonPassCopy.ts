@@ -1,11 +1,14 @@
 import type { Language } from './translations';
-
 type Copy = {
   intro: string; title: string; unverified: string; verifying: string; unavailable: string; connect: string;
   active: string; expired: string; notActive: string; notOwned: string;
   progress: string; season: string; xp: string; claimed: string; track: string;
   xpRewardsTitle: string; xpNoRewards: string; xpClaimButton: string; xpClaimConfirm: string;
   xpClaimRent: (sol: string, lamports: string) => string; xpClaimSuccess: string; xpClaimExpiry: (slot: string) => string;
+  seasonRewards: string; freeTrackTitle: string; premiumTrackTitle: string; noSeasonRewards: string;
+  premiumLedgerUnavailable: string; rewardPayerNote: string; preparingRewardClaim: string;
+  claimSeasonReward: (level: number) => string; rewardAmount: (amount: number) => string;
+  rewardClaimSuccess: string; rewardClaimPending: string; rewardClaimFailed: string;
   xpClaimQueue: string; xpClaimUnavailable: string; xpClaimCheckStatus: string;
   paid: string; free: string; purchase: string;
   initPass: string; initPassNote: string; quoteTitle: string;
@@ -17,7 +20,6 @@ type Copy = {
   pending: string; failed: string; missingTreasury: string;
   themeTitle: string; themeNote: string; copper: string; orchid: string;
 };
-
 export const seasonPassCopy: Record<Language, Copy> = {
   ru: {
     intro: 'Состояние пропуска и активность сезона проверяются по аккаунтам в сети.', title: 'Пропуск эпохи',
@@ -28,9 +30,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'Награды опыта', xpNoRewards: 'Пока нет ожидающих наград опыта.', xpClaimButton: 'Получить', xpClaimConfirm: 'Подписать и получить',
     xpClaimRent: (sol, lamports) => `Rent пропуска и курсора: ${sol} (${lamports} лампортов)`, xpClaimSuccess: 'Награда опыта получена.', xpClaimExpiry: (slot) => `Доступно до слота ${slot}`,
     xpClaimQueue: 'Получайте награды по очереди, начиная с первой.', xpClaimUnavailable: 'Список наград опыта временно недоступен.', xpClaimCheckStatus: 'Проверить статус',
+    seasonRewards: 'Награды сезона', freeTrackTitle: 'Бесплатная ветка', premiumTrackTitle: 'Премиум-ветка',
+    noSeasonRewards: 'Сейчас нет доступных сезонных наград.', premiumLedgerUnavailable: 'Реестр наград Premium недоступен в сети.', preparingRewardClaim: 'Подготавливаем запрос на получение награды…',
+    rewardPayerNote: 'Сетевую комиссию и rent CIRCUIT-аккаунта оплачивает оператор; кошелёк только подтверждает запрос.',
+    claimSeasonReward: (level) => `Получить награду уровня ${level}`, rewardAmount: (amount) => `Награда: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Сезонная награда получена.', rewardClaimPending: 'Статус награды неизвестен. Проверьте сеть перед повторной попыткой.',
+    rewardClaimFailed: 'Не удалось подтвердить сезонную награду. Проверьте транзакцию и попробуйте позже.',
     purchase: 'Купить Premium за 0,15 SOL', initPass: 'Получить сезонный пропуск', initPassNote: 'Цена пропуска: 0 игровых токенов. Сетевые расходы и rent аккаунта-пропуска оплачивает игрок.',
     quoteTitle: 'Сетевые расходы (live из сети)',
-    quoteRent: (sol, lamports) => `Rent аккаунта-пропуска: ${sol} (${lamports} лампортов)`,
+    quoteRent: (sol, lamports) => `Rent аккаунтов пропуска и премиум-наград: ${sol} (${lamports} лампортов)`,
     quoteFee: (sol, lamports) => `Сетевая комиссия по этой транзакции: ${sol} (${lamports} лампортов)`,
     quoteMax: (sol, lamports) => `Максимум сетевые расходы и rent: ${sol} (${lamports} лампортов)`,
     quoteReview: "Проверьте смету, привязанную к транзакции; цену пропуска кошелёк не списывает.", refreshQuote: "Обновить смету", initPassConfirm: "Проверить и подписать инициализацию",
@@ -47,9 +55,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'XP rewards', xpNoRewards: 'No pending XP rewards.', xpClaimButton: 'Claim', xpClaimConfirm: 'Sign and claim',
     xpClaimRent: (sol, lamports) => `Pass and claim-cursor rent: ${sol} (${lamports} lamports)`, xpClaimSuccess: 'XP reward claimed.', xpClaimExpiry: (slot) => `Available through slot ${slot}`,
     xpClaimQueue: 'Claim rewards in order, starting with the first.', xpClaimUnavailable: 'XP rewards are temporarily unavailable.', xpClaimCheckStatus: 'Check status',
+    seasonRewards: 'Season rewards', freeTrackTitle: 'Free track', premiumTrackTitle: 'Premium track',
+    noSeasonRewards: 'No season rewards are ready to claim.', premiumLedgerUnavailable: 'The Premium reward ledger is unavailable on-chain.', preparingRewardClaim: 'Submitting your reward claim request…',
+    rewardPayerNote: 'The operator pays the network fee and any CIRCUIT account rent; your wallet only authorizes the request.',
+    claimSeasonReward: (level) => `Claim level ${level}`, rewardAmount: (amount) => `Reward: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Season reward claimed.', rewardClaimPending: 'Reward status is unknown. Check the chain before trying again.',
+    rewardClaimFailed: 'Could not confirm the season reward. Check the transaction and try again later.',
     purchase: 'Buy Premium for 0.15 SOL', initPass: 'Get the season pass', initPassNote: 'Pass price: 0 game tokens. Network costs and the pass account rent are paid by the player.',
     quoteTitle: 'Network costs (live)',
-    quoteRent: (sol, lamports) => `Pass account rent: ${sol} (${lamports} lamports)`,
+    quoteRent: (sol, lamports) => `Pass and premium-claim account rent: ${sol} (${lamports} lamports)`,
     quoteFee: (sol, lamports) => `Network fee for this transaction: ${sol} (${lamports} lamports)`,
     quoteMax: (sol, lamports) => `Maximum network costs and rent: ${sol} (${lamports} lamports)`,
     quoteReview: "Review the quote bound to this transaction; no in-game token price is charged.", refreshQuote: "Refresh quote", initPassConfirm: "Review and sign pass initialization",
@@ -66,9 +80,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'Recompensas de XP', xpNoRewards: 'Não há recompensas de XP pendentes.', xpClaimButton: 'Receber', xpClaimConfirm: 'Assinar e receber',
     xpClaimRent: (sol, lamports) => `Rent do passe e do cursor: ${sol} (${lamports} lamports)`, xpClaimSuccess: 'Recompensa de XP recebida.', xpClaimExpiry: (slot) => `Disponível até ao slot ${slot}`,
     xpClaimQueue: 'Recebe as recompensas por ordem, começando pela primeira.', xpClaimUnavailable: 'As recompensas de XP estão temporariamente indisponíveis.', xpClaimCheckStatus: 'Verificar estado',
+    seasonRewards: 'Recompensas da temporada', freeTrackTitle: 'Trilho gratuito', premiumTrackTitle: 'Trilho Premium',
+    noSeasonRewards: 'Não há recompensas da temporada prontas para receber.', premiumLedgerUnavailable: 'O registo de recompensas Premium não está disponível na rede.', preparingRewardClaim: 'A enviar o pedido de recompensa…',
+    rewardPayerNote: 'O operador paga a taxa de rede e o rent da conta CIRCUIT; a carteira apenas autoriza o pedido.',
+    claimSeasonReward: (level) => `Receber nível ${level}`, rewardAmount: (amount) => `Recompensa: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Recompensa da temporada recebida.', rewardClaimPending: 'O estado da recompensa é desconhecido. Verifica a rede antes de tentar novamente.',
+    rewardClaimFailed: 'Não foi possível confirmar a recompensa da temporada. Verifica a transação e tenta mais tarde.',
     purchase: 'Comprar Premium por 0,15 SOL', initPass: 'Obter o passe da temporada', initPassNote: 'Preço do passe: 0 tokens do jogo. Os custos de rede e a renda da conta do passe são pagos pelo jogador.',
     quoteTitle: 'Custos de rede (live)',
-    quoteRent: (sol, lamports) => `Rent da conta do passe: ${sol} (${lamports} lamports)`,
+    quoteRent: (sol, lamports) => `Rent das contas do passe e das recompensas Premium: ${sol} (${lamports} lamports)`,
     quoteFee: (sol, lamports) => `Taxa de rede desta transação: ${sol} (${lamports} lamports)`,
     quoteMax: (sol, lamports) => `Custos de rede e rent máximos: ${sol} (${lamports} lamports)`,
     quoteReview: "Revise a cotação vinculada a esta transação; nenhum token do jogo é cobrado.", refreshQuote: "Atualizar cotação", initPassConfirm: "Revisar e assinar a criação do passe",
@@ -85,9 +105,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'Recompensas de XP', xpNoRewards: 'No hay recompensas de XP pendientes.', xpClaimButton: 'Obtener', xpClaimConfirm: 'Firmar y obtener',
     xpClaimRent: (sol, lamports) => `Rent del pase y del cursor: ${sol} (${lamports} lamports)`, xpClaimSuccess: 'Recompensa de XP obtenida.', xpClaimExpiry: (slot) => `Disponible hasta el slot ${slot}`,
     xpClaimQueue: 'Obtén las recompensas en orden, empezando por la primera.', xpClaimUnavailable: 'Las recompensas de XP no están disponibles temporalmente.', xpClaimCheckStatus: 'Comprobar estado',
+    seasonRewards: 'Recompensas de temporada', freeTrackTitle: 'Ruta gratuita', premiumTrackTitle: 'Ruta Premium',
+    noSeasonRewards: 'No hay recompensas de temporada listas para reclamar.', premiumLedgerUnavailable: 'El registro de recompensas Premium no está disponible en la cadena.', preparingRewardClaim: 'Enviando la solicitud de recompensa…',
+    rewardPayerNote: 'El operador paga la comisión de red y la renta de la cuenta CIRCUIT; la cartera solo autoriza la solicitud.',
+    claimSeasonReward: (level) => `Reclamar nivel ${level}`, rewardAmount: (amount) => `Recompensa: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Recompensa de temporada reclamada.', rewardClaimPending: 'El estado de la recompensa es desconocido. Comprueba la cadena antes de volver a intentarlo.',
+    rewardClaimFailed: 'No se pudo confirmar la recompensa de temporada. Comprueba la transacción e inténtalo más tarde.',
     purchase: 'Comprar Premium por 0,15 SOL', initPass: 'Obtener el pase de temporada', initPassNote: 'Precio del pase: 0 tokens del juego. Los costes de red y la renta de la cuenta del pase los paga el jugador.',
     quoteTitle: 'Costes de red (live)',
-    quoteRent: (sol, lamports) => `Rent de la cuenta del pase: ${sol} (${lamports} lamports)`,
+    quoteRent: (sol, lamports) => `Rent de las cuentas del pase y recompensas Premium: ${sol} (${lamports} lamports)`,
     quoteFee: (sol, lamports) => `Comisión de red de esta transacción: ${sol} (${lamports} lamports)`,
     quoteMax: (sol, lamports) => `Máximo de costes de red y rent: ${sol} (${lamports} lamports)`,
     quoteReview: "Revisa la cotización vinculada a esta transacción; no se cobra ningún token del juego.", refreshQuote: "Actualizar cotización", initPassConfirm: "Revisar y firmar la creación del pase",
@@ -104,9 +130,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'Phần thưởng XP', xpNoRewards: 'Không có phần thưởng XP đang chờ.', xpClaimButton: 'Nhận', xpClaimConfirm: 'Ký và nhận',
     xpClaimRent: (sol, lamports) => `Tiền thuê thẻ và cursor: ${sol} (${lamports} lamports)`, xpClaimSuccess: 'Đã nhận phần thưởng XP.', xpClaimExpiry: (slot) => `Có hiệu lực đến slot ${slot}`,
     xpClaimQueue: 'Nhận phần thưởng theo thứ tự, bắt đầu từ phần đầu tiên.', xpClaimUnavailable: 'Phần thưởng XP tạm thời không khả dụng.', xpClaimCheckStatus: 'Kiểm tra trạng thái',
+    seasonRewards: 'Phần thưởng mùa giải', freeTrackTitle: 'Nhánh miễn phí', premiumTrackTitle: 'Nhánh Premium',
+    noSeasonRewards: 'Chưa có phần thưởng mùa giải nào sẵn sàng để nhận.', premiumLedgerUnavailable: 'Sổ phần thưởng Premium không khả dụng trên chuỗi.', preparingRewardClaim: 'Đang gửi yêu cầu nhận phần thưởng…',
+    rewardPayerNote: 'Nhà vận hành trả phí mạng và tiền thuê tài khoản CIRCUIT; ví của bạn chỉ xác thực yêu cầu.',
+    claimSeasonReward: (level) => `Nhận phần thưởng cấp ${level}`, rewardAmount: (amount) => `Phần thưởng: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Đã nhận phần thưởng mùa giải.', rewardClaimPending: 'Chưa rõ trạng thái phần thưởng. Hãy kiểm tra chuỗi trước khi thử lại.',
+    rewardClaimFailed: 'Không thể xác nhận phần thưởng mùa giải. Hãy kiểm tra giao dịch và thử lại sau.',
     purchase: 'Mua Premium với giá 0,15 SOL', initPass: 'Nhận thẻ mùa giải', initPassNote: 'Giá thẻ: 0 token trong game. Chi phí mạng và tiền thuê tài khoản thẻ do người chơi trả.',
     quoteTitle: 'Chi phí mạng (live)',
-    quoteRent: (sol, lamports) => `Tiền thuê tài khoản thẻ: ${sol} (${lamports} lamports)`,
+    quoteRent: (sol, lamports) => `Tiền thuê tài khoản thẻ và sổ thưởng Premium: ${sol} (${lamports} lamports)`,
     quoteFee: (sol, lamports) => `Phí mạng cho giao dịch này: ${sol} (${lamports} lamports)`,
     quoteMax: (sol, lamports) => `Tối đa phí mạng và tiền thuê: ${sol} (${lamports} lamports)`,
     quoteReview: "Hãy xem báo giá được gắn với giao dịch này; không tính token trong trò chơi.", refreshQuote: "Làm mới báo giá", initPassConfirm: "Xem lại và ký khởi tạo thẻ",
@@ -123,9 +155,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'Hadiah XP', xpNoRewards: 'Tidak ada hadiah XP yang menunggu.', xpClaimButton: 'Klaim', xpClaimConfirm: 'Tandatangani dan klaim',
     xpClaimRent: (sol, lamports) => `Sewa pass dan cursor klaim: ${sol} (${lamports} lamports)`, xpClaimSuccess: 'Hadiah XP berhasil diklaim.', xpClaimExpiry: (slot) => `Tersedia hingga slot ${slot}`,
     xpClaimQueue: 'Klaim hadiah secara berurutan, dimulai dari hadiah pertama.', xpClaimUnavailable: 'Hadiah XP sementara tidak tersedia.', xpClaimCheckStatus: 'Periksa status',
+    seasonRewards: 'Hadiah musim', freeTrackTitle: 'Jalur gratis', premiumTrackTitle: 'Jalur Premium',
+    noSeasonRewards: 'Belum ada hadiah musim yang siap diklaim.', premiumLedgerUnavailable: 'Buku hadiah Premium tidak tersedia di blockchain.', preparingRewardClaim: 'Mengirim permintaan klaim hadiah…',
+    rewardPayerNote: 'Operator membayar biaya jaringan dan sewa akun CIRCUIT; dompetmu hanya mengesahkan permintaan.',
+    claimSeasonReward: (level) => `Klaim hadiah level ${level}`, rewardAmount: (amount) => `Hadiah: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Hadiah musim berhasil diklaim.', rewardClaimPending: 'Status hadiah belum diketahui. Periksa blockchain sebelum mencoba lagi.',
+    rewardClaimFailed: 'Hadiah musim belum dapat dikonfirmasi. Periksa transaksi dan coba lagi nanti.',
     purchase: 'Beli Premium seharga 0,15 SOL', initPass: 'Dapatkan season pass', initPassNote: 'Harga pass: 0 token game. Biaya jaringan dan sewa akun pass dibayar pemain.',
     quoteTitle: 'Biaya jaringan (live)',
-    quoteRent: (sol, lamports) => `Sewa akun pass: ${sol} (${lamports} lamports)`,
+    quoteRent: (sol, lamports) => `Sewa akun pass dan buku klaim Premium: ${sol} (${lamports} lamports)`,
     quoteFee: (sol, lamports) => `Biaya jaringan untuk transaksi ini: ${sol} (${lamports} lamports)`,
     quoteMax: (sol, lamports) => `Maksimum biaya jaringan dan sewa: ${sol} (${lamports} lamports)`,
     quoteReview: "Periksa kuotasi yang terikat pada transaksi ini; tidak ada token game yang dikenakan.", refreshQuote: "Perbarui kuotasi", initPassConfirm: "Tinjau dan tanda tangani inisialisasi pass",
@@ -143,9 +181,15 @@ export const seasonPassCopy: Record<Language, Copy> = {
     xpRewardsTitle: 'Mga gantimpalang XP', xpNoRewards: 'Walang nakabinbing gantimpalang XP.', xpClaimButton: 'Kunin', xpClaimConfirm: 'Pirmahan at kunin',
     xpClaimRent: (sol, lamports) => `Renta ng pass at claim cursor: ${sol} (${lamports} lamports)`, xpClaimSuccess: 'Nakuha na ang gantimpalang XP.', xpClaimExpiry: (slot) => `Available hanggang slot ${slot}`,
     xpClaimQueue: 'Kunin ang mga gantimpala nang sunod-sunod, simula sa una.', xpClaimUnavailable: 'Pansamantalang hindi available ang mga gantimpalang XP.', xpClaimCheckStatus: 'Suriin ang status',
+    seasonRewards: 'Mga gantimpala sa season', freeTrackTitle: 'Libreng track', premiumTrackTitle: 'Premium track',
+    noSeasonRewards: 'Wala pang handang kuning gantimpala sa season.', premiumLedgerUnavailable: 'Hindi available sa chain ang Premium reward ledger.', preparingRewardClaim: 'Ipinapadala ang kahilingan para kunin ang gantimpala…',
+    rewardPayerNote: 'Ang operator ang nagbabayad ng network fee at renta ng CIRCUIT account; pinapahintulutan lang ng wallet mo ang kahilingan.',
+    claimSeasonReward: (level) => `Kunin ang gantimpala sa level ${level}`, rewardAmount: (amount) => `Gantimpala: ${amount} CIRCUIT`,
+    rewardClaimSuccess: 'Nakuha na ang gantimpala sa season.', rewardClaimPending: 'Hindi pa tiyak ang status ng gantimpala. Suriin ang chain bago subukan muli.',
+    rewardClaimFailed: 'Hindi makumpirma ang gantimpala sa season. Suriin ang transaksyon at subukan muli mamaya.',
     purchase: 'Bilhin ang Premium sa halagang 0.15 SOL', initPass: 'Kunin ang season pass', initPassNote: 'Presyo ng pass: 0 game token. Ang gastos sa network at renta ng pass account ay binabayaran ng manlalaro.',
     quoteTitle: 'Gastos sa network (live)',
-    quoteRent: (sol, lamports) => `Renta ng pass account: ${sol} (${lamports} lamports)`,
+    quoteRent: (sol, lamports) => `Renta ng pass at Premium-claim account: ${sol} (${lamports} lamports)`,
     quoteFee: (sol, lamports) => `Bayad sa network para sa transaksyong ito: ${sol} (${lamports} lamports)`,
     quoteMax: (sol, lamports) => `Pinakamataas na network fee at rent: ${sol} (${lamports} lamports)`,
     quoteReview: "Suriin ang quote na nakaugnay sa transaksyong ito; walang game token na sisingilin.", refreshQuote: "I-refresh ang quote", initPassConfirm: "Suriin at pirmahan ang paggawa ng pass",

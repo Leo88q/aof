@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { connection } from "../provider";
 
 export type RentStrategy = "init" | "init_if_needed" | "idempotent" | "create";
@@ -44,12 +44,13 @@ function decimal(value: bigint): string {
 }
 
 export async function quotePayerCosts(
-  tx: Transaction,
+  tx: Transaction | VersionedTransaction,
   payer: PublicKey,
   lifetime: { blockhash: string; lastValidBlockHeight: number },
   specs: PayerRentAccountSpec[],
 ): Promise<PayerCostQuote> {
-  if (tx.feePayer?.equals(payer) !== true) throw new Error("PAYER_QUOTE_FEE_PAYER_MISMATCH");
+  const feePayer = tx instanceof Transaction ? tx.feePayer : tx.message.staticAccountKeys[0];
+  if (feePayer?.equals(payer) !== true) throw new Error("PAYER_QUOTE_FEE_PAYER_MISMATCH");
   if (!Number.isSafeInteger(lifetime.lastValidBlockHeight) || lifetime.lastValidBlockHeight <= 0) {
     throw new Error("PAYER_QUOTE_INVALID_EXPIRY");
   }
@@ -61,7 +62,9 @@ export async function quotePayerCosts(
     seen.add(key);
   }
 
-  const feeResult = await connection.getFeeForMessage(tx.compileMessage(), "confirmed");
+  const message = tx instanceof Transaction ? tx.compileMessage() : tx.message;
+  const serializedMessage = tx instanceof Transaction ? tx.serializeMessage() : tx.message.serialize();
+  const feeResult = await connection.getFeeForMessage(message, "confirmed");
   if (feeResult.value === null || !Number.isSafeInteger(feeResult.value) || feeResult.value < 0) {
     throw new Error("PAYER_QUOTE_FEE_UNAVAILABLE");
   }
@@ -103,7 +106,7 @@ export async function quotePayerCosts(
     payer: payer.toBase58(),
     recentBlockhash: lifetime.blockhash,
     lastValidBlockHeight: lifetime.lastValidBlockHeight,
-    messageSha256: createHash("sha256").update(tx.serializeMessage()).digest("hex"),
+    messageSha256: createHash("sha256").update(serializedMessage).digest("hex"),
     networkFeeLamports: decimal(networkFee),
     rentLamports: decimal(rentDue),
     maxRentLamports: decimal(maxRent),

@@ -169,7 +169,34 @@ mint не двигает счётчик. Учитывается `amount` (gross)
 
 1. `anchor build` в CI → сверить IDL с ручной копией → `anchor upgrade` программы.
 2. **Сразу после upgrade** (до перезапуска backend на новой IDL): `CAP_PER_EPOCH=… npm run caps:init`
-   (все 27 kinds; per-kind `CAP_<KIND>`; `DRY_RUN=1` для проверки). До этого шага любой mint падает
+   (все 27 kinds; per-kind `CAP_<KIND>`; `DRY_RUN=1` для проверки; повторный прогон пропускает уже
+   созданные потолки. В `scripts/devnet-bringup.sh` шаг `caps` берёт значение из окружения или
+   `aof_backend/.env` и отказывает без него, пока потолки не созданы). До этого шага любой mint падает
    с `AccountNotInitialized` — это ожидаемо и безопасно (inbox-item остаётся `unclaimed`, повтор позже).
 3. Перезапустить backend; `GET /admin/issuance-caps` — все `configured: true`.
 4. Дальнейшая калибровка — `POST /admin/issuance-caps/set`; экстренная остановка kind'а — `capPerEpoch: 0`.
+
+## 2026-10 addendum: cumulative lifetime issuance ceiling
+
+`MaterialMints.max_supply[kind]` now represents a **gross cumulative lifetime mint** ceiling, not an
+outstanding-supply ceiling. Before every resource mint CPI, `check_supply_cap()` increments the
+monotonic `IssuanceCap.lifetime_minted` u128 counter and rejects `next > max_supply`; SPL burns do
+not decrement it. All resource emission paths use this helper, including `collect_mining`, delegated
+mining, exploration, seasonal rewards, crafting, and the direct/operator mint path. Failed
+instructions roll the counter back atomically.
+
+Before activation, the devnet bootstrap must establish historical gross issuance. Run
+`npm run issuance:history:scan`: it follows each canonical mint's signatures back to `InitializeMint`,
+parses both `MintTo` variants and burns, rejects missing/unparsed transactions, and reconciles gross
+minted minus burned atoms against finalized SPL supply. `npm run issuance:baseline:apply` validates
+devnet genesis, program ID, all 27 registry addresses, report completeness, and on-chain caps before
+raising each PDA counter monotonically. A pruned/non-archival RPC that cannot expose the initialize
+transaction is insufficient; do not apply a partial report.
+
+Mining currently has four unique payout mints: `CIRCUIT`, `SILICON`, `DATASET`, and `NEURON` (five
+tool types, because two tools both pay DATASET). Set finite final values in raw atoms via
+`LIFETIME_CAP_CIRCUIT`, `LIFETIME_CAP_SILICON`, `LIFETIME_CAP_DATASET`, and `LIFETIME_CAP_NEURON`,
+then run `npm run issuance:lifetime-caps:apply`. Values are intentionally operator-selected and must
+exceed the live on-chain lifetime counter; this document does not supply or guess them. The read-only
+mining preflight requires a complete matching history report, all four on-chain counters at least as
+large as scanned gross issuance and current supply, and a finite cap with nonzero remaining headroom.

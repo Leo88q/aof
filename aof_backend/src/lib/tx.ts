@@ -18,7 +18,7 @@ async function requireSimulation(tx: Transaction): Promise<void> {
  * that can never be completed, every authority-signing path aborts with
  * HTTP 503 (exposed message — operators need to see the cause).
  */
-function requireAuthoritySigning(): void {
+export function requireAuthoritySigning(): void {
   if (!AUTHORITY) {
     const error = new Error(
       "Authority signing is disabled (AUTHORITY_MODE=read-only). " +

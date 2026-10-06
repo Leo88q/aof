@@ -23,6 +23,9 @@ if (!AUTHORITY) {
     + "read-only mode cannot bootstrap programs.",
   );
 }
+// ts-node компилирует с проверкой типов, но TS не сужает импортированную
+// привязку внутри функций (TS18047) — фиксируем не-null значение локально.
+const authority = AUTHORITY;
 
 
 const RPC_URL = process.env.RPC_URL || clusterApiUrl("devnet");
@@ -40,18 +43,18 @@ const [MINT_AUTHORITY] = PublicKey.findProgramAddressSync(
 async function main() {
   console.log("🎮 Инициализация MaterialMints...");
   console.log(`📡 RPC: ${RPC_URL}`);
-  console.log(`🔑 Authority: ${AUTHORITY.publicKey.toBase58()}`);
+  console.log(`🔑 Authority: ${authority.publicKey.toBase58()}`);
   console.log("");
   
   const connection = new Connection(RPC_URL, "confirmed");
   
   // Проверяем баланс authority
-  const balance = await connection.getBalance(AUTHORITY.publicKey);
+  const balance = await connection.getBalance(authority.publicKey);
   console.log(`💰 Balance: ${(balance / 1e9).toFixed(4)} SOL`);
   
   if (balance < 0.1e9) {
     console.error("❌ Недостаточно SOL. Нужно минимум 0.1 SOL для создания ресурсных mint'ов.");
-    console.log(`   Airdrop: solana airdrop 2 ${AUTHORITY.publicKey.toBase58()} --url devnet`);
+    console.log(`   Airdrop: solana airdrop 2 ${authority.publicKey.toBase58()} --url devnet`);
     process.exit(1);
   }
   
@@ -66,7 +69,7 @@ async function main() {
       
       const mint = await createMint(
         connection,
-        AUTHORITY,                    // payer
+        authority,                    // payer
         MINT_AUTHORITY,               // mintAuthority: auth PDA signs on-chain minting
         null,                         // immutable freeze authority
         9                             // decimals

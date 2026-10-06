@@ -9,7 +9,12 @@ export type VipSnapshot = {
   seasonActive: boolean;
   passPremium: boolean;
   isVip: boolean;
-  pass: { xp: number; claimedRewards: number } | null;
+  pass: {
+    xp: number;
+    claimedRewards: number;
+    claimedBitmap: string;
+    premiumClaimedBitmap: string | null;
+  } | null;
   privileges: VipPrivileges;
 };
 
@@ -21,6 +26,15 @@ export function readVipSnapshot(raw: unknown, owner: string, seasonId: number): 
   if (data.source !== 'onchain' || data.user !== owner || data.seasonId !== seasonId ||
       typeof data.seasonActive !== 'boolean' || typeof data.passPremium !== 'boolean' ||
       typeof data.isVip !== 'boolean' || data.isVip !== (data.passPremium && data.seasonActive)) return null;
+  let premiumClaimedBitmap: string | null = null;
+  if (data.premiumClaims !== null) {
+    if (!data.premiumClaims || typeof data.premiumClaims !== 'object' || Array.isArray(data.premiumClaims) ||
+        !data.passPremium || typeof data.premiumClaims.claimedBitmap !== 'string' ||
+        !/^\d{1,13}$/.test(data.premiumClaims.claimedBitmap)) return null;
+    const premiumBitmap = BigInt(data.premiumClaims.claimedBitmap);
+    if (premiumBitmap >= 1n << 42n) return null;
+    premiumClaimedBitmap = premiumBitmap.toString();
+  }
   let pass: VipSnapshot['pass'] = null;
   if (data.pass !== null) {
     if (!data.pass || typeof data.pass !== 'object' || Array.isArray(data.pass) ||
@@ -28,8 +42,13 @@ export function readVipSnapshot(raw: unknown, owner: string, seasonId: number): 
         typeof data.pass.claimedBitmap !== 'string' || !/^\d{1,13}$/.test(data.pass.claimedBitmap)) return null;
     const bitmap = BigInt(data.pass.claimedBitmap);
     if (bitmap >= 1n << 42n) return null;
-    pass = { xp: data.pass.xp, claimedRewards: bitmap.toString(2).replace(/0/g, '').length };
-  } else if (data.passPremium) return null;
+    pass = {
+      xp: data.pass.xp,
+      claimedRewards: bitmap.toString(2).replace(/0/g, '').length,
+      claimedBitmap: bitmap.toString(),
+      premiumClaimedBitmap,
+    };
+  } else if (data.passPremium || premiumClaimedBitmap !== null) return null;
   const p = data.privileges;
   if (!p || typeof p !== 'object' || !p.farmTrader || !p.priceAlerts ||
       typeof p.farmTrader.enabled !== 'boolean' || typeof p.priceAlerts.fullOptions !== 'boolean' ||

@@ -30,6 +30,7 @@ process.env.AUTHORITY_PUBKEY ||= "11111111111111111111111111111111";
 const { program, questsProgram, connection } = require("../src/provider");
 const vrfModule = require("../src/lib/vrf") as typeof import("../src/lib/vrf");
 const txModule = require("../src/lib/tx") as typeof import("../src/lib/tx");
+const vrfLookupTxModule = require("../src/lib/vrfLookupTableTransactions") as typeof import("../src/lib/vrfLookupTableTransactions");
 const pda = require("../src/lib/pda") as typeof import("../src/lib/pda");
 /* eslint-enable @typescript-eslint/no-var-requires */
 
@@ -103,10 +104,18 @@ let revealCalls: Array<{ program: PublicKey; randomness: PublicKey; cranker: Pub
 };
 let currentSlot = 1_500;
 (connection as any).getSlot = async () => currentSlot;
+// Missing resource ATAs exercise the off-chain idempotent setup instructions;
+// no RPC is made by this offline self-test.
+(connection as any).getMultipleAccountsInfo = async (addresses: PublicKey[]) => addresses.map(() => null);
 let coSigned: { count: number; payer: string; lastDisc: string } | null = null;
+let v0CoSigned: { count: number; payer: string; lastDisc: string } | null = null;
 (txModule as any).coSign = async (ixs: TransactionInstruction[], payer: PublicKey) => {
   coSigned = { count: ixs.length, payer: payer.toBase58(), lastDisc: Buffer.from(ixs[ixs.length - 1].data.subarray(0, 8)).toString("hex") };
   return "base64-tx";
+};
+(vrfLookupTxModule as any).coSignWithVrfLookupTable = async (ixs: TransactionInstruction[], payer: PublicKey) => {
+  v0CoSigned = { count: ixs.length, payer: payer.toBase58(), lastDisc: Buffer.from(ixs[ixs.length - 1].data.subarray(0, 8)).toString("hex") };
+  return "v0-base64-tx";
 };
 
 // The module under test is loaded AFTER the stubs so it binds to them.
@@ -236,7 +245,15 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   async function refund(mechanic: Mechanic) {
     const commit = (await settlement.fetchPendingCommit(mechanic, commits[mechanic].publicKey))!;
     const ixs = await settlement.buildRefundInstructions(commit, cranker);
-    assert.equal(ixs.length, vrfModule.vrfComputeBudget().length + 1, `${mechanic}: compute budget + one refund instruction`);
+    const missingAtaCount = mechanic === "exploration" ? 4 : mechanic === "forge" ? 2 : 0;
+    const budgetCount = vrfModule.vrfComputeBudget().length;
+    assert.equal(ixs.length, budgetCount + missingAtaCount + 1,
+      `${mechanic}: compute budget + missing ATA setup + one refund instruction`);
+    for (const ix of ixs.slice(budgetCount, budgetCount + missingAtaCount)) {
+      assert.ok(ix.programId.equals(ASSOCIATED_TOKEN_PROGRAM_ID), `${mechanic}: missing refund ATA is created before on-chain expiry`);
+      assert.equal(ix.data[0], 1, `${mechanic}: ATA setup must be idempotent`);
+      assert.ok(ix.keys[0].pubkey.equals(cranker), `${mechanic}: refund transaction fee payer funds missing ATA`);
+    }
     return ixs[ixs.length - 1];
   }
   const slot = (prog: any, randomness: PublicKey) => vrfModule.vrfSlotPda(prog.programId, randomness);
@@ -250,12 +267,17 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   }
   expectWiring(program, await refund("exploration"), "exploreExpire", {
     config, materialMints, explorationCommit: k(3), user: wallet, vrfSlot: slot(program, k(73)), auth,
-    dataMint: cfg.dataMint, userData: ata(cfg.dataMint, wallet), circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet),
-    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), datasetMint: mm.dataset, userDataset: ata(mm.dataset, wallet), tokenProgram: TOKEN_PROGRAM_ID,
+    dataMint: cfg.dataMint, userData: ata(cfg.dataMint, wallet), escrowData: pda.resourceEscrowAta(cfg.dataMint),
+    circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet), escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
+    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint),
+    datasetMint: mm.dataset, userDataset: ata(mm.dataset, wallet), escrowDataset: pda.resourceEscrowAta(mm.dataset),
+    tokenProgram: TOKEN_PROGRAM_ID,
   });
   expectWiring(program, await refund("forge"), "forgeAttemptExpire", {
-    config, materialMints, forgeCommit: k(4), user: wallet, vrfSlot: slot(program, k(74)), auth,
-    circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet), siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), tokenProgram: TOKEN_PROGRAM_ID,
+    config, forgeCommit: k(4), user: wallet, vrfSlot: slot(program, k(74)), auth,
+    circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet), escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
+    siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint),
+    tokenProgram: TOKEN_PROGRAM_ID,
   });
   expectWiring(program, await refund("lottery"), "expireLotteryDraw", { config, lotteryRound: k(5), vrfSlot: slot(program, k(75)) });
   expectWiring(questsProgram, await refund("drum"), "drumExpire", {
@@ -283,6 +305,20 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     currentSlot = 5_001;
     assert.equal((await settlement.selfSettleTransaction("lottery", k(5), k(42))).phase, "revealable");
     assert.equal(coSigned!.lastDisc, disc(program, "drawLottery"));
+
+    // Exploration stays one atomic v0+ALT transaction in both settlement phases.
+    currentSlot = 3_001;
+    const explorationReveal = await settlement.selfSettleTransaction("exploration", k(3), wallet);
+    assert.deepEqual(explorationReveal, { tx: "v0-base64-tx", phase: "revealable" });
+    assert.equal(v0CoSigned!.count, vrfModule.vrfComputeBudget().length + 1);
+    assert.equal(v0CoSigned!.lastDisc, disc(program, "exploreReveal"));
+    currentSlot = 3_001 + vrfModule.VRF_REFUND_AFTER_SLOTS;
+    const explorationRefund = await settlement.selfSettleTransaction("exploration", k(3), wallet);
+    assert.deepEqual(explorationRefund, { tx: "v0-base64-tx", phase: "refundable" });
+    assert.equal(v0CoSigned!.count, vrfModule.vrfComputeBudget().length + 4 + 1,
+      "all four missing-ATA creates and ExploreExpire remain in the same atomic v0 transaction");
+    assert.equal(v0CoSigned!.lastDisc, disc(program, "exploreExpire"));
+    assert.equal(v0CoSigned!.payer, wallet.toBase58());
   }
 
   // ---- status from chain state only

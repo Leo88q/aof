@@ -7,11 +7,14 @@ const { spawnSync } = require('node:child_process');
 const root = join(__dirname, '../..');
 const source = path => readFileSync(join(root, path), 'utf8');
 
-test('paid Mind/season operations fail closed until network and economics are verified', () => {
+test('paid Mind stays fail-closed; season purchase uses separate ledgers and remains UI-gated pending acceptance', () => {
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/commit"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/config\/init"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/quest\/init"[^\n]*\n\s*res\.status\(503\)/);
-  assert.match(source('aof_backend/src/routes/season.ts'), /r\.post\("\/pass\/purchase"[^\n]*\n\s*res\.status\(503\)/);
+  const seasonRoute = source('aof_backend/src/routes/season.ts');
+  assert.match(seasonRoute, /r\.post\("\/pass\/purchase", requireWalletProof/);
+  assert.match(seasonRoute, /SEASON_PREMIUM_CLAIMS_ACCOUNT_SIZE/);
+  assert.match(seasonRoute, /coSignQuoted\(\[ix\], user/);
   assert.match(source('programs/aof-quests/src/instructions/drum/drum_commit.rs'), /pub fn handler[^\n]*\{[\s\S]{0,360}require!\(false, QuestError::Paused\)/);
   const v2 = source('programs/aof-quests/src/instructions/drum/mind_spin.rs');
   assert.match(v2, /pub fn commit_handler[^\n]*\{[\s\S]{0,500}require!\(false, QuestError::FeatureDisabled\)/);
@@ -21,7 +24,10 @@ test('paid Mind/season operations fail closed until network and economics are ve
   assert.match(v2, /mind_bank\.release\(ctx\.accounts\.mind_vault\.amount, MIND_SPIN_PRICE\)/);
   assert.doesNotMatch(v2, /DrumCommitted|DrumRevealed|DrumRefunded/);
   assert.match(source('programs/aof-quests/src/instructions/drum/mind_bank.rs'), /bank\.paused = true/);
-  assert.match(source('aof-core/src/instructions/season.rs'), /pub fn purchase_pass_handler[^\n]*\{[\s\S]{0,300}require!\(false, AofError::SeasonPremiumRequired\)/);
+  const seasonProgram = source('aof-core/src/instructions/season.rs');
+  assert.doesNotMatch(seasonProgram, /require!\(false, AofError::SeasonPremiumRequired\)/);
+  assert.match(seasonProgram, /pub fn claim_premium_reward_handler/);
+  assert.match(seasonProgram, /premium_claims\.claimed_bitmap/);
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/reveal", requireWalletLimits/);
   assert.match(source('aof_backend/src/routes/drum.ts'), /r\.get\("\/status\/:user"/);
   assert.match(source('frontend/src/pages/profile/SeasonPassPage.tsx'), /const PAID_PASS_READY = false/);

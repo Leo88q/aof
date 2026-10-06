@@ -40,7 +40,7 @@ test('репозиторий проходит гейт: разрывы выве�
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /без источника 9/);
-  assert.match(result.out, /без стока 7/);
+  assert.match(result.out, /без стока 8/);
   const gaps = JSON.parse(read(GAPS));
   const evidence = JSON.parse(read(EVIDENCE));
   const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));

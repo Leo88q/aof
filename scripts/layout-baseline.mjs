@@ -15,10 +15,11 @@
  * Что сравнивается строго: порядок вариантов ResourceKind; последовательность типов и
  * размер fixed-size аккаунтов; исторический порядок ошибок и инструкций; дискриминанты
  * `sha256("global:<name>")[0..8]`. Переименования шага C описаны в `STEP_C_RENAMES`.
- * Допустимые после исторического базиса additions (игроко-оплачиваемый XP claim) явно
- * перечислены в `docs/LAYOUT_BASELINE.json -> approvedAdditions`: новая инструкция,
- * новый cursor account и только appended-варианты AofError. Их точные имена, поля, типы,
- * размер и дискриминант сверяются с исходниками; неперечисленные additions запрещены.
+ * Допустимые после исторического базиса additions явно перечислены в
+ * `docs/LAYOUT_BASELINE.json -> approvedAdditions`: инструкции/аккаунты для player-paid XP
+ * claims, независимого premium-season ledger и monotonic issuance baselines, plus только
+ * appended-варианты AofError. Их точные
+ * имена, поля, типы, размер и дискриминант сверяются с исходниками; неперечисленные additions запрещены.
  */
 import fs from 'node:fs';
 import path from 'node:path';

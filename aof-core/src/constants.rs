@@ -10,6 +10,16 @@ pub const VAULT_SEED: &[u8] = b"vault";
 pub const PLAYER_SEED: &[u8] = b"player";
 pub const GASTANK_SEED: &[u8] = b"gastank";
 pub const TOOL_SEED: &[u8] = b"tool";
+pub const TOOL_METADATA_REGISTRY_SEED: &[u8] = b"tool_metadata_registry";
+
+/// Maximum bytes to reserve for Metaplex accounts before a tool NFT is minted.
+/// VRF settlement returns only the rent for the actual `data_len()` values.
+pub const TOOL_METADATA_ACCOUNT_MAX_SPACE: usize = 679;
+pub const TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE: usize = 282;
+pub const TOOL_METADATA_URI_COUNT: usize = 25;
+pub const TOOL_METADATA_URI_MAX_LEN: usize = 80;
+pub const TOOL_METADATA_URI_BATCH_MAX: usize = 8;
+pub const TOOL_METADATA_COMPLETE_MASK: u32 = (1u32 << TOOL_METADATA_URI_COUNT) - 1;
 // [НОВОЕ] seeds для добавленных PDA (см. AUDIT_AND_CHANGES.md / AUDIT_V2 / AUDIT_V3)
 pub const RARITY_COUNTER_SEED: &[u8] = b"rarity_counter";
 /// Per-ResourceKind issuance cap PDA: seeds = [ISSUANCE_CAP_SEED, &[kind as u8]].
@@ -192,6 +202,7 @@ pub const RESOURCE_ORDER_V2_SEED: &[u8] = b"resource_order_v2";
 pub const CRAFT_ORDER_SEED: &[u8] = b"craft_order";
 pub const SEASON_SEED: &[u8] = b"season";
 pub const SEASON_PASS_SEED: &[u8] = b"season_pass";
+pub const SEASON_PREMIUM_CLAIMS_SEED: &[u8] = b"season_premium_claims";
 pub const SEASON_XP_CLAIM_CURSOR_SEED: &[u8] = b"season_xp_claim_cursor";
 
 // ----- Паки: цена (в lamports, реальные деньги) и дефолтные шансы (bps, сумма=10000) -----
@@ -376,6 +387,73 @@ pub const ENERGY_COST_COLLECTION: u8 = 1;
 pub const ENERGY_COST_SIGNAL_PROCESSING: u8 = 2;
 pub const ENERGY_COST_MODEL_TRAINING: u8 = 2;
 
+/// Сколько атомов DATA сжигается за одну единицу энергии в
+/// `exchange_data_energy`. 1 целый DATA (10^9 атомов) → 1 энергия.
+///
+/// Это единственный источник энергии, кроме времени (1 за 30 минут), поэтому
+/// цена задана константой, а не полем `Config`: иначе оператор мог бы в одиночку
+/// переоценить топливо для всей лабораторной цепочки. Сжигание уменьшает
+/// `mint.supply`, значит потолок выпуска освобождается — отдельного учёта нет.
+pub const DATA_ATOMS_PER_ENERGY: u64 = RESOURCE_UNIT;
+
+/// Сколько энергии возвращает одна фляга, по тирам
+/// `[CryoFluid, VoltFluid, BioFluid, NanoFluid, QuantumFluid]`
+/// (индекс — `flask_kind - 1` в `use_flask`). Лестница строго неубывающая, а
+/// верхний тир закрывает бак целиком: `ENERGY_CAP`. Значения — тоже константы,
+/// а не конфиг, по той же причине, что и выше: применение расходника нельзя
+/// переоценить одним админ-вызовом.
+pub const FLASK_ENERGY_GAIN: [u8; 5] = [5, 5, 8, 10, ENERGY_CAP];
+
+/// Тип флакона в `use_flask`: 1..=5 → (ResourceKind, энергия).
+/// Вынесено сюда, чтобы и проверка типа, и таблица наград были в одном месте
+/// и проверялись тестами без валидатора.
+pub fn flask_kind_reward(flask_kind: u8) -> Option<(crate::ResourceKind, u8)> {
+    use crate::ResourceKind;
+    let kind = match flask_kind {
+        1 => ResourceKind::CryoFluid,
+        2 => ResourceKind::VoltFluid,
+        3 => ResourceKind::BioFluid,
+        4 => ResourceKind::NanoFluid,
+        5 => ResourceKind::QuantumFluid,
+        _ => return None,
+    };
+    Some((kind, FLASK_ENERGY_GAIN[(flask_kind - 1) as usize]))
+}
+
+#[cfg(test)]
+mod energy_exchange_constants_tests {
+    use super::*;
+
+    #[test]
+    fn flask_ladder_is_defined_for_every_tier_and_never_zero() {
+        for kind in 1..=5u8 {
+            let (_, gain) = flask_kind_reward(kind).expect("все пять тиров обязаны быть заданы");
+            assert!(gain > 0, "фляга обязана возвращать хотя бы одну энергию");
+            assert!(gain <= ENERGY_CAP, "награда выше потолка энергии невозможна");
+        }
+        assert_eq!(flask_kind_reward(5).unwrap().1, ENERGY_CAP);
+    }
+
+    #[test]
+    fn flask_ladder_does_not_decrease_with_tier() {
+        let gains: Vec<u8> = (1..=5u8).map(|k| flask_kind_reward(k).unwrap().1).collect();
+        assert!(gains.windows(2).all(|w| w[0] <= w[1]), "лестница тиров не должна падать: {gains:?}");
+    }
+
+    #[test]
+    fn unknown_flask_kinds_are_rejected() {
+        assert!(flask_kind_reward(0).is_none());
+        assert!(flask_kind_reward(6).is_none());
+        assert!(flask_kind_reward(u8::MAX).is_none());
+    }
+
+    #[test]
+    fn one_energy_costs_exactly_one_whole_data() {
+        assert_eq!(DATA_ATOMS_PER_ENERGY, 1_000_000_000);
+        assert_eq!(DATA_ATOMS_PER_ENERGY, RESOURCE_UNIT);
+    }
+}
+
 // Погода (enum значения)
 pub const WEATHER_BLACKOUT: u8 = 0;
 pub const WEATHER_NOMINAL: u8 = 1;
@@ -434,6 +512,7 @@ pub const RESOURCE_ORDER_V2_SPACE: usize = 8 + ResourceOrderV2::INIT_SPACE;
 pub const CRAFT_ORDER_SPACE: usize = 8 + CraftOrder::INIT_SPACE;
 pub const SEASON_SPACE: usize = 8 + Season::INIT_SPACE;
 pub const SEASON_PASS_SPACE: usize = 8 + SeasonPass::INIT_SPACE;
+pub const SEASON_PREMIUM_CLAIMS_SPACE: usize = 8 + SeasonPremiumClaims::INIT_SPACE;
 pub const SEASON_XP_CLAIM_CURSOR_SPACE: usize = 8 + SeasonXpClaimCursor::INIT_SPACE;
 pub const MAX_SEASON_XP_ENTITLEMENT_AMOUNT: u32 = 100_000;
 /// An XP authorization is short-lived; the backend caps it to the same window.

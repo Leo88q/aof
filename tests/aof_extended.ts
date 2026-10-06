@@ -8,7 +8,7 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createMint, getMint, mintTo, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction,
   createAccount as createTokenAccount, TOKEN_PROGRAM_ID,
@@ -108,6 +108,14 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     if (confirmation.value.err) throw new Error(`airdrop failed: ${JSON.stringify(confirmation.value.err)}`);
     const credited = await provider.connection.getBalance(kp.publicKey, "confirmed");
     if (credited < lamports) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${lamports}, got ${credited}`);
+  }
+
+  // Quote deadlines are enforced against the validator's Clock sysvar, not the
+  // test runner's wall clock; those clocks can drift during the long suite.
+  async function chainUnixTimestamp(): Promise<number> {
+    const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY, "confirmed");
+    if (!clock || clock.data.length < 40) throw new Error("Clock sysvar unavailable or truncated");
+    return Number(clock.data.readBigInt64LE(32));
   }
 
   // Admin faucet (mint_resource keeps a 7–10% treasury fee, so the user gets
@@ -324,14 +332,20 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
 
     const user = Keypair.generate(); await airdrop(user);
     const seasonPass = pda([B("season_pass"), user.publicKey.toBuffer(), sid]);
+    const premiumClaims = pda([B("season_premium_claims"), user.publicKey.toBuffer(), sid]);
     const claimCursor = pda([B("season_xp_claim_cursor"), user.publicKey.toBuffer(), sid]);
     const purchase = () => program.methods.purchaseSeasonPass().accounts({
-      config: configPda, user: user.publicKey, treasury: authority, season, seasonPass, systemProgram: SystemProgram.programId,
+      config: configPda, user: user.publicKey, treasury: authority, season, seasonPass, premiumClaims,
+      systemProgram: SystemProgram.programId,
     }).signers([user]).rpc();
-    const before = await lamports(user.publicKey);
-    await expectError(purchase(), "SeasonPremiumRequired");
-    expect(await lamports(user.publicKey)).to.equal(before);
-    expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
+    const treasuryBeforePurchase = await lamports(authority);
+    await purchase();
+    expect((await lamports(authority)) - treasuryBeforePurchase).to.equal(150_000_000);
+    expect((await program.account.seasonPass.fetch(seasonPass)).premium).to.equal(true);
+    expect((await program.account.seasonPremiumClaims.fetch(premiumClaims)).owner.toBase58()).to.equal(user.publicKey.toBase58());
+    const treasuryAfterPurchase = await lamports(authority);
+    await expectError(purchase(), "SeasonPassAlreadyPremium");
+    expect(await lamports(authority)).to.equal(treasuryAfterPurchase);
     expect(await provider.connection.getAccountInfo(claimCursor)).to.equal(null);
 
     const xpExpirySlot = (await provider.connection.getSlot("confirmed")) + 20_000;
@@ -460,16 +474,27 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const userCircuit = await ensureAta(circuitMint, user.publicKey);
     const claimReward = (level: number, premiumTrack: boolean) => program.methods.claimSeasonReward(level, premiumTrack).accounts({
       config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, circuitMint, userCircuit, auth: authPda,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      issuanceCapCircuit: issuanceCapPda("circuit"), tokenProgram: TOKEN_PROGRAM_ID,
+    }).rpc();
+    const claimPremiumReward = (level: number) => program.methods.claimPremiumSeasonReward(level).accounts({
+      config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, premiumClaims,
+      circuitMint, userCircuit, auth: authPda, issuanceCapCircuit: issuanceCapPda("circuit"), tokenProgram: TOKEN_PROGRAM_ID,
     }).rpc();
     const circuitBefore = await balance(userCircuit);
     await expectError(claimReward(1, true), "SeasonPremiumRequired");
     expect((await balance(userCircuit)).toString()).to.equal(circuitBefore.toString());
     await claimReward(1, false);
-    expect((await balance(userCircuit)).sub(circuitBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
+    const afterFreeClaim = await balance(userCircuit);
+    expect(afterFreeClaim.sub(circuitBefore).toString()).to.equal(UNIT.muln(100).toString()); // 100 units per level
     await expectError(claimReward(1, false), "SeasonRewardAlreadyClaimed");
     await expectError(claimReward(2, false), "SeasonInsufficientXp"); // 1 501 XP < 2 000
+    await claimPremiumReward(1);
+    const afterPremiumClaim = await balance(userCircuit);
+    expect(afterPremiumClaim.sub(afterFreeClaim).toString()).to.equal(UNIT.muln(100).toString());
+    await expectError(claimPremiumReward(1), "SeasonRewardAlreadyClaimed");
+    await expectError(claimPremiumReward(2), "SeasonInsufficientXp");
     expect((await program.account.seasonPass.fetch(seasonPass)).claimedBitmap.toString()).to.equal("1");
+    expect((await program.account.seasonPremiumClaims.fetch(premiumClaims)).claimedBitmap.toString()).to.equal("1");
   });
 
   // ========== LOTTERY / QUANTUM DRAW ==========
@@ -675,8 +700,8 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const seller = Keypair.generate(); await airdrop(seller);
     const buyer = Keypair.generate(); await airdrop(buyer);
     const stranger = Keypair.generate(); await airdrop(stranger);
-    // Only the five canonical tool ids can be minted. No legacy NFT accounts
-    // exist on the target network, so old tool names are deliberately rejected.
+    // Only the five canonical tool ids can be minted; historical noncanonical
+    // names are deliberately rejected even though current tools receive immutable Token Metadata.
     const { mint, tokenAccount: sellerToken } = await mintTool(seller.publicKey, "plasma_cutter");
     expect((await program.account.toolData.fetch(toolPda(mint))).toolType).to.equal("plasma_cutter");
     for (const kind of ["silicon_extractor", "Data_Harvester", "quantum_transmitter", "neural_seeder"]) {
@@ -701,8 +726,10 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     await expectError(cancel(stranger, await ensureAta(mint, stranger.publicKey)), "Unauthorized");
 
     const buyerToken = await ensureAta(mint, buyer.publicKey);
-    // A quote may live at most 300 s by the chain clock; stay well inside it.
-    await program.methods.marketplaceBuyBounded(new BN(1_000_000), new BN(Math.floor(Date.now() / 1000) + 120)).accounts({
+    // A quote may live at most 300 s by the chain clock; derive its deadline
+    // from that same Clock sysvar, not Date.now() on the test runner.
+    const deadline = new BN((await chainUnixTimestamp()) + 120);
+    await program.methods.marketplaceBuyBounded(new BN(1_000_000), deadline).accounts({
       config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority, mint, tool: toolPda(mint),
       listing, listingVault, buyerToken, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([buyer]).rpc();

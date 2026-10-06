@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '../../lib/api';
 import { handleTxResponse } from '../../lib/txFlow';
-import type { PayerCostQuote, SeasonPassInitIntent, SeasonXpClaimIntent } from '../../lib/transactionIntent';
+import { connection } from '../../lib/wallet';
+import type {
+  PayerCostQuote,
+  SeasonPassInitIntent,
+  SeasonPassIntent,
+  SeasonXpClaimIntent,
+} from '../../lib/transactionIntent';
 import { formatLamportsAsSol } from '../../lib/formatLamports';
 import { useVipStatus } from '../../lib/useVipStatus';
+import type { VipSnapshot } from '../../lib/vipReadings';
 import { readActiveSeason } from '../../lib/currentSeasonReadings';
 import { chooseVipTheme, readVipTheme, type VipTheme } from '../../lib/vipTheme';
 import { useLocale } from '../../i18n/LocaleProvider';
@@ -18,12 +25,54 @@ import { NoticeMsg } from '../../components/visual/NoticeMsg';
 const PAID_PASS_READY = false;
 // The on-chain instruction charges 150_000_000 lamports (0.15 SOL).
 const PASS_PRICE_LAMPORTS = '150000000' as const;
+const SEASON_PASS_MAX_LEVEL = 42;
+const SEASON_XP_PER_LEVEL = 1_000;
+const SEASON_REWARD_UNITS_PER_LEVEL = 100;
 type PreparedSeasonPassInit = { user: string; seasonId: number; response: { tx: string; quote: PayerCostQuote } };
+type PreparedSeasonPassPurchase = { user: string; seasonId: number; response: { tx: string; quote: PayerCostQuote } };
 type PendingXpClaim = {
   id: string; player: string; seasonId: number; amount: number; campaignId: string;
   nonce: number; expirySlot: string; canClaim: boolean;
 };
 type PreparedXpClaim = { user: string; seasonId: number; claim: PendingXpClaim; response: any };
+
+function claimableSeasonLevels(xp: number, claimedBitmap: string): number[] {
+  const claimed = BigInt(claimedBitmap);
+  return Array.from({ length: SEASON_PASS_MAX_LEVEL }, (_, index) => index + 1)
+    .filter((level) => xp >= level * SEASON_XP_PER_LEVEL && (claimed & (1n << BigInt(level - 1))) === 0n);
+}
+
+function seasonRewardKey(user: string, seasonId: number, level: number, premiumTrack: boolean): string {
+  return `${user}:${seasonId}:${premiumTrack ? 'premium' : 'free'}:${level}`;
+}
+
+function canClaimSeasonReward(snapshot: VipSnapshot | null, level: number, premiumTrack: boolean): boolean {
+  if (!snapshot?.seasonActive || !snapshot.pass || level < 1 || level > SEASON_PASS_MAX_LEVEL ||
+      snapshot.pass.xp < level * SEASON_XP_PER_LEVEL) return false;
+  if (premiumTrack && (!snapshot.passPremium || snapshot.pass.premiumClaimedBitmap === null)) return false;
+  const bitmap = premiumTrack ? snapshot.pass.premiumClaimedBitmap : snapshot.pass.claimedBitmap;
+  return bitmap !== null && (BigInt(bitmap) & (1n << BigInt(level - 1))) === 0n;
+}
+
+function hasClaimedSeasonReward(snapshot: VipSnapshot | null, level: number, premiumTrack: boolean): boolean {
+  if (!snapshot?.pass || level < 1 || level > SEASON_PASS_MAX_LEVEL) return false;
+  const bitmap = premiumTrack ? snapshot.pass.premiumClaimedBitmap : snapshot.pass.claimedBitmap;
+  return bitmap !== null && (BigInt(bitmap) & (1n << BigInt(level - 1))) !== 0n;
+}
+
+const SEASON_REWARD_NO_SUBMISSION_ERRORS = new Set([
+  'INVALID_SEASON_ID', 'INVALID_SEASON_REWARD_CLAIM', 'SEASON_REWARD_AUTHORITY_CONFIGURATION_MISMATCH',
+  'SEASON_NOT_FOUND', 'SEASON_NOT_ACTIVE', 'SEASON_PASS_REQUIRED', 'SEASON_INSUFFICIENT_XP',
+  'SEASON_PREMIUM_REQUIRED', 'SEASON_PREMIUM_CLAIMS_LEDGER_UNAVAILABLE', 'SEASON_REWARD_ALREADY_CLAIMED',
+  'SEASON_REWARD_TRANSACTION_FAILED', 'SEASON_REWARD_PREPARE_FAILED', 'FRAUD_REVIEW_HOLD',
+  'FRAUD_HOLD_CHECK_UNAVAILABLE', 'Wallet signature required', 'Wallet proof actor or subject mismatch',
+  'Wallet proof already used', 'Wallet proof storage unavailable', 'Invalid wallet proof payload',
+]);
+
+function isSeasonRewardPreSubmitError(error: unknown): boolean {
+  const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : null;
+  return typeof code === 'string' && SEASON_REWARD_NO_SUBMISSION_ERRORS.has(code);
+}
 
 export function SeasonPassPage() {
   const { language } = useLocale();
@@ -42,6 +91,7 @@ export function SeasonPassPage() {
   const passInitBlocked = pendingKey !== null && passInitBlockedFor === pendingKey;
   const [theme, setTheme] = useState<VipTheme>('copper');
   const [preparedPassInit, setPreparedPassInit] = useState<PreparedSeasonPassInit | null>(null);
+  const [preparedPassPurchase, setPreparedPassPurchase] = useState<PreparedSeasonPassPurchase | null>(null);
   const [passInitStatus, setPassInitStatus] = useState<'idle' | 'preparing' | 'prepared' | 'failed' | 'pending' | 'success'>('idle');
   const [xpClaims, setXpClaims] = useState<PendingXpClaim[]>([]);
   const [xpClaimsLoading, setXpClaimsLoading] = useState(false);
@@ -49,6 +99,9 @@ export function SeasonPassPage() {
   const [preparedXpClaim, setPreparedXpClaim] = useState<PreparedXpClaim | null>(null);
   const [xpClaimStatus, setXpClaimStatus] = useState<string | null>(null);
   const [xpClaimBlockedFor, setXpClaimBlockedFor] = useState<string | null>(null);
+  const [seasonRewardStatus, setSeasonRewardStatus] = useState<string | null>(null);
+  const [seasonRewardBlockedFor, setSeasonRewardBlockedFor] = useState<string | null>(null);
+  const [seasonRewardPendingSignature, setSeasonRewardPendingSignature] = useState<string | null>(null);
   const currentUser = useRef(user);
   currentUser.current = user;
   const currentSeasonId = useRef(seasonId);
@@ -59,6 +112,9 @@ export function SeasonPassPage() {
     setPreparedXpClaim(null);
     setXpClaimStatus(null);
     setXpClaimBlockedFor(null);
+    setSeasonRewardStatus(null);
+    setSeasonRewardBlockedFor(null);
+    setSeasonRewardPendingSignature(null);
     setXpClaimsFailed(false);
     if (!user || seasonId === null || reading?.owner !== user) {
       setXpClaimsLoading(false);
@@ -78,32 +134,62 @@ export function SeasonPassPage() {
   useEffect(() => {
     setTheme(readVipTheme(user, seasonId ?? -1, snapshot?.isVip === true) ?? 'copper');
   }, [user, seasonId, snapshot?.isVip]);
+  const purchaseQuote = preparedPassPurchase?.user === user && preparedPassPurchase.seasonId === seasonId
+    ? preparedPassPurchase.response.quote : null;
+  const freeRewardLevels = snapshot?.pass && snapshot.seasonActive
+    ? claimableSeasonLevels(snapshot.pass.xp, snapshot.pass.claimedBitmap) : [];
+  const premiumRewardLevels = snapshot?.pass && snapshot.seasonActive && snapshot.passPremium &&
+      snapshot.pass.premiumClaimedBitmap !== null
+    ? claimableSeasonLevels(snapshot.pass.xp, snapshot.pass.premiumClaimedBitmap) : [];
   const canBuy = Boolean(PAID_PASS_READY && seasonId !== null && user && treasury && snapshot?.seasonActive && !snapshot.passPremium &&
     !busy && !paymentBlocked);
 
-  async function buy() {
+  async function preparePassPurchase() {
     if (!canBuy || !user || !treasury || seasonId === null) return;
+    const owner = user;
+    const activeSeasonId = seasonId;
     setBusy(true);
+    setPreparedPassPurchase(null);
     try {
       // Recheck immediately before requesting a payment transaction.
       const current = readActiveSeason(await api.season.current());
-      if (!current || current.seasonId !== seasonId) { flash(c.unavailable); refresh(); return; }
+      if (!current || current.seasonId !== activeSeasonId) { flash(c.unavailable); refresh(); return; }
       const verified = (await import('../../lib/vipReadings')).readVipSnapshot(
-        await api.season.vipStatus(user, seasonId), user, seasonId);
-      if (!verified || !verified.seasonActive || verified.passPremium || user !== reading?.owner ||
-          reading.seasonId !== seasonId) {
+        await api.season.vipStatus(owner, activeSeasonId), owner, activeSeasonId);
+      if (!verified || !verified.seasonActive || verified.passPremium || owner !== reading?.owner ||
+          reading.seasonId !== activeSeasonId) {
         flash(c.unavailable);
         refresh();
         return;
       }
+      const response = await api.season.passPurchase({ user: owner, seasonId: activeSeasonId, treasury });
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+      if (typeof response?.tx !== 'string' || !response.tx || !response.quote) throw new Error('Missing payer quote');
+      setPreparedPassPurchase({ user: owner, seasonId: activeSeasonId, response });
       flash(c.preparing);
-      const resp = await api.season.passPurchase({ user, seasonId, treasury });
-      // Verify the only wallet-signed instruction, its destination and season PDA.
-      const result = await handleTxResponse(resp, {
-        kind: 'seasonPass', user, treasury, seasonId, priceLamports: PASS_PRICE_LAMPORTS,
-      });
+    } catch {
+      if (currentUser.current === owner && currentSeasonId.current === activeSeasonId) flash(c.quoteUnavailable);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmPassPurchase() {
+    if (!canBuy || !user || !treasury || seasonId === null || !purchaseQuote || !preparedPassPurchase) return;
+    const owner = user;
+    const activeSeasonId = seasonId;
+    const response = preparedPassPurchase.response;
+    const intent: SeasonPassIntent = {
+      kind: 'seasonPass', user: owner, treasury, seasonId: activeSeasonId,
+      priceLamports: PASS_PRICE_LAMPORTS, quote: purchaseQuote,
+    };
+    setBusy(true);
+    try {
+      const result = await handleTxResponse(response, intent);
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
       if (result.success || result.signature) {
-        setPaymentBlockedFor(`${user}:${seasonId}`);
+        setPaymentBlockedFor(`${owner}:${activeSeasonId}`);
+        setPreparedPassPurchase(null);
         flash(result.success ? c.submitted : c.pending);
         refresh();
       } else flash(c.failed);
@@ -124,8 +210,9 @@ export function SeasonPassPage() {
 
   useEffect(() => {
     setPreparedPassInit(null);
+    setPreparedPassPurchase(null);
     setPassInitStatus('idle');
-  }, [user, seasonId, Boolean(snapshot?.pass)]);
+  }, [user, seasonId, Boolean(snapshot?.pass), Boolean(snapshot?.passPremium)]);
 
   async function prepareInitPass() {
     if (!canInitPass || !user || seasonId === null) return;
@@ -326,6 +413,159 @@ export function SeasonPassPage() {
     }
   }
 
+  async function submitSeasonRewardClaim(level: number, premiumTrack: boolean) {
+    if (!user || seasonId === null || reading?.owner !== user || busy || seasonRewardBlockedFor ||
+        !canClaimSeasonReward(snapshot, level, premiumTrack)) return;
+    const owner = user;
+    const activeSeasonId = seasonId;
+    const key = seasonRewardKey(owner, activeSeasonId, level, premiumTrack);
+    let requestStarted = false;
+    let submittedSignature: string | null = null;
+    setBusy(true);
+    setSeasonRewardStatus(c.preparingRewardClaim);
+    try {
+      const current = readActiveSeason(await api.season.current());
+      if (!current || current.seasonId !== activeSeasonId) {
+        setSeasonRewardStatus(c.unavailable);
+        refresh();
+        return;
+      }
+      const { readVipSnapshot: readLatestVip } = await import('../../lib/vipReadings');
+      const latest = readLatestVip(await api.season.vipStatus(owner, activeSeasonId), owner, activeSeasonId);
+      if (!latest || !canClaimSeasonReward(latest, level, premiumTrack) ||
+          currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) {
+        setSeasonRewardStatus(c.unavailable);
+        refresh();
+        return;
+      }
+      const payload = { owner, seasonId: activeSeasonId, level, premiumTrack };
+      const { createWalletProof } = await import('../../lib/wallet');
+      const walletProof = await createWalletProof(owner, 'season_reward_claim', payload, {
+        method: 'POST', target: '/season/reward/claim',
+      });
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+
+      // From this point the backend may broadcast an operator-paid claim. Keep
+      // the level locked until its signature or the on-chain claim bitmap settles.
+      requestStarted = true;
+      setSeasonRewardBlockedFor(key);
+      const response = await api.season.rewardClaim({ ...payload, walletProof });
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+      if (typeof response?.signature === 'string') submittedSignature = response.signature;
+      if (typeof response?.sig === 'string') submittedSignature = response.sig;
+      setSeasonRewardPendingSignature(submittedSignature);
+      if (response?.owner !== owner || response.seasonId !== activeSeasonId || response.level !== level ||
+          response.premiumTrack !== premiumTrack) {
+        throw new Error('Season reward response differs from the signed request');
+      }
+      if (response.pending === true) {
+        setSeasonRewardStatus(c.rewardClaimPending);
+        flash(c.rewardClaimPending);
+        refresh();
+        return;
+      }
+      if (typeof response.sig !== 'string' || !response.sig) {
+        throw new Error('Missing operator claim signature');
+      }
+
+      const result = await handleTxResponse(response);
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+      if (result.signature) {
+        submittedSignature = result.signature;
+        setSeasonRewardPendingSignature(result.signature);
+      }
+      if (result.success) {
+        const confirmed = readLatestVip(await api.season.vipStatus(owner, activeSeasonId), owner, activeSeasonId);
+        if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+        if (hasClaimedSeasonReward(confirmed, level, premiumTrack)) {
+          setSeasonRewardBlockedFor(null);
+          setSeasonRewardPendingSignature(null);
+          setSeasonRewardStatus(c.rewardClaimSuccess);
+          flash(c.rewardClaimSuccess);
+          refresh();
+          return;
+        }
+      }
+      if (result.signature || result.success) {
+        setSeasonRewardStatus(c.rewardClaimPending);
+        flash(c.rewardClaimPending);
+        refresh();
+        return;
+      }
+      setSeasonRewardBlockedFor(null);
+      setSeasonRewardPendingSignature(null);
+      setSeasonRewardStatus(c.rewardClaimFailed);
+      flash(c.rewardClaimFailed);
+    } catch (error: any) {
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+      if (requestStarted && !isSeasonRewardPreSubmitError(error)) {
+        setSeasonRewardBlockedFor(key);
+        setSeasonRewardPendingSignature(submittedSignature);
+        setSeasonRewardStatus(c.rewardClaimPending);
+        flash(c.rewardClaimPending);
+      } else {
+        setSeasonRewardBlockedFor(null);
+        setSeasonRewardPendingSignature(null);
+        setSeasonRewardStatus(c.rewardClaimFailed);
+        flash(c.rewardClaimFailed);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function refreshSeasonRewardStatus() {
+    if (!user || seasonId === null || reading?.owner !== user || busy || !seasonRewardBlockedFor) return;
+    const owner = user;
+    const activeSeasonId = seasonId;
+    const [blockedUser, blockedSeasonRaw, blockedTrack, blockedLevelRaw] = seasonRewardBlockedFor.split(':');
+    if (blockedUser !== owner || Number(blockedSeasonRaw) !== activeSeasonId) {
+      setSeasonRewardBlockedFor(null);
+      setSeasonRewardPendingSignature(null);
+      return;
+    }
+    const blockedLevel = Number(blockedLevelRaw);
+    const blockedPremium = blockedTrack === 'premium';
+    setBusy(true);
+    try {
+      const { readVipSnapshot: readLatestVip } = await import('../../lib/vipReadings');
+      const latest = readLatestVip(await api.season.vipStatus(owner, activeSeasonId), owner, activeSeasonId);
+      if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+      if (!latest) throw new Error('Season reward status unavailable');
+      const claimed = hasClaimedSeasonReward(latest, blockedLevel, blockedPremium);
+      if (claimed) {
+        setSeasonRewardBlockedFor(null);
+        setSeasonRewardPendingSignature(null);
+        setSeasonRewardStatus(c.rewardClaimSuccess);
+        flash(c.rewardClaimSuccess);
+        refresh();
+        return;
+      }
+      if (seasonRewardPendingSignature) {
+        const signatureStatus = (await connection.getSignatureStatuses(
+          [seasonRewardPendingSignature], { searchTransactionHistory: true },
+        )).value[0];
+        if (currentUser.current !== owner || currentSeasonId.current !== activeSeasonId) return;
+        if (signatureStatus?.err) {
+          setSeasonRewardBlockedFor(null);
+          setSeasonRewardPendingSignature(null);
+          setSeasonRewardStatus(c.rewardClaimFailed);
+          flash(c.rewardClaimFailed);
+          refresh();
+          return;
+        }
+      }
+      setSeasonRewardStatus(c.rewardClaimPending);
+      flash(c.rewardClaimPending);
+      refresh();
+    } catch {
+      setSeasonRewardStatus(c.rewardClaimPending);
+      flash(c.rewardClaimPending);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const status = !user ? c.connect : !reading || reading.kind === 'loading' ? c.verifying
     : reading.kind === 'error' || !snapshot ? c.unavailable
     : snapshot.isVip ? c.active : snapshot.passPremium ? c.expired
@@ -415,6 +655,54 @@ export function SeasonPassPage() {
         <button type="button" onClick={refreshXpClaimStatus} disabled={busy || xpClaimsLoading}
           className="mt-3 w-full py-2 px-3 rounded-xl border border-straw/20 text-straw text-xs disabled:opacity-40">{c.xpClaimCheckStatus}</button>
       </Card>}
+      {snapshot?.pass && snapshot.seasonActive && user && seasonId !== null && reading?.owner === user && <Card>
+        <h3 className="text-parchment font-semibold text-sm mb-2">{c.seasonRewards}</h3>
+        {seasonRewardStatus && <p role="status" className="text-straw text-xs mb-2">{seasonRewardStatus}</p>}
+        <p className="text-straw text-xs mb-3" role="note">{c.rewardPayerNote}</p>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="text-parchment text-sm">{c.freeTrackTitle}</h4>
+            {freeRewardLevels.length === 0 && <p className="text-straw text-xs">{c.noSeasonRewards}</p>}
+            {freeRewardLevels.map((level) => {
+              const key = seasonRewardKey(user, seasonId, level, false);
+              const isBlocked = seasonRewardBlockedFor === key;
+              return <div key={`free-${level}`} className="p-3 rounded-xl bg-soil-800/70 border border-straw/10 space-y-2">
+                <p className="text-parchment text-sm font-semibold">{c.season} {seasonId} · #{level}</p>
+                <p className="text-straw text-xs">{c.rewardAmount(level * SEASON_REWARD_UNITS_PER_LEVEL)}</p>
+                {isBlocked ? <p role="status" className="text-straw text-xs">{seasonRewardStatus || c.rewardClaimPending}</p>
+                  : <button type="button" onClick={() => submitSeasonRewardClaim(level, false)}
+                    disabled={busy || Boolean(seasonRewardBlockedFor)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
+                    {busy ? c.preparingRewardClaim : c.claimSeasonReward(level)}
+                  </button>}
+              </div>;
+            })}
+          </div>
+          {snapshot.passPremium && <div className="space-y-2">
+            <h4 className="text-parchment text-sm">{c.premiumTrackTitle}</h4>
+            {snapshot.pass.premiumClaimedBitmap === null
+              ? <p role="status" className="text-straw text-xs">{c.premiumLedgerUnavailable}</p>
+              : premiumRewardLevels.length === 0
+                ? <p className="text-straw text-xs">{c.noSeasonRewards}</p>
+                : premiumRewardLevels.map((level) => {
+                    const key = seasonRewardKey(user, seasonId, level, true);
+                    const isBlocked = seasonRewardBlockedFor === key;
+                    return <div key={`premium-${level}`} className="p-3 rounded-xl bg-soil-800/70 border border-straw/10 space-y-2">
+                      <p className="text-parchment text-sm font-semibold">{c.season} {seasonId} · #{level}</p>
+                      <p className="text-straw text-xs">{c.rewardAmount(level * SEASON_REWARD_UNITS_PER_LEVEL)}</p>
+                      {isBlocked ? <p role="status" className="text-straw text-xs">{seasonRewardStatus || c.rewardClaimPending}</p>
+                        : <button type="button" onClick={() => submitSeasonRewardClaim(level, true)}
+                          disabled={busy || Boolean(seasonRewardBlockedFor)}
+                          className="w-full py-2.5 px-3 rounded-xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
+                          {busy ? c.preparingRewardClaim : c.claimSeasonReward(level)}
+                        </button>}
+                    </div>;
+                  })}
+          </div>}
+        </div>
+        {seasonRewardBlockedFor && <button type="button" onClick={refreshSeasonRewardStatus} disabled={busy}
+          className="mt-3 w-full py-2 px-3 rounded-xl border border-straw/20 text-straw text-xs disabled:opacity-40">{c.xpClaimCheckStatus}</button>}
+      </Card>}
       {showInitPass && !passInitBlocked && <>
         <p className="text-straw text-xs" role="note">{c.initPassNote}</p>
         {quote && <div className="text-straw text-xs space-y-1" role="note" aria-label={c.quoteTitle}>
@@ -437,10 +725,18 @@ export function SeasonPassPage() {
       {showInitPass && passInitBlocked && <p role="status" className="text-center text-straw text-xs">{c.pending}</p>}
       {snapshot?.seasonActive && !snapshot.passPremium && !paymentBlocked && <>
         {!treasury && <p className="text-straw text-xs" role="status">{c.missingTreasury}</p>}
-        <button type="button" onClick={buy} disabled={!canBuy}
+        {purchaseQuote && <div className="text-straw text-xs space-y-1" role="note" aria-label={c.quoteTitle}>
+          <p>{c.quoteTitle}</p>
+          <p>{c.quoteRent(formatLamportsAsSol(purchaseQuote.rentLamports, language), purchaseQuote.rentLamports)}</p>
+          <p>{c.quoteFee(formatLamportsAsSol(purchaseQuote.networkFeeLamports, language), purchaseQuote.networkFeeLamports)}</p>
+          <p>{c.quoteMax(formatLamportsAsSol(purchaseQuote.maxCostLamports, language), purchaseQuote.maxCostLamports)}</p>
+        </div>}
+        <button type="button" onClick={purchaseQuote ? confirmPassPurchase : preparePassPurchase} disabled={!canBuy}
           className="w-full py-3.5 px-3 rounded-2xl bg-gold text-soil-950 font-bold text-sm disabled:opacity-40 [overflow-wrap:anywhere]">
-          {c.purchase}
+          {busy ? c.preparing : c.purchase}
         </button>
+        {purchaseQuote && <button type="button" onClick={preparePassPurchase} disabled={!canBuy}
+          className="w-full py-2 px-3 rounded-xl border border-gold/30 text-parchment text-xs disabled:opacity-40">{c.refreshQuote}</button>}
       </>}
       {snapshot?.seasonActive && !snapshot.passPremium && paymentBlocked &&
         <p className="text-center text-straw text-xs" role="status">{c.pending}</p>}

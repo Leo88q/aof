@@ -489,7 +489,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
           .accounts({
             config: coreConfig, user: owner.publicKey, tool: toolPda(mint), mint,
             player: playerPda(owner.publicKey), materialMints, auth: authPda,
-            payoutMint, payoutToken, vault: vaultPda,
+            issuanceCap: issuanceCapPda("circuit"), payoutMint, payoutToken, vault: vaultPda,
             // Подмена: вместо эскроу подсунут личный ATA владельца.
             vaultToken: ata(mint, owner.publicKey),
             tokenProgram: TOKEN_PROGRAM_ID,
@@ -626,7 +626,7 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
       .accounts({
         config: coreConfig, user: who.publicKey, tool: setup.tool, mint: setup.mint,
         player: playerPda(who.publicKey), materialMints, auth: authPda,
-        payoutMint, payoutToken, rentalListing: setup.rentalListing,
+        issuanceCap: issuanceCapPda("circuit"), payoutMint, payoutToken, rentalListing: setup.rentalListing,
         rentalAgreement: setup.rentalAgreement, rentalVault: setup.rentalVault,
         tokenProgram: TOKEN_PROGRAM_ID,
       })

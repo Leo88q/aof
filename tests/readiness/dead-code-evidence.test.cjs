@@ -43,10 +43,10 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 7 отключённых инструкций, к удалению 0 (все — product decision pending)', () => {
+test('репозиторий проходит гейт: 6 отключённых инструкций, к удалению 0 (все — product decision pending)', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /7 инструкций, к удалению 0/);
+  assert.match(result.out, /6 инструкций, к удалению 0/);
 });
 
 test('удаляются только доказанные категории, остальные — keep с причиной', () => {
@@ -54,9 +54,9 @@ test('удаляются только доказанные категории, �
   const byName = new Map(evidence.instructions.map((i) => [`${i.program}.${i.name}`, i]));
   const remove = evidence.instructions.filter((i) => /^remove/.test(i.decision)).map((i) => i.name).sort();
   // Шаг B закрыл все доказанно мёртвое: migrate_tool, marketplace_buy, rental_start и
-  // place_limit_order удалены. Оставшиеся 7 — отключённые фичи, ждущие решения владельца.
+  // place_limit_order удалены. Оставшиеся 6 — отключённые фичи, ждущие решения владельца.
   assert.deepEqual(remove, []);
-  for (const name of ['aof_quests.mind_spin_commit', 'aof_session_keys.session_create', 'aof_core.purchase_season_pass']) {
+  for (const name of ['aof_quests.mind_spin_commit', 'aof_session_keys.session_create']) {
     const entry = byName.get(name);
     assert.match(entry.decision, /^keep — disabled \/ product decision pending: .+/, `${name}: keep обязан нести статус и причину`);
     assert.ok(entry.guard.code, `${name}: guard должен быть подтверждён кодом`);

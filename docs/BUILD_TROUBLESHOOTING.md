@@ -130,6 +130,130 @@ anchor build --no-idl
 anchor test --skip-build
 ```
 
+## Порт 8080 занят чужим сервисом: `{"detail":"Not Found"}` вместо ответа backend
+
+Симптом: backend поднялся (`aof-backend started`, `/health` в логе отвечает), а снаружи
+
+```
+curl -sS -i http://localhost:8080/__who_are_you__
+HTTP/1.1 404 Not Found
+server: uvicorn
+{"detail":"Not Found"}
+```
+
+`server: uvicorn` и JSON с полем `detail` — это **не наш backend**: Express отдаёт `Cannot GET …`
+или `{"error": …}`. Причина видна в `lsof`:
+
+```
+lsof -nP -iTCP:8080 -sTCP:LISTEN
+com.docke 18466 zlata … TCP 127.0.0.1:8080 (LISTEN)   # проброс Docker (чужой сервис)
+node      61749 zlata … TCP *:8080 (LISTEN)           # наш backend
+```
+
+На macOS `localhost` — это 127.0.0.1, и запрос уходит в более конкретный bind (контейнер), хотя наш
+backend слушает `*:8080` и жив. Тот же эффект даёт любой чужой процесс, занявший 8080 раньше.
+
+Лечится двумя способами:
+
+```bash
+# 1) не трогая чужой сервис — отдать нашему backend другой порт;
+#    фронт (vite) сам проксирует /api на 127.0.0.1:$BACKEND_PORT
+BACKEND_PORT=8081 bash scripts/dev-local.sh up
+BACKEND_URL=http://127.0.0.1:8081 bash scripts/devnet-bringup.sh --apply
+
+# 2) освободить 8080, если контейнер не нужен:
+docker ps --format '{{.Names}}\t{{.Ports}}' | grep 8080
+docker stop <имя>
+```
+
+Проверка, что перед вами именно наш backend (до любых скриптов):
+
+```bash
+curl -sS -o /dev/null -w 'health=%{http_code}\n' "$BACKEND_URL/health"     # 200
+curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$BACKEND_URL/admin/config/bootstrap-preflight" | head -c 200            # {"kind":"aof.bootstrap-preflight",…}
+```
+
+`devnet-bringup.sh` ловит эту ситуацию сам и называет её: «по адресу … нет
+/admin/config/bootstrap-preflight (HTTP 404): это посторонний сервис на порту или старая сборка
+backend». «Любой 404 — ок» он не принимает намеренно: иначе чужой сервис был бы неотличим от
+нашего, и `initConfig`/минты подписывались бы неизвестно чем.
+
+## Authority backend'а не совпадает с ключом оператора
+
+Симптом (шаг 1/10 включения девнета):
+
+```
+ОТКАЗ: authority backend'а GE6jwnX8… не совпадает с ключом оператора C8MS1G3g7… (AUTHORITY_KEYPAIR)
+```
+
+Это правильный отказ: `Config` в aof_core привязывается к upgrade authority программы, а подписывающие
+маршруты backend'а идут ключом `AUTHORITY_SECRET_KEY`. На чистом клоне `dev-local.sh up` создаёт
+`aof_backend/.env` с throwaway-ключом — он не имеет отношения к программам, которые в девнете
+принадлежат операторскому `solana/keys/aof-authority-devnet.json`.
+
+```bash
+# что сейчас (секрет не печатается, только pubkey)
+node scripts/set-backend-authority.mjs
+
+# выровнять: в .env запишется base58-секрет ключа оператора (AUTHORITY_SECRET_KEY,
+# AUTHORITY_PUBKEY, AUTHORITY_MODE=hot); остальные строки не меняются
+node scripts/set-backend-authority.mjs --apply
+
+# перезапустить backend, чтобы он прочитал ключ
+bash scripts/dev-local.sh up
+```
+
+Коды выхода: `0` — совпадают, `1` — расходятся (годится для проверки в скриптах), `2` — негодный вход.
+`dev-local.sh up` сам предупреждает о расхождении, если ключ оператора лежит на месте.
+
+## Шаг 5/10: `TS18047: 'AUTHORITY' is possibly 'null'` в bootstrap-скриптах
+
+Симптом (сухой прогон или `--apply`, до создания Config):
+
+```
+scripts/initConfig.ts(47,20): error TS18047: 'AUTHORITY' is possibly 'null'.
+scripts/initConfig.ts(59,19): error TS18047: 'AUTHORITY' is possibly 'null'.
+scripts/initConfig.ts(61,13): error TS2345: Argument of type 'Keypair | null' is not assignable to parameter of type 'Signer'.
+ОТКАЗ: initConfig.ts не прошёл
+```
+
+Причина не в девнете и не в RPC: `AUTHORITY` в `aof_backend/src/config.ts` имеет тип
+`Keypair | null` (в `read-only` режиме ключа в процессе нет), а проверка `if (!AUTHORITY)` стоит на
+верхнем уровне модуля. TypeScript **не** сужает импортированную привязку внутри функций, а ts-node
+компилирует скрипты с проверкой типов — поэтому каждое обращение к `AUTHORITY` в `main()` падало.
+Так были сломаны четыре скрипта: `initConfig.ts`, `initMints.ts`, `initMintsV2.ts`,
+`initIssuanceCaps.ts` (последний запускается с `--transpile-only`, поэтому падал бы позже и иначе).
+
+Исправление в репо: после guard'а значение фиксируется локальной константой
+(`const authority = AUTHORITY;`), дальше используется только она. Новый скрипт с тем же guard'ом
+обязан повторить приём, иначе ошибка вернётся.
+
+Офлайн-проверка (она же в гейте `tests/readiness/backend-bootstrap-typecheck.test.cjs`):
+
+```bash
+cd aof_backend && npm run typecheck:bootstrap   # tsc -p tsconfig.bootstrap.json, ожидается пустой вывод
+```
+
+## Шаг 5/10: `no cap for <kind>: set CAP_PER_EPOCH ...` (caps:init)
+
+Потолки выпуска (`IssuanceCap` на каждый ResourceKind) — единственная часть включения, значение
+которой выбирает оператор: без потолка mint отклоняется `IssuanceCapNotConfigured` (fail-closed),
+поэтому `caps:init` не подставляет «разумное» число молча.
+
+```bash
+# базовые единицы: 1 единица = 1e9; пример — 1000 единиц на вид за эпоху (24ч = 216000 слотов)
+export CAP_PER_EPOCH=1000000000000
+# либо строкой в aof_backend/.env (caps:init читает dotenv), либо per-kind: CAP_MIND=…, CAP_DATA=…
+cd aof_backend && npm run caps:init      # повторный прогон пропускает уже созданные потолки
+```
+
+`devnet-bringup.sh` проверяет переменную сам (окружение или `aof_backend/.env`) и отказывает
+**до** вызова `caps:init` с этой подсказкой; когда `GET /admin/issuance-caps` показывает все виды
+`configured: true`, шаг пропускается и переменная не нужна. Калибровка после запуска —
+`POST /admin/issuance-caps/set`, экстренная остановка вида — `capPerEpoch: 0`
+(docs/ISSUANCE_CAPS_DESIGN.md).
+
 ## Если всё равно падает
 
 1. Убедитесь что `rustup show` показывает `active toolchain: 1.89.0`

@@ -2,10 +2,9 @@
 /*
  * Охранный тест аудита NFT-стандартов (docs/NFT_STANDARDS_AUDIT_2026-10-01.md).
  *
- * Аудит утверждает: Bubblegum V2, MPL Core и Metaplex Token Metadata в AOF НЕ используются — ни в программах,
- * ни в backend, ни в клиентах: есть только план, дескрипторы и заглушки. Это утверждение должно оставаться
- * проверяемым, а не просто написанным: как только кто-то добавит зависимость или CPI, тест падает и требует
- * обновить аудит (и пройти пилот из docs/COMPRESSION_DESIGN.md), а не оставить документ врать.
+ * Текущее разделение стандартов: tool NFT используют SPL Token + immutable legacy Metaplex Token Metadata;
+ * Bubblegum V2 и MPL Core/compressed assets не используются. Этот guard проверяет оба утверждения отдельно:
+ * новая compressed-NFT интеграция требует обновить аудит и пройти pilot из docs/COMPRESSION_DESIGN.md.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,26 +31,26 @@ function walk(rel, extensions) {
   return out;
 }
 
-// В комментариях эти слова допустимы (collector_stake.rs прямо объясняет: «не зависит от mpl-token-metadata»):
+// Упоминание Token Metadata в collector_stake.rs описывает, что allowlist path его не парсит.
 // охраняется код, а не его описание.
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'])\/\/.*$/gm, '$1');
 
-const FORBIDDEN_CRATES = /name = "(mpl-[\w-]+|mpl_[\w]+|spl-account-compression|spl-concurrent-merkle-tree|spl-noop|bubblegum[\w-]*)"/;
-const NFT_STANDARD_WORDS = /bubblegum|mpl[-_ ]?core|mplcore|mpl[-_]token[-_]metadata|spl[-_]account[-_]compression|concurrent[-_]merkle/i;
+const FORBIDDEN_CRATES = /name = "(?:mpl-(?:bubblegum|core)(?:-[\w-]+)?|mpl_(?:bubblegum|core)|spl-account-compression|spl-concurrent-merkle-tree|spl-noop|bubblegum[\w-]*)"/;
+const COMPRESSION_STANDARD_WORDS = /bubblegum|mpl[-_ ]?core|mplcore|spl[-_]account[-_]compression|concurrent[-_]merkle/i;
 
-test('Cargo.lock и манифесты не тянут Bubblegum, MPL Core, Token Metadata и compression', () => {
+test('Cargo.lock и манифесты не тянут Bubblegum, MPL Core или compression', () => {
   assert.doesNotMatch(read('Cargo.lock'), FORBIDDEN_CRATES, 'в Cargo.lock появился крейт Metaplex/compression — обновите docs/NFT_STANDARDS_AUDIT_2026-10-01.md');
   for (const rel of ['Cargo.toml', 'aof-core/Cargo.toml', ...fs.readdirSync(path.join(root, 'programs')).map((d) => `programs/${d}/Cargo.toml`)]) {
     if (!fs.existsSync(path.join(root, rel))) continue;
-    assert.doesNotMatch(read(rel), NFT_STANDARD_WORDS, `${rel}: добавлена зависимость от NFT-стандарта`);
+    assert.doesNotMatch(read(rel), COMPRESSION_STANDARD_WORDS, `${rel}: добавлена зависимость от compressed-NFT стандарта`);
   }
 });
 
-test('исходники программ, валидаторные тесты и IDL не используют NFT-стандарты', () => {
+test('исходники программ, валидаторные тесты и IDL не реализуют Bubblegum/MPL Core/compressed assets', () => {
   const files = [...walk('aof-core', ['.rs']), ...walk('programs', ['.rs']), ...walk('tests', ['.ts']), ...walk('aof_backend/src/idl', ['.json'])];
   assert.ok(files.length > 100, 'сканирование ничего не нашло — тест сломан');
-  const hits = files.filter((rel) => NFT_STANDARD_WORDS.test(rel.endsWith('.json') ? read(rel) : stripComments(read(rel))));
-  assert.deepEqual(hits, [], `NFT-стандарт упомянут в КОДЕ программ/тестов/IDL: ${hits.join(', ')} — обновите аудит NFT и пройдите пилот`);
+  const hits = files.filter((rel) => COMPRESSION_STANDARD_WORDS.test(rel.endsWith('.json') ? read(rel) : stripComments(read(rel))));
+  assert.deepEqual(hits, [], `compressed NFT стандарт упомянут в КОДЕ программ/тестов/IDL: ${hits.join(', ')} — обновите аудит NFT и пройдите pilot`);
   // и нет аккаунтов Merkle-дерева в инструкциях
   for (const name of ['aof_core', 'aof_market', 'aof_quests', 'aof_rebirth', 'aof_liquidity', 'aof_session_keys']) {
     const idl = JSON.parse(read(`aof_backend/src/idl/${name}.json`));
@@ -87,17 +86,36 @@ test('бэкенд и фронтенд не строят и не читают cN
     'TODO про DAS исчез: значит, проверка владения NFT реализована — обновите аудит');
 });
 
-test('инструмент — SPL-токен: mint_tool требует decimals=0, supply=0, без freeze authority, mint authority = PDA программы', () => {
+test('tool issuance creates an immutable Metaplex NFT backed by one SPL unit and the frozen URI registry', () => {
   const lib = read('aof-core/src/lib.rs');
   const struct = lib.slice(lib.indexOf('pub struct MintTool<'), lib.indexOf('pub struct BurnTool<'));
   for (const rule of ['mint.decimals == 0', 'mint.supply == 0', 'mint.freeze_authority.is_none()', 'mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key())']) {
     assert.ok(struct.includes(rule), `MintTool потерял проверку минта: ${rule}`);
   }
-  assert.match(read('aof-core/src/instructions/mint_tool.rs'), /token::mint_to\(cpi_ctx, 1\)/);
+  assert.match(struct, /tool_metadata_registry: Box<Account<'info, ToolMetadataRegistry>>/);
+  assert.match(struct, /metadata\.key\(\) == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda/);
+  assert.match(struct, /master_edition\.key\(\) == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda/);
+
+  const mintTool = read('aof-core/src/instructions/mint_tool.rs');
+  assert.match(mintTool, /settlement::mint_tool_nft\(/);
+  assert.match(mintTool, /&ctx\.accounts\.tool_metadata_registry/);
+  const settlement = read('aof-core/src/instructions/settlement.rs');
+  assert.match(settlement, /token::mint_to\([\s\S]*?,\s*1\s*,?\s*\)/);
+  assert.match(settlement, /CreateMetadataAccountV3/);
+  assert.match(settlement, /CreateMasterEditionV3/);
+  assert.match(settlement, /registry\.metadata_uri\(canonical_type, rarity\)/);
+  assert.match(settlement, /seller_fee_basis_points: registry\.seller_fee_basis_points/);
+  assert.match(settlement, /symbol: String::new\(\)/);
+  assert.match(settlement, /creators: None,[\s\S]*?collection: None/);
+  assert.match(settlement, /is_mutable: false/);
+  assert.match(settlement, /max_supply: Some\(0\)/);
+  const registryState = read('aof-core/src/state.rs');
+  assert.match(registryState, /self\.initialized && self\.frozen/);
+  assert.match(registryState, /self\.populated_mask & \(1u32 << index\) != 0/);
 });
 
 test('аудит ссылается на комментарий collector_stake.rs: он на месте', () => {
-  assert.match(read('aof-core/src/instructions/collector_stake.rs'), /not depend on mpl-token-metadata/);
+  assert.match(read('aof-core/src/instructions/collector_stake.rs'), /does not inspect Token Metadata accounts/);
 });
 
 test('документ аудита утверждает то же, что проверяет тест', () => {
@@ -105,5 +123,5 @@ test('документ аудита утверждает то же, что пр�
   for (const needle of ['**Нет.**', 'MPL Core', 'legacy NFT', 'SPL-токен', 'ToolData', 'nft-standards.test.cjs', 'COMPRESSION_DESIGN.md']) {
     assert.ok(doc.includes(needle), `в аудите нет «${needle}»`);
   }
-  assert.match(read('docs/COMPRESSION_DESIGN.md'), /Ни Bubblegum, ни Light Protocol в текущий контракт не добавлены/);
+  assert.match(read('docs/COMPRESSION_DESIGN.md'), /не включает Bubblegum или Light Protocol/);
 });

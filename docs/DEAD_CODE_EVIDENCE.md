@@ -7,7 +7,6 @@
 
 | Instruction | Handler behavior | Backend call sites | Frontend call sites | Tests | Admin/security need | Decision |
 |---|---|---|---|---|---|---|
-| `aof_core.purchase_season_pass` | require!(false) SeasonPremiumRequired | — | — | tests/aof_extended.ts, tests/readiness/dead-code-evidence.test.cjs, tests/readiness/instruction-inventory.test.cjs | нет | keep — disabled / product decision pending: Покупка платного сезонного пропуска — отключена (SeasonPremiumRequired) до приёмочного гейта 42 дня / 0.15 SOL. |
 | `aof_quests.achievement_unlock` | err! FeatureDisabled | 1 call(s): aof_backend/src/routes/quests.ts | — | tests/readiness/dead-code-evidence.test.cjs | нет | keep — disabled / product decision pending: Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора. |
 | `aof_quests.challenge_contribute` | err! FeatureDisabled | 1 call(s): aof_backend/src/routes/challenges.ts | — | tests/readiness/dead-code-evidence.test.cjs | нет | keep — disabled / product decision pending: Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации. |
 | `aof_quests.drum_commit` | require!(false) Paused | — | — | tests/readiness/dead-code-evidence.test.cjs, tests/readiness/devnet-release-guards.test.cjs, tests/readiness/security-checklist.test.cjs, tests/readiness/vrf-tx-size.test.cjs | нет | keep — disabled / product decision pending: Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного MIND mint. |

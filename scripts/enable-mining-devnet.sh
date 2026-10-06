@@ -17,13 +17,20 @@
 # Сухой прогон по умолчанию — ничего не меняет, печатает шаги:
 #   PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet BASE_URL=http://localhost:8080 \
 #   ADMIN_TOKEN=<токен> scripts/enable-mining-devnet.sh
-# Реальное включение — то же плюс --apply.
+# Реальное включение — только после отдельного успешного Devnet smoke:
+#   MINING_SMOKE_OK=1 PREFLIGHT_OK=1 AOF_ENABLE_TARGET=devnet ... --apply
+# Для намеренно неограниченной cumulative issuance только на Devnet дополнительно
+# задайте ALLOW_UNLIMITED_DEVNET_ISSUANCE=1 и при запуске preflight, и здесь,
+# плюс передайте MINING_PREFLIGHT_REPORT от того же чистого preflight.
 #
 # Предохранители (все обязательны, иначе выход 3 без единого POST):
 #   * AOF_ENABLE_TARGET=devnet            — mainnet этим скриптом не включается;
-#   * PREFLIGHT_OK=1                      — сначала `npm --prefix aof_backend run
-#                                           preflight:mining-devnet` и прочитать
+#   * ALLOW_UNLIMITED_DEVNET_ISSUANCE=1   — явное принятие unlimited lifetime issuance;
+#     MINING_PREFLIGHT_REPORT            — при этом обязателен read-only отчёт
+#                                           без blockers и с этим же policy acknowledgement;
+#   * PREFLIGHT_OK=1                      — сначала запустить preflight и прочитать
 #                                           отчёт (BLOCKED не считается OK);
+#   * MINING_SMOKE_OK=1 при --apply       — ручное подтверждение отдельного smoke;
 #   * валидный ADMIN_TOKEN                — GET /admin/config/mining отвечает;
 #   * четыре выплатных минта заданы       — circuitMint, siliconMint, dataset, neuron;
 #   * MaterialMints проходит канонический валидатор бэкенда
@@ -43,6 +50,8 @@ if [ $# -gt 1 ]; then echo "использование: $0 [--apply]" >&2; exit 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
 BASE_URL="${BASE_URL%/}"
 ADMIN_TOKEN="${ADMIN_TOKEN:-}"
+ALLOW_UNLIMITED_DEVNET_ISSUANCE="${ALLOW_UNLIMITED_DEVNET_ISSUANCE:-0}"
+MINING_SMOKE_OK="${MINING_SMOKE_OK:-0}"
 
 die() { echo "ОТКАЗ: $*" >&2; exit "${2:-3}"; }
 step() { echo; echo "== $*"; }
@@ -74,7 +83,29 @@ step "1/6 Предохранители"
 [ "${AOF_ENABLE_TARGET:-}" = "devnet" ] || die \
   "AOF_ENABLE_TARGET должен быть ровно devnet (получено '${AOF_ENABLE_TARGET:-<пусто>}'); этот скрипт не включает добычу на mainnet" 
 [ "${PREFLIGHT_OK:-}" = "1" ] || die \
-  "нужен PREFLIGHT_OK=1: сначала выполните 'npm --prefix aof_backend run preflight:mining-devnet' и убедитесь, что в отчёте нет BLOCKED"
+  "нужен PREFLIGHT_OK=1: сначала выполните preflight и убедитесь, что в отчёте нет BLOCKED"
+if [ "$APPLY" = 1 ]; then
+  [ "$MINING_SMOKE_OK" = "1" ] || die \
+    "для --apply после отдельного успешного Devnet smoke укажите MINING_SMOKE_OK=1"
+fi
+case "$ALLOW_UNLIMITED_DEVNET_ISSUANCE" in
+  0) ;;
+  1)
+    [ -n "${MINING_PREFLIGHT_REPORT:-}" ] || die \
+      "для uncapped Devnet policy передайте MINING_PREFLIGHT_REPORT от последнего preflight"
+    [ -f "$MINING_PREFLIGHT_REPORT" ] || die "файл preflight не найден: $MINING_PREFLIGHT_REPORT"
+    jq -e '
+      .network == "devnet"
+      and .observations.genesisHash == "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+      and .status == "READ_ONLY_PREFLIGHT_PASSED_BYTECODE_AND_SMOKE_REQUIRED"
+      and (.blockers | type == "array" and length == 0)
+      and .observations.lifetimeIssuancePolicy.mode == "unlimited-devnet-accepted"
+    ' "$MINING_PREFLIGHT_REPORT" >/dev/null || die \
+      "preflight report не подтверждает чистый Devnet и явно принятую unlimited policy"
+    ok "оператор явно принимает unlimited lifetime issuance на Devnet; это не конечный supply cap"
+    ;;
+  *) die "ALLOW_UNLIMITED_DEVNET_ISSUANCE должен быть 0 или 1" ;;
+esac
 ok "цель — devnet, предварительная проверка сети отмечена как пройденная"
 
 step "2/6 Админ-доступ и текущее состояние тумблера"
