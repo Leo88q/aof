@@ -1,15 +1,13 @@
 /**
  * [PAYER] Приёмочные тесты payer-remediation (пункт 10 плана, коммиты 4–6).
  *
- * ⚠️ PENDING VALIDATION: тесты написаны для `anchor test`, но НЕ ЗАПУСКАЛИСЬ.
- * В песочнице нет cargo/anchor/solana-test-validator, поэтому Rust/Anchor не
- * компилировался, IDL не перегенерировался и SBF-замеров нет (см. статус
- * «source-aligned manually; generated validation pending» в
- * docs/PAYER_REMEDIATION.md и обязательный блок в Draft PR #32).
+ * Эти payer checks исполняются CI через `anchor test`; локальная песочница не
+ * содержит `cargo`/`anchor`/`solana-test-validator`, поэтому самостоятельный
+ * Anchor-прогон здесь недоступен.
  *
  * Десять payer cases в этом suite:
  *   1. InitPlayer получает rent от игрока; MintResource не создаёт отсутствующий профиль;
- *   2. MintTool получает rent ToolData от payer;
+ *   2. payer MintTool оплачивает ToolData и Metaplex metadata/master edition;
  *   3. неверный recipient отклоняется атомарно;
  *   4. authority authorizes, player co-signs/pays, and pass + replay cursor rent is charged only once;
  *   5. ATA rent списывается один раз, для existing ATA остаётся только network fee;
@@ -46,6 +44,27 @@ describe("payer remediation: игрок платит за свои аккаун�
   const pda = (seeds: (Buffer | Uint8Array)[]) => PublicKey.findProgramAddressSync(seeds, program.programId)[0];
   const playerPda = (owner: PublicKey) => pda([B("player"), owner.toBuffer()]);
   const toolPda = (mint: PublicKey) => pda([B("tool"), mint.toBuffer()]);
+  const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const tokenMetadataPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
+    [B("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()], TOKEN_METADATA_PROGRAM_ID,
+  )[0];
+  const masterEditionPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
+    [B("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer(), B("edition")], TOKEN_METADATA_PROGRAM_ID,
+  )[0];
+  async function metaplexRent(mint: PublicKey) {
+    const metadata = tokenMetadataPda(mint);
+    const masterEdition = masterEditionPda(mint);
+    const [metadataInfo, masterEditionInfo] = await Promise.all([
+      connection.getAccountInfo(metadata, "confirmed"),
+      connection.getAccountInfo(masterEdition, "confirmed"),
+    ]);
+    if (!metadataInfo || !masterEditionInfo) throw new Error("MintTool did not create both Metaplex accounts");
+    const [metadataRent, masterEditionRent] = await Promise.all([
+      connection.getMinimumBalanceForRentExemption(metadataInfo.data.length, "confirmed"),
+      connection.getMinimumBalanceForRentExemption(masterEditionInfo.data.length, "confirmed"),
+    ]);
+    return { metadata, masterEdition, metadataRent, masterEditionRent, total: metadataRent + masterEditionRent };
+  }
   const vaultPda = pda([B("vault")]);
   const seasonPassPda = (owner: PublicKey, seasonId: number) => {
     const id = Buffer.alloc(4); id.writeUInt32LE(seasonId);
@@ -269,7 +288,7 @@ describe("payer remediation: игрок платит за свои аккаун�
       "authority signs MintResource but is not the fee payer or Player rent payer");
   });
 
-  it("2. player платит mint, ATA и ToolData, authority не платит", async () => {
+  it("2. payer funds ToolData and Metaplex accounts; authority does not pay", async () => {
     const user = Keypair.generate(); await airdrop(user);
     const beforeMintAndAta = await balance(user.publicKey);
     // mint_tool expects a real, initialized zero-decimal SPL mint whose mint
@@ -291,9 +310,13 @@ describe("payer remediation: игрок платит за свои аккаун�
     const toolDataInfo = await connection.getAccountInfo(toolData, "confirmed");
     expect(toolDataInfo).to.not.equal(null);
     const toolDataRent = await connection.getMinimumBalanceForRentExemption(toolDataInfo!.data.length, "confirmed");
+    const nftRent = await metaplexRent(mint);
     expect(delta(toolData)).to.equal(toolDataRent, "rent is credited to ToolData exactly once");
-    expect(delta(user.publicKey)).to.equal(-(toolDataRent + delta.fee), "player pays ToolData rent and transaction fee");
-    expect(delta(authority.publicKey)).to.equal(0, "authority co-signature does not fund ToolData or network fee");
+    expect(delta(nftRent.metadata)).to.equal(nftRent.metadataRent, "payer funds the Metaplex Metadata PDA");
+    expect(delta(nftRent.masterEdition)).to.equal(nftRent.masterEditionRent, "payer funds the Master Edition PDA");
+    expect(delta(user.publicKey)).to.equal(-(toolDataRent + nftRent.total + delta.fee),
+      "player pays ToolData, metadata, master-edition rent, and the transaction fee");
+    expect(delta(authority.publicKey)).to.equal(0, "authority co-signature does not fund NFT accounts or network fee");
     expect(await balance(user.publicKey)).to.be.lessThan(before);
     expect(await balance(authority.publicKey)).to.equal(authorityBefore);
     expect((await program.account.toolData.fetch(toolData)).owner.toBase58()).to.equal(user.publicKey.toBase58());
@@ -319,9 +342,12 @@ describe("payer remediation: игрок платит за свои аккаун�
     const sponsoredInfo = await connection.getAccountInfo(sponsoredToolData, "confirmed");
     expect(sponsoredInfo).to.not.equal(null);
     const sponsoredRent = await connection.getMinimumBalanceForRentExemption(sponsoredInfo!.data.length, "confirmed");
+    const sponsoredNftRent = await metaplexRent(sponsoredMint);
     expect(sponsoredDelta(sponsoredToolData)).to.equal(sponsoredRent);
-    expect(sponsoredDelta(sponsor.publicKey)).to.equal(-(sponsoredRent + sponsoredDelta.fee));
-    expect(sponsoredDelta(recipient.publicKey)).to.equal(0, "recipient does not fund the prepaid ToolData");
+    expect(sponsoredDelta(sponsoredNftRent.metadata)).to.equal(sponsoredNftRent.metadataRent);
+    expect(sponsoredDelta(sponsoredNftRent.masterEdition)).to.equal(sponsoredNftRent.masterEditionRent);
+    expect(sponsoredDelta(sponsor.publicKey)).to.equal(-(sponsoredRent + sponsoredNftRent.total + sponsoredDelta.fee));
+    expect(sponsoredDelta(recipient.publicKey)).to.equal(0, "recipient does not fund ToolData or Metaplex rent");
     expect(sponsoredDelta(authority.publicKey)).to.equal(0, "authority is neither payer nor recipient");
     expect(await balance(recipient.publicKey)).to.equal(recipientBefore);
     expect(await balance(authority.publicKey)).to.equal(authorityBeforeSponsored);

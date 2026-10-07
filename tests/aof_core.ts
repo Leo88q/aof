@@ -47,6 +47,55 @@ describe("aof-core: security & core flows", () => {
   const TEST_CAP_EPOCH_SLOTS = new BN(1_500);
   const TEST_CAP_PER_EPOCH = UNIT_RAW.mul(new BN(1_000_000)); // generous default for the suite
   const UNLIMITED_SUPPLY_CAP = new BN("18446744073709551615");
+  // Synthetic, local-validator-only URIs. This never configures Devnet/Mainnet.
+  const LOCAL_TOOL_METADATA_URIS = Array.from(
+    { length: 25 },
+    (_, index) => `https://metadata.example.com/tools/${index}.json`,
+  );
+  const LOCAL_TOOL_METADATA_BATCH_SIZE = 8;
+  const toolMetadataRegistryPda = pda([B("tool_metadata_registry")]);
+
+  async function ensureLocalToolMetadataRegistry() {
+    // This fixture sends configuration transactions; refuse to run it against
+    // any RPC that is not an explicitly local validator.
+    const rpcHost = new URL(provider.connection.rpcEndpoint).hostname.toLowerCase();
+    if (!["127.0.0.1", "localhost", "[::1]"].includes(rpcHost)) {
+      throw new Error(`refusing to configure the local metadata fixture against RPC host ${rpcHost}`);
+    }
+    const accountClient = (program.account as any).toolMetadataRegistry;
+    const existing = await accountClient.fetchNullable(toolMetadataRegistryPda);
+    if (existing?.frozen) {
+      const matchesFixture = existing.sellerFeeBasisPoints === 0
+        && existing.metadataUris.length === LOCAL_TOOL_METADATA_URIS.length
+        && existing.metadataUris.every((uri: string, index: number) => uri === LOCAL_TOOL_METADATA_URIS[index]);
+      if (!matchesFixture) throw new Error("local validator has a different frozen tool metadata registry fixture");
+      return;
+    }
+    if (existing?.initialized && existing.sellerFeeBasisPoints !== 0) {
+      throw new Error("local tool metadata registry fixture must use zero seller fees");
+    }
+
+    for (let start = 0; start < LOCAL_TOOL_METADATA_URIS.length; start += LOCAL_TOOL_METADATA_BATCH_SIZE) {
+      const batch = LOCAL_TOOL_METADATA_URIS.slice(start, start + LOCAL_TOOL_METADATA_BATCH_SIZE);
+      const freeze = start + batch.length === LOCAL_TOOL_METADATA_URIS.length;
+      await (program.methods as any)
+        .setToolMetadataUris(start, batch, 0, freeze)
+        .accounts({
+          config: configPda,
+          authority,
+          toolMetadataRegistry: toolMetadataRegistryPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+    }
+
+    const configured = await accountClient.fetch(toolMetadataRegistryPda);
+    if (!configured.frozen
+      || configured.metadataUris.length !== LOCAL_TOOL_METADATA_URIS.length
+      || !configured.metadataUris.every((uri: string, index: number) => uri === LOCAL_TOOL_METADATA_URIS[index])) {
+      throw new Error("local tool metadata registry fixture did not freeze with all expected URIs");
+    }
+  }
 
   let setupPayer: Keypair;
   const playerSigners = new Map<string, Keypair>();
@@ -265,6 +314,10 @@ describe("aof-core: security & core flows", () => {
     } catch (e: any) {
       rethrowUnlessAlreadyInitialised("initialize", e);
     }
+    // Tool-mint integration tests require a complete, frozen registry. This
+    // fixture exists only on the local validator; production activation still
+    // requires the separate release verification and live-smoke gates.
+    await ensureLocalToolMetadataRegistry();
     // Resource mints use the production 9-decimal atomic unit. Tool/NFT
     // mints created by mintTool below intentionally remain 0-decimal NFTs.
     dataMint  = await createMint(provider.connection, setupPayer, authPda, null, 9);
