@@ -1795,6 +1795,9 @@ pub struct PackOpenReveal<'info> {
     /// CHECK: wSOL reward escrow of the randomness account (its ATA).
     #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
     pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
     /// CHECK: Switchboard program state PDA ["STATE"].
     #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
     pub program_state: UncheckedAccount<'info>,
@@ -1959,6 +1962,9 @@ pub struct RerollRandomReveal<'info> {
     /// CHECK: wSOL reward escrow of the randomness account (its ATA).
     #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
     pub reward_escrow: UncheckedAccount<'info>,
+    /// CHECK: native SOL mint.
+    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
+    pub wrapped_sol_mint: UncheckedAccount<'info>,
     /// CHECK: Switchboard program state PDA ["STATE"].
     #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
     pub program_state: UncheckedAccount<'info>,

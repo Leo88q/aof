@@ -485,7 +485,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "pack_open_reveal",
     discriminator: [220, 51, 163, 236, 133, 22, 85, 61],
-    accounts: ["config", "cranker", "pack_commit", "user", "treasury", "mint", "user_token", "tool_data", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
+    accounts: ["config", "cranker", "pack_commit", "user", "treasury", "mint", "user_token", "tool_data", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
     actorIndexes: [1, 3],
     signerIndexes: [1],
     authorityOnly: false,
@@ -656,7 +656,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "reroll_random_reveal",
     discriminator: [123, 60, 249, 147, 211, 177, 53, 33],
-    accounts: ["config", "cranker", "reroll_commit", "user", "treasury", "new_mint", "new_token", "new_tool_data", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
+    accounts: ["config", "cranker", "reroll_commit", "user", "treasury", "new_mint", "new_token", "new_tool_data", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
     actorIndexes: [1, 3],
     signerIndexes: [1],
     authorityOnly: false,

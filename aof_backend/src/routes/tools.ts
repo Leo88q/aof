@@ -30,6 +30,7 @@ import {
   TOKEN_MINT_SIZE,
   TOOL_DATA_ACCOUNT_SIZE,
   METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
+  METAPLEX_CREATION_FEE_LAMPORTS,
 } from "../lib/accountSizes";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
@@ -124,7 +125,7 @@ r.post("/mint", requireAdmin, async (req, res) => {
     const prepared = await coSignQuoted([createOwnerAta, ix], owner, [
       { name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
       { name: "tool_data", address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
-      { name: "metaplex_metadata", address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+      { name: "metaplex_metadata", address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" , protocolFeeLamports: METAPLEX_CREATION_FEE_LAMPORTS },
     ]);
     res.json(prepared);
   } catch (e: any) {
@@ -253,7 +254,7 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
     // Metaplex accounts; quote those rent maxima against this exact v0 message.
     const prepared = await coSignWithVrfLookupTableQuoted([ix], user, [
       { name: "new_tool_data", address: newToolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
-      { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+      { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" , protocolFeeLamports: METAPLEX_CREATION_FEE_LAMPORTS },
     ]);
     res.json(prepared);
   } catch (e: any) {

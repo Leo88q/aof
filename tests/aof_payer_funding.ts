@@ -31,6 +31,11 @@ import { waitForAccountOwner } from "./payer-transaction";
 
 const B = (s: string) => Buffer.from(s);
 
+/** Metaplex Token Metadata charges the payer 0.01 SOL for
+ * `CreateMetadataAccountV3` and parks it in the new Metadata account, on top of
+ * its rent. Mirrors `aof_core::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS`. */
+const METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000;
+
 describe("payer remediation: игрок платит за свои аккаунты", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -73,7 +78,12 @@ describe("payer remediation: игрок платит за свои аккаун�
     expectImmutableMetadata(metadataInfo.data);
     expect(masterEditionInfo, "metadata-only tool assets must not create a Master Edition").to.equal(null);
     const metadataRent = await connection.getMinimumBalanceForRentExemption(metadataInfo.data.length, "confirmed");
-    return { metadata, metadataRent, total: metadataRent };
+    return {
+      metadata,
+      metadataRent,
+      creationFee: METAPLEX_CREATION_FEE_LAMPORTS,
+      total: metadataRent + METAPLEX_CREATION_FEE_LAMPORTS,
+    };
   }
   const vaultPda = pda([B("vault")]);
   const seasonPassPda = (owner: PublicKey, seasonId: number) => {
@@ -322,7 +332,8 @@ describe("payer remediation: игрок платит за свои аккаун�
     const toolDataRent = await connection.getMinimumBalanceForRentExemption(toolDataInfo!.data.length, "confirmed");
     const nftRent = await metaplexRent(mint);
     expect(delta(toolData)).to.equal(toolDataRent, "rent is credited to ToolData exactly once");
-    expect(delta(nftRent.metadata)).to.equal(nftRent.metadataRent, "payer funds the Metaplex Metadata PDA");
+    expect(delta(nftRent.metadata)).to.equal(nftRent.metadataRent + nftRent.creationFee,
+      "payer funds the Metaplex Metadata PDA rent and the Metaplex creation fee it keeps");
     const finalMint = await getMint(connection, mint, "confirmed");
     expect(finalMint.decimals).to.equal(0);
     expect(finalMint.supply).to.equal(1n);
@@ -358,7 +369,7 @@ describe("payer remediation: игрок платит за свои аккаун�
     const sponsoredRent = await connection.getMinimumBalanceForRentExemption(sponsoredInfo!.data.length, "confirmed");
     const sponsoredNftRent = await metaplexRent(sponsoredMint);
     expect(sponsoredDelta(sponsoredToolData)).to.equal(sponsoredRent);
-    expect(sponsoredDelta(sponsoredNftRent.metadata)).to.equal(sponsoredNftRent.metadataRent);
+    expect(sponsoredDelta(sponsoredNftRent.metadata)).to.equal(sponsoredNftRent.metadataRent + sponsoredNftRent.creationFee);
     const sponsoredFinalMint = await getMint(connection, sponsoredMint, "confirmed");
     expect(sponsoredFinalMint.decimals).to.equal(0);
     expect(sponsoredFinalMint.supply).to.equal(1n);

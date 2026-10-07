@@ -5850,6 +5850,10 @@
           "writable": true
         },
         {
+          "name": "wrapped_sol_mint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
           "name": "program_state"
         },
         {
@@ -8741,6 +8745,10 @@
         {
           "name": "reward_escrow",
           "writable": true
+        },
+        {
+          "name": "wrapped_sol_mint",
+          "address": "So11111111111111111111111111111111111111112"
         },
         {
           "name": "program_state"

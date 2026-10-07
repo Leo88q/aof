@@ -5856,6 +5856,10 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        {
           "name": "programState"
         },
         {
@@ -8747,6 +8751,10 @@ export type AofCore = {
         {
           "name": "rewardEscrow",
           "writable": true
+        },
+        {
+          "name": "wrappedSolMint",
+          "address": "So11111111111111111111111111111111111111112"
         },
         {
           "name": "programState"

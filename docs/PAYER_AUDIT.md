@@ -70,8 +70,9 @@ missing signature, replay и недостаточный баланс с atomic r
 ## Prepaid и инфраструктурные исключения
 
 Асинхронный cranker не должен спонсировать игрока: `tool_settlement_rent()` оценивает Mint + ATA +
-ToolData, commit кладёт cap в `deposit_lamports`, а settlement возвращает поселенцу
-`min(deposit, fronted_rent)` в той же транзакции; остаток escrow принадлежит игроку. Отдельно
+ToolData + Metadata rent + неотделимый fee Metaplex `CreateMetadataAccountV3` (0.01 SOL), commit
+кладёт cap в `deposit_lamports`, а settlement возвращает поселенцу
+`min(deposit, fronted_rent + fee)` в той же транзакции; остаток escrow принадлежит игроку. Отдельно
 проверять timeout/expiry и capped cranker fee на validator.
 
 Допустимые project-funded аккаунты ограничены инфраструктурой. Oracle/service payer не приравнивается

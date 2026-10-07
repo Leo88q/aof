@@ -136,9 +136,6 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
     systemProgram: SystemProgram.programId,
   };
   const withAta = { ...common, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID };
-  // These two reveal contexts no longer pass the unused wrapped-SOL mint from
-  // Switchboard's pool-initialization instruction.
-  const { wrappedSolMint: _wrappedSolMint, ...metadataAta } = withAta;
   const config = configPda()[0];
   const a = c.account;
   let ix: TransactionInstruction;
@@ -151,7 +148,7 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
         mint, userToken: ata(mint, a.user), toolData: toolPda(mint)[0], auth: authPda()[0],
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
         metadata: tokenMetadataPda(mint)[0],
-        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...metadataAta,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...withAta,
       }).instruction();
       break;
     }
@@ -163,7 +160,7 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
         newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0],
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
         metadata: tokenMetadataPda(newMint)[0],
-        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...metadataAta,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...withAta,
       }).instruction();
       break;
     }

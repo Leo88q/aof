@@ -34,6 +34,10 @@ const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111")
 const ALT_PROGRAM = new PublicKey("AddressLookupTab1e1111111111111111111111111");
 // aof_core::constants::VRF_REFUND_AFTER_SLOTS; pinned in tests/readiness/vrf.test.cjs.
 const REFUND_AFTER_SLOTS = 18_000;
+// aof_core::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS: Metaplex Token
+// Metadata charges the payer 0.01 SOL for CreateMetadataAccountV3 and parks it
+// in the new Metadata account on top of its rent.
+const METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000;
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // aof-core constants::PACK_TOOL_TYPES and state::Rarity, in order.
@@ -154,11 +158,12 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   }
 
   // aof_core::vrf::tool_settlement_rent: SPL Mint, SPL TokenAccount,
-  // TOOL_DATA_SPACE (161), and max immutable Metaplex Metadata (679).
+  // TOOL_DATA_SPACE (161), max immutable Metaplex Metadata (679) and the
+  // 0.01 SOL Metaplex CreateMetadataAccountV3 fee parked in that account.
   async function toolSettlementRent() {
     const rents = await Promise.all([82, 165, 161, 679].map((bytes) =>
       connection.getMinimumBalanceForRentExemption(bytes, "confirmed")));
-    return rents.reduce((sum, rent) => sum + rent, 0);
+    return rents.reduce((sum, rent) => sum + rent, 0) + METAPLEX_CREATION_FEE_LAMPORTS;
   }
 
   let index = -1;
@@ -434,9 +439,11 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(d(treasury)).to.equal(commit.paidLamports.toNumber(), "treasury receives the price; it does not pay the cranker fee");
     const settlementRent = d(accounts.mint) + d(accounts.userToken) + d(accounts.toolData)
       + d(accounts.metadata);
-    expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent(), "prepaid reimbursement is capped at the live account rent");
-    expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent - d.fee,
-      "cranker fronts exact NFT rent and network fee, then recovers only the rent from the player's cap");
+    expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent(), "prepaid cap covers the live account rent and the Metaplex fee");
+    expect(settlementRent).to.be.lessThanOrEqual(commit.depositLamports.toNumber(),
+      "the actual fronted rent plus Metaplex fee fits inside the player's cap");
+    expect(d(cranker.publicKey)).to.equal(-d.fee,
+      "cranker is made whole for the rent and Metaplex fee it fronted and pays only its own network fee");
     expect(d(user.publicKey)).to.equal(commitLamports - commit.paidLamports.toNumber() - commit.depositLamports.toNumber());
 
     // Settled once: the commit account is gone.
@@ -534,8 +541,9 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const settlementRent = d(newMint) + d(newToken) + d(newToolData)
       + d(newNftAccounts.metadata);
     expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent());
-    expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent - d.fee,
-      "reroll cranker recovers only prepaid rent and remains the network-fee payer");
+    expect(settlementRent).to.be.lessThanOrEqual(commit.depositLamports.toNumber());
+    expect(d(cranker.publicKey)).to.equal(-d.fee,
+      "reroll cranker is made whole for prepaid rent and the Metaplex fee and remains the network-fee payer");
     expect(d(rerollCommit)).to.equal(-d.pre(rerollCommit));
   });
 

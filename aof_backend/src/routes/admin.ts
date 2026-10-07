@@ -30,6 +30,7 @@ import {
   TOKEN_MINT_SIZE,
   TOOL_DATA_ACCOUNT_SIZE,
   METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
+  METAPLEX_CREATION_FEE_LAMPORTS,
 } from "../lib/accountSizes";
 import { requireExistingPlayer } from "../lib/playerAccount";
 import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
@@ -644,7 +645,7 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
         { name: `tool_mint_${index}`, address: mint, size: MINT_SIZE, strategy: "create" },
         { name: `recipient_ata_${index}`, address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
         { name: `tool_data_${index}`, address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
-        { name: `metaplex_metadata_${index}`, address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+        { name: `metaplex_metadata_${index}`, address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" , protocolFeeLamports: METAPLEX_CREATION_FEE_LAMPORTS },
       );
       instructions.push(await (program.methods as any)
         .mintTool(toolType, rarity)

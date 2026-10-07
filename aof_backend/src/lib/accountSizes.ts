@@ -11,3 +11,7 @@ export const TOKEN_MINT_SIZE = 82;
 // Metaplex rent upper bounds used by tool-mint payer quotes (external accounts,
 // so unlike the constants above these do not include an Anchor discriminator).
 export const METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679;
+/** Metaplex Token Metadata charges the creator a 0.01 SOL fee for
+ * `CreateMetadataAccountV3` and keeps it in the Metadata account. Mirrors
+ * `aof_core::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS`. */
+export const METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000;

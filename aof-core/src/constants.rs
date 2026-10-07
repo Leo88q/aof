@@ -15,6 +15,13 @@ pub const TOOL_METADATA_REGISTRY_SEED: &[u8] = b"tool_metadata_registry";
 /// Maximum bytes to reserve for the Metaplex Metadata account before a tool is minted.
 /// VRF settlement returns only the rent for the actual `data_len()` value.
 pub const TOOL_METADATA_ACCOUNT_MAX_SPACE: usize = 679;
+/// [Metaplex] `CreateMetadataAccountV3` charges the payer a flat 0.01 SOL
+/// protocol fee and parks it in the new Metadata account on top of its rent
+/// (developers.metaplex.com/token-metadata/faq, "costs to using Token
+/// Metadata"). The deposit a tool-producing commit escrows must cover it, and
+/// the settler that fronts the CPI must be reimbursed for it, otherwise the
+/// permissionless settler pays 0.01 SOL out of its own pocket per reveal.
+pub const TOOL_METADATA_CREATION_FEE_LAMPORTS: u64 = 10_000_000;
 pub const TOOL_METADATA_URI_COUNT: usize = 25;
 pub const TOOL_METADATA_URI_MAX_LEN: usize = 80;
 pub const TOOL_METADATA_URI_BATCH_MAX: usize = 8;

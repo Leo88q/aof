@@ -219,3 +219,43 @@ test('F-06 settlement instructions stay permissionless (the settler signs with a
     }
   }
 });
+
+test('F-06 every reveal context and its CPI carry the native mint Switchboard pays in', () => {
+  // The hand-written `randomness_reveal` instruction lists the native SOL mint
+  // (So111...112). A context that omits it puts a pubkey into the CPI that is
+  // not in the transaction, and the runtime rejects the whole reveal with
+  // "Instruction references an unknown account" - exactly what happened to
+  // pack_open_reveal / reroll_random_reveal before this pin existed.
+  const core = read('aof-core/src/vrf.rs');
+  const revealCpi = /fn cpi_reveal\(([\s\S]*?)\n\}/.exec(core);
+  assert.ok(revealCpi, 'cpi_reveal found');
+  assert.match(revealCpi[1], /a\.wrapped_sol_mint\.clone\(\)/, 'the reveal CPI passes the native mint');
+  assert.match(core, /pub wrapped_sol_mint: AccountInfo<'info>/, 'RevealAccounts carries the native mint');
+
+  const lib = read('aof-core/src/lib.rs');
+  const coreIdl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
+  const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+  const contexts = {
+    pack_open_reveal: 'PackOpenReveal',
+    reroll_random_reveal: 'RerollRandomReveal',
+    explore_reveal: 'ExploreReveal',
+    forge_attempt_reveal: 'ForgeAttemptReveal',
+    draw_lottery: 'DrawLottery',
+  };
+  const settlement = read('aof_backend/src/lib/vrfSettlement.ts');
+  assert.doesNotMatch(settlement, /_wrappedSolMint/,
+    'vrfSettlement must not strip the native mint out of a reveal account map');
+  for (const [ix, context] of Object.entries(contexts)) {
+    const body = new RegExp(`pub struct ${context}<'info> \\{([\\s\\S]*?)\\n\\}`).exec(lib);
+    assert.ok(body, `${context} found`);
+    assert.match(body[1], /pub wrapped_sol_mint: UncheckedAccount<'info>/,
+      `${context} must declare the native mint the reveal CPI references`);
+    assert.match(body[1], /address = anchor_spl::token::spl_token::native_mint::ID/,
+      `${context}.wrapped_sol_mint must be pinned to the native mint`);
+    const entry = coreIdl.instructions.find((i) => i.name === ix);
+    assert.ok(entry, `${ix} is in the committed IDL`);
+    const account = entry.accounts.find((a) => a.name === 'wrapped_sol_mint');
+    assert.ok(account, `${ix}: the IDL client needs the wrapped_sol_mint account`);
+    assert.equal(account.address, NATIVE_MINT, `${ix}: wrapped_sol_mint is the native mint`);
+  }
+});

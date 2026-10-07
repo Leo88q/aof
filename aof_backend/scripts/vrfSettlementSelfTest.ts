@@ -196,11 +196,6 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   const materialMints = pda.materialMintsPda()[0];
   const sb = (prog: any, randomness: PublicKey) => ({ ...sbAccounts(prog, randomness), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SYSTEM });
   const sbAta = (prog: any, randomness: PublicKey) => ({ ...sb(prog, randomness), associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID });
-  const sbMetadataAta = (prog: any, randomness: PublicKey) => {
-    const { wrappedSolMint: unused, ...accounts } = sbAta(prog, randomness);
-    void unused;
-    return accounts;
-  };
   async function reveal(mechanic: Mechanic) {
     revealCalls = [];
     const commit = (await settlement.fetchPendingCommit(mechanic, commits[mechanic].publicKey))!;
@@ -218,7 +213,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
       config, cranker, packCommit: k(1), user: wallet, treasury: cfg.treasury, mint, userToken: ata(mint, wallet),
       toolData: pda.toolPda(mint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
       metadata: pda.tokenMetadataPda(mint)[0],
-      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbMetadataAta(program, k(71)),
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbAta(program, k(71)),
     });
     assert.ok(revealCalls[0].program.equals(CORE));
   }
@@ -230,7 +225,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
       config, cranker, rerollCommit: k(2), user: vaultUser, treasury: cfg.treasury, newMint, newToken: ata(newMint, vaultUser),
       newToolData: pda.toolPda(newMint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
       metadata: pda.tokenMetadataPda(newMint)[0],
-      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbMetadataAta(program, k(72)),
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbAta(program, k(72)),
     });
   }
   expectWiring(program, await reveal("exploration"), "exploreReveal", {

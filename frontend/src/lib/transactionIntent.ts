@@ -116,6 +116,10 @@ export interface PayerRentQuoteLine {
   readonly exists: boolean;
   readonly rentDueLamports: string;
   readonly maxRentLamports: string;
+  /** Fee the external program charges when it creates this account (Metaplex
+   * Token Metadata takes 0.01 SOL for CreateMetadataAccountV3). Optional so a
+   * quote that names no fee line is still valid and counts as zero. */
+  readonly protocolFeeLamports?: string;
 }
 export interface PayerCostQuote {
   readonly version: 1;
@@ -126,6 +130,7 @@ export interface PayerCostQuote {
   readonly networkFeeLamports: string;
   readonly rentLamports: string;
   readonly maxRentLamports: string;
+  readonly protocolFeeLamports?: string;
   readonly maxCostLamports: string;
   readonly rentAccounts: readonly PayerRentQuoteLine[];
 }
@@ -248,7 +253,12 @@ function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
 }
 
 const MAX_QUOTED_NETWORK_FEE_LAMPORTS = 250_000n;
-const MAX_QUOTED_PAYER_COST_LAMPORTS = 20_000_000n;
+/** One Metaplex CreateMetadataAccountV3 fee is 0.01 SOL. */
+const MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n;
+/** Network fee + rent + protocol fees. A metadata-only tool asset pays ATA,
+ * ToolData and Metadata rent plus the 0.01 SOL Metaplex fee, so the ceiling is
+ * 25M rather than the old 20M that no longer covered one operator grant. */
+const MAX_QUOTED_PAYER_COST_LAMPORTS = 25_000_000n;
 const PLAYER_ACCOUNT_SIZE = 59;
 const TOOL_DATA_ACCOUNT_SIZE = 161;
 const REWARD_RECEIPT_ACCOUNT_SIZE = 121;
@@ -358,12 +368,16 @@ export function validatePayerQuoteForIntent(intent: TransactionIntent, user: Pub
   const networkFee = quoteInteger(quote.networkFeeLamports, "network fee");
   const quotedDue = quoteInteger(quote.rentLamports, "rent due");
   const quotedMaxRent = quoteInteger(quote.maxRentLamports, "maximum rent");
+  const quotedProtocolFees = quoteInteger(quote.protocolFeeLamports ?? "0", "protocol fees");
   const maxCost = quoteInteger(quote.maxCostLamports, "maximum cost");
   if (networkFee > MAX_QUOTED_NETWORK_FEE_LAMPORTS || maxCost > MAX_QUOTED_PAYER_COST_LAMPORTS ||
-      maxCost !== networkFee + quotedMaxRent) throw new Error("Payer quote exceeds the local cost ceiling");
+      maxCost !== networkFee + quotedMaxRent + quotedProtocolFees) {
+    throw new Error("Payer quote exceeds the local cost ceiling");
+  }
 
   let dueSum = 0n;
   let rentSum = 0n;
+  let feeSum = 0n;
   expected.forEach((account, index) => {
     const line = quote.rentAccounts[index];
     if (!line || line.name !== account.name || line.address !== account.address.toBase58() ||
@@ -372,14 +386,19 @@ export function validatePayerQuoteForIntent(intent: TransactionIntent, user: Pub
     }
     const due = quoteInteger(line.rentDueLamports, `${account.name} rent due`);
     const max = quoteInteger(line.maxRentLamports, `${account.name} maximum rent`);
+    const fee = quoteInteger(line.protocolFeeLamports ?? "0", `${account.name} protocol fee`);
     if (max <= 0n || due > max || due !== (line.exists ? 0n : max) ||
-        ((account.strategy === "init" || account.strategy === "create") && line.exists)) {
+        ((account.strategy === "init" || account.strategy === "create") && line.exists) ||
+        fee > MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS || (line.exists && fee !== 0n)) {
       throw new Error("Payer quote contains an invalid rent charge");
     }
     dueSum += due;
     rentSum += max;
+    feeSum += fee;
   });
-  if (dueSum !== quotedDue || rentSum !== quotedMaxRent) throw new Error("Payer quote totals do not reconcile");
+  if (dueSum !== quotedDue || rentSum !== quotedMaxRent || feeSum !== quotedProtocolFees) {
+    throw new Error("Payer quote totals do not reconcile");
+  }
 }
 
 /**

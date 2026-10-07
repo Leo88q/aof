@@ -253,3 +253,42 @@ test('кошелёк игрока подписывает минт инструм
   assert.match(body, /ix\.data\[12 \+ toolType\.length\] !== RARITY\[intent\.rarity\]/, 'редкость из payload сверяется с интентом');
   assert.match(body, /ix\.data\[0\] !== 1/, 'принимается только идемпотентное создание ATA');
 });
+
+test('Metaplex creation fee is one constant across the program, the quotes and the validator tests', () => {
+  // Metaplex Token Metadata charges the payer 0.01 SOL for
+  // CreateMetadataAccountV3 and parks it in the new Metadata account. Every
+  // layer that prices a tool asset must use the same number: a tool-producing
+  // commit escrows it, the reimbursement returns it to the settler, and the
+  // player-facing quote shows it.
+  const FEE = /10_000_000/;
+  const rust = read('aof-core/src/constants.rs');
+  assert.match(rust, /TOOL_METADATA_CREATION_FEE_LAMPORTS: u64 = 10_000_000/);
+  const vrf = read('aof-core/src/vrf.rs');
+  assert.match(vrf, /saturating_add\(crate::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS\)/,
+    'tool_settlement_rent must escrow the fee for the settler');
+  const settlement = read('aof-core/src/instructions/settlement.rs');
+  const reimburse = settlement.slice(settlement.indexOf('pub fn reimburse_settler'));
+  assert.match(reimburse, /TOOL_METADATA_CREATION_FEE_LAMPORTS/,
+    'reimburse_settler must return the fee the Metadata CPI charged the cranker');
+
+  const backend = read('aof_backend/src/lib/accountSizes.ts');
+  assert.match(backend, /METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000/);
+  for (const route of ['aof_backend/src/routes/tools.ts', 'aof_backend/src/routes/reroll.ts', 'aof_backend/src/routes/admin.ts']) {
+    const src = read(route);
+    assert.match(src, /METAPLEX_CREATION_FEE_LAMPORTS/,
+      `${route}: the metadata quote line must declare the Metaplex fee`);
+    assert.match(src, /protocolFeeLamports: METAPLEX_CREATION_FEE_LAMPORTS/,
+      `${route}: the fee must travel as protocolFeeLamports`);
+  }
+  const quote = read('aof_backend/src/lib/payerQuote.ts');
+  assert.match(quote, /MAX_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n/);
+  assert.match(quote, /maxCost = networkFee \+ maxRent \+ protocolFees/, 'the fee is part of the quoted ceiling');
+  assert.ok(FEE.test(quote));
+
+  const wallet = read('frontend/src/lib/transactionIntent.ts');
+  assert.match(wallet, /MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n/);
+  assert.match(wallet, /maxCost !== networkFee \+ quotedMaxRent \+ quotedProtocolFees/,
+    'the wallet rejects a quote whose fee totals do not reconcile');
+  assert.match(read('tests/aof_payer_funding.ts'), /METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000/);
+  assert.match(read('tests/aof_vrf_localnet.ts'), /METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000/);
+});

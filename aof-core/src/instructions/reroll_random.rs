@@ -166,6 +166,7 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams)
         system_program: ctx.accounts.system_program.to_account_info(),
         reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
         token_program: ctx.accounts.token_program.to_account_info(),
+        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
         program_state: ctx.accounts.program_state.to_account_info(),
     };
     let value = vrf::reveal(

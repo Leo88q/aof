@@ -82,6 +82,9 @@
   - оракул равен назначенному при коммите;
   - `stats` — PDA оракула;
   - `reward_escrow` — ATA аккаунта случайности;
+  - `wrapped_sol_mint` — канонический native mint (So111…112): CPI `randomness_reveal`
+    платит им в reward escrow, поэтому аккаунт обязателен и в контексте, и в CPI
+    (pack/reroll reveal получили его вместе с остальными тремя механиками);
   - `program_state` — State PDA.
 - **Внутри `vrf::commit`:**
   - слот свободен и не выведен;

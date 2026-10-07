@@ -168,8 +168,11 @@ pub fn release_escrow<'info>(commit: &AccountInfo<'info>, to: &AccountInfo<'info
     crate::economics::transfer_owned_lamports(commit, to, amount, reserve)
 }
 
-/// Reimburse only the exact rent paid by the cranker for the minted account
-/// set, using post-CPI account lengths and never exceeding the user's deposit.
+/// Reimburse only what the cranker fronted for the minted account set: the
+/// post-CPI rent of every account plus the Metaplex creation fee that the
+/// Metadata CPI parks in the Metadata account. Never exceeds the user's deposit
+/// and never depends on the accounts' live balances, so a third party cannot
+/// inflate the payout by donating lamports to a PDA.
 pub fn reimburse_settler<'info>(
     commit: &AccountInfo<'info>,
     settler: &AccountInfo<'info>,
@@ -187,6 +190,9 @@ pub fn reimburse_settler<'info>(
             .checked_add(rent.minimum_balance(account.data_len()))
             .ok_or(AofError::MathOverflow)?;
     }
+    fronted = fronted
+        .checked_add(crate::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS)
+        .ok_or(AofError::MathOverflow)?;
     let amount = deposit.min(fronted);
     release_escrow(commit, settler, amount)?;
     Ok(amount)

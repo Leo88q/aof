@@ -2203,6 +2203,21 @@ fn switchboard_cpi_encoding_matches_the_pinned_idl() {
     assert_eq!(vrfmod::SWITCHBOARD_QUEUE_DEVNET.to_string(), "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7");
 }
 
+/// The Metaplex `CreateMetadataAccountV3` fee is charged to whoever pays for the
+/// Metadata account; a tool-producing commit must escrow it and the settler must
+/// get it back, otherwise every permissionless reveal leaks 0.01 SOL.
+#[test]
+fn tool_settlement_deposit_covers_the_metaplex_creation_fee() {
+    runtime();
+    let rent = Rent::default();
+    let without_fee = rent.minimum_balance(anchor_spl::token::Mint::LEN)
+        .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
+        .saturating_add(rent.minimum_balance(TOOL_DATA_SPACE))
+        .saturating_add(rent.minimum_balance(TOOL_METADATA_ACCOUNT_MAX_SPACE));
+    assert_eq!(TOOL_METADATA_CREATION_FEE_LAMPORTS, 10_000_000, "documented 0.01 SOL Metaplex fee");
+    assert_eq!(vrfmod::tool_settlement_rent(&rent), without_fee + TOOL_METADATA_CREATION_FEE_LAMPORTS);
+}
+
 fn commit_accounts(randomness: &AccountInfo<'static>) -> vrfmod::CommitAccounts<'static> {
     vrfmod::CommitAccounts {
         switchboard_program: sb_program(),
@@ -2227,6 +2242,7 @@ fn reveal_accounts(randomness: &AccountInfo<'static>, payer: &AccountInfo<'stati
         system_program: system_program_info(),
         reward_escrow: plain(Pubkey::new_unique()),
         token_program: token_program_info(),
+        wrapped_sol_mint: plain(anchor_spl::token::spl_token::native_mint::ID),
         program_state: plain(Pubkey::new_unique()),
     }
 }
@@ -2491,6 +2507,7 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
             plain(vrfmod::stats_address(&ORACLE)),
             plain(crate::randomness::SLOT_HASHES_ID),
             plain(vrfmod::reward_escrow_address(&rkey)),
+            plain(anchor_spl::token::spl_token::native_mint::ID),
             plain(vrfmod::SWITCHBOARD_STATE),
             sb_program(),
             token_program_info(),
@@ -2507,11 +2524,19 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
     assert!(blames(&err, "randomness"), "{err}");
 
     // Switchboard pass-through accounts are bound in this program's context too.
-    for (index, field) in [(12usize, "oracle"), (14, "stats"), (16, "reward_escrow"), (17, "program_state")] {
+    for (index, field) in [(12usize, "oracle"), (14, "stats"), (16, "reward_escrow"), (18, "program_state")] {
         let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
         infos[index] = plain(Pubkey::new_unique());
         let err = rejected(validate::<PackOpenReveal>(infos, &[]), "InvalidRandomnessAccount");
         assert!(blames(&err, field), "{field}: {err}");
+    }
+    // The native mint is pinned: a caller cannot swap in another mint account,
+    // which is what the reveal CPI pays its reward escrow in.
+    {
+        let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
+        infos[17] = plain(Pubkey::new_unique());
+        let err = rejected(validate::<PackOpenReveal>(infos, &[]), "ConstraintAddress");
+        assert!(blames(&err, "wrapped_sol_mint"), "{err}");
     }
 
     let infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
@@ -2524,6 +2549,8 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
     assert_eq!((accounts.tool_data.owner, accounts.tool_data.operator, accounts.tool_data.mint), (user, user, mint_key));
     assert_eq!(accounts.tool_data.durability, MAX_DURABILITY);
     assert_eq!(treasury_i.lamports(), WALLET_LAMPORTS + price, "the price reaches the treasury only now");
+    // The settler fronted the Metaplex creation fee inside the Metadata CPI, so
+    // being made whole means the whole deposit, fee included.
     assert_eq!(cranker_i.lamports(), WALLET_LAMPORTS + deposit, "the settler is made whole");
     assert_eq!(commit_i.lamports(), rent_exempt(PACK_COMMIT_SPACE), "only the rent is left for `close = user`");
     assert_eq!(accounts.vrf_slot.lock, Pubkey::default());

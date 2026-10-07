@@ -23,6 +23,7 @@ import { coSignWithVrfLookupTableQuoted } from "../lib/vrfLookupTableTransaction
 import {
   TOOL_DATA_ACCOUNT_SIZE,
   METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
+  METAPLEX_CREATION_FEE_LAMPORTS,
 } from "../lib/accountSizes";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
@@ -117,7 +118,7 @@ r.post("/fuse", async (req, res) => {
     // maxima in a quote bound to this exact transaction message.
     const prepared = await coSignWithVrfLookupTableQuoted([ix], user, [
       { name: "new_tool_data", address: newToolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
-      { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
+      { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" , protocolFeeLamports: METAPLEX_CREATION_FEE_LAMPORTS },
     ]);
     res.json(prepared);
   } catch (e: any) {

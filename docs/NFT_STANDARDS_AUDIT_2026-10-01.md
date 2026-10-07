@@ -22,6 +22,7 @@
   - создаёт только Metaplex Metadata через `CreateMetadataAccountV3`; Master Edition CPI и аккаунт отсутствуют;
   - после успешного Metadata CPI отзывает `MintTokens` и `FreezeAccount` у auth PDA: supply нельзя увеличить, а выпущенный mint нельзя заморозить;
   - берёт URI и `seller_fee_basis_points` из `ToolMetadataRegistry`;
+  - Metadata CPI списывает с payer'а rent аккаунта **и flat 0.01 SOL (10 000 000 lamports) fee Metaplex**, который остаётся внутри Metadata account; этот fee входит в `tool_settlement_rent`, в reimbursement сеттлера и в payer quotes (`METAPLEX_CREATION_FEE_LAMPORTS`);
   - использует пустой symbol, `creators = None`, `collection = None` и `is_mutable = false`.
 - Mint-контексты требуют `decimals == 0`, начальный `supply == 0`, mint authority равный program PDA и временный freeze authority, равный тому же PDA. Metaplex отклоняет этот 0-decimal supply-1 mint без freeze authority; общий helper отзывает `MintTokens` и `FreezeAccount` после Metadata CPI в той же атомарной инструкции. Итог: supply 1 и обе authority `None`. Metadata PDA и Token Metadata program проверяются Anchor-контекстом; Master Edition PDA в нём нет.
 - `ToolMetadataRegistry` содержит 25 URI. `metadata_uri()` отказывает до `initialized && frozen`; конфигурационная инструкция замораживает registry только при заполнении всех слотов и уникальности URI. Для Devnet Cloudflare-пилота seller fee задан как 0 bps.
