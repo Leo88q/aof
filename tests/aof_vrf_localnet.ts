@@ -21,7 +21,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createMint, getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createMint, getAssociatedTokenAddressSync, getMint, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { expect } from "chai";
 import * as crypto from "crypto";
 import fs from "fs";
@@ -83,10 +83,20 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   const masterEditionPda = (mint: PublicKey) => pda(
     [B("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer(), B("edition")], TOKEN_METADATA_PROGRAM_ID,
   );
+  function expectImmutableMetadata(data: Buffer) {
+    let offset = 1 + 32 + 32; // Metadata key, update authority, and mint.
+    for (let field = 0; field < 3; field += 1) {
+      const length = data.readUInt32LE(offset);
+      offset += 4 + length; // Borsh name, symbol, and URI strings.
+    }
+    offset += 2; // seller_fee_basis_points
+    expect(data[offset++], "metadata has no unapproved creators").to.equal(0);
+    offset += 1; // primary_sale_happened
+    expect(data[offset], "Metaplex metadata is immutable").to.equal(0);
+  }
   const toolNftAccounts = (mint: PublicKey) => ({
     toolMetadataRegistry: pda([B("tool_metadata_registry")]),
     metadata: tokenMetadataPda(mint),
-    masterEdition: masterEditionPda(mint),
     tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
   });
   const u32le = (n: number) => {
@@ -144,9 +154,9 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   }
 
   // aof_core::vrf::tool_settlement_rent: SPL Mint, SPL TokenAccount,
-  // TOOL_DATA_SPACE (161), max Metaplex Metadata (679), and Master Edition (282).
+  // TOOL_DATA_SPACE (161), and max immutable Metaplex Metadata (679).
   async function toolSettlementRent() {
-    const rents = await Promise.all([82, 165, 161, 679, 282].map((bytes) =>
+    const rents = await Promise.all([82, 165, 161, 679].map((bytes) =>
       connection.getMinimumBalanceForRentExemption(bytes, "confirmed")));
     return rents.reduce((sum, rent) => sum + rent, 0);
   }
@@ -207,7 +217,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
 
   /** A tool NFT issued by the program, as tests/aof_core.ts mintTool does. */
   async function mintTool(owner: Keypair) {
-    const mint = await createMint(connection, owner, authPda, null, 0);
+    const mint = await createMint(connection, owner, authPda, authPda, 0);
     await waitForAccountOwner(connection, mint, TOKEN_PROGRAM_ID, "SPL Token mint");
     const tokenAccount = getAssociatedTokenAddressSync(mint, owner.publicKey);
     const createAta = new Transaction().add(createAssociatedTokenAccountIdempotentInstruction(
@@ -341,7 +351,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const commitRent = await connection.getMinimumBalanceForRentExemption(commitInfo!.data.length, "confirmed");
     const settlementCap = await toolSettlementRent();
     expect(commit.depositLamports.toNumber()).to.equal(settlementCap,
-      "the player-prepaid deposit covers Mint, ATA, ToolData, Metadata, and Master Edition rent");
+      "the player-prepaid deposit covers Mint, ATA, ToolData, and Metadata rent");
     expect(commit.paidLamports.toNumber()).to.equal(price.toNumber());
     expect(commitDelta(packCommit)).to.equal(commitRent + price.toNumber() + settlementCap,
       "commit PDA receives its rent bond plus the exact escrowed price and capped settlement rent");
@@ -396,6 +406,15 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
     expect(tool.mint.toBase58()).to.equal(accounts.mint.toBase58());
     expect((await connection.getTokenAccountBalance(accounts.userToken)).value.amount).to.equal("1");
+    const issuedMint = await getMint(connection, accounts.mint, "confirmed");
+    expect(issuedMint.decimals).to.equal(0);
+    expect(issuedMint.supply).to.equal(1n);
+    expect(issuedMint.mintAuthority).to.equal(null);
+    expect(issuedMint.freezeAuthority).to.equal(null);
+    expect(await connection.getAccountInfo(masterEditionPda(accounts.mint), "confirmed")).to.equal(null);
+    const metadataInfo = await connection.getAccountInfo(accounts.metadata, "confirmed");
+    expect(metadataInfo).to.not.equal(null);
+    expectImmutableMetadata(metadataInfo!.data);
 
     // Switchboard's account now carries the value; the slot is free again.
     const r = await readRandomness();
@@ -414,7 +433,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(d(packCommit)).to.equal(-commitLamports);
     expect(d(treasury)).to.equal(commit.paidLamports.toNumber(), "treasury receives the price; it does not pay the cranker fee");
     const settlementRent = d(accounts.mint) + d(accounts.userToken) + d(accounts.toolData)
-      + d(accounts.metadata) + d(accounts.masterEdition);
+      + d(accounts.metadata);
     expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent(), "prepaid reimbursement is capped at the live account rent");
     expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent - d.fee,
       "cranker fronts exact NFT rent and network fee, then recovers only the rent from the player's cap");
@@ -500,11 +519,20 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     expect(tool.toolType).to.equal(expected.toolType);
     expect(tool.owner.toBase58()).to.equal(user.publicKey.toBase58());
     expect((await connection.getTokenAccountBalance(newToken)).value.amount).to.equal("1");
+    const issuedMint = await getMint(connection, newMint, "confirmed");
+    expect(issuedMint.decimals).to.equal(0);
+    expect(issuedMint.supply).to.equal(1n);
+    expect(issuedMint.mintAuthority).to.equal(null);
+    expect(issuedMint.freezeAuthority).to.equal(null);
+    expect(await connection.getAccountInfo(masterEditionPda(newMint), "confirmed")).to.equal(null);
+    const metadataInfo = await connection.getAccountInfo(newNftAccounts.metadata, "confirmed");
+    expect(metadataInfo).to.not.equal(null);
+    expectImmutableMetadata(metadataInfo!.data);
     expect(await connection.getAccountInfo(rerollCommit)).to.equal(null);
     expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero);
     expect(d(treasury)).to.equal(commit.feeLamports.toNumber(), "only the escrowed reroll fee goes to treasury");
     const settlementRent = d(newMint) + d(newToken) + d(newToolData)
-      + d(newNftAccounts.metadata) + d(newNftAccounts.masterEdition);
+      + d(newNftAccounts.metadata);
     expect(commit.depositLamports.toNumber()).to.equal(await toolSettlementRent());
     expect(d(cranker.publicKey)).to.equal(commit.depositLamports.toNumber() - settlementRent - d.fee,
       "reroll cranker recovers only prepaid rent and remains the network-fee payer");

@@ -56,7 +56,6 @@ pub fn handler(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
         &ctx.accounts.token_metadata_program.to_account_info(),
         &ctx.accounts.cranker.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -82,7 +81,6 @@ pub fn handler(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<
         &ctx.accounts.user_token.to_account_info(),
         &ctx.accounts.tool_data.to_account_info(),
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
     )?;
     ctx.accounts.pack_commit.paid_lamports = 0;
     ctx.accounts.pack_commit.deposit_lamports = 0;

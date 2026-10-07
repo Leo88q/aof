@@ -243,10 +243,6 @@ const ata = (mint: PublicKey, owner: PublicKey) => PublicKey.findProgramAddressS
 const metaplexMetadataPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
   [new TextEncoder().encode("metadata"), TOKEN_METADATA_PROGRAM.toBytes(), mint.toBytes()], TOKEN_METADATA_PROGRAM,
 )[0];
-const metaplexMasterEditionPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
-  [new TextEncoder().encode("metadata"), TOKEN_METADATA_PROGRAM.toBytes(), mint.toBytes(), new TextEncoder().encode("edition")],
-  TOKEN_METADATA_PROGRAM,
-)[0];
 function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
   return actual.length === expected.length && expected.every((key, i) => key.equals(actual[i]));
 }
@@ -262,7 +258,6 @@ const SEASON_XP_CLAIM_CURSOR_ACCOUNT_SIZE = 49;
 const TOKEN_ACCOUNT_SIZE = 165;
 // Metaplex upper-bound account data sizes, matching the backend payer quote.
 const METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679;
-const METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE = 282;
 
 /** Rent-bearing accounts whose identity and allocation the wallet expects for
  * this intent. A server cannot add an unreviewed rent destination to a quote. */
@@ -319,7 +314,6 @@ export function expectedPayerRentAccounts(intent: TransactionIntent): ExpectedPa
       { name: "recipient_ata", address: ata(mint, user), size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
       { name: "tool_data", address: pda("tool", mint), size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
       { name: "metaplex_metadata", address: metaplexMetadataPda(mint), size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
-      { name: "metaplex_master_edition", address: metaplexMasterEditionPda(mint), size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
     ];
   }
   if (intent.kind === "rewardClaim") {
@@ -719,7 +713,7 @@ function validateToolMintIntent(instructions: Instruction[], intent: ToolMintInt
   const tokenAccount = ata(mint, user);
   const expected = [pda("config"), authority, pda("auth"), mint, tokenAccount, user, user,
     pda("tool", mint), TOKEN, new PublicKey(SYSTEM), pda("tool_metadata_registry"),
-    metaplexMetadataPda(mint), metaplexMasterEditionPda(mint), TOKEN_METADATA_PROGRAM];
+    metaplexMetadataPda(mint), TOKEN_METADATA_PROGRAM];
   let mints = 0, atas = 0;
   for (const ix of instructions) {
     const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);

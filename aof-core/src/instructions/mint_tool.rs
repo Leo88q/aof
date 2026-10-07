@@ -22,7 +22,7 @@ pub fn handler(ctx: Context<MintTool>, tool_type: String, rarity: Rarity) -> Res
         ctx.accounts.token_account.owner == ctx.accounts.recipient.key(),
         AofError::Unauthorized
     );
-    // Mint one SPL unit and its immutable Metaplex metadata/master edition.
+    // Mint one SPL unit and its immutable Metaplex metadata.
     settlement::mint_tool_nft(
         &ctx.accounts.token_program.to_account_info(),
         &ctx.accounts.mint.to_account_info(),
@@ -30,7 +30,6 @@ pub fn handler(ctx: Context<MintTool>, tool_type: String, rarity: Rarity) -> Res
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
         &ctx.accounts.token_metadata_program.to_account_info(),
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),

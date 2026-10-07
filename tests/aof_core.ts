@@ -284,7 +284,7 @@ describe("aof-core: security & core flows", () => {
   };
 
   async function mintTool(to: PublicKey, toolType = "plasma_cutter") {
-    const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+    const mint = await createMint(provider.connection, setupPayer, authPda, authPda, 0);
     const tokenAccount = await ensureAta(mint, to);
     await sendWithPayer(program.methods.mintTool(toolType, { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount,
@@ -1203,7 +1203,7 @@ describe("aof-core: security & core flows", () => {
     it("F-22: mint_tool mints only to the declared recipient", async () => {
       const to = Keypair.generate(); await airdrop(to);
       const other = Keypair.generate();
-      const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+      const mint = await createMint(provider.connection, setupPayer, authPda, authPda, 0);
       const tokenAccount = await ensureAta(mint, to.publicKey);
       const accounts = {
         config: configPda, authority, auth: authPda, mint, tokenAccount,
@@ -1223,7 +1223,7 @@ describe("aof-core: security & core flows", () => {
 
     it("F-22 authority separation: authority cannot be payer or recipient", async () => {
       const to = Keypair.generate(); await airdrop(to);
-      const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+      const mint = await createMint(provider.connection, setupPayer, authPda, authPda, 0);
       const recipientAta = await ensureAta(mint, to.publicKey);
       const toolData = toolPda(mint);
 

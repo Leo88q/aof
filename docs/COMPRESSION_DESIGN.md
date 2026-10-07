@@ -1,14 +1,14 @@
 # NFT compression: решение для AOF, 2026-09-20
 
 **Статус compression: архитектурный план и offline-калькулятор, не интеграция и не разрешение mainnet.**
-Обновление состояния кода на 2026-10-06: tool NFT теперь используют immutable legacy Metaplex Token Metadata и Master Edition через CPI, привязанные к замороженному URI registry. Эта staged-интеграция ещё требует локальной сборки и Devnet smoke gates; она не включает Bubblegum или Light Protocol. Передача compressed asset ID вместо SPL mint по-прежнему сломает проверки `Account<Mint>`, ATA, custody и marketplace. Нельзя исправить это заменой SDK в backend.
+Обновление состояния кода на 2026-10-07: tool assets используют immutable legacy Metaplex Token Metadata без Master Edition. Это metadata-only asset, а не canonical Metaplex Master Edition NFT; часть кошельков, marketplaces и индексаторов может распознать его хуже. Для совместимости с CreateMetadataAccountV3 mint временно имеет mint/freeze authority auth PDA; после Metadata CPI обе отзываются в той же атомарной выдаче, так что финальный freeze authority — `None`. URI берётся из замороженного registry. Реализация ещё должна пройти обязательные сборку и локальные smoke gates; этот код-only change не требует и не выполняет deployed-network transactions. Bubblegum и Light Protocol не используются. Передача compressed asset ID вместо SPL mint по-прежнему сломает проверки `Account<Mint>`, ATA, custody и marketplace. Нельзя исправить это заменой SDK в backend.
 
 ## Что действительно использует проект
 
 - Anchor 0.30.1, классический `anchor_spl::token::Token`, singleton PDA Config, PDA mint authority, ToolData отдельно от SPL mint.
 - Нет CPI Bubblegum/Light, DAS ownership proofs, cNFT settlement или Token-2022 account extensions.
-- Mint/craft/reroll/VRF tool issuance создаёт supply=1 у SPL mint с decimals=0, а затем Metaplex Metadata + Master Edition. Metadata immutable (`is_mutable = false`), Master Edition имеет `max_supply = 0`, seller fee берётся из замороженного 25-entry registry; collection и creators не заявляются.
-- Эти CPI добавляют Metadata и Master Edition rent к Mint, ATA и ToolData. Их фактические account sizes/rent надо подтвердить на выбранном Devnet RPC и через smoke tests до выпуска; прежняя модель ниже их не учитывает.
+- Mint/craft/reroll/VRF tool issuance создаёт supply=1 у classic SPL mint с decimals=0, затем immutable Metaplex Metadata и отзывает оба authority. Token Metadata требует временный freeze authority для этого mint shape; его держит auth PDA и он отзывается вместе с mint authority после Metadata CPI в одной атомарной инструкции. Master Edition не создаётся (иначе freeze authority уходит на Edition PDA); AOF сохраняет окончательный `freeze_authority == None`. Это не canonical Metaplex Master Edition NFT и third-party recognition may be reduced. Seller fee берётся из замороженного 25-entry registry; collection и creators не заявляются.
+- Metadata CPI добавляет Metadata rent к Mint, ATA и ToolData; Master Edition rent отсутствует. Runtime payer quote и escrow reimbursement включают только реально созданные аккаунты. Таблица/JSON ниже — историческая illustrative модель до Metadata CPI и не отражает текущую стоимость; любые будущие release estimate должны включать актуальный Metadata rent.
 - ToolData резервирует 161 байт вместе с discriminator. Удаление Mint+ATA не удаляет этот rent. Нельзя обещать «NFT за 0.00001 SOL», оставив полноценный ToolData PDA и Metaplex аккаунты на каждый NFT.
 
 ## Bubblegum и ZK Compression — не одно и то же
@@ -47,7 +47,7 @@ Compression уменьшает стоимость хранения, но **не 
 ## Расчёт стоимости без маркетинговых обещаний
 
 ```
-current = N * (Mint rent + ATA rent + ToolData rent + Metadata rent + Master Edition rent + network fees)
+current = N * (Mint rent + ATA rent + ToolData rent + Metadata rent + network fees)
 hybrid  = ceil(N / tree_capacity) * tree rent + collection/setup
           + N * (Bubblegum mint fee + network fees + ToolData rent)
           + RPC/indexer/retries/operations budget
@@ -69,7 +69,7 @@ python3 scripts/test-mint-cost-model.py
 
 | Сценарий (снимок модели 2026-09-20) | SOL | Что не доказано |
 |---|---:|---|
-| SPL Mint + ATA + ToolData (без Metadata/Master Edition) | 55.2732 | не текущая стоимость выпуска; rent/network fee надо снять с выбранного RPC |
+| SPL Mint + ATA + ToolData (без Metadata; historical baseline) | 55.2732 | не текущая стоимость выпуска; rent/network fee надо снять с выбранного RPC |
 | Bubblegum + обычный ToolData | 21.4644 | setup 0.01 SOL — условный бюджет; нет pilot |
 | Bubblegum + compressed game state | 1.5 | 15,000 lamports state — ориентир 100-byte PDA, не замер AOF |
 

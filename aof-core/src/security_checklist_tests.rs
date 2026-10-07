@@ -294,18 +294,6 @@ fn tool_metadata_account(mint: Pubkey) -> AccountInfo<'static> {
     )
 }
 
-fn tool_master_edition_account(mint: Pubkey) -> AccountInfo<'static> {
-    let key = anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&mint).0;
-    info(
-        key,
-        false,
-        rent_exempt(TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE),
-        vec![0; TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE],
-        anchor_spl::metadata::ID,
-        false,
-    )
-}
-
 fn token_metadata_program_info() -> AccountInfo<'static> {
     executable_program(anchor_spl::metadata::ID)
 }
@@ -788,11 +776,11 @@ fn rental_close_refund_is_bound_to_the_renter() {
     assert_eq!(accounts.tool.operator, owner, "the operator right returns to the owner");
 }
 
-/// #11 / F-I: a tool NFT whose mint keeps a freeze authority can later be
-/// frozen in a buyer's wallet or inside an auction escrow (which blocks the
-/// settlement and locks the bidder's SOL). New tool mints must be unfreezable.
+/// #11 / F-I: Metadata creation requires a freeze authority on this mint shape.
+/// Only the auth PDA may hold it during issuance; mint_tool_nft revokes it before
+/// the transaction completes, preserving the permanently unfreezable final mint.
 #[test]
-fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
+fn tool_nft_mint_requires_auth_freeze_authority_for_metadata() {
     runtime();
     let w = World::new();
     let recipient = Pubkey::new_unique();
@@ -818,14 +806,15 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
                 system_program_info(),
                 tool_metadata_registry_info(),
                 tool_metadata_account(mint),
-                tool_master_edition_account(mint),
                 token_metadata_program_info(),
             ],
             &ix,
         )
     };
 
-    with_freeze(None).unwrap();
+    with_freeze(Some(w.auth_key)).unwrap();
+    let err = rejected(with_freeze(None), "InvalidMint");
+    assert!(blames(&err, "mint"), "{err}");
     let err = rejected(with_freeze(Some(Pubkey::new_unique())), "InvalidMint");
     assert!(blames(&err, "mint"), "{err}");
 }
@@ -2509,7 +2498,6 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
             system_program_info(),
             tool_metadata_registry_info(),
             tool_metadata_account(mint_key),
-            tool_master_edition_account(mint_key),
             token_metadata_program_info(),
         ]
     };

@@ -29,7 +29,6 @@ import {
   toolPda,
   toolMetadataRegistryPda,
   tokenMetadataPda,
-  masterEditionPda,
   TOKEN_METADATA_PROGRAM_ID,
 } from "./pda";
 import { VRF_REFUND_AFTER_SLOTS, vrfComputeBudget, vrfReveal, vrfSlotPda } from "./vrf";
@@ -151,7 +150,7 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
         config, cranker, packCommit: c.address, user: a.user, treasury: cfg.treasury,
         mint, userToken: ata(mint, a.user), toolData: toolPda(mint)[0], auth: authPda()[0],
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
-        metadata: tokenMetadataPda(mint)[0], masterEdition: masterEditionPda(mint)[0],
+        metadata: tokenMetadataPda(mint)[0],
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...metadataAta,
       }).instruction();
       break;
@@ -163,7 +162,7 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
         config, cranker, rerollCommit: c.address, user: a.user, treasury: cfg.treasury,
         newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0],
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
-        metadata: tokenMetadataPda(newMint)[0], masterEdition: masterEditionPda(newMint)[0],
+        metadata: tokenMetadataPda(newMint)[0],
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...metadataAta,
       }).instruction();
       break;
@@ -274,7 +273,7 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
         config, cranker, rerollCommit: c.address, user: a.user, vrfSlot,
         newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0],
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
-        metadata: tokenMetadataPda(newMint)[0], masterEdition: masterEditionPda(newMint)[0],
+        metadata: tokenMetadataPda(newMint)[0],
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID, ...withAta,
       }).instruction();
     }

@@ -1,6 +1,6 @@
 'use strict';
-// The direct craft/fuse instructions exceed Solana's 1,232-byte legacy packet
-// after Token Metadata/Master Edition accounts are included. Model the concrete
+// Direct craft/fuse instructions are too close to Solana's 1,232-byte legacy
+// packet limit to preserve the required 64-byte headroom after Metadata. Model the concrete
 // account aliases used by the backend and require a v0 transaction with the
 // shared Devnet ALT plus 64 bytes of size headroom. This is source-only; it does
 // not inspect a live lookup table or submit/simulate a transaction.
@@ -73,12 +73,12 @@ function measure(ix, kind, toolTypeLength = 20) {
 }
 
 for (const kind of ['craft', 'reroll']) {
-  test(`aof_core.${kind}: legacy exceeds packet; lookup-table v0 fits with headroom`, () => {
+  test(`aof_core.${kind}: legacy lacks headroom; lookup-table v0 fits safely`, () => {
     const ix = idl.instructions.find((instruction) => instruction.name === kind);
     assert.ok(ix, `${kind} instruction is present in committed IDL`);
     const size = measure(ix, kind);
-    assert.ok(size.legacyBytes > PACKET_DATA_SIZE,
-      `legacy must be rejected by size gate (${size.legacyBytes} bytes, ${size.keys} distinct keys)`);
+    assert.ok(size.legacyBytes > MAX_WITH_HEADROOM,
+      `legacy must leave at least 64 bytes below the ${PACKET_DATA_SIZE}-byte packet cap (${size.legacyBytes} bytes, ${size.keys} distinct keys)`);
     assert.ok(size.v0Bytes <= MAX_WITH_HEADROOM,
       `v0 estimate ${size.v0Bytes} bytes must fit below ${MAX_WITH_HEADROOM} (loaded ${size.loaded} keys)`);
 

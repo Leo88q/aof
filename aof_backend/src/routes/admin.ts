@@ -20,7 +20,6 @@ import {
   issuanceCapPda,
   toolMetadataRegistryPda,
   tokenMetadataPda,
-  masterEditionPda,
   TOKEN_METADATA_PROGRAM_ID,
   RESOURCE_KIND_ORDER,
 } from "../lib/pda";
@@ -31,7 +30,6 @@ import {
   TOKEN_MINT_SIZE,
   TOOL_DATA_ACCOUNT_SIZE,
   METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
-  METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE,
 } from "../lib/accountSizes";
 import { requireExistingPlayer } from "../lib/playerAccount";
 import { requireAdmin, nonProductionOnly } from "../middleware/adminAuth";
@@ -620,8 +618,9 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
     // [PAYER] Инструмент — собственность получателя: mint-аккаунт, ATA и
     // ToolData оплачивает он, а не кошелёк проекта. Backend только готовит
     // частично подписанную транзакцию фиксированной формы: authority
-    // подписывает исключительно минт-авторизацию (mint_authority = auth PDA),
-    // подпись получателя и оплата добавляются его кошельком. Блокхаш — expiry.
+    // подписывает исключительно минт-авторизацию (mint/freeze authority = auth PDA),
+    // которые общий issuance helper отзывает после Metadata CPI. Подпись получателя
+    // и оплата добавляются его кошельком. Блокхаш — expiry.
     const mintRent = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
     for (let index = 0; index < count; index += 1) {
       const mintKp = Keypair.generate();
@@ -637,7 +636,7 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
           programId: TOKEN_PROGRAM_ID,
         }),
       );
-      instructions.push(createInitializeMintInstruction(mint, 0, auth, null));
+      instructions.push(createInitializeMintInstruction(mint, 0, auth, auth));
       instructions.push(
         createAssociatedTokenAccountIdempotentInstruction(recipient, tokenAccount, recipient, mint),
       );
@@ -646,7 +645,6 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
         { name: `recipient_ata_${index}`, address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
         { name: `tool_data_${index}`, address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
         { name: `metaplex_metadata_${index}`, address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
-        { name: `metaplex_master_edition_${index}`, address: masterEditionPda(mint)[0], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
       );
       instructions.push(await (program.methods as any)
         .mintTool(toolType, rarity)
@@ -663,7 +661,6 @@ r.post("/test-grant-tools", nonProductionOnly, async (req, res) => {
           systemProgram: SystemProgram.programId,
           toolMetadataRegistry: toolMetadataRegistryPda()[0],
           metadata: tokenMetadataPda(mint)[0],
-          masterEdition: masterEditionPda(mint)[0],
           tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
         })
         .instruction());

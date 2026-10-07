@@ -16,7 +16,6 @@ import {
   toolPda,
   toolMetadataRegistryPda,
   tokenMetadataPda,
-  masterEditionPda,
   TOKEN_METADATA_PROGRAM_ID,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
@@ -24,7 +23,6 @@ import { coSignWithVrfLookupTableQuoted } from "../lib/vrfLookupTableTransaction
 import {
   TOOL_DATA_ACCOUNT_SIZE,
   METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
-  METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE,
 } from "../lib/accountSizes";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
@@ -112,7 +110,6 @@ r.post("/fuse", async (req, res) => {
         systemProgram: SystemProgram.programId,
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
         metadata: tokenMetadataPda(newMint)[0],
-        masterEdition: masterEditionPda(newMint)[0],
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       })
       .instruction();
@@ -121,7 +118,6 @@ r.post("/fuse", async (req, res) => {
     const prepared = await coSignWithVrfLookupTableQuoted([ix], user, [
       { name: "new_tool_data", address: newToolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
       { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
-      { name: "metaplex_master_edition", address: masterEditionPda(newMint)[0], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
     ]);
     res.json(prepared);
   } catch (e: any) {

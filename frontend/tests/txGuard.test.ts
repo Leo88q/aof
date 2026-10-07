@@ -98,19 +98,19 @@ test("compute budget: unit limit in (0, 1.4M] and price ≤ 100k microlamports, 
   await bad(cb([]));
 });
 
-test("prep-mint policy: one user-funded 82-byte classic mint, 0 decimals, program auth, no freeze authority, rent ceiling inclusive", async () => {
+test("prep-mint policy: one user-funded classic mint uses auth PDA temporarily for mint/freeze, rent ceiling inclusive", async () => {
   const mint = Keypair.generate();
   const create = (over: Partial<{ from: PublicKey; lamports: number; space: number; programId: PublicKey; mint: PublicKey }> = {}) =>
     SystemProgram.createAccount({
       fromPubkey: over.from || user.publicKey, newAccountPubkey: over.mint || mint.publicKey, lamports: over.lamports ?? 1_461_600,
       space: over.space ?? 82, programId: over.programId || TOKEN_PROGRAM_ID,
     });
-  const init = (decimals = 0, mintAuth = auth, freeze: PublicKey | null = null, m = mint.publicKey) => createInitializeMintInstruction(m, decimals, mintAuth, freeze);
+  const init = (decimals = 0, mintAuth = auth, freeze: PublicKey | null = auth, m = mint.publicKey) => createInitializeMintInstruction(m, decimals, mintAuth, freeze);
   const ata = () => createAssociatedTokenAccountIdempotentInstruction(user.publicKey, getAssociatedTokenAddressSync(mint.publicKey, user.publicKey), user.publicKey, mint.publicKey);
   const run = async (...ix: TransactionInstruction[]) => (await guard(transaction(...ix))).safe;
 
   assert.equal(await run(create(), init(), ata()), true);
-  assert.equal(await run(create(), createInitializeMint2Instruction(mint.publicKey, 0, auth, null), ata()), true, "InitializeMint2 is the same policy");
+  assert.equal(await run(create(), createInitializeMint2Instruction(mint.publicKey, 0, auth, auth), ata()), true, "InitializeMint2 is the same policy");
   assert.equal(await run(create({ lamports: 5_000_000 }), init(), ata()), true, "rent exactly at the ceiling");
   assert.equal(await run(create({ lamports: 5_000_001 }), init(), ata()), false, "rent above the ceiling");
   assert.equal(await run(create({ from: other }), init(), ata()), false, "someone else may not fund it");
@@ -118,12 +118,13 @@ test("prep-mint policy: one user-funded 82-byte classic mint, 0 decimals, progra
   assert.equal(await run(create({ programId: TOKEN_2022_PROGRAM_ID }), init(), ata()), false, "owner must be the classic token program");
   assert.equal(await run(create(), init(1), ata()), false, "decimals must be 0");
   assert.equal(await run(create(), init(0, other), ata()), false, "mint authority must be the game's auth PDA");
-  assert.equal(await run(create(), init(0, auth, other), ata()), false, "no freeze authority");
+  assert.equal(await run(create(), init(0, auth, null), ata()), false, "freeze authority must be the auth PDA");
+  assert.equal(await run(create(), init(0, auth, other), ata()), false, "user-controlled freeze authority is forbidden");
   assert.equal(await run(create(), ata()), false, "allocation without initialisation");
   assert.equal(await run(init(), ata()), false, "initialisation without allocation");
   const second = Keypair.generate();
-  assert.equal(await run(create(), init(), create({ mint: second.publicKey }), init(0, auth, null, second.publicKey), ata()), false, "at most one mint per transaction");
-  assert.equal(await run(create(), createInitializeMintInstruction(mint.publicKey, 0, auth, null, TOKEN_2022_PROGRAM_ID), ata()), false, "Token-2022 needs its own reviewed policy");
+  assert.equal(await run(create(), init(), create({ mint: second.publicKey }), init(0, auth, auth, second.publicKey), ata()), false, "at most one mint per transaction");
+  assert.equal(await run(create(), createInitializeMintInstruction(mint.publicKey, 0, auth, auth, TOKEN_2022_PROGRAM_ID), ata()), false, "Token-2022 needs its own reviewed policy");
 });
 
 test("ATA policy: idempotent creation only, paid by the wallet, canonical address, at most four per transaction", async () => {

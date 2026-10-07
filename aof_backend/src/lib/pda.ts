@@ -51,10 +51,6 @@ export const tokenMetadataPda = (mint: PublicKey) => PublicKey.findProgramAddres
   [enc("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()],
   TOKEN_METADATA_PROGRAM_ID,
 );
-export const masterEditionPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
-  [enc("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer(), enc("edition")],
-  TOKEN_METADATA_PROGRAM_ID,
-);
 export const rarityCounterPda = (rarity: number) => find([enc("rarity_counter"), u8(rarity)]);
 
 /**

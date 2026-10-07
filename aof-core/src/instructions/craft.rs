@@ -152,7 +152,7 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
         },
     ))?;
 
-    // Mint the NFT and its immutable Metaplex metadata/master edition.
+    // Mint the NFT and its immutable Metaplex metadata.
     settlement::mint_tool_nft(
         &ctx.accounts.token_program.to_account_info(),
         &ctx.accounts.new_mint.to_account_info(),
@@ -160,7 +160,6 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
         &ctx.accounts.token_metadata_program.to_account_info(),
         &ctx.accounts.user.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),

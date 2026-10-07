@@ -699,7 +699,7 @@ pub struct MintTool<'info> {
         mut,
         constraint = mint.decimals == 0 @ AofError::InvalidMint,
         constraint = mint.supply == 0 @ AofError::InvalidMint,
-        constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint,
+        constraint = mint.freeze_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
         constraint = mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub mint: Account<'info, Mint>,
@@ -736,9 +736,6 @@ pub struct MintTool<'info> {
     /// CHECK: Metaplex Metadata PDA for `mint`; Token Metadata CPI creates it.
     #[account(mut, constraint = metadata.key() == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&mint.key()).0 @ AofError::InvalidMint)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: Metaplex Master Edition PDA for `mint`; Token Metadata CPI creates it.
-    #[account(mut, constraint = master_edition.key() == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&mint.key()).0 @ AofError::InvalidMint)]
-    pub master_edition: UncheckedAccount<'info>,
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
@@ -885,7 +882,7 @@ pub struct Craft<'info> {
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
         constraint = new_mint.supply == 0 @ AofError::InvalidMint,
-        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
+        constraint = new_mint.freeze_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
@@ -942,9 +939,6 @@ pub struct Craft<'info> {
     /// CHECK: Metaplex Metadata PDA for `new_mint`; Token Metadata CPI creates it.
     #[account(mut, constraint = metadata.key() == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: Metaplex Master Edition PDA for `new_mint`; Token Metadata CPI creates it.
-    #[account(mut, constraint = master_edition.key() == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
-    pub master_edition: UncheckedAccount<'info>,
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
@@ -1015,7 +1009,7 @@ pub struct Reroll<'info> {
         constraint = new_mint.decimals == 0 @ AofError::InvalidMint,
         constraint = new_mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint,
         constraint = new_mint.supply == 0 @ AofError::InvalidMint,
-        constraint = new_mint.freeze_authority.is_none() @ AofError::InvalidMint
+        constraint = new_mint.freeze_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key()) @ AofError::InvalidMint
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = new_token.mint == new_mint.key(), constraint = new_token.owner == user.key(), constraint = new_token.amount == 0)]
@@ -1071,9 +1065,6 @@ pub struct Reroll<'info> {
     /// CHECK: Metaplex Metadata PDA for `new_mint`; Token Metadata CPI creates it.
     #[account(mut, constraint = metadata.key() == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: Metaplex Master Edition PDA for `new_mint`; Token Metadata CPI creates it.
-    #[account(mut, constraint = master_edition.key() == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
-    pub master_edition: UncheckedAccount<'info>,
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
@@ -1768,7 +1759,7 @@ pub struct PackOpenReveal<'info> {
     #[account(
         init, payer = cranker,
         seeds = [PACK_MINT_SEED, pack_commit.key().as_ref()], bump,
-        mint::decimals = 0, mint::authority = auth
+        mint::decimals = 0, mint::authority = auth, mint::freeze_authority = auth
     )]
     pub mint: Box<Account<'info, Mint>>,
     #[account(init, payer = cranker, associated_token::mint = mint, associated_token::authority = user)]
@@ -1816,9 +1807,6 @@ pub struct PackOpenReveal<'info> {
     /// CHECK: Metaplex Metadata PDA for `mint`; Token Metadata CPI creates it.
     #[account(mut, constraint = metadata.key() == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&mint.key()).0 @ AofError::InvalidMint)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: Metaplex Master Edition PDA for `mint`; Token Metadata CPI creates it.
-    #[account(mut, constraint = master_edition.key() == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&mint.key()).0 @ AofError::InvalidMint)]
-    pub master_edition: UncheckedAccount<'info>,
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
@@ -1938,7 +1926,7 @@ pub struct RerollRandomReveal<'info> {
     #[account(
         init, payer = cranker,
         seeds = [REROLL_MINT_SEED, reroll_commit.key().as_ref()], bump,
-        mint::decimals = 0, mint::authority = auth
+        mint::decimals = 0, mint::authority = auth, mint::freeze_authority = auth
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(init, payer = cranker, associated_token::mint = new_mint, associated_token::authority = user)]
@@ -1983,9 +1971,6 @@ pub struct RerollRandomReveal<'info> {
     /// CHECK: Metaplex Metadata PDA for `new_mint`; Token Metadata CPI creates it.
     #[account(mut, constraint = metadata.key() == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: Metaplex Master Edition PDA for `new_mint`; Token Metadata CPI creates it.
-    #[account(mut, constraint = master_edition.key() == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
-    pub master_edition: UncheckedAccount<'info>,
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
@@ -2013,7 +1998,7 @@ pub struct RerollRandomExpire<'info> {
     #[account(
         init, payer = cranker,
         seeds = [REROLL_MINT_SEED, reroll_commit.key().as_ref()], bump,
-        mint::decimals = 0, mint::authority = auth
+        mint::decimals = 0, mint::authority = auth, mint::freeze_authority = auth
     )]
     pub new_mint: Box<Account<'info, Mint>>,
     #[account(init, payer = cranker, associated_token::mint = new_mint, associated_token::authority = user)]
@@ -2031,9 +2016,6 @@ pub struct RerollRandomExpire<'info> {
     /// CHECK: Metaplex Metadata PDA for `new_mint`; Token Metadata CPI creates it.
     #[account(mut, constraint = metadata.key() == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: Metaplex Master Edition PDA for `new_mint`; Token Metadata CPI creates it.
-    #[account(mut, constraint = master_edition.key() == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&new_mint.key()).0 @ AofError::InvalidMint)]
-    pub master_edition: UncheckedAccount<'info>,
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
@@ -2723,9 +2705,9 @@ pub struct MarketplaceList<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
-    // before the creation-time check): it could be frozen in the counterparty's
-    // wallet or in escrow.
+    // [SECURITY_CHECKLIST_REVIEW F-I] fail closed on any mint retaining freeze
+    // authority; issuance clears its temporary auth-PDA authority atomically.
+    // This independent backstop protects trade and escrow from freezable mints.
     #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
@@ -2821,9 +2803,9 @@ pub struct AuctionCreateCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
-    // before the creation-time check): it could be frozen in the counterparty's
-    // wallet or in escrow.
+    // [SECURITY_CHECKLIST_REVIEW F-I] fail closed on any mint retaining freeze
+    // authority; issuance clears its temporary auth-PDA authority atomically.
+    // This independent backstop protects trade and escrow from freezable mints.
     #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
@@ -2942,9 +2924,9 @@ pub struct OfferCreateCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub buyer: Signer<'info>,
-    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
-    // before the creation-time check): it could be frozen in the counterparty's
-    // wallet or in escrow.
+    // [SECURITY_CHECKLIST_REVIEW F-I] fail closed on any mint retaining freeze
+    // authority; issuance clears its temporary auth-PDA authority atomically.
+    // This independent backstop protects trade and escrow from freezable mints.
     #[account(constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(init, payer = buyer, space = OFFER_SPACE, seeds = [OFFER_SEED, mint.key().as_ref(), buyer.key().as_ref()], bump)]
@@ -2958,9 +2940,9 @@ pub struct OfferAcceptCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
-    // before the creation-time check): it could be frozen in the counterparty's
-    // wallet or in escrow.
+    // [SECURITY_CHECKLIST_REVIEW F-I] fail closed on any mint retaining freeze
+    // authority; issuance clears its temporary auth-PDA authority atomically.
+    // This independent backstop protects trade and escrow from freezable mints.
     #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(
@@ -3023,9 +3005,9 @@ pub struct RentalListCtx<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    // [SECURITY_CHECKLIST_REVIEW F-I] never trade a freezable NFT (e.g. one minted
-    // before the creation-time check): it could be frozen in the counterparty's
-    // wallet or in escrow.
+    // [SECURITY_CHECKLIST_REVIEW F-I] fail closed on any mint retaining freeze
+    // authority; issuance clears its temporary auth-PDA authority atomically.
+    // This independent backstop protects trade and escrow from freezable mints.
     #[account(mut, constraint = mint.freeze_authority.is_none() @ AofError::InvalidMint)]
     pub mint: Account<'info, Mint>,
     #[account(

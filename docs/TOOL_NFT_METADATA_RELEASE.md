@@ -1,6 +1,6 @@
 # Tool NFT metadata release (staged)
 
-**Current state: local preparation only.** The repository contains 25 tool illustrations and has local Arweave and Cloudflare Pages preparation/verification tooling. No Arweave transaction, Cloudflare project creation/deployment, Solana transaction, mint, registry change, or mining activation has been made by this work.
+**Current state: local preparation only.** Tool issuance is metadata-only: immutable Metaplex Metadata on a 0-decimal, supply-1 classic SPL mint; no Master Edition is created; the auth PDA is the temporary mint/freeze authority required for Metadata CPI, and both authorities are revoked before issuance completes, leaving final freeze authority `None`. This is not a canonical Metaplex Master Edition NFT, so third-party recognition may be reduced. Preserve AOF ownership, marketplace, and custody guards. The repository contains 25 tool illustrations and has local Arweave and Cloudflare Pages preparation/verification tooling. No Arweave transaction, Cloudflare project creation/deployment, Solana transaction, mint, registry change, or mining activation has been made by this work.
 
 ## Cloudflare Pages Devnet release (separate project)
 
@@ -88,9 +88,9 @@ The verifier makes only public HTTPS `GET` requests to the Arweave gateway. It v
 ## Remaining release gates
 
 1. **Neither storage tool submits Solana transactions.** Review the separate on-chain URI-registry/mint changes, build with the repository's pinned Anchor/Rust toolchain, compare generated IDLs, and complete Devnet smoke tests before writing metadata URIs or minting.
-2. Confirm Metadata and Master Edition account sizes and rent against the deployed Devnet CPI before release; conservative payer quotes can overestimate rent ([Metaplex account-size guide](https://developers.metaplex.com/token-metadata/guides/account-size-reduction)).
+2. Confirm Metadata account size and rent against the selected validator runtime before release; Master Edition rent is not part of issuance, and conservative payer quotes can overestimate rent ([Metaplex account-size guide](https://developers.metaplex.com/token-metadata/guides/account-size-reduction)).
 3. Before using any metadata URI on Solana, deploy the chosen host and pass its read-only verifier on all 25 image/JSON pairs. Cloudflare verification proves the current public deployment's bytes but does not make those URLs permanently immutable. The prior Arweave budget and the 0 bps royalty do not constitute approval to mint or change on-chain registry state.
-4. Issue exactly one NFT per type × rarity to the supplied Devnet recipient, then verify owner, mint supply/decimals, `ToolData`, metadata PDA, and fetched image/JSON for all 25.
+4. For the explicitly approved isolated local-validator checks only, use synthetic test URIs and the existing bounded fixtures to verify owner, decimals 0, supply 1, `mint_authority == None`, `freeze_authority == None`, no Master Edition account, `ToolData`, immutable Metadata, and rent accounting. Do not repeat pack/reveal/refund flows; this does not authorize production registry changes or deployed-network transactions.
 5. Exercise the broader game modules in the staged Devnet smoke matrix; this tool-NFT pilot does not establish whole-game readiness.
 6. Keep mining disabled until all six program bytecodes match, the clean Devnet preflight covers payout mints and the valid material-mint registry, and the separate smoke gate passes. The explicitly accepted uncapped-lifetime-issuance policy is Devnet-only and still requires its preflight acknowledgement; the four finite cap values remain unapproved and unapplied. Do not run `issuance:lifetime-caps:apply`. Bringup must not alter registry statuses automatically.
 

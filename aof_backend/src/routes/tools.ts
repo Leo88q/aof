@@ -21,7 +21,6 @@ import {
   rentalAgreementPda,
   toolMetadataRegistryPda,
   tokenMetadataPda,
-  masterEditionPda,
   TOKEN_METADATA_PROGRAM_ID,
 } from "../lib/pda";
 import { authorityOnly, coSign, coSignQuoted, pk } from "../lib/tx";
@@ -31,7 +30,6 @@ import {
   TOKEN_MINT_SIZE,
   TOOL_DATA_ACCOUNT_SIZE,
   METAPLEX_METADATA_MAX_ACCOUNT_SIZE,
-  METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE,
 } from "../lib/accountSizes";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
@@ -110,7 +108,6 @@ r.post("/mint", requireAdmin, async (req, res) => {
         toolData,
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
         metadata: tokenMetadataPda(mint)[0],
-        masterEdition: masterEditionPda(mint)[0],
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -128,7 +125,6 @@ r.post("/mint", requireAdmin, async (req, res) => {
       { name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
       { name: "tool_data", address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
       { name: "metaplex_metadata", address: tokenMetadataPda(mint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
-      { name: "metaplex_master_edition", address: masterEditionPda(mint)[0], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
     ]);
     res.json(prepared);
   } catch (e: any) {
@@ -248,7 +244,6 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
         systemProgram: SystemProgram.programId,
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
         metadata: tokenMetadataPda(newMint)[0],
-        masterEdition: masterEditionPda(newMint)[0],
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       })
       .instruction();
@@ -259,7 +254,6 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
     const prepared = await coSignWithVrfLookupTableQuoted([ix], user, [
       { name: "new_tool_data", address: newToolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
       { name: "metaplex_metadata", address: tokenMetadataPda(newMint)[0], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
-      { name: "metaplex_master_edition", address: masterEditionPda(newMint)[0], size: METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE, strategy: "init" },
     ]);
     res.json(prepared);
   } catch (e: any) {
@@ -694,8 +688,8 @@ r.post("/pay-out", requireAdmin, requireCircuitOpen, requireWalletLimits("tools_
 });
 
 
-// [NEW] Подготовка нового минта для Крафта/Паков: создаём SPL-минт (власть = auth-PDA) + ATA владельца
-// User pays rent and network fees; the authority never sponsors arbitrary mints.
+// [NEW] Prep mint for craft/packs: auth PDA is temporary mint/freeze authority for immutable Metadata CPI;
+// the issuance helper revokes both. The wallet pays rent/fees; the authority never sponsors arbitrary mints.
 r.post("/prep-mint", requireCircuitOpen, requireWalletLimits("tools_prep_mint"), async (req, res) => {
   try {
     const owner = pk(req.body.owner);
@@ -711,7 +705,7 @@ r.post("/prep-mint", requireCircuitOpen, requireWalletLimits("tools_prep_mint"),
         space: MINT_SIZE,
         programId: TOKEN_PROGRAM_ID,
       }),
-      createInitializeMintInstruction(mintKp.publicKey, 0, auth, null),
+      createInitializeMintInstruction(mintKp.publicKey, 0, auth, auth),
       createAssociatedTokenAccountIdempotentInstruction(owner, userToken, owner, mintKp.publicKey),
     ], owner, [
       { name: "mint", address: mintKp.publicKey, size: MINT_SIZE, strategy: "create" },

@@ -217,7 +217,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     expectWiring(program, await reveal("pack"), "packOpenReveal", {
       config, cranker, packCommit: k(1), user: wallet, treasury: cfg.treasury, mint, userToken: ata(mint, wallet),
       toolData: pda.toolPda(mint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
-      metadata: pda.tokenMetadataPda(mint)[0], masterEdition: pda.masterEditionPda(mint)[0],
+      metadata: pda.tokenMetadataPda(mint)[0],
       tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbMetadataAta(program, k(71)),
     });
     assert.ok(revealCalls[0].program.equals(CORE));
@@ -229,7 +229,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     expectWiring(program, await reveal("reroll"), "rerollRandomReveal", {
       config, cranker, rerollCommit: k(2), user: vaultUser, treasury: cfg.treasury, newMint, newToken: ata(newMint, vaultUser),
       newToolData: pda.toolPda(newMint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
-      metadata: pda.tokenMetadataPda(newMint)[0], masterEdition: pda.masterEditionPda(newMint)[0],
+      metadata: pda.tokenMetadataPda(newMint)[0],
       tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbMetadataAta(program, k(72)),
     });
   }
@@ -281,7 +281,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
       newToolData: pda.toolPda(newMint)[0], auth, tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SYSTEM,
       toolMetadataRegistry: pda.toolMetadataRegistryPda()[0], metadata: pda.tokenMetadataPda(newMint)[0],
-      masterEdition: pda.masterEditionPda(newMint)[0], tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID,
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID,
     });
   }
   expectWiring(program, await refund("exploration"), "exploreExpire", {

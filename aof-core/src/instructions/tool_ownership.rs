@@ -3,13 +3,14 @@
 //!
 //! ## Почему так
 //!
-//! Инструмент — обычный classic SPL-токен (decimals 0, supply 1). Любой держатель
-//! может перевести его обычным `spl_token::transfer`, не обращаясь к программе:
-//! программа не видит такие переводы и не может их запретить (freeze authority
-//! намеренно отсутствует — её требуют девять проверок `freeze_authority.is_none()`
-//! в `mint_tool`, `craft`, `reroll`, `marketplace_list`, `auction_create`,
-//! `offer_create`, `offer_accept`, `rental_list`). Поэтому `ToolData.owner` —
-//! **кэш**, который может отстать от фактического владельца токена.
+//! Инструмент — обычный classic SPL-токен (decimals 0, supply 1). Metadata CPI
+//! требует freeze authority на этапе создания, поэтому auth PDA временно держит
+//! её вместе с mint authority; `mint_tool_nft` отзывает обе до завершения
+//! issuance. У выпущенного mint freeze authority нет, что сохраняют проверки
+//! canonical mint и marketplace/custody. Любой держатель может перевести его
+//! обычным `spl_token::transfer`, не обращаясь к программе: программа не видит
+//! такие переводы и не может их запретить. Поэтому `ToolData.owner` — **кэш**,
+//! который может отстать от фактического владельца токена.
 //!
 //! Правило: механика не может авторизовать ценное действие только по
 //! `ToolData.owner`/`ToolData.operator`. Нужно доказательство одного из двух видов:

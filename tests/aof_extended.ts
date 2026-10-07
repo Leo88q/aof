@@ -132,7 +132,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   }
 
   async function mintTool(to: PublicKey, toolType = "plasma_cutter") {
-    const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+    const mint = await createMint(provider.connection, setupPayer, authPda, authPda, 0);
     const tokenAccount = await ensureAta(mint, to);
     await sendWithPayer(program.methods.mintTool(toolType, { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: to,

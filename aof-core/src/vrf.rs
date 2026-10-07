@@ -538,12 +538,11 @@ pub fn bps(x: u64) -> u64 {
 }
 
 /// Maximum rent the settler of a tool-producing commit may front: mint, ATA,
-/// ToolData, Metaplex Metadata and Master Edition. The player prepays this
-/// bound; reveal/expire reimburses actual post-CPI account sizes only.
+/// ToolData and Metaplex Metadata. The player prepays this bound; reveal/expire
+/// reimburses actual post-CPI account sizes only.
 pub fn tool_settlement_rent(rent: &Rent) -> u64 {
     rent.minimum_balance(anchor_spl::token::Mint::LEN)
         .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
         .saturating_add(rent.minimum_balance(crate::constants::TOOL_DATA_SPACE))
         .saturating_add(rent.minimum_balance(crate::constants::TOOL_METADATA_ACCOUNT_MAX_SPACE))
-        .saturating_add(rent.minimum_balance(crate::constants::TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE))
 }

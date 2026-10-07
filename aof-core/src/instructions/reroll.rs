@@ -116,7 +116,6 @@ pub fn handler(ctx: Context<Reroll>, new_type: String) -> Result<()> {
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
         &ctx.accounts.token_metadata_program.to_account_info(),
         &ctx.accounts.user.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),

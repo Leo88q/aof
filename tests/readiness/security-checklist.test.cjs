@@ -157,14 +157,14 @@ test('#1 #22 every init / init_if_needed is a PDA with payer, space and the Syst
         const ata = /associated_token::authority\s*=/.test(f.attrs);
         // [F-06] Settlement NFTs are PDA mints created by the program itself:
         // Anchor sizes them; they still need seeds, and the program's auth PDA
-        // as the only mint authority, 0 decimals and no freeze authority.
+        // as both temporary authorities for metadata creation; issuance then revokes both.
         const mint = /\bmint::authority\s*=/.test(f.attrs);
         if (mint) {
           assert.ok(f.attrs.includes("seeds = ["), `${where}: mint init on a keypair account (no PDA seeds)`);
           assert.match(f.attrs, /\bbump\b/, `${where}: mint init without bump`);
           assert.match(f.attrs, /\bmint::decimals\s*=\s*0\b/, `${where}: NFT mint must have 0 decimals`);
           assert.match(f.attrs, /\bmint::authority\s*=\s*auth\b/, `${where}: NFT mint authority must be the auth PDA`);
-          assert.doesNotMatch(f.attrs, /freeze_authority/, `${where}: NFT mint must not be freezable`);
+          assert.match(f.attrs, /\bmint::freeze_authority\s*=\s*auth\b/, `${where}: temporary freeze authority must be the auth PDA`);
         } else if (!ata) {
           assert.match(f.attrs, /\bspace\s*=/, `${where}: init without space`);
           assert.match(f.attrs, /\bseeds\s*=/, `${where}: init on a keypair account (no seeds)`);
@@ -334,11 +334,13 @@ test('F-I #11 every freshly minted tool NFT must be unfreezable', () => {
   }
   // [F-06] The pack / random-reroll NFTs are no longer caller-supplied mints:
   // they are PDA mints created by the settling instruction (checked by the
-  // #1 #22 init test: 0 decimals, auth PDA authority, no freeze authority).
+  // #1 #22 init test: 0 decimals; the auth PDA is temporary freeze authority,
+  // and the shared issuance helper clears it before the transaction completes.
   assert.equal(blocks.length, 3, 'MintTool, Craft, Reroll (MigrateTool removed in plan item 12, step B)');
   for (const attrs of blocks) {
     const mint = /(\w+)\.supply == 0/.exec(attrs)[1];
-    assert.ok(attrs.includes(`${mint}.freeze_authority.is_none()`), `${mint}: freeze authority not rejected`);
+    assert.ok(attrs.includes(`${mint}.freeze_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key())`),
+      `${mint}: only auth PDA may temporarily hold freeze authority`);
     assert.ok(attrs.includes(`${mint}.decimals == 0`), `${mint}: decimals not pinned`);
   }
 });
@@ -468,14 +470,22 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
     }
   }
   const metaplexSettlement = fnBody(read(METAPLEX_SETTLEMENT), 'mint_tool_nft');
-  assert.equal([...metaplexSettlement.matchAll(/invoke_signed\(/g)].length, 2,
-    'only metadata and master-edition creation may use the explicit Metaplex CPI exception');
+  assert.equal([...metaplexSettlement.matchAll(/invoke_signed\(/g)].length, 1,
+    'only immutable metadata creation uses the explicit Metaplex CPI exception');
   assert.match(metaplexSettlement, /CreateMetadataAccountV3/);
-  assert.match(metaplexSettlement, /CreateMasterEditionV3/);
+  assert.doesNotMatch(metaplexSettlement, /CreateMasterEditionV3|master_edition|MasterEdition/);
   assert.match(metaplexSettlement, /token_metadata_program\.clone\(\)/);
+  const metadataCpi = metaplexSettlement.indexOf('invoke_signed(');
+  const mintAuthorityRevoke = metaplexSettlement.indexOf('token::set_authority(');
+  assert.ok(metadataCpi >= 0 && mintAuthorityRevoke > metadataCpi,
+    'mint authority is revoked only after immutable metadata has been created');
+  assert.equal([...metaplexSettlement.matchAll(/token::set_authority\(/g)].length, 2,
+    'the helper clears mint and freeze authorities after the Metadata CPI');
+  assert.match(metaplexSettlement.slice(mintAuthorityRevoke), /AuthorityType::MintTokens,\s*None/);
+  assert.match(metaplexSettlement.slice(mintAuthorityRevoke), /AuthorityType::FreezeAccount,\s*None/);
   const mintToolContext = core('lib.rs').slice(core('lib.rs').indexOf('pub struct MintTool<'), core('lib.rs').indexOf('pub struct BurnTool<'));
   assert.match(mintToolContext, /metadata\.key\(\) == .*Metadata::find_pda/);
-  assert.match(mintToolContext, /master_edition\.key\(\) == .*MasterEdition::find_pda/);
+  assert.doesNotMatch(mintToolContext, /master_edition|MasterEdition/);
   assert.match(mintToolContext, /pub token_metadata_program: Program<'info, TokenMetadataProgram>/);
   for (const file of Object.values(VRF)) {
     const vrf = stripComments(read(file));
@@ -578,7 +588,7 @@ test('the host security suite stays wired into the aof-core test build', () => {
   assert.match(core('lib.rs'), /#\[cfg\(test\)\]\s*mod security_checklist_tests;/);
   const suite = core('security_checklist_tests.rs');
   for (const fn of ['referral_payout_cannot_move_a_non_resource_mint', 'harvest_is_bounded_by_the_synapse_supply_cap',
-    'sweep_moves_exactly_the_fees_and_never_user_funds', 'tool_nft_mint_with_a_freeze_authority_is_rejected',
+    'sweep_moves_exactly_the_fees_and_never_user_funds', 'tool_nft_mint_requires_auth_freeze_authority_for_metadata',
     'an_order_cannot_be_matched_against_itself', 'fake_system_program_is_rejected_before_any_init_or_cpi']) {
     assert.match(suite, new RegExp(`#\\[test\\]\\s*fn ${fn}\\(`), fn);
   }

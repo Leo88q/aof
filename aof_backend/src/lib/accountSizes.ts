@@ -11,4 +11,3 @@ export const TOKEN_MINT_SIZE = 82;
 // Metaplex rent upper bounds used by tool-mint payer quotes (external accounts,
 // so unlike the constants above these do not include an Anchor discriminator).
 export const METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679;
-export const METAPLEX_MASTER_EDITION_MAX_ACCOUNT_SIZE = 282;

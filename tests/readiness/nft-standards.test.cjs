@@ -2,7 +2,7 @@
 /*
  * Охранный тест аудита NFT-стандартов (docs/NFT_STANDARDS_AUDIT_2026-10-01.md).
  *
- * Текущее разделение стандартов: tool NFT используют SPL Token + immutable legacy Metaplex Token Metadata;
+ * Текущее разделение стандартов: tool assets use SPL Token + immutable legacy Metaplex Token Metadata, without a Master Edition;
  * Bubblegum V2 и MPL Core/compressed assets не используются. Этот guard проверяет оба утверждения отдельно:
  * новая compressed-NFT интеграция требует обновить аудит и пройти pilot из docs/COMPRESSION_DESIGN.md.
  */
@@ -86,15 +86,15 @@ test('бэкенд и фронтенд не строят и не читают cN
     'TODO про DAS исчез: значит, проверка владения NFT реализована — обновите аудит');
 });
 
-test('tool issuance creates an immutable Metaplex NFT backed by one SPL unit and the frozen URI registry', () => {
+test('tool issuance creates immutable Metaplex metadata on a fixed-supply SPL asset and preserves no-freeze', () => {
   const lib = read('aof-core/src/lib.rs');
   const struct = lib.slice(lib.indexOf('pub struct MintTool<'), lib.indexOf('pub struct BurnTool<'));
-  for (const rule of ['mint.decimals == 0', 'mint.supply == 0', 'mint.freeze_authority.is_none()', 'mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key())']) {
+  for (const rule of ['mint.decimals == 0', 'mint.supply == 0', 'mint.freeze_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key())', 'mint.mint_authority == anchor_lang::solana_program::program_option::COption::Some(auth.key())']) {
     assert.ok(struct.includes(rule), `MintTool потерял проверку минта: ${rule}`);
   }
   assert.match(struct, /tool_metadata_registry: Box<Account<'info, ToolMetadataRegistry>>/);
   assert.match(struct, /metadata\.key\(\) == anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda/);
-  assert.match(struct, /master_edition\.key\(\) == anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda/);
+  assert.doesNotMatch(struct, /master_edition|MasterEdition/, 'the metadata-only context has no Master Edition account');
 
   const mintTool = read('aof-core/src/instructions/mint_tool.rs');
   assert.match(mintTool, /settlement::mint_tool_nft\(/);
@@ -102,13 +102,20 @@ test('tool issuance creates an immutable Metaplex NFT backed by one SPL unit and
   const settlement = read('aof-core/src/instructions/settlement.rs');
   assert.match(settlement, /token::mint_to\([\s\S]*?,\s*1\s*,?\s*\)/);
   assert.match(settlement, /CreateMetadataAccountV3/);
-  assert.match(settlement, /CreateMasterEditionV3/);
+  assert.doesNotMatch(settlement, /CreateMasterEditionV3|master_edition|MasterEdition/);
+  const metadataCpi = settlement.indexOf('invoke_signed(');
+  const revokeMint = settlement.indexOf('token::set_authority(');
+  assert.ok(metadataCpi >= 0 && revokeMint > metadataCpi, 'mint authority is revoked after metadata creation');
+  assert.equal([...settlement.matchAll(/token::set_authority\(/g)].length, 2, 'both temporary authorities are revoked');
+  assert.match(settlement.slice(revokeMint), /AuthorityType::MintTokens,\s*None/);
+  assert.match(settlement.slice(revokeMint), /AuthorityType::FreezeAccount,\s*None/,
+    'temporary freeze authority is cleared before the atomic issuance completes');
   assert.match(settlement, /registry\.metadata_uri\(canonical_type, rarity\)/);
   assert.match(settlement, /seller_fee_basis_points: registry\.seller_fee_basis_points/);
   assert.match(settlement, /symbol: String::new\(\)/);
   assert.match(settlement, /creators: None,[\s\S]*?collection: None/);
   assert.match(settlement, /is_mutable: false/);
-  assert.match(settlement, /max_supply: Some\(0\)/);
+  assert.doesNotMatch(settlement, /max_supply/);
   const registryState = read('aof-core/src/state.rs');
   assert.match(registryState, /self\.initialized && self\.frozen/);
   assert.match(registryState, /self\.populated_mask & \(1u32 << index\) != 0/);
@@ -120,8 +127,8 @@ test('аудит ссылается на комментарий collector_stake.
 
 test('документ аудита утверждает то же, что проверяет тест', () => {
   const doc = read('docs/NFT_STANDARDS_AUDIT_2026-10-01.md');
-  for (const needle of ['**Нет.**', 'MPL Core', 'legacy NFT', 'SPL-токен', 'ToolData', 'nft-standards.test.cjs', 'COMPRESSION_DESIGN.md']) {
+  for (const needle of ['**Нет.**', 'MPL Core', 'metadata-only asset', 'canonical Metaplex Master Edition NFT', 'freeze_authority', 'ToolData', 'nft-standards.test.cjs', 'COMPRESSION_DESIGN.md']) {
     assert.ok(doc.includes(needle), `в аудите нет «${needle}»`);
   }
-  assert.match(read('docs/COMPRESSION_DESIGN.md'), /не включает Bubblegum или Light Protocol/);
+  assert.match(read('docs/COMPRESSION_DESIGN.md'), /Bubblegum и Light Protocol не используются/);
 });

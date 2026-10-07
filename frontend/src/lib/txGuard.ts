@@ -489,10 +489,15 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
       creationRent += readU64(ix.data, 4)!;
       created.push(ix.keys[1].toBase58());
     } else if (ix.programId === TOKEN_PROGRAM_ID) {
-      // InitializeMint / InitializeMint2 only; no direct approvals, burns or transfers.
-      if (![0, 20].includes(ix.data[0]) || ![35, 67].includes(ix.data.length) ||
-          ix.data[1] !== 0 || !new PublicKey(ix.data.slice(2, 34)).equals(auth) || ix.data[34] !== 0) {
-        throw new Error("Unsupported SPL Token instruction or mint authority");
+      // InitializeMint / InitializeMint2 only; the auth PDA is both authorities
+      // during metadata creation. The AOF issuance instruction revokes both in
+      // the same atomic transaction; user-controlled freeze authorities fail closed.
+      const freezeAuthority = ix.data.length === 67 && ix.data[34] === 1
+        ? new PublicKey(ix.data.slice(35, 67)) : null;
+      if (![0, 20].includes(ix.data[0]) || ix.data.length !== 67 ||
+          ix.data[1] !== 0 || !new PublicKey(ix.data.slice(2, 34)).equals(auth) ||
+          !freezeAuthority?.equals(auth)) {
+        throw new Error("Unsupported SPL Token instruction or mint/freeze authority");
       }
       initialized.add(ix.keys[0].toBase58());
     } else if (ix.programId === TOKEN_2022_PROGRAM_ID) {

@@ -2,12 +2,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_spl::metadata::mpl_token_metadata::{
-    instructions::{
-        CreateMasterEditionV3,
-        CreateMasterEditionV3InstructionArgs,
-        CreateMetadataAccountV3,
-        CreateMetadataAccountV3InstructionArgs,
-    },
+    instructions::{CreateMetadataAccountV3, CreateMetadataAccountV3InstructionArgs},
     types::DataV2,
 };
 use anchor_spl::token::{self, MintTo};
@@ -27,9 +22,14 @@ pub fn roll_tool(value: &[u8; 32], tag: &[u8], commit: &Pubkey, odds_bps: &[u16;
     Ok((rarity, PACK_TOOL_TYPES[type_idx].to_string()))
 }
 
-/// Mint one non-fungible tool token and create immutable Metaplex metadata and
-/// its Master Edition. `Some(0)` prevents printing child editions, making this
-/// a standard unique NFT rather than an SPL token with metadata only.
+/// Mint one game-tool SPL token and create immutable Metaplex metadata.
+///
+/// Deliberately do not create a Master Edition: Token Metadata assigns the mint's
+/// freeze authority to its Edition PDA during that CPI, which conflicts with
+/// AOF's permanent `freeze_authority == None` invariant. Metadata creation itself
+/// requires a freeze authority for this zero-decimal, supply-one mint, so the mint
+/// starts with the auth PDA as both authorities; revoke both immediately after the
+/// immutable Metadata CPI, leaving supply fixed at one and the mint unfreezable.
 pub fn mint_tool_nft<'info>(
     token_program: &AccountInfo<'info>,
     mint: &AccountInfo<'info>,
@@ -37,7 +37,6 @@ pub fn mint_tool_nft<'info>(
     auth: &AccountInfo<'info>,
     auth_bump: u8,
     metadata: &AccountInfo<'info>,
-    master_edition: &AccountInfo<'info>,
     token_metadata_program: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,
     system_program: &AccountInfo<'info>,
@@ -104,34 +103,29 @@ pub fn mint_tool_nft<'info>(
         signer_seeds,
     )?;
 
-    let master_edition_ix = CreateMasterEditionV3 {
-        edition: *master_edition.key,
-        mint: *mint.key,
-        update_authority: *auth.key,
-        mint_authority: *auth.key,
-        payer: *payer.key,
-        metadata: *metadata.key,
-        token_program: *token_program.key,
-        system_program: *system_program.key,
-        rent: None,
-    }
-    .instruction(CreateMasterEditionV3InstructionArgs {
-        max_supply: Some(0),
-    });
-    invoke_signed(
-        &master_edition_ix,
-        &[
-            master_edition.clone(),
-            mint.clone(),
-            auth.clone(),
-            auth.clone(),
-            payer.clone(),
-            metadata.clone(),
+    token::set_authority(
+        CpiContext::new_with_signer(
             token_program.clone(),
-            system_program.clone(),
-            token_metadata_program.clone(),
-        ],
-        signer_seeds,
+            token::SetAuthority {
+                account_or_mint: mint.clone(),
+                current_authority: auth.clone(),
+            },
+            signer_seeds,
+        ),
+        anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
+        None,
+    )?;
+    token::set_authority(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            token::SetAuthority {
+                account_or_mint: mint.clone(),
+                current_authority: auth.clone(),
+            },
+            signer_seeds,
+        ),
+        anchor_spl::token::spl_token::instruction::AuthorityType::FreezeAccount,
+        None,
     )?;
     Ok(())
 }
@@ -184,10 +178,9 @@ pub fn reimburse_settler<'info>(
     token_account: &AccountInfo<'info>,
     tool_data: &AccountInfo<'info>,
     metadata: &AccountInfo<'info>,
-    master_edition: &AccountInfo<'info>,
 ) -> Result<u64> {
     let rent = Rent::get()?;
-    let account_infos = [mint, token_account, tool_data, metadata, master_edition];
+    let account_infos = [mint, token_account, tool_data, metadata];
     let mut fronted = 0u64;
     for account in account_infos {
         fronted = fronted

@@ -188,7 +188,6 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams)
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
         &ctx.accounts.token_metadata_program.to_account_info(),
         &ctx.accounts.cranker.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -211,7 +210,6 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams)
         &ctx.accounts.new_token.to_account_info(),
         &ctx.accounts.new_tool_data.to_account_info(),
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
     )?;
     ctx.accounts.reroll_commit.fee_lamports = 0;
     ctx.accounts.reroll_commit.deposit_lamports = 0;
@@ -252,7 +250,6 @@ pub fn expire_handler(ctx: Context<RerollRandomExpire>) -> Result<()> {
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
         &ctx.accounts.token_metadata_program.to_account_info(),
         &ctx.accounts.cranker.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -274,7 +271,6 @@ pub fn expire_handler(ctx: Context<RerollRandomExpire>) -> Result<()> {
         &ctx.accounts.new_token.to_account_info(),
         &ctx.accounts.new_tool_data.to_account_info(),
         &ctx.accounts.metadata.to_account_info(),
-        &ctx.accounts.master_edition.to_account_info(),
     )?;
     let fee = ctx.accounts.reroll_commit.fee_lamports;
 

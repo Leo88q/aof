@@ -51,19 +51,19 @@ test("legacy and versioned known-program transactions simulate with the correct 
   tx.feePayer = other;
   assert.equal((await guard(tx)).safe, false);
 });
-test("user-funded prep-mint permits only canonical zero-decimal, non-freezable mints", async () => {
+test("user-funded prep-mint pins both temporary authorities to auth; issuance must revoke them", async () => {
   const mint = Keypair.generate();
   const auth = PublicKey.findProgramAddressSync([Buffer.from("auth")], core)[0];
   const tx = transaction(
     SystemProgram.createAccount({ fromPubkey: user.publicKey, newAccountPubkey: mint.publicKey, lamports: 1_461_600, space: 82, programId: TOKEN_PROGRAM_ID }),
-    createInitializeMintInstruction(mint.publicKey, 0, auth, null),
+    createInitializeMintInstruction(mint.publicKey, 0, auth, auth),
     createAssociatedTokenAccountIdempotentInstruction(user.publicKey, getAssociatedTokenAddressSync(mint.publicKey, user.publicKey), user.publicKey, mint.publicKey),
   );
   tx.partialSign(mint);
   const bytes = tx.serialize({ requireAllSignatures: false });
   assert.equal((await guard(tx)).safe, true);
   assert.deepEqual(tx.serialize({ requireAllSignatures: false }), bytes);
-  tx.instructions[1] = createInitializeMintInstruction(mint.publicKey, 0, other, other);
+  tx.instructions[1] = createInitializeMintInstruction(mint.publicKey, 0, auth, other);
   assert.equal((await guard(tx)).safe, false);
 });
 test("v0 lookup keys are resolved before the wallet guard inspects and simulates them", async () => {
@@ -321,15 +321,12 @@ function toolMintFixture() {
   const metadataProgram = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
   const metadataSeeds = [Buffer.from("metadata"), metadataProgram.toBuffer(), mint.toBuffer()];
   const metadata = PublicKey.findProgramAddressSync(metadataSeeds, metadataProgram)[0];
-  const masterEdition = PublicKey.findProgramAddressSync(
-    [...metadataSeeds, Buffer.from("edition")], metadataProgram,
-  )[0];
   const ix = {
     programId: core.toBase58(),
     keys: [pda("config"), authority, pda("auth"), mint,
       getAssociatedTokenAddressSync(mint, user.publicKey), user.publicKey, user.publicKey,
       pda("tool", mint), TOKEN_PROGRAM_ID, SystemProgram.programId, pda("tool_metadata_registry"),
-      metadata, masterEdition, metadataProgram],
+      metadata, metadataProgram],
     data,
   };
   const intent = { kind: "toolMint" as const, user: user.publicKey.toBase58(),

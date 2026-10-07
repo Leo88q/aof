@@ -118,9 +118,9 @@ describe("aof-core: token-primary ownership (кэш не авторизует, s
 
   const tool = async (mint: PublicKey) => core.account.toolData.fetch(toolPda(mint));
 
-  /** Канонический инструмент: 0-decimal минт с авторитетом auth-PDA. */
+  /** Канонический test mint: auth PDA временно держит mint/freeze authority для Metadata CPI; выдача отзывает обе. */
   async function mintTool(to: PublicKey) {
-    const mint = await createMint(connection, setupPayer, authPda, null, 0);
+    const mint = await createMint(connection, setupPayer, authPda, authPda, 0);
     const tokenAccount = await ensureAta(mint, to);
     await sendWithPayer(core.methods
       .mintTool("plasma_cutter", RARITY_ARG)

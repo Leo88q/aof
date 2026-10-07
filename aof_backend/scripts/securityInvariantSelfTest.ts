@@ -208,8 +208,8 @@ assert.doesNotMatch(appNotice, /^  reroll: \{/m);
   assert.match(adminRoute, /mintTool\(/, "test-grant-tools must build aof_core::mint_tool");
   assert.match(adminRoute, /fromPubkey: recipient/,
     "the granted mint account must be paid for by the recipient, not authority");
-  assert.match(adminRoute, /createInitializeMintInstruction\(mint, 0, auth, null\)/,
-    "the granted tool must be a 0-decimal mint whose authority is the auth PDA");
+  assert.match(adminRoute, /createInitializeMintInstruction\(mint, 0, auth, auth\)/,
+    "the granted tool mint must use the auth PDA temporarily for both mint and freeze authority");
   assert.match(adminRoute, /createAssociatedTokenAccountIdempotentInstruction\(recipient, tokenAccount, recipient, mint\)/,
     "the grant must create the recipient's ATA with recipient as payer and owner");
   assert.match(adminRoute, /recipient,/,

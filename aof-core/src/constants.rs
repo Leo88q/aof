@@ -12,10 +12,9 @@ pub const GASTANK_SEED: &[u8] = b"gastank";
 pub const TOOL_SEED: &[u8] = b"tool";
 pub const TOOL_METADATA_REGISTRY_SEED: &[u8] = b"tool_metadata_registry";
 
-/// Maximum bytes to reserve for Metaplex accounts before a tool NFT is minted.
-/// VRF settlement returns only the rent for the actual `data_len()` values.
+/// Maximum bytes to reserve for the Metaplex Metadata account before a tool is minted.
+/// VRF settlement returns only the rent for the actual `data_len()` value.
 pub const TOOL_METADATA_ACCOUNT_MAX_SPACE: usize = 679;
-pub const TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE: usize = 282;
 pub const TOOL_METADATA_URI_COUNT: usize = 25;
 pub const TOOL_METADATA_URI_MAX_LEN: usize = 80;
 pub const TOOL_METADATA_URI_BATCH_MAX: usize = 8;
