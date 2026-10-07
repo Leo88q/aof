@@ -265,6 +265,51 @@ fn issuance_cap_info(kind: ResourceKind, lifetime_minted: u128) -> AccountInfo<'
     program_account(key, &cap, 8 + IssuanceCap::INIT_SPACE)
 }
 
+/// Complete frozen URI registry required by tool-issuance account contexts.
+fn tool_metadata_registry_info() -> AccountInfo<'static> {
+    let (key, bump) = pda(&[TOOL_METADATA_REGISTRY_SEED]);
+    let registry = ToolMetadataRegistry {
+        authority: Pubkey::new_unique(),
+        initialized: true,
+        frozen: true,
+        populated_mask: TOOL_METADATA_COMPLETE_MASK,
+        seller_fee_basis_points: 0,
+        bump,
+        metadata_uris: (0..TOOL_METADATA_URI_COUNT)
+            .map(|index| format!("https://metadata.example.com/tools/{index}.json"))
+            .collect(),
+    };
+    program_account(key, &registry, 8 + ToolMetadataRegistry::INIT_SPACE)
+}
+
+fn tool_metadata_account(mint: Pubkey) -> AccountInfo<'static> {
+    let key = anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&mint).0;
+    info(
+        key,
+        false,
+        rent_exempt(TOOL_METADATA_ACCOUNT_MAX_SPACE),
+        vec![0; TOOL_METADATA_ACCOUNT_MAX_SPACE],
+        anchor_spl::metadata::ID,
+        false,
+    )
+}
+
+fn tool_master_edition_account(mint: Pubkey) -> AccountInfo<'static> {
+    let key = anchor_spl::metadata::mpl_token_metadata::accounts::MasterEdition::find_pda(&mint).0;
+    info(
+        key,
+        false,
+        rent_exempt(TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE),
+        vec![0; TOOL_MASTER_EDITION_ACCOUNT_MAX_SPACE],
+        anchor_spl::metadata::ID,
+        false,
+    )
+}
+
+fn token_metadata_program_info() -> AccountInfo<'static> {
+    executable_program(anchor_spl::metadata::ID)
+}
+
 fn executable_program(id: Pubkey) -> AccountInfo<'static> {
     info(id, false, 1, Vec::new(), bpf_loader_upgradeable::ID, true)
 }
@@ -771,6 +816,10 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
                 program_account(tool_key, &blank, TOOL_DATA_SPACE),
                 token_program_info(),
                 system_program_info(),
+                tool_metadata_registry_info(),
+                tool_metadata_account(mint),
+                tool_master_edition_account(mint),
+                token_metadata_program_info(),
             ],
             &ix,
         )
@@ -1411,12 +1460,20 @@ fn season_pass_purchase(start_time: i64, already_premium: bool) -> (Result<()>, 
     let (season_key, season_bump) = pda(&[SEASON_SEED, &id]);
     let season = Season { season_id: SEASON_ID, start_time, bump: season_bump };
     let pass = SeasonPass { owner: user, season_id: SEASON_ID, xp: 0, premium: already_premium, claimed_bitmap: 0 };
+    let (claims_key, claims_bump) = pda(&[SEASON_PREMIUM_CLAIMS_SEED, user.as_ref(), &id]);
+    let premium_claims = SeasonPremiumClaims {
+        owner: user,
+        season_id: SEASON_ID,
+        claimed_bitmap: 0,
+        bump: claims_bump,
+    };
     let infos = vec![
         w.config_info(),
         wallet(user, true),
         wallet(w.treasury, false),
         program_account(season_key, &season, SEASON_SPACE),
         program_account(pda(&[SEASON_PASS_SEED, user.as_ref(), &id]).0, &pass, SEASON_PASS_SPACE),
+        program_account(claims_key, &premium_claims, SEASON_PREMIUM_CLAIMS_SPACE),
         system_program_info(),
     ];
     let (mut accounts, bumps) = parse::<PurchaseSeasonPass>(infos, &[]).unwrap();
@@ -2445,12 +2502,15 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
             plain(vrfmod::stats_address(&ORACLE)),
             plain(crate::randomness::SLOT_HASHES_ID),
             plain(vrfmod::reward_escrow_address(&rkey)),
-            plain(anchor_spl::token::spl_token::native_mint::ID),
             plain(vrfmod::SWITCHBOARD_STATE),
             sb_program(),
             token_program_info(),
             executable_program(anchor_spl::associated_token::ID),
             system_program_info(),
+            tool_metadata_registry_info(),
+            tool_metadata_account(mint_key),
+            tool_master_edition_account(mint_key),
+            token_metadata_program_info(),
         ]
     };
     // Another pool account in the randomness slot is refused by the context.
@@ -2459,7 +2519,7 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
     assert!(blames(&err, "randomness"), "{err}");
 
     // Switchboard pass-through accounts are bound in this program's context too.
-    for (index, field) in [(12usize, "oracle"), (14, "stats"), (16, "reward_escrow"), (18, "program_state")] {
+    for (index, field) in [(12usize, "oracle"), (14, "stats"), (16, "reward_escrow"), (17, "program_state")] {
         let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
         infos[index] = plain(Pubkey::new_unique());
         let err = rejected(validate::<PackOpenReveal>(infos, &[]), "InvalidRandomnessAccount");
