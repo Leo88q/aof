@@ -112,6 +112,7 @@
     "typescript": "^5.5.4"
   },
   "overrides": {
-    "toml": "4.2.0"
+    "toml": "4.2.0",
+    "proxy-addr": "2.0.8"
   }
 }
