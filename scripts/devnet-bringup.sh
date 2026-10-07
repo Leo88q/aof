@@ -334,13 +334,21 @@ if [ "${SKIP_BUILD:-0}" = "1" ] || skipped build; then
 elif ! command -v anchor >/dev/null; then
   die "нужна локальная сборка всех шести программ и нет anchor: установите Anchor 0.30.1 или передайте проверенные .so через ARTIFACTS вместе с SKIP_BUILD=1"
 else
-  info "собираются все шесть программ с локальными declare_id!; CI .so с временными ключами здесь не годится"
-  do_or_tell "anchor build --no-idl (локальные ключи из Anchor.toml)" anchor build --no-idl
+  info "собираются все шесть программ по отдельности с локальными declare_id!; aof_core и aof_quests получают только devnet feature"
+  for name in "${PROGRAMS[@]}"; do
+    if [ "$name" = "aof_core" ] || [ "$name" = "aof_quests" ]; then
+      do_or_tell "anchor build --program-name $name --no-idl -- --features devnet" \
+        anchor build --program-name "$name" --no-idl -- --features devnet
+    else
+      do_or_tell "anchor build --program-name $name --no-idl" \
+        anchor build --program-name "$name" --no-idl
+    fi
+  done
   if [ "$APPLY" = "1" ]; then
     for name in "${PROGRAMS[@]}"; do
-      [ -f "$ARTIFACTS/$name.so" ] || die "после сборки нет $ARTIFACTS/$name.so — проверьте anchor build"
+      [ -f "$ARTIFACTS/$name.so" ] || die "после сборки нет $ARTIFACTS/$name.so — проверьте anchor build --program-name $name"
     done
-    ok "все шесть .so собраны"
+    ok "все шесть .so собраны с нужными cluster features"
   fi
 fi
 

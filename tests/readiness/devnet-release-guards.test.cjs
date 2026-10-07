@@ -82,12 +82,17 @@ fi
 exit 1
 `);
     chmodSync(mock, 0o755);
-    const verify = mode => spawnSync('bash', [join(root, 'scripts/verify-programs.sh'), 'devnet', 'expectedAuthority', 'target/deploy', '--require-bytecode'], {
+    const verify = (mode, cluster = 'devnet') => spawnSync('bash', [join(root, 'scripts/verify-programs.sh'), cluster, 'expectedAuthority', 'target/deploy', '--require-bytecode'], {
       cwd: sandbox, encoding: 'utf8', env: { ...process.env, PATH: join(sandbox, 'bin') + ':' + process.env.PATH, PROGRAM_TAIL_MODE: mode },
     });
     const zero = verify('zero');
     assert.equal(zero.status, 0, zero.stdout + zero.stderr);
     assert.match(zero.stdout, /bytecode verified on devnet/);
+    const keyed = verify('zero', 'https://rpc.example.invalid/?api-key=DO_NOT_PRINT');
+    assert.equal(keyed.status, 0, keyed.stdout + keyed.stderr);
+    assert.match(keyed.stdout, /bytecode verified on rpc\.example\.invalid/);
+    assert.doesNotMatch(keyed.stdout + keyed.stderr, /DO_NOT_PRINT|api-key=/,
+      'custom RPC credentials must not appear in verifier output');
     const bad = verify('bad');
     assert.equal(bad.status, 1, bad.stdout + bad.stderr);
     assert.match(bad.stdout, /MISMATCH\(trailing\)/);

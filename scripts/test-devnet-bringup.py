@@ -100,9 +100,16 @@ esac
 MOCK_ANCHOR = """#!/usr/bin/env bash
 printf 'anchor %s\\n' "$*" >> "$MOCK_CALLS"
 [ "${1:-}" = "build" ] || exit 1
-for name in aof_core aof_market aof_quests aof_rebirth aof_liquidity aof_session_keys; do
-  cp "$MOCK_BUILT/$name.so" "$MOCK_ARTIFACTS/$name.so" 2>/dev/null || true
+shift
+program_name=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --program-name) program_name="${2:-}"; shift 2;;
+    *) shift;;
+  esac
 done
+[ -n "$program_name" ] || exit 1
+cp "$MOCK_BUILT/$program_name.so" "$MOCK_ARTIFACTS/$program_name.so"
 """
 
 MOCK_NPX = """#!/usr/bin/env bash
@@ -539,9 +546,18 @@ class BringupScript(BringupBase):
         })
         self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
         log = "\n".join(self.log())
-        self.assertIn("anchor build", log)
+        build_lines = [line for line in self.log() if line.startswith("anchor build ")]
+        self.assertEqual(len(build_lines), 6, build_lines)
         self.assertLess(log.find("anchor build"), log.find("@@deploy"))
+        for name, _ in PROGRAMS:
+            matches = [line for line in build_lines if f"--program-name {name} " in line]
+            self.assertEqual(len(matches), 1, f"ожидалась отдельная сборка {name}: {build_lines}")
+            if name in ("aof_core", "aof_quests"):
+                self.assertIn("-- --features devnet", matches[0], matches[0])
+            else:
+                self.assertNotIn("--features devnet", matches[0], matches[0])
         self.assertTrue((self.artifacts / "aof_core.so").exists())
+        self.assertTrue((self.artifacts / "aof_quests.so").exists())
 
     def test_pre_upgrade_mining_on_refuses_before_build_or_deploy(self):
         self.probe.write_text(
