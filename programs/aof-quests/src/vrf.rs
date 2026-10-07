@@ -355,6 +355,7 @@ pub struct RevealAccounts<'info> {
     pub system_program: AccountInfo<'info>,
     pub reward_escrow: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+    /// Native SOL mint (So111...112) the reveal CPI pays its reward escrow in.
     pub wrapped_sol_mint: AccountInfo<'info>,
     pub program_state: AccountInfo<'info>,
 }

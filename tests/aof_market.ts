@@ -149,7 +149,7 @@ describe("aof-market: горячий рынок покупает и продаё
 
   /** Инструмент каноническим путём aof_core: 0-decimal минт с авторитетом auth-PDA. */
   async function mintTool(to: PublicKey) {
-    const mint = await createMint(connection, setupPayer, authPda, null, 0);
+    const mint = await createMint(connection, setupPayer, authPda, authPda, 0);
     const tokenAccount = await ensureAta(mint, to, setupPayer);
     await sendWithPayer(core.methods
       .mintTool("plasma_cutter", RARITY_ARG)

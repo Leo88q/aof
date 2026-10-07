@@ -3,7 +3,7 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **92**; нарушают принцип (долг до деплоя): **0**.
+Инициализаций аккаунтов: **96**; нарушают принцип (долг до деплоя): **0**.
 
 ## Все инициализации
 
@@ -18,6 +18,7 @@
 | aof_core | Craft | new_tool_data | ToolData | init_if_needed | user | player | player | ok | — | — |
 | aof_core | CraftOrderCreateCtx | craft_order | CraftOrder | init | creator | player | player | ok | — | — |
 | aof_core | DepositGas | gastank | GasTank | init_if_needed | user | player | player | ok | — | — |
+| aof_core | ExchangeDataEnergy | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | ExploreReveal | user_circuit | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
 | aof_core | ExploreReveal | user_silicon | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
 | aof_core | ForgeAttemptCommit | enchant_slot | EnchantSlot | init_if_needed | user | player | player | ok | — | — |
@@ -52,6 +53,7 @@
 | aof_core | PlaceSellOrderV2 | order | ResourceOrderV2 | init | maker | player | player | ok | — | — |
 | aof_core | PlantNeuron | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | PlantNeuron | lab_tile | LabTile | init_if_needed | user | player | player | ok | — | — |
+| aof_core | PurchaseSeasonPass | premium_claims | SeasonPremiumClaims | init_if_needed | user | player | player | ok | — | — |
 | aof_core | PurchaseSeasonPass | season_pass | SeasonPass | init_if_needed | user | player | player | ok | — | — |
 | aof_core | ReferralBindCtx | referral_link | ReferralLink | init | referred | player | player | ok | — | — |
 | aof_core | ReferralBindCtx | referrer_stats | ReferrerStats | init_if_needed | referred | player | player | ok | — | — |
@@ -66,6 +68,7 @@
 | aof_core | RerollRandomReveal | new_mint | Mint | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |
 | aof_core | RerollRandomReveal | new_token | TokenAccount | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |
 | aof_core | RerollRandomReveal | new_tool_data | ToolData | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |
+| aof_core | SetToolMetadataUris | tool_metadata_registry | ToolMetadataRegistry | init_if_needed | authority (оператор) | global | operator | ok | — | — |
 | aof_core | StartExplorationCommit | exploration_commit | ExplorationCommit | init | user | player | player | ok | — | — |
 | aof_core | StartExplorationCommit | exploration_state | ExplorationState | init_if_needed | user | player | player | ok | — | — |
 | aof_core | StartMining | player | Player | init_if_needed | user | player | player | ok | — | — |
@@ -74,6 +77,7 @@
 | aof_core | StartModelTraining | model_state | ModelState | init_if_needed | user | player | player | ok | — | — |
 | aof_core | StartSignalProcessing | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | StartSignalProcessing | signal_state | SignalState | init_if_needed | user | player | player | ok | — | — |
+| aof_core | UseFlask | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | VrfPoolAdd | vrf_slot | VrfSlot | init | operator (оператор) | global | operator | ok | — | — |
 | aof_core | WeatherCrank | weather_state | WeatherState | init_if_needed | cranker (оператор) | global | operator | ok | — | — |
 | aof_liquidity | InitLpConfig | lp_config | LpConfig | init | authority (оператор) | global | operator | ok | — | — |

@@ -4,16 +4,19 @@ import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentIn
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { connection, program } from "../provider";
-import { authPda, configPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
+import { authPda, configPda, energyAccountPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
 import { authorityOnly, coSign, coSignQuoted, pk } from "../lib/tx";
 import { TOKEN_ACCOUNT_SIZE } from "../lib/accountSizes";
 import { requireExistingPlayer } from "../lib/playerAccount";
 import { fetchOne } from "../lib/decode";
 import { validateMintForTransaction } from "../security/mintValidator";
-import { requireCircuitOpen } from "../middleware/security";
+import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
+import { validateSingleCanonicalResourceMint } from "../lib/resourceRegistry";
 import { requireAdmin } from "../middleware/adminAuth";
 
 const r = Router();
+
+const RESOURCE_UNIT = new BN("1000000000");
 
 const kindMap: Record<string, any> = {
   // Базовые ресурсы
@@ -146,29 +149,48 @@ r.post("/burn", requireCircuitOpen, async (req, res) => {
 });
 
 
-// Disabled because the current aof-core program has no resource-energy exchange
-// instruction. Do not build a transaction for a missing entrypoint.
-r.post("/exchange-energy", (_req, res) => {
-  res.status(503).json({ error: "ENERGY_EXCHANGE_DISABLED_UNTIL_ONCHAIN_INSTRUCTION_EXISTS" });
-});
-
-/*
-r.post("/exchange-energy", async (req, res) => {
+// [§3.8] DATA → энергия. Курс и потолок заданы константами программы
+// (`DATA_ATOMS_PER_ENERGY` = 1 целый DATA за 1 энергию, не выше `ENERGY_CAP`),
+// поэтому маршрут не пересчитывает награду, а только строит транзакцию ровно с
+// тем количеством DATA, которое показано игроку. Тело: `dataAmount` в целых
+// DATA (как в /chain/lab/plant-neuron), в атомы переводит бэкенд.
+r.post("/exchange-energy", requireCircuitOpen, requireWalletLimits("resources_exchange_energy"), async (req, res) => {
   try {
     const user = pk(req.body.user);
-    const dataMint = pk(req.body.dataMint);
-    const dataAmount = BigInt(req.body.dataAmount);
     const [config] = configPda();
-    const [player] = playerPda(user);
+    const cfg: any = await fetchOne("config", config);
+    if (!cfg) return res.status(503).json({ error: "CORE_CONFIG_NOT_INITIALIZED" });
+
+    const dataMint = new PublicKey(cfg.dataMint);
+    if (dataMint.equals(PublicKey.default)) {
+      return res.status(503).json({ error: "RESOURCE_REGISTRY_INCOMPLETE", details: ["DATA:missing_or_default"] });
+    }
+    // Каноничность минта DATA — до построения транзакции: подменённый SPL-минт
+    // не станет «DATA» только потому, что так назван в теле запроса.
+    const mintCheck = await validateSingleCanonicalResourceMint(connection, "DATA", dataMint);
+    if (!mintCheck.ok) {
+      return res.status(503).json({ error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_OR_INVALID", details: mintCheck.errors });
+    }
+
+    const rawAmount = String(req.body.dataAmount ?? "");
+    if (!/^\d+$/.test(rawAmount)) throw new Error("dataAmount must be a positive whole number of DATA");
+    const whole = new BN(rawAmount);
+    // Курс 1:1: обменять можно и ровно 1 целый DATA, поэтому отсекаем только ноль
+    // (bn.js `lten` — «меньше или равно»).
+    if (whole.lten(0)) throw new Error("dataAmount must be a positive whole number of DATA");
+    const dataAmount = whole.mul(RESOURCE_UNIT);
+
+    const [energyAccount] = energyAccountPda(user);
     const userData = getAssociatedTokenAddressSync(dataMint, user);
+
     const ix = await (program.methods as any)
-      .exchangeDataEnergy(dataAmount)
+      .exchangeDataEnergy(dataAmount as any)
       .accounts({
         config,
         user,
+        energyAccount,
         dataMint,
         userData,
-        player,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -176,9 +198,8 @@ r.post("/exchange-energy", async (req, res) => {
     const tx = await coSign([ix], user);
     res.json({ tx });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    res.status(e?.status || 400).json({ error: e.message });
   }
 });
-*/
 
 export default r;

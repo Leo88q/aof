@@ -188,6 +188,13 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams)
         &ctx.accounts.new_token.to_account_info(),
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
+        &ctx.accounts.metadata.to_account_info(),
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        &ctx.accounts.cranker.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.tool_metadata_registry,
+        &tool_type,
+        rarity,
     )?;
     let user = ctx.accounts.reroll_commit.user;
     settlement::write_tool(&mut ctx.accounts.new_tool_data, ctx.accounts.new_mint.key(), user, tool_type.clone(), rarity, MAX_DURABILITY);
@@ -196,7 +203,15 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams)
     let fee = ctx.accounts.reroll_commit.fee_lamports;
     settlement::release_escrow(&commit_info, &ctx.accounts.treasury.to_account_info(), fee)?;
     let deposit = ctx.accounts.reroll_commit.deposit_lamports;
-    settlement::reimburse_settler(&commit_info, &ctx.accounts.cranker.to_account_info(), deposit)?;
+    settlement::reimburse_settler(
+        &commit_info,
+        &ctx.accounts.cranker.to_account_info(),
+        deposit,
+        &ctx.accounts.new_mint.to_account_info(),
+        &ctx.accounts.new_token.to_account_info(),
+        &ctx.accounts.new_tool_data.to_account_info(),
+        &ctx.accounts.metadata.to_account_info(),
+    )?;
     ctx.accounts.reroll_commit.fee_lamports = 0;
     ctx.accounts.reroll_commit.deposit_lamports = 0;
 
@@ -227,22 +242,37 @@ pub fn expire_handler(ctx: Context<RerollRandomExpire>) -> Result<()> {
     let commit_slot = ctx.accounts.reroll_commit.commit_slot;
     vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
 
+    let rc = &ctx.accounts.reroll_commit;
+    let (user, tool_type, rarity, durability) = (rc.user, rc.burned_tool_type.clone(), rc.burned_rarity, rc.burned_durability);
     settlement::mint_tool_nft(
         &ctx.accounts.token_program.to_account_info(),
         &ctx.accounts.new_mint.to_account_info(),
         &ctx.accounts.new_token.to_account_info(),
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
+        &ctx.accounts.metadata.to_account_info(),
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        &ctx.accounts.cranker.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.tool_metadata_registry,
+        &tool_type,
+        rarity,
     )?;
-    let rc = &ctx.accounts.reroll_commit;
-    let (user, tool_type, rarity, durability) = (rc.user, rc.burned_tool_type.clone(), rc.burned_rarity, rc.burned_durability);
     settlement::write_tool(&mut ctx.accounts.new_tool_data, ctx.accounts.new_mint.key(), user, tool_type, rarity, durability);
 
     // The fee stays on the commit and reaches the user through `close = user`;
     // only the fronted NFT rent goes back to the settler.
     let commit_info = ctx.accounts.reroll_commit.to_account_info();
     let deposit = ctx.accounts.reroll_commit.deposit_lamports;
-    settlement::reimburse_settler(&commit_info, &ctx.accounts.cranker.to_account_info(), deposit)?;
+    settlement::reimburse_settler(
+        &commit_info,
+        &ctx.accounts.cranker.to_account_info(),
+        deposit,
+        &ctx.accounts.new_mint.to_account_info(),
+        &ctx.accounts.new_token.to_account_info(),
+        &ctx.accounts.new_tool_data.to_account_info(),
+        &ctx.accounts.metadata.to_account_info(),
+    )?;
     let fee = ctx.accounts.reroll_commit.fee_lamports;
 
     emit!(VrfCommitRefunded {

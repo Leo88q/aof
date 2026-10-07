@@ -6,7 +6,7 @@ import { homeResourceNames } from '../i18n/homeDetail';
  *
  * Inventory:
  * - 26 playable resources (economy set). Soul Core is the 27th on-chain kind.
- * - 25 tool NFTs = 5 tools × 5 rarities. Only the Base plate exists so far.
+ * - 25 tool NFT variants = 5 tools × 5 rarities. All 25 rarity plates are present.
  * - Icons are a separate inset set for chips. Missing icons fall back to the plate.
  */
 

@@ -208,8 +208,8 @@ assert.doesNotMatch(appNotice, /^  reroll: \{/m);
   assert.match(adminRoute, /mintTool\(/, "test-grant-tools must build aof_core::mint_tool");
   assert.match(adminRoute, /fromPubkey: recipient/,
     "the granted mint account must be paid for by the recipient, not authority");
-  assert.match(adminRoute, /createInitializeMintInstruction\(mint, 0, auth, null\)/,
-    "the granted tool must be a 0-decimal mint whose authority is the auth PDA");
+  assert.match(adminRoute, /createInitializeMintInstruction\(mint, 0, auth, auth\)/,
+    "the granted tool mint must use the auth PDA temporarily for both mint and freeze authority");
   assert.match(adminRoute, /createAssociatedTokenAccountIdempotentInstruction\(recipient, tokenAccount, recipient, mint\)/,
     "the grant must create the recipient's ATA with recipient as payer and owner");
   assert.match(adminRoute, /recipient,/,
@@ -273,7 +273,15 @@ assert.match(forgeExpireCtx, /address = forge_commit\.user/);
 assert.match(forgeExpireCtx, /associated_token::authority = user/);
 assert.match(forge, /fc\.circuit_burned = circuit_cost/);
 assert.match(forge, /fc\.silicon_burned = silicon_cost/);
-assert.match(forge, /pub fn expire_handler[\s\S]*vrf::release_for_refund[\s\S]*check_supply_cap[\s\S]*token::mint_to/);
+const forgeExpire = fnBodyOf(forge, "expire_handler");
+assert.match(forgeExpire, /vrf::release_for_refund/);
+assert.equal((forgeExpire.match(/refund_auth_escrow\(/g) ?? []).length, 2,
+  "a timed-out forge attempt returns both escrowed resources to the user exactly once");
+assert.match(forge, /fn refund_auth_escrow[\s\S]*token::transfer/,
+  "refunds transfer pre-existing escrowed tokens instead of minting them");
+assert.match(forgeExpire, /circuit_refunded: circuit/);
+assert.match(forgeExpire, /silicon_refunded: silicon/);
+assert.doesNotMatch(forgeExpire, /check_supply_cap|token::mint_to|token::burn/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "forge_attempt_expire"), "forge_attempt_expire missing from committed IDL");
 
 // Lottery: player money only goes back to players or into the prize.
@@ -297,7 +305,7 @@ assert.match(read("docker-compose.prod.yml"), /vrf-settler\.heartbeat/, "the set
   assert.doesNotMatch(settler, /authorityOnly|AUTHORITY_PUBKEY/, "the settler never signs with the operator key");
   // Every reveal / refund transaction carries the compute budget (CU + priority fee).
   const settlement = read("aof_backend/src/lib/vrfSettlement.ts");
-  assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), await refundInstruction\(c, cranker\)\]/);
+  assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), \.\.\.ataSetup, await refundInstruction\(c, cranker\)\]/);
   assert.match(settlement, /return \[\.\.\.vrfComputeBudget\(\), ix\]/);
 }
 

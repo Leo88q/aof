@@ -3,11 +3,10 @@
 
 Anchor's IDL builder cannot run on the pinned toolchain (see the advisory IDL
 step in .github/workflows/ci.yml), so the IDLs under aof_backend/src/idl/ are
-maintained by hand. `aof_core.ts` is the camelCase copy that `anchor build`
-used to emit next to `aof_core.json`; this script derives it from the JSON with
-the rules the committed copy was generated with: every `name` key converted
-by the `camelcase` npm package (v6 semantics); PDA seed `path`/`account`
-values and docs (ASCII-escaped) are left as they are.
+maintained by hand. `aof_core.ts` is the camelCase type helper derived from
+`aof_core.json`: instruction/account/argument/field names and PDA seed paths
+are camelCased, while type identifiers, enum variants, event names, and error
+names preserve their Rust/IDL spelling. Documentation remains readable UTF-8.
 
     python3 scripts/idl-sync-ts.py            # rewrite aof_core.ts
     python3 scripts/idl-sync-ts.py --check    # exit 1 if it is stale
@@ -23,7 +22,6 @@ import sys
 
 JSON_PATH = "aof_backend/src/idl/aof_core.json"
 TS_PATH = "aof_backend/src/idl/aof_core.ts"
-KEYS = {"name"}
 HEADER = (
     "/**\n"
     " * Program IDL in camelCase format in order to be used in JS/TS.\n"
@@ -75,22 +73,32 @@ def _to_camel(value):
     return ".".join(camelcase(part) for part in value.split("."))
 
 
-def convert(obj):
-    if isinstance(obj, dict):
-        return {k: (_to_camel(v) if k in KEYS and isinstance(v, (str, list)) else convert(v))
-                for k, v in obj.items()}
+def convert(obj, path=()):
     if isinstance(obj, list):
-        return [convert(v) for v in obj]
+        return [convert(value, path + (str(index),)) for index, value in enumerate(obj)]
+    if isinstance(obj, dict):
+        out = {}
+        for key, value in obj.items():
+            if key == "name" and isinstance(value, str):
+                # Preserve names that are type identifiers or nominal enum,
+                # event, and error names. All JS-facing instruction/account/
+                # field names use camelCase.
+                preserve = (
+                    (path and path[-1] == "defined")
+                    or (path and path[0] in {"types", "accounts", "events", "errors"} and len(path) == 2)
+                    or (len(path) >= 2 and path[-2] == "variants")
+                )
+                out[key] = value if preserve else _to_camel(value)
+            elif key == "path" and isinstance(value, (str, list)):
+                out[key] = _to_camel(value)
+            else:
+                out[key] = convert(value, path + (key,))
+        return out
     return obj
 
 
 def render(idl: dict) -> str:
-    text = json.dumps(convert(idl), indent=2, ensure_ascii=True)
-    # The committed copy keeps the metadata description unescaped (rebrand edit).
-    desc = (idl.get("metadata") or {}).get("description")
-    if desc:
-        escaped = json.dumps(desc, ensure_ascii=True)
-        text = text.replace('"description": ' + escaped, '"description": ' + json.dumps(desc, ensure_ascii=False), 1)
+    text = json.dumps(convert(idl), indent=2, ensure_ascii=False)
     return HEADER + text + ";\n"
 
 

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction, MessageV0, ComputeBudgetProgram } from "@solana/web3.js";
+import { AddressLookupTableAccount, ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { createApproveInstruction, createSetAuthorityInstruction, AuthorityType, createInitializeMintInstruction, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 import { confirmSignature } from "../src/lib/confirmation";
@@ -51,30 +51,51 @@ test("legacy and versioned known-program transactions simulate with the correct 
   tx.feePayer = other;
   assert.equal((await guard(tx)).safe, false);
 });
-test("user-funded prep-mint permits only canonical zero-decimal, non-freezable mints", async () => {
+test("user-funded prep-mint pins both temporary authorities to auth; issuance must revoke them", async () => {
   const mint = Keypair.generate();
   const auth = PublicKey.findProgramAddressSync([Buffer.from("auth")], core)[0];
   const tx = transaction(
     SystemProgram.createAccount({ fromPubkey: user.publicKey, newAccountPubkey: mint.publicKey, lamports: 1_461_600, space: 82, programId: TOKEN_PROGRAM_ID }),
-    createInitializeMintInstruction(mint.publicKey, 0, auth, null),
+    createInitializeMintInstruction(mint.publicKey, 0, auth, auth),
     createAssociatedTokenAccountIdempotentInstruction(user.publicKey, getAssociatedTokenAddressSync(mint.publicKey, user.publicKey), user.publicKey, mint.publicKey),
   );
   tx.partialSign(mint);
   const bytes = tx.serialize({ requireAllSignatures: false });
   assert.equal((await guard(tx)).safe, true);
   assert.deepEqual(tx.serialize({ requireAllSignatures: false }), bytes);
-  tx.instructions[1] = createInitializeMintInstruction(mint.publicKey, 0, other, other);
+  tx.instructions[1] = createInitializeMintInstruction(mint.publicKey, 0, auth, other);
   assert.equal((await guard(tx)).safe, false);
 });
-test("lookup table messages are rejected rather than partially inspected", async () => {
-  const legacy = transaction(new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) }));
-  const message = legacy.compileMessage();
-  const tx = new VersionedTransaction(new MessageV0({
-    header: message.header, staticAccountKeys: message.accountKeys,
-    recentBlockhash: message.recentBlockhash, compiledInstructions: [],
-    addressTableLookups: [{ accountKey: other, writableIndexes: [0], readonlyIndexes: [] }],
-  }));
-  assert.equal((await guard(tx)).safe, false);
+test("v0 lookup keys are resolved before the wallet guard inspects and simulates them", async () => {
+  const lookupTable = new AddressLookupTableAccount({
+    key: Keypair.generate().publicKey,
+    state: {
+      deactivationSlot: (1n << 64n) - 1n,
+      lastExtendedSlot: 1n,
+      lastExtendedSlotStartIndex: 0,
+      authority: undefined,
+      addresses: [other],
+    },
+  });
+  const ix = new TransactionInstruction({
+    programId: core,
+    keys: [{ pubkey: other, isSigner: false, isWritable: false }],
+    data: Buffer.alloc(8),
+  });
+  const tx = new VersionedTransaction(new TransactionMessage({
+    payerKey: user.publicKey,
+    recentBlockhash: other.toBase58(),
+    instructions: [ix],
+  }).compileToV0Message([lookupTable]));
+  assert.equal((await guard(tx)).safe, false, "missing lookup RPC support must fail closed");
+  const altRpc = {
+    ...rpc,
+    getSlot: async () => 100,
+    getAddressLookupTable: async (key: PublicKey) => ({
+      value: lookupTable.key.equals(key) ? lookupTable : null,
+    }),
+  };
+  assert.equal((await guard(tx, {}, altRpc)).safe, true);
 });
 test("confirmation rejects failed/unknown outcomes and waits for confirmed status", async () => {
   const signature = "2".repeat(88);
@@ -272,11 +293,12 @@ test("core instruction table matches IDL and exclusively operator-signed instruc
       assert.ok(signers.some((n: string) => actorNames.has(n)), `${ix.name}: a player-signable instruction must have a player signer slot (got ${signers.join("+")})`);
     }
   }
-  // The two the generator used to miss: operator-signed, sent by the backend (routes/season.ts, routes/lottery.ts).
+  // Operator-signed, sent by the backend (season rewards and lottery setup).
   assert.equal(specOf("claim_season_reward").authorityOnly, true);
+  assert.equal(specOf("claim_premium_season_reward").authorityOnly, true);
   assert.equal(specOf("init_lottery_round").authorityOnly, true);
-  // A player wallet presented with either must be refused.
-  for (const name of ["claim_season_reward", "init_lottery_round"]) {
+  // A player wallet presented with any must be refused.
+  for (const name of ["claim_season_reward", "claim_premium_season_reward", "init_lottery_round"]) {
     const spec = specOf(name);
     const keys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
     assert.throws(() => validateCoreInstructions([ixFor(name, keys)], user.publicKey), /Authority-only/, name);
@@ -296,11 +318,15 @@ function toolMintFixture() {
   data.writeUInt32LE(Buffer.byteLength(toolType), 8);
   data.write(toolType, 12, "utf8");
   data[12 + Buffer.byteLength(toolType)] = rarity;
+  const metadataProgram = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const metadataSeeds = [Buffer.from("metadata"), metadataProgram.toBuffer(), mint.toBuffer()];
+  const metadata = PublicKey.findProgramAddressSync(metadataSeeds, metadataProgram)[0];
   const ix = {
     programId: core.toBase58(),
     keys: [pda("config"), authority, pda("auth"), mint,
       getAssociatedTokenAddressSync(mint, user.publicKey), user.publicKey, user.publicKey,
-      pda("tool", mint), TOKEN_PROGRAM_ID, SystemProgram.programId],
+      pda("tool", mint), TOKEN_PROGRAM_ID, SystemProgram.programId, pda("tool_metadata_registry"),
+      metadata, metadataProgram],
     data,
   };
   const intent = { kind: "toolMint" as const, user: user.publicKey.toBase58(),
@@ -380,24 +406,42 @@ test("Switchboard is accepted only as the game program's CPI, never as a top-lev
 
 // A season pass is a SOL payment: the wallet must only see the one canonical
 // purchase instruction for the verified season and treasury.
-test("season pass intent rejects swapped treasury, season and extra instructions", async () => {
+test("season pass intent binds exact payment, season and rent accounts", async () => {
   const { validateTransactionIntent } = await import("../src/lib/transactionIntent");
   const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions");
   const spec = CORE_INSTRUCTIONS.find(s => s.name === 'purchase_season_pass')!;
   const seasonId = 1;
   const seed = Buffer.alloc(4); seed.writeUInt32LE(seasonId);
   const derive = (...parts: Buffer[]) => PublicKey.findProgramAddressSync(parts, core)[0];
+  const seasonPass = derive(Buffer.from('season_pass'), user.publicKey.toBuffer(), seed);
+  const premiumClaims = derive(Buffer.from('season_premium_claims'), user.publicKey.toBuffer(), seed);
   const keys = [derive(Buffer.from('config')), user.publicKey, other,
-    derive(Buffer.from('season'), seed), derive(Buffer.from('season_pass'), user.publicKey.toBuffer(), seed),
-    SystemProgram.programId];
+    derive(Buffer.from('season'), seed), seasonPass, premiumClaims, SystemProgram.programId];
   const ix = { programId: core.toBase58(), keys, data: Uint8Array.from(spec.discriminator) };
-  const intent = { kind: 'seasonPass', user: user.publicKey.toBase58(), treasury: other.toBase58(),
-    seasonId, priceLamports: '150000000' as const } as const;
-  assert.doesNotThrow(() => validateTransactionIntent([ix], intent, user.publicKey));
-  assert.throws(() => validateTransactionIntent([{ ...ix, keys: keys.map((key, i) => i === 2 ? user.publicKey : key) }], intent, user.publicKey));
-  assert.throws(() => validateTransactionIntent([{ ...ix, keys: keys.map((key, i) => i === 3 ? other : key) }], intent, user.publicKey));
-  assert.throws(() => validateTransactionIntent([ix, ix], intent, user.publicKey));
-  assert.throws(() => validateTransactionIntent([ix], { ...intent, priceLamports: '1' as any }, user.publicKey));
+  const intent = { kind: 'seasonPass' as const, user: user.publicKey.toBase58(), treasury: other.toBase58(),
+    seasonId, priceLamports: '150000000' as const };
+  const quote = {
+    version: 1 as const, payer: user.publicKey.toBase58(), recentBlockhash: other.toBase58(),
+    lastValidBlockHeight: 123, messageSha256: 'a'.repeat(64), networkFeeLamports: '10000',
+    rentLamports: '0', maxRentLamports: '3000', maxCostLamports: '13000',
+    rentAccounts: [
+      { name: 'season_pass', address: seasonPass.toBase58(), size: 57, strategy: 'init_if_needed' as const,
+        exists: true, rentDueLamports: '0', maxRentLamports: '1000' },
+      { name: 'premium_claims', address: premiumClaims.toBase58(), size: 53, strategy: 'init_if_needed' as const,
+        exists: true, rentDueLamports: '0', maxRentLamports: '2000' },
+    ],
+  };
+  const boundIntent = { ...intent, quote };
+  assert.doesNotThrow(() => validateTransactionIntent([ix], boundIntent, user.publicKey));
+  for (const index of [2, 3, 4, 5]) {
+    const changed = [...keys]; changed[index] = Keypair.generate().publicKey;
+    assert.throws(() => validateTransactionIntent([{ ...ix, keys: changed }], boundIntent, user.publicKey));
+  }
+  assert.throws(() => validateTransactionIntent([ix], { ...boundIntent, treasury: user.publicKey.toBase58() }, user.publicKey));
+  assert.throws(() => validateTransactionIntent([ix, ix], boundIntent, user.publicKey));
+  assert.throws(() => validateTransactionIntent([ix], { ...boundIntent, priceLamports: '1' as any }, user.publicKey));
+  const changedQuote = { ...quote, rentAccounts: quote.rentAccounts.slice(0, 1) };
+  assert.throws(() => validateTransactionIntent([ix], { ...boundIntent, quote: changedQuote }, user.publicKey), /payer quote/);
 });
 
 test("VIP read distinguishes missing pass from failed or forged reads", async () => {
@@ -406,7 +450,7 @@ test("VIP read distinguishes missing pass from failed or forged reads", async ()
   const privileges = { farmTrader: { enabled: false }, priceAlerts: { limit: 1, fullOptions: false },
     skipAdsInQuests: false, feeDiscountPct: 0 };
   const free = { source: 'onchain', user: owner, seasonId: 1, seasonActive: true,
-    passPremium: false, isVip: false, pass: null, privileges };
+    passPremium: false, isVip: false, pass: null, premiumClaims: null, privileges };
   assert.deepEqual(readVipSnapshot(free, owner, 1)?.pass, null);
   assert.equal(readVipSnapshot(null, owner, 1), null);
   assert.equal(readVipSnapshot({ ...free, source: 'database' }, owner, 1), null);
@@ -414,9 +458,12 @@ test("VIP read distinguishes missing pass from failed or forged reads", async ()
   assert.equal(readVipSnapshot({ ...free, isVip: true }, owner, 1), null);
   const vip = { ...free, passPremium: true, isVip: true,
     pass: { premium: true, xp: 10, claimedBitmap: '5' },
+    premiumClaims: { claimedBitmap: '2' },
     privileges };
   assert.equal(readVipSnapshot({ ...vip, privileges: { ...privileges, feeDiscountPct: 15 } }, owner, 1), null);
   assert.equal(readVipSnapshot(vip, owner, 1)?.pass?.claimedRewards, 2);
+  assert.equal(readVipSnapshot(vip, owner, 1)?.pass?.premiumClaimedBitmap, '2');
+  assert.equal(readVipSnapshot({ ...vip, premiumClaims: { claimedBitmap: '4398046511104' } }, owner, 1), null);
   assert.equal(readVipSnapshot({ ...vip, seasonActive: false, isVip: false,
     privileges }, owner, 1)?.passPremium, true);
   assert.equal(readVipSnapshot({ ...vip, pass: null }, owner, 1), null);

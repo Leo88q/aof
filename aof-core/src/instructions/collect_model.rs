@@ -22,8 +22,8 @@ pub fn handler(ctx: Context<CollectModel>) -> Result<()> {
     // [AUDIT F-03] see collect_signal: Model emission bypassed IssuanceCap.
     check_supply_cap(
         &ctx.accounts.material_mints,
+        &mut ctx.accounts.issuance_cap_model,
         ResourceKind::Model,
-        ctx.accounts.model_mint.supply,
         output,
     )?;
 

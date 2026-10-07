@@ -8,7 +8,7 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, Transaction, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createMint, getMint, mintTo, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction,
   createAccount as createTokenAccount, TOKEN_PROGRAM_ID,
@@ -110,6 +110,14 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     if (credited < lamports) throw new Error(`airdrop not visible for ${kp.publicKey}: expected >= ${lamports}, got ${credited}`);
   }
 
+  // Quote deadlines are enforced against the validator's Clock sysvar, not the
+  // test runner's wall clock; those clocks can drift during the long suite.
+  async function chainUnixTimestamp(): Promise<number> {
+    const clock = await provider.connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY, "confirmed");
+    if (!clock || clock.data.length < 40) throw new Error("Clock sysvar unavailable or truncated");
+    return Number(clock.data.readBigInt64LE(32));
+  }
+
   // Admin faucet (mint_resource keeps a 7–10% treasury fee, so the user gets
   // a bit less than `units`). The player initializes their own profile first.
   async function giveResource(kind: string, mint: PublicKey, user: PublicKey, units: number): Promise<PublicKey> {
@@ -124,7 +132,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   }
 
   async function mintTool(to: PublicKey, toolType = "plasma_cutter") {
-    const mint = await createMint(provider.connection, setupPayer, authPda, null, 0);
+    const mint = await createMint(provider.connection, setupPayer, authPda, authPda, 0);
     const tokenAccount = await ensureAta(mint, to);
     await sendWithPayer(program.methods.mintTool(toolType, { common: {} }).accounts({
       config: configPda, authority, auth: authPda, mint, tokenAccount, recipient: to,
@@ -324,14 +332,19 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
 
     const user = Keypair.generate(); await airdrop(user);
     const seasonPass = pda([B("season_pass"), user.publicKey.toBuffer(), sid]);
+    const premiumClaims = pda([B("season_premium_claims"), user.publicKey.toBuffer(), sid]);
     const claimCursor = pda([B("season_xp_claim_cursor"), user.publicKey.toBuffer(), sid]);
     const purchase = () => program.methods.purchaseSeasonPass().accounts({
-      config: configPda, user: user.publicKey, treasury: authority, season, seasonPass, systemProgram: SystemProgram.programId,
+      config: configPda, user: user.publicKey, treasury: authority, season, seasonPass, premiumClaims,
+      systemProgram: SystemProgram.programId,
     }).signers([user]).rpc();
-    const before = await lamports(user.publicKey);
+    const playerBeforePurchase = await lamports(user.publicKey);
+    const treasuryBeforePurchase = await lamports(authority);
     await expectError(purchase(), "SeasonPremiumRequired");
-    expect(await lamports(user.publicKey)).to.equal(before);
+    expect(await lamports(user.publicKey)).to.equal(playerBeforePurchase);
+    expect(await lamports(authority)).to.equal(treasuryBeforePurchase);
     expect(await provider.connection.getAccountInfo(seasonPass)).to.equal(null);
+    expect(await provider.connection.getAccountInfo(premiumClaims)).to.equal(null);
     expect(await provider.connection.getAccountInfo(claimCursor)).to.equal(null);
 
     const xpExpirySlot = (await provider.connection.getSlot("confirmed")) + 20_000;
@@ -460,7 +473,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const userCircuit = await ensureAta(circuitMint, user.publicKey);
     const claimReward = (level: number, premiumTrack: boolean) => program.methods.claimSeasonReward(level, premiumTrack).accounts({
       config: configPda, authority, materialMints: materialMintsPda, season, seasonPass, circuitMint, userCircuit, auth: authPda,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      issuanceCapCircuit: issuanceCapPda("circuit"), tokenProgram: TOKEN_PROGRAM_ID,
     }).rpc();
     const circuitBefore = await balance(userCircuit);
     await expectError(claimReward(1, true), "SeasonPremiumRequired");
@@ -675,8 +688,8 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     const seller = Keypair.generate(); await airdrop(seller);
     const buyer = Keypair.generate(); await airdrop(buyer);
     const stranger = Keypair.generate(); await airdrop(stranger);
-    // Only the five canonical tool ids can be minted. No legacy NFT accounts
-    // exist on the target network, so old tool names are deliberately rejected.
+    // Only the five canonical tool ids can be minted; historical noncanonical
+    // names are deliberately rejected even though current tools receive immutable Token Metadata.
     const { mint, tokenAccount: sellerToken } = await mintTool(seller.publicKey, "plasma_cutter");
     expect((await program.account.toolData.fetch(toolPda(mint))).toolType).to.equal("plasma_cutter");
     for (const kind of ["silicon_extractor", "Data_Harvester", "quantum_transmitter", "neural_seeder"]) {
@@ -701,8 +714,10 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     await expectError(cancel(stranger, await ensureAta(mint, stranger.publicKey)), "Unauthorized");
 
     const buyerToken = await ensureAta(mint, buyer.publicKey);
-    // A quote may live at most 300 s by the chain clock; stay well inside it.
-    await program.methods.marketplaceBuyBounded(new BN(1_000_000), new BN(Math.floor(Date.now() / 1000) + 120)).accounts({
+    // A quote may live at most 300 s by the chain clock; derive its deadline
+    // from that same Clock sysvar, not Date.now() on the test runner.
+    const deadline = new BN((await chainUnixTimestamp()) + 120);
+    await program.methods.marketplaceBuyBounded(new BN(1_000_000), deadline).accounts({
       config: configPda, buyer: buyer.publicKey, seller: seller.publicKey, treasury: authority, mint, tool: toolPda(mint),
       listing, listingVault, buyerToken, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([buyer]).rpc();

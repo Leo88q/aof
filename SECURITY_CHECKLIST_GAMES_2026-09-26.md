@@ -55,7 +55,7 @@
 | # | Вердикт | Доказательство |
 |---|---|---|
 | 38 Transfer Hook | ✅ | Token-2022 не принимается вообще (`Program<Token>`, владелец mint = SPL Token). Host-тест: mint Token-2022 → `AccountOwnedByWrongProgram`, программа Token-2022 → `InvalidProgramId`. |
-| 39 Permanent Delegate / Default Frozen | ✅ | То же. У новых NFT и в точках торговли запрещена freeze authority (F-I). |
+| 39 Permanent Delegate / Default Frozen | ✅ | У выпущенных NFT freeze authority отзывается сразу после Metadata CPI; Marketplace/rental/ownership guards продолжают требовать финальный `freeze_authority == None` (F-I). |
 | 40 рассинхрон decimals | ✅ ⚠️ | У ресурсов 9 decimals (`RESOURCE_UNIT = 1e9`), у NFT-инструментов `decimals == 0` проверяется. Пересчёт micros/lamports покрыт тестами. Рекомендация: `set_resource_mints` принимает pubkey без проверки decimals. Это admin-операция, стоит проверять decimals в скрипте развёртывания. |
 
 ### I. Офчейн ↔ ончейн
@@ -77,7 +77,7 @@
 
 | # | Вердикт | Доказательство |
 |---|---|---|
-| 46 update authority метаданных | ✅ ⚠️ | Программа не создаёт Metaplex-метаданные (зависимости от `mpl-token-metadata` нет): у инструментов нет on-chain update authority. JSON-метаданные раздаются с сайта (`/metadata/*`), поэтому их целостность зависит от хостинга и DNS (#67). |
+| 46 update authority метаданных | ✅ ⚠️ | **Обновлено 2026-10-07:** исходники создают только immutable Metaplex Metadata через Anchor SPL CPI (`is_mutable = false`), для Metadata CPI временно используют auth PDA как mint/freeze authority, затем отзывают оба; supply остаётся 1, финальный freeze authority — `None`. Master Edition намеренно отсутствует: это не canonical Metaplex Master Edition NFT, поэтому third-party recognition может быть ниже. URI берётся из замороженного `ToolMetadataRegistry`. Обязательные build/local-validator gates должны подтвердить Metadata CPI, rent, финальные authorities и неизменяемость; deployed-network транзакции в code-only работе не разрешены. JSON остаётся на внешнем Pages-хостинге; его содержимое/доступность зависят от хостинга и DNS (#67). |
 | 47 delegate/approve | ✅ ⚠️ | Программы не используют `approve`: стейкинг, эскроу листингов, аукционов и аренды переводят NFT в PDA. Фронтенд-`txGuard` запрещает `approve`. **Риск по замыслу:** `farm-trader` просит пользователя выдать SPL-делегата серверному ключу сессии, и такой делегат не отзывается сам. Рекомендация: заменить на программные права сессии (`aof-session-keys`) либо ограничить срок и отзывать делегата при остановке автоторговли. Торговля в `aof-market` сейчас выключена. |
 
 ### L. Экономический античит

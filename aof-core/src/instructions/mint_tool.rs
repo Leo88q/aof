@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint, MintTo};
 use crate::constants::*;
+use crate::instructions::settlement;
 use crate::state::*;
 use crate::MintTool;
 use crate::errors::*;
@@ -22,20 +22,21 @@ pub fn handler(ctx: Context<MintTool>, tool_type: String, rarity: Rarity) -> Res
         ctx.accounts.token_account.owner == ctx.accounts.recipient.key(),
         AofError::Unauthorized
     );
-    // mint 1 NFT to recipient ATA
-    let cpi_accounts = MintTo {
-        mint: ctx.accounts.mint.to_account_info(),
-        to: ctx.accounts.token_account.to_account_info(),
-        authority: ctx.accounts.auth.to_account_info(),
-    };
-    let auth_bump = ctx.bumps.auth;
-    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-    let cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        cpi_accounts,
-        signer_seeds,
-    );
-    token::mint_to(cpi_ctx, 1)?;
+    // Mint one SPL unit and its immutable Metaplex metadata.
+    settlement::mint_tool_nft(
+        &ctx.accounts.token_program.to_account_info(),
+        &ctx.accounts.mint.to_account_info(),
+        &ctx.accounts.token_account.to_account_info(),
+        &ctx.accounts.auth.to_account_info(),
+        ctx.bumps.auth,
+        &ctx.accounts.metadata.to_account_info(),
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        &ctx.accounts.payer.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.tool_metadata_registry,
+        &tool_type,
+        rarity,
+    )?;
     // record tool data; owner derived from ATA owner
     let owner = ctx.accounts.token_account.owner;
     init_tool_data(

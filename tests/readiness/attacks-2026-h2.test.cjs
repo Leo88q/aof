@@ -341,11 +341,15 @@ test('#114 произвольный внешний вызов: CPI только 
       const around = src.slice(Math.max(0, call.index - 2400), call.index + 900);
       assert.match(
         around,
-        /_instruction\(|spl_token::instruction|token_instruction|system_instruction|TOKEN_PROGRAM_ID|SWITCHBOARD_PROGRAM_ID/,
+        /_instruction\(|\.instruction\(|spl_token::instruction|token_instruction|system_instruction|TOKEN_PROGRAM_ID|SWITCHBOARD_PROGRAM_ID|CreateMetadataAccountV3|CreateMasterEditionV3/,
         `${file}: CPI без локально построенной инструкции/пиннинга program id (#114)`,
       );
     }
   }
+  const core = read('aof-core/src/lib.rs');
+  const pinnedMetadataPrograms = core.match(/pub token_metadata_program: Program<'info, TokenMetadataProgram>/g) || [];
+  assert.ok(pinnedMetadataPrograms.length >= 6,
+    'Metaplex CPI callers must use Anchor-typed TokenMetadataProgram accounts, never arbitrary program IDs');
   const guard = read('frontend/src/lib/txGuard.ts');
   assert.match(guard, /AOF_PROGRAMS/, 'allowlist программ обязателен на клиенте');
   assert.match(guard, /Only idempotent ATA creation is permitted/);

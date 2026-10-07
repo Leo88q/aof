@@ -14,6 +14,7 @@ import "dotenv/config";
  *
  * Per-kind overrides: CAP_<KIND>=<base units>, e.g. CAP_MIND=5000000000000.
  * Already-initialised kinds are skipped (idempotent; use /admin/issuance-caps/set to change).
+ * Повторный прогон, когда все потолки уже созданы, не требует CAP_PER_EPOCH.
  */
 import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
@@ -26,6 +27,9 @@ if (!AUTHORITY) {
     + "read-only mode cannot bootstrap programs.",
   );
 }
+// ts-node компилирует с проверкой типов, но TS не сужает импортированную
+// привязку внутри функций (TS18047) — фиксируем не-null значение локально.
+const authority = AUTHORITY;
 
 import { connection, program } from "../src/provider";
 import { configPda, issuanceCapPda, RESOURCE_KIND_ORDER } from "../src/lib/pda";
@@ -43,22 +47,29 @@ async function main() {
   let done = 0, skipped = 0;
   for (const kind of RESOURCE_KIND_ORDER) {
     if (only && !only.has(kind)) continue;
-    const override = process.env[`CAP_${kind.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase()}`];
-    const capRaw = override ?? defaultCap;
-    if (!capRaw) throw new Error(`no cap for ${kind}: set CAP_PER_EPOCH or CAP_${kind.toUpperCase()}`);
-    const cap = new BN(capRaw);
-    if (cap.lten(0)) throw new Error(`cap for ${kind} must be > 0 (use /admin/issuance-caps/set with 0 to halt)`);
     const [pda] = issuanceCapPda(kind);
+    // Идемпотентность: существующий потолок пропускается ДО разбора CAP_* —
+    // иначе повторный прогон требовал бы значение, которое уже не нужно.
     if (await connection.getAccountInfo(pda)) {
       console.log(`skip ${kind}: already initialised (${pda.toBase58()})`);
       skipped++;
       continue;
     }
+    const override = process.env[`CAP_${kind.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase()}`];
+    const capRaw = override ?? defaultCap;
+    if (!capRaw) {
+      throw new Error(
+        `no cap for ${kind}: set CAP_PER_EPOCH (base units, 1 unit = 1e9) or CAP_${kind.toUpperCase()} `
+        + "— issuance is fail-closed without caps; see docs/ISSUANCE_CAPS_DESIGN.md",
+      );
+    }
+    const cap = new BN(capRaw);
+    if (cap.lten(0)) throw new Error(`cap for ${kind} must be > 0 (use /admin/issuance-caps/set with 0 to halt)`);
     console.log(`${dryRun ? "[dry-run] " : ""}init ${kind}: cap=${cap.toString()} epochSlots=${epochSlots.toString()} pda=${pda.toBase58()}`);
     if (dryRun) continue;
     const ix = await (program.methods as any)
       .initIssuanceCap({ [kind]: {} }, epochSlots, cap)
-      .accounts({ config, authority: AUTHORITY.publicKey, issuanceCap: pda, systemProgram: SystemProgram.programId })
+      .accounts({ config, authority: authority.publicKey, issuanceCap: pda, systemProgram: SystemProgram.programId })
       .instruction();
     const sig = await authorityOnly([ix]);
     console.log(`  ok ${sig}`);

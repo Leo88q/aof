@@ -56,7 +56,7 @@ test('удаляются только доказанные категории, �
   // Шаг B закрыл все доказанно мёртвое: migrate_tool, marketplace_buy, rental_start и
   // place_limit_order удалены. Оставшиеся 7 — отключённые фичи, ждущие решения владельца.
   assert.deepEqual(remove, []);
-  for (const name of ['aof_quests.mind_spin_commit', 'aof_session_keys.session_create', 'aof_core.purchase_season_pass']) {
+  for (const name of ['aof_quests.mind_spin_commit', 'aof_session_keys.session_create']) {
     const entry = byName.get(name);
     assert.match(entry.decision, /^keep — disabled \/ product decision pending: .+/, `${name}: keep обязан нести статус и причину`);
     assert.ok(entry.guard.code, `${name}: guard должен быть подтверждён кодом`);

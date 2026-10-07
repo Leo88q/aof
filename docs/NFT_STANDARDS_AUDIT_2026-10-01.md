@@ -1,98 +1,53 @@
-# Аудит NFT-стандартов: Bubblegum V2, MPL Core, legacy NFT
+# Аудит NFT-стандартов: Bubblegum V2, MPL Core и Tool assets
 
-Дата: 2026-10-01. Основа — только код репозитория (ветка `arena/01a0f563-aof`), без допущений о том, «что должно быть».
-Охранный тест: `node --test tests/readiness/nft-standards.test.cjs` — он делает эти выводы проверяемыми: если кто-то
-добавит Bubblegum/MPL Core/Token Metadata в программы, тест упадёт и потребует обновить этот документ.
+**Обновлено: 2026-10-07.** Этот документ описывает выбранную metadata-only реализацию по исходникам. Изменения ещё должны пройти обязательные проверки PR; этот текст не утверждает, что код уже собран или проверен в валидаторе.
+
+Охранный тест: `node --test tests/readiness/nft-standards.test.cjs`. Он отдельно запрещает незапланированную интеграцию compressed-NFT стандартов и проверяет текущие SPL, Metaplex Metadata и authority-инварианты.
 
 ## Ответ коротко
 
-| Вопрос | Ответ (по коду) |
+| Вопрос | Ответ по текущему коду |
 |---|---|
-| Использует ли AOF **Bubblegum V2**? | **Нет.** Ни зависимости, ни CPI, ни Merkle-дерева, ни DAS-вызова, ни клиентской транзакции. Упоминания — это план, дескрипторы и заглушки. |
-| Использует ли AOF **MPL Core** (Collection и т. п.)? | **Нет, совсем.** Нет крейта, нет CPI, нет коллекции. «Не удалять MPL Core Collection вслепую» — удалять нечего: её в репозитории нет. |
-| Использует ли AOF **legacy NFT** (Metaplex Token Metadata)? | **Нет.** Нет `mpl-token-metadata`, нет metadata/master-edition аккаунтов. |
-| Что тогда такое «NFT инструмента»? | **Обычный SPL-токен** (supply = 1, decimals = 0), выпущенный самой программой, плюс отдельный PDA `ToolData` с игровыми полями. |
-| Нужно ли что-то удалять/менять сейчас? | **Нет.** Новая NFT-архитектура не добавлялась, существующее не удалялось. |
+| Использует ли AOF **Bubblegum V2** или compressed NFTs? | **Нет.** Нет Bubblegum CPI, Merkle tree, cNFT settlement или DAS-проверки владения. |
+| Использует ли AOF **MPL Core**? | **Нет.** Нет MPL Core CPI, коллекции MPL Core или Core asset adapter. |
+| Что выпускает AOF как Tool NFT? | 0-decimal classic SPL mint с supply 1 и immutable legacy Metaplex Token Metadata. **Master Edition намеренно не создаётся**: это metadata-only asset, а не canonical Metaplex Master Edition NFT. Для Metadata CPI mint временно создаётся с auth PDA как freeze authority; после CPI helper отзывает и mint, и freeze authority, поэтому финальный `freeze_authority == None`. Игровой state отдельно хранится в `ToolData`. |
+| Каков compatibility tradeoff? | Некоторые кошельки, marketplaces и индексаторы могут не распознать asset как стандартный Metaplex NFT или показать его неполно, поскольку отсутствует Master Edition. Существующие AOF ownership, marketplace и custody guards остаются обязательными. |
+| Откуда берутся URI? | Из 25-slot `ToolMetadataRegistry`; выдача требует инициализированный и замороженный registry. JSON и изображения размещаются вне сети. |
+| Проверены ли обязательные сборка и локальные тесты? | **Пока нет.** Rust/Anchor и validator tooling недоступны в этой среде; PR не должен сливаться, пока обязательные проверки не пройдут. Никакой production registry change или deployed-network transaction не выполнялся. |
 
-## Метод и воспроизведение
+## Что именно реализовано в исходниках
 
-```bash
-# 1. зависимости Rust: ни одного крейта Metaplex / compression
-grep -c -E 'name = "(mpl-|mpl_core|spl-account-compression|spl-concurrent|bubblegum)' Cargo.lock     # → 0
-grep -n -i -E 'mpl|bubblegum|compression|metaplex' Cargo.toml aof-core/Cargo.toml programs/*/Cargo.toml  # → пусто
-# 2. исходники программ и валидаторные тесты
-grep -rIn -i -E 'bubblegum|mpl[_-]?core|metaplex|spl_account_compression|merkle[_ ]tree|cnft|compressed' aof-core programs tests --include=*.rs --include=*.ts   # → пусто
-# 3. кто вообще упоминает Bubblegum (список файлов ниже)
-grep -rIl -i bubblegum . --exclude-dir=node_modules --exclude-dir=.git
-```
+- `aof-core/Cargo.toml` включает Anchor SPL metadata feature. Общий helper `aof-core/src/instructions/settlement.rs::mint_tool_nft`:
+  - минтит ровно один classic SPL token;
+  - создаёт только Metaplex Metadata через `CreateMetadataAccountV3`; Master Edition CPI и аккаунт отсутствуют;
+  - после успешного Metadata CPI отзывает `MintTokens` и `FreezeAccount` у auth PDA: supply нельзя увеличить, а выпущенный mint нельзя заморозить;
+  - берёт URI и `seller_fee_basis_points` из `ToolMetadataRegistry`;
+  - Metadata CPI списывает с payer'а rent аккаунта **и flat 0.01 SOL (10 000 000 lamports) fee Metaplex**, который остаётся внутри Metadata account; этот fee входит в `tool_settlement_rent`, в reimbursement сеттлера и в payer quotes (`METAPLEX_CREATION_FEE_LAMPORTS`);
+  - использует пустой symbol, `creators = None`, `collection = None` и `is_mutable = false`.
+- Mint-контексты требуют `decimals == 0`, начальный `supply == 0`, mint authority равный program PDA и временный freeze authority, равный тому же PDA. Metaplex отклоняет этот 0-decimal supply-1 mint без freeze authority; общий helper отзывает `MintTokens` и `FreezeAccount` после Metadata CPI в той же атомарной инструкции. Итог: supply 1 и обе authority `None`. Metadata PDA и Token Metadata program проверяются Anchor-контекстом; Master Edition PDA в нём нет.
+- `ToolMetadataRegistry` содержит 25 URI. `metadata_uri()` отказывает до `initialized && frozen`; конфигурационная инструкция замораживает registry только при заполнении всех слотов и уникальности URI. Для Devnet Cloudflare-пилота seller fee задан как 0 bps.
+- `ToolData` остаётся игровым account и не заменяется JSON metadata. Внешний Pages-хостинг может изменить доступность/ответ для URI; versioned paths и публичный verifier снижают риск, но не превращают Cloudflare в immutable storage.
+- Collector allowlist не определяет право по произвольной Token Metadata коллекции: eligible mints регистрируются отдельной authority-инструкцией.
 
-В `Cargo.lock` встречается `spl-token-metadata-interface` — это **интерфейсный крейт SPL Token-2022** (транзитивная
-зависимость `anchor-spl`), а не Metaplex.
+### Что не используется
 
-## Доказательства по группам
+- Bubblegum V1/V2, MPL Core, Light Protocol, compressed assets, Merkle proofs/trees и DAS APIs не интегрированы. Их упоминания в архитектурных материалах/дескрипторах не являются транзакционным кодом.
+- Транзитивный `spl-token-metadata-interface` в Cargo.lock сам по себе не означает Metaplex Token Metadata CPI; выбранный Metadata CPI вызывается явно через Anchor SPL metadata API.
+- Backend `aof_backend/src/lib/skrPrivilege.ts` по-прежнему содержит TODO для проверки владения Saga/Seeker через Metaplex DAS; она не реализована.
 
-### A. Программы (on-chain): отсутствие
+## Проверяемые исходники и тесты
 
-| Факт | Источник |
-|---|---|
-| Ни один из 7 `Cargo.toml` не тянет `mpl-*`, `bubblegum`, `spl-account-compression` | `Cargo.toml`, `aof-core/Cargo.toml`, `programs/*/Cargo.toml` |
-| Исходники и тесты не содержат `bubblegum`, `mpl_core`, `merkle tree`, `cnft`, `compressed` | grep по `aof-core/`, `programs/`, `tests/` — 0 совпадений |
-| «NFT» инструмента — SPL-токен: `token::mint_to(…, 1)`; on-chain требуется `mint.decimals == 0`, `mint.supply == 0`, **без freeze authority**, `mint_authority == auth` (PDA программы) | `aof-core/src/instructions/mint_tool.rs`, `MintTool` в `aof-core/src/lib.rs` |
-| Игровые поля лежат в PDA `ToolData` (161 байт с дискриминатором), а не в metadata-аккаунте | `aof-core/src/state.rs` (`ToolData`) |
-| Коллекционные инструменты определяются **allowlist'ом** (`register_collector_mint`), потому что программа «не зависит от mpl-token-metadata, и „этот mint — Historian?“ по метаданным определить нельзя» | `aof-core/src/instructions/collector_stake.rs:74` |
-| Чек-лист №46: «Программа не создаёт Metaplex-метаданные (зависимости от `mpl-token-metadata` нет): у инструментов нет on-chain update authority» | `SECURITY_CHECKLIST_GAMES_2026-09-26.md` |
+- `aof-core/src/instructions/settlement.rs` — mint, immutable Metadata CPI и последующая отмена mint authority.
+- `aof-core/src/lib.rs` — MintTool, Metadata PDA constraint, временный freeze authority auth PDA и его отзыв до завершения issuance, Token Metadata program account.
+- `aof-core/src/state.rs` — frozen URI registry и slot lookup.
+- `aof-core/src/instructions/tool_metadata.rs` — обновление URI и freeze gate.
+- `tests/readiness/nft-standards.test.cjs` — отсутствие compressed-NFT интеграции, mint invariants, Metadata-only CPI, authority revoke и registry freeze.
+- `tests/aof_payer_funding.ts` и `tests/aof_vrf_localnet.ts` — при запуске на изолированном валидаторе проверяют supply, mint/freeze authorities, отсутствие Master Edition и rent accounting.
+- `docs/TOOL_NFT_METADATA_RELEASE.md` — подготовка metadata bundle и отдельные release gates.
 
-### B. Документы: план, не реализация
+## Оставшиеся проверки
 
-* `docs/COMPRESSION_DESIGN.md` (2026-09-20): «**Статус: архитектурный план и offline-калькулятор, не интеграция и не разрешение mainnet.
-  Ни Bubblegum, ни Light Protocol в текущий контракт не добавлены.**» Здесь же — единственное упоминание MPL Core: как свойство
-  стандарта Bubblegum V2 («V2 … MPL Core collections»), а не как часть AOF.
-* `docs/PRODUCTION_CHECKLIST.md`, `docs/PRODUCTION_DEPLOYMENT.md`, `docs/WATCHTOWER_OS_V3.md`, `AUDIT_2026-09-20.md`, `FINAL_REPORT_V3.md`,
-  `WATCHTOWER_INTEGRATION.md` — упоминания в списках стека/рисков.
-
-### C. Платформенный код — дескрипторы без транзакций
-
-`src/os/assets-strategy.js`, `src/os/stack-v3.js`, `src/os/handoff-v3.js`, `src/os/control-panels-v3.js`,
-`src/os/actix-gateway/src/main.rs`: возвращают **описание** («standard: cNft, protocol: Bubblegum v2, mintCostUsdPerMillion: 110,
-Tensor primary») по запросу `GET /api/assets/strategy`. Тесты (`src/os/tests/os-v3.test.js`, `src/os/smoke-devnet.js`) проверяют
-строки этих описаний. Ни одна функция не строит и не отправляет Bubblegum-транзакцию; SQL-схема `src/os/sql/cross_game_materials.sql`
-хранит колонки `is_cnft`, `asset_id` как поля данных.
-
-### D. Клиентские заглушки (game)
-
-`game/godot/chain/candy_machine.gd` — один метод, который **возвращает словарь** `{"standard": "cNft", "protocol": "Bubblegum v2", …}`;
-`game/godot/layers/l4_assets.gd`, `products/inventory.gd`, `game/unity/Assets/Scripts/Layers/L4Assets.cs`, `L3Chain.cs`, `Inventory.cs`,
-`Marketplace.cs` — комментарии/описания слоя. Транзакций нет.
-
-### E. Расчёты стоимости
-
-`scripts/mint-cost-model.py` (+ `test-mint-cost-model.py`, `docs/audit/mint-cost-example.json`) — **офлайн-калькулятор** сравнения
-`current_spl` / `bubblegum_hybrid` / `bubblegum_compressed_state`. Не интеграция.
-
-### F. Backend
-
-`aof_backend/src/lib/skrPrivilege.ts:64` — `// TODO: проверка владения NFT Saga/Seeker через Metaplex DAS API`. **Не реализовано:** привилегия
-определяется только по токену SKR; владение NFT Saga/Seeker не проверяется.
-
-### G. Инструкции для ИИ-агентов
-
-`.claude/skills/godot-solana/SKILL.md`, `.claude/skills/security-auditing/SKILL.md` упоминают Bubblegum как знание для агента.
-Это не код продукта (и файлы закреплены SHA-lock'ом — менять их без review нельзя).
-
-## Выводы и что из них следует
-
-1. **Bubblegum V2 — не реализован.** Корректная формулировка для всех документов: «запланировано / описано», не «используется».
-   Дескрипторы `cNft … $110/M` в `src/os` и `game` рекламируют то, чего нет в контракте; их стоит читать как намерение
-   (см. `docs/COMPRESSION_DESIGN.md`: передача asset ID вместо SPL mint сломает проверки `Account<Mint>`, ATA, custody и маркетплейс).
-2. **MPL Core отсутствует.** Если в голове владельца он «где-то есть» — в этой кодовой базе его нет; удалять нечего и не следует
-   добавлять «на всякий случай».
-3. **Legacy NFT (Token Metadata) отсутствует.** У инструментов нет on-chain update authority и нет metadata-аккаунта; метаданные
-   игры — `ToolData` + внешний JSON. Это согласуется с чек-листом №46.
-4. **Что осталось нереализованным и честно названо:** DAS-проверка владения Saga/Seeker NFT (TODO в `skrPrivilege.ts`).
-5. **Не делалось (по условиям задачи):** новая NFT-архитектура, миграция SPL → cNFT, добавление зависимостей, удаление чего-либо.
-
-## Если Bubblegum/MPL Core когда-нибудь появится
-
-Охранный тест остановит CI. Чтобы его обновить, сначала выполните пилот из `docs/COMPRESSION_DESIGN.md` («Безопасная архитектура pilot»,
-10 пунктов — private tree под PDA, `AssetRef` с явным видом, on-chain проверка proof/root, атомарный freeze + смена статуса,
-негативные on-chain тесты), а затем обновите этот документ и список разрешённых файлов в `tests/readiness/nft-standards.test.cjs`.
+1. Пройти обязательные закреплённые Rust/Anchor сборку, тесты и IDL drift проверки до merge; в этой среде Rust/Anchor build и validator suite не запускались.
+2. На изолированном локальном валидаторе проверить все issuance paths: supply 1, decimals 0, `mint_authority == None`, `freeze_authority == None`, immutable Metadata, отсутствие Master Edition и точный rent reimbursement. Не отправлять эти транзакции в Devnet/mainnet в рамках code-only работы.
+3. Любой последующий metadata hosting/registry release — отдельное действие с отдельным одобрением. Не менять production registry и не включать mining без всех release gates.
+4. Для будущего Bubblegum/MPL Core пилота сначала обновить ownership adapter, custody/marketplace semantics, proofs, replay protection и negative on-chain tests (см. `docs/COMPRESSION_DESIGN.md`). Нельзя подменять текущий SPL mint compressed asset ID без отдельного архитектурного изменения.

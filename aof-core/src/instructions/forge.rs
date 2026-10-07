@@ -1,17 +1,15 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::{self, Burn, MintTo};
+use anchor_spl::token::{self, Burn, Transfer};
 use crate::constants::*;
 use crate::{ForgeAttemptCommit, ForgeAttemptReveal, ForgeAttemptExpire};
 use crate::errors::*;
 use crate::events::*;
-use crate::state::check_supply_cap;
-use crate::ResourceKind;
 use crate::vrf::{self, VrfRevealParams};
 
-/// [F-06] Forge commit. Circuit and Silicon are burned (amounts recorded for a refund),
-/// the SOL fee (+protector) is escrowed on the commit PDA, the current level
-/// is snapshotted and a pool randomness account is committed (see vrf.rs).
+/// [F-06] Forge commit. Circuit and Silicon are escrowed until the outcome is
+/// known, the SOL fee (+protector) is escrowed on the commit PDA, the current
+/// level is snapshotted and a pool randomness account is committed (see vrf.rs).
 /// The operator co-signs as the backend gate.
 pub fn commit_handler(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_protector: bool) -> Result<()> {
     require!(slot_type < 3, AofError::InvalidAmount);
@@ -29,17 +27,17 @@ pub fn commit_handler(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_prote
 
     let circuit_cost = ENCHANT_CIRCUIT_COST[idx];
     let silicon_cost = ENCHANT_SILICON_COST[idx];
-    for (mint, from, cost) in [
-        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit, circuit_cost),
-        (&ctx.accounts.silicon_mint, &ctx.accounts.user_silicon, silicon_cost),
+    for (from, escrow, cost) in [
+        (&ctx.accounts.user_circuit, &ctx.accounts.escrow_circuit, circuit_cost),
+        (&ctx.accounts.user_silicon, &ctx.accounts.escrow_silicon, silicon_cost),
     ] {
         require!(from.amount >= cost, AofError::InsufficientBalance);
-        token::burn(
+        token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                Burn {
-                    mint: mint.to_account_info(),
+                Transfer {
                     from: from.to_account_info(),
+                    to: escrow.to_account_info(),
                     authority: ctx.accounts.user.to_account_info(),
                 },
             ),
@@ -155,6 +153,28 @@ pub fn reveal_handler(ctx: Context<ForgeAttemptReveal>, params: VrfRevealParams)
         clock.slot,
     )?;
 
+    // A revealed forge attempt consumes the escrowed inputs; a non-revealed
+    // attempt instead returns them through `expire_handler`.
+    let fc = &ctx.accounts.forge_commit;
+    let token_program = ctx.accounts.token_program.to_account_info();
+    let auth = ctx.accounts.auth.to_account_info();
+    burn_auth_escrow(
+        &token_program,
+        &ctx.accounts.circuit_mint.to_account_info(),
+        &ctx.accounts.escrow_circuit.to_account_info(),
+        &auth,
+        ctx.bumps.auth,
+        fc.circuit_burned,
+    )?;
+    burn_auth_escrow(
+        &token_program,
+        &ctx.accounts.silicon_mint.to_account_info(),
+        &ctx.accounts.escrow_silicon.to_account_info(),
+        &auth,
+        ctx.bumps.auth,
+        fc.silicon_burned,
+    )?;
+
     // Only this commit can move the slot while it is pending (the commit PDA
     // is unique per tool+slot), so the level must still be the snapshot.
     let level_before = ctx.accounts.forge_commit.level_before;
@@ -190,15 +210,55 @@ pub fn reveal_handler(ctx: Context<ForgeAttemptReveal>, params: VrfRevealParams)
     Ok(())
 }
 
+fn burn_auth_escrow<'info>(
+    token_program: &AccountInfo<'info>,
+    mint: &AccountInfo<'info>,
+    escrow: &AccountInfo<'info>,
+    auth: &AccountInfo<'info>,
+    auth_bump: u8,
+    amount: u64,
+) -> Result<()> {
+    if amount == 0 { return Ok(()); }
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+    token::burn(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            Burn { mint: mint.clone(), from: escrow.clone(), authority: auth.clone() },
+            signer_seeds,
+        ),
+        amount,
+    )
+}
+
+fn refund_auth_escrow<'info>(
+    token_program: &AccountInfo<'info>,
+    escrow: &AccountInfo<'info>,
+    destination: &AccountInfo<'info>,
+    auth: &AccountInfo<'info>,
+    auth_bump: u8,
+    amount: u64,
+) -> Result<()> {
+    if amount == 0 { return Ok(()); }
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+    token::transfer(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            Transfer { from: escrow.clone(), to: destination.clone(), authority: auth.clone() },
+            signer_seeds,
+        ),
+        amount,
+    )
+}
+
 /// Перевод escrow с PDA коммита на получателя (оба аккаунта уже `mut`).
 fn release_escrow<'info>(from: &AccountInfo<'info>, to: &AccountInfo<'info>, amount: u64) -> Result<()> {
     let reserve = Rent::get()?.minimum_balance(from.data_len());
     crate::economics::transfer_owned_lamports(from, to, amount, reserve)
 }
 
-/// [F-06] Refund of a forge attempt the oracle never revealed: burned Circuit and
-/// Silicon are re-minted, the escrowed fee and rent go back to the user.
-/// Permissionless, only once the reveal window has closed.
+/// [F-06] Refund a forge attempt the oracle never revealed: escrowed Circuit
+/// and Silicon are transferred back (not re-minted), and the SOL fee and rent
+/// go back to the user. Permissionless after the reveal window closes.
 pub fn expire_handler(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.forge_commit.key();
@@ -207,27 +267,24 @@ pub fn expire_handler(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
 
     let fc = &ctx.accounts.forge_commit;
     let (paid, circuit, silicon) = (fc.paid_lamports, fc.circuit_burned, fc.silicon_burned);
-    check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;
-    check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;
-
-    let auth_bump = ctx.bumps.auth;
-    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-    for (mint, to, amount) in [
-        (ctx.accounts.circuit_mint.to_account_info(), ctx.accounts.user_circuit.to_account_info(), circuit),
-        (ctx.accounts.silicon_mint.to_account_info(), ctx.accounts.user_silicon.to_account_info(), silicon),
-    ] {
-        if amount == 0 {
-            continue;
-        }
-        token::mint_to(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                MintTo { mint, to, authority: ctx.accounts.auth.to_account_info() },
-                signer_seeds,
-            ),
-            amount,
-        )?;
-    }
+    let token_program = ctx.accounts.token_program.to_account_info();
+    let auth = ctx.accounts.auth.to_account_info();
+    refund_auth_escrow(
+        &token_program,
+        &ctx.accounts.escrow_circuit.to_account_info(),
+        &ctx.accounts.user_circuit.to_account_info(),
+        &auth,
+        ctx.bumps.auth,
+        circuit,
+    )?;
+    refund_auth_escrow(
+        &token_program,
+        &ctx.accounts.escrow_silicon.to_account_info(),
+        &ctx.accounts.user_silicon.to_account_info(),
+        &auth,
+        ctx.bumps.auth,
+        silicon,
+    )?;
 
     // The escrowed fee reaches the user with the rent through `close = user`.
     let fc = &mut ctx.accounts.forge_commit;

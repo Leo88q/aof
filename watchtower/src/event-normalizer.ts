@@ -91,7 +91,7 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   QuestCompleted: ["QuestRewardClaimed", "AchievementUnlocked", "ExplorationCompleted", "ChallengeContributed"],
   StakeStarted: ["Staked", "CollectorStaked"],
   StakeEnded: ["Unstaked", "CollectorUnstaked"],
-  RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "PaidOut", "QuestRewardClaimed", "LotteryRoundRefunded"],
+  RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "SeasonPremiumRewardClaimed", "PaidOut", "QuestRewardClaimed", "LotteryRoundRefunded"],
   RewardClaimed: ["ResourceIssued"],
   TokenMinted: ["ResourceIssued", "ToolMinted"],
   TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult", "RebirthReset"],
@@ -101,7 +101,7 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
     "DrumCommitted", "MindSpinCommitted"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched",
     "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded", "MindSpinRevealed", "MindSpinRefunded"],
-  ConfigUpdated: ["IssuanceCapChanged", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
+  ConfigUpdated: ["IssuanceCapChanged", "IssuanceLifetimeBaselineSet", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
     "MaterialMintsInitialized", "ConfigMigrated", "CashoutFreezeChanged", "EmergencyStopActivated",
@@ -389,6 +389,9 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     case "SeasonRewardClaimed":
       emit("RewardGranted", { playerId: pid(d.owner), attributes: { source: "season", level: str(d.level) } });
       break;
+    case "SeasonPremiumRewardClaimed":
+      emit("RewardGranted", { playerId: pid(d.owner), attributes: { source: "season_premium", seasonId: str(d.season_id), level: str(d.level) } });
+      break;
     case "PaidOut":
       emit("RewardGranted", { amount: str(d.amount), currency: LAMPORTS, attributes: { source: "vault", vaultBalanceAfter: str(d.vaultBalanceAfter) } });
       emit("TreasuryWithdrawn", { amount: str(d.amount), currency: LAMPORTS, attributes: { from: "gas_vault" } });
@@ -434,6 +437,19 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     // ---- security / config ----------------------------------------------------
     case "IssuanceCapChanged":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "issuance_cap", kind: str(d.kind), epochSlots: str(d.epochSlots), capPerEpoch: str(d.capPerEpoch), mintedInEpoch: str(d.mintedInEpoch), halted: str(d.capPerEpoch) === "0" } });
+      break;
+    case "IssuanceLifetimeBaselineSet":
+      emit("ConfigUpdated", {
+        playerId: null,
+        asset: str(d.mint),
+        attributes: {
+          setting: "issuance_lifetime_baseline",
+          kind: str(d.kind),
+          previous: str(d.previous),
+          baseline: str(d.baseline),
+          slot: str(d.slot),
+        },
+      });
       break;
     case "PausedToggled":
       // Same on-chain switch backs both Watchtower types: PausedToggled is the

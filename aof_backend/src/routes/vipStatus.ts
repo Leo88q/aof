@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { seasonPassPda, seasonPda } from "../lib/pda";
+import { seasonPassPda, seasonPremiumClaimsPda, seasonPda } from "../lib/pda";
 import { program, connection, assertExpectedCluster } from "../provider";
 import { pk } from "../lib/tx";
 import { activeSeasonId, seasonWindow } from "../lib/activeSeason";
@@ -66,6 +66,20 @@ r.get("/:user", async (req, res) => {
       return res.status(503).json({ error: "VIP_STATUS_UNAVAILABLE_FROM_CANONICAL_SEASON_ACCOUNTS" });
     }
     const passPremium = seasonPassData?.premium === true;
+    let premiumClaimsData: any = null;
+    if (passPremium) {
+      const [premiumClaims] = seasonPremiumClaimsPda(user, seasonId);
+      try {
+        const account = await connection.getAccountInfo(premiumClaims);
+        if (account) {
+          premiumClaimsData = await (program.account as any).seasonPremiumClaims.fetch(premiumClaims);
+          if (!premiumClaimsData.owner.equals(user) || Number(premiumClaimsData.seasonId) !== seasonId ||
+              typeof premiumClaimsData.claimedBitmap?.toString !== "function") throw new Error("Invalid premium claims ledger");
+        }
+      } catch {
+        return res.status(503).json({ error: "VIP_STATUS_UNAVAILABLE_FROM_CANONICAL_SEASON_ACCOUNTS" });
+      }
+    }
     const isVip = passPremium && seasonActive;
 
     // Canonical status and pass progress are returned together. The client may
@@ -79,6 +93,9 @@ r.get("/:user", async (req, res) => {
         xp: Number(seasonPassData.xp),
         claimedBitmap: seasonPassData.claimedBitmap.toString(),
         premium: passPremium,
+      } : null,
+      premiumClaims: premiumClaimsData ? {
+        claimedBitmap: premiumClaimsData.claimedBitmap.toString(),
       } : null,
       isVip,
       source: "onchain",

@@ -251,6 +251,53 @@ fn program_account<T: AccountSerialize>(key: Pubkey, value: &T, space: usize) ->
     info(key, false, rent_exempt(space), serialized(value, space), crate::ID, false)
 }
 
+fn issuance_cap_info(kind: ResourceKind, lifetime_minted: u128) -> AccountInfo<'static> {
+    let (key, bump) = pda(&[ISSUANCE_CAP_SEED, &[kind as u8]]);
+    let cap = IssuanceCap {
+        kind: kind as u8,
+        epoch_slots: 100,
+        cap_per_epoch: u64::MAX,
+        epoch_start_slot: SLOT_NOW,
+        minted_in_epoch: 0,
+        lifetime_minted,
+        bump,
+    };
+    program_account(key, &cap, 8 + IssuanceCap::INIT_SPACE)
+}
+
+/// Complete frozen URI registry required by tool-issuance account contexts.
+fn tool_metadata_registry_info() -> AccountInfo<'static> {
+    let (key, bump) = pda(&[TOOL_METADATA_REGISTRY_SEED]);
+    let registry = ToolMetadataRegistry {
+        authority: Pubkey::new_unique(),
+        initialized: true,
+        frozen: true,
+        populated_mask: TOOL_METADATA_COMPLETE_MASK,
+        seller_fee_basis_points: 0,
+        bump,
+        metadata_uris: (0..TOOL_METADATA_URI_COUNT)
+            .map(|index| format!("https://metadata.example.com/tools/{index}.json"))
+            .collect(),
+    };
+    program_account(key, &registry, 8 + ToolMetadataRegistry::INIT_SPACE)
+}
+
+fn tool_metadata_account(mint: Pubkey) -> AccountInfo<'static> {
+    let key = anchor_spl::metadata::mpl_token_metadata::accounts::Metadata::find_pda(&mint).0;
+    info(
+        key,
+        false,
+        rent_exempt(TOOL_METADATA_ACCOUNT_MAX_SPACE),
+        vec![0; TOOL_METADATA_ACCOUNT_MAX_SPACE],
+        anchor_spl::metadata::ID,
+        false,
+    )
+}
+
+fn token_metadata_program_info() -> AccountInfo<'static> {
+    executable_program(anchor_spl::metadata::ID)
+}
+
 fn executable_program(id: Pubkey) -> AccountInfo<'static> {
     info(id, false, 1, Vec::new(), bpf_loader_upgradeable::ID, true)
 }
@@ -652,6 +699,7 @@ fn collect_signal_binds_mint_token_account_and_state_to_the_signer() {
                 signal_mint,
                 user_signal,
                 token_program,
+                issuance_cap_info(ResourceKind::Signal, 0),
             ],
             &[],
         )
@@ -728,11 +776,11 @@ fn rental_close_refund_is_bound_to_the_renter() {
     assert_eq!(accounts.tool.operator, owner, "the operator right returns to the owner");
 }
 
-/// #11 / F-I: a tool NFT whose mint keeps a freeze authority can later be
-/// frozen in a buyer's wallet or inside an auction escrow (which blocks the
-/// settlement and locks the bidder's SOL). New tool mints must be unfreezable.
+/// #11 / F-I: Metadata creation requires a freeze authority on this mint shape.
+/// Only the auth PDA may hold it during issuance; mint_tool_nft revokes it before
+/// the transaction completes, preserving the permanently unfreezable final mint.
 #[test]
-fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
+fn tool_nft_mint_requires_auth_freeze_authority_for_metadata() {
     runtime();
     let w = World::new();
     let recipient = Pubkey::new_unique();
@@ -756,12 +804,17 @@ fn tool_nft_mint_with_a_freeze_authority_is_rejected() {
                 program_account(tool_key, &blank, TOOL_DATA_SPACE),
                 token_program_info(),
                 system_program_info(),
+                tool_metadata_registry_info(),
+                tool_metadata_account(mint),
+                token_metadata_program_info(),
             ],
             &ix,
         )
     };
 
-    with_freeze(None).unwrap();
+    with_freeze(Some(w.auth_key)).unwrap();
+    let err = rejected(with_freeze(None), "InvalidMint");
+    assert!(blames(&err, "mint"), "{err}");
     let err = rejected(with_freeze(Some(Pubkey::new_unique())), "InvalidMint");
     assert!(blames(&err, "mint"), "{err}");
 }
@@ -1035,6 +1088,7 @@ fn run_harvest_with(synapse_supply: u64, synapse_cap: u64, cashout_frozen: bool)
         token_account(Pubkey::new_unique(), w.mm.synapse, user, 0),
         token_program_info(),
         system_program_info(),
+        issuance_cap_info(ResourceKind::Synapse, synapse_supply as u128),
     ];
     let (mut accounts, bumps) = parse::<HarvestSynapse>(infos, &[TILE]).unwrap();
     let result =
@@ -1395,12 +1449,20 @@ fn season_pass_purchase(start_time: i64, already_premium: bool) -> (Result<()>, 
     let (season_key, season_bump) = pda(&[SEASON_SEED, &id]);
     let season = Season { season_id: SEASON_ID, start_time, bump: season_bump };
     let pass = SeasonPass { owner: user, season_id: SEASON_ID, xp: 0, premium: already_premium, claimed_bitmap: 0 };
+    let (claims_key, claims_bump) = pda(&[SEASON_PREMIUM_CLAIMS_SEED, user.as_ref(), &id]);
+    let premium_claims = SeasonPremiumClaims {
+        owner: user,
+        season_id: SEASON_ID,
+        claimed_bitmap: 0,
+        bump: claims_bump,
+    };
     let infos = vec![
         w.config_info(),
         wallet(user, true),
         wallet(w.treasury, false),
         program_account(season_key, &season, SEASON_SPACE),
         program_account(pda(&[SEASON_PASS_SEED, user.as_ref(), &id]).0, &pass, SEASON_PASS_SPACE),
+        program_account(claims_key, &premium_claims, SEASON_PREMIUM_CLAIMS_SPACE),
         system_program_info(),
     ];
     let (mut accounts, bumps) = parse::<PurchaseSeasonPass>(infos, &[]).unwrap();
@@ -1487,6 +1549,7 @@ fn collect_grid_power_ignores_a_stale_cached_weather() {
         token_account(Pubkey::new_unique(), w.mm.power, user, 0),
         token_program_info(),
         system_program_info(),
+        issuance_cap_info(ResourceKind::Power, 0),
     ];
     let (mut accounts, bumps) = parse::<CollectPower>(infos, &[]).unwrap();
     let result =
@@ -2140,6 +2203,21 @@ fn switchboard_cpi_encoding_matches_the_pinned_idl() {
     assert_eq!(vrfmod::SWITCHBOARD_QUEUE_DEVNET.to_string(), "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7");
 }
 
+/// The Metaplex `CreateMetadataAccountV3` fee is charged to whoever pays for the
+/// Metadata account; a tool-producing commit must escrow it and the settler must
+/// get it back, otherwise every permissionless reveal leaks 0.01 SOL.
+#[test]
+fn tool_settlement_deposit_covers_the_metaplex_creation_fee() {
+    runtime();
+    let rent = Rent::default();
+    let without_fee = rent.minimum_balance(anchor_spl::token::Mint::LEN)
+        .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
+        .saturating_add(rent.minimum_balance(TOOL_DATA_SPACE))
+        .saturating_add(rent.minimum_balance(TOOL_METADATA_ACCOUNT_MAX_SPACE));
+    assert_eq!(TOOL_METADATA_CREATION_FEE_LAMPORTS, 10_000_000, "documented 0.01 SOL Metaplex fee");
+    assert_eq!(vrfmod::tool_settlement_rent(&rent), without_fee + TOOL_METADATA_CREATION_FEE_LAMPORTS);
+}
+
 fn commit_accounts(randomness: &AccountInfo<'static>) -> vrfmod::CommitAccounts<'static> {
     vrfmod::CommitAccounts {
         switchboard_program: sb_program(),
@@ -2435,6 +2513,9 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
             token_program_info(),
             executable_program(anchor_spl::associated_token::ID),
             system_program_info(),
+            tool_metadata_registry_info(),
+            tool_metadata_account(mint_key),
+            token_metadata_program_info(),
         ]
     };
     // Another pool account in the randomness slot is refused by the context.
@@ -2449,6 +2530,14 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
         let err = rejected(validate::<PackOpenReveal>(infos, &[]), "InvalidRandomnessAccount");
         assert!(blames(&err, field), "{field}: {err}");
     }
+    // The native mint is pinned: a caller cannot swap in another mint account,
+    // which is what the reveal CPI pays its reward escrow in.
+    {
+        let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
+        infos[17] = plain(Pubkey::new_unique());
+        let err = rejected(validate::<PackOpenReveal>(infos, &[]), "ConstraintAddress");
+        assert!(blames(&err, "wrapped_sol_mint"), "{err}");
+    }
 
     let infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
     let (commit_i, cranker_i, treasury_i) = (infos[2].clone(), infos[1].clone(), infos[4].clone());
@@ -2460,6 +2549,8 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
     assert_eq!((accounts.tool_data.owner, accounts.tool_data.operator, accounts.tool_data.mint), (user, user, mint_key));
     assert_eq!(accounts.tool_data.durability, MAX_DURABILITY);
     assert_eq!(treasury_i.lamports(), WALLET_LAMPORTS + price, "the price reaches the treasury only now");
+    // The settler fronted the Metaplex creation fee inside the Metadata CPI, so
+    // being made whole means the whole deposit, fee included.
     assert_eq!(cranker_i.lamports(), WALLET_LAMPORTS + deposit, "the settler is made whole");
     assert_eq!(commit_i.lamports(), rent_exempt(PACK_COMMIT_SPACE), "only the rent is left for `close = user`");
     assert_eq!(accounts.vrf_slot.lock, Pubkey::default());
@@ -2562,6 +2653,7 @@ fn a_harvest_cannot_be_collected_twice() {
         token_account(Pubkey::new_unique(), w.mm.synapse, user, 0),
         token_program_info(),
         system_program_info(),
+        issuance_cap_info(ResourceKind::Synapse, 0),
     ];
     let harvest = |infos: Vec<AccountInfo<'static>>| -> Result<()> {
         let (mut accounts, bumps) = parse::<HarvestSynapse>(infos, &[TILE])?;
@@ -2806,6 +2898,15 @@ struct SignalClaim {
 /// Реальный `collect_signal::handler`: `output_signal` — начисленная партия,
 /// `signal_cap` — потолок выпуска сигнала, `mint_supply` — эмиссия сигнала.
 fn claim_signal(output_signal: u64, signal_cap: u64, mint_supply: u64) -> SignalClaim {
+    claim_signal_with_lifetime(output_signal, signal_cap, mint_supply, mint_supply as u128)
+}
+
+fn claim_signal_with_lifetime(
+    output_signal: u64,
+    signal_cap: u64,
+    mint_supply: u64,
+    lifetime_minted: u128,
+) -> SignalClaim {
     runtime();
     let mut w = World::new();
     w.mm.max_supply[ResourceKind::Signal as usize] = signal_cap;
@@ -2828,6 +2929,7 @@ fn claim_signal(output_signal: u64, signal_cap: u64, mint_supply: u64) -> Signal
             spl_mint(w.mm.signal, mint_supply, Some(w.auth_key), None),
             token_account(Pubkey::new_unique(), w.mm.signal, user, 0),
             token_program_info(),
+            issuance_cap_info(ResourceKind::Signal, lifetime_minted),
         ],
         &[],
     )
@@ -2852,6 +2954,15 @@ struct GridClaim {
 /// начисления, `water_cap` — потолок выпуска энергопотока, `mint_supply` —
 /// его эмиссия.
 fn claim_grid(last_collected_at: i64, power_cap: u64, mint_supply: u64) -> GridClaim {
+    claim_grid_with_lifetime(last_collected_at, power_cap, mint_supply, mint_supply as u128)
+}
+
+fn claim_grid_with_lifetime(
+    last_collected_at: i64,
+    power_cap: u64,
+    mint_supply: u64,
+    lifetime_minted: u128,
+) -> GridClaim {
     runtime();
     let mut w = World::new();
     w.mm.max_supply[ResourceKind::Power as usize] = power_cap;
@@ -2881,6 +2992,7 @@ fn claim_grid(last_collected_at: i64, power_cap: u64, mint_supply: u64) -> GridC
             token_account(Pubkey::new_unique(), w.mm.power, user, 0),
             token_program_info(),
             system_program_info(),
+            issuance_cap_info(ResourceKind::Power, lifetime_minted),
         ],
         &[],
     )
@@ -2918,10 +3030,16 @@ fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
     assert_eq!(capped.cpis, 0, "отвергнуто до минт-CPI");
     assert!(capped.in_progress, "выдано 0 ≤ начислено, партия ждёт решения");
 
-    // Максимум эмиссии + начисленное: потолок не вычисляется — отказ, не перенос.
-    let overflow = claim_signal(2, u64::MAX - 1, u64::MAX);
+    // A mint supply already above the configured lifetime ceiling is rejected.
+    let already_over_cap = claim_signal(2, u64::MAX - 1, u64::MAX);
+    rejected(already_over_cap.result, "SupplyCapExceeded");
+    assert_eq!(already_over_cap.cpis, 0, "отказ до минт-CPI");
+    assert!(already_over_cap.in_progress, "партия не потеряна");
+
+    // A corrupted u128 lifetime counter cannot wrap and authorize an emission.
+    let overflow = claim_signal_with_lifetime(2, SUPPLY_CAP_UNLIMITED, 0, u128::MAX);
     rejected(overflow.result, "MathOverflow");
-    assert_eq!(overflow.cpis, 0, "переполнение потолка отвергается до минта");
+    assert_eq!(overflow.cpis, 0, "переполнение счётчика отвергается до минта");
     assert!(overflow.in_progress, "партия не потеряна");
 
     // --- сетевая станция: окно начисления решает, сколько можно снять --------------
@@ -2964,8 +3082,8 @@ fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
     assert_eq!(capped_well.cpis, 0);
     assert_eq!(capped_well.last_collected_at, window, "отвергнутый сбор не перезапускает окно");
 
-    // Максимум эмиссии при потолке ниже начисленного: отказ до минта.
-    let grid_overflow = claim_grid(NOW_TS - elapsed, u64::MAX - 1, u64::MAX);
+    // Потенциальное переполнение монотонного u128-счётчика отвергается до минта.
+    let grid_overflow = claim_grid_with_lifetime(NOW_TS - elapsed, u64::MAX - 1, u64::MAX, u128::MAX);
     rejected(grid_overflow.result, "MathOverflow");
     assert_eq!(grid_overflow.cpis, 0);
     assert_eq!(grid_overflow.last_collected_at, NOW_TS - elapsed, "окно не тронуто");
@@ -2989,6 +3107,7 @@ fn a_claim_cannot_be_collected_twice() {
     };
     let signal_mint = spl_mint(w.mm.signal, 0, Some(w.auth_key), None);
     let user_signal = token_account(Pubkey::new_unique(), w.mm.signal, user, 0);
+    let issuance_cap = issuance_cap_info(ResourceKind::Signal, 0);
     let infos = |signal_info: AccountInfo<'static>| {
         vec![
             w.config_info(),
@@ -2999,6 +3118,7 @@ fn a_claim_cannot_be_collected_twice() {
             signal_mint.clone(),
             user_signal.clone(),
             token_program_info(),
+            issuance_cap.clone(),
         ]
     };
 

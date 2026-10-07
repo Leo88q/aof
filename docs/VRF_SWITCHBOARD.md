@@ -82,6 +82,9 @@
   - оракул равен назначенному при коммите;
   - `stats` — PDA оракула;
   - `reward_escrow` — ATA аккаунта случайности;
+  - `wrapped_sol_mint` — канонический native mint (So111…112): CPI `randomness_reveal`
+    платит им в reward escrow, поэтому аккаунт обязателен и в контексте, и в CPI
+    (pack/reroll reveal получили его вместе с остальными тремя механиками);
   - `program_state` — State PDA.
 - **Внутри `vrf::commit`:**
   - слот свободен и не выведен;
@@ -116,7 +119,9 @@
 Транзакции раскрытия и возврата:
 
 - несут лимит 400k CU (`VRF_COMPUTE_UNITS`) и приоритетную комиссию 5000 µlamports/CU (`VRF_PRIORITY_MICROLAMPORTS`) — около 0,000002 SOL. Комиссия ограничена потолком wallet guard, иначе кошелёк игрока отклонил бы самостоятельное раскрытие;
-- помещаются в legacy-транзакцию с запасом. Это проверяет `tests/readiness/vrf-tx-size.test.cjs`: самая большая, `explore_reveal`, занимает ~1,09 КБ из 1,23 КБ.
+- **commit/reveal/refund exploration используют один атомарный v0 transaction с Address Lookup Table (ALT)**. Legacy-сериализация для `start_exploration_commit`/`explore_reveal` превышала 1,232-byte packet limit (консервативная readiness-оценка — 1,283/1,382 bytes); staged-транзакций и разрыва escrow-операции нет. Кошелёк разрешает каждую lookup-таблицу с devnet RPC, проверяет активность, декодирует все загруженные program/account keys и симулирует тот же v0 message перед подписью;
+- `npm run vrf:lut:init` (также вызывается `devnet-bringup.sh --apply`) создаёт или дополняет devnet ALT, включает стабильные resource/VRF accounts и все существующие pool slots, затем читает аккаунт обратно, ждёт активации записей и записывает `VRF_ADDRESS_LOOKUP_TABLE` в `aof_backend/.env`. После ручного добавления/ротации VRF pool slots повторите команду. Не выключайте и не деактивируйте таблицу; маршрут fail-closed, если переменная отсутствует, таблица неактивна/закрыта или serialized transaction выше 1,168 bytes (64 bytes headroom до лимита);
+- размер каждого VRF-инструкционного пути и worst-case exploration refund с отсутствующими player ATAs проверяет `tests/readiness/vrf-tx-size.test.cjs` по v0/legacy wire-format layouts. ATA init остаётся отдельной верхнеуровневой instruction той же refund transaction, вне `aof_core` expiry handler.
 
 Если симуляция падает с превышением CU, поднимите `VRF_COMPUTE_UNITS`. Для RPC нужен собственный (платный) узел: воркер опрашивает `getProgramAccounts` раз в 3 с.
 
@@ -128,6 +133,7 @@
 - **Ошибки.** Коды (`VRF_POOL_EXHAUSTED`, `VRF_SETTLEMENT_DEGRADED`, …) показываются игроку понятным текстом (`frontend/src/lib/vrfErrors.ts`).
 - **Wallet guard.**
   - `PackOpenIntent`: ровно один `pack_open_commit` этого кошелька, выбранного типа и с принятым потолком цены; вторая подпись — operator.
+  - v0+ALT: до проверки политики кошелёк получает каждую таблицу с текущего RPC, отказывает при отсутствующей/неактивной/деактивированной таблице и проверяет program IDs и account metas уже после разрешения loaded addresses.
   - Switchboard допускается только как CPI игровой программы: прямая инструкция Switchboard отклоняется.
 
 ## 5. Запуск (runbook)

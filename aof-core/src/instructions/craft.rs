@@ -4,6 +4,7 @@ use crate::constants::*;
 use crate::errors::*;
 use crate::events::*;
 use crate::state::{canonical_tool_type, init_tool_data, Rarity};
+use crate::instructions::settlement;
 use crate::Craft;
 
 pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result<()> {
@@ -151,21 +152,20 @@ pub fn handler(ctx: Context<Craft>, tool_type: String, rarity: Rarity) -> Result
         },
     ))?;
 
-    // Минтим новый инструмент
-    let auth_bump = ctx.bumps.auth;
-    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-
-    token::mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            token::MintTo {
-                mint: ctx.accounts.new_mint.to_account_info(),
-                to: ctx.accounts.new_token.to_account_info(),
-                authority: ctx.accounts.auth.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        1,
+    // Mint the NFT and its immutable Metaplex metadata.
+    settlement::mint_tool_nft(
+        &ctx.accounts.token_program.to_account_info(),
+        &ctx.accounts.new_mint.to_account_info(),
+        &ctx.accounts.new_token.to_account_info(),
+        &ctx.accounts.auth.to_account_info(),
+        ctx.bumps.auth,
+        &ctx.accounts.metadata.to_account_info(),
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        &ctx.accounts.user.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.tool_metadata_registry,
+        &tool_type,
+        rarity,
     )?;
 
     // `init_if_needed` does not populate ToolData. Persist the canonical

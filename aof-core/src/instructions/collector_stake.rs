@@ -70,10 +70,10 @@ pub fn handler(ctx: Context<CollectorStake>, kind: CollectorKind) -> Result<()> 
 
 /// [AUDIT F-16] Register an NFT mint as a Historian/Medallion collectible.
 ///
-/// There is no on-chain collection registry for these NFTs and the program does
-/// not depend on mpl-token-metadata, so "is this mint a Historian?" cannot be
-/// derived on-chain. Rather than trusting a caller-supplied mint, the authority
-/// registers each eligible mint explicitly and the PDA is the proof.
+/// There is no on-chain collection registry for these NFTs. The collector path
+/// does not inspect Token Metadata accounts, so "is this mint a Historian?" is
+/// never inferred from off-chain metadata. Rather than trusting a caller-supplied
+/// mint, the authority registers each eligible mint explicitly and the PDA is the proof.
 pub fn register_handler(ctx: Context<RegisterCollectorMint>, kind: CollectorKind) -> Result<()> {
     let entry = &mut ctx.accounts.entry;
     entry.mint = ctx.accounts.mint.key();

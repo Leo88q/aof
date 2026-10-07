@@ -32,11 +32,28 @@ if (( REQUIRE_BYTECODE )) && [[ -z "$EXPECTED_AUTHORITY" ]]; then
 fi
 
 case "$CLUSTER" in
-  devnet)       URL="https://api.devnet.solana.com" ;;
-  mainnet-beta) URL="https://api.mainnet-beta.solana.com" ;;
-  localnet)     URL="http://127.0.0.1:8899" ;;
-  http*)        URL="$CLUSTER" ;;
-  *) echo "unknown cluster: $CLUSTER" >&2; exit 2 ;;
+  devnet)       URL="https://api.devnet.solana.com"; RPC_LABEL="devnet" ;;
+  mainnet-beta) URL="https://api.mainnet-beta.solana.com"; RPC_LABEL="mainnet-beta" ;;
+  localnet)     URL="http://127.0.0.1:8899"; RPC_LABEL="localnet" ;;
+  http*)
+    URL="$CLUSTER"
+    # A keyed RPC URL is a credential. Never echo its path, query, fragment,
+    # or userinfo in verification output; show only the endpoint host/port.
+    RPC_LABEL="$(python3 - "$URL" <<'PYURL'
+import sys
+from urllib.parse import urlsplit
+try:
+    parsed = urlsplit(sys.argv[1])
+    label = parsed.hostname or "custom RPC"
+    if parsed.port:
+        label += f":{parsed.port}"
+except ValueError:
+    label = "custom RPC"
+print(label)
+PYURL
+)"
+    ;;
+  *) echo "unknown cluster argument; use devnet, mainnet-beta, localnet, or an HTTP(S) RPC URL" >&2; exit 2 ;;
 esac
 
 SECTION="programs.devnet"
@@ -156,7 +173,7 @@ if (( fail )); then
 fi
 echo
 if (( REQUIRE_BYTECODE )); then
-  echo "all program IDs, authorities and deployed bytecode verified on $CLUSTER"
+  echo "all program IDs, authorities and deployed bytecode verified on $RPC_LABEL"
 else
-  echo "program IDs/owners checked on $CLUSTER; bytecode is NOT a release gate without --require-bytecode"
+  echo "program IDs/owners checked on $RPC_LABEL; bytecode is NOT a release gate without --require-bytecode"
 fi

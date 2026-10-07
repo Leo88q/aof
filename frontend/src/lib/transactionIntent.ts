@@ -12,6 +12,7 @@ export const REBIRTH_PROGRAM_ID = "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF"
 export const REBIRTH_DO_DISCRIMINATOR = [76, 11, 54, 198, 197, 72, 21, 13] as const;
 const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ATA = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+const TOKEN_METADATA_PROGRAM = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const SYSTEM = "11111111111111111111111111111111";
 const COMPUTE = "ComputeBudget111111111111111111111111111111";
 export const MARKETPLACE_BUY_DISCRIMINATOR = [219, 1, 7, 251, 90, 189, 167, 48] as const;
@@ -42,6 +43,7 @@ export interface SeasonPassIntent {
   readonly treasury: string;
   readonly seasonId: number;
   readonly priceLamports: "150000000";
+  readonly quote: PayerCostQuote;
 }
 /**
  * Lottery tickets: a purchase is signed with the ceiling the player saw, so a
@@ -114,6 +116,10 @@ export interface PayerRentQuoteLine {
   readonly exists: boolean;
   readonly rentDueLamports: string;
   readonly maxRentLamports: string;
+  /** Fee the external program charges when it creates this account (Metaplex
+   * Token Metadata takes 0.01 SOL for CreateMetadataAccountV3). Optional so a
+   * quote that names no fee line is still valid and counts as zero. */
+  readonly protocolFeeLamports?: string;
 }
 export interface PayerCostQuote {
   readonly version: 1;
@@ -124,6 +130,7 @@ export interface PayerCostQuote {
   readonly networkFeeLamports: string;
   readonly rentLamports: string;
   readonly maxRentLamports: string;
+  readonly protocolFeeLamports?: string;
   readonly maxCostLamports: string;
   readonly rentAccounts: readonly PayerRentQuoteLine[];
 }
@@ -221,7 +228,8 @@ export function expectedSigners(intent: TransactionIntent | undefined): number {
   // Игрок + authority: ко-подписанные игровые операции. Остальное подписывает
   // только кошелёк игрока.
   return intent?.kind === "packOpen" || intent?.kind === "rebirth" || intent?.kind === "toolMint"
-    || intent?.kind === "rewardClaim" || intent?.kind === "resourceMint" || intent?.kind === "seasonXpClaim" ? 2 : 1;
+    || intent?.kind === "rewardClaim" || intent?.kind === "resourceMint" || intent?.kind === "seasonXpClaim"
+    ? 2 : 1;
 }
 type Instruction = {
   programId: string;
@@ -237,18 +245,29 @@ const pda = (seed: string, key?: PublicKey) => PublicKey.findProgramAddressSync(
   [new TextEncoder().encode(seed), ...(key ? [key.toBytes()] : [])], new PublicKey(CORE_PROGRAM_ID),
 )[0];
 const ata = (mint: PublicKey, owner: PublicKey) => PublicKey.findProgramAddressSync([owner.toBytes(), TOKEN.toBytes(), mint.toBytes()], ATA)[0];
+const metaplexMetadataPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
+  [new TextEncoder().encode("metadata"), TOKEN_METADATA_PROGRAM.toBytes(), mint.toBytes()], TOKEN_METADATA_PROGRAM,
+)[0];
 function keysEqual(actual: PublicKey[], expected: PublicKey[]): boolean {
   return actual.length === expected.length && expected.every((key, i) => key.equals(actual[i]));
 }
 
 const MAX_QUOTED_NETWORK_FEE_LAMPORTS = 250_000n;
-const MAX_QUOTED_PAYER_COST_LAMPORTS = 20_000_000n;
+/** One Metaplex CreateMetadataAccountV3 fee is 0.01 SOL. */
+const MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n;
+/** Network fee + rent + protocol fees. A metadata-only tool asset pays ATA,
+ * ToolData and Metadata rent plus the 0.01 SOL Metaplex fee, so the ceiling is
+ * 25M rather than the old 20M that no longer covered one operator grant. */
+const MAX_QUOTED_PAYER_COST_LAMPORTS = 25_000_000n;
 const PLAYER_ACCOUNT_SIZE = 59;
 const TOOL_DATA_ACCOUNT_SIZE = 161;
 const REWARD_RECEIPT_ACCOUNT_SIZE = 121;
 const SEASON_PASS_ACCOUNT_SIZE = 57;
+const SEASON_PREMIUM_CLAIMS_ACCOUNT_SIZE = 53;
 const SEASON_XP_CLAIM_CURSOR_ACCOUNT_SIZE = 49;
 const TOKEN_ACCOUNT_SIZE = 165;
+// Metaplex upper-bound account data sizes, matching the backend payer quote.
+const METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679;
 
 /** Rent-bearing accounts whose identity and allocation the wallet expects for
  * this intent. A server cannot add an unreviewed rent destination to a quote. */
@@ -257,6 +276,24 @@ export function expectedPayerRentAccounts(intent: TransactionIntent): ExpectedPa
   const user = new PublicKey(intent.user);
   if (intent.kind === "playerInit") {
     return [{ name: "player_profile", address: pda("player", user), size: PLAYER_ACCOUNT_SIZE, strategy: "init" }];
+  }
+  if (intent.kind === "seasonPass") {
+    if (!Number.isInteger(intent.seasonId) || intent.seasonId < 0 || intent.seasonId > 0xffffffff) {
+      throw new Error("Invalid season pass intent season");
+    }
+    const seasonBytes = new Uint8Array(4);
+    new DataView(seasonBytes.buffer).setUint32(0, intent.seasonId, true);
+    const programId = new PublicKey(CORE_PROGRAM_ID);
+    const seasonPass = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode("season_pass"), user.toBytes(), seasonBytes], programId,
+    )[0];
+    const premiumClaims = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode("season_premium_claims"), user.toBytes(), seasonBytes], programId,
+    )[0];
+    return [
+      { name: "season_pass", address: seasonPass, size: SEASON_PASS_ACCOUNT_SIZE, strategy: "init_if_needed" },
+      { name: "premium_claims", address: premiumClaims, size: SEASON_PREMIUM_CLAIMS_ACCOUNT_SIZE, strategy: "init_if_needed" },
+    ];
   }
   if (intent.kind === "seasonPassInit") {
     const seasonBytes = new Uint8Array(4);
@@ -286,6 +323,7 @@ export function expectedPayerRentAccounts(intent: TransactionIntent): ExpectedPa
     return [
       { name: "recipient_ata", address: ata(mint, user), size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent" },
       { name: "tool_data", address: pda("tool", mint), size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed" },
+      { name: "metaplex_metadata", address: metaplexMetadataPda(mint), size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init" },
     ];
   }
   if (intent.kind === "rewardClaim") {
@@ -330,12 +368,16 @@ export function validatePayerQuoteForIntent(intent: TransactionIntent, user: Pub
   const networkFee = quoteInteger(quote.networkFeeLamports, "network fee");
   const quotedDue = quoteInteger(quote.rentLamports, "rent due");
   const quotedMaxRent = quoteInteger(quote.maxRentLamports, "maximum rent");
+  const quotedProtocolFees = quoteInteger(quote.protocolFeeLamports ?? "0", "protocol fees");
   const maxCost = quoteInteger(quote.maxCostLamports, "maximum cost");
   if (networkFee > MAX_QUOTED_NETWORK_FEE_LAMPORTS || maxCost > MAX_QUOTED_PAYER_COST_LAMPORTS ||
-      maxCost !== networkFee + quotedMaxRent) throw new Error("Payer quote exceeds the local cost ceiling");
+      maxCost !== networkFee + quotedMaxRent + quotedProtocolFees) {
+    throw new Error("Payer quote exceeds the local cost ceiling");
+  }
 
   let dueSum = 0n;
   let rentSum = 0n;
+  let feeSum = 0n;
   expected.forEach((account, index) => {
     const line = quote.rentAccounts[index];
     if (!line || line.name !== account.name || line.address !== account.address.toBase58() ||
@@ -344,14 +386,19 @@ export function validatePayerQuoteForIntent(intent: TransactionIntent, user: Pub
     }
     const due = quoteInteger(line.rentDueLamports, `${account.name} rent due`);
     const max = quoteInteger(line.maxRentLamports, `${account.name} maximum rent`);
+    const fee = quoteInteger(line.protocolFeeLamports ?? "0", `${account.name} protocol fee`);
     if (max <= 0n || due > max || due !== (line.exists ? 0n : max) ||
-        ((account.strategy === "init" || account.strategy === "create") && line.exists)) {
+        ((account.strategy === "init" || account.strategy === "create") && line.exists) ||
+        fee > MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS || (line.exists && fee !== 0n)) {
       throw new Error("Payer quote contains an invalid rent charge");
     }
     dueSum += due;
     rentSum += max;
+    feeSum += fee;
   });
-  if (dueSum !== quotedDue || rentSum !== quotedMaxRent) throw new Error("Payer quote totals do not reconcile");
+  if (dueSum !== quotedDue || rentSum !== quotedMaxRent || feeSum !== quotedProtocolFees) {
+    throw new Error("Payer quote totals do not reconcile");
+  }
 }
 
 /**
@@ -425,12 +472,12 @@ export function validateTransactionIntent(
   if (hasSeasonXpGrant && intent?.kind !== "seasonXpClaim") {
     throw new Error("Season XP grant requires a local player claim intent");
   }
-
   // [AUDIT F-32] Full intent validation exists only for selected flows,
   // but every aof-core instruction can now at least be *named*. Four checks run
   // for every transaction, with or without an intent object:
   const allowedAuthorityInstructions = intent?.kind === "resourceMint" ? ["mint_resource"]
-    : intent?.kind === "seasonXpClaim" ? ["grant_season_xp"] : [];
+    : intent?.kind === "seasonXpClaim" ? ["grant_season_xp"]
+    : [];
   validateCoreInstructions(instructions, user, allowedAuthorityInstructions);
 
   if (!intent) {
@@ -684,7 +731,8 @@ function validateToolMintIntent(instructions: Instruction[], intent: ToolMintInt
   }
   const tokenAccount = ata(mint, user);
   const expected = [pda("config"), authority, pda("auth"), mint, tokenAccount, user, user,
-    pda("tool", mint), TOKEN, new PublicKey(SYSTEM)];
+    pda("tool", mint), TOKEN, new PublicKey(SYSTEM), pda("tool_metadata_registry"),
+    metaplexMetadataPda(mint), TOKEN_METADATA_PROGRAM];
   let mints = 0, atas = 0;
   for (const ix of instructions) {
     const spec = coreInstructionSpec(ix.programId, ix.data, CORE_PROGRAM_ID);
@@ -1012,6 +1060,9 @@ function validateSeasonPassIntent(instructions: Instruction[], intent: SeasonPas
   const seeded = (seed: string, ...parts: Uint8Array[]) => PublicKey.findProgramAddressSync(
     [new TextEncoder().encode(seed), ...parts], new PublicKey(CORE_PROGRAM_ID),
   )[0];
+  const userKey = new PublicKey(intent.user);
+  const seasonPass = seeded('season_pass', userKey.toBytes(), seasonSeed);
+  const premiumClaims = seeded('season_premium_claims', userKey.toBytes(), seasonSeed);
   // Find the discriminator in the generated program table via the known Anchor
   // instruction name, not a second handwritten byte sequence.
   const ix = instructions[0];
@@ -1019,7 +1070,7 @@ function validateSeasonPassIntent(instructions: Instruction[], intent: SeasonPas
   if (instructions.length !== 1 || purchase?.name !== 'purchase_season_pass' ||
       ix.data.length !== 8 || !keysEqual(ix.keys, [
         pda('config'), user, new PublicKey(intent.treasury),
-        seeded('season', seasonSeed), seeded('season_pass', user.toBytes(), seasonSeed),
+        seeded('season', seasonSeed), seasonPass, premiumClaims,
         new PublicKey(SYSTEM),
       ])) throw new Error('Unexpected season pass transaction');
 }

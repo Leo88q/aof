@@ -322,4 +322,15 @@ pub enum AofError {
     SeasonXpEntitlementExpired,
     #[msg("Season XP entitlement nonce does not match the player's claim cursor")]
     SeasonXpNonceMismatch,
+    // Tool NFT metadata release: append-only error codes.
+    #[msg("Tool metadata registry is already frozen and cannot be changed")]
+    ToolMetadataRegistryFrozen,
+    #[msg("Tool metadata registry must be fully configured and frozen before minting")]
+    ToolMetadataRegistryNotFrozen,
+    #[msg("Tool metadata registry contents are incomplete or inconsistent")]
+    InvalidToolMetadataRegistry,
+    #[msg("Tool metadata URIs must be valid unique public HTTPS URLs within the byte limit")]
+    InvalidToolMetadataUris,
+    #[msg("Seller fee basis points must be at most 10000 and identical across batches")]
+    InvalidSellerFeeBasisPoints,
 }

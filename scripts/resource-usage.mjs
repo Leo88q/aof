@@ -103,6 +103,7 @@ export function callLabels(lines) {
   const openers = [
     { re: /token::mint_to\s*\(|mint_out!\s*\(/, label: 'mint' },
     { re: /token::burn\s*\(|burn_in!\s*\(/, label: 'burn' },
+    { re: /refund_auth_escrow\s*\(/, label: 'refund' },
   ];
   for (let i = 0; i < lines.length; i += 1) {
     for (const { re, label } of openers) {
@@ -128,14 +129,19 @@ export function callLabels(lines) {
  * mint_to». `anyKind` — файлы, которые умеют работать с произвольным kind.
  */
 export function onchainEvidence(resource, rustFiles) {
-  const base = resource.legacyField && resource.legacyField.replace(/_mint$/, '');
+  const legacyBase = resource.legacyField && resource.legacyField.replace(/_mint$/, '');
+  const currentBase = resource.kind.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  const bases = [...new Set([legacyBase, currentBase].filter(Boolean))];
   const resourceRe = new RegExp(
     `(^|[^A-Za-z0-9])ResourceKind::${resource.kind}([^A-Za-z0-9_]|$)`
-    + (base
-      ? `|(^|[^A-Za-z0-9])${base}_mint([^A-Za-z0-9_]|$)|(mm|materials|config|cfg|roles)\\.${base}([^A-Za-z0-9_]|$)`
-      : ''));
+    + bases.map((base) =>
+      `|(^|[^A-Za-z0-9])${base}_mint([^A-Za-z0-9_]|$)`
+      + `|(mm|materials|config|cfg|roles)\\.${base}([^A-Za-z0-9_]|$)`
+      + `|(^|[^A-Za-z0-9])(?:escrow|user)_${base}([^A-Za-z0-9_]|$)`,
+    ).join(''));
   const sources = new Map();
   const sinks = new Map();
+  const refunds = new Map();
   const refs = new Map();
   const anyKind = new Set();
   const WINDOW = 6;
@@ -169,6 +175,7 @@ export function onchainEvidence(resource, rustFiles) {
       }
       if (role === 'mint') sources.set(rel, fnOf[i]);
       else if (role === 'burn') sinks.set(rel, fnOf[i]);
+      else if (role === 'refund') refunds.set(rel, fnOf[i]);
       else if (!refs.has(rel)) refs.set(rel, lines[i].trim().slice(0, 120));
     }
   }
@@ -176,6 +183,7 @@ export function onchainEvidence(resource, rustFiles) {
   return {
     onchainSource: toList(sources),
     onchainSink: toList(sinks),
+    refund: toList(refunds),
     onchainRefs: [...refs.entries()].map(([file, line]) => ({ file, line })),
     anyKind: [...anyKind].sort(),
   };
@@ -286,7 +294,10 @@ export function flowAnalysis(resource, chain, dispatch, generic, craftArms, fiel
   const genericSet = new Set([...generic.admin, ...generic.claim]);
   const playerSource = chain.onchainSource.filter((entry) => !genericSet.has(entry) && !REFUND_PATH_RE.test(entry));
   if (dispatch.miningKinds.has(resource.kind)) playerSource.push(...dispatch.miningFiles);
-  const refund = [...chain.onchainSource, ...chain.onchainSink].filter((entry) => !genericSet.has(entry) && REFUND_PATH_RE.test(entry));
+  const refund = [...new Set([
+    ...(chain.refund ?? []),
+    ...[...chain.onchainSource, ...chain.onchainSink].filter((entry) => !genericSet.has(entry) && REFUND_PATH_RE.test(entry)),
+  ])];
   const playerSink = chain.onchainSink.filter((entry) => !PROJECT_PATH_RE.test(entry) && !REFUND_PATH_RE.test(entry));
   const projectSink = chain.onchainSink.filter((entry) => PROJECT_PATH_RE.test(entry));
   const craftInput = craftArms
@@ -589,7 +600,8 @@ export function toMarkdown(evidence) {
       `* любой kind (generic): ${r.anyKindPath.length ? r.anyKindPath.join(', ') : '—'}`,
       `* путь игрока (источник): ${r.flow.playerSource.join(', ') || '—'}`,
       `* майнинг-выдача: ${r.flow.miningOutput.join(', ') || '—'}`,
-      `* проектный сток (VRF/refund): ${r.flow.projectSink.join(', ') || '—'}`,
+      `* проектный сток (VRF): ${r.flow.projectSink.join(', ') || '—'}`,
+      `* возврат из эскроу (refund): ${r.flow.refund.join(', ') || '—'}`,
       `* рецепты: вход ${r.flow.craftInput.join(', ') || '—'}; выход ${r.flow.craftOutput.join(', ') || '—'}`,
       `* флаги: ${Object.entries(r.flow.flags).map(([k, v]) => `${k}=${v}`).join(', ')}`, '');
   }

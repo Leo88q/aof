@@ -7,9 +7,12 @@
  * - Задержки между транзакциями (избегаем 429)
  */
 
+import { BorshAccountsCoder } from "@coral-xyz/anchor";
 import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { createMint } from "@solana/spl-token";
+import idl from "../src/idl/aof_core.json";
 import { AUTHORITY, PROGRAM_ID } from "../src/config";
+import { validateCanonicalResourceRegistry } from "../src/lib/resourceRegistry";
 // [AUDIT AOF-H1] bootstrap scripts need a hot authority key by design;
 // refuse to run (loudly) under AUTHORITY_MODE=read-only.
 if (!AUTHORITY) {
@@ -18,6 +21,9 @@ if (!AUTHORITY) {
     + "read-only mode cannot bootstrap programs.",
   );
 }
+// ts-node компилирует с проверкой типов, но TS не сужает импортированную
+// привязку внутри функций (TS18047) — фиксируем не-null значение локально.
+const authority = AUTHORITY;
 
 
 // Используем Helius RPC если есть, иначе devnet (публичный)
@@ -31,6 +37,52 @@ const [MINT_AUTHORITY] = PublicKey.findProgramAddressSync(
   PROGRAM_ID,
 );
 
+const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+const [CONFIG_ADDRESS] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID);
+const [MATERIAL_MINTS_ADDRESS] = PublicKey.findProgramAddressSync([Buffer.from("material_mints")], PROGRAM_ID);
+const coder = new BorshAccountsCoder(idl as any);
+
+function camelAccount(raw: Record<string, any>): Record<string, any> {
+  return Object.fromEntries(Object.entries(raw).map(([key, value]) => [
+    key.replace(/_([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase()), value,
+  ]));
+}
+
+/** Return true only for a fully valid existing registry; never mint replacements. */
+async function existingResourceMints(connection: Connection): Promise<boolean> {
+  const info = await connection.getAccountInfo(MATERIAL_MINTS_ADDRESS, "confirmed");
+  if (!info) return false;
+  if (!info.owner.equals(PROGRAM_ID)) {
+    throw new Error("MaterialMints PDA exists but is not owned by aof_core; refusing to create replacement mints");
+  }
+  const configInfo = await connection.getAccountInfo(CONFIG_ADDRESS, "confirmed");
+  if (!configInfo || !configInfo.owner.equals(PROGRAM_ID)) {
+    throw new Error("MaterialMints exists without a canonical aof_core Config; refusing to create replacement mints");
+  }
+  let config: Record<string, any>;
+  let materialMints: Record<string, any>;
+  try {
+    config = camelAccount(coder.decode("Config", configInfo.data) as any);
+    materialMints = camelAccount(coder.decode("MaterialMints", info.data) as any);
+  } catch (error) {
+    throw new Error(`existing resource registry cannot be decoded; refusing to create replacement mints: ${String(error)}`);
+  }
+  const registry = await validateCanonicalResourceRegistry(connection, config, materialMints, MINT_AUTHORITY);
+  if (!registry.mints) {
+    throw new Error(`existing resource registry is invalid; refusing to create replacement mints: ${registry.errors.join(",")}`);
+  }
+  const payoutMints = [
+    registry.mints.CIRCUIT, registry.mints.SILICON, registry.mints.DATASET, registry.mints.NEURON,
+  ];
+  if (new Set(payoutMints.map((mint) => mint.toBase58())).size !== 4) {
+    throw new Error("existing mining payout registry does not have four unique mints");
+  }
+  console.log("✅ MaterialMints уже инициализирован и прошёл проверку всех 27 SPL mint; новые минты не создаются.");
+  console.log(`   CIRCUIT=${payoutMints[0].toBase58()} SILICON=${payoutMints[1].toBase58()}`);
+  console.log(`   DATASET=${payoutMints[2].toBase58()} NEURON=${payoutMints[3].toBase58()}`);
+  return true;
+}
+
 // Retry wrapper для createMint
 async function createMintWithRetry(
   connection: Connection,
@@ -42,7 +94,7 @@ async function createMintWithRetry(
     try {
       const mint = await createMint(
         connection,
-        AUTHORITY,
+        authority,
         MINT_AUTHORITY,
         null,
         9,
@@ -63,13 +115,18 @@ async function createMintWithRetry(
 async function main() {
   console.log("🎮 Инициализация MaterialMints (v2 с retry)...");
   console.log(`📡 RPC: ${RPC_URL}`);
-  console.log(`🔑 Authority: ${AUTHORITY.publicKey.toBase58()}`);
+  console.log(`🔑 Authority: ${authority.publicKey.toBase58()}`);
   console.log("");
   
   const connection = new Connection(RPC_URL, "confirmed");
+  const genesis = await connection.getGenesisHash();
+  if (genesis !== DEVNET_GENESIS) {
+    throw new Error(`RPC is not devnet (${genesis}); resource mints are only bootstrapped on devnet`);
+  }
+  if (await existingResourceMints(connection)) return;
   
   // Проверяем баланс
-  const balance = await connection.getBalance(AUTHORITY.publicKey);
+  const balance = await connection.getBalance(authority.publicKey);
   console.log(`💰 Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL\n`);
   
   if (balance < 0.1 * LAMPORTS_PER_SOL) {

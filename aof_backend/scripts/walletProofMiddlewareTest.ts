@@ -148,6 +148,27 @@ async function main(): Promise<void> {
   assert.equal(r1.nextCalled, true, "valid proof must call next()");
   assert.equal(r1.res.statusCode, null, "valid proof must not set an error status");
 
+  // A route-local guard may follow the central mapped guard. It reuses only
+  // the same server-attested wallet and subject, without consuming the proof twice.
+  const preauthenticated: any = makeReq(body1);
+  preauthenticated.authenticatedWallet = wallet;
+  preauthenticated.authenticatedWalletSubject = "claim-quest";
+  const r1b = await runMiddleware(preauthenticated);
+  assert.equal(r1b.nextCalled, true, "matching prior authentication must not consume a proof twice");
+  assert.equal(r1b.res.statusCode, null);
+  const wrongSubject: any = makeReq(body1);
+  wrongSubject.authenticatedWallet = wallet;
+  wrongSubject.authenticatedWalletSubject = "different-operation";
+  const r1c = await runMiddleware(wrongSubject);
+  assert.equal(r1c.nextCalled, false, "a different wallet-proof subject must remain denied");
+  assert.equal(r1c.res.statusCode, 403);
+  const wrongActor: any = makeReq({ ...body1, user: PublicKey.default.toBase58() });
+  wrongActor.authenticatedWallet = wallet;
+  wrongActor.authenticatedWalletSubject = "claim-quest";
+  const r1d = await runMiddleware(wrongActor);
+  assert.equal(r1d.nextCalled, false, "a different wallet actor must remain denied");
+  assert.equal(r1d.res.statusCode, 403);
+
   // 2. replay of the SAME proof → 409 (the AM-2 guard under test)
   const r2 = await runMiddleware(makeReq({ ...body1, walletProof: proof1 }));
   assert.equal(r2.nextCalled, false, "replayed proof must NOT call next()");

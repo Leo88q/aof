@@ -56,6 +56,13 @@ pub fn handler(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<
         &ctx.accounts.user_token.to_account_info(),
         &ctx.accounts.auth.to_account_info(),
         ctx.bumps.auth,
+        &ctx.accounts.metadata.to_account_info(),
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        &ctx.accounts.cranker.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.tool_metadata_registry,
+        &tool_type,
+        rarity,
     )?;
     let user = ctx.accounts.pack_commit.user;
     settlement::write_tool(&mut ctx.accounts.tool_data, ctx.accounts.mint.key(), user, tool_type.clone(), rarity, MAX_DURABILITY);
@@ -67,7 +74,15 @@ pub fn handler(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<
     let paid = ctx.accounts.pack_commit.paid_lamports;
     settlement::release_escrow(&commit_info, &ctx.accounts.treasury.to_account_info(), paid)?;
     let deposit = ctx.accounts.pack_commit.deposit_lamports;
-    settlement::reimburse_settler(&commit_info, &ctx.accounts.cranker.to_account_info(), deposit)?;
+    settlement::reimburse_settler(
+        &commit_info,
+        &ctx.accounts.cranker.to_account_info(),
+        deposit,
+        &ctx.accounts.mint.to_account_info(),
+        &ctx.accounts.user_token.to_account_info(),
+        &ctx.accounts.tool_data.to_account_info(),
+        &ctx.accounts.metadata.to_account_info(),
+    )?;
     ctx.accounts.pack_commit.paid_lamports = 0;
     ctx.accounts.pack_commit.deposit_lamports = 0;
 

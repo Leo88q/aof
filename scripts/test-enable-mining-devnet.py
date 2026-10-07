@@ -26,6 +26,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -127,6 +128,7 @@ def run_script(port: int, *extra: str, env_overrides: dict | None = None):
         "ADMIN_TOKEN": "test-token",
         "AOF_ENABLE_TARGET": "devnet",
         "PREFLIGHT_OK": "1",
+        "MINING_SMOKE_OK": "1",
     })
     env.update(env_overrides or {})
     return subprocess.run(["bash", str(SCRIPT), *extra], capture_output=True, text=True, env=env)
@@ -163,6 +165,103 @@ class EnableMiningScript(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assert_no_posts(api)
         self.assertIn("уже включена", done.stdout)
+
+    def test_uncapped_devnet_policy_requires_explicit_valid_ack(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = pathlib.Path(tmp) / "preflight.json"
+            report.write_text(json.dumps({
+                "network": "devnet",
+                "status": "READ_ONLY_PREFLIGHT_PASSED_BYTECODE_AND_SMOKE_REQUIRED",
+                "blockers": [],
+                "observations": {
+                    "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+                    "lifetimeIssuancePolicy": {"mode": "unlimited-devnet-accepted"},
+                },
+            }), encoding="utf-8")
+            with MockAdminApi() as api:
+                accepted = run_script(api.port, env_overrides={
+                    "ALLOW_UNLIMITED_DEVNET_ISSUANCE": "1",
+                    "MINING_PREFLIGHT_REPORT": str(report),
+                })
+                invalid = run_script(api.port, "--apply", env_overrides={
+                    "ALLOW_UNLIMITED_DEVNET_ISSUANCE": "yes",
+                    "MINING_PREFLIGHT_REPORT": str(report),
+                })
+                self.assert_no_posts(api)
+            self.assertEqual(accepted.returncode, 0, accepted.stderr)
+            self.assertIn("оператор явно принимает unlimited lifetime issuance", accepted.stdout)
+            self.assertEqual(invalid.returncode, 3, invalid.stderr)
+            self.assertIn("ALLOW_UNLIMITED_DEVNET_ISSUANCE", invalid.stderr)
+
+    def test_uncapped_devnet_policy_requires_clean_preflight_report(self):
+        with MockAdminApi() as api:
+            done = run_script(api.port, "--apply", env_overrides={
+                "ALLOW_UNLIMITED_DEVNET_ISSUANCE": "1",
+                "MINING_SMOKE_OK": "1",
+            })
+        self.assertEqual(done.returncode, 3, done.stderr)
+        self.assert_no_posts(api)
+        self.assertIn("MINING_PREFLIGHT_REPORT", done.stderr)
+
+    def test_uncapped_devnet_policy_rejects_wrong_network_or_blockers(self):
+        invalid_reports = [
+            {
+                "network": "mainnet-beta",
+                "status": "READ_ONLY_PREFLIGHT_PASSED_BYTECODE_AND_SMOKE_REQUIRED",
+                "blockers": [],
+                "observations": {
+                    "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+                    "lifetimeIssuancePolicy": {"mode": "unlimited-devnet-accepted"},
+                },
+            },
+            {
+                "network": "devnet",
+                "status": "READ_ONLY_PREFLIGHT_PASSED_BYTECODE_AND_SMOKE_REQUIRED",
+                "blockers": [],
+                "observations": {
+                    "genesisHash": "not-the-devnet-genesis",
+                    "lifetimeIssuancePolicy": {"mode": "unlimited-devnet-accepted"},
+                },
+            },
+            {
+                "network": "devnet",
+                "status": "BLOCKED",
+                "blockers": ["wrong_cluster_genesis"],
+                "observations": {
+                    "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+                    "lifetimeIssuancePolicy": {"mode": "unlimited-devnet-accepted"},
+                },
+            },
+            {
+                "network": "devnet",
+                "status": "READ_ONLY_PREFLIGHT_PASSED_BYTECODE_AND_SMOKE_REQUIRED",
+                "blockers": [],
+                "observations": {
+                    "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+                    "lifetimeIssuancePolicy": {"mode": "finite-lifetime-cap-required"},
+                },
+            },
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            report = pathlib.Path(tmp) / "preflight.json"
+            with MockAdminApi() as api:
+                for payload in invalid_reports:
+                    report.write_text(json.dumps(payload), encoding="utf-8")
+                    done = run_script(api.port, env_overrides={
+                        "ALLOW_UNLIMITED_DEVNET_ISSUANCE": "1",
+                        "MINING_PREFLIGHT_REPORT": str(report),
+                    })
+                    self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+                    self.assertIn("preflight report", done.stderr)
+                    self.assertNotIn("2/6", done.stdout)
+                self.assert_no_posts(api)
+
+    def test_apply_requires_live_smoke_signoff(self):
+        with MockAdminApi() as api:
+            done = run_script(api.port, "--apply", env_overrides={"MINING_SMOKE_OK": ""})
+        self.assertEqual(done.returncode, 3, done.stderr)
+        self.assert_no_posts(api)
+        self.assertIn("MINING_SMOKE_OK", done.stderr)
 
     def test_missing_payout_mint_blocks_switch(self):
         config = dict(HEALTHY_CONFIG, circuitMint=PLACEHOLDER)

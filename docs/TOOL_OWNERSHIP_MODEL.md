@@ -4,13 +4,14 @@
 
 ## Решение владельца
 
-Игровой инструмент — обычный classic SPL-токен (`decimals = 0`, `supply = 1`,
-`freeze_authority = None`). Любой держатель может перевести его обычным
-`spl_token::transfer`, не обращаясь к программе. Программа такие переводы не
-видит и **не может** их запретить: freeze authority отсутствует намеренно, её
-требуют восемь проверок `mint.freeze_authority.is_none()` (`mint_tool`, `craft`,
-`reroll`, `marketplace_list`, `auction_create`, `offer_create`,
-`offer_accept`, `rental_list`).
+Игровой инструмент — обычный classic SPL-токен (`decimals = 0`, `supply = 1`).
+Для `CreateMetadataAccountV3` auth PDA временно получает mint и freeze authority;
+общий issuance helper отзывает обе authority до завершения атомарной транзакции.
+Выпущенный mint имеет `freeze_authority = None`. Любой держатель может перевести
+его обычным `spl_token::transfer`, не обращаясь к программе. Программа такие
+переводы не видит и **не может** их запретить. Ownership helper и пять прямых
+marketplace/rental account guards продолжают требовать `freeze_authority = None`;
+они не ослаблены временной authority на этапе выпуска.
 
 Поэтому:
 
@@ -23,8 +24,10 @@
 * после обычного SPL-перевода новый держатель вызывает `sync_tool_owner` и
   восстанавливает согласованность.
 
-Не вводится: freeze authority, Token-2022, Bubblegum, MPL Core, off-chain
-ownership. Программные адреса и keypair'ы сохраняются.
+Не сохраняется freeze authority после issuance: временная authority auth PDA
+используется только для Metadata CPI и отзывается атомарно. Также не вводятся
+Token-2022, Bubblegum, MPL Core или off-chain ownership. Программные адреса и
+keypair'ы сохраняются.
 
 ## Матрица состояний
 

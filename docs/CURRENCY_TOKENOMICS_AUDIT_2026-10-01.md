@@ -74,7 +74,7 @@ pub currency_mint: Account<'info, Mint>,
 | **Order book ресурсов** | `place_*_order_v2`, `match_resource_orders_v2` (+ v1) | **SOL** за ресурс (SPL-токены ресурсов) | цена за целый ресурс в lamports | taker → maker, казна | maker 0.1% / taker 0.4% | казна ✓ |
 | **Shop: паки** | `pack_open_commit/reveal/expire` | **SOL** | `PackConfig.price_lamports` (0.1 / 0.3 / 1.0 SOL по умолчанию) | игрок → эскроу → казна после reveal | — | казна ✓ |
 | **Shop: прочее** | `reroll_random_*`, `forge_attempt_*`, `deposit_gas`/`withdraw_gas`, `craft` | **SOL** (газ-бак в «микро-SOL» 1e6/SOL) | константы `FEE_PER_*_MICROS`, `ENCHANT_FEE_LAMPORTS`, `FORGE_PROTECTOR_PRICE_LAMPORTS` | игрок → газ-бак/эскроу → казна | см. константы | казна ✓ |
-| **Shop: сезонный пропуск** | `purchase_season_pass` (отключена) | **SOL** | 0.15 SOL | игрок → казна | — | казна ✓; инструкция закрыта до приёмочного гейта |
+| **Shop: сезонный пропуск** | `purchase_season_pass` (source path active; UI gate closed) | **SOL** | 0.15 SOL | игрок → казна | — | казна/цена привязаны; Devnet acceptance и matching-bytecode smoke ещё не подтверждены |
 | **Lottery** | `buy_lottery_ticket`, `draw_lottery`, `claim_lottery_prize`, `refund_*` | **SOL** | билет 0.0008 SOL | игрок → пул (70%) / казна (30%) | `LOTTERY_POOL_BPS`/`LOTTERY_DEV_BPS` | казна ✓ |
 | **Rebirth** | `do_rebirth` | **SOL** | `rebirth_cost_lamports` | игрок → казна | — | `address = rebirth_config.treasury` ✓ |
 | **Staking инструментов** | `stake`, `unstake`, `collector_stake/unstake` | нет платежа | — | — | — | Коллекционеры — allowlist mint'ов (`register_collector_mint`) |

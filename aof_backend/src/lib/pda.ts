@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { PROGRAM_ID } from "../config";
 import BN from "bn.js";
 
@@ -31,6 +32,9 @@ const programDataFor = (programId: PublicKey) =>
 
 export const configPda = () => find([enc("config")]);
 export const authPda = () => find([enc("auth")]);
+/** Shared escrow ATA for refunded resource costs; AUTH_SEED is its token owner. */
+export const resourceEscrowAta = (mint: PublicKey) =>
+  getAssociatedTokenAddressSync(mint, authPda()[0], true);
 export const vaultPda = () => find([enc("vault")]);
 
 // Upgradeable-loader ProgramData for the core program. Initialize is bound to
@@ -41,6 +45,12 @@ export const programDataPda = () => programDataFor(PROGRAM_ID);
 export const playerPda = (owner: PublicKey) => find([enc("player"), owner.toBuffer()]);
 export const gastankPda = (owner: PublicKey) => find([enc("gastank"), owner.toBuffer()]);
 export const toolPda = (mint: PublicKey) => find([enc("tool"), mint.toBuffer()]);
+export const toolMetadataRegistryPda = () => find([enc("tool_metadata_registry")]);
+export const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+export const tokenMetadataPda = (mint: PublicKey) => PublicKey.findProgramAddressSync(
+  [enc("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+  TOKEN_METADATA_PROGRAM_ID,
+);
 export const rarityCounterPda = (rarity: number) => find([enc("rarity_counter"), u8(rarity)]);
 
 /**
@@ -112,6 +122,8 @@ export const craftOrderPda = (creator: PublicKey) => find([enc("craft_order"), c
 export const seasonPda = (seasonId: number) => find([enc("season"), u32le(seasonId)]);
 export const seasonPassPda = (owner: PublicKey, seasonId: number) =>
   find([enc("season_pass"), owner.toBuffer(), u32le(seasonId)]);
+export const seasonPremiumClaimsPda = (owner: PublicKey, seasonId: number) =>
+  find([enc("season_premium_claims"), owner.toBuffer(), u32le(seasonId)]);
 export const seasonXpClaimCursorPda = (owner: PublicKey, seasonId: number) =>
   find([enc("season_xp_claim_cursor"), owner.toBuffer(), u32le(seasonId)]);
 
@@ -203,9 +215,9 @@ export const lpPoolPda = (rarity: number) =>
 export const lpPositionPda = (user: PublicKey, rarity: number) =>
   findLiquidity([enc("lp_position"), user.toBuffer(), u8(rarity)]);
 
-// Bow/скины (добавлено из aof_solana_fixed)
-export const bowCommitPda = (toolMint: PublicKey) => find([enc("bow_commit"), toolMint.toBuffer()]);
-export const skinPda = (skinMint: PublicKey) => find([enc("skin"), skinMint.toBuffer()]);
+// §3.8: bowCommitPda/skinPda удалены вместе со скинами — в программе нет ни
+// seeds `bow_commit`/`skin`, ни аккаунтов скинов. Инструмент передаётся
+// `transfer_tool`, награда за попытку — `forge_attempt_*`.
 
 // =====================================================================
 // Laboratory and resource-production PDA helpers

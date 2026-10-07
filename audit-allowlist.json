@@ -7,6 +7,13 @@
       "via": "@solana/spl-token -> @solana/buffer-layout-utils -> bigint-buffer (aof_backend)",
       "reason": "No patched release exists; npm's suggested fix is a downgrade to @solana/spl-token@0.1.8. The backend only reaches toBigIntLE() on account data from its own RPC reads, never on client-supplied buffers. Re-evaluate when spl-token drops buffer-layout-utils.",
       "expires": "2026-12-31"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "via": "frontend: react-native -> @react-native/community-cli-plugin -> metro -> metro-file-map -> micromatch -> braces; also stylelint/tailwindcss dev paths",
+      "reason": "No patched release exists: the advisory's first_patched_version is null and the registry's latest (3.0.3) is still the vulnerable version. The vulnerable code is build tooling only (metro bundler pulled by the mobile wallet adapter, stylelint, tailwind CLI); app source never passes user input into glob patterns. Re-check as soon as a fixed braces is published.",
+      "expires": "2026-11-15"
     }
   ]
 }

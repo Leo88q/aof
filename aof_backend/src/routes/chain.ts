@@ -15,11 +15,13 @@ import {
   toolPda,
   weatherStatePda,
   gridStatePda,
+  issuanceCapPda,
 } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 
 const r = Router();
 const RESOURCE_UNIT = new BN("1000000000");
+const RECIPE_OUTPUT_KIND = ["quantumBit", "neuralChip", "photonBit", "cryoFluid", "voltFluid", "bioFluid", "nanoFluid", "quantumFluid"] as const;
 
 // ===== Neural lab: plant Neuron =====
 r.post("/lab/plant-neuron", async (req, res) => {
@@ -84,6 +86,7 @@ r.post("/lab/harvest-synapse", async (req, res) => {
         auth,
         synapseMint,
         userSynapse,
+        issuanceCapSynapse: issuanceCapPda("synapse")[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -155,6 +158,7 @@ r.post("/signal/collect", async (req, res) => {
         auth,
         signalMint,
         userSignal,
+        issuanceCapSignal: issuanceCapPda("signal")[0],
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
@@ -234,6 +238,7 @@ r.post("/model/collect", async (req, res) => {
         auth,
         modelMint,
         userModel,
+        issuanceCapModel: issuanceCapPda("model")[0],
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
@@ -296,6 +301,7 @@ r.post("/grid/collect", async (req, res) => {
         auth,
         powerMint,
         userPower,
+        issuanceCapPower: issuanceCapPda("power")[0],
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -313,6 +319,8 @@ r.post("/recipe/craft", async (req, res) => {
   try {
     const user = pk(req.body.user);
     const recipeId = Number(req.body.recipeId);
+    const outputKind = Number.isInteger(recipeId) ? RECIPE_OUTPUT_KIND[recipeId] : undefined;
+    if (!outputKind) throw new Error("recipeId must be an integer from 0 to 7");
     const [config] = configPda();
     const [materialMints] = materialMintsPda();
     const [auth] = authPda();
@@ -336,6 +344,7 @@ r.post("/recipe/craft", async (req, res) => {
         input2Acc,
         outputMint,
         outputAcc,
+        issuanceCap: issuanceCapPda(outputKind)[0],
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();

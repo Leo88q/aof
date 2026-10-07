@@ -288,12 +288,11 @@ def check_ts_copy(json_idl: dict, problems: list[str]) -> None:
             problems.append(f"{path}: `{camel(ix['name'])}` accounts/flags differ from aof_core.json")
         if ix.get("discriminator") != t.get("discriminator"):
             problems.append(f"{path}: `{camel(ix['name'])}` discriminator differs from aof_core.json")
-        def js_names(value):
-            if isinstance(value, list): return [js_names(v) for v in value]
-            if isinstance(value, dict):
-                return {k: camel(v[:1].lower() + v[1:]) if k == "name" and isinstance(v, str) else js_names(v) for k, v in value.items()}
-            return value
-        if js_names(ix.get("args", [])) != t.get("args", []):
+        # Only instruction argument field names use JS camelCase. Do not
+        # transform nested `defined.name` type names (for example `Rarity`),
+        # which are case-sensitive Anchor IDL type identifiers.
+        json_args = [dict(arg, name=camel(arg["name"])) for arg in ix.get("args", [])]
+        if json_args != t.get("args", []):
             problems.append(f"{path}: `{camel(ix['name'])}` argument names/types/order differ from aof_core.json")
 
 

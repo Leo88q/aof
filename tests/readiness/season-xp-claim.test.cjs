@@ -161,7 +161,8 @@ test('wallet guard cryptographically binds campaign/genesis, live cluster, exact
   assert.match(intent, /\[true, false\][\s\S]*?\[true, true\][\s\S]*?\[false, true\]/);
   assert.match(intent, /intent\.campaignDigest/);
   assert.match(intent, /intent\.genesisHashDigest/);
-  assert.match(intent, /MAX_QUOTED_PAYER_COST_LAMPORTS = 20_000_000n/);
+  assert.match(intent, /MAX_QUOTED_PAYER_COST_LAMPORTS = 25_000_000n/);
+  assert.match(intent, /MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n/);
 
   const guard = read('frontend/src/lib/txGuard.ts');
   assert.match(guard, /AOF_SEASON_XP_CAMPAIGN_V1/);

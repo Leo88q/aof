@@ -342,6 +342,7 @@ pub struct RevealAccounts<'info> {
     pub system_program: AccountInfo<'info>,
     pub reward_escrow: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+    /// Native SOL mint (So111...112) the reveal CPI pays its reward escrow in.
     pub wrapped_sol_mint: AccountInfo<'info>,
     pub program_state: AccountInfo<'info>,
 }
@@ -539,11 +540,14 @@ pub fn bps(x: u64) -> u64 {
     below(x, 10_000)
 }
 
-/// Rent the settler of a tool-producing commit fronts for the new NFT: mint,
-/// its associated token account and the ToolData PDA. The player prepays it
-/// at commit so that whoever cranks the reveal is made whole.
+/// Maximum rent the settler of a tool-producing commit may front: mint, ATA,
+/// ToolData, Metaplex Metadata rent and the Metaplex creation fee that is parked
+/// in that Metadata account. The player prepays this bound; reveal and expire
+/// reimburse the post-CPI rent plus the fee only.
 pub fn tool_settlement_rent(rent: &Rent) -> u64 {
     rent.minimum_balance(anchor_spl::token::Mint::LEN)
         .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
         .saturating_add(rent.minimum_balance(crate::constants::TOOL_DATA_SPACE))
+        .saturating_add(rent.minimum_balance(crate::constants::TOOL_METADATA_ACCOUNT_MAX_SPACE))
+        .saturating_add(crate::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS)
 }

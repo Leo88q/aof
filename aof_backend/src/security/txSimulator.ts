@@ -7,7 +7,7 @@
  *
  * Если симуляция падает — транзакция не отправляется.
  */
-import { Transaction, Connection } from "@solana/web3.js";
+import { Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
 import { simulationTransaction } from "../lib/transactionLifecycle";
 import { connection } from "../provider";
 
@@ -22,7 +22,7 @@ export interface SimulationResult {
  * Симулировать транзакцию перед отправкой.
  * Возвращает результат симуляции без отправки в сеть.
  */
-export async function simulateTransaction(tx: Transaction): Promise<SimulationResult> {
+export async function simulateTransaction(tx: Transaction | VersionedTransaction): Promise<SimulationResult> {
   try {
     const result = await connection.simulateTransaction(simulationTransaction(tx), {
       sigVerify: false,

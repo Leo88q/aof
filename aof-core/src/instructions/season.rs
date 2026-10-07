@@ -3,7 +3,7 @@ use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, MintTo};
 use crate::constants::*;
 use crate::state::*;
-use crate::{InitSeason, InitSeasonPass, PurchaseSeasonPass, GrantSeasonXp, ClaimSeasonReward};
+use crate::{InitSeason, InitSeasonPass, PurchaseSeasonPass, GrantSeasonXp, ClaimSeasonReward, ClaimPremiumSeasonReward};
 use crate::ResourceKind;
 use crate::errors::*;
 use crate::events::*;
@@ -38,19 +38,43 @@ pub fn init_pass_handler(ctx: Context<InitSeasonPass>, season_id: u32) -> Result
 }
 
 pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
-    // Paid track has no separately claimable rewards or enforced VIP benefits
-    // yet. Prevent direct-RPC payments as well as blocking the backend route.
-    // Remove only after the 42-day/0.15 SOL devnet acceptance gate is passed.
+    // Keep direct-RPC sales closed until the 42-day / 0.15 SOL Devnet acceptance
+    // gate is complete; the HTTP sales gate alone is not a contract boundary.
     require!(false, AofError::SeasonPremiumRequired);
     // [SECURITY_CHECKLIST_REVIEW] A pass used to be sold for any season id at any
     // time (including seasons that had ended) and a second purchase silently
-    // charged 0.15 SOL again for a flag that was already set.
+    // charged 0.15 SOL again for a flag that was already set. Validate every
+    // account before transferring the fixed, user-visible price.
     let now = Clock::get()?.unix_timestamp;
     let start = ctx.accounts.season.start_time;
     require!(now >= start, AofError::SeasonNotStarted);
     let end = start.checked_add(SEASON_LENGTH_SECONDS).ok_or(AofError::MathOverflow)?;
     require!(now < end, AofError::SeasonEnded);
-    require!(!ctx.accounts.season_pass.premium, AofError::SeasonPassAlreadyPremium);
+
+    let user = ctx.accounts.user.key();
+    let season_id = ctx.accounts.season.season_id;
+    let pass = &mut ctx.accounts.season_pass;
+    if pass.owner == Pubkey::default() {
+        pass.owner = user;
+        pass.season_id = season_id;
+        pass.xp = 0;
+        pass.premium = false;
+        pass.claimed_bitmap = 0;
+    }
+    require_keys_eq!(pass.owner, user, AofError::Unauthorized);
+    require!(pass.season_id == season_id, AofError::SeasonMismatch);
+    require!(!pass.premium, AofError::SeasonPassAlreadyPremium);
+
+    let premium_claims = &mut ctx.accounts.premium_claims;
+    if premium_claims.owner == Pubkey::default() {
+        premium_claims.owner = user;
+        premium_claims.season_id = season_id;
+        premium_claims.claimed_bitmap = 0;
+        premium_claims.bump = ctx.bumps.premium_claims;
+    }
+    require_keys_eq!(premium_claims.owner, user, AofError::Unauthorized);
+    require!(premium_claims.season_id == season_id, AofError::SeasonMismatch);
+
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -61,18 +85,8 @@ pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
         ),
         SEASON_PASS_PREMIUM_PRICE_LAMPORTS,
     )?;
-    let p = &mut ctx.accounts.season_pass;
-    if p.owner == Pubkey::default() {
-        p.owner = ctx.accounts.user.key();
-        p.season_id = ctx.accounts.season.season_id;
-        p.xp = 0;
-        p.claimed_bitmap = 0;
-    }
-    p.premium = true;
-    emit!(SeasonPassPurchased {
-        owner: ctx.accounts.user.key(),
-        season_id: ctx.accounts.season.season_id,
-    });
+    pass.premium = true;
+    emit!(SeasonPassPurchased { owner: user, season_id });
     Ok(())
 }
 
@@ -153,6 +167,10 @@ pub fn grant_xp_handler(
 }
 
 pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_track: bool) -> Result<()> {
+    // Keep the historical instruction ABI, but do not let callers consume the
+    // free ledger while claiming the premium track. Premium claims use their
+    // own PDA and the dedicated instruction below.
+    require!(!premium_track, AofError::SeasonPremiumRequired);
     require!(level > 0 && level <= SEASON_PASS_MAX_LEVEL, AofError::SeasonInsufficientXp);
     let now = Clock::get()?.unix_timestamp;
     require!(
@@ -166,10 +184,6 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
         ctx.accounts.season_pass.xp >= (level as u32) * SEASON_XP_PER_LEVEL,
         AofError::SeasonInsufficientXp
     );
-    if premium_track {
-        require!(ctx.accounts.season_pass.premium, AofError::SeasonPremiumRequired);
-    }
-
     // [AUDIT F-14 / G-12] The old formula was `(level as u64) * 100` in ATOMIC
     // units, i.e. 0.0000042 CIRCUIT at the maximum level — season rewards existed
     // on paper and were dust in practice. Everything else in the program is
@@ -185,8 +199,8 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
     // [AUDIT F-03] Season rewards are another mint path that never saw a cap.
     check_supply_cap(
         &ctx.accounts.material_mints,
+        &mut ctx.accounts.issuance_cap_circuit,
         ResourceKind::Circuit,
-        ctx.accounts.circuit_mint.supply,
         reward_amount,
     )?;
     let auth_bump = ctx.bumps.auth;
@@ -208,6 +222,62 @@ pub fn claim_reward_handler(ctx: Context<ClaimSeasonReward>, level: u8, premium_
 
     emit!(SeasonRewardClaimed {
         owner: ctx.accounts.season_pass.owner,
+        level,
+    });
+    Ok(())
+}
+
+pub fn claim_premium_reward_handler(
+    ctx: Context<ClaimPremiumSeasonReward>,
+    level: u8,
+) -> Result<()> {
+    require!(level > 0 && level <= SEASON_PASS_MAX_LEVEL, AofError::SeasonInsufficientXp);
+    let end = ctx.accounts.season.start_time
+        .checked_add(SEASON_LENGTH_SECONDS)
+        .ok_or(AofError::MathOverflow)?;
+    require!(Clock::get()?.unix_timestamp < end, AofError::SeasonEnded);
+    require!(ctx.accounts.season_pass.premium, AofError::SeasonPremiumRequired);
+    require!(
+        ctx.accounts.season_pass.xp >= (level as u32) * SEASON_XP_PER_LEVEL,
+        AofError::SeasonInsufficientXp
+    );
+
+    let bit = 1u64 << (level - 1);
+    require!(
+        ctx.accounts.premium_claims.claimed_bitmap & bit == 0,
+        AofError::SeasonRewardAlreadyClaimed
+    );
+    let reward_amount = (level as u64)
+        .checked_mul(SEASON_REWARD_UNITS_PER_LEVEL)
+        .and_then(|v| v.checked_mul(RESOURCE_UNIT))
+        .ok_or(AofError::MathOverflow)?;
+    require!(reward_amount > 0, AofError::ZeroAmount);
+    check_supply_cap(
+        &ctx.accounts.material_mints,
+        &mut ctx.accounts.issuance_cap_circuit,
+        ResourceKind::Circuit,
+        reward_amount,
+    )?;
+
+    let auth_bump = ctx.bumps.auth;
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+    token::mint_to(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            MintTo {
+                mint: ctx.accounts.circuit_mint.to_account_info(),
+                to: ctx.accounts.user_circuit.to_account_info(),
+                authority: ctx.accounts.auth.to_account_info(),
+            },
+            signer_seeds,
+        ),
+        reward_amount,
+    )?;
+
+    ctx.accounts.premium_claims.claimed_bitmap |= bit;
+    emit!(SeasonPremiumRewardClaimed {
+        owner: ctx.accounts.season_pass.owner,
+        season_id: ctx.accounts.season.season_id,
         level,
     });
     Ok(())

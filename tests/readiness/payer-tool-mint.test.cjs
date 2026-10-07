@@ -97,8 +97,8 @@ test('payer validator fixtures use initialized tool mints and configured resourc
   const funding = read('tests/aof_payer_funding.ts');
   assert.doesNotMatch(funding, /const mint = Keypair\.generate\(\)/,
     'random keypairs are not valid SPL mint accounts');
-  assert.match(funding, /createMint\(connection, user, authPda, null, 0\)/,
-    'Tool mint fixtures are initialized, zero-decimal, and owned by the auth PDA');
+  assert.match(funding, /createMint\(connection, user, authPda, authPda, 0\)/,
+    'Tool mint fixtures are zero-decimal and use the auth PDA for temporary mint/freeze authority');
   assert.match(funding, /createMint\(connection, authority, authority\.publicKey, null, 9\)/,
     'ATA fixture uses an initialized mint');
   assert.match(funding, /config\.dataMint as PublicKey/,
@@ -130,6 +130,8 @@ test('backend /tools/mint: player — payer, authority только подпис
     'fee payer — игрок, authority добавляет подпись, route возвращает transaction-bound payer quote');
   assert.match(body, /name: "recipient_ata", address: tokenAccount, size: TOKEN_ACCOUNT_SIZE, strategy: "idempotent"/);
   assert.match(body, /name: "tool_data", address: toolData, size: TOOL_DATA_ACCOUNT_SIZE, strategy: "init_if_needed"/);
+  assert.match(body, /name: "metaplex_metadata", address: tokenMetadataPda\(mint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.doesNotMatch(body, /master_edition|MasterEdition/i, 'metadata-only mint does not quote a Master Edition');
   assert.match(body, /res\.json\(prepared\)/, 'клиент получает tx и quote');
   assert.doesNotMatch(body, /authorityOnly/, 'authorityOnly отправил бы транзакцию без подписи получателя');
   assert.doesNotMatch(body, /createAssociatedTokenAccountIdempotentInstruction\(\s*AUTHORITY_PUBKEY/,
@@ -169,22 +171,63 @@ test('backend /test-grant-tools: минт, ATA и ToolData оплачивает 
   assert.doesNotMatch(body, /createMint\(connection, AUTHORITY/, 'mint-аккаунт больше не оплачивается authority');
   assert.match(body, /fromPubkey: recipient/, 'mint-аккаунт создаётся со счёта получателя');
   assert.match(body, /recipient\.equals\(AUTHORITY_PUBKEY\)/, 'authority запрещено быть получателем');
+  assert.match(body, /count !== 1/, 'mint route limits packet to one tool because Metadata makes multi-mint messages oversized');
   assert.match(body, /payer: recipient/, 'dev grant выбирает recipient как player payer');
+  assert.match(body, /createInitializeMintInstruction\(mint, 0, auth, auth\)/, 'Metadata creation gets the auth PDA as temporary freeze authority');
+  assert.match(body, /name: `metaplex_metadata_\$\{index\}`, address: tokenMetadataPda\(mint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.doesNotMatch(body, /MasterEdition|master_edition/, 'no Master Edition is allocated or quoted');
   assert.match(body, /coSignQuoted\(instructions, recipient, rentAccounts, mintKeypairs\)/,
     'payer=recipient платит сам, authority добавляет только partial signature и quote');
   assert.doesNotMatch(body, /authorityOnly/, 'authority не имеет права завершить транзакцию сам');
+});
+
+
+test('prep-mint only permits the auth PDA as the temporary freeze authority', () => {
+  const tools = read('aof_backend/src/routes/tools.ts');
+  const prep = routeBody(tools, '/prep-mint');
+  assert.match(prep, /createInitializeMintInstruction\(mintKp\.publicKey, 0, auth, auth\)/);
+  const guard = read('frontend/src/lib/txGuard.ts');
+  assert.match(guard, /ix\.data\.length === 67 && ix\.data\[34\] === 1[\s\S]*?new PublicKey\(ix\.data\.slice\(35, 67\)\)/,
+    'wallet checks the encoded freeze authority rather than accepting a caller-selected key');
+  assert.match(guard, /!freezeAuthority\?\.equals\(auth\)/);
+});
+
+test('Metaplex rent quote sizes stay aligned across Rust, backend, and wallet validation', () => {
+  const rust = read('aof-core/src/constants.rs');
+  const backend = read('aof_backend/src/lib/accountSizes.ts');
+  const wallet = read('frontend/src/lib/transactionIntent.ts');
+  assert.match(rust, /TOOL_METADATA_ACCOUNT_MAX_SPACE: usize = 679/);
+  assert.match(backend, /METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679/);
+  assert.match(wallet, /METAPLEX_METADATA_MAX_ACCOUNT_SIZE = 679/);
+});
+
+test('craft и fuse quote rent only for ToolData and immutable Metadata', () => {
+  const tools = read('aof_backend/src/routes/tools.ts');
+  const craft = routeBody(tools, '/craft');
+  assert.match(craft, /toolMetadataRegistry: toolMetadataRegistryPda\(\)\[0\]/);
+  assert.match(craft, /metadata: tokenMetadataPda\(newMint\)\[0\]/);
+  assert.match(craft, /coSignWithVrfLookupTableQuoted\(\[ix\], user, \[/);
+  assert.match(craft, /name: "metaplex_metadata", address: tokenMetadataPda\(newMint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(craft, /res\.json\(prepared\)/);
+
+  const reroll = routeBody(read('aof_backend/src/routes/reroll.ts'), '/fuse');
+  assert.match(reroll, /toolMetadataRegistry: toolMetadataRegistryPda\(\)\[0\]/);
+  assert.match(reroll, /metadata: tokenMetadataPda\(newMint\)\[0\]/);
+  assert.match(reroll, /coSignWithVrfLookupTableQuoted\(\[ix\], user, \[/);
+  assert.match(reroll, /name: "metaplex_metadata", address: tokenMetadataPda\(newMint\)\[0\], size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
+  assert.match(reroll, /res\.json\(prepared\)/);
 });
 
 test('IDL и таблица фронтенда: у mint_tool появился payer, и он не authority-only', () => {
   const idl = JSON.parse(read('aof_backend/src/idl/aof_core.json'));
   const ix = idl.instructions.find((i) => i.name === 'mint_tool');
   assert.deepEqual(ix.accounts.map((a) => a.name),
-    ['config', 'authority', 'auth', 'mint', 'token_account', 'recipient', 'payer', 'tool_data', 'token_program', 'system_program']);
+    ['config', 'authority', 'auth', 'mint', 'token_account', 'recipient', 'payer', 'tool_data', 'token_program', 'system_program', 'tool_metadata_registry', 'metadata', 'token_metadata_program']);
   assert.deepEqual([ix.accounts[6].writable, ix.accounts[6].signer], [true, true]);
   const table = read('frontend/src/lib/coreInstructions.ts');
   const spec = table.slice(table.indexOf('name: "mint_tool"'), table.indexOf('name: "mint_tool"') + 700);
   assert.match(spec, /authorityOnly: false/, 'игрок подписывает минт в свой кошелёк за свой счёт');
-  assert.match(spec, /accounts: \["config", "authority", "auth", "mint", "token_account", "recipient", "payer", "tool_data"/);
+  assert.match(spec, /accounts: \["config", "authority", "auth", "mint", "token_account", "recipient", "payer", "tool_data", "token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"\]/);
   // Таблица и IDL не разъехались с Rust.
   execFileSync('python3', ['scripts/check-idl-drift.py'], { cwd: root, stdio: 'pipe' });
   execFileSync('python3', ['scripts/gen-core-instruction-table.py', '--check'], { cwd: root, stdio: 'pipe' });
@@ -203,6 +246,49 @@ test('кошелёк игрока подписывает минт инструм
   assert.match(src, /hasToolMint[\s\S]*intent\?\.kind !== "toolMint"[\s\S]*local user intent/,
     'MintTool cannot reach a player wallet without explicit self-mint intent');
   assert.match(body, /keysEqual\(ix\.keys, expected\)/, 'аккаунты сверяются позиционно');
+  assert.match(body, /pda\("tool_metadata_registry"\),\s*metaplexMetadataPda\(mint\), TOKEN_METADATA_PROGRAM/,
+    'wallet intent binds the registry, Metadata PDA, and canonical Metaplex program');
+  assert.doesNotMatch(body, /MasterEdition|master_edition/, 'wallet intent does not include a Master Edition account');
+  assert.match(src, /name: "metaplex_metadata", address: metaplexMetadataPda\(mint\), size: METAPLEX_METADATA_MAX_ACCOUNT_SIZE, strategy: "init"/);
   assert.match(body, /ix\.data\[12 \+ toolType\.length\] !== RARITY\[intent\.rarity\]/, 'редкость из payload сверяется с интентом');
   assert.match(body, /ix\.data\[0\] !== 1/, 'принимается только идемпотентное создание ATA');
+});
+
+test('Metaplex creation fee is one constant across the program, the quotes and the validator tests', () => {
+  // Metaplex Token Metadata charges the payer 0.01 SOL for
+  // CreateMetadataAccountV3 and parks it in the new Metadata account. Every
+  // layer that prices a tool asset must use the same number: a tool-producing
+  // commit escrows it, the reimbursement returns it to the settler, and the
+  // player-facing quote shows it.
+  const FEE = /10_000_000/;
+  const rust = read('aof-core/src/constants.rs');
+  assert.match(rust, /TOOL_METADATA_CREATION_FEE_LAMPORTS: u64 = 10_000_000/);
+  const vrf = read('aof-core/src/vrf.rs');
+  assert.match(vrf, /saturating_add\(crate::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS\)/,
+    'tool_settlement_rent must escrow the fee for the settler');
+  const settlement = read('aof-core/src/instructions/settlement.rs');
+  const reimburse = settlement.slice(settlement.indexOf('pub fn reimburse_settler'));
+  assert.match(reimburse, /TOOL_METADATA_CREATION_FEE_LAMPORTS/,
+    'reimburse_settler must return the fee the Metadata CPI charged the cranker');
+
+  const backend = read('aof_backend/src/lib/accountSizes.ts');
+  assert.match(backend, /METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000/);
+  for (const route of ['aof_backend/src/routes/tools.ts', 'aof_backend/src/routes/reroll.ts', 'aof_backend/src/routes/admin.ts']) {
+    const src = read(route);
+    assert.match(src, /METAPLEX_CREATION_FEE_LAMPORTS/,
+      `${route}: the metadata quote line must declare the Metaplex fee`);
+    assert.match(src, /protocolFeeLamports: METAPLEX_CREATION_FEE_LAMPORTS/,
+      `${route}: the fee must travel as protocolFeeLamports`);
+  }
+  const quote = read('aof_backend/src/lib/payerQuote.ts');
+  assert.match(quote, /MAX_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n/);
+  assert.match(quote, /maxCost = networkFee \+ maxRent \+ protocolFees/, 'the fee is part of the quoted ceiling');
+  assert.ok(FEE.test(quote));
+
+  const wallet = read('frontend/src/lib/transactionIntent.ts');
+  assert.match(wallet, /MAX_QUOTED_PROTOCOL_FEE_PER_ACCOUNT_LAMPORTS = 10_000_000n/);
+  assert.match(wallet, /maxCost !== networkFee \+ quotedMaxRent \+ quotedProtocolFees/,
+    'the wallet rejects a quote whose fee totals do not reconcile');
+  assert.match(read('tests/aof_payer_funding.ts'), /METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000/);
+  assert.match(read('tests/aof_vrf_localnet.ts'), /METAPLEX_CREATION_FEE_LAMPORTS = 10_000_000/);
 });

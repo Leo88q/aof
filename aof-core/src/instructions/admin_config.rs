@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::errors::*;
 use crate::events::*;
-use crate::{ResourceKind, SetMiningEnabled, SetSupplyCap};
+use crate::{ResourceKind, SetIssuanceLifetimeBaseline, SetMiningEnabled, SetSupplyCap};
 
 /// [AUDIT F-27] Flip the on-chain mining kill-switch. Before this the switch
 /// was `MINING_ENABLED = !isProduction && env === 'true'` in the backend, which
@@ -31,6 +31,34 @@ pub fn set_supply_cap(ctx: Context<SetSupplyCap>, kind: ResourceKind, max_supply
         kind: kind as u8,
         max_supply,
         at: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}
+
+/// Establish a historically complete gross-mint baseline after scanning every
+/// SPL MintTo for the canonical mint. This is monotonic: the authority may
+/// conservatively raise a baseline later, but cannot reset issuance allowance.
+pub fn set_issuance_lifetime_baseline(
+    ctx: Context<SetIssuanceLifetimeBaseline>,
+    kind: ResourceKind,
+    total_minted: u128,
+) -> Result<()> {
+    let issuance_cap = &mut ctx.accounts.issuance_cap;
+    require!(issuance_cap.kind == kind as u8, AofError::InvalidResourceKind);
+    let previous = issuance_cap.lifetime_minted;
+    require!(total_minted >= previous, AofError::InvalidIssuanceCapParams);
+    require!(total_minted >= ctx.accounts.mint.supply as u128, AofError::InvalidIssuanceCapParams);
+    // A historical baseline may exceed a stale finite cap configured under
+    // the old outstanding-supply semantics. Recording that fact is safe: every
+    // subsequent mint remains blocked until the authority sets a cap above it.
+    // Baseline first, then choose/apply the finite lifetime cap.
+    issuance_cap.raise_lifetime_baseline(total_minted)?;
+    emit!(IssuanceLifetimeBaselineSet {
+        kind: kind as u8,
+        mint: ctx.accounts.mint.key(),
+        previous,
+        baseline: total_minted,
+        slot: Clock::get()?.slot,
     });
     Ok(())
 }

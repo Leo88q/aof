@@ -100,6 +100,18 @@ export function requireWalletProof(subject: string, selector: WalletSelector = "
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const selected = typeof selector === "function" ? selector(req) : req.body?.[selector];
     const wallet = typeof selected === "string" ? selected : "";
+    const authenticatedWallet = (req as any).authenticatedWallet;
+    if (typeof authenticatedWallet === "string") {
+      // The app-wide mapped guard may already have consumed this exact proof
+      // before a route-local guard runs. Reuse that authentication only when
+      // both its subject and actor match; never consume a one-time proof twice.
+      if (authenticatedWallet !== wallet || (req as any).authenticatedWalletSubject !== subject) {
+        res.status(403).json({ error: "Wallet proof actor or subject mismatch" });
+        return;
+      }
+      next();
+      return;
+    }
     const proof = req.body?.walletProof;
     let digest: string;
     try {
@@ -152,6 +164,7 @@ export function requireWalletProof(subject: string, selector: WalletSelector = "
     }
 
     (req as any).authenticatedWallet = wallet;
+    (req as any).authenticatedWalletSubject = subject;
     // Wallet proofs authenticate the actor; the HTTP idempotency key protects
     // the business request when the client retries with a fresh proof. Route
     // handlers may also list requireIdempotency; that middleware detects the
@@ -230,9 +243,11 @@ const MAPPED_MUTATIONS: MappedProof[] = [
   { path: "/resources/burn", subject: "resources_burn", selector: "owner" },
   { path: "/resources/exchange-energy", subject: "resources_exchange_energy", selector: "user" },
   { path: "/season/pass/purchase", subject: "season_pass_purchase", selector: "user" },
+  { path: "/season/reward/claim", subject: "season_reward_claim", selector: "owner" },
   { path: "/xp/claims", subject: "season_xp_claim", selector: "player" },
   { path: "/xp/claims/", subject: "season_xp_claim", selector: "player" },
   { path: "/tools/prep-mint", subject: "tools_prep_mint", selector: "owner" },
+  { path: "/tools/use-flask", subject: "tools_use_flask", selector: "user" },
   { path: "/tools/craft", subject: "tools_craft", selector: "user" },
   { path: "/tools/repair", subject: "tools_repair", selector: "user" },
   { path: "/tools/stake", subject: "tools_stake", selector: "user" },
@@ -249,8 +264,6 @@ const MAPPED_MUTATIONS: MappedProof[] = [
   { path: "/liquidity/withdraw", subject: "liquidity_withdraw", selector: "user" },
   { path: "/forge/commit", subject: "forge_commit", selector: "user" },
   { path: "/forge/reveal", subject: "forge_reveal", selector: "user" },
-  { path: "/forge/bow/commit", subject: "forge_bow_commit", selector: "user" },
-  { path: "/forge/bow/reveal", subject: "forge_bow_reveal", selector: "user" },
   { path: "/drum/commit", subject: "drum_commit", selector: "user" },
   { path: "/drum/reveal", subject: "drum_reveal", selector: "user" },
   { path: "/exploration/start/commit", subject: "exploration_commit", selector: "user" },

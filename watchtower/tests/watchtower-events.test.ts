@@ -75,6 +75,52 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
   const [cfg] = normalizeChainEvent(by("IssuanceCapChanged"), SALT);
   assert.equal(cfg.type, "ConfigUpdated"); assert.equal(cfg.category, "security"); assert.equal(cfg.attributes.halted, true); assert.equal(cfg.playerId, null);
 }
+// Historical issuance baselines are visible as configuration telemetry without
+// converting the lifetime total into a mint/reward event or a player action.
+{
+  const [baseline] = normalizeChainEvent({
+    ...by("IssuanceCapChanged"),
+    eventType: "IssuanceLifetimeBaselineSet",
+    mint: M.mind,
+    data: {
+      kind: 26,
+      mint: M.mind,
+      previous: "18446744073709551617",
+      baseline: "18446744073709551618",
+      slot: "400000007",
+    },
+  }, SALT);
+  assert.equal(baseline.type, "ConfigUpdated");
+  assert.equal(baseline.category, "security");
+  assert.equal(baseline.playerId, null);
+  assert.equal(baseline.asset, M.mind);
+  assert.deepEqual(baseline.attributes, {
+    setting: "issuance_lifetime_baseline",
+    kind: "26",
+    previous: "18446744073709551617",
+    baseline: "18446744073709551618",
+    slot: "400000007",
+  });
+  assert.deepEqual(validateEvents([baseline]), []);
+}
+// Premium reward claims are attributed to the player, but no amount/mint is
+// fabricated because neither is present in the on-chain event payload.
+{
+  const [reward] = normalizeChainEvent({
+    ...by("IssuanceCapChanged"),
+    eventType: "SeasonPremiumRewardClaimed",
+    wallet: W.alice,
+    data: { owner: W.alice, season_id: "9", level: 6 },
+  }, SALT);
+  assert.equal(reward.type, "RewardGranted");
+  assert.equal(reward.category, "economy");
+  assert.equal(reward.playerId, alice);
+  assert.equal(reward.amount, null);
+  assert.equal(reward.asset, null);
+  assert.deepEqual(reward.attributes, { source: "season_premium", seasonId: "9", level: "6" });
+  assert.deepEqual(validateEvents([reward]), []);
+  assert.ok(!JSON.stringify(reward).includes(W.alice));
+}
 // Pause switch → PausedToggled + EmergencyPause (only when paused=true); mint swap lists changed slots.
 {
   const p = normalizeChainEvent(by("PausedToggled"), SALT);

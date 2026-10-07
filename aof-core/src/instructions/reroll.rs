@@ -1,10 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, Burn, MintTo};
+use anchor_spl::token::{self, Token, Burn};
 use crate::constants::*;
 use crate::Reroll;
 use crate::errors::*;
 use crate::events::*;
 use crate::state::{canonical_tool_type, init_tool_data, Rarity};
+use crate::instructions::settlement;
 
 /// [ПРИМЕЧАНИЕ]: несмотря на название, это детерминированная механика
 /// "сжечь 2 инструмента одной редкости → получить 1 следующей", без RNG.
@@ -108,19 +109,19 @@ pub fn handler(ctx: Context<Reroll>, new_type: String) -> Result<()> {
         )?;
     }
 
-    let auth_bump = ctx.bumps.auth;
-    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
-    token::mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            MintTo {
-                mint: ctx.accounts.new_mint.to_account_info(),
-                to: ctx.accounts.new_token.to_account_info(),
-                authority: ctx.accounts.auth.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        1,
+    settlement::mint_tool_nft(
+        &ctx.accounts.token_program.to_account_info(),
+        &ctx.accounts.new_mint.to_account_info(),
+        &ctx.accounts.new_token.to_account_info(),
+        &ctx.accounts.auth.to_account_info(),
+        ctx.bumps.auth,
+        &ctx.accounts.metadata.to_account_info(),
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        &ctx.accounts.user.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.tool_metadata_registry,
+        &new_type,
+        new_rarity,
     )?;
 
     ctx.accounts.tool_a.durability = 0;

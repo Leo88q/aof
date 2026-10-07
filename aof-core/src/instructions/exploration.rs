@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, MintTo};
+use anchor_spl::token::{self, Burn, MintTo, Transfer};
 use crate::constants::*;
 use crate::{StartExplorationCommit, ExploreReveal, ExploreExpire, UpgradeExplorationTier};
 use crate::errors::*;
@@ -12,7 +12,7 @@ fn day_start_of(ts: i64) -> i64 {
     ts - (ts % 86400)
 }
 
-/// [F-06] Start a trip: burn the trip cost, snapshot the tier and commit a
+/// [F-06] Start a trip: escrow the trip cost, snapshot the tier and commit a
 /// pool randomness account (see vrf.rs). The operator co-signs as the backend
 /// gate; the outcome is out of everyone's hands from here on.
 pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> {
@@ -49,20 +49,23 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> 
         .ok_or(AofError::MathOverflow)?;
     let tier = state.tier;
 
-    // TRIP_COST — {data:75, circuit:35, silicon:35, dataset:50}
-    for (mint, from, cost) in [
-        (&ctx.accounts.data_mint, &ctx.accounts.user_data, TRIP_COST_DATA),
-        (&ctx.accounts.circuit_mint, &ctx.accounts.user_circuit, TRIP_COST_CIRCUIT),
-        (&ctx.accounts.silicon_mint, &ctx.accounts.user_silicon, TRIP_COST_SILICON),
-        (&ctx.accounts.dataset_mint, &ctx.accounts.user_dataset, TRIP_COST_DATASET),
+    // TRIP_COST — {data:75, circuit:35, silicon:35, dataset:50}. Keep the
+    // inputs in the program-controlled escrow until VRF settlement: expiry can
+    // return the exact assets by transfer, so a lifetime mint cap cannot strand
+    // a promised refund.
+    for (from, escrow, cost) in [
+        (&ctx.accounts.user_data, &ctx.accounts.escrow_data, TRIP_COST_DATA),
+        (&ctx.accounts.user_circuit, &ctx.accounts.escrow_circuit, TRIP_COST_CIRCUIT),
+        (&ctx.accounts.user_silicon, &ctx.accounts.escrow_silicon, TRIP_COST_SILICON),
+        (&ctx.accounts.user_dataset, &ctx.accounts.escrow_dataset, TRIP_COST_DATASET),
     ] {
         require!(from.amount >= cost, AofError::InsufficientBalance);
-        token::burn(
+        token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                Burn {
-                    mint: mint.to_account_info(),
+                Transfer {
                     from: from.to_account_info(),
+                    to: escrow.to_account_info(),
                     authority: ctx.accounts.user.to_account_info(),
                 },
             ),
@@ -163,11 +166,33 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> R
         clock.slot,
     )?;
 
+    // A revealed trip consumes its escrowed entry fees exactly once, regardless
+    // of whether the random outcome succeeds. The closed commit PDA prevents a
+    // second burn or a later refund.
+    let ec = &ctx.accounts.exploration_commit;
+    let token_program = ctx.accounts.token_program.to_account_info();
+    let auth = ctx.accounts.auth.to_account_info();
+    for (mint, escrow, amount) in [
+        (&ctx.accounts.data_mint, &ctx.accounts.escrow_data, ec.data_burned),
+        (&ctx.accounts.circuit_mint, &ctx.accounts.escrow_circuit, ec.circuit_burned),
+        (&ctx.accounts.silicon_mint, &ctx.accounts.escrow_silicon, ec.silicon_burned),
+        (&ctx.accounts.dataset_mint, &ctx.accounts.escrow_dataset, ec.dataset_burned),
+    ] {
+        burn_auth_escrow(
+            &token_program,
+            &mint.to_account_info(),
+            &escrow.to_account_info(),
+            &auth,
+            ctx.bumps.auth,
+            amount,
+        )?;
+    }
+
     let (success, reward) = trip_outcome(&value, &commit_key, tier)?;
     if success {
         // Emission paths check the global supply ceiling before minting.
-        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, reward)?;
-        check_supply_cap(&ctx.accounts.material_mints, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, reward)?;
+        check_supply_cap(&ctx.accounts.material_mints, &mut ctx.accounts.issuance_cap_circuit, ResourceKind::Circuit, reward)?;
+        check_supply_cap(&ctx.accounts.material_mints, &mut ctx.accounts.issuance_cap_silicon, ResourceKind::Silicon, reward)?;
         let token_program = ctx.accounts.token_program.to_account_info();
         let auth = ctx.accounts.auth.to_account_info();
         mint_resource(&token_program, &ctx.accounts.circuit_mint.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, reward)?;
@@ -192,10 +217,9 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> R
     Ok(())
 }
 
-/// [F-06] Refund of a trip the oracle never revealed: the burned trip cost is
-/// re-minted to the player. Permissionless, only once the reveal window has
-/// closed. The re-mint restores supply the commit burned, so it cannot exceed
-/// the ceiling the burn was taken from.
+/// [F-06] Refund a trip whose oracle never revealed: return the exact escrowed
+/// inputs by transfer. Permissionless, only once the reveal window has closed;
+/// the cumulative issuance cap cannot strand the refund.
 pub fn expire_handler(ctx: Context<ExploreExpire>) -> Result<()> {
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.exploration_commit.key();
@@ -203,18 +227,12 @@ pub fn expire_handler(ctx: Context<ExploreExpire>) -> Result<()> {
     vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
 
     let ec = &ctx.accounts.exploration_commit;
-    let (data, circuit, silicon, dataset) = (ec.data_burned, ec.circuit_burned, ec.silicon_burned, ec.dataset_burned);
-    let mm = &ctx.accounts.material_mints;
-    check_supply_cap(mm, ResourceKind::Data, ctx.accounts.data_mint.supply, data)?;
-    check_supply_cap(mm, ResourceKind::Circuit, ctx.accounts.circuit_mint.supply, circuit)?;
-    check_supply_cap(mm, ResourceKind::Silicon, ctx.accounts.silicon_mint.supply, silicon)?;
-    check_supply_cap(mm, ResourceKind::Dataset, ctx.accounts.dataset_mint.supply, dataset)?;
     let token_program = ctx.accounts.token_program.to_account_info();
     let auth = ctx.accounts.auth.to_account_info();
-    mint_resource(&token_program, &ctx.accounts.data_mint.to_account_info(), &ctx.accounts.user_data.to_account_info(), &auth, ctx.bumps.auth, data)?;
-    mint_resource(&token_program, &ctx.accounts.circuit_mint.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, circuit)?;
-    mint_resource(&token_program, &ctx.accounts.silicon_mint.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, silicon)?;
-    mint_resource(&token_program, &ctx.accounts.dataset_mint.to_account_info(), &ctx.accounts.user_dataset.to_account_info(), &auth, ctx.bumps.auth, dataset)?;
+    refund_auth_escrow(&token_program, &ctx.accounts.escrow_data.to_account_info(), &ctx.accounts.user_data.to_account_info(), &auth, ctx.bumps.auth, ec.data_burned)?;
+    refund_auth_escrow(&token_program, &ctx.accounts.escrow_circuit.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, ec.circuit_burned)?;
+    refund_auth_escrow(&token_program, &ctx.accounts.escrow_silicon.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, ec.silicon_burned)?;
+    refund_auth_escrow(&token_program, &ctx.accounts.escrow_dataset.to_account_info(), &ctx.accounts.user_dataset.to_account_info(), &auth, ctx.bumps.auth, ec.dataset_burned)?;
 
     emit!(VrfCommitRefunded {
         mechanic: VRF_MECHANIC_EXPLORATION,
@@ -260,7 +278,50 @@ pub fn upgrade_tier_handler(ctx: Context<UpgradeExplorationTier>) -> Result<()> 
     Ok(())
 }
 
-/// Mint `amount` of a resource with the auth PDA (callers check the supply
+/// Burn escrowed resources with the auth PDA after a VRF outcome is final.
+fn burn_auth_escrow<'info>(
+    token_program: &AccountInfo<'info>,
+    mint: &AccountInfo<'info>,
+    escrow: &AccountInfo<'info>,
+    auth: &AccountInfo<'info>,
+    auth_bump: u8,
+    amount: u64,
+) -> Result<()> {
+    if amount == 0 { return Ok(()); }
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+    token::burn(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            Burn { mint: mint.clone(), from: escrow.clone(), authority: auth.clone() },
+            signer_seeds,
+        ),
+        amount,
+    )
+}
+
+/// Return escrowed resources without minting, so refunds remain valid even at
+/// the cumulative lifetime cap.
+fn refund_auth_escrow<'info>(
+    token_program: &AccountInfo<'info>,
+    escrow: &AccountInfo<'info>,
+    destination: &AccountInfo<'info>,
+    auth: &AccountInfo<'info>,
+    auth_bump: u8,
+    amount: u64,
+) -> Result<()> {
+    if amount == 0 { return Ok(()); }
+    let signer_seeds: &[&[&[u8]]] = &[&[AUTH_SEED, &[auth_bump]]];
+    token::transfer(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            Transfer { from: escrow.clone(), to: destination.clone(), authority: auth.clone() },
+            signer_seeds,
+        ),
+        amount,
+    )
+}
+
+/// Mint `amount` of a resource with the auth PDA (callers check the lifetime
 /// cap first).
 fn mint_resource<'info>(
     token_program: &AccountInfo<'info>,
