@@ -444,7 +444,8 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       "the actual fronted rent plus Metaplex fee fits inside the player's cap");
     expect(d(cranker.publicKey)).to.equal(-d.fee,
       "cranker is made whole for the rent and Metaplex fee it fronted and pays only its own network fee");
-    expect(d(user.publicKey)).to.equal(commitLamports - commit.paidLamports.toNumber() - commit.depositLamports.toNumber());
+    expect(d(user.publicKey)).to.equal(commitLamports - commit.paidLamports.toNumber() - settlementRent,
+      "player gets the commit rent and the unconsumed deposit back: only the fronted rent plus Metaplex fee leaves the escrow");
 
     // Settled once: the commit account is gone.
     await expectError(program.methods.packOpenReveal(revealParams(value)).accounts(accounts).signers([cranker]).rpc(),
