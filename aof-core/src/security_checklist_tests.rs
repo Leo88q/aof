@@ -251,6 +251,20 @@ fn program_account<T: AccountSerialize>(key: Pubkey, value: &T, space: usize) ->
     info(key, false, rent_exempt(space), serialized(value, space), crate::ID, false)
 }
 
+fn issuance_cap_info(kind: ResourceKind, lifetime_minted: u128) -> AccountInfo<'static> {
+    let (key, bump) = pda(&[ISSUANCE_CAP_SEED, &[kind as u8]]);
+    let cap = IssuanceCap {
+        kind: kind as u8,
+        epoch_slots: 100,
+        cap_per_epoch: u64::MAX,
+        epoch_start_slot: SLOT_NOW,
+        minted_in_epoch: 0,
+        lifetime_minted,
+        bump,
+    };
+    program_account(key, &cap, 8 + IssuanceCap::INIT_SPACE)
+}
+
 fn executable_program(id: Pubkey) -> AccountInfo<'static> {
     info(id, false, 1, Vec::new(), bpf_loader_upgradeable::ID, true)
 }
@@ -652,6 +666,7 @@ fn collect_signal_binds_mint_token_account_and_state_to_the_signer() {
                 signal_mint,
                 user_signal,
                 token_program,
+                issuance_cap_info(ResourceKind::Signal, 0),
             ],
             &[],
         )
@@ -1035,6 +1050,7 @@ fn run_harvest_with(synapse_supply: u64, synapse_cap: u64, cashout_frozen: bool)
         token_account(Pubkey::new_unique(), w.mm.synapse, user, 0),
         token_program_info(),
         system_program_info(),
+        issuance_cap_info(ResourceKind::Synapse, synapse_supply as u128),
     ];
     let (mut accounts, bumps) = parse::<HarvestSynapse>(infos, &[TILE]).unwrap();
     let result =
@@ -1487,6 +1503,7 @@ fn collect_grid_power_ignores_a_stale_cached_weather() {
         token_account(Pubkey::new_unique(), w.mm.power, user, 0),
         token_program_info(),
         system_program_info(),
+        issuance_cap_info(ResourceKind::Power, 0),
     ];
     let (mut accounts, bumps) = parse::<CollectPower>(infos, &[]).unwrap();
     let result =
@@ -2561,6 +2578,7 @@ fn a_harvest_cannot_be_collected_twice() {
         token_account(Pubkey::new_unique(), w.mm.synapse, user, 0),
         token_program_info(),
         system_program_info(),
+        issuance_cap_info(ResourceKind::Synapse, 0),
     ];
     let harvest = |infos: Vec<AccountInfo<'static>>| -> Result<()> {
         let (mut accounts, bumps) = parse::<HarvestSynapse>(infos, &[TILE])?;
@@ -2805,6 +2823,15 @@ struct SignalClaim {
 /// Реальный `collect_signal::handler`: `output_signal` — начисленная партия,
 /// `signal_cap` — потолок выпуска сигнала, `mint_supply` — эмиссия сигнала.
 fn claim_signal(output_signal: u64, signal_cap: u64, mint_supply: u64) -> SignalClaim {
+    claim_signal_with_lifetime(output_signal, signal_cap, mint_supply, mint_supply as u128)
+}
+
+fn claim_signal_with_lifetime(
+    output_signal: u64,
+    signal_cap: u64,
+    mint_supply: u64,
+    lifetime_minted: u128,
+) -> SignalClaim {
     runtime();
     let mut w = World::new();
     w.mm.max_supply[ResourceKind::Signal as usize] = signal_cap;
@@ -2827,6 +2854,7 @@ fn claim_signal(output_signal: u64, signal_cap: u64, mint_supply: u64) -> Signal
             spl_mint(w.mm.signal, mint_supply, Some(w.auth_key), None),
             token_account(Pubkey::new_unique(), w.mm.signal, user, 0),
             token_program_info(),
+            issuance_cap_info(ResourceKind::Signal, lifetime_minted),
         ],
         &[],
     )
@@ -2851,6 +2879,15 @@ struct GridClaim {
 /// начисления, `water_cap` — потолок выпуска энергопотока, `mint_supply` —
 /// его эмиссия.
 fn claim_grid(last_collected_at: i64, power_cap: u64, mint_supply: u64) -> GridClaim {
+    claim_grid_with_lifetime(last_collected_at, power_cap, mint_supply, mint_supply as u128)
+}
+
+fn claim_grid_with_lifetime(
+    last_collected_at: i64,
+    power_cap: u64,
+    mint_supply: u64,
+    lifetime_minted: u128,
+) -> GridClaim {
     runtime();
     let mut w = World::new();
     w.mm.max_supply[ResourceKind::Power as usize] = power_cap;
@@ -2880,6 +2917,7 @@ fn claim_grid(last_collected_at: i64, power_cap: u64, mint_supply: u64) -> GridC
             token_account(Pubkey::new_unique(), w.mm.power, user, 0),
             token_program_info(),
             system_program_info(),
+            issuance_cap_info(ResourceKind::Power, lifetime_minted),
         ],
         &[],
     )
@@ -2917,10 +2955,16 @@ fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
     assert_eq!(capped.cpis, 0, "отвергнуто до минт-CPI");
     assert!(capped.in_progress, "выдано 0 ≤ начислено, партия ждёт решения");
 
-    // Максимум эмиссии + начисленное: потолок не вычисляется — отказ, не перенос.
-    let overflow = claim_signal(2, u64::MAX - 1, u64::MAX);
+    // A mint supply already above the configured lifetime ceiling is rejected.
+    let already_over_cap = claim_signal(2, u64::MAX - 1, u64::MAX);
+    rejected(already_over_cap.result, "SupplyCapExceeded");
+    assert_eq!(already_over_cap.cpis, 0, "отказ до минт-CPI");
+    assert!(already_over_cap.in_progress, "партия не потеряна");
+
+    // A corrupted u128 lifetime counter cannot wrap and authorize an emission.
+    let overflow = claim_signal_with_lifetime(2, SUPPLY_CAP_UNLIMITED, 0, u128::MAX);
     rejected(overflow.result, "MathOverflow");
-    assert_eq!(overflow.cpis, 0, "переполнение потолка отвергается до минта");
+    assert_eq!(overflow.cpis, 0, "переполнение счётчика отвергается до минта");
     assert!(overflow.in_progress, "партия не потеряна");
 
     // --- сетевая станция: окно начисления решает, сколько можно снять --------------
@@ -2963,8 +3007,8 @@ fn claim_paths_mint_exactly_what_was_accrued_and_never_twice() {
     assert_eq!(capped_well.cpis, 0);
     assert_eq!(capped_well.last_collected_at, window, "отвергнутый сбор не перезапускает окно");
 
-    // Максимум эмиссии при потолке ниже начисленного: отказ до минта.
-    let grid_overflow = claim_grid(NOW_TS - elapsed, u64::MAX - 1, u64::MAX);
+    // Потенциальное переполнение монотонного u128-счётчика отвергается до минта.
+    let grid_overflow = claim_grid_with_lifetime(NOW_TS - elapsed, u64::MAX - 1, u64::MAX, u128::MAX);
     rejected(grid_overflow.result, "MathOverflow");
     assert_eq!(grid_overflow.cpis, 0);
     assert_eq!(grid_overflow.last_collected_at, NOW_TS - elapsed, "окно не тронуто");
@@ -2988,6 +3032,7 @@ fn a_claim_cannot_be_collected_twice() {
     };
     let signal_mint = spl_mint(w.mm.signal, 0, Some(w.auth_key), None);
     let user_signal = token_account(Pubkey::new_unique(), w.mm.signal, user, 0);
+    let issuance_cap = issuance_cap_info(ResourceKind::Signal, 0);
     let infos = |signal_info: AccountInfo<'static>| {
         vec![
             w.config_info(),
@@ -2998,6 +3043,7 @@ fn a_claim_cannot_be_collected_twice() {
             signal_mint.clone(),
             user_signal.clone(),
             token_program_info(),
+            issuance_cap.clone(),
         ]
     };
 
