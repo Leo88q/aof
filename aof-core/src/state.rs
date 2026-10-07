@@ -1377,6 +1377,18 @@ pub(crate) mod test_support {
         m
     }
 
+    pub fn issuance_cap(kind: ResourceKind, lifetime_minted: u128) -> IssuanceCap {
+        IssuanceCap {
+            kind: kind as u8,
+            epoch_slots: 100,
+            cap_per_epoch: 1_000,
+            epoch_start_slot: 1_000,
+            minted_in_epoch: 0,
+            lifetime_minted,
+            bump: 0,
+        }
+    }
+
     pub fn vault_guard(epoch_slots: u64, cap_per_epoch: u64, max_per_tx: u64) -> VaultGuard {
         VaultGuard {
             mint: Pubkey::default(),
@@ -1397,25 +1409,13 @@ pub(crate) mod test_support {
 /// the boundary conditions that decide whether funds move at all.
 #[cfg(test)]
 mod state_tests {
-    use super::test_support::with_supply_cap;
+    use super::test_support::{issuance_cap, with_supply_cap};
     use super::*;
     use crate::constants::{RESOURCE_KIND_COUNT, SUPPLY_CAP_UNLIMITED};
     use crate::errors::AofError;
 
     fn mm(cap: u64) -> MaterialMints {
         with_supply_cap(ResourceKind::Circuit, cap)
-    }
-
-    fn issuance_cap(kind: ResourceKind, lifetime_minted: u128) -> IssuanceCap {
-        IssuanceCap {
-            kind: kind as u8,
-            epoch_slots: 100,
-            cap_per_epoch: 1_000,
-            epoch_start_slot: 1_000,
-            minted_in_epoch: 0,
-            lifetime_minted,
-            bump: 0,
-        }
     }
 
     #[test]
@@ -1593,8 +1593,7 @@ mod state_tests {
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 mod property_tests {
-    use super::test_support::vault_guard;
-    use super::test_support::with_supply_cap;
+    use super::test_support::{issuance_cap, vault_guard, with_supply_cap};
     use super::*;
     use crate::constants::SUPPLY_CAP_UNLIMITED;
     use crate::errors::AofError;

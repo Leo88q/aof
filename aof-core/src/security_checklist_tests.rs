@@ -2164,7 +2164,6 @@ fn reveal_accounts(randomness: &AccountInfo<'static>, payer: &AccountInfo<'stati
         system_program: system_program_info(),
         reward_escrow: plain(Pubkey::new_unique()),
         token_program: token_program_info(),
-        wrapped_sol_mint: plain(anchor_spl::token::spl_token::native_mint::ID),
         program_state: plain(Pubkey::new_unique()),
     }
 }
