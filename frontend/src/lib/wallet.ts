@@ -7,6 +7,7 @@ import { showTxTrap } from "./txTrap";
 import {
   Connection,
   PublicKey,
+  SystemProgram,
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -207,7 +208,24 @@ function expiredBlockhash(error: unknown): boolean {
   return /blockhash not found/i.test(message);
 }
 
+function isDurableNonceTransaction(tx: Transaction | VersionedTransaction): boolean {
+  const opcode = (data: Uint8Array | undefined) =>
+    !!data && data.length >= 4 && data[0] === 4 && data[1] === 0 && data[2] === 0 && data[3] === 0;
+  if (tx instanceof Transaction) {
+    const first = tx.instructions[0];
+    return !!first && first.programId.equals(SystemProgram.programId) && opcode(first.data);
+  }
+  const message = tx.message;
+  const first = message.compiledInstructions?.[0];
+  const keys = "staticAccountKeys" in message
+    ? message.staticAccountKeys
+    : (message as { accountKeys: PublicKey[] }).accountKeys;
+  const program = first ? keys[first.programIdIndex] : undefined;
+  return !!program && program.equals(SystemProgram.programId) && opcode(first?.data);
+}
+
 async function assertLiveBlockhash(tx: Transaction | VersionedTransaction): Promise<void> {
+  if (isDurableNonceTransaction(tx)) return;
   const hash = tx instanceof Transaction ? tx.recentBlockhash : tx.message.recentBlockhash;
   if (!hash) throw new LocalTxFeedbackError(walletText().blockhashExpired);
   try {

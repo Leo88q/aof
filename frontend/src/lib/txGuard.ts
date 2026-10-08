@@ -39,6 +39,12 @@ const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
+const RECENT_BLOCKHASHES_SYSVAR = "SysvarRecentB1ockHashes11111111111111111111";
+/** Public upgrade authority. A player may refund only the exact nonce-account
+ * rent to this address, never an arbitrary SOL transfer. */
+export const GAME_OPERATOR = "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN";
+const NONCE_ACCOUNT_LENGTH = 80;
+const MAX_NONCE_RENT_LAMPORTS = 2_000_000;
 
 const SAFE_PROGRAMS = new Set([
   SYSTEM_PROGRAM_ID,           // System Program
@@ -210,7 +216,8 @@ export async function guardTransaction(
       ...instructions.map((instruction) => instruction.programId),
       ...extractPrograms(logs),
     ]));
-    const lamportsSpent = estimateLamportsSpent(instructions, user);
+    const lamportsSpent = Math.max(0, estimateLamportsSpent(instructions, user) -
+      await nonceRentReimbursement(instructions, user, connection));
     const tokenOutflows = estimateTokenOutflows(instructions, user);
 
     // 3. The fee payer must be the wallet that is about to sign. This avoids
@@ -461,10 +468,16 @@ function readU64(data: Uint8Array, offset: number): number | null {
   return value;
 }
 
+function isPlayerNonceAdvance(ix: GuardInstruction | undefined, user: PublicKey): boolean {
+  return !!ix && ix.programId === SYSTEM_PROGRAM_ID && readU32(ix.data, 0) === 4 &&
+    ix.data.length === 4 && ix.keys[2]?.equals(user) === true &&
+    ix.keys[1]?.toBase58() === RECENT_BLOCKHASHES_SYSVAR;
+}
+
 /** Standard program IDs are NOT safe instructions. In particular Approve,
- * SetAuthority, CloseAccount, nonce and Token-2022 extension instructions must
- * never slip through simply because the token/system program was allowlisted.
- * Only operations actually emitted by our builders are accepted here. */
+ * SetAuthority, CloseAccount, nonce withdrawal and Token-2022 extension
+ * instructions must never slip through simply because the token/system program
+ * was allowlisted. Only operations actually emitted by our builders are accepted. */
 function validateInstructionPolicy(instructions: GuardInstruction[], user: PublicKey, cfg: GuardConfig): void {
   let creationRent = 0;
   let atas = 0;
@@ -479,6 +492,7 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
     }
     if (ix.programId === SYSTEM_PROGRAM_ID) {
       const opcode = readU32(ix.data, 0);
+      if (opcode === 4 && instructions[0] === ix && isPlayerNonceAdvance(ix, user)) continue;
       if (opcode === 2 && ix.data.length === 12 && ix.keys[0]?.equals(user)) continue;
       // Only an 82-byte classic SPL mint may be allocated by prep-mint.
       if (opcode !== 0 || ix.data.length !== 52 || !ix.keys[0]?.equals(user) ||
@@ -523,6 +537,22 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
       initialized.size !== created.length || creationRent > (cfg.maxAccountCreationLamports ?? 5_000_000)) {
     throw new Error("Unexpected mint allocation or excessive rent");
   }
+}
+
+async function nonceRentReimbursement(
+  instructions: GuardInstruction[],
+  user: PublicKey,
+  connection: Pick<Connection, "getMinimumBalanceForRentExemption">,
+): Promise<number> {
+  if (!isPlayerNonceAdvance(instructions[0], user)) return 0;
+  const transfers = instructions.filter((ix) =>
+    ix.programId === SYSTEM_PROGRAM_ID && readU32(ix.data, 0) === 2 && ix.data.length === 12 &&
+    ix.keys[0]?.equals(user) && ix.keys[1]?.toBase58() === GAME_OPERATOR);
+  if (transfers.length !== 1) return 0;
+  const amount = readU64(transfers[0].data, 4) || 0;
+  if (amount <= 0 || amount > MAX_NONCE_RENT_LAMPORTS) return 0;
+  const rent = await connection.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_LENGTH);
+  return amount === rent ? amount : 0;
 }
 
 /** Sum explicit System Program transfers whose source is the connected wallet. */

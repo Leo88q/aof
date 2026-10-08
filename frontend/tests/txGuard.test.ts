@@ -18,7 +18,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction,
   createAssociatedTokenAccountInstruction, createInitializeMint2Instruction, createInitializeMintInstruction, getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
+import { GAME_OPERATOR, guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 
 const user = Keypair.generate();
 const other = Keypair.generate().publicKey;
@@ -96,6 +96,30 @@ test("compute budget: unit limit in (0, 1.4M] and price ≤ 100k microlamports, 
   await bad(cb([3, 0x10, 0x27, 0, 0]));               // price with a u32 body
   await bad(cb([2, 0x40, 0x42, 0x0f]));                // truncated
   await bad(cb([]));
+});
+
+test("player nonce advance is allowed only first, and only the exact rent may return to the operator", async () => {
+  const nonce = Keypair.generate().publicKey;
+  const operator = new PublicKey(GAME_OPERATOR);
+  const rent = 1_447_680;
+  const advance = SystemProgram.nonceAdvance({ noncePubkey: nonce, authorizedPubkey: user.publicKey });
+  const repay = SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: operator, lamports: rent });
+  const rpc = rpcWith();
+  rpc.getMinimumBalanceForRentExemption = async (size: number) => size === 80 ? rent : 0;
+  const paid = await guard(transaction(advance, ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }), repay, coreIx()), {}, rpc);
+  assert.equal(paid.safe, true);
+  assert.equal(paid.details?.lamportsSpent, 0);
+  assert.equal((await guard(transaction(coreIx(), advance), {}, rpc)).safe, false, "advance must be first");
+  assert.equal((await guard(transaction(SystemProgram.nonceWithdraw({
+    noncePubkey: nonce, authorizedPubkey: user.publicKey, toPubkey: user.publicKey, lamports: 1,
+  })), {}, rpc)).safe, false, "withdraw is not an advance");
+  const extra = await guard(transaction(advance, SystemProgram.transfer({
+    fromPubkey: user.publicKey, toPubkey: operator, lamports: rent + 1,
+  }), coreIx()), {}, rpc);
+  assert.equal(extra.safe, false, "rent refund must be the exact exemption");
+  assert.equal((await guard(transaction(advance, SystemProgram.transfer({
+    fromPubkey: user.publicKey, toPubkey: other, lamports: rent,
+  })), {}, rpc)).safe, false, "rent must return only to the operator");
 });
 
 test("prep-mint policy: one user-funded classic mint uses auth PDA temporarily for mint/freeze, rent ceiling inclusive", async () => {
