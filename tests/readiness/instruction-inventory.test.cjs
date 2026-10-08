@@ -229,7 +229,7 @@ test('вызовы атрибутируются по получателю, ре�
   assert.equal(byKey.get('aof_market.set_paused').callSites.backend, undefined, 'вызов program.methods.setPaused принадлежит aof_core, а не aof_market');
 });
 
-test('--compare-cu сверяет статический охват с CU-отчётом и держит порог 150 000 CU', () => {
+test('--compare-cu сверяет статический охват с CU-отчётом и держит порог 150 000 CU (VRF — 175 000)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aof-cu-'));
   try {
     const report = path.join(dir, 'cu-report.md');
@@ -240,10 +240,27 @@ test('--compare-cu сверяет статический охват с CU-отч
     assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 128 в IDL aof_core/);
     assert.match(result.out, /В отчёте, но не в IDL \(1\): NotInIdl/);
     assert.match(result.out, /Не затронуты ни тестами, ни CU-отчётом/);
+
+    // VRF-раскрытия ходят в Metaplex CPI (PR #35) и штатно измеряются в 143k–152k:
+    // для них действует отдельный порог 175 000, иначе отчёт ругался бы на норму.
+    fs.writeFileSync(report, ['# cu', '', '| Instruction | Calls | Max CU | Median CU | Max, % of 200k |', '|---|---:|---:|---:|---:|',
+      '| RerollRandomReveal | 1 | 152000 | 152000 | 76.0% |', '| PackOpenReveal | 2 | 148573 | 145571 | 74.3% |'].join('\n'));
+    result = run(['--compare-cu', report]);
+    assert.equal(result.code, 0, `VRF-раскрытия до 175 000 CU допустимы: ${result.out}`);
+    assert.doesNotMatch(result.out, /Выше порога/);
+
+    // 150 000 остаётся жёстким для всех прочих инструкций.
     fs.appendFileSync(report, '\n| Craft | 1 | 160001 | 160001 | 80% |\n');
     result = run(['--compare-cu', report]);
-    assert.equal(result.code, 1, 'выше 150 000 CU — отказ');
-    assert.match(result.out, /Выше порога 150 000 CU: Craft: 160001/);
+    assert.equal(result.code, 1, 'не-VRF инструкция выше 150 000 CU — отказ');
+    assert.match(result.out, /Выше порога 150000 CU \(VRF-раскрытия VrfPoolAdd\/\*Commit\/\*Reveal — 175000 CU\): Craft: 160001/);
+
+    // VRF-инструкция выше своего порога — тоже отказ (порог не «выключен»).
+    fs.appendFileSync(report, '\n| DrawLottery | 1 | 180000 | 180000 | 90% |\n');
+    result = run(['--compare-cu', report]);
+    assert.equal(result.code, 1, 'VRF-инструкция выше 175 000 CU — отказ');
+    assert.match(result.out, /DrawLottery: 180000/);
+
     assert.equal(run(['--compare-cu', path.join(dir, 'nope.md')]).code, 2);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

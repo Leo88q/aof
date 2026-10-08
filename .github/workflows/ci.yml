@@ -1283,6 +1283,9 @@ jobs:
           fi
           ls -l target/mock/mock_switchboard.so
           printf '\n[[test.genesis]]\naddress = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"\nprogram = "target/mock/mock_switchboard.so"\n' >> Anchor.toml
+          # Local `make test` does the same append through scripts/anchor-test.sh
+          # and restores Anchor.toml afterwards. This job appends once and calls
+          # `anchor test` directly, so do not also run `make test` here.
           tail -4 Anchor.toml
 
       - name: Report the build-time program id sync

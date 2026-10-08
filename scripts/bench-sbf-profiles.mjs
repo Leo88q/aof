@@ -29,7 +29,8 @@
  *   * сеть — только если задан --rpc, и только чтение (getMinimumBalanceForRentExemption через оценщик).
  *
  * Выбор профиля (choose): допустимы только ячейки, где собрались все программы, тесты (если запускались) прошли,
- * ни одна инструкция не выше 150 000 CU и ни одна не выросла по CU больше чем на 10% относительно baseline; из них —
+ * ни одна инструкция не выше своего порога (150 000 CU; VRF-раскрытия VrfPoolAdd/*Commit/*Reveal — 175 000 CU,
+ * они ходят в Metaplex CPI после PR #35) и ни одна не выросла по CU больше чем на 10% относительно baseline; из них —
  * наименьший суммарный размер; если выигрыш меньше 2% — оставить baseline. Решение — по данным, не по ожиданиям.
  */
 import { createHash } from 'node:crypto';
@@ -43,6 +44,15 @@ export const ROOT = path.resolve(HERE, '..');
 
 export const PROGRAMS = ['aof_core', 'aof_market', 'aof_quests', 'aof_rebirth', 'aof_liquidity', 'aof_session_keys'];
 export const CU_THRESHOLD = 150_000;
+/**
+ * VRF-раскрытия с PR #35 идут через CPI в Metaplex Token Metadata: измеренный
+ * максимум 143k–152k (см. измерения в `tests/aof_cu_report.ts`), поэтому для них
+ * порог выше. Иначе ячейки бенчмарка отклонялись бы из-за инструкций, которые
+ * штатно измеряются на этом уровне.
+ */
+export const CU_THRESHOLD_VRF = 175_000;
+export const VRF_INSTRUCTION = /^(VrfPoolAdd|\w+Commit|\w+Reveal)$/;
+export const cuThresholdFor = (name) => (VRF_INSTRUCTION.test(name) ? CU_THRESHOLD_VRF : CU_THRESHOLD);
 export const MIN_GAIN_PERCENT = 2;
 export const CU_REGRESSION_PERCENT = 10;
 
@@ -239,7 +249,7 @@ export function summarize(run, { baselineName = 'baseline' } = {}) {
     if (r.cu) {
       const entries = Object.entries(r.cu);
       row.maxCu = entries.length ? Math.max(...entries.map(([, v]) => v.maxCu)) : null;
-      row.overThreshold = entries.filter(([, v]) => v.maxCu > CU_THRESHOLD).map(([k, v]) => `${k}: ${v.maxCu}`);
+      row.overThreshold = entries.filter(([k, v]) => v.maxCu > cuThresholdFor(k)).map(([k, v]) => `${k}: ${v.maxCu} > ${cuThresholdFor(k)}`);
       if (base?.cu) {
         for (const [name, v] of entries) {
           const was = base.cu[name]?.maxCu;
@@ -261,7 +271,7 @@ export function choose(summary, { minGainPercent = MIN_GAIN_PERCENT } = {}) {
   for (const row of summary.rows) {
     if (!row.ok) { rejected.push({ name: row.name, why: 'сборка не удалась или программ не хватает (профиль не поддержан тулчейном?)' }); continue; }
     if (row.testsPassed === false) { rejected.push({ name: row.name, why: 'тесты не прошли' }); continue; }
-    if (row.overThreshold.length) { rejected.push({ name: row.name, why: `CU выше ${CU_THRESHOLD}: ${row.overThreshold.join(', ')}` }); continue; }
+    if (row.overThreshold.length) { rejected.push({ name: row.name, why: `CU выше порога: ${row.overThreshold.join(', ')}` }); continue; }
     if (row.cuRegressions.length) { rejected.push({ name: row.name, why: `CU вырос больше чем на ${CU_REGRESSION_PERCENT}%: ${row.cuRegressions.join(', ')}` }); continue; }
     eligible.push(row);
   }

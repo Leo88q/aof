@@ -183,12 +183,15 @@ function syntheticRun(rows) {
   };
 }
 
-test('выбор профиля: наименьший допустимый; CU выше 150 000 и рост CU > 10% отклоняют ячейку', async () => {
+test('выбор профиля: наименьший допустимый; CU выше порога и рост CU > 10% отклоняют ячейку', async () => {
   const bench = await load();
   const cu = (max) => ({ MintTool: { calls: 1, maxCu: max, medianCu: max }, Craft: { calls: 1, maxCu: 90_000, medianCu: 90_000 } });
+  // VRF-раскрытия ходят в Metaplex CPI (PR #35) и штатно измеряются в 143k–152k:
+  // их порог — 175 000, поэтому ячейку они не отклоняют.
+  const vrf = { RerollRandomReveal: { calls: 1, maxCu: 152_000, medianCu: 152_000 } };
   const summary = bench.summarize(syntheticRun([
     { name: 'baseline', bytes: 5_000_000, cu: cu(40_000) },
-    { name: 'oz', bytes: 3_800_000, cu: cu(40_500) },                      // самый маленький и допустимый
+    { name: 'oz', bytes: 3_800_000, cu: { ...cu(40_500), ...vrf } },       // самый маленький и допустимый
     { name: 'oz-small-but-slow', bytes: 3_500_000, cu: cu(60_000) },       // +50% CU
     { name: 'oz-over', bytes: 3_400_000, cu: { MintTool: { calls: 1, maxCu: 151_000, medianCu: 1 } } }, // выше порога
     { name: 'os', bytes: 4_100_000, cu: cu(40_200) },
@@ -197,8 +200,21 @@ test('выбор профиля: наименьший допустимый; CU �
   assert.equal(decision.choice, 'oz');
   assert.match(decision.reason, /−24\.00%/);
   assert.ok(decision.rejected.find((r) => r.name === 'oz-small-but-slow' && /вырос больше чем на 10%/.test(r.why)));
-  assert.ok(decision.rejected.find((r) => r.name === 'oz-over' && /выше 150000/.test(r.why)));
+  assert.ok(decision.rejected.find((r) => r.name === 'oz-over' && /CU выше порога: MintTool: 151000 > 150000/.test(r.why)));
   assert.equal(summary.rows.find((r) => r.name === 'oz-over').overThreshold.length, 1);
+  assert.equal(summary.rows.find((r) => r.name === 'oz').overThreshold.length, 0, 'VRF-раскрытие 152 000 CU ниже своего порога 175 000');
+});
+
+test('выбор профиля: VRF-инструкция выше 175 000 CU отклоняет ячейку', async () => {
+  const bench = await load();
+  const mint = { MintTool: { calls: 1, maxCu: 40_000, medianCu: 40_000 } };
+  const summary = bench.summarize(syntheticRun([
+    { name: 'baseline', bytes: 5_000_000, cu: mint },
+    { name: 'oz', bytes: 3_800_000, cu: { ...mint, RerollRandomReveal: { calls: 1, maxCu: 180_000, medianCu: 180_000 } } },
+  ]));
+  const decision = bench.choose(summary);
+  assert.equal(decision.choice, 'baseline');
+  assert.ok(decision.rejected.find((r) => r.name === 'oz' && /CU выше порога: RerollRandomReveal: 180000 > 175000/.test(r.why)));
 });
 
 test('выбор профиля: выигрыш меньше 2% — baseline остаётся; провалившиеся тесты и сломанный baseline учитываются', async () => {

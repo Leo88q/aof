@@ -16,7 +16,8 @@ build: ensure-env
 no-idl: build
 
 test: ensure-env
-	anchor test --skip-build
+	@echo "anchor test через scripts/anchor-test.sh: собирает тестовый двойник Switchboard и подкладывает его в genesis (иначе VRF-набор молча помечается skipped)"
+	bash scripts/anchor-test.sh
 
 test-mocha: ensure-env
 	npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts

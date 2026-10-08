@@ -62,6 +62,13 @@ upgradeable = true
 url = "https://api.mainnet-beta.solana.com"
 # Agave 4.2.1 panics during startup when the bind address is unspecified.
 bind_address = "127.0.0.1"
+# `tests/aof_cu_report.ts` reads this validator's transaction history at the end
+# of the suite and fails when fewer than a full run's instructions are in it.
+# Agave keeps only 10 000 shreds by default (`--limit-ledger-size`, v4.2.1
+# `validator/src/cli.rs`), which pruned a 10-minute suite down to its last 21
+# transactions; with this value the same suite reported 330. The ledger lives in
+# `.anchor/` (gitignored) and Anchor recreates it before every run.
+limit_ledger_size = "500000"
 
 # Token Metadata CPI tests need the deployed Metaplex program in localnet.
 [[test.validator.clone]]
