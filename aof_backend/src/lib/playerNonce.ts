@@ -7,7 +7,6 @@ import {
   NonceAccount,
   PublicKey,
   SystemProgram,
-  Transaction,
   TransactionInstruction,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -99,14 +98,12 @@ export function assembleDurableInstructions(
 async function createNonceAccount(player: PublicKey, nonceKey: Keypair): Promise<NonceRecord> {
   const authority = authorityKey();
   const rentLamports = await connection.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_LENGTH);
-  const tx = new Transaction().add(
-    ...SystemProgram.createNonceAccount({
-      fromPubkey: authority.publicKey,
-      noncePubkey: nonceKey.publicKey,
-      authorizedPubkey: player,
-      lamports: rentLamports,
-    }),
-  );
+  const tx = SystemProgram.createNonceAccount({
+    fromPubkey: authority.publicKey,
+    noncePubkey: nonceKey.publicKey,
+    authorizedPubkey: player,
+    lamports: rentLamports,
+  });
   tx.feePayer = authority.publicKey;
   const lifetime = await connection.getLatestBlockhash("confirmed");
   tx.recentBlockhash = lifetime.blockhash;
