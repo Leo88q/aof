@@ -62,7 +62,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       let resp: any;
       if (kind === "stake") {
         flashMsg(copy.staking);
-        resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(86400) });
+        resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(60) });
       } else if (kind === "unstake") {
         flashMsg(copy.unstaking);
         resp = await api.tools.unstake({ user: address, mint: tool.mint });
