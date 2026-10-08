@@ -7,8 +7,8 @@
  *
  * [AUDIT AOF-H2] Program ids are sourced from the honest address registry
  * (watchtower/addresses.json): the six program crates that actually exist in
- * this repo, with `status: reference-unverified` / `rpcVerifiedAt: null`
- * until a live RPC check is run by an operator. `CgInv111...` and
+ * this repo. Devnet bytecode was matched on 2026-10-08; that is not a
+ * mainnet deployment. `CgInv111...` and
  * `STrEaSuRy111...` are KEPT as clearly-labelled placeholders with
  * `programId: null` — they are NOT deployed addresses (no such program
  * crate exists in this repo); they must never be used for RPC calls.

@@ -6,50 +6,68 @@
     {
       "name": "aof_core",
       "address": "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx",
-      "status": "reference-unverified",
+      "status": "verified",
       "source": "aof-core/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_core.json",
-      "rpcVerifiedAt": null
+      "rpcVerifiedAt": "2026-10-08",
+      "bytecodeSha256Prefix": "568260dd5df1",
+      "upgradeAuthority": "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN",
+      "bytecodeEvidence": "scripts/verify-programs.sh --require-bytecode exit 0; local .so matched deployed ProgramData on devnet.helius-rpc.com"
     },
     {
       "name": "aof_market",
       "address": "A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY",
-      "status": "reference-unverified",
+      "status": "verified",
       "source": "programs/aof-market/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_market.json",
-      "rpcVerifiedAt": null
+      "rpcVerifiedAt": "2026-10-08",
+      "bytecodeSha256Prefix": "8494b03ad7bd",
+      "upgradeAuthority": "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN",
+      "bytecodeEvidence": "scripts/verify-programs.sh --require-bytecode exit 0; local .so matched deployed ProgramData on devnet.helius-rpc.com"
     },
     {
       "name": "aof_quests",
       "address": "2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc",
-      "status": "reference-unverified",
+      "status": "verified",
       "source": "programs/aof-quests/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_quests.json",
-      "rpcVerifiedAt": null
+      "rpcVerifiedAt": "2026-10-08",
+      "bytecodeSha256Prefix": "4fce12cd3ad4",
+      "upgradeAuthority": "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN",
+      "bytecodeEvidence": "scripts/verify-programs.sh --require-bytecode exit 0; local .so matched deployed ProgramData on devnet.helius-rpc.com"
     },
     {
       "name": "aof_rebirth",
       "address": "HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF",
-      "status": "reference-unverified",
+      "status": "verified",
       "source": "programs/aof-rebirth/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_rebirth.json",
-      "rpcVerifiedAt": null
+      "rpcVerifiedAt": "2026-10-08",
+      "bytecodeSha256Prefix": "48c2862bd4dd",
+      "upgradeAuthority": "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN",
+      "bytecodeEvidence": "scripts/verify-programs.sh --require-bytecode exit 0; local .so matched deployed ProgramData on devnet.helius-rpc.com"
     },
     {
       "name": "aof_liquidity",
       "address": "Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S",
-      "status": "reference-unverified",
+      "status": "verified",
       "source": "programs/aof-liquidity/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_liquidity.json",
-      "rpcVerifiedAt": null
+      "rpcVerifiedAt": "2026-10-08",
+      "bytecodeSha256Prefix": "f956dae17a79",
+      "upgradeAuthority": "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN",
+      "bytecodeEvidence": "scripts/verify-programs.sh --require-bytecode exit 0; local .so matched deployed ProgramData on devnet.helius-rpc.com"
     },
     {
       "name": "aof_session_keys",
       "address": "9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5",
-      "status": "reference-unverified",
+      "status": "verified",
       "source": "programs/aof-session-keys/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_session_keys.json",
-      "rpcVerifiedAt": null
+      "rpcVerifiedAt": "2026-10-08",
+      "bytecodeSha256Prefix": "ca443823a8c5",
+      "upgradeAuthority": "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN",
+      "bytecodeEvidence": "scripts/verify-programs.sh --require-bytecode exit 0; local .so matched deployed ProgramData on devnet.helius-rpc.com"
     }
   ],
   "placeholders": [

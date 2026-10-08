@@ -11,3 +11,17 @@
 До запуска `vrf-settler` тот же коммит был в `GET /vrf/pending` с фазой `revealable`. После запуска процесса список ожидания стал пустым, а статус капсулы — `settled`. Кнопка самораскрытия в странице блокировалась стражем на программе `metaqbxx`; раскрытие сделал сетлер, не эта кнопка.
 
 Отправка оплаты идёт через подпись Phantom и `sendRawTransaction` игры, коммит `69c9b3d`. Это не smoke добычи и не `verify-programs.sh --require-bytecode`.
+
+
+## Проверка байткода перед добычей
+
+2026-10-08, `scripts/verify-programs.sh --require-bytecode`, код выхода `0`. Хост RPC в выводе: `devnet.helius-rpc.com`. Ключ не печатался. Authority всех шести программ: `C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN`. Это сравнение локальных `.so` с байткодом в Devnet, не включение добычи и не smoke сбора.
+
+| Программа | Префикс sha256 |
+|---|---|
+| aof_session_keys | `ca443823a8c5` |
+| aof_liquidity | `f956dae17a79` |
+| aof_rebirth | `48c2862bd4dd` |
+| aof_quests | `4fce12cd3ad4` |
+| aof_market | `8494b03ad7bd` |
+| aof_core | `568260dd5df1` |
