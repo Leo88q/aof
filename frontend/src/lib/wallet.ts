@@ -179,7 +179,12 @@ export function createWalletAdapter(): WalletAdapter {
       if (!provider.publicKey || !new PublicKey(provider.publicKey.toString()).equals(user)) {
         throw new Error("Wallet changed during transaction verification");
       }
-      const { signature } = await provider.signAndSendTransaction(tx);
+      // The operator has already partially signed. Phantom's signAndSendTransaction
+      // shows the approval and then fails inside the extension with JSON-RPC
+      // -32603 and no signature, so the payment never reaches the cluster.
+      // Ask the wallet only for the missing signature and broadcast the same
+      // bytes through the game RPC that guardTransaction already simulated.
+      const signature = await signThenBroadcast(provider, tx);
       try {
         await confirmSignature(connection, signature);
       } catch (cause) {
@@ -192,6 +197,18 @@ export function createWalletAdapter(): WalletAdapter {
       return signature;
     },
   };
+}
+
+
+async function signThenBroadcast(provider: any, tx: Transaction | VersionedTransaction): Promise<string> {
+  if (typeof provider.signTransaction !== "function") {
+    const sent = await provider.signAndSendTransaction(tx);
+    if (!sent?.signature || typeof sent.signature !== "string") throw new Error(walletText().missingTxSignature);
+    return sent.signature;
+  }
+  const signed = await provider.signTransaction(tx);
+  const raw = signed.serialize();
+  return connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
 }
 
 export async function signAndSendTx(txBase64: string, intent?: TransactionIntent): Promise<string> {

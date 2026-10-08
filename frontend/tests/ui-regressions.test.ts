@@ -406,6 +406,8 @@ test("кошелёк: Wallet Standard и мобильный deep-link в Phantom
   assert.match(wallet, /standard:connect/, "без standard:connect подключение не работает");
   assert.match(wallet, /solana:signMessage/, "без solana:signMessage не подписываются walletProof");
   assert.match(wallet, /solana:signAndSendTransaction/, "без solana:signAndSendTransaction не уходят транзакции");
+  assert.match(wallet, /provider\.signTransaction\(tx\)/, "Phantom должен только подписать частично подписанную транзакцию");
+  assert.match(wallet, /connection\.sendRawTransaction\(raw/, "отправка идёт через RPC игры, не через signAndSendTransaction Phantom");
   assert.match(wallet, /phantom\.app\/ul\/browse/, "mobile deep-link обязан собираться по документации Phantom");
   assert.match(wallet, /encodeURIComponent/, "целевой URL в deep-link кодируется");
   const btn = read("src/components/ui/WalletButton.tsx");
