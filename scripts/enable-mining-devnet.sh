@@ -136,8 +136,10 @@ if [ "$MATERIALS_HTTP" != "200" ]; then
   echo "   ✗ MaterialMints не проходит канонический валидатор: HTTP $MATERIALS_HTTP $(echo "$MATERIALS_JSON" | jq -rc '.error // empty')"
 else
   MATERIAL_MINTS="$(echo "$MATERIALS_JSON" | jq -r '.mints // {}')"
-  check_mint "MaterialMints.dataset  (data_harvester, quantum_transmitter → DATASET)" "$(echo "$MATERIAL_MINTS" | jq -r '.dataset // empty')"
-  check_mint "MaterialMints.neuron (neural_seeder → NEURON)" "$(echo "$MATERIAL_MINTS" | jq -r '.neuron // empty')"
+  # /query/material-mints publishes canonical ResourceMintKey names (DATASET, NEURON).
+  # Older fixtures used the account field names (dataset, neuron). Accept both.
+  check_mint "MaterialMints.dataset  (data_harvester, quantum_transmitter → DATASET)" "$(echo "$MATERIAL_MINTS" | jq -r '.DATASET // .dataset // empty')"
+  check_mint "MaterialMints.neuron (neural_seeder → NEURON)" "$(echo "$MATERIAL_MINTS" | jq -r '.NEURON // .neuron // empty')"
 fi
 
 step "4/6 Решение"

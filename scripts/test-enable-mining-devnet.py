@@ -147,6 +147,16 @@ class EnableMiningScript(unittest.TestCase):
         self.assertIn("Config.circuitMint", done.stdout)
         self.assertIn("MaterialMints.neuron", done.stdout)
 
+    def test_canonical_uppercase_material_keys_pass(self):
+        materials = {"DATASET": "MeaT1111111111111111111111111111111111111",
+                     "NEURON": "SeeDs111111111111111111111111111111111111"}
+        with MockAdminApi(materials=materials) as api:
+            done = run_script(api.port)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assert_no_posts(api)
+        self.assertIn("MeaT1111111111111111111111111111111111111", done.stdout)
+        self.assertIn("SeeDs111111111111111111111111111111111111", done.stdout)
+
     def test_apply_enables_only_after_checks(self):
         with MockAdminApi() as api:
             done = run_script(api.port, "--apply")
