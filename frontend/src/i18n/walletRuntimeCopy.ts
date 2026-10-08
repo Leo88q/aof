@@ -7,6 +7,7 @@ type Copy = {
   missingSignature: string; cannotSend: string; missingTxSignature: string;
   notFound: string; notFoundShort: string; unavailable: string;
   invalidResponse: string; expectedTransaction: string; pending: string; connectWallet: string; unconfirmedResponse: string;
+  blockhashExpired: string;
 };
 export const walletRuntimeCopy: Record<Language, Copy> = {
   ru: {
@@ -18,6 +19,7 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Некорректный ответ сервера', expectedTransaction: 'Ответ сервера не содержит транзакцию для проверки перед подписью',
     pending: 'Ответ сервера: операция ожидает подтверждения. Проверьте кошелёк и сеть перед повтором.', connectWallet: 'Подключите кошелёк (кнопка вверху экрана)',
     unconfirmedResponse: 'Не удалось подтвердить результат операции. Проверьте кошелёк и сеть перед повтором.',
+    blockhashExpired: 'Срок подписи истёк. Нажмите ещё раз и сразу подтвердите окно Phantom.',
   },
   en: {
     missingAccount: 'The wallet did not return a Solana account', cannotSignMessage: 'The wallet cannot sign messages',
@@ -28,6 +30,7 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Invalid server response', expectedTransaction: 'The server response has no transaction to check before signing',
     pending: 'The server reports that the operation is pending. Check your wallet and network before trying again.', connectWallet: 'Connect your wallet using the button above',
     unconfirmedResponse: 'Could not confirm the outcome. Check your wallet and network before trying again.',
+    blockhashExpired: 'The signature expired. Press again and confirm the Phantom window immediately.',
   },
   pt: {
     missingAccount: 'A carteira não devolveu uma conta Solana', cannotSignMessage: 'A carteira não pode assinar mensagens',
@@ -38,6 +41,7 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Resposta inválida do servidor', expectedTransaction: 'A resposta do servidor não contém uma transação para verificar antes da assinatura',
     pending: 'O servidor indica que a operação está pendente. Verifica a carteira e a rede antes de tentares novamente.', connectWallet: 'Liga a carteira com o botão acima',
     unconfirmedResponse: 'Não foi possível confirmar o resultado. Verifica a carteira e a rede antes de tentares novamente.',
+    blockhashExpired: 'A assinatura expirou. Prima outra vez e confirme a janela da Phantom de imediato.',
   },
   es: {
     missingAccount: 'La cartera no devolvió una cuenta de Solana', cannotSignMessage: 'La cartera no puede firmar mensajes',
@@ -48,6 +52,7 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Respuesta no válida del servidor', expectedTransaction: 'La respuesta del servidor no contiene una transacción que verificar antes de firmar',
     pending: 'El servidor indica que la operación está pendiente. Comprueba tu cartera y la red antes de volver a intentarlo.', connectWallet: 'Conecta la cartera con el botón de arriba',
     unconfirmedResponse: 'No se pudo confirmar el resultado. Comprueba tu cartera y la red antes de volver a intentarlo.',
+    blockhashExpired: 'La firma caducó. Pulsa de nuevo y confirma la ventana de Phantom enseguida.',
   },
   vi: {
     missingAccount: 'Ví không trả về tài khoản Solana', cannotSignMessage: 'Ví không hỗ trợ ký tin nhắn',
@@ -58,6 +63,7 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Phản hồi từ máy chủ không hợp lệ', expectedTransaction: 'Phản hồi của máy chủ không có giao dịch để kiểm tra trước khi ký',
     pending: 'Máy chủ báo thao tác đang chờ xác nhận. Hãy kiểm tra ví và mạng trước khi thử lại.', connectWallet: 'Kết nối ví bằng nút phía trên',
     unconfirmedResponse: 'Không thể xác nhận kết quả. Hãy kiểm tra ví và mạng trước khi thử lại.',
+    blockhashExpired: 'Chữ ký đã hết hạn. Nhấn lại và xác nhận cửa sổ Phantom ngay.',
   },
   id: {
     missingAccount: 'Dompet tidak mengembalikan akun Solana', cannotSignMessage: 'Dompet tidak dapat menandatangani pesan',
@@ -68,6 +74,7 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Respons server tidak valid', expectedTransaction: 'Respons server tidak memuat transaksi untuk diperiksa sebelum ditandatangani',
     pending: 'Server menyatakan operasi masih tertunda. Periksa dompet dan jaringan sebelum mencoba lagi.', connectWallet: 'Hubungkan dompet dengan tombol di atas',
     unconfirmedResponse: 'Hasil operasi tidak dapat dikonfirmasi. Periksa dompet dan jaringan sebelum mencoba lagi.',
+    blockhashExpired: 'Tanda tangan kedaluwarsa. Tekan lagi dan segera konfirmasi jendela Phantom.',
   },
   fil: {
     missingAccount: 'Walang ibinalik na Solana account ang wallet', cannotSignMessage: 'Hindi kayang pumirma ng mensahe ang wallet',
@@ -78,5 +85,6 @@ export const walletRuntimeCopy: Record<Language, Copy> = {
     invalidResponse: 'Hindi wastong sagot mula sa server', expectedTransaction: 'Walang transaksiyon sa sagot ng server na masusuri bago pumirma',
     pending: 'Ayon sa server, nakabinbin pa ang operasyon. Suriin ang wallet at network bago subukang muli.', connectWallet: 'Ikonekta ang wallet gamit ang pindutan sa itaas',
     unconfirmedResponse: 'Hindi makumpirma ang resulta. Suriin ang wallet at network bago subukang muli.',
+    blockhashExpired: 'Paso na ang lagda. Pindutin muli at kumpirmahin agad ang window ng Phantom.',
   },
 };

@@ -202,7 +202,24 @@ export function createWalletAdapter(): WalletAdapter {
 }
 
 
+function expiredBlockhash(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /blockhash not found/i.test(message);
+}
+
+async function assertLiveBlockhash(tx: Transaction | VersionedTransaction): Promise<void> {
+  const hash = tx instanceof Transaction ? tx.recentBlockhash : tx.message.recentBlockhash;
+  if (!hash) throw new LocalTxFeedbackError(walletText().blockhashExpired);
+  try {
+    const valid = await connection.isBlockhashValid(hash, { commitment: "confirmed" });
+    if (!valid.value) throw new LocalTxFeedbackError(walletText().blockhashExpired);
+  } catch (error) {
+    if (error instanceof LocalTxFeedbackError) throw error;
+  }
+}
+
 async function signThenBroadcast(provider: any, tx: Transaction | VersionedTransaction): Promise<string> {
+  await assertLiveBlockhash(tx);
   if (typeof provider.signTransaction !== "function") {
     try {
       const sent = await provider.signAndSendTransaction(tx);
@@ -225,6 +242,7 @@ async function signThenBroadcast(provider: any, tx: Transaction | VersionedTrans
     return await connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
   } catch (error) {
     showTxTrap("rpc-send", error);
+    if (expiredBlockhash(error)) throw new LocalTxFeedbackError(walletText().blockhashExpired);
     throw error;
   }
 }

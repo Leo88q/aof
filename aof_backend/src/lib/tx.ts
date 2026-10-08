@@ -51,9 +51,30 @@ async function buildCoSignedTransaction(
   return { tx, lifetime };
 }
 
+/** Simulation and payer quotes consume time. Stamp a new blockhash after that
+ * work, immediately before the player is asked to sign. A hash older than
+ * about a minute is rejected by send as "Blockhash not found". */
+async function stampFreshBlockhash(
+  tx: Transaction,
+  signers: Signer[],
+): Promise<{ blockhash: string; lastValidBlockHeight: number }> {
+  const lifetime = await connection.getLatestBlockhash("confirmed");
+  tx.recentBlockhash = lifetime.blockhash;
+  tx.signatures = [];
+  const msg = tx.compileMessage();
+  const required = msg.accountKeys.slice(0, msg.header.numRequiredSignatures);
+  if (required.some((k: PublicKey) => k.equals(AUTHORITY_PUBKEY))) {
+    requireAuthoritySigning();
+    tx.partialSign(AUTHORITY as NonNullable<typeof AUTHORITY>);
+  }
+  if (signers.length) tx.partialSign(...signers);
+  return lifetime;
+}
+
 export async function coSign(ix: any[], feePayer: PublicKey, signers: Signer[] = []): Promise<string> {
   const { tx } = await buildCoSignedTransaction(ix, feePayer, signers);
   await requireSimulation(tx);
+  await stampFreshBlockhash(tx, signers);
   return tx.serialize({ requireAllSignatures: false }).toString("base64");
 }
 
@@ -65,9 +86,10 @@ export async function coSignQuoted(
   rentAccounts: PayerRentAccountSpec[],
   signers: Signer[] = [],
 ): Promise<{ tx: string; quote: PayerCostQuote }> {
-  const { tx, lifetime } = await buildCoSignedTransaction(ix, feePayer, signers);
-  const quote = await quotePayerCosts(tx, feePayer, lifetime, rentAccounts);
+  const { tx } = await buildCoSignedTransaction(ix, feePayer, signers);
   await requireSimulation(tx);
+  const lifetime = await stampFreshBlockhash(tx, signers);
+  const quote = await quotePayerCosts(tx, feePayer, lifetime, rentAccounts);
   return {
     tx: tx.serialize({ requireAllSignatures: false }).toString("base64"),
     quote,

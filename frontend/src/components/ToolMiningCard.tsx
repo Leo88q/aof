@@ -73,7 +73,15 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         flashMsg(copy.opening);
         resp = await api.tools.collectMining({ user: address, mint: tool.mint });
       }
-      const r = await handleTxResponse(resp);
+      let r = await handleTxResponse(resp);
+      if (!r.success && r.error === walletRuntimeCopy[language].blockhashExpired) {
+        flashMsg(walletRuntimeCopy[language].blockhashExpired);
+        if (kind === "stake") resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(60) });
+        else if (kind === "unstake") resp = await api.tools.unstake({ user: address, mint: tool.mint });
+        else if (kind === "start") resp = await api.tools.startMining({ user: address, mint: tool.mint, hours: selectedHours });
+        else resp = await api.tools.collectMining({ user: address, mint: tool.mint });
+        r = await handleTxResponse(resp);
+      }
       flashMsg(r.success ? (r.signature ? `${copy.done}: ${r.signature.slice(0, 10)}…` : copy.done) : (r.error || copy.failed));
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
