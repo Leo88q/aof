@@ -358,7 +358,7 @@ test("player tool mint requires local intent and binds payer = recipient = walle
 // [F-06] Switchboard-settled packs
 // ---------------------------------------------------------------------------
 import { PACK_OPEN_COMMIT_DISCRIMINATOR, expectedSigners } from "../src/lib/transactionIntent";
-import { SWITCHBOARD_PROGRAMS } from "../src/lib/txGuard";
+import { SWITCHBOARD_PROGRAMS, TOKEN_METADATA_PROGRAM_ID } from "../src/lib/txGuard";
 
 function packCommitFixture(maxPrice = 100_000_000n, packType = 0) {
   const operator = Keypair.generate().publicKey;
@@ -424,6 +424,19 @@ test("Switchboard is accepted only as the game program's CPI, never as a top-lev
     ...rpc,
     simulateTransaction: async () => ({ value: { err: null, logs: [
       `Program ${core.toBase58()} invoke [1]`, `Program ${SWITCHBOARD_PROGRAMS[0]} invoke [2]`,
+    ] } }),
+  };
+  assert.equal((await guard(viaGame, {}, logsWithCpi)).safe, true);
+});
+
+test("Token Metadata is accepted only as the game program's CPI, never as a top-level instruction", async () => {
+  const direct = transaction(new TransactionInstruction({ programId: new PublicKey(TOKEN_METADATA_PROGRAM_ID), keys: [], data: Buffer.alloc(8) }));
+  assert.equal((await guard(direct)).safe, false);
+  const viaGame = transaction(new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) }));
+  const logsWithCpi: any = {
+    ...rpc,
+    simulateTransaction: async () => ({ value: { err: null, logs: [
+      `Program ${core.toBase58()} invoke [1]`, `Program ${TOKEN_METADATA_PROGRAM_ID} invoke [2]`,
     ] } }),
   };
   assert.equal((await guard(viaGame, {}, logsWithCpi)).safe, true);

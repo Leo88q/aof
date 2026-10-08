@@ -77,6 +77,11 @@ export const SWITCHBOARD_PROGRAMS = [
   "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2",
 ];
 
+// Metaplex Token Metadata. Pack and reroll reveal CPI it to create immutable
+// tool metadata, so it appears in simulation logs. A top-level call is never
+// built for a player and is rejected below.
+export const TOKEN_METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
+
 // Известные скам/MEV программы (расширять по мере обнаружения)
 const KNOWN_SCAM_PROGRAMS = new Set([
   // Добавлять сюда известные скам-программы
@@ -88,8 +93,9 @@ const DEFAULT_CONFIG: GuardConfig = {
   maxLamportsSpent: 100_000, // 0.0001 SOL максимум на fees
   maxTokenOutflows: {},
   // Safe by default: without an explicit allowlist only the six game programs
-  // (plus their Switchboard CPI) may appear, never "any program that simulates".
-  allowedPrograms: [...AOF_PROGRAMS, ...SWITCHBOARD_PROGRAMS],
+  // (plus their Switchboard and Token Metadata CPIs) may appear, never "any
+  // program that simulates".
+  allowedPrograms: [...AOF_PROGRAMS, ...SWITCHBOARD_PROGRAMS, TOKEN_METADATA_PROGRAM_ID],
   blockedPrograms: Array.from(KNOWN_SCAM_PROGRAMS),
   blockedAddresses: [],
 };
@@ -494,6 +500,9 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
     if (SWITCHBOARD_PROGRAMS.includes(ix.programId)) {
       throw new Error("Switchboard may only be invoked by the game program, never directly");
     }
+    if (ix.programId === TOKEN_METADATA_PROGRAM_ID) {
+      throw new Error("Token Metadata may only be invoked by the game program, never directly");
+    }
     if (ix.programId === SYSTEM_PROGRAM_ID) {
       const opcode = readU32(ix.data, 0);
       if (opcode === 4 && instructions[0] === ix && isPlayerNonceAdvance(ix, user)) continue;
@@ -613,6 +622,7 @@ export function getAofGuardConfig(gameProgramId?: string): GuardConfig {
     ...(gameProgramId ? [gameProgramId] : []),
     ...Array.from(SAFE_PROGRAMS),
     ...SWITCHBOARD_PROGRAMS,
+    TOKEN_METADATA_PROGRAM_ID,
   ]));
   return {
     maxLamportsSpent: 500_000, // explicit direct SOL outflow, not a fee guess
