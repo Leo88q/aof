@@ -15,6 +15,10 @@ const ATA = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 const TOKEN_METADATA_PROGRAM = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const SYSTEM = "11111111111111111111111111111111";
 const COMPUTE = "ComputeBudget111111111111111111111111111111";
+const RECENT_BLOCKHASHES_SYSVAR = "SysvarRecentB1ockHashes11111111111111111111";
+/** Public upgrade authority. A player nonce may refund only its exact rent here. */
+const GAME_OPERATOR = "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN";
+const MAX_NONCE_RENT_LAMPORTS = 2_000_000;
 export const MARKETPLACE_BUY_DISCRIMINATOR = [219, 1, 7, 251, 90, 189, 167, 48] as const;
 
 export interface MarketplaceBuyIntent {
@@ -29,7 +33,8 @@ export interface MarketplaceBuyIntent {
 /**
  * [F-06] Paid pack opening, co-signed by the game operator. The wallet only
  * signs if the transaction is exactly one pack_open_commit for this wallet,
- * pack type and the price ceiling the player accepted on screen.
+ * pack type and the price ceiling the player accepted on screen. The durable
+ * nonce prelude is removed before that check and cannot pay any other address.
  */
 export interface PackOpenIntent {
   readonly kind: "packOpen";
@@ -445,6 +450,43 @@ export function validateCoreInstructions(
 /** Locally constructed intent, never a response-provided "approved" object.
  * Exact asset, parties, destinations and bytes are checked; any extra action
  * (even through an allowed AOF program) fails before the wallet sees it. */
+
+function readU32(data: Uint8Array, offset: number): number | null {
+  if (data.length < offset + 4) return null;
+  return data[offset] + data[offset + 1] * 2 ** 8 + data[offset + 2] * 2 ** 16 + data[offset + 3] * 2 ** 24;
+}
+
+function readU64(data: Uint8Array, offset: number): number | null {
+  if (data.length < offset + 8) return null;
+  let value = 0;
+  for (let i = 0; i < 8; i += 1) value += data[offset + i] * 2 ** (8 * i);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+function isPlayerNonceAdvance(ix: Instruction | undefined, user: PublicKey): boolean {
+  return !!ix && ix.programId === SYSTEM && readU32(ix.data, 0) === 4 &&
+    ix.data.length === 4 && ix.keys[2]?.equals(user) === true &&
+    ix.keys[1]?.toBase58() === RECENT_BLOCKHASHES_SYSVAR;
+}
+
+function isOperatorRentRefund(ix: Instruction, user: PublicKey): boolean {
+  if (ix.programId !== SYSTEM || readU32(ix.data, 0) !== 2 || ix.data.length !== 12) return false;
+  if (!ix.keys[0]?.equals(user) || ix.keys[1]?.toBase58() !== GAME_OPERATOR) return false;
+  const amount = readU64(ix.data, 4);
+  return amount !== null && amount > 0 && amount <= MAX_NONCE_RENT_LAMPORTS;
+}
+
+/** coSign prepends a durable-nonce advance and, once, the rent refund to the
+ * operator. Those are not the game action. Any other transfer stays visible. */
+function withoutDurableNoncePrelude(instructions: Instruction[], user: PublicKey): Instruction[] {
+  const advance = isPlayerNonceAdvance(instructions[0], user);
+  const refunds = instructions.flatMap((ix, index) => isOperatorRentRefund(ix, user) ? [index] : []);
+  if (refunds.length > 1) throw new Error("Unexpected operator transfer");
+  if (refunds.length === 1 && !advance) throw new Error("Operator transfer without nonce advance");
+  const refundAt = refunds[0];
+  return instructions.filter((_, index) => !(advance && index === 0) && index !== refundAt);
+}
+
 export function validateTransactionIntent(
   instructions: Instruction[], intent: TransactionIntent | undefined, user: PublicKey,
   now = Math.floor(Date.now() / 1000),
@@ -479,6 +521,7 @@ export function validateTransactionIntent(
     : intent?.kind === "seasonXpClaim" ? ["grant_season_xp"]
     : [];
   validateCoreInstructions(instructions, user, allowedAuthorityInstructions);
+  instructions = withoutDurableNoncePrelude(instructions, user);
 
   if (!intent) {
     if (instructions.some(isMarketplaceBuy)) throw new Error("Marketplace purchase requires a local user intent");

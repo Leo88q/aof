@@ -20,6 +20,8 @@ export interface GuardResult {
     tokenOutflows?: Record<string, number>;
     programsInvoked?: string[];
   };
+  /** Original guard exception. The card keeps a generic sentence; the trap shows this. */
+  cause?: string;
 }
 
 export interface GuardConfig {
@@ -320,11 +322,13 @@ export async function guardTransaction(
   } catch (e: unknown) {
     // Preserve the fee-specific stop without exposing raw RPC/program errors.
     const feeError = e instanceof Error && e.message === "Network fee unavailable or exceeds wallet fee limit";
+    const cause = e instanceof Error ? e.message : String(e);
     return {
       safe: false,
       risk: "HIGH",
       reason: feeError ? copy.feeFailed : copy.checkFailed,
       warnings: [copy.simulationError],
+      cause,
     };
   }
 }
@@ -544,15 +548,18 @@ async function nonceRentReimbursement(
   user: PublicKey,
   connection: Pick<Connection, "getMinimumBalanceForRentExemption">,
 ): Promise<number> {
-  if (!isPlayerNonceAdvance(instructions[0], user)) return 0;
   const transfers = instructions.filter((ix) =>
     ix.programId === SYSTEM_PROGRAM_ID && readU32(ix.data, 0) === 2 && ix.data.length === 12 &&
     ix.keys[0]?.equals(user) && ix.keys[1]?.toBase58() === GAME_OPERATOR);
-  if (transfers.length !== 1) return 0;
+  if (transfers.length === 0) return 0;
+  if (!isPlayerNonceAdvance(instructions[0], user) || transfers.length !== 1) {
+    throw new Error("Unexpected operator transfer");
+  }
   const amount = readU64(transfers[0].data, 4) || 0;
-  if (amount <= 0 || amount > MAX_NONCE_RENT_LAMPORTS) return 0;
+  if (amount <= 0 || amount > MAX_NONCE_RENT_LAMPORTS) throw new Error("Unexpected operator transfer");
   const rent = await connection.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_LENGTH);
-  return amount === rent ? amount : 0;
+  if (amount !== rent) throw new Error("Unexpected operator transfer");
+  return amount;
 }
 
 /** Sum explicit System Program transfers whose source is the connected wallet. */

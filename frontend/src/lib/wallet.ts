@@ -177,7 +177,11 @@ export function createWalletAdapter(): WalletAdapter {
       const user = new PublicKey(provider.publicKey.toString());
       const { guardTransaction, getAofGuardConfig } = await import("./txGuard");
       const guard = await guardTransaction(tx, user, { ...getAofGuardConfig(), intent });
-      if (!guard.safe) throw new LocalTxFeedbackError(guard.reason || walletText().unavailable);
+      if (!guard.safe) {
+        const error = new LocalTxFeedbackError(guard.reason || walletText().unavailable) as LocalTxFeedbackError & { causeMessage?: string };
+        if (guard.cause) error.causeMessage = guard.cause;
+        throw error;
+      }
       if (!provider.publicKey || !new PublicKey(provider.publicKey.toString()).equals(user)) {
         throw new Error("Wallet changed during transaction verification");
       }

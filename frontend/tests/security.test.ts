@@ -391,6 +391,31 @@ test("pack intent binds the wallet, the pack type and the price ceiling", () => 
   assert.equal(expectedSigners(undefined), 1);
 });
 
+test("pack and purchase intents allow the durable nonce prelude but not another payment", () => {
+  const operator = new PublicKey("C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN");
+  const nonce = Keypair.generate().publicKey;
+  const advance = {
+    programId: SystemProgram.programId.toBase58(),
+    keys: [nonce, new PublicKey("SysvarRecentB1ockHashes11111111111111111111"), user.publicKey],
+    data: Uint8Array.from([4, 0, 0, 0]),
+  };
+  const refundData = Buffer.alloc(12);
+  refundData.writeUInt32LE(2, 0);
+  refundData.writeBigUInt64LE(1_447_680n, 4);
+  const refund = { programId: SystemProgram.programId.toBase58(), keys: [user.publicKey, operator], data: refundData };
+  const budget = { programId: "ComputeBudget111111111111111111111111111111", keys: [], data: Uint8Array.from([2, 0x80, 0x1a, 0x06, 0x00]) };
+  const pack = packCommitFixture();
+  assert.doesNotThrow(() => validateTransactionIntent([advance, budget, refund, pack.ix], pack.intent, user.publicKey));
+  const purchase = purchaseFixture();
+  assert.doesNotThrow(() => validateTransactionIntent([advance, budget, refund, purchase.ix], purchase.intent, user.publicKey));
+  const toOther = { ...refund, keys: [user.publicKey, other] };
+  assert.throws(() => validateTransactionIntent([advance, toOther, pack.ix], pack.intent, user.publicKey), /outside/);
+  assert.throws(() => validateTransactionIntent([refund, pack.ix], pack.intent, user.publicKey), /without nonce advance/);
+  assert.throws(() => validateTransactionIntent([advance, refund, refund, pack.ix], pack.intent, user.publicKey), /operator transfer/);
+  const lateAdvance = [pack.ix, advance];
+  assert.throws(() => validateTransactionIntent(lateAdvance, pack.intent, user.publicKey), /outside/);
+});
+
 test("Switchboard is accepted only as the game program's CPI, never as a top-level instruction", async () => {
   const direct = transaction(new TransactionInstruction({ programId: new PublicKey(SWITCHBOARD_PROGRAMS[0]), keys: [], data: Buffer.alloc(8) }));
   assert.equal((await guard(direct)).safe, false);

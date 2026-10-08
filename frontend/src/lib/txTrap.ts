@@ -8,7 +8,7 @@ function redact(value: string): string {
 
 export function showTxTrap(stage: string, error: unknown): void {
   if (typeof document === "undefined") return;
-  const err = error as { name?: string; message?: string; signature?: string; logs?: unknown };
+  const err = error as { name?: string; message?: string; signature?: string; logs?: unknown; causeMessage?: unknown };
   const logs = Array.isArray(err?.logs) ? err.logs.map((line) => redact(String(line))).slice(0, 20) : [];
   const lines = [
     "AOF_TRAP",
@@ -16,6 +16,9 @@ export function showTxTrap(stage: string, error: unknown): void {
     `name=${redact(String(err?.name ?? typeof error))}`,
     `message=${redact(String(err?.message ?? error)).slice(0, 1200)}`,
   ];
+  if (typeof err?.causeMessage === "string" && err.causeMessage && err.causeMessage !== err.message) {
+    lines.push(`cause=${redact(err.causeMessage).slice(0, 1200)}`);
+  }
   if (typeof err?.signature === "string") lines.push(`signature=${err.signature}`);
   if (logs.length) lines.push(`logs:\n${logs.join("\n")}`);
   let el = document.getElementById("aof-trap");

@@ -120,6 +120,11 @@ test("player nonce advance is allowed only first, and only the exact rent may re
   assert.equal((await guard(transaction(advance, SystemProgram.transfer({
     fromPubkey: user.publicKey, toPubkey: other, lamports: rent,
   })), {}, rpc)).safe, false, "rent must return only to the operator");
+  const small = await guard(transaction(advance, SystemProgram.transfer({
+    fromPubkey: user.publicKey, toPubkey: operator, lamports: 1,
+  }), coreIx()), {}, rpc);
+  assert.equal(small.safe, false, "a smaller operator transfer is not the nonce rent");
+  assert.match(small.cause || "", /Unexpected operator transfer/);
 });
 
 test("prep-mint policy: one user-funded classic mint uses auth PDA temporarily for mint/freeze, rent ceiling inclusive", async () => {
