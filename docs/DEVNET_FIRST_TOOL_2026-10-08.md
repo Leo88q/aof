@@ -30,3 +30,8 @@
 ## Конечные потолки 27 ресурсов
 
 2026-10-08. Одна транзакция authority `2idfNnpgBYswa8xWfXEGEL5QwJp7Un33bobvzJafWsknpCHRpNnwynk8yYgTHS92PSNFBs4aRfMH4RQNcdb7mHbM`, слот `508869779`, `err null`, комиссия `5000` лампортов. В логах `27` строк `SupplyCap`. После неё все `27` значений `MaterialMints.maxSupply` равны `1000000000000000` атомов, то есть `1 000 000` целых токенов на ресурс. Это не включение добычи.
+
+
+## Тумблер добычи включён
+
+2026-10-08. Транзакция authority `yBoDPRdTMce1UgCQi6MhSMGQU8Q7ZiFXqRHrkcc49zBsPqo8yJ5GQnAuaeTgHJSYrSguACBNcan1adkvuGDY5v4`, слот `508873803`, `err null`, комиссия `5000` лампортов. После неё `Config.miningEnabled=true`, `paused=false`. Это включение флага, не доказательство старта или сбора добычи.
