@@ -3,6 +3,7 @@ import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
 import type { TransactionIntent } from "./transactionIntent";
 import { confirmSignature } from "./confirmation";
+import { showTxTrap } from "./txTrap";
 import {
   Connection,
   PublicKey,
@@ -192,6 +193,7 @@ export function createWalletAdapter(): WalletAdapter {
         // signature; otherwise callers can mistake it for a safe retry.
         const error = cause instanceof Error ? cause : new Error(String(cause));
         (error as Error & { signature?: string }).signature = signature;
+        showTxTrap("confirm", error);
         throw error;
       }
       return signature;
@@ -202,13 +204,29 @@ export function createWalletAdapter(): WalletAdapter {
 
 async function signThenBroadcast(provider: any, tx: Transaction | VersionedTransaction): Promise<string> {
   if (typeof provider.signTransaction !== "function") {
-    const sent = await provider.signAndSendTransaction(tx);
-    if (!sent?.signature || typeof sent.signature !== "string") throw new Error(walletText().missingTxSignature);
-    return sent.signature;
+    try {
+      const sent = await provider.signAndSendTransaction(tx);
+      if (!sent?.signature || typeof sent.signature !== "string") throw new Error(walletText().missingTxSignature);
+      return sent.signature;
+    } catch (error) {
+      showTxTrap("phantom-sign-and-send", error);
+      throw error;
+    }
   }
-  const signed = await provider.signTransaction(tx);
-  const raw = signed.serialize();
-  return connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
+  let signed: Transaction | VersionedTransaction;
+  try {
+    signed = await provider.signTransaction(tx);
+  } catch (error) {
+    showTxTrap("phantom-sign", error);
+    throw error;
+  }
+  try {
+    const raw = signed.serialize();
+    return await connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
+  } catch (error) {
+    showTxTrap("rpc-send", error);
+    throw error;
+  }
 }
 
 export async function signAndSendTx(txBase64: string, intent?: TransactionIntent): Promise<string> {
