@@ -421,7 +421,14 @@ r.post("/stake", requireCircuitOpen, requireWalletLimits("tools_stake"), async (
       })
       .instruction();
 
-    const tx = await coSign([ix], user);
+    // Stake requires an initialized vault token account. The vault PDA itself
+    // need not exist, but the first stake of a mint fails simulation with
+    // Anchor 3012 (AccountNotInitialized) unless this ATA is created here.
+    // The player pays its rent in the same transaction.
+    const createVaultAta = createAssociatedTokenAccountIdempotentInstruction(
+      user, vaultToken, vault, mint,
+    );
+    const tx = await coSign([createVaultAta, ix], user);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
