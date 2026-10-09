@@ -8,6 +8,7 @@ interface WalletState {
   connecting: boolean;
   walletName: string;
   connect: () => Promise<void>;
+  reconnectSilently: () => Promise<void>;
   disconnect: () => Promise<void>;
 }
 
@@ -37,6 +38,24 @@ export const useWalletStore = create<WalletState>((set) => ({
     } catch (e) {
       set({ connecting: false });
       throw e;
+    }
+  },
+
+  reconnectSilently: async () => {
+    if (useWalletStore.getState().connected || useWalletStore.getState().connecting) return;
+    try {
+      const { createWalletAdapter } = await import("../lib/wallet");
+      const adapter = createWalletAdapter();
+      if (!adapter.available) return;
+      const pubkey = await adapter.connect({ silent: true });
+      set({
+        address: pubkey.toBase58(),
+        connected: true,
+        connecting: false,
+        walletName: adapter.name,
+      });
+    } catch {
+      set({ connecting: false });
     }
   },
 

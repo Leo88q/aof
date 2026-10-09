@@ -5,7 +5,7 @@ import { getApiErrorLanguage } from './apiErrorLanguage';
  * through the structured-code parser; wallet-proof exceptions are not caught. */
 export async function fetchApi(url: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(url, init);
+    return await fetch(url, { ...init, cache: "no-store" });
   } catch (cause) {
     const error = new Error(apiErrorCopy[getApiErrorLanguage()].networkUnavailable) as Error & {
       code?: string; cause?: unknown;

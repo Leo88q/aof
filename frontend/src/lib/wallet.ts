@@ -40,10 +40,10 @@ function standardProvider(wallet: any) {
   return {
     isStandard: true,
     name: typeof wallet.name === "string" && wallet.name ? wallet.name : "Standard wallet",
-    connect: async () => {
+    connect: async (options?: { silent?: boolean }) => {
       const feature = wallet.features?.["standard:connect"];
       if (typeof feature?.connect === "function") {
-        const out = await feature.connect({ silent: false });
+        const out = await feature.connect({ silent: options?.silent === true });
         account = out?.accounts?.[0] ?? account ?? null;
       }
       account = account || wallet.accounts?.[0] || null;
@@ -127,7 +127,7 @@ export function phantomBrowseLink(url?: string): string {
 export interface WalletAdapter {
   available: boolean;
   name: string;
-  connect: () => Promise<PublicKey>;
+  connect: (options?: { silent?: boolean }) => Promise<PublicKey>;
   disconnect: () => Promise<void>;
   signMessage: (message: string) => Promise<string>;
   signAndSend: (txBase64: string, intent?: TransactionIntent) => Promise<string>;
@@ -156,8 +156,8 @@ export function createWalletAdapter(): WalletAdapter {
   return {
     available: true,
     name: provider.isStandard ? provider.name : provider.isPhantom ? "Phantom" : "Backpack",
-    connect: async () => {
-      const resp = await provider.connect();
+    connect: async (options?: { silent?: boolean }) => {
+      const resp = await provider.connect(options?.silent ? { onlyIfTrusted: true } : undefined);
       return new PublicKey(resp.publicKey.toString());
     },
     disconnect: async () => {

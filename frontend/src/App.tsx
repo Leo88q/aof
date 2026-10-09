@@ -14,6 +14,7 @@ import { useVipStatus } from "./lib/useVipStatus";
 import { applyVipTheme } from "./lib/vipTheme";
 import { SceneBackdrop } from "./components/visual/SceneBackdrop";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { useWalletStore } from "./store/walletStore";
 
 const V = TAB_VIEWS;
 
@@ -88,6 +89,9 @@ export default function App() {
   useEffect(() => {
     setPageMetadata('NeuroForge — Age of Intelligence', gameMetaCopy[language], language);
   }, [language]);
+  useEffect(() => {
+    void useWalletStore.getState().reconnectSilently();
+  }, []);
   return (
     <>
       <VipLoader />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import operator from './operator.json';
 import { useLocale } from '../i18n/LocaleProvider';
 import { legalUiCopy } from '../i18n/legalUiCopy';
@@ -20,6 +20,8 @@ export function LegalLinks() {
 // Non-modal: the visitor can keep reading or using the application after refusal.
 export function PrivacyControls() {
   const { language } = useLocale();
+  const location = useLocation();
+  const game = !location.pathname.startsWith('/site') && !location.pathname.startsWith('/legal') && location.pathname !== '/visual';
   const text = legalUiCopy[language];
   const [choice, setChoice] = useState(readConsent);
   // Две ступени: короткая полоса, пока выбора нет, и полная панель — только
@@ -41,13 +43,16 @@ export function PrivacyControls() {
       // ни при синхронизации из другого окна.
       setAsk(!current);
     };
+    const openFromProfile = () => { setAsk(false); openSettings(); };
     window.addEventListener('storage', sync);
     window.addEventListener('focus', sync);
     window.addEventListener('nf:privacy-change', sync);
+    window.addEventListener('nf:open-privacy', openFromProfile);
     return () => {
       window.removeEventListener('storage', sync);
       window.removeEventListener('focus', sync);
       window.removeEventListener('nf:privacy-change', sync);
+      window.removeEventListener('nf:open-privacy', openFromProfile);
     };
   }, []);
   function openSettings() {
@@ -61,6 +66,27 @@ export function PrivacyControls() {
     settingsButton.current?.focus();
     setNotice(result.mode === 'local' ? 'savedLocal' : result.mode === 'session' ? 'savedSession' : 'savedMemory');
   }
+  if (game && !ask && !open) return null;
+  if (game) return <div className="legal-area legal-game" lang={language}>
+    {ask && !open && <div className="legal-consent legal-consent--ask" role="region" aria-label={text.choiceLabel}>
+      <p>{text.banner}</p>
+      <div className="legal-actions">
+        <button type="button" onClick={() => save(true)} disabled={gpc}>{text.accept}</button>
+        <button type="button" onClick={() => save(false)}>{text.necessaryOnly}</button>
+      </div>
+    </div>}
+    {open && <div ref={panel} tabIndex={-1} id="privacy-controls" className="legal-consent" role="region" aria-label={text.choiceLabel}>
+      <h2>{text.heading}</h2>
+      <p>{text.details}</p>
+      <p><Link to="/legal/cookies">{text.storageLink}</Link> · <Link to="/legal/privacy">{text.privacyLink}</Link></p>
+      <label><input type="checkbox" checked disabled /> {text.necessary}</label>
+      <label><input type="checkbox" checked={functional && !gpc} disabled={gpc} onChange={e => setFunctional(e.target.checked)} /> {text.functional}</label>
+      <div className="legal-actions">
+        <button type="button" onClick={() => save(false)}>{text.decline}</button>
+        <button type="button" onClick={() => save(functional)}>{text.save}</button>
+      </div>
+    </div>}
+  </div>;
   return <footer className="legal-area legal-footer" lang={language}>
     <p className="legal-safety">{text.safety}</p>
     <LegalLinks />

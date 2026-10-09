@@ -32,6 +32,7 @@ import { UI_ICONS } from "../../lib/visualAssets";
 import { LabHero } from "../../components/farm/LabHero";
 import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
 import { Note, Panel, Row, Rows, Sticker } from "../../ui/forge/kit";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 
 /** Пустой микропланшет: все лунки свободны — состояние участка без инструментов. */
 function emptyPlateWells(rows: number, cols: number) {
@@ -164,6 +165,7 @@ export function FarmDashboard() {
         ))}
       </div>
 
+      <ErrorBoundary label="farm">
       {/* РЕНДЕР: ОБЗОР (оригинальный HomeDashboard) */}
       {subTab === "dashboard" && (
         <>
@@ -297,6 +299,7 @@ export function FarmDashboard() {
 
       {/* РЕНДЕР: ПЕЧЬ */}
       {subTab === "oven" && <OvenPanel />}
+      </ErrorBoundary>
 
     </div>
   );
