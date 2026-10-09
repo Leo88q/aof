@@ -11,6 +11,12 @@ import { homeResourceNames } from '../i18n/homeDetail';
  */
 
 /** Laboratory raffle plates. Decorative only; they do not prove a draw or a payment. */
+/** Expedition bay and depth sonar. Decorative; motion is not a trip result. */
+export const EXPLORATION_ART = {
+  bay: "/assets/exploration/bay.jpg",
+  sonar: "/assets/exploration/sonar.jpg",
+} as const;
+
 export const LOTTERY_ART = {
   sol: "/assets/lottery/sol.jpg",
   skr: "/assets/lottery/skr.jpg",

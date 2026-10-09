@@ -67,6 +67,31 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
   }
 });
 
+/** Read-only tier record. A missing account is not reported as tier 1. */
+r.get("/state/:user", async (req, res) => {
+  try {
+    const user = pk(req.params.user);
+    const state: any = await (program.account as any).explorationState.fetchNullable(explorationStatePda(user)[0]);
+    if (!state) {
+      res.json({ state: null });
+      return;
+    }
+    const tier = Number(state.tier);
+    const lastTripAt = Number(state.lastTripAt);
+    const tripsToday = Number(state.tripsToday);
+    const dayStart = Number(state.dayStart);
+    if (!Number.isInteger(tier) || tier < 1 || tier > 10 ||
+        !Number.isSafeInteger(lastTripAt) || !Number.isSafeInteger(dayStart) ||
+        !Number.isInteger(tripsToday) || tripsToday < 0) {
+      res.status(503).json({ error: "EXPLORATION_STATE_UNAVAILABLE" });
+      return;
+    }
+    res.json({ state: { tier, lastTripAt, tripsToday, dayStart } });
+  } catch {
+    res.status(503).json({ error: "EXPLORATION_STATE_UNAVAILABLE" });
+  }
+});
+
 r.get("/status/:explorationCommit", async (req, res) => {
   try {
     res.json(await commitStatus("exploration", new PublicKey(req.params.explorationCommit)));

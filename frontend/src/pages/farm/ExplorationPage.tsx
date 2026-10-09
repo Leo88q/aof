@@ -13,6 +13,7 @@ import { actionErrorFeedback, LocalTxFeedbackError } from '../../lib/txResponseF
 import { useLocale } from '../../i18n/LocaleProvider';
 import { explorationCopy } from '../../i18n/explorationCopy';
 import { homeResourceNames } from '../../i18n/homeDetail';
+import { ExplorationHall } from './ExplorationHall';
 
 // aof-core/src/constants.rs: TRIP_COST_* in RESOURCE_UNIT (10^9) tokens.
 const COST = [
@@ -45,36 +46,63 @@ export function ExplorationPage() {
   const [transmitter, setTransmitter] = useState<{ mint: string; commit: string } | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [error, setError] = useState<{ language: typeof language; text: string } | null>(null);
+  const [record, setRecord] = useState<{ recorded: boolean; tier: number | null } | null>(null);
 
   useEffect(() => {
     let active = true;
-    setTransmitter(null);
-    setNotice(null);
-    setError(null);
-    setTrip('checking');
-    if (!address) { setTrip('missingTool'); return () => { active = false; }; }
-    (async () => {
+    const read = async (silent: boolean) => {
+      if (!address) { setTransmitter(null); setTrip('missingTool'); return; }
+      if (!silent) { setTransmitter(null); setNotice(null); setError(null); setTrip('checking'); }
       try {
         const tools: unknown = await api.query.myTools(address);
-        if (!active || !Array.isArray(tools)) {
-          if (active) setTrip('unavailable');
+        if (!active || walletRef.current !== address || !Array.isArray(tools)) {
+          if (active && !silent) setTrip('unavailable');
           return;
         }
         const tool = tools.find((t: any) => String(t?.toolType ?? t?.tool_type ?? '').toLowerCase() === 'quantum_transmitter');
         if (!tool || typeof tool.mint !== 'string') { setTrip('missingTool'); return; }
         const commit = tripCommit(tool.mint);
         const status: any = await api.exploration.status(commit);
-        if (!active) return;
+        if (!active || walletRef.current !== address) return;
         if (status?.state !== 'pending' && status?.state !== 'unknown' && status?.state !== 'settled' && status?.state !== 'refunded') {
-          setTrip('unavailable'); return;
+          if (!silent) setTrip('unavailable');
+          return;
         }
         setTransmitter({ mint: tool.mint, commit });
         setTrip(status.state === 'pending' ? 'pending' : 'ready');
       } catch {
-        if (active) setTrip('unavailable');
+        if (active && !silent) setTrip('unavailable');
       }
-    })();
-    return () => { active = false; };
+    };
+    void read(false);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden' || busyRef.current) return;
+      void read(true);
+    }, 8000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [address]);
+
+  useEffect(() => {
+    let active = true;
+    if (!address) { setRecord(null); return () => { active = false; }; }
+    const readTier = async () => {
+      try {
+        const raw: any = await api.exploration.state(address);
+        if (!active || walletRef.current !== address) return;
+        if (raw?.state === null) { setRecord({ recorded: false, tier: null }); return; }
+        const tier = Number(raw?.state?.tier);
+        if (!Number.isInteger(tier) || tier < 1 || tier > 10) { setRecord(null); return; }
+        setRecord({ recorded: true, tier });
+      } catch {
+        if (active && walletRef.current === address) setRecord(null);
+      }
+    };
+    void readTier();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      void readTier();
+    }, 8000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [address]);
 
   useEffect(() => {
@@ -145,6 +173,7 @@ export function ExplorationPage() {
   return (
     <div className="p-4 pt-6 pb-24 min-w-0">
       <h1 className="text-2xl font-bold mb-4 flex items-center gap-2 min-w-0"><img src={UI_ICONS.expedition} alt="" className="w-7 h-7 object-contain" />{copy.title}</h1>
+      <ExplorationHall copy={copy} language={language} recorded={record?.recorded ?? null} tier={record?.tier ?? null} pending={trip === 'pending'} />
       <Card className="mb-4">
         <div className="text-center mb-4">
           <ArtPlate src={toolPlate('quantum_transmitter')} alt="" size={56} className="mx-auto" />

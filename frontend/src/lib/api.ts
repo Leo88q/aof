@@ -363,6 +363,7 @@ export const api = {
   exploration: {
     startCommit: (v: any) => post("/exploration/start/commit", v),
     status: (commit: string) => get(`/exploration/status/${commit}`),
+    state: (user: string) => get(`/exploration/state/${user}`),
     reveal: (v: any) => post("/exploration/reveal", v),
     upgradeTier: (v: any) => post("/exploration/upgrade-tier", v),
   },

@@ -1946,6 +1946,18 @@ test('экспедиция переведена и не выдаёт закры�
   assert.match(page, /typeof response\?\.tx !== 'string'/);
   assert.match(page, /walletRef\.current !== address/);
   assert.match(page, /setTrip\('closed'\); setNotice\('unknown'\)/, 'закрытый commit не считается успехом');
+  assert.match(page, /setInterval/);
+  assert.match(page, /ExplorationHall/);
+  assert.match(code('src/pages/farm/ExplorationHall.tsx'), /EXPLORATION_ART/);
+  assert.match(code('../aof_backend/src/routes/exploration.ts'), /fetchNullable\(explorationStatePda/);
+  const { EXPLORATION_SUCCESS_BPS, EXPLORATION_TRIPS_PER_DAY, explorationTierRule } = await import('../src/lib/explorationReadings.ts');
+  assert.deepEqual([...EXPLORATION_SUCCESS_BPS], [3000, 4000, 5000, 5500, 6000, 6000, 6500, 7000, 7500, 8000]);
+  assert.deepEqual([...EXPLORATION_TRIPS_PER_DAY], [1, 1, 1, 1, 1, 2, 2, 2, 2, 3]);
+  assert.equal(explorationTierRule(1)?.rewardMin, 2);
+  assert.equal(explorationTierRule(0), null);
+  for (const plate of ['bay.jpg', 'sonar.jpg']) {
+    assert.ok(existsSync(join(root, 'public/assets/exploration', plate)), plate);
+  }
   const { explorationCopy } = await import('../src/i18n/explorationCopy.ts');
   const keys = Object.keys(explorationCopy.ru);
   for (const language of ['en', 'pt', 'es', 'vi', 'id', 'fil', 'ru'] as const) {
