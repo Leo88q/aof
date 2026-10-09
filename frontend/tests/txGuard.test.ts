@@ -298,6 +298,62 @@ test('lottery claim/refund intents bind wallet, round, ticket and exact instruct
 });
 
 
+test("lottery purchase accepts the durable nonce prelude and still rejects another payment", async () => {
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions");
+  const spec = CORE_INSTRUCTIONS.find((entry) => entry.name === "buy_lottery_ticket");
+  assert.ok(spec);
+  const roundId = "1";
+  const ticket = "0";
+  const u64 = (value: bigint) => {
+    const out = Buffer.alloc(8);
+    out.writeBigUInt64LE(value);
+    return out;
+  };
+  const roundBytes = u64(1n);
+  const ticketBytes = u64(0n);
+  const round = PublicKey.findProgramAddressSync([Buffer.from("lottery_round"), roundBytes], core)[0];
+  const ticketPda = PublicKey.findProgramAddressSync([Buffer.from("lottery_ticket"), roundBytes, ticketBytes], core)[0];
+  const counter = PublicKey.findProgramAddressSync([
+    Buffer.from("lottery_ticket"), Buffer.from("count"), roundBytes, user.publicKey.toBuffer(),
+  ], core)[0];
+  const config = PublicKey.findProgramAddressSync([Buffer.from("config")], core)[0];
+  const data = Buffer.alloc(16);
+  Buffer.from(spec.discriminator).copy(data, 0);
+  data.writeBigUInt64LE(800_000n, 8);
+  const buy = new TransactionInstruction({
+    programId: core,
+    data,
+    keys: [
+      { pubkey: config, isSigner: false, isWritable: false },
+      { pubkey: user.publicKey, isSigner: true, isWritable: true },
+      { pubkey: round, isSigner: false, isWritable: true },
+      { pubkey: ticketPda, isSigner: false, isWritable: true },
+      { pubkey: counter, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+  });
+  const intent = {
+    kind: "lotteryTicket" as const, action: "buy" as const, user: user.publicKey.toBase58(),
+    roundId, ticketNumber: ticket, maxPriceLamports: "800000",
+  };
+  const nonce = Keypair.generate().publicKey;
+  const rent = 1_447_680;
+  const advance = SystemProgram.nonceAdvance({ noncePubkey: nonce, authorizedPubkey: user.publicKey });
+  const repay = SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: new PublicKey(GAME_OPERATOR), lamports: rent });
+  const rpc = rpcWith();
+  rpc.getMinimumBalanceForRentExemption = async (size: number) => size === 80 ? rent : 0;
+  const tx = transaction(
+    advance,
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+    repay,
+    buy,
+  );
+  assert.equal((await guard(tx, { intent }, rpc)).safe, true);
+  const drain = transaction(advance, repay, buy, SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: other, lamports: 1 }));
+  assert.equal((await guard(drain, { intent }, rpc)).safe, false);
+});
+
 test('season XP claim: bound campaign/genesis digests, exact on-chain arguments/accounts, live cluster and expiry', async () => {
   const { CORE_INSTRUCTIONS } = await import('../src/lib/coreInstructions');
   const { expectedPayerRentAccounts } = await import('../src/lib/transactionIntent');

@@ -476,15 +476,17 @@ function isOperatorRentRefund(ix: Instruction, user: PublicKey): boolean {
   return amount !== null && amount > 0 && amount <= MAX_NONCE_RENT_LAMPORTS;
 }
 
-/** coSign prepends a durable-nonce advance and, once, the rent refund to the
- * operator. Those are not the game action. Any other transfer stays visible. */
+/** coSign prepends a durable-nonce advance, compute budget, and once the rent
+ * refund to the operator. Those are not the game action. Compute-budget limits
+ * are enforced earlier; any other transfer stays visible to the intent check. */
 function withoutDurableNoncePrelude(instructions: Instruction[], user: PublicKey): Instruction[] {
   const advance = isPlayerNonceAdvance(instructions[0], user);
   const refunds = instructions.flatMap((ix, index) => isOperatorRentRefund(ix, user) ? [index] : []);
   if (refunds.length > 1) throw new Error("Unexpected operator transfer");
   if (refunds.length === 1 && !advance) throw new Error("Operator transfer without nonce advance");
   const refundAt = refunds[0];
-  return instructions.filter((_, index) => !(advance && index === 0) && index !== refundAt);
+  return instructions.filter((ix, index) =>
+    !(advance && index === 0) && index !== refundAt && ix.programId !== COMPUTE);
 }
 
 export function validateTransactionIntent(
