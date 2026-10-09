@@ -16,6 +16,7 @@ import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { WeatherRecorder } from "../../components/farm/WeatherRecorder";
 import { forecastFromDayId } from "../../lib/weather";
 import { stationLastCollectedAt } from "./wellReadings";
+import { WellHall } from "./WellHall";
 
 const WEATHER_RATES = {
   drought: { icon: UI_ICONS.weatherBlackout, rate: 0, color: "#E2685F" },

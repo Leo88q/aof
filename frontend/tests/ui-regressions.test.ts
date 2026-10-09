@@ -1331,6 +1331,7 @@ test('сетевая станция и барограф переводят ре�
   assert.match(panel, /!weather \|\| !w/);
   assert.match(panel, /WellHall/);
   assert.match(panel, /import \{ stationLastCollectedAt \} from \"\.\/wellReadings\"/);
+  assert.match(panel, /import \{ WellHall \} from \"\.\/WellHall\"/);
   assert.match(panel, /weatherAccountPresent !== false/);
   const hall = code('src/pages/farm/WellHall.tsx');
   assert.match(hall, /\/assets\/well\/station\.jpg/);
