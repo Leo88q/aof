@@ -1,5 +1,6 @@
 import type { Language } from "../../i18n/translations";
 import type { lotteryCopy } from "../../i18n/lotteryCopy";
+import { LOTTERY_ART } from "../../lib/visualAssets";
 import {
   LOTTERY_MAX_TICKETS_PER_ROUND,
   lotteryRefundOpensAt,
@@ -49,10 +50,14 @@ export function LotteryHall({
   const refund = round ? parts(lotteryRefundOpensAt(round), now) : null;
   const fill = sold === null ? null : Math.min(1, sold / LOTTERY_MAX_TICKETS_PER_ROUND);
   const names = { sol: copy.sol, skr: copy.skr, potato: copy.potato };
+  const level = fill === null ? null : `${Math.round(fill * 100)}%`;
 
   return (
     <section className="lot-hall" aria-label={copy.chambers}>
       <p className="lot-hall__auto">{copy.auto}</p>
+      <figure className={"lot-stage" + (pool === "sol" ? "" : " lot-stage--sealed")}>
+        <img src={LOTTERY_ART[pool]} alt="" />
+      </figure>
       <div className="lot-vials" role="tablist" aria-label={copy.chambers}>
         {POOLS.map(id => {
           const live = id === "sol";
@@ -66,12 +71,10 @@ export function LotteryHall({
               data-pool={id}
               onClick={() => onPool(id)}
             >
-              <span className="lot-vial__glass" aria-hidden="true">
-                {live && fill !== null ? <span className="lot-vial__fill" style={{ height: `${Math.round(fill * 100)}%` }} /> : null}
-                {!live ? <span className="lot-vial__cap" /> : null}
-              </span>
+              <img className="lot-vial__art" src={LOTTERY_ART[id]} alt="" />
               <span className="lot-vial__name">{names[id]}</span>
               <span className="lot-vial__lamp">{live ? copy.live : copy.sealed}</span>
+              {live && level !== null ? <span className="lot-meter" style={{ ["--fill" as string]: level }} /> : null}
             </button>
           );
         })}
@@ -82,12 +85,14 @@ export function LotteryHall({
       ) : (
         <div className="lot-live">
           <div className={"lot-drum" + (spinning ? " lot-drum--spin" : shown.length > 0 && !round?.drawn ? " lot-drum--idle" : "")} aria-label={copy.drum}>
-            <div className="lot-drum__wheel">
-              {shown.length === 0 ? <span className="lot-drum__empty">—</span> : shown.map((number, index) => (
+            <div className="lot-drum__rotor">
+              <img className="lot-drum__plate" src={LOTTERY_ART.drum} alt="" />
+            </div>
+            <div className="lot-drum__well">
+              {shown.length === 0 ? <span className="lot-drum__empty">—</span> : shown.map(number => (
                 <span
                   key={number}
                   className={"lot-slip" + (mine.has(number) ? " lot-slip--mine" : "") + (round?.winningTicket === number ? " lot-slip--win" : "")}
-                  style={{ ['--a' as string]: `${Math.round((360 / shown.length) * index)}deg` }}
                 >{number}</span>
               ))}
             </div>

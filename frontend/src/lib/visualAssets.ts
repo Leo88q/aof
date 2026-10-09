@@ -10,6 +10,14 @@ import { homeResourceNames } from '../i18n/homeDetail';
  * - Icons are a separate inset set for chips. Missing icons fall back to the plate.
  */
 
+/** Laboratory raffle plates. Decorative only; they do not prove a draw or a payment. */
+export const LOTTERY_ART = {
+  sol: "/assets/lottery/sol.jpg",
+  skr: "/assets/lottery/skr.jpg",
+  potato: "/assets/lottery/potato.jpg",
+  drum: "/assets/lottery/drum.jpg",
+} as const;
+
 export const BACKGROUNDS = {
   lab: "/assets/backgrounds/lab.jpg",
   grid: "/assets/backgrounds/grid.jpg",

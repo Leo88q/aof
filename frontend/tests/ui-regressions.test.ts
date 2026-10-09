@@ -2301,6 +2301,10 @@ test('игровая лотерея переведена: покупка тол�
   assert.equal(LOTTERY_SALES_SECONDS, 7 * 86400);
   assert.equal(LOTTERY_REFUND_AFTER_SECONDS, 14 * 86400);
   assert.match(code('src/pages/market/LotteryHall.tsx'), /data-pool=\{id\}/);
+  assert.match(code('src/pages/market/LotteryHall.tsx'), /LOTTERY_ART/);
+  for (const plate of ['sol.jpg', 'skr.jpg', 'potato.jpg', 'drum.jpg']) {
+    assert.ok(existsSync(join(root, 'public/assets/lottery', plate)), plate);
+  }
   assert.match(code('src/pages/market/LotteryPage.tsx'), /setInterval/);
   assert.match(code('../aof_backend/src/routes/lottery.ts'), /POTATO_ESCROW_NOT_DEPLOYED/);
   const page = code('src/pages/market/LotteryPage.tsx');
