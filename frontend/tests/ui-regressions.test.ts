@@ -1477,6 +1477,8 @@ test("мастерская и галерея используют семь пе�
   assert.match(card, /const canCollect = tool.isMining && hasMiningEnd && done/,
     "неизвестное время завершения не означает готовность к сбору");
   assert.match(card, /hours: selectedHours/, "на сервер уходят те же часы, что показаны на карточке");
+  assert.match(card, /mine-start/, "доступная добыча не должна выглядеть серой неактивной кнопкой");
+  assert.ok(!/cursor-not-allowed/.test(card), "кнопка добычи снова помечена как недоступная, хотя флаг включён");
   const gallery = read("src/pages/tools/CollectionPage.tsx");
   assert.match(gallery, /homeResourceNames\[language\]/, "названия ресурсов должны совпадать с остальной игрой");
   assert.match(gallery, /copy.rarities\[i\]/, "редкости должны меняться с языком");
@@ -1716,11 +1718,17 @@ test('листинги отличают сбой сети от пустых пр
     'absence of wallet transaction cannot be announced as a confirmed trade');
   assert.match(page, /BigInt\(row\.priceLamports\)/,
     'sonar must not fabricate a rounded zero when a listing has a small positive price');
+  assert.match(page, /listing-cats/, 'listings need a category the player can open');
+  assert.match(page, /row\.tool\?\.toolType/, 'a category must filter offers by tool type');
   const { listingCopy } = await import('../src/i18n/listingCopy.ts');
   for (const language of ['en', 'pt', 'es', 'vi', 'id', 'fil', 'ru'] as const) {
     assert.ok(listingCopy[language].listingsUnavailable);
     assert.ok(listingCopy[language].toolsUnavailable);
     assert.ok(listingCopy[language].invalidPrice);
+    assert.ok(listingCopy[language].categoryLabel);
+    assert.ok(listingCopy[language].allTools);
+    assert.ok(listingCopy[language].categoryEmpty);
+    if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(listingCopy[language].categoryEmpty));
   }
 });
 
@@ -3522,7 +3530,10 @@ test('local wallet errors and pending/failed transaction responses follow the ac
 test('long translated errors and support codes wrap inside the toast viewport', () => {
   const toast = code('src/components/ui/Toast.tsx');
   const notice = code('src/components/visual/NoticeMsg.tsx');
-  assert.match(toast, /w-\[calc\(100vw-2rem\)\] max-w-lg/);
+  assert.match(toast, /createPortal\(node, document\.body\)/);
+  assert.ok(!/-translate-x-1\/2|w-\[calc\(100vw-2rem\)\]|motion\.div/.test(toast),
+    "тост снова центрируется transform и может уехать за край телефона");
+  assert.match(toast, /left-3 right-3 mx-auto max-w-lg/);
   assert.match(toast, /max-h-\[calc\(100dvh-2rem\)\] overflow-y-auto/);
   assert.match(toast, /\[overflow-wrap:anywhere\]/);
   assert.match(notice, /<span className="min-w-0 \[overflow-wrap:anywhere\]">\{n\.text\}<\/span>/);
@@ -4443,7 +4454,7 @@ test("реестр инструментов показывает все пять
     assert.ok(toolPlate(tool.id, rarity), `${tool.id}/${rarity}: нет картины`);
   }
   const source = read("src/lib/visualAssets.ts");
-  assert.equal((source.match(/\/assets\/nfts\/[a-z-]+\.jpg/g) || []).length >= 25, true, "картины исполнений пропали");
+  assert.equal((source.match(/\/assets\/nfts\/[a-z-]+\.png/g) || []).length >= 25, true, "картины исполнений пропали");
 
   for (const language of languages) {
     const copy = catalog.toolsCatalogCopy[language];

@@ -57,36 +57,36 @@ export type ResourceVisual = {
 
 /** 26 playable resources, in economy order. */
 export const PLAYABLE_RESOURCES: ResourceVisual[] = [
-  { id: "neuron", name: homeResourceNames.ru.neuron, en: homeResourceNames.en.neuron, plate: "/assets/nfts/resources/neuron.jpg", icon: "/assets/icons/neuron.png", group: "playable" },
-  { id: "synapse", name: homeResourceNames.ru.synapse, en: homeResourceNames.en.synapse, plate: "/assets/nfts/resources/synapse.jpg", icon: "/assets/icons/synapse.png", group: "playable" },
-  { id: "power", name: homeResourceNames.ru.power, en: homeResourceNames.en.power, plate: "/assets/nfts/resources/power.jpg", icon: "/assets/icons/power.png", group: "playable" },
-  { id: "circuit", name: homeResourceNames.ru.circuit, en: homeResourceNames.en.circuit, plate: "/assets/nfts/resources/circuit.jpg", icon: "/assets/icons/circuit.png", group: "playable" },
-  { id: "silicon", name: homeResourceNames.ru.silicon, en: homeResourceNames.en.silicon, plate: "/assets/nfts/resources/silicon.jpg", icon: "/assets/icons/silicon.png", group: "playable" },
-  { id: "signal", name: homeResourceNames.ru.signal, en: homeResourceNames.en.signal, plate: "/assets/nfts/resources/signal.jpg", icon: "/assets/icons/signal.png", group: "playable" },
-  { id: "model", name: homeResourceNames.ru.model, en: homeResourceNames.en.model, plate: "/assets/nfts/resources/model.jpg", icon: "/assets/icons/model.png", group: "playable" },
-  { id: "compute", name: homeResourceNames.ru.compute, en: homeResourceNames.en.compute, plate: "/assets/nfts/resources/compute.jpg", icon: "/assets/icons/compute.png", group: "playable" },
-  { id: "dataset", name: homeResourceNames.ru.dataset, en: homeResourceNames.en.dataset, plate: "/assets/nfts/resources/dataset.jpg", icon: "/assets/icons/dataset.png", group: "playable" },
-  { id: "data", name: homeResourceNames.ru.data, en: homeResourceNames.en.data, plate: "/assets/nfts/resources/data.jpg", icon: "/assets/icons/data.png", group: "playable" },
-  { id: "clearQuartz", name: homeResourceNames.ru.clearQuartz, en: homeResourceNames.en.clearQuartz, plate: "/assets/nfts/resources/clear-quartz.jpg", icon: "/assets/icons/clear-quartz.png", group: "playable" },
-  { id: "roseQuartz", name: homeResourceNames.ru.roseQuartz, en: homeResourceNames.en.roseQuartz, plate: "/assets/nfts/resources/rose-quartz.jpg", icon: "/assets/icons/rose-quartz.png", group: "playable" },
-  { id: "amberQuartz", name: homeResourceNames.ru.amberQuartz, en: homeResourceNames.en.amberQuartz, plate: "/assets/nfts/resources/amber-quartz.jpg", icon: "/assets/icons/amber-quartz.png", group: "playable" },
-  { id: "blueCore", name: homeResourceNames.ru.blueCore, en: homeResourceNames.en.blueCore, plate: "/assets/nfts/resources/blue-core.jpg", icon: "/assets/icons/blue-core.png", group: "playable" },
-  { id: "purpleCore", name: homeResourceNames.ru.purpleCore, en: homeResourceNames.en.purpleCore, plate: "/assets/nfts/resources/purple-core.jpg", icon: "/assets/icons/purple-core.png", group: "playable" },
-  { id: "redCore", name: homeResourceNames.ru.redCore, en: homeResourceNames.en.redCore, plate: "/assets/nfts/resources/red-core.jpg", icon: "/assets/icons/red-core.png", group: "playable" },
-  { id: "quantumBit", name: homeResourceNames.ru.quantumBit, en: homeResourceNames.en.quantumBit, plate: "/assets/nfts/resources/quantum-bit.jpg", icon: "/assets/icons/quantum-bit.png", group: "playable" },
-  { id: "neuralChip", name: homeResourceNames.ru.neuralChip, en: homeResourceNames.en.neuralChip, plate: "/assets/nfts/resources/neural-chip.jpg", icon: "/assets/icons/neural-chip.png", group: "playable" },
-  { id: "photonBit", name: homeResourceNames.ru.photonBit, en: homeResourceNames.en.photonBit, plate: "/assets/nfts/resources/photon-bit.jpg", icon: "/assets/icons/photon-bit.png", group: "playable" },
-  { id: "bioChip", name: homeResourceNames.ru.bioChip, en: homeResourceNames.en.bioChip, plate: "/assets/nfts/resources/bio-chip.jpg", icon: "/assets/icons/bio-chip.png", group: "playable" },
-  { id: "cryoFluid", name: homeResourceNames.ru.cryoFluid, en: homeResourceNames.en.cryoFluid, plate: "/assets/nfts/resources/cryo-fluid.jpg", icon: "/assets/icons/cryo-fluid.png", group: "playable" },
-  { id: "voltFluid", name: homeResourceNames.ru.voltFluid, en: homeResourceNames.en.voltFluid, plate: "/assets/nfts/resources/volt-fluid.jpg", icon: "/assets/icons/volt-fluid.png", group: "playable" },
-  { id: "bioFluid", name: homeResourceNames.ru.bioFluid, en: homeResourceNames.en.bioFluid, plate: "/assets/nfts/resources/bio-fluid.jpg", icon: "/assets/icons/bio-fluid.png", group: "playable" },
-  { id: "nanoFluid", name: homeResourceNames.ru.nanoFluid, en: homeResourceNames.en.nanoFluid, plate: "/assets/nfts/resources/nano-fluid.jpg", icon: "/assets/icons/nano-fluid.png", group: "playable" },
-  { id: "quantumFluid", name: homeResourceNames.ru.quantumFluid, en: homeResourceNames.en.quantumFluid, plate: "/assets/nfts/resources/quantum-fluid.jpg", icon: "/assets/icons/quantum-fluid.png", group: "playable" },
-  { id: "mind", name: homeResourceNames.ru.mind, en: homeResourceNames.en.mind, plate: "/assets/nfts/resources/mind.jpg", icon: "/assets/icons/mind.png", group: "playable" },
+  { id: "neuron", name: homeResourceNames.ru.neuron, en: homeResourceNames.en.neuron, plate: "/assets/nfts/resources/neuron.png", icon: "/assets/icons/neuron.png", group: "playable" },
+  { id: "synapse", name: homeResourceNames.ru.synapse, en: homeResourceNames.en.synapse, plate: "/assets/nfts/resources/synapse.png", icon: "/assets/icons/synapse.png", group: "playable" },
+  { id: "power", name: homeResourceNames.ru.power, en: homeResourceNames.en.power, plate: "/assets/nfts/resources/power.png", icon: "/assets/icons/power.png", group: "playable" },
+  { id: "circuit", name: homeResourceNames.ru.circuit, en: homeResourceNames.en.circuit, plate: "/assets/nfts/resources/circuit.png", icon: "/assets/icons/circuit.png", group: "playable" },
+  { id: "silicon", name: homeResourceNames.ru.silicon, en: homeResourceNames.en.silicon, plate: "/assets/nfts/resources/silicon.png", icon: "/assets/icons/silicon.png", group: "playable" },
+  { id: "signal", name: homeResourceNames.ru.signal, en: homeResourceNames.en.signal, plate: "/assets/nfts/resources/signal.png", icon: "/assets/icons/signal.png", group: "playable" },
+  { id: "model", name: homeResourceNames.ru.model, en: homeResourceNames.en.model, plate: "/assets/nfts/resources/model.png", icon: "/assets/icons/model.png", group: "playable" },
+  { id: "compute", name: homeResourceNames.ru.compute, en: homeResourceNames.en.compute, plate: "/assets/nfts/resources/compute.png", icon: "/assets/icons/compute.png", group: "playable" },
+  { id: "dataset", name: homeResourceNames.ru.dataset, en: homeResourceNames.en.dataset, plate: "/assets/nfts/resources/dataset.png", icon: "/assets/icons/dataset.png", group: "playable" },
+  { id: "data", name: homeResourceNames.ru.data, en: homeResourceNames.en.data, plate: "/assets/nfts/resources/data.png", icon: "/assets/icons/data.png", group: "playable" },
+  { id: "clearQuartz", name: homeResourceNames.ru.clearQuartz, en: homeResourceNames.en.clearQuartz, plate: "/assets/nfts/resources/clear-quartz.png", icon: "/assets/icons/clear-quartz.png", group: "playable" },
+  { id: "roseQuartz", name: homeResourceNames.ru.roseQuartz, en: homeResourceNames.en.roseQuartz, plate: "/assets/nfts/resources/rose-quartz.png", icon: "/assets/icons/rose-quartz.png", group: "playable" },
+  { id: "amberQuartz", name: homeResourceNames.ru.amberQuartz, en: homeResourceNames.en.amberQuartz, plate: "/assets/nfts/resources/amber-quartz.png", icon: "/assets/icons/amber-quartz.png", group: "playable" },
+  { id: "blueCore", name: homeResourceNames.ru.blueCore, en: homeResourceNames.en.blueCore, plate: "/assets/nfts/resources/blue-core.png", icon: "/assets/icons/blue-core.png", group: "playable" },
+  { id: "purpleCore", name: homeResourceNames.ru.purpleCore, en: homeResourceNames.en.purpleCore, plate: "/assets/nfts/resources/purple-core.png", icon: "/assets/icons/purple-core.png", group: "playable" },
+  { id: "redCore", name: homeResourceNames.ru.redCore, en: homeResourceNames.en.redCore, plate: "/assets/nfts/resources/red-core.png", icon: "/assets/icons/red-core.png", group: "playable" },
+  { id: "quantumBit", name: homeResourceNames.ru.quantumBit, en: homeResourceNames.en.quantumBit, plate: "/assets/nfts/resources/quantum-bit.png", icon: "/assets/icons/quantum-bit.png", group: "playable" },
+  { id: "neuralChip", name: homeResourceNames.ru.neuralChip, en: homeResourceNames.en.neuralChip, plate: "/assets/nfts/resources/neural-chip.png", icon: "/assets/icons/neural-chip.png", group: "playable" },
+  { id: "photonBit", name: homeResourceNames.ru.photonBit, en: homeResourceNames.en.photonBit, plate: "/assets/nfts/resources/photon-bit.png", icon: "/assets/icons/photon-bit.png", group: "playable" },
+  { id: "bioChip", name: homeResourceNames.ru.bioChip, en: homeResourceNames.en.bioChip, plate: "/assets/nfts/resources/bio-chip.png", icon: "/assets/icons/bio-chip.png", group: "playable" },
+  { id: "cryoFluid", name: homeResourceNames.ru.cryoFluid, en: homeResourceNames.en.cryoFluid, plate: "/assets/nfts/resources/cryo-fluid.png", icon: "/assets/icons/cryo-fluid.png", group: "playable" },
+  { id: "voltFluid", name: homeResourceNames.ru.voltFluid, en: homeResourceNames.en.voltFluid, plate: "/assets/nfts/resources/volt-fluid.png", icon: "/assets/icons/volt-fluid.png", group: "playable" },
+  { id: "bioFluid", name: homeResourceNames.ru.bioFluid, en: homeResourceNames.en.bioFluid, plate: "/assets/nfts/resources/bio-fluid.png", icon: "/assets/icons/bio-fluid.png", group: "playable" },
+  { id: "nanoFluid", name: homeResourceNames.ru.nanoFluid, en: homeResourceNames.en.nanoFluid, plate: "/assets/nfts/resources/nano-fluid.png", icon: "/assets/icons/nano-fluid.png", group: "playable" },
+  { id: "quantumFluid", name: homeResourceNames.ru.quantumFluid, en: homeResourceNames.en.quantumFluid, plate: "/assets/nfts/resources/quantum-fluid.png", icon: "/assets/icons/quantum-fluid.png", group: "playable" },
+  { id: "mind", name: homeResourceNames.ru.mind, en: homeResourceNames.en.mind, plate: "/assets/nfts/resources/mind.png", icon: "/assets/icons/mind.png", group: "playable" },
 ];
 
 export const SPECIAL_RESOURCES: ResourceVisual[] = [
-  { id: "soulCore", name: homeResourceNames.ru.soulCore, en: homeResourceNames.en.soulCore, plate: "/assets/nfts/resources/soul-core.jpg", group: "special" },
+  { id: "soulCore", name: homeResourceNames.ru.soulCore, en: homeResourceNames.en.soulCore, plate: "/assets/nfts/resources/soul-core.png", group: "special" },
 ];
 
 export const RESOURCES: ResourceVisual[] = [...PLAYABLE_RESOURCES, ...SPECIAL_RESOURCES];
@@ -117,11 +117,11 @@ export const TOOL_RARITIES = ["common", "uncommon", "rare", "epic", "legendary"]
 export type ToolRarity = (typeof TOOL_RARITIES)[number];
 
 export const TOOL_NFTS = [
-  { id: "plasma_cutter", base: "/assets/nfts/plasma-cutter.jpg" },
-  { id: "silicon_extractor", base: "/assets/nfts/silicon-extractor.jpg" },
-  { id: "data_harvester", base: "/assets/nfts/data-harvester.jpg" },
-  { id: "quantum_transmitter", base: "/assets/nfts/quantum-transmitter.jpg" },
-  { id: "neural_seeder", base: "/assets/nfts/neural-seeder.jpg" },
+  { id: "plasma_cutter", base: "/assets/nfts/plasma-cutter.png" },
+  { id: "silicon_extractor", base: "/assets/nfts/silicon-extractor.png" },
+  { id: "data_harvester", base: "/assets/nfts/data-harvester.png" },
+  { id: "quantum_transmitter", base: "/assets/nfts/quantum-transmitter.png" },
+  { id: "neural_seeder", base: "/assets/nfts/neural-seeder.png" },
 ] as const;
 
 /** Rarity plates that exist on disk. Missing rarities fall back to Base.
@@ -129,34 +129,34 @@ export const TOOL_NFTS = [
  */
 const TOOL_RARITY_PLATE: Record<string, Partial<Record<ToolRarity, string>>> = {
   plasma_cutter: {
-    uncommon: "/assets/nfts/plasma-cutter-uncommon.jpg",
-    rare: "/assets/nfts/plasma-cutter-rare.jpg",
-    epic: "/assets/nfts/plasma-cutter-epic.jpg",
-    legendary: "/assets/nfts/plasma-cutter-legendary.jpg",
+    uncommon: "/assets/nfts/plasma-cutter-uncommon.png",
+    rare: "/assets/nfts/plasma-cutter-rare.png",
+    epic: "/assets/nfts/plasma-cutter-epic.png",
+    legendary: "/assets/nfts/plasma-cutter-legendary.png",
   },
   silicon_extractor: {
-    uncommon: "/assets/nfts/silicon-extractor-uncommon.jpg",
-    rare: "/assets/nfts/silicon-extractor-rare.jpg",
-    epic: "/assets/nfts/silicon-extractor-epic.jpg",
-    legendary: "/assets/nfts/silicon-extractor-legendary.jpg",
+    uncommon: "/assets/nfts/silicon-extractor-uncommon.png",
+    rare: "/assets/nfts/silicon-extractor-rare.png",
+    epic: "/assets/nfts/silicon-extractor-epic.png",
+    legendary: "/assets/nfts/silicon-extractor-legendary.png",
   },
   data_harvester: {
-    uncommon: "/assets/nfts/data-harvester-uncommon.jpg",
-    rare: "/assets/nfts/data-harvester-rare.jpg",
-    epic: "/assets/nfts/data-harvester-epic.jpg",
-    legendary: "/assets/nfts/data-harvester-legendary.jpg",
+    uncommon: "/assets/nfts/data-harvester-uncommon.png",
+    rare: "/assets/nfts/data-harvester-rare.png",
+    epic: "/assets/nfts/data-harvester-epic.png",
+    legendary: "/assets/nfts/data-harvester-legendary.png",
   },
   quantum_transmitter: {
-    uncommon: "/assets/nfts/quantum-transmitter-uncommon.jpg",
-    rare: "/assets/nfts/quantum-transmitter-rare.jpg",
-    epic: "/assets/nfts/quantum-transmitter-epic.jpg",
-    legendary: "/assets/nfts/quantum-transmitter-legendary.jpg",
+    uncommon: "/assets/nfts/quantum-transmitter-uncommon.png",
+    rare: "/assets/nfts/quantum-transmitter-rare.png",
+    epic: "/assets/nfts/quantum-transmitter-epic.png",
+    legendary: "/assets/nfts/quantum-transmitter-legendary.png",
   },
   neural_seeder: {
-    uncommon: "/assets/nfts/neural-seeder-uncommon.jpg",
-    rare: "/assets/nfts/neural-seeder-rare.jpg",
-    epic: "/assets/nfts/neural-seeder-epic.jpg",
-    legendary: "/assets/nfts/neural-seeder-legendary.jpg",
+    uncommon: "/assets/nfts/neural-seeder-uncommon.png",
+    rare: "/assets/nfts/neural-seeder-rare.png",
+    epic: "/assets/nfts/neural-seeder-epic.png",
+    legendary: "/assets/nfts/neural-seeder-legendary.png",
   },
 };
 

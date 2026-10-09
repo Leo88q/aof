@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { NoticeMsg } from "../visual/NoticeMsg";
 import { create } from "zustand";
 import { useLocale } from "../../i18n/LocaleProvider";
@@ -27,7 +27,7 @@ export const useToast = create<ToastState>((set) => ({
     dismissTimer = setTimeout(() => {
       dismissTimer = undefined;
       set({ visible: false, messageLanguage: null });
-    }, 3000);
+    }, type === "error" ? 12000 : 3000);
   },
   hide: () => {
     if (dismissTimer) clearTimeout(dismissTimer);
@@ -51,19 +51,17 @@ export function Toast() {
     if (useToast.getState().messageLanguage !== language) useToast.getState().hide();
   }, [language]);
 
-  return (
-    <AnimatePresence>
-      {visible && messageLanguage === language && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          role={type === "error" ? "alert" : "status"}
-          className={`fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto min-w-0 [overflow-wrap:anywhere] px-5 py-3 rounded-2xl text-center text-sm font-medium shadow-glow z-[200] ${typeStyles[type]}`}
-        >
-          <NoticeMsg text={message} />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  // Портал на document.body: .app-shell режет overflow, а framer-motion
+  // затирал Tailwind -translate-x-1/2 своим transform — тост уезжал вправо.
+  // Позиция только left/right, без translate. Ошибка висит дольше, чтобы её прочитать.
+  const node = visible && messageLanguage === language ? (
+    <div
+      role={type === "error" ? "alert" : "status"}
+      className={`nf-toast fixed z-[500] top-3 left-3 right-3 mx-auto max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto min-w-0 [overflow-wrap:anywhere] px-4 py-3 rounded-2xl text-sm font-medium shadow-glow ${typeStyles[type]}`}
+    >
+      <NoticeMsg text={message} />
+    </div>
+  ) : null;
+  if (!node || typeof document === "undefined") return node;
+  return createPortal(node, document.body);
 }

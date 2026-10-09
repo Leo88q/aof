@@ -248,7 +248,7 @@ export function LotteryPage() {
       </Card>
       <Card>
         <h2 className="text-parchment font-semibold text-sm mb-2">{c.purchaseTitle}</h2>
-        {pool !== 'sol' ? <p className="text-straw text-xs" role="status">{pool === 'skr' ? c.skrSeal : c.potatoSeal}</p>
+        {pool !== 'sol' ? <div className="text-straw text-xs space-y-2 [overflow-wrap:anywhere]" role="status"><p>{c.solOnly}</p><p>{pool === 'skr' ? c.skrSeal : c.potatoSeal}</p></div>
           : !address ? <p className="text-straw text-xs" role="status">{c.connect}</p>
           : !activeRound || roundState !== 'ready' ? <p className="text-straw text-xs" role="status">{c.purchaseClosed}</p>
           : activeRound.drawn || activeRound.drawCommitted ? <p className="text-straw text-xs" role="status">{c.purchaseClosed}</p>

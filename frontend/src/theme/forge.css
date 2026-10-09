@@ -1271,8 +1271,8 @@ input.fg-input:focus {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 10px;
-  background: var(--fg-deep);
-  border: 1px solid color-mix(in srgb, var(--fg-text) 10%, transparent);
+  background: transparent;
+  border: 1px solid transparent;
 }
 .nf-plate img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .nf-plate--icon, .nf-plate--icon::after { background: transparent; border-color: transparent; box-shadow: none; }
@@ -1333,6 +1333,9 @@ input.fg-input:focus {
   background: var(--fg-glow);
 }
 .lot-seal, .lot-rules { margin: 0; color: var(--fg-dim); font-size: 12px; line-height: 1.45; }
+.lot-seal { display: grid; gap: 8px; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.lot-seal p { margin: 0; }
+.lot-vial__name, .lot-vial__lamp { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
 .lot-rules { display: grid; gap: 4px; padding-left: 16px; }
 .lot-live { display: grid; gap: 10px; }
 .lot-drum {
@@ -1642,6 +1645,100 @@ input.fg-input:focus {
 @media (max-width: 440px) {
   .listing-page .ppi-wrap { grid-template-columns: minmax(0, 1fr); }
   .listing-page .ppi { margin-inline: auto; }
+}
+
+.nf-toast {
+  text-align: start;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+.nf-toast .inline-flex {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  white-space: normal;
+}
+
+.listing-cats { display: flex; flex-wrap: wrap; gap: 8px; }
+.listing-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--fg-text) 16%, transparent);
+  background: color-mix(in srgb, var(--fg-deep) 72%, transparent);
+  color: var(--fg-text);
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.listing-cat img { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
+.listing-cat--on {
+  color: #06140f;
+  border-color: transparent;
+  background: linear-gradient(165deg, #d7ffe8 0%, #3ddeb0 48%, #1aa3c7 100%);
+}
+
+.mine-start {
+  color: #06140f;
+  background: linear-gradient(165deg, #e7fff4 0%, #3ddeb0 42%, #1496c4 100%);
+  box-shadow: 0 0 0 1px rgba(180, 255, 220, .55), 0 10px 24px rgba(20, 150, 196, .38);
+}
+.mine-start:disabled { opacity: .55; }
+
+.pack-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 450;
+  background: #042833;
+}
+.pack-reveal img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pack-reveal__copy {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin: 0 auto;
+  max-width: 36rem;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(4, 18, 24, .78);
+  color: #f4efe4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.pack-reveal__copy p { margin: 0; }
+.pack-reveal__hide {
+  max-width: 100%;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(244, 239, 228, .35);
+  color: #f4efe4;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+.pack-reveal__action {
+  max-width: 100%;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: linear-gradient(165deg, #e7fff4, #3ddeb0 45%, #1496c4);
+  color: #06140f;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 /* Player-account readouts and long profile section names in all seven locales. */

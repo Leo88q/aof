@@ -11,7 +11,7 @@ type Copy = {
   claim: string; refund: string; claimHelp: string; refundHelp: string; refundWaiting: string;
   working: string; pending: string; successCheck: string; uncertain: string; failed: string;
   chambers: string; sol: string; skr: string; potato: string; live: string; sealed: string;
-  skrSeal: string; potatoSeal: string; oneWinner: string; split: string; cap: string;
+  skrSeal: string; potatoSeal: string; solOnly: string; oneWinner: string; split: string; cap: string;
   salesClock: string; refundClock: string; salesMature: string; refundReady: string;
   clock: (days: string, hours?: string, minutes?: string) => string;
   drum: string; auto: string;
@@ -30,6 +30,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Три камеры', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Счёт открыт', sealed: 'Камера закрыта',
     skrSeal: 'SKR ещё не выпускается в сети. Эта камера не принимает оплату и не выдаёт билет.',
     potatoSeal: 'Программа хранит только SOL. Potato не списывается, и билет в этой камере не создаётся.',
+    solOnly: 'Оплатить можно только Solana. Программа умеет держать только SOL, поэтому камеры SKR и Potato закрыты и не выдают билет. Чтобы они принимали оплату, нужен отдельный деплой программы.',
     oneWinner: 'Победитель один: один номер из проданных билетов.',
     split: 'После розыгрыша 70% остаётся призом, 30% уходит в казну.',
     cap: 'Не больше 10 билетов с одного кошелька в раунде.',
@@ -51,6 +52,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Three chambers', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Escrow open', sealed: 'Chamber sealed',
     skrSeal: 'SKR is not issued on-chain. This chamber takes no payment and issues no ticket.',
     potatoSeal: 'The program escrows SOL only. Potato is not charged, and this chamber issues no ticket.',
+    solOnly: 'Payment is Solana only. The program can hold only SOL, so the SKR and Potato chambers stay closed and do not issue a ticket. Taking those payments needs a separate program deploy.',
     oneWinner: 'One winner: one number among the tickets sold.',
     split: 'After the draw, 70% remains the prize and 30% goes to the treasury.',
     cap: 'At most 10 tickets per wallet in a round.',
@@ -72,6 +74,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Três câmaras', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Depósito aberto', sealed: 'Câmara selada',
     skrSeal: 'SKR ainda não é emitido na rede. Esta câmara não cobra e não emite bilhete.',
     potatoSeal: 'O programa guarda apenas SOL. Potato não é debitado e esta câmara não emite bilhete.',
+    solOnly: 'O pagamento é só em Solana. O programa só guarda SOL, por isso as câmaras SKR e Potato ficam fechadas e não emitem bilhete. Aceitar esses pagamentos exige um deploy separado do programa.',
     oneWinner: 'Um vencedor: um número entre os bilhetes vendidos.',
     split: 'Após o sorteio, 70% fica como prêmio e 30% vai ao tesouro.',
     cap: 'No máximo 10 bilhetes por carteira na rodada.',
@@ -93,6 +96,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Tres cámaras', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Depósito abierto', sealed: 'Cámara sellada',
     skrSeal: 'SKR aún no se emite en la cadena. Esta cámara no cobra ni emite un billete.',
     potatoSeal: 'El programa solo guarda SOL. Potato no se debita y esta cámara no emite un billete.',
+    solOnly: 'El pago es solo en Solana. El programa solo guarda SOL, así que las cámaras SKR y Potato siguen cerradas y no emiten billete. Aceptar esos pagos exige un despliegue aparte del programa.',
     oneWinner: 'Un ganador: un número entre los billetes vendidos.',
     split: 'Tras el sorteo, el 70% queda como premio y el 30% va a la tesorería.',
     cap: 'Como máximo 10 billetes por cartera en la ronda.',
@@ -114,6 +118,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Ba khoang', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Đang giữ tiền', sealed: 'Khoang đã khóa',
     skrSeal: 'SKR chưa được phát hành trên chuỗi. Khoang này không thu tiền và không phát vé.',
     potatoSeal: 'Chương trình chỉ giữ SOL. Potato không bị trừ và khoang này không phát vé.',
+    solOnly: 'Chỉ thanh toán bằng Solana. Chương trình chỉ giữ SOL, nên khoang SKR và Potato vẫn đóng và không phát vé. Muốn nhận các khoản đó cần triển khai chương trình riêng.',
     oneWinner: 'Một người thắng: một số trong các vé đã bán.',
     split: 'Sau khi bốc thăm, 70% là thưởng và 30% vào kho quỹ.',
     cap: 'Tối đa 10 vé mỗi ví trong một lượt.',
@@ -135,6 +140,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Tiga ruang', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Escrow terbuka', sealed: 'Ruang tersegel',
     skrSeal: 'SKR belum diterbitkan di blockchain. Ruang ini tidak menarik pembayaran dan tidak menerbitkan tiket.',
     potatoSeal: 'Program hanya menyimpan SOL. Potato tidak dipotong dan ruang ini tidak menerbitkan tiket.',
+    solOnly: 'Pembayaran hanya Solana. Program hanya menyimpan SOL, jadi ruang SKR dan Potato tetap tertutup dan tidak menerbitkan tiket. Menerima pembayaran itu butuh deploy program terpisah.',
     oneWinner: 'Satu pemenang: satu nomor di antara tiket yang terjual.',
     split: 'Setelah undian, 70% tetap menjadi hadiah dan 30% masuk kas.',
     cap: 'Paling banyak 10 tiket per dompet dalam satu putaran.',
@@ -156,6 +162,7 @@ export const lotteryCopy: Record<Language, Copy> = {
     chambers: 'Tatlong silid', sol: 'Solana', skr: 'SKR', potato: 'Potato', live: 'Bukas ang escrow', sealed: 'Selyadong silid',
     skrSeal: 'Hindi pa inilalabas ang SKR sa blockchain. Hindi naniningil at hindi nagbibigay ng tiket ang silid na ito.',
     potatoSeal: 'SOL lamang ang hawak ng programa. Hindi ibinabawas ang Potato at walang tiket sa silid na ito.',
+    solOnly: 'Solana lamang ang bayad. SOL lamang ang hawak ng programa, kaya sarado ang SKR at Potato at walang tiket doon. Kailangan ng hiwalay na deploy ng programa bago sila tumanggap ng bayad.',
     oneWinner: 'Isang panalo: isang numero sa mga naibentang tiket.',
     split: 'Pagkatapos ng bunutan, 70% ang premyo at 30% ang napupunta sa kabang-yaman.',
     cap: 'Hanggang 10 tiket bawat wallet sa isang round.',

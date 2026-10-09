@@ -81,7 +81,10 @@ export function LotteryHall({
       </div>
 
       {pool !== "sol" ? (
-        <p className="lot-seal" role="status">{pool === "skr" ? copy.skrSeal : copy.potatoSeal}</p>
+        <div className="lot-seal" role="status">
+          <p>{copy.solOnly}</p>
+          <p>{pool === "skr" ? copy.skrSeal : copy.potatoSeal}</p>
+        </div>
       ) : (
         <div className="lot-live">
           <div className={"lot-drum" + (spinning ? " lot-drum--spin" : shown.length > 0 && !round?.drawn ? " lot-drum--idle" : "")} aria-label={copy.drum}>

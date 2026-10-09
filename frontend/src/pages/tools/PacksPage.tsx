@@ -12,6 +12,7 @@ import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { PackPlate } from "../../components/visual/PackPlate";
+import { PackReveal } from "../../components/visual/PackReveal";
 import { useFlash } from "../../lib/marketUtils";
 import type { PackOpenIntent } from "../../lib/transactionIntent";
 import { actionErrorFeedback, LocalTxFeedbackError } from "../../lib/txResponseFeedback";
@@ -51,6 +52,7 @@ export function PacksPage() {
   const [configFailed, setConfigFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [opening, setOpening] = useState<Opening | null>(null);
+  const [showReveal, setShowReveal] = useState(false);
   // Размер последней открытой капсулы: витрина должна показывать ту капсулу,
   // которую игрок действительно открыл, а не условную иконку.
   const [lastPack, setLastPack] = useState<"small" | "medium" | "big" | null>(null);
@@ -192,6 +194,10 @@ export function PacksPage() {
   }
 
   const waitingMs = opening?.state === "pending" ? now - opening.startedAt : 0;
+  const openingKey = opening ? `${opening.state}:${opening.packCommit}` : "";
+  useEffect(() => {
+    if (openingKey) setShowReveal(true);
+  }, [openingKey]);
   const formatPercent = (bps: number) => (bps / 100).toLocaleString(language, { maximumFractionDigits: 2 });
 
   return (
@@ -210,6 +216,18 @@ export function PacksPage() {
         </motion.div>
       )}
 
+      <PackReveal
+        open={!!opening && showReveal}
+        caption={opening?.state === "pending" ? `${copy.waiting} ${Math.floor(waitingMs / 1000)} ${copy.seconds}` : opening?.state === "settled" && opening.tool ? toolName(language, opening.tool.toolType) : opening?.state === "refunded" ? copy.refunded : opening?.state === "settled" ? copy.settledUnknown : ""}
+      >
+        {opening?.state === "pending" && waitingMs > SELF_SETTLE_AFTER_MS && (
+          <button type="button" onClick={() => selfSettle(opening.packCommit)} disabled={busy === opening.packCommit}
+            className="pack-reveal__action">
+            {copy.revealSelf}
+          </button>
+        )}
+        <button type="button" onClick={() => setShowReveal(false)} className="pack-reveal__hide">{copy.hideReveal}</button>
+      </PackReveal>
       {opening && (
         <Card className="text-center py-5">
           {opening.state === "pending" && (

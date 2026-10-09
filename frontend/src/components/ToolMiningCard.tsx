@@ -176,7 +176,9 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
             </div>
           </div>
           <button onClick={() => run("start")} disabled={!MINING_ENABLED || busy || durability === null || durability < 1}
-            className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
+            className={MINING_ENABLED && !busy && durability !== null && durability >= 1
+              ? "mine-start w-full py-2.5 rounded-xl font-semibold text-sm"
+              : "w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60"}>
             {MINING_ENABLED ? copy.start : copy.startDisabled}
           </button>
           <button onClick={() => run("unstake")} disabled={busy || durability === null || durability < 20}
@@ -189,12 +191,12 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {tool.isMining && (
         <div className="mt-3">
           {canCollect ? (
-            <motion.button onClick={() => run("collect")} disabled={!MINING_ENABLED || busy}
-              animate={MINING_ENABLED ? { scale: [1, 1.03, 1] } : undefined}
-              transition={{ repeat: Infinity, duration: 1.4 }}
-              className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
+            <button type="button" onClick={() => run("collect")} disabled={!MINING_ENABLED || busy}
+              className={MINING_ENABLED && !busy
+                ? "mine-start w-full py-2.5 rounded-xl font-bold text-sm"
+                : "w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60"}>
               {MINING_ENABLED ? copy.collect : copy.collectDisabled}
-            </motion.button>
+            </button>
           ) : (
             <div>
               <div className="flex flex-wrap justify-between gap-1 text-xs text-straw mb-1">
