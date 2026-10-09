@@ -6,10 +6,16 @@ import { simulateTransaction } from "../security/txSimulator";
 import { PayerCostQuote, PayerRentAccountSpec, quotePayerCosts } from "./payerQuote";
 import { preparePlayerDurableNonce } from "./playerNonce";
 
+function missingAccount(logs: string[] | undefined): string {
+  const line = (logs || []).find((entry) => entry.includes("caused by account:"));
+  const account = line?.split("caused by account:")[1]?.split(".")[0]?.trim();
+  return account ? ` Account: ${account}.` : "";
+}
+
 async function requireSimulation(tx: Transaction): Promise<void> {
   const result = await simulateTransaction(tx);
   if (!result.success) {
-    throw new Error(`Transaction simulation failed: ${result.error || "unknown error"}`);
+    throw new Error(`Transaction simulation failed: ${result.error || "unknown error"}${missingAccount(result.logs)}`);
   }
 }
 

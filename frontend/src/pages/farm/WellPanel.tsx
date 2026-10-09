@@ -61,7 +61,8 @@ export function WellPanel() {
     // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
     // чип нагрузки в шапке всегда показывают одно и то же состояние.
     setSnapshot(snap ?? null);
-    setWeather(snap ? { weather: snap.weatherIndex } : null);
+    // A day-rule reading is not the WeatherState account. Collect requires that account.
+    setWeather(snap && snap.weatherAccountPresent !== false ? { weather: snap.weatherIndex } : null);
     setWell(gridState);
     setPowerMint(mint);
   }

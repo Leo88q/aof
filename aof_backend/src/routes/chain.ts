@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { BN } from "bn.js";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { program } from "../provider";
 import {
@@ -307,7 +307,10 @@ r.post("/grid/collect", async (req, res) => {
       })
       .instruction();
 
-    const tx = await coSign([ix], user);
+    // The program requires an initialized POWER token account. Create it in the
+    // player's transaction; the player pays its rent only if it does not exist.
+    const createUserPower = createAssociatedTokenAccountIdempotentInstruction(user, userPower, user, powerMint);
+    const tx = await coSign([createUserPower, ix], user);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
