@@ -1383,6 +1383,29 @@ input.fg-input:focus {
 .exp-rules dt { color: var(--fg-dim); font-size: 10px; }
 .exp-rules dd { margin: 2px 0 0; color: var(--fg-text); font-family: var(--fg-font-num); font-size: 14px; overflow-wrap: anywhere; }
 
+/* Network station. The glow is motion, not a payout. */
+.well-hall { display: grid; gap: 10px; margin-bottom: 12px; }
+.well-hall__auto, .well-hall__motion, .well-hall__rule {
+  margin: 0; color: var(--fg-dim); font-size: 12px; line-height: 1.45;
+}
+.well-stage {
+  margin: 0; border-radius: 18px; overflow: hidden; background: var(--fg-deep);
+  box-shadow: inset 0 0 0 1px var(--fg-line);
+}
+.well-stage img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--fg-deep); }
+.well-stage--live img { animation: well-glow 4.8s ease-in-out infinite; }
+@keyframes well-glow {
+  0%, 100% { filter: brightness(0.92); }
+  50% { filter: brightness(1.08); }
+}
+.well-rules { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 0; }
+.well-rules div {
+  min-width: 0; padding: 8px; border-radius: 12px; background: var(--fg-tile);
+  box-shadow: inset 0 0 0 1px var(--fg-line);
+}
+.well-rules dt { color: var(--fg-dim); font-size: 10px; }
+.well-rules dd { margin: 2px 0 0; color: var(--fg-text); font-family: var(--fg-font-num); font-size: 14px; overflow-wrap: anywhere; }
+
 /* ---------- 8. ДОСТУПНОСТЬ И ПЕЧАТЬ ---------- */
 @media (prefers-reduced-motion: reduce) {
   .fg-screen::before,
@@ -1392,7 +1415,8 @@ input.fg-input:focus {
   .gold-pulse,
   .lot-drum--spin .lot-drum__plate,
   .lot-drum--idle .lot-drum__plate,
-  .exp-sonar--spin img {
+  .exp-sonar--spin img,
+  .well-stage--live img {
     animation: none !important;
   }
   .cross-svg .pulse { opacity: 0; }

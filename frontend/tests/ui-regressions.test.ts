@@ -1329,6 +1329,16 @@ test('сетевая станция и барограф переводят ре�
   assert.match(panel, /api\.chain\.collectPower/);
   assert.match(panel, /wellCopy\[language\]/);
   assert.match(panel, /!weather \|\| !w/);
+  assert.match(panel, /WellHall/);
+  assert.match(panel, /stationLastCollectedAt/);
+  const hall = code('src/pages/farm/WellHall.tsx');
+  assert.match(hall, /\/assets\/well\/station\.jpg/);
+  assert.doesNotMatch(hall, /grid_accrual|powerBuffer/);
+  const { stationLastCollectedAt } = await import('../src/pages/farm/wellReadings');
+  assert.equal(stationLastCollectedAt(null), null);
+  assert.equal(stationLastCollectedAt({ lastCollectedAt: 0 }), null);
+  assert.equal(stationLastCollectedAt({ lastCollectedAt: 1_700_000_000 }), 1_700_000_000);
+  assert.equal(stationLastCollectedAt({ last_collected_at: '1700000001' }), 1700000001);
   assert.match(recorder, /known = forecast\.filter/);
   assert.match(recorder, /scaleLabels=\{\(\['drought', 'sunny', 'festival'\]/);
   assert.match(recorder, /ariaLabel=\{copy\.barograph\}/);

@@ -68,7 +68,10 @@ export function WellPanel() {
 
   useEffect(() => {
     loadState();
-    const refresh = setInterval(loadState, 15000);
+    const refresh = setInterval(() => {
+      if (document.hidden) return;
+      void loadState();
+    }, 15000);
     return () => {
       clearInterval(refresh);
     };
@@ -109,13 +112,14 @@ export function WellPanel() {
   }
 
   if (!walletAddr) {
-    return <div lang={language}><Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> {copy.station}</h3><p className="text-straw text-sm text-center py-4">{copy.connectWallet}</p></Card></div>;
+    return <div lang={language}><WellHall language={language} active={false} lastCollectedAt={null} /><Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> {copy.station}</h3><p className="text-straw text-sm text-center py-4">{copy.connectWallet}</p></Card></div>;
   }
 
   const forecast = typeof snapshot?.dayId === "number" ? forecastFromDayId(snapshot.dayId, 6) : [];
 
   return (
     <div lang={language}>
+    <WellHall language={language} active={Boolean(well)} lastCollectedAt={stationLastCollectedAt(well)} />
     <WeatherRecorder
       dayId={typeof snapshot?.dayId === "number" ? snapshot.dayId : null}
       weatherType={snapshot?.type ?? null}
