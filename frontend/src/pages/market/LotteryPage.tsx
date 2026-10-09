@@ -9,6 +9,7 @@ import { UI_ICONS } from '../../lib/visualAssets';
 import { lamportsToSol } from '../../lib/amounts';
 import { canRefundLotteryTicket, LOTTERY_TICKET_PRICE_LAMPORTS, lotteryU64, readLotteryRound,
   readLotteryTickets, type LotteryRound, type LotteryTicket } from '../../lib/lotteryReadings';
+import { LotteryHall, type LotteryPoolId } from './LotteryHall';
 
 /** Public game view: no admin create/draw controls. A purchase is signed with
  * the price ceiling the player sees (`max_price_lamports`), and existing owners
@@ -35,34 +36,48 @@ export function LotteryPage() {
   const busyRef = useRef(false);
   const [pending, setPending] = useState<{ action: 'claim' | 'refund'; ticket: string } | null>(null);
   const [notice, setNotice] = useState<null | 'working' | 'pending' | 'successCheck' | 'uncertain' | 'failed'>(null);
+  const [pool, setPool] = useState<LotteryPoolId>('sol');
+  const [now, setNow] = useState(() => Date.now());
   const roundRequest = useRef(0);
   const ticketRequest = useRef(0);
-  const now = Date.now();
 
   useEffect(() => {
-    const request = ++roundRequest.current;
-    setRound(null);
-    if (!selectedId) { setRoundState('invalid'); return; }
-    setRoundState('loading');
-    api.query.lotteryRound(selectedId).then((raw: unknown) => {
-      if (request !== roundRequest.current) return;
-      if (raw === null) { setRoundState('missing'); return; }
-      const snapshot = readLotteryRound(raw, selectedId);
-      if (!snapshot) { setRoundState('error'); return; }
-      setRound(snapshot);
-      setRoundState('ready');
-    }).catch(() => { if (request === roundRequest.current) setRoundState('error'); });
-    return () => { roundRequest.current++; };
+    let stopped = false;
+    const read = (silent: boolean) => {
+      const request = ++roundRequest.current;
+      const id = selectionRef.current;
+      if (!id) { setRoundState('invalid'); setRound(null); return; }
+      if (!silent) { setRound(null); setRoundState('loading'); }
+      api.query.lotteryRound(id).then((raw: unknown) => {
+        if (stopped || request !== roundRequest.current || selectionRef.current !== id) return;
+        if (raw === null) { setRoundState('missing'); return; }
+        const snapshot = readLotteryRound(raw, id);
+        if (!snapshot) { if (!silent) setRoundState('error'); return; }
+        setRound(snapshot);
+        setRoundState('ready');
+      }).catch(() => {
+        if (!stopped && request === roundRequest.current && !silent) setRoundState('error');
+      });
+    };
+    read(false);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden' || busyRef.current) return;
+      read(true);
+    }, 8000);
+    const clock = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => { stopped = true; window.clearInterval(timer); window.clearInterval(clock); roundRequest.current++; };
   }, [selectedId, refresh]);
 
   useEffect(() => {
     const request = ++ticketRequest.current;
-    setTickets(null);
-    setTicketOwner(null);
-    setTicketRound(null);
-    if (!round || roundState !== 'ready' || !address) { setTicketState('idle'); return; }
+    if (!round || roundState !== 'ready' || !address) {
+      setTickets(null); setTicketOwner(null); setTicketRound(null); setTicketState('idle'); return;
+    }
     const owner = address;
-    setTicketState('loading');
+    const same = ticketOwner === owner && ticketRound === round.roundId && ticketState === 'ready';
+    if (!same) {
+      setTickets(null); setTicketOwner(null); setTicketRound(null); setTicketState('loading');
+    }
     api.query.myTickets(round.roundId, owner).then((raw: unknown) => {
       if (request !== ticketRequest.current || walletRef.current !== owner) return;
       const owned = readLotteryTickets(raw, round, owner);
@@ -178,7 +193,7 @@ export function LotteryPage() {
       ? c.noTickets : null;
 
   return (
-    <div className="p-4 pt-6 pb-24 space-y-4 min-w-0 [overflow-wrap:anywhere]" lang={language}>
+    <div className="lot-page p-4 pt-6 pb-24 space-y-4 min-w-0 [overflow-wrap:anywhere]" lang={language}>
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
         <h1 className="text-2xl font-bold text-parchment flex items-center gap-2 min-w-0 [overflow-wrap:anywhere]">
           <img src={UI_ICONS.lottery} alt="" className="w-7 h-7 object-contain shrink-0" />{c.title}
@@ -189,6 +204,7 @@ export function LotteryPage() {
         </button>
       </div>
       <p className="text-straw text-xs">{c.intro}</p>
+      <LotteryHall copy={c} pool={pool} onPool={setPool} round={activeRound} now={now} tickets={activeTickets} spinning={notice === 'working'} />
       <label className="flex flex-wrap items-center gap-2 text-straw text-xs">
         {c.round}
         <input type="text" inputMode="numeric" pattern="[0-9]*" value={roundId}
@@ -232,7 +248,8 @@ export function LotteryPage() {
       </Card>
       <Card>
         <h2 className="text-parchment font-semibold text-sm mb-2">{c.purchaseTitle}</h2>
-        {!address ? <p className="text-straw text-xs" role="status">{c.connect}</p>
+        {pool !== 'sol' ? <p className="text-straw text-xs" role="status">{pool === 'skr' ? c.skrSeal : c.potatoSeal}</p>
+          : !address ? <p className="text-straw text-xs" role="status">{c.connect}</p>
           : !activeRound || roundState !== 'ready' ? <p className="text-straw text-xs" role="status">{c.purchaseClosed}</p>
           : activeRound.drawn || activeRound.drawCommitted ? <p className="text-straw text-xs" role="status">{c.purchaseClosed}</p>
           : <>

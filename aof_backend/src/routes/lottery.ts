@@ -26,6 +26,23 @@ const r = Router();
  * trusting this constant. */
 const LOTTERY_TICKET_PRICE_LAMPORTS = new BN(800_000);
 
+
+/** Public chamber list. SOL is the only asset the program can escrow.
+ * SKR and Potato stay sealed here so a client cannot invent a charge. */
+r.get("/pools", (_req, res) => {
+  res.json({
+    pools: [
+      {
+        id: "sol", asset: "SOL", status: "live", priceLamports: LOTTERY_TICKET_PRICE_LAMPORTS.toString(),
+        winners: 1, prizeBps: 7000, houseBps: 3000, maxTicketsPerWallet: 10,
+        salesSeconds: 7 * 86400, refundAfterSeconds: 14 * 86400,
+      },
+      { id: "skr", asset: "SKR", status: "sealed", reason: "SKR_MINT_NOT_CONFIGURED" },
+      { id: "potato", asset: "POTATO", status: "sealed", reason: "POTATO_ESCROW_NOT_DEPLOYED" },
+    ],
+  });
+});
+
 const u64 = (value: unknown, field: string): BN => {
   const text = String(value ?? "");
   if (!/^[0-9]{1,20}$/.test(text)) throw new Error(`${field} must be a u64`);

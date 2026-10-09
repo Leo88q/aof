@@ -2263,7 +2263,7 @@ test('медальоны доверия переведены как иллюст
 
 test('игровая лотерея переведена: покупка только с потолком цены, неподтверждённых билетов и выигрыша нет', async () => {
   const { lotteryCopy } = await import('../src/i18n/lotteryCopy.ts');
-  const { lotteryPda, lotteryU64, readLotteryRound, readLotteryTickets, canRefundLotteryTicket } = await import('../src/lib/lotteryReadings.ts');
+  const { lotteryPda, lotteryU64, readLotteryRound, readLotteryTickets, canRefundLotteryTicket, LOTTERY_SALES_SECONDS, LOTTERY_REFUND_AFTER_SECONDS } = await import('../src/lib/lotteryReadings.ts');
   const { Keypair } = await import('@solana/web3.js');
   const all = ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const;
   const fields = Object.keys(lotteryCopy.ru);
@@ -2298,6 +2298,11 @@ test('игровая лотерея переведена: покупка тол�
   assert.equal(lotteryU64('18446744073709551616'), false);
   assert.equal(lotteryU64('01'), false);
   assert.equal(lotteryU64('0', true), true);
+  assert.equal(LOTTERY_SALES_SECONDS, 7 * 86400);
+  assert.equal(LOTTERY_REFUND_AFTER_SECONDS, 14 * 86400);
+  assert.match(code('src/pages/market/LotteryHall.tsx'), /data-pool=\{id\}/);
+  assert.match(code('src/pages/market/LotteryPage.tsx'), /setInterval/);
+  assert.match(code('../aof_backend/src/routes/lottery.ts'), /POTATO_ESCROW_NOT_DEPLOYED/);
   const page = code('src/pages/market/LotteryPage.tsx');
   const backend = code('../aof_backend/src/routes/lottery.ts');
   assert.match(page, /lotteryCopy\[language\]/);
