@@ -13,6 +13,8 @@ import { PrismaClient } from "@prisma/client";
 import { Server as WebSocketServer } from "ws";
 import { createServer } from "http";
 import marketIdl from "../../src/idl/aof_market.json";
+import { hotMarketPoolPda, marketConfigPda } from "../../src/lib/pda";
+import { poolTradePrice, scaleAtoms } from "../../src/lib/hotMarketPrice";
 
 const db = new PrismaClient();
 // Same RPC as the API process; a hard-coded localhost URL made the worker
@@ -28,7 +30,8 @@ const provider = new AnchorProvider(connection, new Wallet(new Keypair()), {
 });
 const marketProgram = new Program(marketIdl as any, provider);
 
-const RARITIES = [1, 2, 3, 4];
+// Программа принимает только 0..3. Редкость 4 в прежнем списке была чужим адресом.
+const RARITIES = [0, 1, 2, 3];
 const POLL_INTERVAL_MS = 2000;
 const WS_PORT = Number(process.env.WS_PORT || 8081);
 
@@ -82,24 +85,61 @@ function broadcastCandle(rarity: number, timeframe: string, candle: any) {
   });
 }
 
+const missingPools = new Set<number>();
+const unreadDecimals = new Set<number>();
+const decimalsCache = new Map<string, number>();
+
+async function mintDecimals(mint: PublicKey): Promise<number | null> {
+  const key = mint.toBase58();
+  const cached = decimalsCache.get(key);
+  if (cached !== undefined) return cached;
+  try {
+    const info: any = await connection.getParsedAccountInfo(mint, "confirmed");
+    const value = info?.value?.data?.parsed?.info?.decimals;
+    if (!Number.isInteger(value) || value < 0 || value > 18) return null;
+    decimalsCache.set(key, value);
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPrices() {
   const ticks: any[] = [];
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  let marketConfig: any = null;
   for (const rarity of RARITIES) {
-    try {
-      const [poolPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("hot_market_pool"), Buffer.from([rarity])],
-        marketProgram.programId
-      );
-      const pool: any = await (marketProgram.account as any)["hotMarketPool"]
-        .fetch(poolPda)
-        .catch(() => null);
-      if (!pool) continue;
-
-      const priceMascot = Number(pool.currentPriceMascot.toString()) / 1e9;
-      const priceSol = Number(pool.currentPriceSolLamports.toString()) / 1e9;
-
-      ticks.push({ rarity, priceMascot, priceSol, side: "crank", ts: new Date() });
-    } catch {}
+    const [poolPda] = hotMarketPoolPda(rarity);
+    const pool: any = await (marketProgram.account as any)["hotMarketPool"].fetch(poolPda).catch(() => null);
+    if (!pool) {
+      if (!missingPools.has(rarity)) {
+        missingPools.add(rarity);
+        console.log(`[indexer] rarity ${rarity}: пул не найден, тик не записан`);
+      }
+      continue;
+    }
+    if (!marketConfig) {
+      const [config] = marketConfigPda();
+      marketConfig = await (marketProgram.account as any).marketConfig.fetch(config).catch(() => null);
+    }
+    if (!marketConfig) throw new Error("MarketConfig не прочитан, тик не записан");
+    const coreDecimals = await mintDecimals(marketConfig.coreMint);
+    const gemDecimals = await mintDecimals(marketConfig.gemMint);
+    if (coreDecimals === null || gemDecimals === null) {
+      if (!unreadDecimals.has(rarity)) {
+        unreadDecimals.add(rarity);
+        console.error(`[indexer] rarity ${rarity}: десятичные знаки валюты не прочитаны, тик не записан`);
+      }
+      continue;
+    }
+    // Колонки старые: priceMascot — цена в core, priceSol — цена в gem.
+    ticks.push({
+      rarity,
+      priceMascot: scaleAtoms(poolTradePrice(pool, "core", now), coreDecimals),
+      priceSol: scaleAtoms(poolTradePrice(pool, "gem", now), gemDecimals),
+      side: "quote",
+      ts: new Date(),
+    });
   }
   return ticks;
 }

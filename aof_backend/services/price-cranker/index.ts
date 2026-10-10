@@ -1,6 +1,6 @@
 /**
  * Price-Cranker: кипер хот-маркета.
- * Периодически вызывает hot_market_crank для каждой редкости:
+ * Периодически вызывает crank_market для редкостей 0..3:
  *   - обновляет кэш цен по актуальной формуле VRGDA
  *   - контракт сам сбрасывает purchases_in_window, если окно (>1ч) прошло
  * Без кипера цена "застревает" на пике после всплеска покупок, а рост
@@ -20,8 +20,8 @@ const CRANK_INTERVAL_MS = Number(process.env.CRANK_INTERVAL_MS) > 0
     ? 5 * 60 * 1000   // 5 минут в проде
     : 30 * 1000;      // 30 секунд локально
 
-// Редкости пулов хот-маркета (1..4 по MarketError::InvalidRarity)
-const RARITIES = [1, 2, 3, 4];
+// Программа принимает только 0..3 (`rarity_index_ok`). Редкости 4 в счёте нет.
+const RARITIES = [0, 1, 2, 3];
 
 async function crankRarity(rarity: number): Promise<void> {
   // [AUDIT AOF-H1] Fail-closed: crank подписывает authority; в read-only
@@ -44,11 +44,8 @@ async function crankRarity(rarity: number): Promise<void> {
     }
 
     const ix = await (marketProgram.methods as any)
-      .hotMarketCrank(rarity)
-      .accounts({
-        pool,
-        caller: AUTHORITY.publicKey,
-      })
+      .crankMarket(rarity)
+      .accounts({ pool })
       .instruction();
 
     const sig = await authorityOnly([ix]);
