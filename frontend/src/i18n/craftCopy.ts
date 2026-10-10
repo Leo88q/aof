@@ -1,7 +1,7 @@
 import type { Language } from './translations';
 
 type Copy = {
-  intro: string; connect: string; toolsLoading: string; toolsUnavailable: string; noTools: string;
+  intro: string; connect: string; toolsLoading: string; toolsUnavailable: string; noTools: string; openCapsules: string;
   select: string; maxRarity: string; unknownRarity: string; prepareFor: string; mintReady: string;
   prepare: string; preparing: string; mintMissing: string; mintPrepared: string; clearMint: string;
   quoteLoading: string; quoteUnavailable: string; quoteChanged: string; mintsLoading: string; mintsUnavailable: string;
@@ -13,7 +13,7 @@ type Copy = {
 export const craftCopy: Record<Language, Copy> = {
   ru: {
     intro: 'Путь кузнеца: прежний инструмент сгорает, чтобы создать следующий уровень редкости. Стоимость шести ресурсов растёт с каждой ковкой.',
-    connect: 'Подключите кошелёк — кнопка в шапке', toolsLoading: 'Читаем инструменты…', toolsUnavailable: 'Не удалось прочитать инструменты из сети', noTools: 'Нет доступных инструментов для улучшения',
+    connect: 'Подключите кошелёк — кнопка в шапке', toolsLoading: 'Читаем инструменты…', toolsUnavailable: 'Не удалось прочитать инструменты из сети', noTools: 'Нет доступных инструментов для улучшения', openCapsules: 'Открыть капсулы',
     select: '1. Выберите инструмент для переплавки', maxRarity: 'Максимальная редкость', unknownRarity: 'Неизвестная редкость', prepareFor: '2. Подготовьте новый минт для {rarity}', mintReady: 'Минт готов',
     prepare: 'Подготовить новый минт', preparing: 'Готовим новый минт…', mintMissing: 'Новый минт не вернулся из сети', mintPrepared: 'Минт готов', clearMint: 'Сбросить подготовленный минт',
     quoteLoading: 'Рассчитываем стоимость улучшения…', quoteUnavailable: 'Не удалось подтвердить стоимость улучшения в сети. Создание заблокировано.', quoteChanged: 'Стоимость изменилась. Проверьте новую котировку перед подтверждением.', mintsLoading: 'Читаем адреса ресурсов…', mintsUnavailable: 'Адреса ресурсов недоступны из сети. Создание заблокировано.',
@@ -25,7 +25,7 @@ export const craftCopy: Record<Language, Copy> = {
   },
   en: {
     intro: 'The smith’s path: the old tool is burned to forge the next rarity. The cost of six resources rises with each craft.',
-    connect: 'Connect your wallet using the button in the header', toolsLoading: 'Loading tools…', toolsUnavailable: 'Could not load tools from the network', noTools: 'No tools available for an upgrade',
+    connect: 'Connect your wallet using the button in the header', toolsLoading: 'Loading tools…', toolsUnavailable: 'Could not load tools from the network', noTools: 'No tools available for an upgrade', openCapsules: 'Open capsules',
     select: '1. Select a tool to melt down', maxRarity: 'Maximum rarity', unknownRarity: 'Unknown rarity', prepareFor: '2. Prepare a new mint for {rarity}', mintReady: 'Mint ready',
     prepare: 'Prepare a new mint', preparing: 'Preparing a new mint…', mintMissing: 'No mint was returned by the network', mintPrepared: 'Mint ready', clearMint: 'Clear prepared mint',
     quoteLoading: 'Calculating upgrade cost…', quoteUnavailable: 'Could not verify the upgrade cost on the network. Crafting is locked.', quoteChanged: 'The cost changed. Review the new quote before confirming.', mintsLoading: 'Loading resource addresses…', mintsUnavailable: 'Resource addresses unavailable from the network. Crafting is locked.',
@@ -37,7 +37,7 @@ export const craftCopy: Record<Language, Copy> = {
   },
   pt: {
     intro: 'O caminho do ferreiro: a ferramenta antiga é consumida para forjar a próxima raridade. O custo de seis recursos aumenta a cada criação.',
-    connect: 'Conecte a carteira pelo botão no topo', toolsLoading: 'Carregando ferramentas…', toolsUnavailable: 'Não foi possível carregar as ferramentas da rede', noTools: 'Nenhuma ferramenta disponível para melhoria',
+    connect: 'Conecte a carteira pelo botão no topo', toolsLoading: 'Carregando ferramentas…', toolsUnavailable: 'Não foi possível carregar as ferramentas da rede', noTools: 'Nenhuma ferramenta disponível para melhoria', openCapsules: 'Abrir cápsulas',
     select: '1. Escolha a ferramenta que será consumida', maxRarity: 'Raridade máxima', unknownRarity: 'Raridade desconhecida', prepareFor: '2. Prepare um novo mint para {rarity}', mintReady: 'Mint pronto',
     prepare: 'Preparar novo mint', preparing: 'Preparando novo mint…', mintMissing: 'A rede não retornou um mint', mintPrepared: 'Mint pronto', clearMint: 'Limpar mint preparado',
     quoteLoading: 'Calculando custo da melhoria…', quoteUnavailable: 'Não foi possível confirmar o custo na rede. A criação está bloqueada.', quoteChanged: 'O custo mudou. Confira a nova cotação antes de confirmar.', mintsLoading: 'Carregando endereços dos recursos…', mintsUnavailable: 'Endereços dos recursos indisponíveis na rede. A criação está bloqueada.',
@@ -49,7 +49,7 @@ export const craftCopy: Record<Language, Copy> = {
   },
   es: {
     intro: 'El camino del herrero: la herramienta anterior se consume para forjar la siguiente rareza. El costo de los seis recursos aumenta con cada fabricación.',
-    connect: 'Conecta tu cartera con el botón superior', toolsLoading: 'Cargando herramientas…', toolsUnavailable: 'No se pudieron cargar las herramientas de la red', noTools: 'No hay herramientas disponibles para mejorar',
+    connect: 'Conecta tu cartera con el botón superior', toolsLoading: 'Cargando herramientas…', toolsUnavailable: 'No se pudieron cargar las herramientas de la red', noTools: 'No hay herramientas disponibles para mejorar', openCapsules: 'Abrir cápsulas',
     select: '1. Elige la herramienta que se consumirá', maxRarity: 'Rareza máxima', unknownRarity: 'Rareza desconocida', prepareFor: '2. Prepara un nuevo mint para {rarity}', mintReady: 'Mint preparado',
     prepare: 'Preparar nuevo mint', preparing: 'Preparando nuevo mint…', mintMissing: 'La red no devolvió ningún mint', mintPrepared: 'Mint preparado', clearMint: 'Borrar mint preparado',
     quoteLoading: 'Calculando el costo de la mejora…', quoteUnavailable: 'No se pudo confirmar el costo en la red. La fabricación está bloqueada.', quoteChanged: 'El costo cambió. Revisa la nueva cotización antes de confirmar.', mintsLoading: 'Cargando direcciones de recursos…', mintsUnavailable: 'Direcciones de recursos no disponibles en la red. La fabricación está bloqueada.',
@@ -61,7 +61,7 @@ export const craftCopy: Record<Language, Copy> = {
   },
   vi: {
     intro: 'Con đường thợ rèn: công cụ cũ bị tiêu hao để tạo ra bậc hiếm tiếp theo. Chi phí sáu tài nguyên tăng theo mỗi lần chế tạo.',
-    connect: 'Kết nối ví bằng nút trên đầu trang', toolsLoading: 'Đang tải công cụ…', toolsUnavailable: 'Không thể tải công cụ từ mạng', noTools: 'Không có công cụ để nâng cấp',
+    connect: 'Kết nối ví bằng nút trên đầu trang', toolsLoading: 'Đang tải công cụ…', toolsUnavailable: 'Không thể tải công cụ từ mạng', noTools: 'Không có công cụ để nâng cấp', openCapsules: 'Mở hộp vật phẩm',
     select: '1. Chọn công cụ sẽ bị tiêu hao', maxRarity: 'Độ hiếm tối đa', unknownRarity: 'Chưa rõ độ hiếm', prepareFor: '2. Chuẩn bị mint mới cho bậc {rarity}', mintReady: 'Đã chuẩn bị mint',
     prepare: 'Chuẩn bị mint mới', preparing: 'Đang chuẩn bị mint mới…', mintMissing: 'Mạng không trả về mint mới', mintPrepared: 'Đã chuẩn bị mint', clearMint: 'Xóa mint đã chuẩn bị',
     quoteLoading: 'Đang tính chi phí nâng cấp…', quoteUnavailable: 'Không thể xác nhận chi phí từ mạng. Chưa thể chế tạo.', quoteChanged: 'Chi phí đã thay đổi. Hãy xem giá mới trước khi xác nhận.', mintsLoading: 'Đang tải địa chỉ tài nguyên…', mintsUnavailable: 'Không thể tải địa chỉ tài nguyên từ mạng. Chưa thể chế tạo.',
@@ -73,7 +73,7 @@ export const craftCopy: Record<Language, Copy> = {
   },
   id: {
     intro: 'Jalan pandai besi: peralatan lama dihabiskan untuk membuat tingkat kelangkaan berikutnya. Biaya enam sumber daya meningkat setiap kali merakit.',
-    connect: 'Hubungkan dompet dengan tombol di bagian atas', toolsLoading: 'Memuat peralatan…', toolsUnavailable: 'Tidak dapat memuat peralatan dari jaringan', noTools: 'Belum ada peralatan yang dapat ditingkatkan',
+    connect: 'Hubungkan dompet dengan tombol di bagian atas', toolsLoading: 'Memuat peralatan…', toolsUnavailable: 'Tidak dapat memuat peralatan dari jaringan', noTools: 'Belum ada peralatan yang dapat ditingkatkan', openCapsules: 'Buka kapsul',
     select: '1. Pilih peralatan yang akan dilebur', maxRarity: 'Kelangkaan maksimum', unknownRarity: 'Kelangkaan belum diketahui', prepareFor: '2. Siapkan mint baru untuk {rarity}', mintReady: 'Mint siap',
     prepare: 'Siapkan mint baru', preparing: 'Menyiapkan mint baru…', mintMissing: 'Jaringan tidak mengembalikan mint', mintPrepared: 'Mint siap', clearMint: 'Hapus mint yang disiapkan',
     quoteLoading: 'Menghitung biaya peningkatan…', quoteUnavailable: 'Biaya tidak dapat diverifikasi dari jaringan. Perakitan terkunci.', quoteChanged: 'Biaya berubah. Tinjau harga baru sebelum mengonfirmasi.', mintsLoading: 'Memuat alamat sumber daya…', mintsUnavailable: 'Alamat sumber daya tidak tersedia dari jaringan. Perakitan terkunci.',
@@ -85,7 +85,7 @@ export const craftCopy: Record<Language, Copy> = {
   },
   fil: {
     intro: 'Landas ng panday: ginagamit ang lumang kagamitan upang gawin ang susunod na antas ng pambihira. Tumataas ang halaga ng anim na yaman sa bawat paggawa.',
-    connect: 'Ikonekta ang wallet gamit ang pindutan sa itaas', toolsLoading: 'Kinukuha ang mga kagamitan…', toolsUnavailable: 'Hindi makuha ang mga kagamitan sa network', noTools: 'Wala pang kagamitang maaaring pahusayin',
+    connect: 'Ikonekta ang wallet gamit ang pindutan sa itaas', toolsLoading: 'Kinukuha ang mga kagamitan…', toolsUnavailable: 'Hindi makuha ang mga kagamitan sa network', noTools: 'Wala pang kagamitang maaaring pahusayin', openCapsules: 'Buksan ang mga kapsula',
     select: '1. Piliin ang kagamitang gagamitin', maxRarity: 'Pinakamataas na antas', unknownRarity: 'Hindi alam ang antas ng pambihira', prepareFor: '2. Maghanda ng bagong mint para sa {rarity}', mintReady: 'Handa na ang mint',
     prepare: 'Maghanda ng bagong mint', preparing: 'Inihahanda ang bagong mint…', mintMissing: 'Walang mint na ibinalik ang network', mintPrepared: 'Handa na ang mint', clearMint: 'Alisin ang inihandang mint',
     quoteLoading: 'Kinukuwenta ang halaga ng pagpapahusay…', quoteUnavailable: 'Hindi makumpirma ang halaga sa network. Naka-lock ang paggawa.', quoteChanged: 'Nagbago ang halaga. Tingnan muna ang bagong tantiya bago kumpirmahin.', mintsLoading: 'Kinukuha ang mga address ng yaman…', mintsUnavailable: 'Hindi makuha sa network ang mga address ng yaman. Naka-lock ang paggawa.',

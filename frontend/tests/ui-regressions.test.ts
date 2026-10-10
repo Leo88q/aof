@@ -4616,6 +4616,37 @@ test("витрина капсул дропа: картины, описания �
   }
 });
 
+test("средняя и большая капсулы и крафт остаются открытыми", async () => {
+  const packs = code("src/pages/tools/PacksPage.tsx");
+  const craft = code("src/pages/tools/CraftPage.tsx");
+  const lab = code("src/pages/farm/FarmDashboard.tsx");
+  const routes = read("../aof_backend/src/routes/packs.ts");
+  const disabled = code("src/components/ui/FeatureDisabledNotice.tsx");
+  const { labLabels } = await import("../src/i18n/labLabels.ts");
+  const { craftCopy } = await import("../src/i18n/craftCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+
+  assert.match(packs, /id: "medium", index: 1/);
+  assert.match(packs, /id: "big", index: 2/);
+  assert.match(packs, /api\.packs\.commit\(\{ user: address, packType: pack\.id/);
+  assert.match(routes, /const PACK_TYPES = \["small", "medium", "big"\] as const;/);
+  assert.match(lab, /headerId="capsules"/);
+  assert.match(lab, /headerId="craft"/);
+  assert.match(lab, /<PacksPage \/>/);
+  assert.match(lab, /<CraftPage \/>/);
+  assert.match(craft, /copy\.openCapsules/);
+  assert.match(craft, /headerId="capsules"/);
+  assert.doesNotMatch(disabled, /packs:|craft:/);
+  for (const language of languages) {
+    assert.ok(labLabels[language].capsules.trim());
+    assert.ok(labLabels[language].craft.trim());
+    assert.ok(craftCopy[language].openCapsules.trim());
+    if (language !== "ru") {
+      assert.ok(!/[А-Яа-яЁё]/.test(labLabels[language].capsules + labLabels[language].craft + craftCopy[language].openCapsules));
+    }
+  }
+});
+
 test("раскрытие одной панели закрывает остальные — меню и аккордеоны", async () => {
   // Жалоба владельца 2026-09-30: «верхняя панель когда разворачиваешь и
   // раскрываешь две, например, остаются на месте и не сворачиваются при

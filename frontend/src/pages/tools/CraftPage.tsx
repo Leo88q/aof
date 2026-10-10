@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { useNav } from "../../nav/NavContext";
+import { NavHeader } from "../../components/NavHeader";
+import { PacksPage } from "./PacksPage";
 import { craftCopy } from "../../i18n/craftCopy";
 import { homeResourceNames } from "../../i18n/homeDetail";
 import { toolName, toolsCopy } from "../../i18n/toolsCopy";
@@ -22,6 +25,7 @@ import { NoticeMsg } from "../../components/visual/NoticeMsg";
 export function CraftPage() {
   const { language } = useLocale();
   const copy = craftCopy[language];
+  const { push } = useNav();
   const { address } = useWalletStore();
   const walletRef = useRef(address);
   walletRef.current = address;
@@ -248,11 +252,16 @@ export function CraftPage() {
       <Card>
         <h3 className="text-parchment font-semibold mb-3">{copy.select}</h3>
         {!address || knownTools === null || knownTools.length === 0 ? (
-          <p role="status" className="text-straw text-xs text-center py-4">
-            {!address ? copy.connect : knownTools === null
-              ? toolsLoading || loadedFor !== address && tools !== null ? copy.toolsLoading : copy.toolsUnavailable
-              : copy.noTools}
-          </p>
+          <div className="grid gap-2">
+            <p role="status" className="text-straw text-xs text-center py-4">
+              {!address ? copy.connect : knownTools === null
+                ? toolsLoading || loadedFor !== address && tools !== null ? copy.toolsLoading : copy.toolsUnavailable
+                : copy.noTools}
+            </p>
+            {address && knownTools !== null && knownTools.length === 0 && (
+              <button type="button" className="btn btn-primary" onClick={() => push("tools", "packs", (<><NavHeader headerId="capsules" tabKey="tools" /><PacksPage /></>))}>{copy.openCapsules}</button>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {knownTools.map((t) => {
