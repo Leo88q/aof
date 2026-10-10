@@ -34,6 +34,7 @@ import {
 } from "../lib/accountSizes";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
+import { rarityHourCap } from "../lib/miningHours";
 import { miningEnabledOnChain } from "../lib/configState";
 import { miningRewardMint, TOOL_RESOURCE_MINT } from "../lib/toolResourceMint";
 import { Keypair, Transaction } from "@solana/web3.js";
@@ -506,6 +507,14 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
     const [vault] = vaultPda();
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
     const toolData: any = await fetchOne("toolData", tool);
+    const hourCap = rarityHourCap(toolData?.rarity);
+    if (hourCap !== null && hours > hourCap) {
+      return res.status(400).json({ error: "HOURS_EXCEED_RARITY_CAP", maxHours: hourCap });
+    }
+    const durability = Number(toolData?.durability);
+    if (Number.isInteger(durability) && hours > durability) {
+      return res.status(400).json({ error: "INSUFFICIENT_DURABILITY", durability });
+    }
     const custody = await toolCustody(user, mint, toolData);
     if (!custody) {
       return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });

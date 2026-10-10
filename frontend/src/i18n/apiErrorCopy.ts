@@ -86,6 +86,8 @@ export const apiErrorCodes = [
   'EXPLORATION_STATE_UNAVAILABLE',
   'RECIPE_NOT_ON_THIS_PROGRAM',
   'SEAL_NOT_ON_THIS_PROGRAM',
+  'HOURS_EXCEED_RARITY_CAP',
+  'INSUFFICIENT_DURABILITY',
 ] as const;
 export type ApiErrorCode = typeof apiErrorCodes[number];
 
@@ -215,7 +217,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'Состояние экспедиции не читается из сети. Это не пустая экспедиция и не отказ запуска.',
       'Эта переработка записана в новой программе. Сеть ещё на прежней сборке, поэтому шаг не отправлен.',
       'Печать лаборатории записана в новой программе. Сеть ещё на прежней сборке, поэтому шаг не отправлен.',
-    ]),
+    
+      'Эта редкость не позволяет столько часов добычи. Уменьши время и повтори. Транзакция не собрана.',
+      'Прочности не хватает на столько часов. Уменьши время и повтори. Транзакция не собрана.',]),
     unknownCode: code => `Действие недоступно в этой сборке сети (код: ${code}).`,
     unexpected: status => `Не удалось проверить ответ сервера (HTTP ${status}). Результат операции не подтверждён; перед повтором проверьте кошелёк и состояние сети.`,
     networkUnavailable: 'Не удалось связаться с сервером. Результат операции неизвестен; проверьте кошелёк и сеть перед повтором.',
@@ -337,7 +341,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'The expedition state could not be read from the network. That is not an empty expedition and not a refused start.',
       'This refinement is in the new program. This network is still on the previous build, so the step was not sent.',
       'The laboratory seal is in the new program. This network is still on the previous build, so the step was not sent.',
-    ]),
+    
+      'This rarity does not allow that many mining hours. Lower the time and try again. No transaction was built.',
+      'Durability is too low for that many hours. Lower the time and try again. No transaction was built.',]),
     unknownCode: code => `This action is unavailable on this network (code: ${code}).`,
     unexpected: status => `Could not verify the server response (HTTP ${status}). The outcome is unconfirmed; check your wallet and the network before trying again.`,
     networkUnavailable: 'Could not reach the server. The outcome is unknown; check your wallet and network before trying again.',
@@ -459,7 +465,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'O estado da expedição não pôde ser lido na rede. Isso não é uma expedição vazia nem uma recusa de início.',
       'Este refino está no programa novo. Esta rede ainda usa a compilação anterior, por isso o passo não foi enviado.',
       'O selo do laboratório está no programa novo. Esta rede ainda usa a compilação anterior, por isso o passo não foi enviado.',
-    ]),
+    
+      'Esta raridade não permite tantas horas de extração. Reduz o tempo e tenta de novo. Nenhuma transação foi criada.',
+      'A durabilidade não chega para tantas horas. Reduz o tempo e tenta de novo. Nenhuma transação foi criada.',]),
     unknownCode: code => `A ação está indisponível nesta rede (código: ${code}).`,
     unexpected: status => `Não foi possível verificar a resposta do servidor (HTTP ${status}). O resultado não está confirmado; verifica a carteira e a rede antes de tentares novamente.`,
     networkUnavailable: 'Não foi possível contactar o servidor. O resultado é desconhecido; verifica a carteira e a rede antes de tentares novamente.',
@@ -581,7 +589,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'No se pudo leer el estado de la expedición en la red. No es una expedición vacía ni un inicio rechazado.',
       'Este refinado está en el programa nuevo. Esta red sigue en la compilación anterior, así que el paso no se envió.',
       'El sello del laboratorio está en el programa nuevo. Esta red sigue en la compilación anterior, así que el paso no se envió.',
-    ]),
+    
+      'Esta rareza no permite tantas horas de extracción. Reduce el tiempo y vuelve a intentarlo. No se creó ninguna transacción.',
+      'La durabilidad no alcanza para tantas horas. Reduce el tiempo y vuelve a intentarlo. No se creó ninguna transacción.',]),
     unknownCode: code => `La acción no está disponible en esta red (código: ${code}).`,
     unexpected: status => `No se pudo verificar la respuesta del servidor (HTTP ${status}). El resultado no está confirmado; comprueba tu cartera y la red antes de volver a intentarlo.`,
     networkUnavailable: 'No se pudo contactar con el servidor. Se desconoce el resultado; comprueba tu cartera y la red antes de volver a intentarlo.',
@@ -703,7 +713,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'Không đọc được trạng thái thám hiểm từ mạng. Đó không phải chuyến đi trống và cũng không phải từ chối khởi động.',
       'Bước tinh chế này nằm trong chương trình mới. Mạng này vẫn dùng bản cũ, nên bước chưa được gửi.',
       'Niêm phong phòng thí nghiệm nằm trong chương trình mới. Mạng này vẫn dùng bản cũ, nên bước chưa được gửi.',
-    ]),
+    
+      'Độ hiếm này không cho phép nhiều giờ khai thác đến vậy. Hãy giảm thời gian và thử lại. Chưa tạo giao dịch.',
+      'Độ bền không đủ cho số giờ đó. Hãy giảm thời gian và thử lại. Chưa tạo giao dịch.',]),
     unknownCode: code => `Chưa thể thực hiện trên mạng này (mã: ${code}).`,
     unexpected: status => `Không thể xác minh phản hồi từ máy chủ (HTTP ${status}). Chưa xác nhận được kết quả; hãy kiểm tra ví và mạng trước khi thử lại.`,
     networkUnavailable: 'Không thể kết nối với máy chủ. Chưa rõ kết quả; hãy kiểm tra ví và mạng trước khi thử lại.',
@@ -825,7 +837,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'Status ekspedisi tidak dapat dibaca dari jaringan. Ini bukan ekspedisi kosong dan bukan penolakan mulai.',
       'Pemurnian ini ada di program baru. Jaringan ini masih memakai build lama, jadi langkah tidak dikirim.',
       'Segel laboratorium ada di program baru. Jaringan ini masih memakai build lama, jadi langkah tidak dikirim.',
-    ]),
+    
+      'Kelangkaan ini tidak mengizinkan jam penambangan sebanyak itu. Kurangi waktu dan coba lagi. Transaksi tidak dibuat.',
+      'Daya tahan tidak cukup untuk jam sebanyak itu. Kurangi waktu dan coba lagi. Transaksi tidak dibuat.',]),
     unknownCode: code => `Tindakan ini tidak tersedia di jaringan ini (kode: ${code}).`,
     unexpected: status => `Respons server tidak dapat diverifikasi (HTTP ${status}). Hasilnya belum terkonfirmasi; periksa dompet dan jaringan sebelum mencoba lagi.`,
     networkUnavailable: 'Server tidak dapat dihubungi. Hasilnya belum diketahui; periksa dompet dan jaringan sebelum mencoba lagi.',
@@ -947,7 +961,9 @@ export const apiErrorCopy: Record<Language, Copy> = {
       'Hindi mabasa ang estado ng ekspedisyon mula sa network. Hindi ito walang laman na ekspedisyon at hindi rin tinanggihang simula.',
       'Ang paglilinis na ito ay nasa bagong programa. Ang network ay nasa lumang build pa, kaya hindi naipadala ang hakbang.',
       'Ang tatak ng laboratoryo ay nasa bagong programa. Ang network ay nasa lumang build pa, kaya hindi naipadala ang hakbang.',
-    ]),
+    
+      'Hindi pinapayagan ng antas na ito ang ganyang kahabang oras ng pagmimina. Bawasan ang oras at subukang muli. Walang nagawang transaksyon.',
+      'Kulang ang tibay para sa ganyang oras. Bawasan ang oras at subukang muli. Walang nagawang transaksyon.',]),
     unknownCode: code => `Hindi magamit ang gawaing ito sa network na ito (kodigo: ${code}).`,
     unexpected: status => `Hindi ma-verify ang tugon ng server (HTTP ${status}). Hindi pa kumpirmado ang resulta; suriin ang wallet at network bago subukang muli.`,
     networkUnavailable: 'Hindi makontak ang server. Hindi pa alam ang resulta; suriin ang wallet at network bago subukang muli.',

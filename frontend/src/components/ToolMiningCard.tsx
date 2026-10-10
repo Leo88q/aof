@@ -15,6 +15,7 @@ import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
 import { useWalletStore } from "../store/walletStore";
 import { toNum } from "../lib/marketUtils";
 import { readMiningEnabled, useMiningAvailability } from "../lib/useMiningAvailability";
+import { maxSelectableMiningHours, rarityHourCap } from "../lib/miningHours";
 
 interface ToolMiningCardProps {
   tool: any;
@@ -98,7 +99,8 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   const durability = rawDurability === null || rawDurability === undefined || !Number.isFinite(Number(rawDurability))
     ? null : Number(rawDurability);
   const durabilityPct = durability === null ? null : Math.max(0, Math.min(100, (durability / 20) * 100));
-  const maxHours = Math.max(1, Math.min(20, durability ?? 1));
+  const hourCap = rarityHourCap(tool.rarity);
+  const maxHours = maxSelectableMiningHours(tool.rarity, durability);
   const selectedHours = Math.max(1, Math.min(hours, maxHours));
 
   const state = durabilityPct === null
@@ -166,7 +168,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {tool.staked && !tool.isMining && (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-straw text-xs">{copy.miningHours}</span>
+            <span className="text-straw text-xs">{copy.miningHours}. {copy.rarityHourCap.replace("{hours}", hourCap === null ? "—" : String(hourCap))}</span>
             <div className="flex items-center gap-2">
               <button type="button" aria-label={copy.decrease} onClick={() => setHours((h) => Math.max(1, h - 1))}
                 className="w-8 h-8 rounded-lg bg-soil-700 border border-straw/20 text-parchment">−</button>
