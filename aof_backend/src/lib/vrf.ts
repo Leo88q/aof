@@ -397,8 +397,7 @@ async function inspectOraclesFromSdk(connection: Connection): Promise<{ inspecti
 
 /**
  * The SDK aborts the whole queue when one member account does not load.
- * A pack must still open if another member is on-chain fresh. Live health is
- * used when the SDK can read it; otherwise eligibility stays the on-chain rule.
+ * Keep the members that did load. Eligibility stays the on-chain rule.
  */
 async function inspectLoadedOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
   const sb = await sdk();
