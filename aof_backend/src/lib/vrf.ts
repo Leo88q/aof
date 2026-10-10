@@ -321,6 +321,45 @@ export function oracleEligible(c: OracleCandidate): boolean {
     c.restricted !== true && c.gatewayEnabled !== false && c.pullOracleEnabled !== false;
 }
 
+export function oracleRejectionReasons(c: OracleCandidate): string[] {
+  const reasons: string[] = [];
+  if (!c.gatewayUrl) reasons.push("missing-gateway");
+  if (!c.isOnQueue) reasons.push("not-on-queue");
+  if (!c.isVerified) reasons.push("verification-failed");
+  if (!c.heartbeatFresh) reasons.push("heartbeat-stale");
+  if (!c.quoteFresh) reasons.push("quote-expired");
+  if (c.restricted === true) reasons.push("restricted");
+  if (c.gatewayEnabled === false) reasons.push("gateway-disabled");
+  if (c.pullOracleEnabled === false) reasons.push("pull-oracle-disabled");
+  return reasons;
+}
+
+/** A randomness commit does not need a pull feed. Heartbeat, quote, verification
+ * and queue membership still have to be fresh, or Switchboard rejects the seed. */
+export function forRandomnessSelection(c: OracleCandidate): OracleCandidate {
+  return c.pullOracleEnabled === false ? { ...c, pullOracleEnabled: undefined } : c;
+}
+
+export function chooseOracle(candidates: OracleCandidate[], random: () => number = Math.random): PublicKey {
+  try {
+    return pickOracle(candidates, random);
+  } catch (error) {
+    const relaxed = candidates.map(forRandomnessSelection);
+    if (!relaxed.some(oracleEligible)) {
+      const counts = new Map<string, number>();
+      for (const candidate of candidates) {
+        const reasons = oracleRejectionReasons(candidate);
+        const key = reasons.length ? reasons.join(",") : "eligible";
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      console.error("[vrf] no fresh randomness oracle:", [...counts.entries()].map(([reason, count]) => `${reason}=${count}`).join(" "));
+      throw error;
+    }
+    console.warn("[vrf] no pull-enabled oracle; using an on-chain fresh randomness oracle");
+    return pickOracle(relaxed, random);
+  }
+}
+
 /** Mirrors computeMajorityVersion of @switchboard-xyz/common: the most frequent version, first one on a tie. */
 export function majorityVersion(candidates: OracleCandidate[]): string | null {
   const counts = new Map<string, number>();
@@ -435,7 +474,8 @@ export async function inspectOracles(connection: Connection): Promise<{ inspecti
 async function refreshOracles(connection: Connection): Promise<void> {
   const { candidates } = await inspectOracles(connection);
   const eligible = candidates.filter(oracleEligible).length;
-  console.log(`[vrf] oracles loaded=${candidates.length} eligible=${eligible}`);
+  const randomness = candidates.map(forRandomnessSelection).filter(oracleEligible).length;
+  console.log(`[vrf] oracles loaded=${candidates.length} eligible=${eligible} randomness=${randomness}`);
   oracleCache = { at: Date.now(), candidates };
 }
 
@@ -452,7 +492,7 @@ export async function selectOracle(connection: Connection): Promise<PublicKey> {
       console.warn("[vrf] using the cached oracle list");
     }
   }
-  return pickOracle(oracleCache!.candidates);
+  return chooseOracle(oracleCache!.candidates);
 }
 
 /** Accounts every VRF commit instruction takes after its own accounts. */
