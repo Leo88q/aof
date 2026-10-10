@@ -45,6 +45,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/chain/weather/crank", subject: "chain_weather_crank", field: "cranker" },
   { path: "/chain/grid/collect", subject: "chain_grid_collect", field: "user" },
   { path: "/chain/recipe/craft", subject: "chain_recipe_craft", field: "user" },
+  { path: "/chain/finale/seal", subject: "chain_finale_seal", field: "user" },
   { path: "/craft-order/create", subject: "craft_order_create", field: "creator" },
   { path: "/craft-order/fulfill", subject: "craft_order_fulfill", field: "fulfiller" },
   { path: "/craft-order/cancel", subject: "craft_order_cancel", field: "creator" },
@@ -342,6 +343,7 @@ export const api = {
     weatherCrank: (v: any) => post("/chain/weather/crank", v),
     // Мгновенный крафт (гемы/баночки)
     craftRecipe: (v: any) => post("/chain/recipe/craft", v),
+    sealLaboratory: (v: any) => post("/chain/finale/seal", v),
   },
 
   collectors: {

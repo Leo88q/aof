@@ -21,13 +21,13 @@
     },
     {
       "file": "scripts/gen-core-instruction-table.py",
-      "distinctInstructions": 46
+      "distinctInstructions": 47
     }
   ],
   "totals": {
-    "instructions": 176,
+    "instructions": 177,
     "byRole": {
-      "gameplay": 104,
+      "gameplay": 105,
       "admin": 42,
       "emergency": 8,
       "migration": 1,
@@ -37,16 +37,16 @@
       "candidate-dead-code": 0
     },
     "disabledOnChain": 7,
-    "validatorTested": 100,
+    "validatorTested": 101,
     "sharedNames": 23,
-    "withoutAnyCallSite": 18,
+    "withoutAnyCallSite": 19,
     "withoutCallSiteAndTest": 3
   },
   "programs": {
     "aof_core": {
-      "instructions": 128,
+      "instructions": 129,
       "byRole": {
-        "gameplay": 84,
+        "gameplay": 85,
         "admin": 23,
         "emergency": 6,
         "migration": 1,
@@ -56,9 +56,9 @@
         "candidate-dead-code": 0
       },
       "disabledOnChain": 1,
-      "validatorTested": 94,
+      "validatorTested": 95,
       "sharedNames": 7,
-      "withoutAnyCallSite": 12,
+      "withoutAnyCallSite": 13,
       "withoutCallSiteAndTest": 1
     },
     "aof_market": {
@@ -711,7 +711,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::claim_prize_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 272
+        "line": 273
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1344,18 +1344,18 @@
         },
         "frontend": {
           "calls": 0,
-          "mentions": 14,
+          "mentions": 16,
           "files": [
             "frontend/src/components/PlayerRating.tsx",
             "frontend/src/i18n/gameHeaders.ts",
             "frontend/src/i18n/gameLabels.ts",
+            "frontend/src/i18n/labLabels.ts",
             "frontend/src/i18n/recipeWorkshopCopy.ts",
             "frontend/src/i18n/siteEconomy.ts",
             "frontend/src/i18n/siteEditorial.ts",
-            "frontend/src/i18n/translations.ts",
-            "frontend/src/pages/tools/ToolsHome.tsx"
+            "frontend/src/i18n/translations.ts"
           ],
-          "more": 6
+          "more": 8
         },
         "game": {
           "calls": 0,
@@ -1403,7 +1403,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 23,
+        "callSiteCount": 25,
         "validatorTested": false,
         "anyTest": true
       }
@@ -1936,7 +1936,7 @@
         "kind": "delegate",
         "path": "instructions::forge::expire_handler",
         "file": "aof-core/src/instructions/forge.rs",
-        "line": 261
+        "line": 262
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -4262,8 +4262,9 @@
       "tests": {
         "validator": {
           "calls": 1,
-          "mentions": 0,
+          "mentions": 1,
           "files": [
+            "tests/aof_cu_report.ts",
             "tests/aof_vrf_localnet.ts"
           ]
         },
@@ -4276,8 +4277,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 4,
           "files": [
+            "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs",
             "tests/readiness/vrf-tx-size.test.cjs",
             "tests/readiness/vrf.test.cjs"
@@ -5051,7 +5053,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::upgrade_tier_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 245
+        "line": 246
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -5791,9 +5793,10 @@
           ]
         },
         "adminScripts": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 1,
           "files": [
+            "aof_backend/scripts/applyAllResourceLifetimeCaps.ts",
             "aof_backend/scripts/applyMiningLifetimeCaps.ts",
             "scripts/economy/propose-caps.mjs"
           ]
@@ -5824,7 +5827,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 4,
         "validatorTested": true,
         "anyTest": true
       }
@@ -5972,7 +5975,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::refund_round_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 294
+        "line": 295
       },
       "disabledOnChain": false,
       "role": "emergency",
@@ -6470,7 +6473,7 @@
         "kind": "delegate",
         "path": "instructions::reroll_random::expire_handler",
         "file": "aof-core/src/instructions/reroll_random.rs",
-        "line": 240
+        "line": 239
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6524,7 +6527,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::expire_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 222
+        "line": 223
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6579,7 +6582,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::expire_draw_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 217
+        "line": 218
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6633,7 +6636,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::refund_ticket_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 244
+        "line": 245
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7398,7 +7401,8 @@
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "scripts/gen-core-instruction-table.py"
       ],
       "bringup": [],
       "tests": {
@@ -7449,6 +7453,13 @@
       ],
       "bringup": [],
       "tests": {
+        "validator": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "tests/aof_core.ts"
+          ]
+        },
         "readiness": {
           "calls": 0,
           "mentions": 3,
@@ -7461,7 +7472,7 @@
       },
       "summary": {
         "callSiteCount": 1,
-        "validatorTested": false,
+        "validatorTested": true,
         "anyTest": true
       }
     },
@@ -7513,6 +7524,43 @@
       },
       "summary": {
         "callSiteCount": 1,
+        "validatorTested": false,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_core",
+      "name": "seal_laboratory",
+      "camel": "sealLaboratory",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::seal_laboratory::handler",
+        "file": "aof-core/src/instructions/seal_laboratory.rs",
+        "line": 12
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Печать лаборатории: сжигает модель, пять флюидов и янтарный сосуд, выпускает ядро души.",
+      "evidence": null,
+      "callSites": {},
+      "registries": [],
+      "bringup": [],
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 2,
+          "files": [
+            "tests/readiness/layout-baseline.test.cjs",
+            "tests/readiness/resource-evidence.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 0,
         "validatorTested": false,
         "anyTest": true
       }

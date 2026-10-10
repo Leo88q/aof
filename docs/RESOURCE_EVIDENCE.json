@@ -67,14 +67,23 @@
         "frontend/public/assets/icons/dataset.png",
         "frontend/public/assets/icons/ui/building-data.png",
         "frontend/public/assets/nfts/data-harvester-epic.jpg",
+        "frontend/public/assets/nfts/data-harvester-epic.png",
         "frontend/public/assets/nfts/data-harvester-legendary.jpg",
+        "frontend/public/assets/nfts/data-harvester-legendary.png",
         "frontend/public/assets/nfts/data-harvester-rare.jpg",
+        "frontend/public/assets/nfts/data-harvester-rare.png",
         "frontend/public/assets/nfts/data-harvester-uncommon.jpg",
+        "frontend/public/assets/nfts/data-harvester-uncommon.png",
         "frontend/public/assets/nfts/data-harvester.jpg",
+        "frontend/public/assets/nfts/data-harvester.png",
         "frontend/public/assets/nfts/resources/data.jpg",
-        "frontend/public/assets/nfts/resources/dataset.jpg"
+        "frontend/public/assets/nfts/resources/data.png",
+        "frontend/public/assets/nfts/resources/dataset.jpg",
+        "frontend/public/assets/nfts/resources/dataset.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft.rs#handler",
         "aof-core/src/instructions/craft_recipe.rs#handler",
@@ -117,7 +126,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft.rs#handler",
           "aof-core/src/instructions/craft_recipe.rs#handler",
@@ -133,7 +144,9 @@
           "recipe 3",
           "recipe 6"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 8"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -160,11 +173,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -176,11 +189,11 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "Circuit",
@@ -229,10 +242,11 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/circuit.png",
-        "frontend/public/assets/nfts/resources/circuit.jpg"
+        "frontend/public/assets/nfts/resources/circuit.jpg",
+        "frontend/public/assets/nfts/resources/circuit.png"
       ],
       "onchainSource": [
-        "aof-core/src/instructions/season.rs#claim_reward_handler"
+        "aof-core/src/instructions/season.rs#claim_premium_reward_handler"
       ],
       "onchainSink": [
         "aof-core/src/instructions/craft.rs#handler",
@@ -285,7 +299,7 @@
         "playerSource": [
           "aof-core/src/instructions/collect_mining.rs#handler",
           "aof-core/src/instructions/rental_delegation.rs#handler",
-          "aof-core/src/instructions/season.rs#claim_reward_handler"
+          "aof-core/src/instructions/season.rs#claim_premium_reward_handler"
         ],
         "playerSink": [
           "aof-core/src/instructions/craft.rs#handler",
@@ -302,7 +316,11 @@
           "aof-core/src/instructions/forge.rs#expire_handler"
         ],
         "craftInput": [
-          "recipe 5"
+          "recipe 12",
+          "recipe 14",
+          "recipe 17",
+          "recipe 5",
+          "recipe 9"
         ],
         "craftOutput": [],
         "tradable": [
@@ -370,6 +388,7 @@
         "frontend/src/components/ToolMiningCard.tsx",
         "frontend/src/i18n/homeDetail.ts",
         "frontend/src/i18n/siteToolsCatalog.ts",
+        "frontend/src/i18n/tradeNavigationCopy.ts",
         "frontend/src/lib/coreInstructions.ts",
         "frontend/src/lib/craftReadings.ts",
         "frontend/src/lib/marketUtils.ts",
@@ -403,11 +422,17 @@
         "frontend/public/assets/icons/silicon.png",
         "frontend/public/assets/icons/ui/building-silicon.png",
         "frontend/public/assets/nfts/resources/silicon.jpg",
+        "frontend/public/assets/nfts/resources/silicon.png",
         "frontend/public/assets/nfts/silicon-extractor-epic.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-epic.png",
         "frontend/public/assets/nfts/silicon-extractor-legendary.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-legendary.png",
         "frontend/public/assets/nfts/silicon-extractor-rare.jpg",
+        "frontend/public/assets/nfts/silicon-extractor-rare.png",
         "frontend/public/assets/nfts/silicon-extractor-uncommon.jpg",
-        "frontend/public/assets/nfts/silicon-extractor.jpg"
+        "frontend/public/assets/nfts/silicon-extractor-uncommon.png",
+        "frontend/public/assets/nfts/silicon-extractor.jpg",
+        "frontend/public/assets/nfts/silicon-extractor.png"
       ],
       "onchainSource": [],
       "onchainSink": [
@@ -477,6 +502,7 @@
           "aof-core/src/instructions/forge.rs#expire_handler"
         ],
         "craftInput": [
+          "recipe 10",
           "recipe 4"
         ],
         "craftOutput": [],
@@ -579,7 +605,8 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/neuron.png",
-        "frontend/public/assets/nfts/resources/neuron.jpg"
+        "frontend/public/assets/nfts/resources/neuron.jpg",
+        "frontend/public/assets/nfts/resources/neuron.png"
       ],
       "onchainSource": [],
       "onchainSink": [
@@ -634,6 +661,9 @@
         "projectSink": [],
         "refund": [],
         "craftInput": [
+          "recipe 11",
+          "recipe 13",
+          "recipe 14",
           "recipe 5"
         ],
         "craftOutput": [],
@@ -730,7 +760,8 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/synapse.png",
-        "frontend/public/assets/nfts/resources/synapse.jpg"
+        "frontend/public/assets/nfts/resources/synapse.jpg",
+        "frontend/public/assets/nfts/resources/synapse.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/harvest_synapse.rs#handler"
@@ -859,7 +890,8 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/signal.png",
-        "frontend/public/assets/nfts/resources/signal.jpg"
+        "frontend/public/assets/nfts/resources/signal.jpg",
+        "frontend/public/assets/nfts/resources/signal.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/collect_signal.rs#handler"
@@ -990,12 +1022,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/model.png",
-        "frontend/public/assets/nfts/resources/model.jpg"
+        "frontend/public/assets/nfts/resources/model.jpg",
+        "frontend/public/assets/nfts/resources/model.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/collect_model.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/collect_model.rs",
@@ -1018,7 +1053,9 @@
         "playerSource": [
           "aof-core/src/instructions/collect_model.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -1050,7 +1087,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": false,
@@ -1066,10 +1103,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "Power",
@@ -1117,7 +1154,8 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/power.png",
-        "frontend/public/assets/nfts/resources/power.jpg"
+        "frontend/public/assets/nfts/resources/power.jpg",
+        "frontend/public/assets/nfts/resources/power.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/collect_power.rs#handler"
@@ -1245,7 +1283,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "compute",
-          "line": "{ id: \"compute\", name: homeResourceNames.ru.compute, en: homeResourceNames.en.compute, plate: \"/assets/nfts/resources/compute.jpg\", icon: \"/"
+          "line": "{ id: \"compute\", name: homeResourceNames.ru.compute, en: homeResourceNames.en.compute, plate: \"/assets/nfts/resources/compute.png\", icon: \"/"
         }
       ],
       "game": [],
@@ -1256,9 +1294,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/compute.png",
-        "frontend/public/assets/nfts/resources/compute.jpg"
+        "frontend/public/assets/nfts/resources/compute.jpg",
+        "frontend/public/assets/nfts/resources/compute.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/start_model_training.rs#handler"
       ],
@@ -1277,14 +1318,18 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/start_model_training.rs#handler"
         ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 17"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -1311,11 +1356,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -1327,11 +1372,11 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "Dataset",
@@ -1375,10 +1420,13 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/dataset.png",
-        "frontend/public/assets/nfts/resources/dataset.jpg"
+        "frontend/public/assets/nfts/resources/dataset.jpg",
+        "frontend/public/assets/nfts/resources/dataset.png"
       ],
       "onchainSource": [],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/collect_mining.rs",
@@ -1406,12 +1454,20 @@
           "aof-core/src/instructions/collect_mining.rs#handler",
           "aof-core/src/instructions/rental_delegation.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "projectSink": [],
         "refund": [
           "aof-core/src/instructions/exploration.rs#expire_handler"
         ],
-        "craftInput": [],
+        "craftInput": [
+          "recipe 12",
+          "recipe 13",
+          "recipe 16",
+          "recipe 17",
+          "recipe 8"
+        ],
         "craftOutput": [],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
@@ -1443,9 +1499,9 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
-          "recipe_input": false,
+          "recipe_input": true,
           "recipe_output": false,
           "mining_output": true,
           "generic_claim_output": true,
@@ -1459,10 +1515,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": false,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "BlueCore",
@@ -1482,7 +1538,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "blue-core",
-          "line": "{ id: \"blueCore\", name: homeResourceNames.ru.blueCore, en: homeResourceNames.en.blueCore, plate: \"/assets/nfts/resources/blue-core.jpg\", ico"
+          "line": "{ id: \"blueCore\", name: homeResourceNames.ru.blueCore, en: homeResourceNames.en.blueCore, plate: \"/assets/nfts/resources/blue-core.png\", ico"
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -1495,9 +1551,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/blue-core.png",
-        "frontend/public/assets/nfts/resources/blue-core.jpg"
+        "frontend/public/assets/nfts/resources/blue-core.jpg",
+        "frontend/public/assets/nfts/resources/blue-core.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
@@ -1516,7 +1575,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
@@ -1525,7 +1586,9 @@
         "craftInput": [
           "recipe 0"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 9"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -1552,11 +1615,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -1568,11 +1631,11 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "PurpleCore",
@@ -1592,7 +1655,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "purple-core",
-          "line": "{ id: \"purpleCore\", name: homeResourceNames.ru.purpleCore, en: homeResourceNames.en.purpleCore, plate: \"/assets/nfts/resources/purple-core.j"
+          "line": "{ id: \"purpleCore\", name: homeResourceNames.ru.purpleCore, en: homeResourceNames.en.purpleCore, plate: \"/assets/nfts/resources/purple-core.p"
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -1605,9 +1668,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/purple-core.png",
-        "frontend/public/assets/nfts/resources/purple-core.jpg"
+        "frontend/public/assets/nfts/resources/purple-core.jpg",
+        "frontend/public/assets/nfts/resources/purple-core.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
@@ -1626,7 +1692,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
@@ -1635,7 +1703,9 @@
         "craftInput": [
           "recipe 7"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 11"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -1662,11 +1732,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -1678,11 +1748,11 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "RedCore",
@@ -1702,7 +1772,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "red-core",
-          "line": "{ id: \"redCore\", name: homeResourceNames.ru.redCore, en: homeResourceNames.en.redCore, plate: \"/assets/nfts/resources/red-core.jpg\", icon: \""
+          "line": "{ id: \"redCore\", name: homeResourceNames.ru.redCore, en: homeResourceNames.en.redCore, plate: \"/assets/nfts/resources/red-core.png\", icon: \""
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -1715,9 +1785,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/red-core.png",
-        "frontend/public/assets/nfts/resources/red-core.jpg"
+        "frontend/public/assets/nfts/resources/red-core.jpg",
+        "frontend/public/assets/nfts/resources/red-core.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
@@ -1736,7 +1809,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
@@ -1745,7 +1820,9 @@
         "craftInput": [
           "recipe 1"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 10"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -1772,11 +1849,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -1788,11 +1865,11 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "ClearQuartz",
@@ -1825,9 +1902,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/clear-quartz.png",
-        "frontend/public/assets/nfts/resources/clear-quartz.jpg"
+        "frontend/public/assets/nfts/resources/clear-quartz.jpg",
+        "frontend/public/assets/nfts/resources/clear-quartz.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
@@ -1846,7 +1926,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
@@ -1855,7 +1937,9 @@
         "craftInput": [
           "recipe 2"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 12"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -1882,11 +1966,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -1898,11 +1982,11 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "RoseQuartz",
@@ -1922,7 +2006,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "rose-quartz",
-          "line": "{ id: \"roseQuartz\", name: homeResourceNames.ru.roseQuartz, en: homeResourceNames.en.roseQuartz, plate: \"/assets/nfts/resources/rose-quartz.j"
+          "line": "{ id: \"roseQuartz\", name: homeResourceNames.ru.roseQuartz, en: homeResourceNames.en.roseQuartz, plate: \"/assets/nfts/resources/rose-quartz.p"
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -1935,9 +2019,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/rose-quartz.png",
-        "frontend/public/assets/nfts/resources/rose-quartz.jpg"
+        "frontend/public/assets/nfts/resources/rose-quartz.jpg",
+        "frontend/public/assets/nfts/resources/rose-quartz.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
@@ -1956,7 +2043,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
@@ -1965,7 +2054,9 @@
         "craftInput": [
           "recipe 6"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 13"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -1992,11 +2083,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -2008,11 +2099,11 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "AmberQuartz",
@@ -2045,10 +2136,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/amber-quartz.png",
-        "frontend/public/assets/nfts/resources/amber-quartz.jpg"
+        "frontend/public/assets/nfts/resources/amber-quartz.jpg",
+        "frontend/public/assets/nfts/resources/amber-quartz.png"
       ],
-      "onchainSource": [],
-      "onchainSink": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -2064,12 +2160,18 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
-        "playerSink": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 15"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -2093,14 +2195,14 @@
           "aof-core/src/lib.rs#mint_resource_once"
         ],
         "flags": {
-          "player_held": false,
+          "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
-          "has_player_sink": false,
+          "has_player_source": true,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -2112,10 +2214,10 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
-        "onchainSink": false
+        "onchainSource": true,
+        "onchainSink": true
       },
-      "status": "candidate-dead",
+      "status": "active-player",
       "economyIssue": null
     },
     {
@@ -2136,7 +2238,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "quantum-bit",
-          "line": "{ id: \"quantumBit\", name: homeResourceNames.ru.quantumBit, en: homeResourceNames.en.quantumBit, plate: \"/assets/nfts/resources/quantum-bit.j"
+          "line": "{ id: \"quantumBit\", name: homeResourceNames.ru.quantumBit, en: homeResourceNames.en.quantumBit, plate: \"/assets/nfts/resources/quantum-bit.p"
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2149,7 +2251,8 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/quantum-bit.png",
-        "frontend/public/assets/nfts/resources/quantum-bit.jpg"
+        "frontend/public/assets/nfts/resources/quantum-bit.jpg",
+        "frontend/public/assets/nfts/resources/quantum-bit.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
@@ -2252,7 +2355,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "neural-chip",
-          "line": "{ id: \"neuralChip\", name: homeResourceNames.ru.neuralChip, en: homeResourceNames.en.neuralChip, plate: \"/assets/nfts/resources/neural-chip.j"
+          "line": "{ id: \"neuralChip\", name: homeResourceNames.ru.neuralChip, en: homeResourceNames.en.neuralChip, plate: \"/assets/nfts/resources/neural-chip.p"
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2265,7 +2368,8 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/neural-chip.png",
-        "frontend/public/assets/nfts/resources/neural-chip.jpg"
+        "frontend/public/assets/nfts/resources/neural-chip.jpg",
+        "frontend/public/assets/nfts/resources/neural-chip.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
@@ -2368,7 +2472,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "photon-bit",
-          "line": "{ id: \"photonBit\", name: homeResourceNames.ru.photonBit, en: homeResourceNames.en.photonBit, plate: \"/assets/nfts/resources/photon-bit.jpg\","
+          "line": "{ id: \"photonBit\", name: homeResourceNames.ru.photonBit, en: homeResourceNames.en.photonBit, plate: \"/assets/nfts/resources/photon-bit.png\","
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2381,12 +2485,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/photon-bit.png",
-        "frontend/public/assets/nfts/resources/photon-bit.jpg"
+        "frontend/public/assets/nfts/resources/photon-bit.jpg",
+        "frontend/public/assets/nfts/resources/photon-bit.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -2405,10 +2512,14 @@
         "playerSource": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
-        "craftInput": [],
+        "craftInput": [
+          "recipe 15"
+        ],
         "craftOutput": [
           "recipe 2"
         ],
@@ -2439,9 +2550,9 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
-          "recipe_input": false,
+          "recipe_input": true,
           "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
@@ -2455,10 +2566,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "BioChip",
@@ -2478,7 +2589,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "bio-chip",
-          "line": "{ id: \"bioChip\", name: homeResourceNames.ru.bioChip, en: homeResourceNames.en.bioChip, plate: \"/assets/nfts/resources/bio-chip.jpg\", icon: \""
+          "line": "{ id: \"bioChip\", name: homeResourceNames.ru.bioChip, en: homeResourceNames.en.bioChip, plate: \"/assets/nfts/resources/bio-chip.png\", icon: \""
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2491,9 +2602,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/bio-chip.png",
-        "frontend/public/assets/nfts/resources/bio-chip.jpg"
+        "frontend/public/assets/nfts/resources/bio-chip.jpg",
+        "frontend/public/assets/nfts/resources/bio-chip.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
@@ -2512,7 +2626,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
@@ -2521,7 +2637,9 @@
         "craftInput": [
           "recipe 7"
         ],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 14"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -2548,11 +2666,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": true,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -2564,11 +2682,11 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     },
     {
       "kind": "CryoFluid",
@@ -2588,7 +2706,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "cryo-fluid",
-          "line": "{ id: \"cryoFluid\", name: homeResourceNames.ru.cryoFluid, en: homeResourceNames.en.cryoFluid, plate: \"/assets/nfts/resources/cryo-fluid.jpg\","
+          "line": "{ id: \"cryoFluid\", name: homeResourceNames.ru.cryoFluid, en: homeResourceNames.en.cryoFluid, plate: \"/assets/nfts/resources/cryo-fluid.png\","
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2601,12 +2719,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/cryo-fluid.png",
-        "frontend/public/assets/nfts/resources/cryo-fluid.jpg"
+        "frontend/public/assets/nfts/resources/cryo-fluid.jpg",
+        "frontend/public/assets/nfts/resources/cryo-fluid.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -2629,7 +2750,9 @@
         "playerSource": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -2663,7 +2786,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": true,
@@ -2679,10 +2802,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "VoltFluid",
@@ -2702,7 +2825,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "volt-fluid",
-          "line": "{ id: \"voltFluid\", name: homeResourceNames.ru.voltFluid, en: homeResourceNames.en.voltFluid, plate: \"/assets/nfts/resources/volt-fluid.jpg\","
+          "line": "{ id: \"voltFluid\", name: homeResourceNames.ru.voltFluid, en: homeResourceNames.en.voltFluid, plate: \"/assets/nfts/resources/volt-fluid.png\","
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2715,12 +2838,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/volt-fluid.png",
-        "frontend/public/assets/nfts/resources/volt-fluid.jpg"
+        "frontend/public/assets/nfts/resources/volt-fluid.jpg",
+        "frontend/public/assets/nfts/resources/volt-fluid.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -2743,7 +2869,9 @@
         "playerSource": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -2777,7 +2905,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": true,
@@ -2793,10 +2921,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "BioFluid",
@@ -2816,7 +2944,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "bio-fluid",
-          "line": "{ id: \"bioFluid\", name: homeResourceNames.ru.bioFluid, en: homeResourceNames.en.bioFluid, plate: \"/assets/nfts/resources/bio-fluid.jpg\", ico"
+          "line": "{ id: \"bioFluid\", name: homeResourceNames.ru.bioFluid, en: homeResourceNames.en.bioFluid, plate: \"/assets/nfts/resources/bio-fluid.png\", ico"
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2829,12 +2957,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/bio-fluid.png",
-        "frontend/public/assets/nfts/resources/bio-fluid.jpg"
+        "frontend/public/assets/nfts/resources/bio-fluid.jpg",
+        "frontend/public/assets/nfts/resources/bio-fluid.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -2857,7 +2988,9 @@
         "playerSource": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -2891,7 +3024,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": true,
@@ -2907,10 +3040,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "NanoFluid",
@@ -2930,7 +3063,7 @@
         {
           "file": "frontend/src/lib/visualAssets.ts",
           "variant": "nano-fluid",
-          "line": "{ id: \"nanoFluid\", name: homeResourceNames.ru.nanoFluid, en: homeResourceNames.en.nanoFluid, plate: \"/assets/nfts/resources/nano-fluid.jpg\","
+          "line": "{ id: \"nanoFluid\", name: homeResourceNames.ru.nanoFluid, en: homeResourceNames.en.nanoFluid, plate: \"/assets/nfts/resources/nano-fluid.png\","
         },
         {
           "file": "frontend/src/site/content/resources.ts",
@@ -2943,12 +3076,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/nano-fluid.png",
-        "frontend/public/assets/nfts/resources/nano-fluid.jpg"
+        "frontend/public/assets/nfts/resources/nano-fluid.jpg",
+        "frontend/public/assets/nfts/resources/nano-fluid.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -2971,7 +3107,9 @@
         "playerSource": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -3005,7 +3143,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": true,
@@ -3021,10 +3159,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "QuantumFluid",
@@ -3057,12 +3195,15 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/quantum-fluid.png",
-        "frontend/public/assets/nfts/resources/quantum-fluid.jpg"
+        "frontend/public/assets/nfts/resources/quantum-fluid.jpg",
+        "frontend/public/assets/nfts/resources/quantum-fluid.png"
       ],
       "onchainSource": [
         "aof-core/src/instructions/craft_recipe.rs#handler"
       ],
-      "onchainSink": [],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -3085,7 +3226,9 @@
         "playerSource": [
           "aof-core/src/instructions/craft_recipe.rs#handler"
         ],
-        "playerSink": [],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -3119,7 +3262,7 @@
           "ui_visible": true,
           "tradable": true,
           "has_player_source": true,
-          "has_player_sink": false,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": true,
@@ -3135,10 +3278,10 @@
         "recipe": false,
         "asset": true,
         "onchainSource": true,
-        "onchainSink": false
+        "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_sink"
+      "economyIssue": null
     },
     {
       "kind": "SoulCore",
@@ -3164,10 +3307,15 @@
       "backend": [],
       "recipe": [],
       "assets": [
-        "frontend/public/assets/nfts/resources/soul-core.jpg"
+        "frontend/public/assets/nfts/resources/soul-core.jpg",
+        "frontend/public/assets/nfts/resources/soul-core.png"
       ],
-      "onchainSource": [],
-      "onchainSink": [],
+      "onchainSource": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
+      "onchainSink": [
+        "aof-core/src/instructions/seal_laboratory.rs#handler"
+      ],
       "onchainRefs": [
         {
           "file": "aof-core/src/instructions/init_material_mints.rs",
@@ -3183,8 +3331,12 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
-        "playerSink": [],
+        "playerSource": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
+        "playerSink": [
+          "aof-core/src/instructions/seal_laboratory.rs#handler"
+        ],
         "projectSink": [],
         "refund": [],
         "craftInput": [],
@@ -3212,11 +3364,11 @@
           "aof-core/src/lib.rs#mint_resource_once"
         ],
         "flags": {
-          "player_held": false,
+          "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
-          "has_player_sink": false,
+          "has_player_source": true,
+          "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
           "recipe_output": false,
@@ -3231,10 +3383,10 @@
         "backend": false,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
-        "onchainSink": false
+        "onchainSource": true,
+        "onchainSink": true
       },
-      "status": "candidate-dead",
+      "status": "active-player",
       "economyIssue": null
     },
     {
@@ -3282,9 +3434,12 @@
       "recipe": [],
       "assets": [
         "frontend/public/assets/icons/mind.png",
-        "frontend/public/assets/nfts/resources/mind.jpg"
+        "frontend/public/assets/nfts/resources/mind.jpg",
+        "frontend/public/assets/nfts/resources/mind.png"
       ],
-      "onchainSource": [],
+      "onchainSource": [
+        "aof-core/src/instructions/craft_recipe.rs#handler"
+      ],
       "onchainSink": [
         "aof-core/src/instructions/craft.rs#handler",
         "aof-core/src/instructions/reroll.rs#handler"
@@ -3316,7 +3471,9 @@
         "aof-core/src/instructions/mint_resource.rs"
       ],
       "flow": {
-        "playerSource": [],
+        "playerSource": [
+          "aof-core/src/instructions/craft_recipe.rs#handler"
+        ],
         "playerSink": [
           "aof-core/src/instructions/craft.rs#handler",
           "aof-core/src/instructions/reroll.rs#handler"
@@ -3324,7 +3481,9 @@
         "projectSink": [],
         "refund": [],
         "craftInput": [],
-        "craftOutput": [],
+        "craftOutput": [
+          "recipe 16"
+        ],
         "tradable": [
           "aof-core/src/instructions/orderbook.rs#expected_resource_mint"
         ],
@@ -3351,11 +3510,11 @@
           "player_held": true,
           "ui_visible": true,
           "tradable": true,
-          "has_player_source": false,
+          "has_player_source": true,
           "has_player_sink": true,
           "has_admin_source": true,
           "recipe_input": false,
-          "recipe_output": false,
+          "recipe_output": true,
           "mining_output": false,
           "generic_claim_output": true,
           "internal_only": false
@@ -3367,31 +3526,16 @@
         "backend": true,
         "recipe": false,
         "asset": true,
-        "onchainSource": false,
+        "onchainSource": true,
         "onchainSink": true
       },
       "status": "active-player",
-      "economyIssue": "missing_source"
+      "economyIssue": null
     }
   ],
   "productGaps": {
-    "craftInputsWithoutPlayerSource": [
-      "BioChip",
-      "BlueCore",
-      "ClearQuartz",
-      "Data",
-      "PurpleCore",
-      "RedCore",
-      "RoseQuartz"
-    ],
-    "craftOutputsNeverConsumed": [
-      "BioFluid",
-      "CryoFluid",
-      "NanoFluid",
-      "PhotonBit",
-      "QuantumFluid",
-      "VoltFluid"
-    ],
+    "craftInputsWithoutPlayerSource": [],
+    "craftOutputsNeverConsumed": [],
     "genericIssuance": {
       "admin": true,
       "playerClaim": true
@@ -3504,6 +3648,100 @@
         ],
         "outputs": [
           "QuantumFluid"
+        ]
+      },
+      {
+        "id": 8,
+        "inputs": [
+          "dataset"
+        ],
+        "outputs": [
+          "Data"
+        ]
+      },
+      {
+        "id": 9,
+        "inputs": [
+          "circuit_mint"
+        ],
+        "outputs": [
+          "BlueCore"
+        ]
+      },
+      {
+        "id": 10,
+        "inputs": [
+          "silicon_mint"
+        ],
+        "outputs": [
+          "RedCore"
+        ]
+      },
+      {
+        "id": 11,
+        "inputs": [
+          "neuron"
+        ],
+        "outputs": [
+          "PurpleCore"
+        ]
+      },
+      {
+        "id": 12,
+        "inputs": [
+          "circuit_mint",
+          "dataset"
+        ],
+        "outputs": [
+          "ClearQuartz"
+        ]
+      },
+      {
+        "id": 13,
+        "inputs": [
+          "neuron",
+          "dataset"
+        ],
+        "outputs": [
+          "RoseQuartz"
+        ]
+      },
+      {
+        "id": 14,
+        "inputs": [
+          "neuron",
+          "circuit_mint"
+        ],
+        "outputs": [
+          "BioChip"
+        ]
+      },
+      {
+        "id": 15,
+        "inputs": [
+          "photon_bit"
+        ],
+        "outputs": [
+          "AmberQuartz"
+        ]
+      },
+      {
+        "id": 16,
+        "inputs": [
+          "dataset"
+        ],
+        "outputs": [
+          "Mind"
+        ]
+      },
+      {
+        "id": 17,
+        "inputs": [
+          "circuit_mint",
+          "dataset"
+        ],
+        "outputs": [
+          "Compute"
         ]
       }
     ]

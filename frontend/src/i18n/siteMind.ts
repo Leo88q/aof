@@ -18,7 +18,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'У токена есть адрес выпуска, а у каждого действия — проверяемые условия.',
     paragraphs: ['MIND встречается в перечне ресурсов игры и в исходном коде некоторых действий. Это не обещание выпуска, дохода, обмена, бонусов или доступности функции в опубликованной программе.', 'Сайт не читает кошелёк и не показывает живую цену. Прежде чем что-либо подписать, проверь адрес выпуска из актуальной конфигурации сети, остаток и точную смету в игре и кошельке.'],
     originHeading: 'Гость у лабораторного порога',
-    origin: ['В исходном коде MIND отмечен как ресурс внешнего происхождения. Откуда он попал к конкретному владельцу, можно установить только по записям его кошелька и сети; история сайта не подтверждает прошлые выдачи.', 'Отображаемое название или картинка не доказывают подлинность токена. Не покупай другой актив с тем же именем, полагаясь на эту статью.'],
+    origin: ['Рецепт 16 мастерской выпускает MIND из набора данных. Создание и перековка инструментов его сжигают. Живая сеть может ещё быть на прежней программе; история сайта не подтверждает прошлые выдачи.', 'Отображаемое название или картинка не доказывают подлинность токена. Не покупай другой актив с тем же именем, полагаясь на эту статью.'],
     checksHeading: 'Пять вопросов перед действием',
     checks: [
       { id: 'identity', title: 'Какой адрес выпуска?', body: 'Сверь mint с текущей конфигурацией программы и операцией в кошельке. Похожее название или значок не заменяют проверку адреса.' },
@@ -44,7 +44,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'A token has a mint address; every action has terms to verify.',
     paragraphs: ['MIND appears in the game’s resource list and in source code for some actions. That is not a promise of issuance, returns, exchange, perks or availability in a deployed program.', 'The site neither reads your wallet nor shows a live price. Before signing anything, check the mint in current network configuration, your balance and a fresh quote in the game and wallet.'],
     originHeading: 'A visitor at the laboratory door',
-    origin: ['The source describes MIND as an externally sourced resource. Only a wallet’s network history can establish how a particular owner acquired it; this story does not confirm past distributions.', 'A displayed name or picture is not proof of authenticity. Do not buy another asset with the same name on the strength of this article.'],
+    origin: ['Workshop recipe 16 mints MIND from dataset. Crafting and rerolling tools burn it. The live network may still be on the previous program; this page does not confirm past distributions.', 'A displayed name or picture is not proof of authenticity. Do not buy another asset with the same name on the strength of this article.'],
     checksHeading: 'Five questions before acting',
     checks: [
       { id: 'identity', title: 'Which mint?', body: 'Compare the mint with the program’s current configuration and your wallet request. A similar name or icon cannot replace an address check.' },
@@ -70,7 +70,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'Um token tem endereço de emissão; cada ação tem condições a verificar.',
     paragraphs: ['MIND aparece na lista de recursos do jogo e no código de algumas ações. Isso não promete emissão, rendimento, trocas, vantagens ou disponibilidade no programa publicado.', 'O site não consulta a carteira nem mostra preço em tempo real. Antes de assinar, confere o endereço de emissão na configuração atual da rede, o saldo e um orçamento recente no jogo e na carteira.'],
     originHeading: 'Um visitante à porta do laboratório',
-    origin: ['O código descreve MIND como recurso de origem externa. Só o histórico da carteira na rede permite saber como chegou a determinado dono; este conto não confirma distribuições passadas.', 'O nome ou a imagem exibidos não comprovam autenticidade. Não compres outro ativo com o mesmo nome por causa deste artigo.'],
+    origin: ['A receita 16 da oficina emite MIND a partir do conjunto de dados. Criar e reforjar ferramentas o queima. A rede ativa pode ainda estar no programa anterior; esta página não confirma distribuições passadas.', 'O nome ou a imagem exibidos não comprovam autenticidade. Não compres outro ativo com o mesmo nome por causa deste artigo.'],
     checksHeading: 'Cinco perguntas antes de agir',
     checks: [
       { id: 'identity', title: 'Qual é o endereço de emissão?', body: 'Compara o mint com a configuração atual do programa e o pedido da carteira. Um nome ou símbolo parecido não substitui a verificação do endereço.' },
@@ -96,7 +96,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'Un token tiene dirección de emisión; toda acción tiene condiciones que comprobar.',
     paragraphs: ['MIND aparece en la lista de recursos del juego y en el código de algunas acciones. Eso no promete emisión, ganancias, cambios, ventajas ni disponibilidad en el programa desplegado.', 'Esta web no consulta tu cartera ni muestra precios en directo. Antes de firmar, comprueba el mint en la configuración actual de la red, tu saldo y un presupuesto reciente en el juego y tu cartera.'],
     originHeading: 'Un visitante a la puerta del laboratorio',
-    origin: ['El código presenta MIND como recurso de origen externo. Solo el historial de una cartera en la red permite saber cómo lo recibió su titular; este relato no confirma entregas anteriores.', 'El nombre o la imagen no prueban la autenticidad. No compres otro activo con el mismo nombre basándote en este artículo.'],
+    origin: ['La receta 16 del taller emite MIND a partir del conjunto de datos. Fabricar y reforjar herramientas lo quema. La red activa puede seguir en el programa anterior; esta página no confirma entregas anteriores.', 'El nombre o la imagen no prueban la autenticidad. No compres otro activo con el mismo nombre basándote en este artículo.'],
     checksHeading: 'Cinco preguntas antes de actuar',
     checks: [
       { id: 'identity', title: '¿Cuál es el mint?', body: 'Compara el mint con la configuración actual del programa y la solicitud de tu cartera. Un nombre o icono similar no reemplaza la comprobación de la dirección.' },
@@ -122,7 +122,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'Token có địa chỉ phát hành; mỗi hành động đều có điều kiện cần kiểm tra.',
     paragraphs: ['MIND xuất hiện trong danh sách tài nguyên và mã nguồn của một số hành động. Điều đó không hứa phát hành, lợi nhuận, trao đổi, quyền lợi hay tính khả dụng trong chương trình đã triển khai.', 'Trang web không đọc ví hay hiển thị giá trực tiếp. Trước khi ký, hãy kiểm tra mint trong cấu hình mạng hiện tại, số dư và báo giá mới trong trò chơi và ví.'],
     originHeading: 'Vị khách trước cửa phòng thí nghiệm',
-    origin: ['Mã nguồn mô tả MIND là tài nguyên có nguồn gốc bên ngoài. Chỉ lịch sử ví trên mạng mới cho biết một người nhận nó ra sao; câu chuyện ở đây không xác nhận các đợt phát trước kia.', 'Tên hoặc hình ảnh không chứng minh token thật. Đừng mua tài sản khác chỉ vì trùng tên với bài viết này.'],
+    origin: ['Công thức 16 của xưởng tạo MIND từ dataset. Chế tạo và rèn lại công cụ sẽ đốt nó. Mạng đang chạy có thể vẫn ở chương trình cũ; trang này không xác nhận các đợt phát trước kia.', 'Tên hoặc hình ảnh không chứng minh token thật. Đừng mua tài sản khác chỉ vì trùng tên với bài viết này.'],
     checksHeading: 'Năm câu hỏi trước khi hành động',
     checks: [
       { id: 'identity', title: 'Địa chỉ mint nào?', body: 'Đối chiếu mint với cấu hình hiện tại của chương trình và yêu cầu trong ví. Tên hay biểu tượng giống nhau không thay cho việc kiểm tra địa chỉ.' },
@@ -148,7 +148,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'Token memiliki alamat mint; setiap tindakan punya ketentuan untuk diperiksa.',
     paragraphs: ['MIND tercantum dalam daftar sumber daya dan kode beberapa tindakan dalam permainan. Itu bukan janji penerbitan, keuntungan, penukaran, manfaat, atau ketersediaan pada program yang diterapkan.', 'Situs tidak membaca dompet atau menampilkan harga langsung. Sebelum tanda tangan, periksa mint dalam konfigurasi jaringan saat ini, saldo, dan rincian biaya terbaru di permainan dan dompet.'],
     originHeading: 'Tamu di pintu laboratorium',
-    origin: ['Kode sumber mencatat MIND sebagai sumber daya dari luar. Hanya riwayat dompet pada jaringan yang dapat menunjukkan bagaimana pemilik memperolehnya; kisah ini tidak membuktikan pembagian sebelumnya.', 'Nama atau gambar bukan bukti keaslian. Jangan membeli aset lain bernama sama hanya berdasarkan artikel ini.'],
+    origin: ['Resep 16 bengkel mencetak MIND dari dataset. Merakit dan mengulang alat membakarnya. Jaringan aktif mungkin masih memakai program sebelumnya; halaman ini tidak membuktikan pembagian sebelumnya.', 'Nama atau gambar bukan bukti keaslian. Jangan membeli aset lain bernama sama hanya berdasarkan artikel ini.'],
     checksHeading: 'Lima pertanyaan sebelum bertindak',
     checks: [
       { id: 'identity', title: 'Alamat mint yang mana?', body: 'Bandingkan mint dengan konfigurasi program saat ini dan permintaan dompet. Nama atau ikon mirip bukan pengganti pemeriksaan alamat.' },
@@ -174,7 +174,7 @@ export const siteMind: Record<Language, Copy> = {
     lead: 'May mint address ang token; may mga kondisyong dapat suriin sa bawat hakbang.',
     paragraphs: ['Nasa talaan ng yaman at sa code ng ilang gawain sa laro ang MIND. Hindi ito pangako ng paglabas ng token, kita, palitan, benepisyo, o availability sa na-deploy na programa.', 'Hindi binabasa ng site ang wallet mo o nagpapakita ng live na presyo. Bago lumagda, tingnan ang mint sa kasalukuyang configuration ng network, balanse, at bagong presyo sa laro at wallet.'],
     originHeading: 'Panauhin sa pintuan ng laboratoryo',
-    origin: ['Inilalarawan sa code ang MIND bilang yamang mula sa labas. Kasaysayan lamang ng wallet sa network ang makapagsasabi kung paano ito nakuha ng isang may-ari; hindi patunay ang kuwentong ito ng dating pamamahagi.', 'Hindi patunay ng pagiging tunay ang ipinakitang pangalan o larawan. Huwag bumili ng ibang asset na kapangalan nito dahil lang sa artikulong ito.'],
+    origin: ['Ang resipe 16 ng pagawaan ay naglalabas ng MIND mula sa dataset. Nasusunog ito sa paggawa at muling pagpanday ng mga kasangkapan. Maaaring nasa dating programa pa ang live na network; hindi patunay ang pahinang ito ng dating pamamahagi.', 'Hindi patunay ng pagiging tunay ang ipinakitang pangalan o larawan. Huwag bumili ng ibang asset na kapangalan nito dahil lang sa artikulong ito.'],
     checksHeading: 'Limang tanong bago kumilos',
     checks: [
       { id: 'identity', title: 'Aling mint address?', body: 'Ihambing ang mint sa kasalukuyang configuration ng programa at hiling sa wallet. Hindi kapalit ng pagsusuri sa address ang magkahawig na pangalan o icon.' },

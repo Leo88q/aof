@@ -3596,6 +3596,63 @@ pub struct CraftRecipe<'info> {
     pub issuance_cap: Box<Account<'info, IssuanceCap>>,
 }
 
+#[derive(Accounts)]
+pub struct SealLaboratory<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(seeds = [MATERIAL_MINTS_SEED], bump = material_mints.bump)]
+    pub material_mints: Box<Account<'info, MaterialMints>>,
+    /// CHECK: auth PDA signs the Soul Core mint.
+    #[account(seeds = [AUTH_SEED], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + LaboratoryFinale::INIT_SPACE,
+        seeds = [LABORATORY_FINALE_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub finale: Box<Account<'info, LaboratoryFinale>>,
+    #[account(mut)]
+    pub model_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_model.mint == model_mint.key(), constraint = user_model.owner == user.key())]
+    pub user_model: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub cryo_fluid_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_cryo_fluid.mint == cryo_fluid_mint.key(), constraint = user_cryo_fluid.owner == user.key())]
+    pub user_cryo_fluid: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub volt_fluid_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_volt_fluid.mint == volt_fluid_mint.key(), constraint = user_volt_fluid.owner == user.key())]
+    pub user_volt_fluid: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub bio_fluid_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_bio_fluid.mint == bio_fluid_mint.key(), constraint = user_bio_fluid.owner == user.key())]
+    pub user_bio_fluid: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub nano_fluid_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_nano_fluid.mint == nano_fluid_mint.key(), constraint = user_nano_fluid.owner == user.key())]
+    pub user_nano_fluid: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub quantum_fluid_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_quantum_fluid.mint == quantum_fluid_mint.key(), constraint = user_quantum_fluid.owner == user.key())]
+    pub user_quantum_fluid: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub amber_quartz_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_amber_quartz.mint == amber_quartz_mint.key(), constraint = user_amber_quartz.owner == user.key())]
+    pub user_amber_quartz: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub soul_core_mint: Box<Account<'info, Mint>>,
+    #[account(mut, constraint = user_soul_core.mint == soul_core_mint.key(), constraint = user_soul_core.owner == user.key())]
+    pub user_soul_core: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub issuance_cap_soul: Box<Account<'info, IssuanceCap>>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
 // ----- Ордербук ресурсов -----
 
 #[derive(Accounts)]
@@ -4745,5 +4802,10 @@ pub mod aof_core {
             seller_fee_basis_points,
             freeze,
         )
+    }
+
+    /// Burn one full component set and mint one Soul Core. The player pays rent.
+    pub fn seal_laboratory(ctx: Context<SealLaboratory>) -> Result<()> {
+        instructions::seal_laboratory::handler(ctx)
     }
 }

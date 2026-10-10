@@ -346,15 +346,20 @@ export function flowAnalysis(resource, chain, dispatch, generic, craftArms, fiel
  *  * рецепт выпускает ресурс, который затем нигде не потребляется и не является наградой.
  * Это входные данные для решения владельца о каноне, а не приговор ресурсу.
  */
-export function productGaps(resources, craftArms, fieldToKind, dispatch, generic) {
+export function productGaps(resources, craftArms, fieldToKind, dispatch, generic, flows = []) {
   const produced = new Set(craftArms.flatMap((arm) => arm.outputs));
-  const consumed = new Set(craftArms.flatMap((arm) => arm.inputs.map((f) => fieldToKind.get(f))).filter(Boolean));
-  const playerSource = new Set();
-  for (const r of resources) {
-    if (dispatch.miningKinds.has(r.kind)) playerSource.add(r.kind);
+  const recipeInputs = new Set(craftArms.flatMap((arm) => arm.inputs.map((f) => fieldToKind.get(f))).filter(Boolean));
+  const playerSource = new Set(dispatch.miningKinds);
+  for (const kind of produced) playerSource.add(kind);
+  for (const row of flows) {
+    if (row.flow.playerSource.length > 0 || row.flow.craftOutput.length > 0) playerSource.add(row.kind);
+  }
+  const consumed = new Set(recipeInputs);
+  for (const row of flows) {
+    if (row.flow.playerSink.length > 0 || row.flow.craftInput.length > 0) consumed.add(row.kind);
   }
   return {
-    craftInputsWithoutPlayerSource: [...consumed].filter((k) => !playerSource.has(k) && !produced.has(k)).sort(),
+    craftInputsWithoutPlayerSource: [...recipeInputs].filter((k) => !playerSource.has(k)).sort(),
     craftOutputsNeverConsumed: [...produced].filter((k) => !consumed.has(k)).sort(),
     genericIssuance: { admin: generic.admin.length > 0, playerClaim: generic.claim.length > 0 },
   };
@@ -372,10 +377,7 @@ export function buildEvidence() {
   const craftArms = craftRecipes();
   const fieldToKind = new Map(manifest.resources.filter((r) => r.legacyField).map((r) => [r.legacyField, r.kind]));
 
-  return {
-    schemaVersion: 1,
-    note: 'Product evidence по ресурсам: frontend, game-клиент, backend, рецепты, ассеты, on-chain источники/стоки.',
-    resources: manifest.resources.map((r) => {
+  const resources = manifest.resources.map((r) => {
       const variants = nameVariants(r);
       const frontend = clientEvidence(variants, frontendFiles);
       const game = clientEvidence(variants, gameFiles);
@@ -411,8 +413,12 @@ export function buildEvidence() {
           onchainSink: chain.onchainSink.length > 0,
         },
       };
-    }),
-    productGaps: productGaps(manifest.resources, craftArms, fieldToKind, dispatch, generic),
+  });
+  return {
+    schemaVersion: 1,
+    note: 'Product evidence по ресурсам: frontend, game-клиент, backend, рецепты, ассеты, on-chain источники/стоки.',
+    resources,
+    productGaps: productGaps(manifest.resources, craftArms, fieldToKind, dispatch, generic, resources),
     genericPaths: {
       adminMint: generic.admin,
       playerClaim: generic.claim,
@@ -461,6 +467,8 @@ export function economyIssue(resource) {
   const f = resource.flow.flags;
   const sink = f.has_player_sink || f.recipe_input;
   const source = f.has_player_source || f.recipe_output;
+  // Soul Core is the kept ending, not an unused output. Owner decision 2026-10-10.
+  if (resource.kind === 'SoulCore' && source && !sink) return null;
   if (sink && !source) return 'missing_source';
   if (source && !sink) return 'missing_sink';
   return null;

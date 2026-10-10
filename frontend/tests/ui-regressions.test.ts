@@ -1633,7 +1633,7 @@ test("кладовая и гель различают подтверждённы
 });
 
 test("рецепты мастерской совпадают с инструкцией сети и не расходуют неизвестный баланс", async () => {
-  const { WORKSHOP_RECIPES, canCraftRecipe } = await import("../src/lib/workshopRecipes.ts");
+  const { WORKSHOP_RECIPES, canCraftRecipe, LABORATORY_SEAL } = await import("../src/lib/workshopRecipes.ts");
   const { readEconomyBalances, ALL_BALANCE_KEYS } = await import("../src/lib/economyBalances.ts");
   const mintToKey: Record<string, string> = Object.fromEntries(RESOURCE_MANIFEST.resources.map((resource: any) => [
     resource.mintSource.replace(/^config\./, 'cfg.').replace(/^material_mints\./, 'mm.'),
@@ -1657,6 +1657,13 @@ test("рецепты мастерской совпадают с инструкц
   });
   assert.deepEqual(WORKSHOP_RECIPES.map(({ id, inputs, output }) => ({ id, inputs, output })), network,
     'цены и продукты в мастерской должны совпадать с craft_recipe.rs');
+  const seal = read('../aof-core/src/instructions/seal_laboratory.rs');
+  const burns = [...seal.matchAll(/burn_in!\([^,]+, [^,]+, ((?:mm|cfg)\.[a-z_]+), (\d+) \* RESOURCE_UNIT/g)]
+    .map(match => ({ key: mintToKey[match[1]], amount: Number(match[2]) }));
+  assert.deepEqual([...LABORATORY_SEAL.inputs], burns, 'печать должна сжигать те же ресурсы, что seal_laboratory.rs');
+  assert.equal(LABORATORY_SEAL.output.key, 'SOUL_CORE');
+  assert.equal(LABORATORY_SEAL.output.amount, 1);
+  assert.match(seal, /ResourceKind::SoulCore, 1 \* RESOURCE_UNIT/);
   const zero = readEconomyBalances({ source: 'onchain', ...Object.fromEntries(ALL_BALANCE_KEYS.map(key => [key, 0])) });
   assert.ok(zero);
   assert.equal(canCraftRecipe(WORKSHOP_RECIPES[0], null), false);
@@ -2727,7 +2734,7 @@ test('индекс инструкций использует точные име
   assert.match(siteDocs.en.groups.market.description, /paused/);
 });
 
-test('книга рецептов сайта показывает те же восемь составов, что и игровая мастерская, на семи языках', async () => {
+test('книга рецептов сайта показывает ту же таблицу, что и игровая мастерская, на семи языках', async () => {
   const { languages } = await import('../src/i18n/translations');
   const { siteRecipes } = await import('../src/i18n/siteRecipes');
   const { WORKSHOP_RECIPES } = await import('../src/lib/workshopRecipes');
@@ -2747,8 +2754,8 @@ test('книга рецептов сайта показывает те же во
   assert.ok(!existsSync(new URL('../src/site/content/recipes.ts', import.meta.url)));
   assert.ok(!code('src/site/content/game.ts').includes("'./recipes'"));
   assert.equal(pages.find(p => p.id === 'recipes')?.lead, siteRecipes.ru.lead);
-  assert.equal(WORKSHOP_RECIPES.length, 8);
-  assert.deepEqual(WORKSHOP_RECIPES.map(recipe => recipe.id), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(WORKSHOP_RECIPES.length, 18);
+  assert.deepEqual(WORKSHOP_RECIPES.map(recipe => recipe.id), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]);
   const ids = [...new Set(WORKSHOP_RECIPES.flatMap(recipe => [recipe.output.key, ...recipe.inputs.map(input => input.key)]))];
   for (const id of ids) assert.match(extras, new RegExp(`\\b${id}: '`), `${id}: нет имени ресурса в словаре`);
   assert.match(code('src/site/styles/site.css'), /site-recipe-grid > \*[^}]*overflow-wrap: anywhere/);
@@ -2933,10 +2940,15 @@ test('27 карточек ресурсов целиком локализован
       }
     }
   }
-  assert.equal(allRecipeLines.size, 8);
+  assert.equal(allRecipeLines.size, 18);
   assert.match(resourceRecipes('roseQuartz', 'en').uses[0], /3 /, 'recipe 6 must not repeat legacy five-quartz cost');
-  assert.deepEqual(resourceRecipes('mind', 'en'), { produces: [], uses: [] }, 'no fictional MIND exchange');
-  assert.deepEqual(resourceRecipes('amberQuartz', 'en'), { produces: [], uses: [] });
+  assert.equal(resourceRecipes('mind', 'en').produces.length, 1, 'mind is recipe 16, not a fictional exchange');
+  assert.equal(resourceRecipes('amberQuartz', 'en').produces.length, 1, 'amber is recipe 15');
+  assert.deepEqual(resourceRecipes('amberQuartz', 'en').uses, []);
+  assert.equal(resourceRecipes('amberQuartz', 'en').sealRole, 'input');
+  assert.equal(resourceRecipes('soulCore', 'en').sealRole, 'output');
+  assert.match(resourceRecipes('model', 'en').seal[0], /Seal/);
+  assert.match(detail, /recipes\.sealRole/);
   assert.ok(!/\b(description|sources|sinks|narrative):/.test(read('src/site/content/resources.ts')), 'legacy claims remain in bundled content');
 });
 
@@ -4539,6 +4551,8 @@ test("каталог ресурсов разложен по отделам и п
   assert.match(page, /site-catalog-group__title/, "заголовок отдела пропал");
   assert.match(page, /copy\.showing\(list\.length, resources\.length\)/, "нет счётчика показанного");
   assert.match(page, /resourceRecipes\(r\.id as ResourceId, language\)/, "роли ресурса берутся из таблицы рецептов, а не из текста");
+  assert.match(page, /copy\.sealSpends/);
+  assert.match(page, /copy\.sealMints/);
   assert.match(css, /\.site-catalog-group__count \{/, "у отдела нет счётчика");
   assert.match(css, /\.site-resource__roles li \{/, "у карточки ресурса нет марок роли");
 

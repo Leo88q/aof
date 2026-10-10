@@ -28,6 +28,7 @@ import { FlaskMarketplace } from "../market/FlaskMarketplace";
 import { ExplorationPage } from "./ExplorationPage";
 import { PacksPage } from "../tools/PacksPage";
 import { CraftPage } from "../tools/CraftPage";
+import { FinalePage } from "./FinalePage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { NeuralLabPanel } from "./NeuralLabPanel";
@@ -194,6 +195,9 @@ export function FarmDashboard() {
                 </Key>
                 <Key onClick={() => push("tools", "craft", (<><NavHeader headerId="craft" tabKey="tools" /><CraftPage /></>))}>
                   {labels.craft}
+                </Key>
+                <Key onClick={() => push("farm", "finale", (<><NavHeader headerId="finale" tabKey="farm" /><FinalePage /></>))}>
+                  {labels.finale}
                 </Key>
                 <Key onClick={() => push("farm", "drum", (<><NavHeader headerId="drum" tabKey="farm" /><DrumSpin /></>))}>
                   {labels.drum}

@@ -15,7 +15,8 @@ import { siteRecipes } from '../../i18n/siteRecipes';
 import { siteMind } from '../../i18n/siteMind';
 import { siteGlossary } from '../../i18n/siteGlossary';
 import { recipeWorkshopCopy } from '../../i18n/recipeWorkshopCopy';
-import { WORKSHOP_RECIPES } from '../../lib/workshopRecipes';
+import { LABORATORY_SEAL, WORKSHOP_RECIPES } from '../../lib/workshopRecipes';
+import { finaleCopy } from '../../i18n/finaleCopy';
 import { tradeNavigationCopy } from '../../i18n/tradeNavigationCopy';
 import { toolName, toolsCopy } from '../../i18n/toolsCopy';
 import {
@@ -68,7 +69,7 @@ function SitePlate({ src, alt = '', size, className = '' }: { src?: string; alt?
   );
 }
 
-// The eight entries below share their amounts with the in-game workshop.
+// Catalog labels for the workshop table. Amounts stay in workshopRecipes.ts.
 // These names are catalog labels, not substitutes for verified wallet balances.
 const recipeResourceIds: Record<string, ResourceId> = {
   BLUE_CORE: 'blueCore', RED_CORE: 'redCore', CLEAR_QUARTZ: 'clearQuartz',
@@ -77,6 +78,8 @@ const recipeResourceIds: Record<string, ResourceId> = {
   ROSE_QUARTZ: 'roseQuartz', PURPLE_CORE: 'purpleCore', BIO_CHIP: 'bioChip',
   CRYO_FLUID: 'cryoFluid', VOLT_FLUID: 'voltFluid', BIO_FLUID: 'bioFluid',
   NANO_FLUID: 'nanoFluid', QUANTUM_FLUID: 'quantumFluid',
+  DATASET: 'dataset', AMBER_QUARTZ: 'amberQuartz', MIND: 'mind', COMPUTE: 'compute',
+  MODEL: 'model', SOUL_CORE: 'soulCore',
 };
 
 const PARTICLES: Record<string, number> = { drought: 0, sun: 0, rain: 32, festival: 0 };
@@ -278,7 +281,7 @@ export function ExtraSections({ id }: { id: string }) {
     const names = homeResourceNames[language];
     return (
       <Section title={copy.heading}>
-        {(['gems', 'flasks'] as const).map((category) => (
+        {(['gems', 'flasks', 'transformations'] as const).map((category) => (
           <div key={category} className="site-recipe-group">
             <h3>{workshop[category]}</h3>
             <div className="site-grid site-recipe-grid">
@@ -309,6 +312,33 @@ export function ExtraSections({ id }: { id: string }) {
             </div>
           </div>
         ))}
+        <div className="site-recipe-group">
+          <h3>{finaleCopy[language].seal}</h3>
+          <div className="site-grid site-recipe-grid">
+            <article className="site-card site-paper site-recipe">
+              <span className="site-badge">{copy.sourceLabel}</span>
+              <h4>{names[recipeResourceIds[LABORATORY_SEAL.output.key]]}</h4>
+              <p className="site-recipe-meta">{copy.inputLabel}</p>
+              <ul className="site-recipe-io">
+                {LABORATORY_SEAL.inputs.map(({ key, amount }) => {
+                  const id = recipeResourceIds[key];
+                  return <li key={key} className="site-recipe-in">
+                    <SitePlate src={resourceIcon(id)} size={40} className="site-io-icon" />
+                    <span>{names[id]} ×{amount}</span>
+                  </li>;
+                })}
+              </ul>
+              <p className="site-recipe-arrow" aria-hidden="true">↓</p>
+              <p className="site-recipe-meta">{copy.outputLabel}</p>
+              <ul className="site-recipe-io">
+                <li className="site-recipe-out">
+                  <SitePlate src={resourceIcon(recipeResourceIds[LABORATORY_SEAL.output.key])} size={40} className="site-io-icon" />
+                  <span>{names[recipeResourceIds[LABORATORY_SEAL.output.key]]} ×{LABORATORY_SEAL.output.amount}</span>
+                </li>
+              </ul>
+            </article>
+          </div>
+        </div>
         <p className="site-guide-warn">{copy.note}</p>
       </Section>
     );

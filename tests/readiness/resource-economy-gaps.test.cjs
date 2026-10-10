@@ -39,8 +39,8 @@ const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } final
 test('репозиторий проходит гейт: разрывы выведены из evidence, а не назначены руками', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /без источника 9/);
-  assert.match(result.out, /без стока 8/);
+  assert.match(result.out, /без источника 0/);
+  assert.match(result.out, /без стока 0/);
   const gaps = JSON.parse(read(GAPS));
   const evidence = JSON.parse(read(EVIDENCE));
   const byKind = new Map(evidence.resources.map((r) => [r.kind, r]));
@@ -55,15 +55,15 @@ test('разрывы отделены от статуса: Data и BioFluid ос
   const byKind = new Map(gaps.resources.map((r) => [r.kind, r]));
   const data = byKind.get('Data');
   assert.equal(data.status, 'active-player');
-  assert.equal(data.gap, 'missing_source');
+  assert.equal(data.gap, null);
   assert.equal(data.playerHeld, true);
-  assert.deepEqual(data.sources, [], 'у Data нет пути получения игроком');
+  assert.ok(data.sources.length > 0, 'Data собирается из набора данных');
   assert.ok(data.sinks.length > 0, 'Data тратится игроком');
   const fluid = byKind.get('BioFluid');
   assert.equal(fluid.status, 'active-player');
-  assert.equal(fluid.gap, 'missing_sink');
+  assert.equal(fluid.gap, null);
   assert.ok(fluid.sources.length > 0, 'BioFluid выпускается рецептом');
-  assert.deepEqual(fluid.sinks, [], 'у BioFluid нет стока');
+  assert.ok(fluid.sinks.length > 0, 'BioFluid сгорает в печати');
 });
 
 test('owner-списки разрывов входят в отчёт без потерь', () => {
@@ -71,10 +71,10 @@ test('owner-списки разрывов входят в отчёт без по
   const missingSource = new Set(gaps.blockers.missingSource);
   const missingSink = new Set(gaps.blockers.missingSink);
   for (const kind of ['BioChip', 'BlueCore', 'ClearQuartz', 'Data', 'PurpleCore', 'RedCore', 'RoseQuartz']) {
-    assert.ok(missingSource.has(kind), `${kind}: рецепт требует ресурс, источника для игрока нет`);
+    assert.ok(!missingSource.has(kind), `${kind}: источник есть, старый разрыв закрыт`);
   }
   for (const kind of ['BioFluid', 'CryoFluid', 'NanoFluid', 'PhotonBit', 'QuantumFluid', 'VoltFluid']) {
-    assert.ok(missingSink.has(kind), `${kind}: рецепт выпускает ресурс, стока нет`);
+    assert.ok(!missingSink.has(kind), `${kind}: сток есть, старый разрыв закрыт`);
   }
   assert.equal(gaps.renameBlocking, false, 'разрывы не блокируют переименование identifiers');
   assert.match(read(GAPS_MD), /не блокируют чистое переименование/);
@@ -85,7 +85,8 @@ test('generic admin-минт не закрывает missing_source', () => {
   const gaps = JSON.parse(read(GAPS));
   const data = gaps.resources.find((r) => r.kind === 'Data');
   assert.ok(data.genericPaths.some((p) => /mint_resource\.rs/.test(p)), 'generic admin-путь виден в отчёте');
-  assert.equal(data.gap, 'missing_source', 'техническая возможность выпуска не делает ресурс доступным игроку');
+  assert.ok(!data.sources.some((p) => /mint_resource\.rs/.test(p)), 'техническая возможность выпуска не становится источником игрока');
+  assert.equal(data.gap, null, 'Data закрыт рецептом 8, не admin-минтом');
 });
 
 test('подмена «источника» generic-путём или устаревший markdown роняют гейт', () => {
@@ -95,6 +96,7 @@ test('подмена «источника» generic-путём или устар
     const p = path.join(tmp, EVIDENCE);
     const evidence = JSON.parse(fs.readFileSync(p, 'utf8'));
     const row = evidence.resources.find((r) => r.kind === 'Data');
+    row.economyIssue = 'missing_source';
     row.flow.playerSource = ['aof-core/src/instructions/mint_resource.rs#handler'];
     fs.writeFileSync(p, `${JSON.stringify(evidence, null, 2)}\n`);
     const result = run(['--check', '--root', tmp]);

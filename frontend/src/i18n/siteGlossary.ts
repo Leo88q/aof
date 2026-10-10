@@ -88,7 +88,7 @@ Transcendent|Название редкости инструмента; не га
 Ковка|Этап работы с инструментом; исход, цена и доступность требуют проверки.
 Реролл|Повторное определение параметра по правилам действия; не обещание лучшего результата.
 Энергия|Ресурс действий; доступный остаток и расход узнавай из текущего состояния игры.
-Флюид|Ресурс из книги рецептов; применение флюидов в сети не подтверждено.
+Флюид|Ресурс из книги рецептов; сгорает в печати лаборатории. Живая сеть может ещё быть на прежней программе.
 Бафф|Ограниченный по времени эффект, если он есть; не предполагай действие по значку.
 Рецепт|Перечень входов и выхода; точные количества смотри в актуальной таблице игры.
 Источник|Возможный способ поступления ресурса; наличие карточки не доказывает активную добычу.
@@ -156,7 +156,7 @@ Crafting|Making a resource or tool from a specific recipe; costs depend on the a
 Forging|A stage of tool work; outcome, price and availability need verification.
 Reroll|Recalculating a property under an action’s rules, not a promise of improvement.
 Energy|An action resource; read the current balance and cost in the game.
-Vial|A recipe resource; on-chain use of vials is not verified.
+Vial|A recipe resource burned when the laboratory is sealed. The live network may still be on the previous program.
 Buff|A time-limited effect if available; an icon alone does not establish one.
 Recipe|A list of inputs and outputs; check exact amounts in the current game table.
 Source|A possible way to obtain a resource; a card does not prove live mining.
@@ -224,7 +224,7 @@ Criação|Produção de recurso ou ferramenta segundo receita; custo depende da 
 Forja|Etapa de trabalho da ferramenta; resultado, preço e disponibilidade precisam de verificação.
 Nova rolagem|Novo cálculo de um atributo segundo as regras, sem promessa de melhoria.
 Energia|Recurso para ações; consulta o saldo e custo atuais no jogo.
-Frasco|Recurso de receita; o seu uso na rede não foi verificado.
+Frasco|Recurso de receita queimado ao selar o laboratório. A rede ativa pode ainda estar no programa anterior.
 Bônus|Efeito temporário, quando disponível; o ícone por si só não o comprova.
 Receita|Lista de entradas e saídas; vê as quantidades exatas na tabela atual do jogo.
 Origem|Possível forma de obter recurso; uma ficha não comprova extração ativa.
@@ -292,7 +292,7 @@ Fabricación|Creación de recurso o herramienta según receta; el coste depende 
 Forja|Etapa de trabajo de herramienta; comprueba resultado, precio y disponibilidad.
 Repetición de atributos|Nuevo cálculo de un atributo según las reglas, sin prometer mejora.
 Energía|Recurso para acciones; consulta saldo y coste actuales en el juego.
-Frasco|Recurso de recetas; no se ha verificado un uso suyo en la red.
+Frasco|Recurso de recetas que se quema al sellar el laboratorio. La red activa puede seguir en el programa anterior.
 Bonificación|Efecto temporal, si está disponible; el icono no lo demuestra.
 Receta|Lista de entradas y resultados; consulta las cantidades en la tabla actual.
 Origen|Posible vía de obtener recurso; una ficha no prueba que la extracción funcione.
@@ -360,7 +360,7 @@ Chế tạo|Tạo tài nguyên hay công cụ theo công thức cụ thể; chi 
 Rèn|Một giai đoạn làm công cụ; cần kiểm tra kết quả, giá và tính khả dụng.
 Tạo lại thuộc tính|Tính lại thuộc tính theo quy tắc, không hứa sẽ tốt hơn.
 Năng lượng|Tài nguyên cho hành động; kiểm tra số dư và chi phí hiện tại trong trò chơi.
-Dung dịch|Tài nguyên theo công thức; chưa xác minh cách dùng trên mạng.
+Dung dịch|Tài nguyên theo công thức, bị đốt khi niêm phong phòng thí nghiệm. Mạng đang chạy có thể vẫn ở chương trình cũ.
 Hiệu ứng tăng cường|Hiệu ứng có thời hạn nếu có; biểu tượng không tự chứng minh hiệu quả.
 Công thức|Danh sách nguyên liệu và kết quả; xem số lượng chính xác trong bảng mới.
 Nguồn|Cách có thể nhận tài nguyên; thẻ danh mục không chứng minh khai thác đang bật.
@@ -428,7 +428,7 @@ Perakitan|Membuat sumber daya atau alat berdasarkan resep; biaya tergantung tind
 Penempaan|Tahap pengerjaan alat; hasil, harga, dan ketersediaan perlu pemeriksaan.
 Pengacakan ulang|Menghitung ulang sifat menurut aturan, tanpa janji hasil lebih baik.
 Energi|Sumber daya tindakan; periksa saldo dan biaya saat ini di permainan.
-Cairan|Sumber daya hasil resep; penggunaan di jaringan belum terverifikasi.
+Cairan|Sumber daya hasil resep yang dibakar saat laboratorium disegel. Jaringan aktif mungkin masih memakai program sebelumnya.
 Penguat|Efek berbatas waktu jika ada; ikon bukan bukti bahwa efek tersedia.
 Resep|Daftar bahan dan hasil; periksa jumlah pasti di tabel permainan sekarang.
 Sumber|Cara yang mungkin menghasilkan sumber daya; kartu bukan bukti tambang aktif.
@@ -496,7 +496,7 @@ Paggawa|Paglikha ng yaman o kagamitan ayon sa resipe; depende sa gawain ang gast
 Pandayan|Yugto ng paggawa ng kagamitan; kailangang suriin ang resulta, presyo, at availability.
 Muling pagpili ng katangian|Pagkuha ng bagong katangian ayon sa patakaran, hindi pangakong mas maganda.
 Enerhiya|Yaman para sa gawain; suriin ang kasalukuyang balanse at gastos sa laro.
-Bote ng fluid|Yamang galing sa resipe; hindi pa beripikado ang gamit nito sa network.
+Bote ng fluid|Yamang galing sa resipe na nasusunog kapag tinatakan ang laboratoryo. Maaaring nasa dating programa pa ang live na network.
 Pansamantalang epekto|Epektong may hangganan kung available; hindi patunay ang icon.
 Resipe|Listahan ng sangkap at resulta; tingnan ang eksaktong dami sa bagong talaan.
 Pinagmumulan|Posibleng paraan ng pagkuha ng yaman; hindi patunay ng aktibong pagmimina ang card.

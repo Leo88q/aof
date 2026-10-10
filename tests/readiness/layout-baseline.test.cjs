@@ -56,6 +56,7 @@ test('базис фиксирует порядок enum, дискриминан�
     { name: 'set_issuance_lifetime_baseline', discriminator: '5fa1444d0ed7cd55' },
     { name: 'set_tool_metadata_uris', discriminator: 'c6622920403298aa' },
     { name: 'claim_premium_season_reward', discriminator: 'e8218c145fee48c7' },
+    { name: 'seal_laboratory', discriminator: '2dfef80fa19ad569' },
   ], 'все новые инструкции зафиксированы в порядке их appended IDL entries и с точным discriminator');
   assert.deepEqual(approvedAdditions?.errors?.AofError, [
 
@@ -69,6 +70,9 @@ test('базис фиксирует порядок enum, дискриминан�
   const premiumClaims = approvedAdditions?.accounts?.find((account) => account.name === 'SeasonPremiumClaims');
   assert.deepEqual(premiumClaims?.typeSequence, ['Pubkey', 'u32', 'u64', 'u8']);
   assert.equal(premiumClaims?.size, 53);
+  const finale = approvedAdditions?.accounts?.find((account) => account.name === 'LaboratoryFinale');
+  assert.deepEqual(finale?.typeSequence, ['Pubkey', 'u32', 'u8']);
+  assert.equal(finale?.size, 45);
   const metadataRegistry = approvedAdditions?.accounts?.find((account) => account.name === 'ToolMetadataRegistry');
   assert.deepEqual(metadataRegistry?.typeSequence, ['Pubkey', 'bool', 'bool', 'u32', 'u16', 'u8', 'Vec<String>']);
   assert.equal(metadataRegistry?.initSpace, true);

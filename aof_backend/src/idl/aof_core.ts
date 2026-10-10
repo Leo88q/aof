@@ -14198,6 +14198,197 @@ export type AofCore = {
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "sealLaboratory",
+      "discriminator": [
+        45,
+        254,
+        248,
+        15,
+        161,
+        154,
+        213,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "materialMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "finale",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  97,
+                  98,
+                  111,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114,
+                  121,
+                  95,
+                  102,
+                  105,
+                  110,
+                  97,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "modelMint",
+          "writable": true
+        },
+        {
+          "name": "userModel",
+          "writable": true
+        },
+        {
+          "name": "cryoFluidMint",
+          "writable": true
+        },
+        {
+          "name": "userCryoFluid",
+          "writable": true
+        },
+        {
+          "name": "voltFluidMint",
+          "writable": true
+        },
+        {
+          "name": "userVoltFluid",
+          "writable": true
+        },
+        {
+          "name": "bioFluidMint",
+          "writable": true
+        },
+        {
+          "name": "userBioFluid",
+          "writable": true
+        },
+        {
+          "name": "nanoFluidMint",
+          "writable": true
+        },
+        {
+          "name": "userNanoFluid",
+          "writable": true
+        },
+        {
+          "name": "quantumFluidMint",
+          "writable": true
+        },
+        {
+          "name": "userQuantumFluid",
+          "writable": true
+        },
+        {
+          "name": "amberQuartzMint",
+          "writable": true
+        },
+        {
+          "name": "userAmberQuartz",
+          "writable": true
+        },
+        {
+          "name": "soulCoreMint",
+          "writable": true
+        },
+        {
+          "name": "userSoulCore",
+          "writable": true
+        },
+        {
+          "name": "issuanceCapSoul",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -14784,6 +14975,19 @@ export type AofCore = {
         119,
         227,
         93
+      ]
+    },
+    {
+      "name": "LaboratoryFinale",
+      "discriminator": [
+        192,
+        64,
+        20,
+        62,
+        252,
+        51,
+        152,
+        49
       ]
     }
   ],
@@ -20421,6 +20625,26 @@ export type AofCore = {
           },
           {
             "name": "level",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LaboratoryFinale",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "seals",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]

@@ -354,6 +354,7 @@ pub const MINT_FEE_BOTH_MAX_BPS: u16 = 300;
 
 // Resource-specific PDA seed bytes
 pub const MATERIAL_MINTS_SEED: &[u8] = b"material_mints";
+pub const LABORATORY_FINALE_SEED: &[u8] = b"laboratory_finale";
 pub const ENERGY_ACCOUNT_SEED: &[u8] = b"energy_account";
 pub const LAB_TILE_SEED: &[u8] = b"lab_tile";
 pub const WEATHER_STATE_SEED: &[u8] = b"weather_state";

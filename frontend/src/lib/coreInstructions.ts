@@ -1193,6 +1193,15 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     authorityOnly: true,
     trailingAccounts: null,
   },
+  {
+    name: "seal_laboratory",
+    discriminator: [45, 254, 248, 15, 161, 154, 213, 105],
+    accounts: ["config", "user", "material_mints", "auth", "finale", "model_mint", "user_model", "cryo_fluid_mint", "user_cryo_fluid", "volt_fluid_mint", "user_volt_fluid", "bio_fluid_mint", "user_bio_fluid", "nano_fluid_mint", "user_nano_fluid", "quantum_fluid_mint", "user_quantum_fluid", "amber_quartz_mint", "user_amber_quartz", "soul_core_mint", "user_soul_core", "issuance_cap_soul", "token_program", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+    trailingAccounts: null,
+  },
 
 ];
 

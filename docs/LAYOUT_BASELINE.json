@@ -3762,11 +3762,15 @@
           "name": "set_tool_metadata_uris",
           "discriminator": "c6622920403298aa"
         },
-        {
-          "name": "claim_premium_season_reward",
-          "discriminator": "e8218c145fee48c7"
-        }
-      ],
+      {
+        "name": "claim_premium_season_reward",
+        "discriminator": "e8218c145fee48c7"
+      },
+      {
+        "name": "seal_laboratory",
+        "discriminator": "2dfef80fa19ad569"
+      }
+    ],
       "accounts": [
         {
           "file": "aof-core/src/state.rs",
@@ -3865,15 +3869,40 @@
               "type": "u8"
             }
           ],
-          "typeSequence": [
-            "Pubkey",
-            "u32",
-            "u64",
-            "u8"
-          ],
-          "size": 53
-        }
-      ],
+        "typeSequence": [
+          "Pubkey",
+          "u32",
+          "u64",
+          "u8"
+        ],
+        "size": 53
+      },
+      {
+        "file": "aof-core/src/state.rs",
+        "name": "LaboratoryFinale",
+        "initSpace": true,
+        "fields": [
+          {
+            "name": "owner",
+            "type": "Pubkey"
+          },
+          {
+            "name": "seals",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ],
+        "typeSequence": [
+          "Pubkey",
+          "u32",
+          "u8"
+        ],
+        "size": 45
+      }
+    ],
       "errors": {
         "AofError": [
           "PlayerNotInitialized",

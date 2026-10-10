@@ -33,43 +33,43 @@
 
 | Canonical ID | Display name | Frontend | Recipe | Asset | Backend | Game | playerSource | playerSink | tradable | admin/claim | Статус | economy_issue |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Data | Data | ✅ | — | ✅ | ✅ | — | 0 | 5 | ✅ | admin/claim | active-player | missing_source |
+| Data | Data | ✅ | — | ✅ | ✅ | — | 1 | 5 | ✅ | admin/claim | active-player | — |
 | Circuit | Circuit | ✅ | — | ✅ | ✅ | — | 3 | 7 | ✅ | admin/claim | active-player | — |
 | Silicon | Silicon | ✅ | — | ✅ | — | — | 2 | 7 | ✅ | admin/claim | active-player | — |
 | Neuron | Neuron | ✅ | — | ✅ | ✅ | ✅ | 2 | 3 | ✅ | admin/claim | active-player | — |
 | Synapse | Synapse | ✅ | — | ✅ | ✅ | — | 1 | 1 | ✅ | admin/claim | active-player | — |
 | Signal | Signal | ✅ | — | ✅ | ✅ | — | 1 | 1 | ✅ | admin/claim | active-player | — |
-| Model | Model | ✅ | — | ✅ | ✅ | ✅ | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
+| Model | Model | ✅ | — | ✅ | ✅ | ✅ | 1 | 1 | ✅ | admin/claim | active-player | — |
 | Power | Power | ✅ | — | ✅ | ✅ | — | 1 | 2 | ✅ | admin/claim | active-player | — |
-| Compute | Compute | ✅ | — | ✅ | ✅ | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| Dataset | Dataset | ✅ | — | ✅ | ✅ | — | 2 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| BlueCore | Blue Core | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| PurpleCore | Purple Core | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| RedCore | Red Core | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| ClearQuartz | Clear Quartz | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| RoseQuartz | Rose Quartz | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| AmberQuartz | Amber Quartz | ✅ | — | ✅ | — | — | 0 | 0 | ✅ | admin/claim | candidate-dead | — |
+| Compute | Compute | ✅ | — | ✅ | ✅ | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| Dataset | Dataset | ✅ | — | ✅ | ✅ | — | 2 | 1 | ✅ | admin/claim | active-player | — |
+| BlueCore | Blue Core | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| PurpleCore | Purple Core | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| RedCore | Red Core | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| ClearQuartz | Clear Quartz | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| RoseQuartz | Rose Quartz | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| AmberQuartz | Amber Quartz | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
 | QuantumBit | Quantum Bit | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
 | NeuralChip | Neural Chip | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
-| PhotonBit | Photon Bit | ✅ | — | ✅ | — | — | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| BioChip | Bio Chip | ✅ | — | ✅ | — | — | 0 | 1 | ✅ | admin/claim | active-player | missing_source |
-| CryoFluid | Cryo Fluid | ✅ | — | ✅ | — | — | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| VoltFluid | Volt Fluid | ✅ | — | ✅ | — | — | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| BioFluid | Bio Fluid | ✅ | — | ✅ | — | — | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| NanoFluid | Nano Fluid | ✅ | — | ✅ | — | — | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| QuantumFluid | Quantum Fluid | ✅ | — | ✅ | — | — | 1 | 0 | ✅ | admin/claim | active-player | missing_sink |
-| SoulCore | Soul Core | ✅ | — | ✅ | — | — | 0 | 0 | ✅ | admin/claim | candidate-dead | — |
-| Mind | Mind | ✅ | — | ✅ | ✅ | — | 0 | 2 | ✅ | admin/claim | active-player | missing_source |
+| PhotonBit | Photon Bit | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| BioChip | Bio Chip | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| CryoFluid | Cryo Fluid | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| VoltFluid | Volt Fluid | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| BioFluid | Bio Fluid | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| NanoFluid | Nano Fluid | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| QuantumFluid | Quantum Fluid | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| SoulCore | Soul Core | ✅ | — | ✅ | — | — | 1 | 1 | ✅ | admin/claim | active-player | — |
+| Mind | Mind | ✅ | — | ✅ | ✅ | — | 1 | 2 | ✅ | admin/claim | active-player | — |
 
-Итог: active-player: 25, candidate-dead: 2.
+Итог: active-player: 27.
 
 ## Разрывы цепочки, видимые из кода
 
 Это не приговор ресурсу, а вход для решения владельца о каноне:
 
 * рецепты требуют ресурс, который игрок нигде не может получить (ни майнинга, ни рецепта,
-  ни награды; получить можно только проектной выдачей): BioChip, BlueCore, ClearQuartz, Data, PurpleCore, RedCore, RoseQuartz;
-* рецепты выпускают ресурс, который затем нигде не потребляется: BioFluid, CryoFluid, NanoFluid, PhotonBit, QuantumFluid, VoltFluid;
+  ни награды; получить можно только проектной выдачей): —;
+* рецепты выпускают ресурс, который затем нигде не потребляется: —;
 * generic-выдача открыта для всех 27 kinds: admin-минт — да,
   player claim — да (поэтому отсутствие литерала
   `ResourceKind::X` в файле само по себе не доказывает отсутствие источника).
@@ -80,33 +80,33 @@
 
 | Ресурс | Статус | economy_issue | Пояснение |
 |---|---|---|---|
-| Data | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
+| Data | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Circuit | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Silicon | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Neuron | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Synapse | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Signal | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
-| Model | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
+| Model | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | Power | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
-| Compute | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| Dataset | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| BlueCore | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| PurpleCore | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| RedCore | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| ClearQuartz | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| RoseQuartz | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| AmberQuartz | candidate-dead | — | подтверждённого product flow нет: только каталог/реестр (UI, индекс ордербука, mint_for_kind) и generic-пути, открытые для всех kinds; удаление — только с разрешения владельца |
+| Compute | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| Dataset | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| BlueCore | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| PurpleCore | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| RedCore | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| ClearQuartz | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| RoseQuartz | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| AmberQuartz | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | QuantumBit | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 | NeuralChip | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
-| PhotonBit | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| BioChip | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
-| CryoFluid | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| VoltFluid | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| BioFluid | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| NanoFluid | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| QuantumFluid | active-player | missing_sink | баланс игрока (его ATA), но стока нет: ресурс выпускается рецептом и нигде не потребляется — pre-deployment economy gap |
-| SoulCore | candidate-dead | — | подтверждённого product flow нет: только каталог/реестр (UI, индекс ордербука, mint_for_kind) и generic-пути, открытые для всех kinds; удаление — только с разрешения владельца |
-| Mind | active-player | missing_source | баланс игрока (его ATA), но пути получения нет: сток/рецепт требует ресурс, источник для игрока не найден — pre-deployment economy gap |
+| PhotonBit | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| BioChip | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| CryoFluid | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| VoltFluid | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| BioFluid | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| NanoFluid | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| QuantumFluid | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| SoulCore | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
+| Mind | active-player | — | ресурс бывает балансом игрока: выдача, сжигание или рецепт из его token account |
 
 ## Детали
 
@@ -116,16 +116,16 @@
 * game: —
 * backend: 5 файл(ов) (aof_backend/src/lib/chainIndexerCore.ts, aof_backend/src/routes/daily.ts, aof_backend/src/routes/portfolio.ts, aof_backend/src/routes/query.ts, …)
 * recipes: —
-* assets: frontend/public/assets/icons/data.png, frontend/public/assets/icons/dataset.png, frontend/public/assets/icons/ui/building-data.png, frontend/public/assets/nfts/data-harvester-epic.jpg, frontend/public/assets/nfts/data-harvester-legendary.jpg, frontend/public/assets/nfts/data-harvester-rare.jpg, frontend/public/assets/nfts/data-harvester-uncommon.jpg, frontend/public/assets/nfts/data-harvester.jpg, frontend/public/assets/nfts/resources/data.jpg, frontend/public/assets/nfts/resources/dataset.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/data.png, frontend/public/assets/icons/dataset.png, frontend/public/assets/icons/ui/building-data.png, frontend/public/assets/nfts/data-harvester-epic.jpg, frontend/public/assets/nfts/data-harvester-epic.png, frontend/public/assets/nfts/data-harvester-legendary.jpg, frontend/public/assets/nfts/data-harvester-legendary.png, frontend/public/assets/nfts/data-harvester-rare.jpg, frontend/public/assets/nfts/data-harvester-rare.png, frontend/public/assets/nfts/data-harvester-uncommon.jpg, frontend/public/assets/nfts/data-harvester-uncommon.png, frontend/public/assets/nfts/data-harvester.jpg, frontend/public/assets/nfts/data-harvester.png, frontend/public/assets/nfts/resources/data.jpg, frontend/public/assets/nfts/resources/data.png, frontend/public/assets/nfts/resources/dataset.jpg, frontend/public/assets/nfts/resources/dataset.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exchange_data_energy.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler
-* рецепты: вход recipe 3, recipe 6; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 3, recipe 6; выход recipe 8
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### Circuit — active-player
 
@@ -133,24 +133,24 @@
 * game: —
 * backend: 2 файл(ов) (aof_backend/src/lib/vrf.ts, aof_backend/src/routes/admin-config.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/circuit.png, frontend/public/assets/nfts/resources/circuit.jpg
-* on-chain source (литерал): aof-core/src/instructions/season.rs#claim_reward_handler
+* assets: frontend/public/assets/icons/circuit.png, frontend/public/assets/nfts/resources/circuit.jpg, frontend/public/assets/nfts/resources/circuit.png
+* on-chain source (литерал): aof-core/src/instructions/season.rs#claim_premium_reward_handler
 * on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler, aof-core/src/instructions/rental_delegation.rs#repair_handler, aof-core/src/instructions/repair.rs#handler, aof-core/src/instructions/start_model_training.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler, aof-core/src/instructions/season.rs#claim_reward_handler
+* путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler, aof-core/src/instructions/season.rs#claim_premium_reward_handler
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * проектный сток (VRF): —
 * возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler, aof-core/src/instructions/forge.rs#expire_handler
-* рецепты: вход recipe 5; выход —
+* рецепты: вход recipe 12, recipe 14, recipe 17, recipe 5, recipe 9; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
 ### Silicon — active-player
 
-* frontend: 11 файл(ов) (frontend/src/components/ToolMiningCard.tsx, frontend/src/i18n/homeDetail.ts, frontend/src/i18n/siteToolsCatalog.ts, frontend/src/lib/coreInstructions.ts, …)
+* frontend: 12 файл(ов) (frontend/src/components/ToolMiningCard.tsx, frontend/src/i18n/homeDetail.ts, frontend/src/i18n/siteToolsCatalog.ts, frontend/src/i18n/tradeNavigationCopy.ts, …)
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/silicon.png, frontend/public/assets/icons/ui/building-silicon.png, frontend/public/assets/nfts/resources/silicon.jpg, frontend/public/assets/nfts/silicon-extractor-epic.jpg, frontend/public/assets/nfts/silicon-extractor-legendary.jpg, frontend/public/assets/nfts/silicon-extractor-rare.jpg, frontend/public/assets/nfts/silicon-extractor-uncommon.jpg, frontend/public/assets/nfts/silicon-extractor.jpg
+* assets: frontend/public/assets/icons/silicon.png, frontend/public/assets/icons/ui/building-silicon.png, frontend/public/assets/nfts/resources/silicon.jpg, frontend/public/assets/nfts/resources/silicon.png, frontend/public/assets/nfts/silicon-extractor-epic.jpg, frontend/public/assets/nfts/silicon-extractor-epic.png, frontend/public/assets/nfts/silicon-extractor-legendary.jpg, frontend/public/assets/nfts/silicon-extractor-legendary.png, frontend/public/assets/nfts/silicon-extractor-rare.jpg, frontend/public/assets/nfts/silicon-extractor-rare.png, frontend/public/assets/nfts/silicon-extractor-uncommon.jpg, frontend/public/assets/nfts/silicon-extractor-uncommon.png, frontend/public/assets/nfts/silicon-extractor.jpg, frontend/public/assets/nfts/silicon-extractor.png
 * on-chain source (литерал): —
 * on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/exploration.rs#upgrade_tier_handler, aof-core/src/instructions/referral.rs#upgrade_handler, aof-core/src/instructions/rental_delegation.rs#repair_handler, aof-core/src/instructions/repair.rs#handler, aof-core/src/instructions/start_signal_processing.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -158,7 +158,7 @@
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * проектный сток (VRF): —
 * возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler, aof-core/src/instructions/forge.rs#expire_handler
-* рецепты: вход recipe 4; выход —
+* рецепты: вход recipe 10, recipe 4; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
 ### Neuron — active-player
@@ -167,7 +167,7 @@
 * game: game/godot/products/inventory.gd
 * backend: 3 файл(ов) (aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/lib/toolResourceMint.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/neuron.png, frontend/public/assets/nfts/resources/neuron.jpg
+* assets: frontend/public/assets/icons/neuron.png, frontend/public/assets/nfts/resources/neuron.jpg, frontend/public/assets/nfts/resources/neuron.png
 * on-chain source (литерал): —
 * on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/craft_recipe.rs#handler, aof-core/src/instructions/plant_neuron.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -175,7 +175,7 @@
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 5; выход —
+* рецепты: вход recipe 11, recipe 13, recipe 14, recipe 5; выход —
 * флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
 ### Synapse — active-player
@@ -184,7 +184,7 @@
 * game: —
 * backend: 2 файл(ов) (aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/synapse.png, frontend/public/assets/nfts/resources/synapse.jpg
+* assets: frontend/public/assets/icons/synapse.png, frontend/public/assets/nfts/resources/synapse.jpg, frontend/public/assets/nfts/resources/synapse.png
 * on-chain source (литерал): aof-core/src/instructions/harvest_synapse.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/start_signal_processing.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -201,7 +201,7 @@
 * game: —
 * backend: 2 файл(ов) (aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/signal.png, frontend/public/assets/nfts/resources/signal.jpg
+* assets: frontend/public/assets/icons/signal.png, frontend/public/assets/nfts/resources/signal.jpg, frontend/public/assets/nfts/resources/signal.png
 * on-chain source (литерал): aof-core/src/instructions/collect_signal.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/start_model_training.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -218,16 +218,16 @@
 * game: game/godot/chain/candy_machine.gd
 * backend: 2 файл(ов) (aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/model.png, frontend/public/assets/nfts/resources/model.jpg
+* assets: frontend/public/assets/icons/model.png, frontend/public/assets/nfts/resources/model.jpg, frontend/public/assets/nfts/resources/model.png
 * on-chain source (литерал): aof-core/src/instructions/collect_model.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_model.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### Power — active-player
 
@@ -235,7 +235,7 @@
 * game: —
 * backend: 3 файл(ов) (aof_backend/src/lib/economySimulatorV2.ts, aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/power.png, frontend/public/assets/nfts/resources/power.jpg
+* assets: frontend/public/assets/icons/power.png, frontend/public/assets/nfts/resources/power.jpg, frontend/public/assets/nfts/resources/power.png
 * on-chain source (литерал): aof-core/src/instructions/collect_power.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/start_model_training.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -252,16 +252,16 @@
 * game: —
 * backend: 2 файл(ов) (aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/compute.png, frontend/public/assets/nfts/resources/compute.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/compute.png, frontend/public/assets/nfts/resources/compute.jpg, frontend/public/assets/nfts/resources/compute.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/start_model_training.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход —; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход —; выход recipe 17
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### Dataset — active-player
 
@@ -269,16 +269,16 @@
 * game: —
 * backend: 3 файл(ов) (aof_backend/src/lib/resourceRegistryCore.ts, aof_backend/src/lib/toolResourceMint.ts, aof_backend/src/routes/admin.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/dataset.png, frontend/public/assets/nfts/resources/dataset.jpg
+* assets: frontend/public/assets/icons/dataset.png, frontend/public/assets/nfts/resources/dataset.jpg, frontend/public/assets/nfts/resources/dataset.png
 * on-chain source (литерал): —
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * майнинг-выдача: aof-core/src/instructions/collect_mining.rs#handler, aof-core/src/instructions/rental_delegation.rs#handler
 * проектный сток (VRF): —
 * возврат из эскроу (refund): aof-core/src/instructions/exploration.rs#expire_handler
-* рецепты: вход —; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 12, recipe 13, recipe 16, recipe 17, recipe 8; выход —
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=true, generic_claim_output=true, internal_only=false
 
 ### BlueCore — active-player
 
@@ -286,16 +286,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/blue-core.png, frontend/public/assets/nfts/resources/blue-core.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/blue-core.png, frontend/public/assets/nfts/resources/blue-core.jpg, frontend/public/assets/nfts/resources/blue-core.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 0; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 0; выход recipe 9
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### PurpleCore — active-player
 
@@ -303,16 +303,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/purple-core.png, frontend/public/assets/nfts/resources/purple-core.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/purple-core.png, frontend/public/assets/nfts/resources/purple-core.jpg, frontend/public/assets/nfts/resources/purple-core.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 7; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 7; выход recipe 11
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### RedCore — active-player
 
@@ -320,16 +320,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/red-core.png, frontend/public/assets/nfts/resources/red-core.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/red-core.png, frontend/public/assets/nfts/resources/red-core.jpg, frontend/public/assets/nfts/resources/red-core.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 1; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 1; выход recipe 10
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### ClearQuartz — active-player
 
@@ -337,16 +337,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/clear-quartz.png, frontend/public/assets/nfts/resources/clear-quartz.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/clear-quartz.png, frontend/public/assets/nfts/resources/clear-quartz.jpg, frontend/public/assets/nfts/resources/clear-quartz.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 2; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 2; выход recipe 12
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### RoseQuartz — active-player
 
@@ -354,33 +354,33 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/rose-quartz.png, frontend/public/assets/nfts/resources/rose-quartz.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/rose-quartz.png, frontend/public/assets/nfts/resources/rose-quartz.jpg, frontend/public/assets/nfts/resources/rose-quartz.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 6; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 6; выход recipe 13
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
-### AmberQuartz — candidate-dead
+### AmberQuartz — active-player
 
 * frontend: 2 файл(ов) (frontend/src/lib/visualAssets.ts, frontend/src/site/content/resources.ts)
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/amber-quartz.png, frontend/public/assets/nfts/resources/amber-quartz.jpg
-* on-chain source (литерал): —
-* on-chain sink (литерал): —
+* assets: frontend/public/assets/icons/amber-quartz.png, frontend/public/assets/nfts/resources/amber-quartz.jpg, frontend/public/assets/nfts/resources/amber-quartz.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход —; выход —
-* флаги: player_held=false, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход —; выход recipe 15
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### QuantumBit — active-player
 
@@ -388,7 +388,7 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/quantum-bit.png, frontend/public/assets/nfts/resources/quantum-bit.jpg
+* assets: frontend/public/assets/icons/quantum-bit.png, frontend/public/assets/nfts/resources/quantum-bit.jpg, frontend/public/assets/nfts/resources/quantum-bit.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -405,7 +405,7 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/neural-chip.png, frontend/public/assets/nfts/resources/neural-chip.jpg
+* assets: frontend/public/assets/icons/neural-chip.png, frontend/public/assets/nfts/resources/neural-chip.jpg, frontend/public/assets/nfts/resources/neural-chip.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
@@ -422,16 +422,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/photon-bit.png, frontend/public/assets/nfts/resources/photon-bit.jpg
+* assets: frontend/public/assets/icons/photon-bit.png, frontend/public/assets/nfts/resources/photon-bit.jpg, frontend/public/assets/nfts/resources/photon-bit.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход —; выход recipe 2
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 15; выход recipe 2
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### BioChip — active-player
 
@@ -439,16 +439,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/bio-chip.png, frontend/public/assets/nfts/resources/bio-chip.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/bio-chip.png, frontend/public/assets/nfts/resources/bio-chip.jpg, frontend/public/assets/nfts/resources/bio-chip.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход recipe 7; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход recipe 7; выход recipe 14
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=true, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### CryoFluid — active-player
 
@@ -456,16 +456,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/cryo-fluid.png, frontend/public/assets/nfts/resources/cryo-fluid.jpg
+* assets: frontend/public/assets/icons/cryo-fluid.png, frontend/public/assets/nfts/resources/cryo-fluid.jpg, frontend/public/assets/nfts/resources/cryo-fluid.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 3
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### VoltFluid — active-player
 
@@ -473,16 +473,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/volt-fluid.png, frontend/public/assets/nfts/resources/volt-fluid.jpg
+* assets: frontend/public/assets/icons/volt-fluid.png, frontend/public/assets/nfts/resources/volt-fluid.jpg, frontend/public/assets/nfts/resources/volt-fluid.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 4
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### BioFluid — active-player
 
@@ -490,16 +490,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/bio-fluid.png, frontend/public/assets/nfts/resources/bio-fluid.jpg
+* assets: frontend/public/assets/icons/bio-fluid.png, frontend/public/assets/nfts/resources/bio-fluid.jpg, frontend/public/assets/nfts/resources/bio-fluid.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 5
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### NanoFluid — active-player
 
@@ -507,16 +507,16 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/nano-fluid.png, frontend/public/assets/nfts/resources/nano-fluid.jpg
+* assets: frontend/public/assets/icons/nano-fluid.png, frontend/public/assets/nfts/resources/nano-fluid.jpg, frontend/public/assets/nfts/resources/nano-fluid.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 6
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### QuantumFluid — active-player
 
@@ -524,33 +524,33 @@
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/icons/quantum-fluid.png, frontend/public/assets/nfts/resources/quantum-fluid.jpg
+* assets: frontend/public/assets/icons/quantum-fluid.png, frontend/public/assets/nfts/resources/quantum-fluid.jpg, frontend/public/assets/nfts/resources/quantum-fluid.png
 * on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
-* on-chain sink (литерал): —
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
 * путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход recipe 7
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false
 
-### SoulCore — candidate-dead
+### SoulCore — active-player
 
 * frontend: 1 файл(ов) (frontend/src/site/content/resources.ts)
 * game: —
 * backend: 0 файл(ов)
 * recipes: —
-* assets: frontend/public/assets/nfts/resources/soul-core.jpg
-* on-chain source (литерал): —
-* on-chain sink (литерал): —
+* assets: frontend/public/assets/nfts/resources/soul-core.jpg, frontend/public/assets/nfts/resources/soul-core.png
+* on-chain source (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
+* on-chain sink (литерал): aof-core/src/instructions/seal_laboratory.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/seal_laboratory.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
 * рецепты: вход —; выход —
-* флаги: player_held=false, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=false, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
 
 ### Mind — active-player
 
@@ -558,13 +558,13 @@
 * game: —
 * backend: 1 файл(ов) (aof_backend/src/lib/questGenerator.ts)
 * recipes: —
-* assets: frontend/public/assets/icons/mind.png, frontend/public/assets/nfts/resources/mind.jpg
-* on-chain source (литерал): —
+* assets: frontend/public/assets/icons/mind.png, frontend/public/assets/nfts/resources/mind.jpg, frontend/public/assets/nfts/resources/mind.png
+* on-chain source (литерал): aof-core/src/instructions/craft_recipe.rs#handler
 * on-chain sink (литерал): aof-core/src/instructions/craft.rs#handler, aof-core/src/instructions/reroll.rs#handler
 * любой kind (generic): aof-core/src/instructions/craft_recipe.rs, aof-core/src/instructions/mint_resource.rs
-* путь игрока (источник): —
+* путь игрока (источник): aof-core/src/instructions/craft_recipe.rs#handler
 * майнинг-выдача: —
 * проектный сток (VRF): —
 * возврат из эскроу (refund): —
-* рецепты: вход —; выход —
-* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=false, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=false, mining_output=false, generic_claim_output=true, internal_only=false
+* рецепты: вход —; выход recipe 16
+* флаги: player_held=true, ui_visible=true, tradable=true, has_player_source=true, has_player_sink=true, has_admin_source=true, recipe_input=false, recipe_output=true, mining_output=false, generic_claim_output=true, internal_only=false

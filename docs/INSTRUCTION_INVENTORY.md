@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 128 | 1 | 94 (73%) | 12 | 1 |
+| aof_core | 129 | 1 | 95 (74%) | 13 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 19 | 4 | 0 (0%) | 2 | 2 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 6 | 2 | 0 (0%) | 4 | 0 |
-| **всего** | **176** | **7** | **100** (57%) | **18** | **3** |
+| **всего** | **177** | **7** | **101** (57%) | **19** | **3** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -31,7 +31,7 @@
 
 | Роль | aof_core | aof_market | aof_quests | aof_rebirth | aof_liquidity | aof_session_keys | всего |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| gameplay | 84 | 4 | 9 | 1 | 2 | 4 | 104 |
+| gameplay | 85 | 4 | 9 | 1 | 2 | 4 | 105 |
 | admin | 23 | 5 | 7 | 3 | 3 | 1 | 42 |
 | emergency | 6 | 1 | 1 | 0 | 0 | 0 | 8 |
 | migration | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -54,7 +54,7 @@
 | aof_session_keys.session_check_and_spend | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
 | aof_session_keys.session_create | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам. |
 
-## Без найденных call sites (18)
+## Без найденных call sites (19)
 
 Не «мёртвый код», а список мест для ручной проверки. «Тесты» — есть ли хоть одно покрытие (validator / самотест / readiness / Rust).
 Инструкции с общими именами (23: ротация authority, set_fees, set_paused, vrf_pool_*) исключены: по тексту нельзя определить, какой программе принадлежит упоминание.
@@ -73,6 +73,7 @@
 | aof_core.set_cashout_frozen | emergency | active | validator, readiness, rust | Заморозка/разморозка выводов (operator/guardian). |
 | aof_core.vrf_slot_recover | emergency | active | readiness | Оператор снимает блокировку слота VRF, чей держатель исчез. |
 | aof_core.sync_tool_owner | gameplay | active | validator, readiness | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
+| aof_core.seal_laboratory | gameplay | active | readiness | Печать лаборатории: сжигает модель, пять флюидов и янтарный сосуд, выпускает ядро души. |
 | aof_quests.init_quest_config | initialization | active | — | QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет. |
 | aof_quests.quest_init | admin | active | — | Оператор создаёт квест; клиента для этого пока нет (инструмент оператора). |
 | aof_session_keys.session_check_and_spend | gameplay | disabled-on-chain | selfTests, rust | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
@@ -106,7 +107,7 @@
 | aof_core | collector_stake | gameplay | active | 1 | 0 | 2 | 0 | 0 | 0 | 1 | 1 | 1 | 0 |  |
 | aof_core | collector_unstake | gameplay | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 2 | 0 |  |
 | aof_core | commit_lottery_draw | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
-| aof_core | craft | gameplay | active | 5 | 0 | 14 | 1 | 3 | 0 | 0 | 2 | 8 | 0 |  |
+| aof_core | craft | gameplay | active | 5 | 0 | 16 | 1 | 3 | 0 | 0 | 2 | 8 | 0 |  |
 | aof_core | craft_order_cancel | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_create | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | ✓ |
 | aof_core | craft_order_fulfill | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
@@ -155,7 +156,7 @@
 | aof_core | repair_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | reroll | gameplay | active | 3 | 1 | 1 | 0 | 2 | 0 | 1 | 4 | 7 | 1 | ✓ |
 | aof_core | reroll_random_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 0 | ✓ |
-| aof_core | reroll_random_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |  |
+| aof_core | reroll_random_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 4 | 0 |  |
 | aof_core | set_craft_economy | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | ✓ |
 | aof_core | set_fees ~ | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | set_pack_config | admin | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | ✓ |
@@ -182,7 +183,7 @@
 | aof_core | set_mining_enabled | emergency | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 0 | ✓ |
 | aof_core | init_vault_guard | initialization | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | ✓ |
 | aof_core | set_vault_guard | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | ✓ |
-| aof_core | set_supply_cap | admin | active | 1 | 2 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
+| aof_core | set_supply_cap | admin | active | 1 | 3 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | ✓ |
 | aof_core | register_collector_mint | admin | active | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
 | aof_core | revoke_collector_mint | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |
 | aof_core | refund_lottery_round | emergency | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
@@ -213,8 +214,9 @@
 | aof_core | exchange_data_energy | gameplay | active | 2 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | use_flask | gameplay | active | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |  |
 | aof_core | set_issuance_lifetime_baseline | admin | active | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
-| aof_core | set_tool_metadata_uris | admin | active | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |  |
+| aof_core | set_tool_metadata_uris | admin | active | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 3 | 0 |  |
 | aof_core | claim_premium_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | ✓ |
+| aof_core | seal_laboratory | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
 | aof_market | crank_market | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_market | hot_market_sell_into_queue | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |

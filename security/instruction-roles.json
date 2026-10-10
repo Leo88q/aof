@@ -492,6 +492,11 @@
         "status": "active",
         "note": "Полный сброс прогресса; вызывается в одной транзакции с aof_rebirth::do_rebirth."
       },
+      "seal_laboratory": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Печать лаборатории: сжигает модель, пять флюидов и янтарный сосуд, выпускает ядро души."
+      },
       "revoke_collector_mint": {
         "role": "admin",
         "status": "active",

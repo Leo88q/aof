@@ -1,3 +1,5 @@
+import type { ResourceMintKey } from "./resourceRegistryCore";
+
 /** Costs below are copied from aof-core constants and instruction handlers.
  * A missing read is not a shortage: callers must not turn an RPC failure into
  * "the player does not have the resource". */
@@ -34,7 +36,28 @@ export const RECIPE_INPUTS: ReadonlyArray<ReadonlyArray<readonly [string, bigint
   [["CIRCUIT", 5n], ["NEURON", 5n]],
   [["ROSE_QUARTZ", 3n], ["DATA", 5n]],
   [["PURPLE_CORE", 1n], ["BIO_CHIP", 1n]],
+  [["DATASET", 5n]],
+  [["CIRCUIT", 8n]],
+  [["SILICON", 8n]],
+  [["NEURON", 8n]],
+  [["CIRCUIT", 6n], ["DATASET", 2n]],
+  [["NEURON", 4n], ["DATASET", 2n]],
+  [["NEURON", 4n], ["CIRCUIT", 4n]],
+  [["PHOTON_BIT", 1n]],
+  [["DATASET", 4n]],
+  [["CIRCUIT", 4n], ["DATASET", 2n]],
 ];
+
+/** One seal of the conscious laboratory. Whole resource units. */
+export const FINALE_INPUTS = [
+  ["MODEL", 1n],
+  ["CRYO_FLUID", 1n],
+  ["VOLT_FLUID", 1n],
+  ["BIO_FLUID", 1n],
+  ["NANO_FLUID", 1n],
+  ["QUANTUM_FLUID", 1n],
+  ["AMBER_QUARTZ", 1n],
+] as const satisfies readonly (readonly [ResourceMintKey, bigint])[];
 
 export const TRIP_COST = { DATA: 75n, CIRCUIT: 35n, SILICON: 35n, DATASET: 50n } as const;
 

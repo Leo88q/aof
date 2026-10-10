@@ -764,6 +764,16 @@ pub struct SeasonXpClaimCursor {
     pub bump: u8,
 }
 
+/// The laboratory ending. The player pays the rent. Each seal burns one full
+/// set of components and mints one Soul Core; the count is the kept proof.
+#[account]
+#[derive(InitSpace)]
+pub struct LaboratoryFinale {
+    pub owner: Pubkey,
+    pub seals: u32,
+    pub bump: u8,
+}
+
 // =====================================================================
 // [БЛОК L] Хлебная экономика: новые аккаунты
 // =====================================================================

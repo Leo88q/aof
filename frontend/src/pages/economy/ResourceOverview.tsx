@@ -21,10 +21,11 @@ const CATEGORIES: readonly OverviewCategory[] = [
     { key: "MODEL", accent: "#E0708A" }, { key: "POWER", accent: "#A99BEC" },
   ] },
   { key: "consumables", icon: UI_ICONS.transformations, items: [
-    { key: "COMPUTE", accent: "#E0708A" }, { key: "DATASET", accent: "#E2685F" },
+    { key: "COMPUTE", accent: "#E0708A" }, { key: "DATASET", accent: "#E2685F" }, { key: "MIND", accent: "#C9A227" },
   ] },
   { key: "cores", icon: UI_ICONS.gems, items: [
     { key: "BLUE_CORE", accent: "#8FB3DE" }, { key: "PURPLE_CORE", accent: "#A99BEC" }, { key: "RED_CORE", accent: "#E2685F" },
+    { key: "SOUL_CORE", accent: "#E6C15A" },
   ] },
   { key: "quartz", icon: UI_ICONS.locCoolLake, items: [
     { key: "CLEAR_QUARTZ", accent: "#E6EBF0" }, { key: "ROSE_QUARTZ", accent: "#E0708A" }, { key: "AMBER_QUARTZ", accent: "#E0708A" },
