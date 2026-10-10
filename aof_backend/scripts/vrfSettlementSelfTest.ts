@@ -339,7 +339,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   {
     currentSlot = 1_001 + 100;
     assert.deepEqual(await settlement.commitStatus("pack", k(1)), {
-      state: "pending", phase: "revealable", commitSlot: 1_001, currentSlot: 1_101, refundAfterSlot: 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS,
+      state: "pending", phase: "revealable", commitSlot: 1_001, seedSlot: 1_000, currentSlot: 1_101, refundAfterSlot: 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS,
     });
     currentSlot = 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS;
     assert.equal((await settlement.commitStatus("pack", k(1)) as any).phase, "refundable");

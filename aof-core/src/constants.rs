@@ -552,12 +552,12 @@ pub const PACK_MINT_SEED: &[u8] = b"pack_mint";
 /// seeds = [REROLL_MINT_SEED, reroll_commit.key()] (reveal OR refund, never both).
 pub const REROLL_MINT_SEED: &[u8] = b"reroll_mint";
 /// Reveal window and refund threshold of every VRF commit, in slots
-/// (~2 h at 400 ms). Switchboard stops honouring a reveal about one hour after
-/// the commit, so this is strictly longer than the oracle's own window. A
-/// reveal is accepted only BEFORE `commit_slot + VRF_REFUND_AFTER_SLOTS` and a
-/// refund only FROM that slot on: the two paths are never open at the same
-/// time, so no one can pick "reveal if good, refund if bad".
-pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;
+/// (~3 min at 400 ms). Must equal `vrf::SLOT_HASH_DELAY + vrf::SLOT_HASH_REVEAL_SLOTS`
+/// (32 + 400). A reveal is accepted only BEFORE this boundary, and only after
+/// the future seed slot, and a refund only FROM this boundary on. The two
+/// paths are never open together. The boundary stays inside SlotHashes
+/// retention (~512 slots) so a skipped seed slot can still be refunded.
+pub const VRF_REFUND_AFTER_SLOTS: u64 = 432;
 /// Ticket sales window of a lottery round. After it anyone (not only the
 /// operator) may close sales by committing the draw, so a round cannot be
 /// kept open indefinitely.

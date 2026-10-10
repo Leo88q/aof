@@ -2218,6 +2218,18 @@ fn tool_settlement_deposit_covers_the_metaplex_creation_fee() {
     assert_eq!(vrfmod::tool_settlement_rent(&rent), without_fee + TOOL_METADATA_CREATION_FEE_LAMPORTS);
 }
 
+/// SlotHashes sysvar fixture: u64 count, then (slot, hash) entries.
+fn slot_hashes_account(entries: &[(u64, [u8; 32])]) -> AccountInfo<'static> {
+    let mut data = vec![0u8; 8 + entries.len() * 40];
+    data[..8].copy_from_slice(&(entries.len() as u64).to_le_bytes());
+    for (i, (slot, hash)) in entries.iter().enumerate() {
+        let start = 8 + i * 40;
+        data[start..start + 8].copy_from_slice(&slot.to_le_bytes());
+        data[start + 8..start + 40].copy_from_slice(hash);
+    }
+    info(crate::randomness::SLOT_HASHES_ID, false, 1, data, Pubkey::new_unique(), false)
+}
+
 fn commit_accounts(randomness: &AccountInfo<'static>) -> vrfmod::CommitAccounts<'static> {
     vrfmod::CommitAccounts {
         switchboard_program: sb_program(),
@@ -2229,7 +2241,11 @@ fn commit_accounts(randomness: &AccountInfo<'static>) -> vrfmod::CommitAccounts<
     }
 }
 
-fn reveal_accounts(randomness: &AccountInfo<'static>, payer: &AccountInfo<'static>) -> vrfmod::RevealAccounts<'static> {
+fn reveal_accounts(
+    randomness: &AccountInfo<'static>,
+    payer: &AccountInfo<'static>,
+    slothashes: AccountInfo<'static>,
+) -> vrfmod::RevealAccounts<'static> {
     vrfmod::RevealAccounts {
         switchboard_program: sb_program(),
         randomness: randomness.clone(),
@@ -2238,7 +2254,7 @@ fn reveal_accounts(randomness: &AccountInfo<'static>, payer: &AccountInfo<'stati
         stats: plain(Pubkey::new_unique()),
         vrf_authority: plain(vrf_authority_key()),
         payer: payer.clone(),
-        recent_slothashes: plain(crate::randomness::SLOT_HASHES_ID),
+        recent_slothashes: slothashes,
         system_program: system_program_info(),
         reward_escrow: plain(Pubkey::new_unique()),
         token_program: token_program_info(),
@@ -2247,9 +2263,9 @@ fn reveal_accounts(randomness: &AccountInfo<'static>, payer: &AccountInfo<'stati
     }
 }
 
-/// The pool lifecycle: one commit per slot, seeded by Switchboard in the same
-/// instruction; only the holder reveals, only inside the window, and the value
-/// is read back from the account; refunds only after the window.
+/// The pool lifecycle: one commit per slot, bound to a future slot hash;
+/// only the holder reveals, only after that slot and inside the window; the
+/// value is the hash, not the caller's bytes; refunds only after the window.
 #[test]
 fn vrf_pool_slot_lifecycle_is_one_shot_and_time_separated() {
     runtime();
@@ -2275,48 +2291,41 @@ fn vrf_pool_slot_lifecycle_is_one_shot_and_time_separated() {
     rejected(vrfmod::commit(&mut slot, holder, &commit_accounts(&foreign_queue), bump, SLOT_NOW).map(|_| ()), "InvalidRandomnessAccount");
     assert!(switchboard_cpis().is_empty(), "nothing reached Switchboard before the checks passed");
 
-    // A commit that did not re-seed the account is rejected.
-    SB_MODE.with(|m| m.set(SB_STALE_COMMIT));
-    rejected(vrfmod::commit(&mut slot, holder, &commit_accounts(&randomness), bump, SLOT_NOW).map(|_| ()), "RandomnessNotFresh");
-    assert_eq!(slot.lock, Pubkey::default());
-    SB_MODE.with(|m| m.set(SB_HONEST));
-
-    // Honest commit: seeded on the previous slot, locked to the holder, signed
-    // by the program PDA only.
+    // Honest commit: future seed, lock held, Switchboard not invoked and not reseeded.
     let seed = vrfmod::commit(&mut slot, holder, &commit_accounts(&randomness), bump, SLOT_NOW).unwrap();
-    assert_eq!(seed, SLOT_NOW - 1);
+    assert_eq!(seed, SLOT_NOW + vrfmod::SLOT_HASH_DELAY);
     assert_eq!(slot.lock, holder);
-    let sb = switchboard_cpis();
-    let last = sb.last().unwrap();
-    assert_eq!(&last.data[..8], &RANDOMNESS_COMMIT_IX_DISCRIMINATOR);
-    assert_eq!(last.signer_seeds, vec![vec![VRF_AUTHORITY_SEED.to_vec(), vec![bump]]]);
+    assert!(switchboard_cpis().is_empty(), "a slot-hash commit does not CPI Switchboard");
+    assert_eq!(load_randomness(&randomness).unwrap().seed_slot, 10, "the pool account is not reseeded");
     rejected(vrfmod::commit(&mut slot, Pubkey::new_unique(), &commit_accounts(&randomness), bump, SLOT_NOW).map(|_| ()), "VrfSlotBusy");
 
-    // Reveal: holder only, window only, value read back.
+    // Reveal: holder only, after the seed slot, value from SlotHashes, caller bytes ignored.
     let cranker = wallet(Pubkey::new_unique(), true);
-    let v = [0x5au8; 32];
-    rejected(vrfmod::reveal(&mut slot, &Pubkey::new_unique(), &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "VrfSlotNotHeld");
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW - VRF_REFUND_AFTER_SLOTS, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "RevealWindowClosed");
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed + 1, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "RandomnessNotFresh");
+    let hash = [0x5au8; 32];
+    let lied = [0x11u8; 32];
+    let hashes = slot_hashes_account(&[(seed, hash), (seed - 1, [0x22; 32])]);
+    let empty = slot_hashes_account(&[]);
+    rejected(vrfmod::reveal(&mut slot, &Pubkey::new_unique(), &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker, hashes.clone()),
+        &params_with(lied), bump, seed + 1).map(|_| ()), "VrfSlotNotHeld");
+    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker, hashes.clone()),
+        &params_with(lied), bump, seed).map(|_| ()), "RevealWindowClosed");
+    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW - VRF_REFUND_AFTER_SLOTS, &reveal_accounts(&randomness, &cranker, hashes.clone()),
+        &params_with(lied), bump, SLOT_NOW).map(|_| ()), "RevealWindowClosed");
+    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed + 1, SLOT_NOW, &reveal_accounts(&randomness, &cranker, hashes.clone()),
+        &params_with(lied), bump, seed + 2).map(|_| ()), "RandomnessNotFresh");
+    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker, empty),
+        &params_with(lied), bump, seed + 1).map(|_| ()), "RandomnessNotRevealed");
     assert_eq!(slot.lock, holder, "a failed reveal keeps the lock");
-    SB_MODE.with(|m| m.set(SB_SWAPPED_VALUE));
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "RandomnessNotRevealed");
-    SB_MODE.with(|m| m.set(SB_HONEST));
-    let got = vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).unwrap();
-    assert_eq!(got, v);
+    let got = vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker, hashes),
+        &params_with(lied), bump, seed + 1).unwrap();
+    assert_eq!(got, vrfmod::slot_hash_value(&hash, seed, &holder));
+    assert_ne!(got, lied, "the caller's bytes are not the roll");
+    assert!(switchboard_cpis().is_empty(), "a slot-hash reveal does not CPI Switchboard");
     assert_eq!(slot.lock, Pubkey::default(), "the settled slot is free again");
-    let reveal_cpi = switchboard_cpis().last().unwrap().clone();
-    assert_eq!(&reveal_cpi.data[..8], &RANDOMNESS_REVEAL_IX_DISCRIMINATOR);
-    assert_eq!(reveal_cpi.accounts[5].pubkey, *cranker.key, "the settler pays Switchboard");
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "VrfSlotNotHeld");
+    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker, slot_hashes_account(&[(seed, hash)])),
+        &params_with(lied), bump, seed + 1).map(|_| ()), "VrfSlotNotHeld");
 
-    // Refund: never inside the window, exactly from its end.
+    // Refund: never inside the window, exactly from its end. The windows do not overlap.
     let (_, mut held) = vrf_slot_state(rkey, holder);
     let committed = SLOT_NOW - VRF_REFUND_AFTER_SLOTS + 1;
     rejected(vrfmod::release_for_refund(&mut held, &holder, committed, SLOT_NOW), "CommitNotExpired");
@@ -2325,6 +2334,7 @@ fn vrf_pool_slot_lifecycle_is_one_shot_and_time_separated() {
     rejected(vrfmod::release_for_refund(&mut held, &Pubkey::new_unique(), committed - 1, SLOT_NOW), "VrfSlotNotHeld");
     vrfmod::release_for_refund(&mut held, &holder, committed - 1, SLOT_NOW).unwrap();
     assert_eq!(held.lock, Pubkey::default());
+    assert_eq!(VRF_REFUND_AFTER_SLOTS, vrfmod::SLOT_HASH_DELAY + vrfmod::SLOT_HASH_REVEAL_SLOTS);
 }
 
 /// Cross-language vector: docs/ECONOMY_RNG_EV.md publishes the outcome formula
@@ -2353,6 +2363,26 @@ fn vrf_roll_matches_the_published_javascript_vector() {
     ] {
         assert_eq!(vrfmod::bps(vrfmod::lane(&derive_roll(&value, tag, commit.as_ref()), 0)), expected);
     }
+}
+
+/// Cross-language vector for the slot-hash value. tests/readiness/vrf.test.cjs
+/// recomputes the same sha256 in JavaScript.
+#[test]
+fn slot_hash_value_matches_the_published_javascript_vector() {
+    let hash = [3u8; 32];
+    let holder = Pubkey::new_from_array([9u8; 32]);
+    let value = vrfmod::slot_hash_value(&hash, 123_456_789, &holder);
+    let hex: String = value.iter().map(|b| format!("{b:02x}")).collect();
+    assert_eq!(hex, "7213420ec612aeeeef245432728c58be76bee6b880e6c06de0cb304e0c2b558e");
+    let mut data = vec![0u8; 8 + 80];
+    data[..8].copy_from_slice(&2u64.to_le_bytes());
+    data[8..16].copy_from_slice(&50u64.to_le_bytes());
+    data[16..48].copy_from_slice(&[1u8; 32]);
+    data[48..56].copy_from_slice(&40u64.to_le_bytes());
+    data[56..88].copy_from_slice(&hash);
+    assert_eq!(vrfmod::parse_slot_hash(&data, 40), Some(hash));
+    assert_eq!(vrfmod::parse_slot_hash(&data, 41), None);
+    assert_eq!(vrfmod::parse_slot_hash(&data[..20], 50), None, "a truncated entry is not a hash");
 }
 
 /// Outcomes are pure, domain-separated functions of the oracle value and the
@@ -2473,16 +2503,20 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
     let pc = &accounts.pack_commit;
     assert_eq!((pc.user, pc.nonce, pc.pack_type, pc.odds_bps), (user, nonce, 0, PACK_SMALL_ODDS_BPS));
     assert_eq!((pc.paid_lamports, pc.deposit_lamports, pc.randomness, pc.seed_slot, pc.commit_slot, pc.bump),
-        (price, deposit, rkey, SLOT_NOW - 1, SLOT_NOW, commit_bump));
+        (price, deposit, rkey, SLOT_NOW + vrfmod::SLOT_HASH_DELAY, SLOT_NOW, commit_bump));
     assert_eq!(accounts.vrf_slot.lock, commit_key);
     let recorded = load_randomness(&accounts.randomness.to_account_info()).unwrap();
-    assert_eq!(recorded.seed_slot, SLOT_NOW - 1);
+    assert_eq!(recorded.seed_slot, 10, "commit does not ask Switchboard to reseed the pool account");
+    assert!(switchboard_cpis().is_empty(), "pack commit does not CPI Switchboard");
 
     // ---- reveal (permissionless: a third-party cranker settles)
     runtime();
+    let pack_seed = SLOT_NOW - 1;
+    let pack_commit_slot = pack_seed - vrfmod::SLOT_HASH_DELAY;
+    let pack_hash = [0x11u8; 32];
     let commit_state = PackCommit {
         user, nonce, pack_type: 0, odds_bps: PACK_SMALL_ODDS_BPS, paid_lamports: price, deposit_lamports: deposit,
-        randomness: rkey, seed_slot: SLOT_NOW - 1, commit_slot: SLOT_NOW - 3, bump: commit_bump,
+        randomness: rkey, seed_slot: pack_seed, commit_slot: pack_commit_slot, bump: commit_bump,
     };
     let (mint_key, _) = pda(&[PACK_MINT_SEED, commit_key.as_ref()]);
     let cranker_key = Pubkey::new_unique();
@@ -2505,7 +2539,7 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
             plain(ORACLE),
             plain(SWITCHBOARD_QUEUE),
             plain(vrfmod::stats_address(&ORACLE)),
-            plain(crate::randomness::SLOT_HASHES_ID),
+            slot_hashes_account(&[(pack_seed, pack_hash)]),
             plain(vrfmod::reward_escrow_address(&rkey)),
             plain(anchor_spl::token::spl_token::native_mint::ID),
             plain(vrfmod::SWITCHBOARD_STATE),
@@ -2523,8 +2557,10 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
         "InvalidRandomnessAccount");
     assert!(blames(&err, "randomness"), "{err}");
 
-    // Switchboard pass-through accounts are bound in this program's context too.
-    for (index, field) in [(12usize, "oracle"), (14, "stats"), (16, "reward_escrow"), (18, "program_state")] {
+    // Slot-hash reveal does not bind the oracle (any pubkey is accepted). The
+    // other pass-through accounts stay pinned so a caller cannot swap the queue
+    // reward path or the program state.
+    for (index, field) in [(14usize, "stats"), (16, "reward_escrow"), (18, "program_state")] {
         let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
         infos[index] = plain(Pubkey::new_unique());
         let err = rejected(validate::<PackOpenReveal>(infos, &[]), "InvalidRandomnessAccount");
@@ -2542,8 +2578,8 @@ fn pack_opening_settles_once_through_the_program_owned_pool() {
     let infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
     let (commit_i, cranker_i, treasury_i) = (infos[2].clone(), infos[1].clone(), infos[4].clone());
     let (mut accounts, bumps) = parse::<PackOpenReveal>(infos, &[]).unwrap();
-    let value = [0x33u8; 32];
-    crate::instructions::pack_open_reveal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), params_with(value)).unwrap();
+    let value = vrfmod::slot_hash_value(&pack_hash, pack_seed, &commit_key);
+    crate::instructions::pack_open_reveal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), params_with([0x33; 32])).unwrap();
     let (rarity, tool_type) = crate::instructions::settlement::roll_tool(&value, b"pack", &commit_key, &PACK_SMALL_ODDS_BPS).unwrap();
     assert_eq!((accounts.tool_data.rarity, accounts.tool_data.tool_type.clone()), (rarity, tool_type));
     assert_eq!((accounts.tool_data.owner, accounts.tool_data.operator, accounts.tool_data.mint), (user, user, mint_key));

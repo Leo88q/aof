@@ -49,11 +49,17 @@ export type PendingCommit = {
   account: any;
 };
 
-export type CommitPhase = "revealable" | "refundable";
+export type CommitPhase = "waiting" | "revealable" | "refundable";
 
-/** Pure: which settlement path is open at `currentSlot` (never both). */
-export function commitPhase(commitSlot: number, currentSlot: number): CommitPhase {
-  return currentSlot < commitSlot + VRF_REFUND_AFTER_SLOTS ? "revealable" : "refundable";
+/**
+ * Pure: which settlement path is open at `currentSlot`.
+ * `waiting` is before the future seed slot: reveal would fail and refund is
+ * not open yet. Reveal and refund never overlap.
+ */
+export function commitPhase(commitSlot: number, currentSlot: number, seedSlot = commitSlot): CommitPhase {
+  if (currentSlot >= commitSlot + VRF_REFUND_AFTER_SLOTS) return "refundable";
+  if (currentSlot > seedSlot) return "revealable";
+  return "waiting";
 }
 
 const ata = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true);
@@ -373,7 +379,12 @@ export async function selfSettleTransaction(mechanic: Mechanic, address: PublicK
     (error as { status?: number }).status = 403;
     throw error;
   }
-  const phase = commitPhase(commit.commitSlot, await connection.getSlot("confirmed"));
+  const phase = commitPhase(commit.commitSlot, await connection.getSlot("confirmed"), commit.seedSlot);
+  if (phase === "waiting") {
+    const error = new Error("SEED_SLOT_PENDING");
+    (error as { status?: number }).status = 409;
+    throw error;
+  }
   const ixs = phase === "revealable"
     ? await buildRevealInstructions(commit, player)
     : await buildRefundInstructions(commit, player);
@@ -386,7 +397,7 @@ export async function selfSettleTransaction(mechanic: Mechanic, address: PublicK
 }
 
 export type CommitStatus =
-  | { state: "pending"; phase: CommitPhase; commitSlot: number; currentSlot: number; refundAfterSlot: number }
+  | { state: "pending"; phase: CommitPhase; commitSlot: number; seedSlot: number; currentSlot: number; refundAfterSlot: number }
   | { state: "settled" | "refunded" | "unknown"; mint?: string; tool?: { toolType: string; rarity: string; durability: number } };
 
 const RARITY_NAMES = ["common", "uncommon", "rare", "epic", "legendary"];
@@ -403,8 +414,9 @@ export async function commitStatus(mechanic: Mechanic, address: PublicKey): Prom
     const currentSlot = await connection.getSlot("confirmed");
     return {
       state: "pending",
-      phase: commitPhase(pending.commitSlot, currentSlot),
+      phase: commitPhase(pending.commitSlot, currentSlot, pending.seedSlot),
       commitSlot: pending.commitSlot,
+      seedSlot: pending.seedSlot,
       currentSlot,
       refundAfterSlot: pending.commitSlot + VRF_REFUND_AFTER_SLOTS,
     };

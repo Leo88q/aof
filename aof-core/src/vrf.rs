@@ -1,29 +1,34 @@
-//! [F-06 / SECURITY_CHECKLIST #36 #37] Production randomness: Switchboard
-//! On-Demand, owned by this program.
+//! [F-06 / SECURITY_CHECKLIST #36 #37] Production randomness: a future slot
+//! hash, settled by this program.
 //!
-//! Why program-owned: Switchboard lets ONLY the `authority` of a randomness
-//! account commit or reveal it. If the player owned the account, the player
-//! could look up the oracle's answer off-chain and simply not reveal a bad
-//! roll; if the backend owned it, the house could do the same to a jackpot.
-//! Here the authority is the PDA [VRF_AUTHORITY_SEED] of this program, so:
+//! Switchboard On-Demand stopped operating in September 2026. The pool slot
+//! and the instruction account lists stay, so a commit still locks one pool
+//! slot to the commit PDA, but the outcome is not an oracle signature.
 //!
-//!  1. commit  — the mechanic's commit instruction takes the payment, snapshots
-//!     every outcome parameter and CPIs `randomness_commit` on a free pool slot
-//!     in the same instruction, locking the slot to the commit PDA. The seed is
-//!     fixed at the moment the stake is locked; nobody can re-seed later.
-//!  2. reveal  — permissionless. Whoever brings the oracle's signed value (the
-//!     backend crank, the player, anyone) makes this program CPI
-//!     `randomness_reveal` (signed by the PDA) and the outcome is settled in
-//!     the same instruction. A settlement nobody can block leaves nothing to
-//!     withhold.
+//!  1. commit  — the mechanic takes the payment, snapshots every outcome
+//!     parameter and locks a free pool slot in the same instruction. It stores
+//!     `seed_slot = clock_slot + SLOT_HASH_DELAY`. That slot does not exist
+//!     yet, so the hash cannot be known when the stake is locked.
+//!  2. reveal  — permissionless, once `clock_slot > seed_slot` and before the
+//!     refund boundary. This program reads that slot's hash from the SlotHashes
+//!     sysvar and mixes it with the commit address. The passed oracle signature
+//!     is ignored. Anyone may send the instruction; nobody can withhold it.
 //!  3. refund  — only from `commit_slot + VRF_REFUND_AFTER_SLOTS`, the same
-//!     slot the reveal closes. "Reveal" and "refund" are never open together.
+//!     slot the reveal closes. The two paths are never open together. The
+//!     boundary is inside SlotHashes retention (~512), so a skipped seed slot
+//!     can still be refunded after reveal has closed.
 //!
-//! No Switchboard crate is linked: the workspace builds `--locked` on
-//! solana-program 1.18, and the interface is small. Account order, signer /
-//! writable flags and discriminators below are pinned to the published
-//! sb_on_demand IDL (vendored in docs/vendor/switchboard_on_demand_randomness.json)
-//! and checked by host tests and tests/readiness/vrf.test.cjs.
+//! Residual risk: a leader already scheduled for the seed slot can grind that
+//! one slot. The delay is longer than one leader window (4 slots); it does not
+//! stop a leader who waits for a slot they know they will produce. Accepted
+//! for these stake sizes. The hash is public once the seed slot lands, so a
+//! settler that is down lets a player wait out a bad roll and take the refund.
+//! The settler reveals every commit, and the circuit breaker stops new commits
+//! while one is stuck.
+//!
+//! Pool init still CPIs Switchboard `randomness_init` (those accounts already
+//! exist). Commit and reveal do not. The hand-written CPI builders stay pinned
+//! to the vendored sb_on_demand IDL.
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
@@ -127,10 +132,11 @@ pub fn lut_address(lut_signer: &Pubkey, recent_slot: u64) -> Pubkey {
     Pubkey::find_program_address(&[lut_signer.as_ref(), &recent_slot.to_le_bytes()], &ADDRESS_LOOKUP_TABLE_PROGRAM_ID).0
 }
 
-/// The oracle Switchboard assigned to `randomness` at commit (a reveal must
-/// bring exactly that oracle's signature).
-pub fn assigned_oracle_is(randomness: &AccountInfo, oracle: &Pubkey) -> bool {
-    load_randomness(randomness).map(|r| r.oracle == *oracle).unwrap_or(false)
+/// Slot-hash reveal does not trust a Switchboard oracle. The account stays in
+/// the instruction so existing clients keep the same account order; any pubkey
+/// satisfies the constraint. The value is read from SlotHashes.
+pub fn assigned_oracle_is(_randomness: &AccountInfo, _oracle: &Pubkey) -> bool {
+    true
 }
 
 /// sha256("account:RandomnessAccountData")[..8]
@@ -390,6 +396,8 @@ pub fn cpi_init(a: &InitAccounts, index: u32, randomness_bump: u8, authority_bum
     Ok(())
 }
 
+/// Kept next to the IDL pin tests. Settlement no longer invokes it.
+#[allow(dead_code)]
 fn cpi_commit(a: &CommitAccounts, authority_bump: u8) -> Result<()> {
     require_keys_eq!(a.switchboard_program.key(), SWITCHBOARD_PROGRAM_ID, AofError::InvalidRandomnessAccount);
     let ix = commit_instruction(a.randomness.key(), a.queue.key(), a.oracle.key(), a.vrf_authority.key());
@@ -408,6 +416,8 @@ fn cpi_commit(a: &CommitAccounts, authority_bump: u8) -> Result<()> {
     Ok(())
 }
 
+/// Kept next to the IDL pin tests. Settlement no longer invokes it.
+#[allow(dead_code)]
 fn cpi_reveal(a: &RevealAccounts, params: &VrfRevealParams, authority_bump: u8) -> Result<()> {
     require_keys_eq!(a.switchboard_program.key(), SWITCHBOARD_PROGRAM_ID, AofError::InvalidRandomnessAccount);
     let ix = reveal_instruction(
@@ -443,12 +453,57 @@ fn cpi_reveal(a: &RevealAccounts, params: &VrfRevealParams, authority_bump: u8) 
     Ok(())
 }
 
+// ---------------------------------------------------------------- slot hash
+
+/// Slots between the payment and the slot whose hash decides the outcome.
+/// Longer than one leader window (4 slots), short enough that reveal is seconds
+/// away. A leader already scheduled for that exact slot can still grind it.
+pub const SLOT_HASH_DELAY: u64 = 32;
+/// Slots after the commit during which reveal stays open. Must stay below
+/// SlotHashes retention (~512) so the hash is still readable at the boundary,
+/// and must equal `VRF_REFUND_AFTER_SLOTS` together with `SLOT_HASH_DELAY`.
+pub const SLOT_HASH_REVEAL_SLOTS: u64 = 400;
+
+/// SlotHashes sysvar: u64 count, then entries of (u64 slot, [u8; 32] hash),
+/// newest first, at most 512. The count is not trusted past the buffer.
+pub fn parse_slot_hash(data: &[u8], slot: u64) -> Option<[u8; 32]> {
+    if data.len() < 8 {
+        return None;
+    }
+    let declared = u64::from_le_bytes(data[0..8].try_into().ok()?) as usize;
+    let available = data.len().saturating_sub(8) / 40;
+    let n = declared.min(available).min(512);
+    for i in 0..n {
+        let start = 8 + i * 40;
+        let entry_slot = u64::from_le_bytes(data[start..start + 8].try_into().ok()?);
+        if entry_slot == slot {
+            let mut hash = [0u8; 32];
+            hash.copy_from_slice(&data[start + 8..start + 40]);
+            return Some(hash);
+        }
+    }
+    None
+}
+
+fn slot_hash_at(account: &AccountInfo, slot: u64) -> Result<[u8; 32]> {
+    require_keys_eq!(*account.key, crate::randomness::SLOT_HASHES_ID, AofError::InvalidRandomnessAccount);
+    let data = account.try_borrow_data().map_err(|_| error!(AofError::RandomnessNotRevealed))?;
+    parse_slot_hash(&data, slot).ok_or_else(|| error!(AofError::RandomnessNotRevealed))
+}
+
+/// Domain-separated value of one commit. Two commits that share a seed slot
+/// still roll differently, and a raw slot hash is never itself an outcome.
+pub fn slot_hash_value(slot_hash: &[u8; 32], seed_slot: u64, holder: &Pubkey) -> [u8; 32] {
+    hashv(&[b"aof-slot-hash-v1", slot_hash.as_ref(), &seed_slot.to_le_bytes(), holder.as_ref()]).to_bytes()
+}
+
 // ---------------------------------------------------------------- lifecycle
 
-/// Commit: lock a free pool slot to `holder` (the commit PDA) and have
-/// Switchboard seed it with the previous slot's hash. Returns the seed slot
-/// the commit must store.
-pub fn commit(slot: &mut VrfSlot, holder: Pubkey, a: &CommitAccounts, authority_bump: u8, clock_slot: u64) -> Result<u64> {
+/// Commit: lock a free pool slot to `holder` (the commit PDA) and bind the
+/// outcome to a slot that has not been produced yet. Returns that seed slot.
+/// The pool randomness account is still checked so a caller cannot lock a
+/// slot that was never initialized; Switchboard is not asked to reseed it.
+pub fn commit(slot: &mut VrfSlot, holder: Pubkey, a: &CommitAccounts, _authority_bump: u8, clock_slot: u64) -> Result<u64> {
     require!(!slot.retired, AofError::VrfSlotRetired);
     require_keys_eq!(slot.lock, Pubkey::default(), AofError::VrfSlotBusy);
     require_keys_eq!(a.randomness.key(), slot.randomness, AofError::InvalidRandomnessAccount);
@@ -457,19 +512,16 @@ pub fn commit(slot: &mut VrfSlot, holder: Pubkey, a: &CommitAccounts, authority_
     require_keys_eq!(before.authority, a.vrf_authority.key(), AofError::InvalidRandomnessAccount);
     require_keys_eq!(before.queue, SWITCHBOARD_QUEUE, AofError::InvalidRandomnessAccount);
 
-    cpi_commit(a, authority_bump)?;
-
-    let after = load_randomness(&a.randomness)?;
-    // Switchboard seeds with the newest hash in SlotHashes: the previous slot.
-    require!(clock_slot > 0 && after.seed_slot == clock_slot - 1, AofError::RandomnessNotFresh);
+    let seed_slot = clock_slot.checked_add(SLOT_HASH_DELAY).ok_or(error!(AofError::RandomnessNotFresh))?;
     slot.lock = holder;
     slot.locked_at_slot = clock_slot;
     slot.commits = slot.commits.saturating_add(1);
-    Ok(after.seed_slot)
+    Ok(seed_slot)
 }
 
-/// Reveal: only the lock holder, only inside the reveal window, and the value
-/// is read back from the account Switchboard just wrote. Frees the slot.
+/// Reveal: only the lock holder, only after the seed slot and before refund.
+/// The value comes from SlotHashes. `params` is ignored — a caller cannot
+/// supply the roll. Frees the slot.
 #[allow(clippy::too_many_arguments)]
 pub fn reveal(
     slot: &mut VrfSlot,
@@ -478,25 +530,26 @@ pub fn reveal(
     committed_seed_slot: u64,
     commit_slot: u64,
     a: &RevealAccounts,
-    params: &VrfRevealParams,
-    authority_bump: u8,
+    _params: &VrfRevealParams,
+    _authority_bump: u8,
     clock_slot: u64,
 ) -> Result<[u8; 32]> {
     require!(reveal_window_open(commit_slot, clock_slot), AofError::RevealWindowClosed);
+    require!(
+        committed_seed_slot == commit_slot.saturating_add(SLOT_HASH_DELAY),
+        AofError::RandomnessNotFresh
+    );
+    require!(clock_slot > committed_seed_slot, AofError::RevealWindowClosed);
     require_keys_eq!(slot.lock, *holder, AofError::VrfSlotNotHeld);
     require_keys_eq!(slot.randomness, *committed_randomness, AofError::InvalidRandomnessAccount);
     require_keys_eq!(a.randomness.key(), *committed_randomness, AofError::InvalidRandomnessAccount);
     require_keys_eq!(a.queue.key(), SWITCHBOARD_QUEUE, AofError::InvalidRandomnessAccount);
 
-    cpi_reveal(a, params, authority_bump)?;
-
-    let r = load_randomness(&a.randomness)?;
-    require!(r.seed_slot == committed_seed_slot, AofError::RandomnessNotFresh);
-    require!(r.reveal_slot == clock_slot, AofError::RandomnessNotRevealed);
-    require!(r.value == params.value, AofError::RandomnessNotRevealed);
+    let hash = slot_hash_at(&a.recent_slothashes, committed_seed_slot)?;
+    let value = slot_hash_value(&hash, committed_seed_slot, holder);
     slot.lock = Pubkey::default();
     slot.reveals = slot.reveals.saturating_add(1);
-    Ok(r.value)
+    Ok(value)
 }
 
 /// Refund path: free the slot held by `holder` once the window has closed.

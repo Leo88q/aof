@@ -189,7 +189,7 @@ export function render(c = readConstants()) {
   const deposit = settlementDeposit();
   const slot = poolSlotRent();
   const L = [];
-  L.push("# Экономика механик со случайностью (Switchboard On-Demand)");
+  L.push("# Экономика механик со случайностью (хеш будущего слота)");
   L.push("");
   L.push("> Сгенерировано `node scripts/economy/rng-ev.mjs` из констант `aof-core/src/constants.rs` и");
   L.push("> `programs/aof-quests/src/instructions/drum/*`. Не редактировать вручную: CI сверяет файл с исходниками");
@@ -205,7 +205,7 @@ export function render(c = readConstants()) {
   L.push(`| Кузница: шанс успеха не растёт с уровнем, плата не падает | ✅ |`);
   L.push(`| Барабан: RTP ${pct(drum.rtp)} ≤ 100%, джекпот ${c.drum.maxPrize} покрывается проверкой казны при коммите | ✅ |`);
   L.push(`| Лотерея: приз ${pct(c.lottery.poolBps / 10_000, 0)} пула, доля дома ${pct(c.lottery.devBps / 10_000, 0)} только после розыгрыша; неразыгранный раунд возвращает билеты полностью | ✅ |`);
-  L.push(`| Окно раскрытия ${c.vrfRefundAfterSlots} слотов (~${num((c.vrfRefundAfterSlots * 0.4) / 3600, 1)} ч) длиннее окна оракула (~1 ч) | ✅ |`);
+  L.push(`| Окно раскрытия ${c.vrfRefundAfterSlots} слотов (~${num((c.vrfRefundAfterSlots * 0.4) / 60, 1)} мин) внутри SlotHashes; возврат только после него | ✅ |`);
   L.push("");
   L.push("## Паки");
   L.push("");
@@ -215,7 +215,7 @@ export function render(c = readConstants()) {
     L.push(`| ${p.id} | ${sol(p.price, 2)} | ${p.odds.slice(0, 4).map((w) => pct(w / 10_000)).join(" | ")} | ${num(p.expectedRarity, 2)} | ${pct(p.rarePlus)} | ${num(p.solPerEpic, 1)} | ${num(p.expectedUnits, 1)} |`);
   }
   L.push("");
-  L.push(`Тип инструмента выбирается равновероятно из ${c.packToolTypes} (независимая «полоса» того же значения оракула).`);
+  L.push(`Тип инструмента выбирается равновероятно из ${c.packToolTypes} (независимая «полоса» того же значения).`);
   L.push(`Кроме цены, коммит вносит депозит ${sol(deposit)} — ренту mint + ATA + ToolData нового NFT; её получает`);
   L.push("тот, кто создаёт эти аккаунты при раскрытии (сервис или сам игрок), остаток возвращается игроку. Аккаунты");
   L.push("остаются у игрока, так что это не комиссия игры. Шансы фиксируются при оплате: смена `set_pack_config`");

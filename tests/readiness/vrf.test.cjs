@@ -148,8 +148,18 @@ test('F-06 the aof-quests copy of vrf.rs is the aof-core module, not a fork', ()
     .trim();
   assert.equal(normalize(read(QUESTS)), normalize(read(CORE)), 'regenerate programs/aof-quests/src/vrf.rs from aof-core/src/vrf.rs');
   const quests = read(QUESTS);
-  assert.match(quests, /pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;/);
-  assert.match(read('aof-core/src/constants.rs'), /pub const VRF_REFUND_AFTER_SLOTS: u64 = 18_000;/);
+  assert.match(quests, /pub const VRF_REFUND_AFTER_SLOTS: u64 = 432;/);
+  assert.match(read('aof-core/src/constants.rs'), /pub const VRF_REFUND_AFTER_SLOTS: u64 = 432;/);
+  const delay = Number(/pub const SLOT_HASH_DELAY: u64 = (\d+);/.exec(read(CORE))[1]);
+  const revealSlots = Number(/pub const SLOT_HASH_REVEAL_SLOTS: u64 = (\d+);/.exec(read(CORE))[1]);
+  assert.equal(delay + revealSlots, 432, 'refund opens exactly when the slot-hash reveal window closes');
+  const crypto = require('node:crypto');
+  const hash = Buffer.alloc(32, 3);
+  const seed = Buffer.alloc(8);
+  seed.writeBigUInt64LE(123456789n);
+  const holder = Buffer.alloc(32, 9);
+  const value = crypto.createHash('sha256').update(Buffer.from('aof-slot-hash-v1')).update(hash).update(seed).update(holder).digest('hex');
+  assert.equal(value, '7213420ec612aeeeef245432728c58be76bee6b880e6c06de0cb304e0c2b558e');
 });
 
 test('F-06 the backend reveal path never forwards its RPC URL to the oracle gateway', () => {

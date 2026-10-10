@@ -41,7 +41,7 @@ const SELF_SETTLE_AFTER_MS = 25_000;
 
 type PackConfig = { packType: string; priceLamports: string; oddsBps: number[] };
 type Opening = { packCommit: string; startedAt: number; state: "pending" | "settled" | "refunded"; tool?: { toolType: string; rarity: string } };
-type Pending = { mechanic: string; commit: string; phase: "revealable" | "refundable"; ageSlots: number };
+type Pending = { mechanic: string; commit: string; phase: "waiting" | "revealable" | "refundable"; ageSlots: number };
 
 export function PacksPage() {
   const { language } = useLocale();
@@ -98,7 +98,7 @@ export function PacksPage() {
         if (!Array.isArray(r?.pending)) throw new Error("Unexpected pending openings");
         const openings = r.pending.filter((p: Pending) => p.mechanic === "pack");
         if (!openings.every((p: Pending) => typeof p.commit === "string" && p.commit.length > 0 &&
-          (p.phase === "revealable" || p.phase === "refundable") &&
+          (p.phase === "waiting" || p.phase === "revealable" || p.phase === "refundable") &&
           Number.isFinite(p.ageSlots))) throw new Error("Invalid pending opening");
         if (request === pendingRequestId.current) {
           setPending(openings);
@@ -324,8 +324,8 @@ export function PacksPage() {
           <p className="text-parchment font-semibold text-sm mb-2">{copy.pendingTitle}</p>
           {visiblePending.map((p) => (
             <div key={p.commit} className="flex flex-wrap items-center justify-between gap-2 text-xs py-1 min-w-0">
-              <span className="text-straw">{p.commit.slice(0, 8)}… · {p.phase === "refundable" ? copy.refundable : `${p.ageSlots} ${copy.waitingSlots}`}</span>
-              <button onClick={() => selfSettle(p.commit)} disabled={busy === p.commit}
+              <span className="text-straw">{p.commit.slice(0, 8)}… · {p.phase === "refundable" ? copy.refundable : p.phase === "waiting" ? copy.seedPending : `${p.ageSlots} ${copy.waitingSlots}`}</span>
+              <button onClick={() => selfSettle(p.commit)} disabled={busy === p.commit || p.phase === "waiting"}
                 className="px-3 py-1 rounded-lg bg-soil-800 border border-straw/20 text-parchment disabled:opacity-40">
                 {p.phase === "refundable" ? copy.refund : copy.reveal}
               </button>

@@ -4,8 +4,8 @@
  * (Drum of Luck).
  *
  * For each pending commit read from chain:
- *   - inside the reveal window  -> fetch the oracle's signed value (Switchboard
- *     gateway) and send the program's permissionless reveal;
+ *   - inside the reveal window  -> send the program's permissionless reveal
+ *     (slot-hash mode does not call an oracle gateway);
  *   - after the window          -> send the permissionless refund.
  * The two windows never overlap on-chain, so this worker cannot pick between
  * outcomes, and a crash or race only delays settlement: anyone (the player's
@@ -93,7 +93,8 @@ async function settle(c: PendingCommit, currentSlot: number): Promise<void> {
   const now = Date.now();
   if ((nextAttempt.get(key) || 0) > now) return;
   if (currentSlot - c.commitSlot < STANDBY_SLOTS) return; // the primary settler's turn
-  const phase = commitPhase(c.commitSlot, currentSlot);
+  const phase = commitPhase(c.commitSlot, currentSlot, c.seedSlot);
+  if (phase === "waiting") return;
   if (phase === "revealable" && currentSlot - c.seedSlot < MIN_AGE_SLOTS) return;
   nextAttempt.set(key, now + RETRY_MS);
   try {

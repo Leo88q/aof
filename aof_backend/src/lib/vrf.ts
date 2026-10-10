@@ -42,7 +42,24 @@ export const SWITCHBOARD: Record<SwitchboardCluster, { programId: PublicKey; que
 export const ADDRESS_LOOKUP_TABLE_PROGRAM_ID = new PublicKey("AddressLookupTab1e1111111111111111111111111");
 
 /** aof-core/src/constants.rs::VRF_REFUND_AFTER_SLOTS (reveal window / refund threshold). */
-export const VRF_REFUND_AFTER_SLOTS = 18_000;
+export const VRF_REFUND_AFTER_SLOTS = 432;
+/** aof-core/src/vrf.rs. The refund boundary is delay + reveal slots. */
+export const SLOT_HASH_DELAY = 32;
+export const SLOT_HASH_REVEAL_SLOTS = 400;
+
+export type RandomnessMode = "slot-hash" | "switchboard";
+
+/**
+ * `slot-hash` matches the upgraded program: commit does not ask an oracle.
+ * The default stays `switchboard` so a restart before that upgrade still
+ * refuses the commit instead of sending a transaction the old program rejects.
+ */
+export function randomnessMode(env: NodeJS.ProcessEnv = process.env): RandomnessMode {
+  const raw = (env.AOF_RANDOMNESS || "").trim().toLowerCase();
+  if (raw === "slot-hash" || raw === "slothash") return "slot-hash";
+  if (raw === "" || raw === "switchboard") return "switchboard";
+  throw new Error("AOF_RANDOMNESS must be slot-hash or switchboard");
+}
 
 /**
  * Must match the program build: `--features devnet` programs trust the devnet
@@ -614,9 +631,10 @@ async function inspectLoadedOracles(connection: Connection): Promise<{ inspectio
 }
 
 export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
-  // Chain bytes first. Gateway health is not a commit requirement and its 10s
-  // timeout was the whole `commit` 503. The SDK decode is only a second opinion
-  // when the byte layout sees no fresh randomness oracle.
+  // Chain bytes first, reading oracles that loaded from the queue account.
+  // Gateway health is not a commit requirement and its 10s timeout was the
+  // whole `commit` 503. The SDK decode is only a second opinion when the byte
+  // layout sees no fresh randomness oracle.
   let chain: { inspection: any; candidates: OracleCandidate[] } | undefined;
   try {
     chain = await inspectOraclesFromChain(connection);
@@ -662,15 +680,31 @@ export async function selectOracle(connection: Connection): Promise<PublicKey> {
   return chooseOracle(oracleCache!.candidates);
 }
 
+let randomnessModeAnnounced = false;
+
+function announceRandomnessMode(): void {
+  if (randomnessModeAnnounced) return;
+  randomnessModeAnnounced = true;
+  const mode = randomnessMode();
+  console.log(`[vrf] randomness=${mode}`);
+  if (mode === "switchboard") {
+    console.warn("[vrf] AOF_RANDOMNESS is switchboard. Set AOF_RANDOMNESS=slot-hash only after the program upgrade; until then commits stay refused instead of charging a failed transaction.");
+  }
+}
+
 /** Accounts every VRF commit instruction takes after its own accounts. */
 export async function vrfCommitAccounts(program: any, connection: Connection, slot: PoolSlot) {
+  announceRandomnessMode();
   const sbc = switchboard();
+  // Slot-hash commit ignores the oracle. The queue account already exists and
+  // the instruction still requires a writable pubkey in that position.
+  const oracle = randomnessMode() === "slot-hash" ? sbc.queue : await selectOracle(connection);
   return {
     vrfSlot: slot.vrfSlot,
     randomness: slot.randomness,
     vrfAuthority: vrfAuthorityPda(program.programId),
     queue: sbc.queue,
-    oracle: await selectOracle(connection),
+    oracle,
     recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
     switchboardProgram: sbc.programId,
   };
@@ -733,7 +767,29 @@ const GATEWAY_TIMEOUT_MS = 10_000;
  * VRF_SETTLER_MIN_AGE_SLOTS, and a gateway that has not seen the seed slot yet
  * just fails the attempt, which is retried).
  */
+function slotHashReveal(program: any, randomness: PublicKey) {
+  const sbc = switchboard();
+  const oracle = sbc.queue;
+  return {
+    params: { signature: Array(64).fill(0), recoveryId: 0, value: Array(32).fill(0) },
+    accounts: {
+      vrfSlot: vrfSlotPda(program.programId, randomness),
+      randomness,
+      vrfAuthority: vrfAuthorityPda(program.programId),
+      oracle,
+      queue: sbc.queue,
+      stats: statsPda(oracle),
+      recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
+      rewardEscrow: rewardEscrowAddress(randomness),
+      wrappedSolMint: NATIVE_MINT,
+      programState: sbc.state,
+      switchboardProgram: sbc.programId,
+    },
+  };
+}
+
 export async function vrfReveal(program: any, connection: Connection, randomness: PublicKey, _payer: PublicKey) {
+  if (randomnessMode() === "slot-hash") return slotHashReveal(program, randomness);
   const sbc = switchboard();
   const info = await connection.getAccountInfo(randomness, "confirmed");
   if (!info || !info.owner.equals(sbc.programId)) throw new Error("Randomness account not found");

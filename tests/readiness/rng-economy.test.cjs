@@ -79,10 +79,11 @@ test('F-06 the drum odds shown to players are the odds the program pays', async 
   assert.equal(Number(/DRUM_SPIN_COST = (\d+);/.exec(src)[1]), c.drum.cost);
 });
 
-test('F-06 the reveal window outlasts the oracle and rent figures are the runtime ones', async () => {
+test('F-06 the reveal window fits inside SlotHashes and rent figures are the runtime ones', async () => {
   const ev = await load();
   const c = ev.readConstants();
-  assert.ok(c.vrfRefundAfterSlots >= 9_000, 'Switchboard honours reveals for ~1 h (9000 slots at 400 ms)');
+  assert.equal(c.vrfRefundAfterSlots, 432, 'delay 32 + reveal 400; refund opens before the hash ages out of ~512 slots');
+  assert.ok(c.vrfRefundAfterSlots < 512, 'a skipped seed slot must still be refundable while the sysvar could have held the hash');
   assert.equal(ev.rentExempt(82), 1_461_600, 'mint rent');
   assert.equal(ev.rentExempt(165), 2_039_280, 'token account rent');
   assert.equal(ev.TOOL_DATA_SPACE, 161, 'matches TOOL_DATA_SPACE (pinned by the Rust serialized_len test)');

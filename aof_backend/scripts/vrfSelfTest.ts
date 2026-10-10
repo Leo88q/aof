@@ -49,10 +49,18 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
 {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { commitPhase } = require("../src/lib/vrfSettlement") as typeof import("../src/lib/vrfSettlement");
-  assert.equal(vrf.VRF_REFUND_AFTER_SLOTS, 18_000);
-  assert.equal(commitPhase(1_000, 1_000), "revealable");
-  assert.equal(commitPhase(1_000, 1_000 + 17_999), "revealable");
-  assert.equal(commitPhase(1_000, 1_000 + 18_000), "refundable");
+  assert.equal(vrf.VRF_REFUND_AFTER_SLOTS, 432);
+  assert.equal(vrf.SLOT_HASH_DELAY + vrf.SLOT_HASH_REVEAL_SLOTS, vrf.VRF_REFUND_AFTER_SLOTS);
+  assert.equal(vrf.randomnessMode({} as NodeJS.ProcessEnv), "switchboard");
+  assert.equal(vrf.randomnessMode({ AOF_RANDOMNESS: "slot-hash" } as NodeJS.ProcessEnv), "slot-hash");
+  assert.throws(() => vrf.randomnessMode({ AOF_RANDOMNESS: "orao" } as NodeJS.ProcessEnv));
+  const commit = 1_000;
+  const seed = commit + vrf.SLOT_HASH_DELAY;
+  assert.equal(commitPhase(commit, commit, seed), "waiting");
+  assert.equal(commitPhase(commit, seed, seed), "waiting");
+  assert.equal(commitPhase(commit, seed + 1, seed), "revealable");
+  assert.equal(commitPhase(commit, commit + vrf.VRF_REFUND_AFTER_SLOTS - 1, seed), "revealable");
+  assert.equal(commitPhase(commit, commit + vrf.VRF_REFUND_AFTER_SLOTS, seed), "refundable");
 }
 
 // ---- cluster selection must match the program build
