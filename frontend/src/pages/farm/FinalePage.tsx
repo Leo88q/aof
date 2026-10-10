@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { finaleCopy } from "../../i18n/finaleCopy";
 import { economyResourceName } from "../../lib/economyBalances";
@@ -34,7 +34,26 @@ export function FinalePage() {
   const { balances, state } = useEconomyBalances(address, refreshKey);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [seals, setSeals] = useState<{ status: "loading" | "unread" | "ready"; count: number | null }>({ status: "loading", count: null });
   const running = useRef(false);
+
+  useEffect(() => {
+    if (!address) {
+      setSeals({ status: "unread", count: null });
+      return;
+    }
+    let cancelled = false;
+    setSeals({ status: "loading", count: null });
+    api.query.laboratoryFinale(address).then((read) => {
+      if (cancelled) return;
+      const count = read?.seals;
+      if (typeof count === "number" && Number.isInteger(count) && count >= 0) setSeals({ status: "ready", count });
+      else setSeals({ status: "unread", count: null });
+    }).catch(() => {
+      if (!cancelled) setSeals({ status: "unread", count: null });
+    });
+    return () => { cancelled = true; };
+  }, [address, refreshKey]);
 
   async function seal() {
     if (running.current) return;
@@ -83,6 +102,7 @@ export function FinalePage() {
     <div lang={language} className="p-4 pt-2 pb-24 space-y-4 min-w-0">
       <p className="text-straw text-xs">{copy.intro}</p>
       <p className="text-parchment text-xs">{copy.goal}</p>
+      {address && seals.status !== "loading" && <p className="text-parchment text-xs">{seals.status === "unread" || seals.count === null ? copy.sealsUnread : seals.count === 0 ? copy.sealsNone : copy.sealsHeld(seals.count)}</p>}
       <p className="text-straw text-xs">{copy.chain}</p>
       <div className="text-xs text-parchment space-y-1">
         <p>{copy.need}</p>

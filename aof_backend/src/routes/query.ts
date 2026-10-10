@@ -7,10 +7,12 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import bs58 from "bs58";
 import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } from "../lib/decode";
 import { pk } from "../lib/tx";
+import { PROGRAM_ID } from "../config";
+import { decodeLaboratoryFinale } from "../lib/laboratoryFinale";
 import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda, seasonPda, rerollConfigPda,
-  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, marketConfigPda,
+  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, laboratoryFinalePda, marketConfigPda,
   weatherStatePda, gridStatePda, signalStatePda, modelStatePda } from "../lib/pda";
 import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 
@@ -672,6 +674,29 @@ r.get("/material-mints", async (_req, res) => {
     });
   } catch (e: any) {
     res.status(503).json({ error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+  }
+});
+
+// Счётчик печатей. Отсутствующий счёт — честный ноль. Чужой или битый счёт — не ноль.
+r.get("/laboratory-finale/:owner", async (req, res) => {
+  let owner: PublicKey;
+  try {
+    owner = new PublicKey(req.params.owner);
+  } catch {
+    return res.status(400).json({ error: "INVALID_PLAYER_ADDRESS" });
+  }
+  const [address] = laboratoryFinalePda(owner);
+  try {
+    const info = await connection.getAccountInfo(address, "confirmed");
+    if (!info) return res.json({ exists: false, seals: 0, address: address.toBase58() });
+    if (!info.owner.equals(PROGRAM_ID)) {
+      return res.status(503).json({ error: "LABORATORY_FINALE_ACCOUNT_OWNER_MISMATCH" });
+    }
+    const decoded = decodeLaboratoryFinale(info.data, owner.toBytes());
+    if (!decoded.ok) return res.status(503).json({ error: decoded.error });
+    return res.json({ exists: decoded.exists, seals: decoded.seals, address: address.toBase58() });
+  } catch {
+    return res.status(503).json({ error: "LABORATORY_FINALE_READ_FAILED" });
   }
 });
 

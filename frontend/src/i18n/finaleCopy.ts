@@ -4,6 +4,7 @@ type Copy = {
   intro: string; goal: string; chain: string; need: string; seal: string; sealing: string;
   sealed: string; connect: string; unavailable: string; missingRegistry: string;
   programOld: string; workshop: string; lab: string;
+  sealsNone: string; sealsHeld: (count: number) => string; sealsUnread: string;
 };
 
 export const finaleCopy: Record<Language, Copy> = {
@@ -21,6 +22,9 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'Печать записана в новой программе. Эта сеть ещё на прежней сборке, поэтому шаг не отправлен.',
     workshop: 'Открыть мастерскую',
     lab: 'Открыть лабораторию',
+    sealsNone: 'Печатей ещё нет. Ядро души выпускается первой печатью и остаётся у вас.',
+    sealsHeld: (count) => `Печатей лаборатории: {count}. Ядро души не сжигается.`.replace('{count}', String(count)),
+    sealsUnread: 'Счётчик печатей не прочитан из сети. Это не ноль.',
   },
   en: {
     intro: 'The end is not endless mining. The laboratory becomes conscious when it holds a trained model, the five fluids and the amber vessel.',
@@ -36,6 +40,9 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'The seal is in the new program. This network is still on the previous build, so the step was not sent.',
     workshop: 'Open the workshop',
     lab: 'Open the laboratory',
+    sealsNone: 'No seals yet. The first seal mints a soul core, and it stays with you.',
+    sealsHeld: (count) => `Laboratory seals: {count}. The soul core is not burned.`.replace('{count}', String(count)),
+    sealsUnread: 'The seal count was not read from the network. That is not zero.',
   },
   pt: {
     intro: 'O fim não é minerar sem parar. O laboratório fica consciente quando recebe um modelo treinado, os cinco fluidos e o recipiente de âmbar.',
@@ -51,6 +58,9 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'O selo está no programa novo. Esta rede ainda usa a compilação anterior, por isso o passo não foi enviado.',
     workshop: 'Abrir a oficina',
     lab: 'Abrir o laboratório',
+    sealsNone: 'Ainda não há selos. O primeiro selo emite um núcleo da alma, e ele fica com você.',
+    sealsHeld: (count) => `Selos do laboratório: {count}. O núcleo da alma não é queimado.`.replace('{count}', String(count)),
+    sealsUnread: 'A contagem de selos não foi lida na rede. Isso não é zero.',
   },
   es: {
     intro: 'El final no es minar sin fin. El laboratorio se vuelve consciente cuando recibe un modelo entrenado, los cinco fluidos y el recipiente de ámbar.',
@@ -66,6 +76,9 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'El sello está en el programa nuevo. Esta red sigue en la compilación anterior, así que el paso no se envió.',
     workshop: 'Abrir el taller',
     lab: 'Abrir el laboratorio',
+    sealsNone: 'Aún no hay sellos. El primer sello emite un núcleo del alma, y se queda contigo.',
+    sealsHeld: (count) => `Sellos del laboratorio: {count}. El núcleo del alma no se quema.`.replace('{count}', String(count)),
+    sealsUnread: 'No se leyó el número de sellos en la red. Eso no es cero.',
   },
   vi: {
     intro: 'Đích đến không phải là khai thác mãi. Phòng thí nghiệm trở nên có ý thức khi có mô hình đã huấn luyện, năm dung dịch và bình hổ phách.',
@@ -81,6 +94,9 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'Niêm phong nằm trong chương trình mới. Mạng này vẫn dùng bản cũ, nên bước chưa được gửi.',
     workshop: 'Mở xưởng',
     lab: 'Mở phòng thí nghiệm',
+    sealsNone: 'Chưa có lần niêm nào. Lần đầu tạo một lõi linh hồn, và lõi ở lại với bạn.',
+    sealsHeld: (count) => `Số lần niêm phòng thí nghiệm: {count}. Lõi linh hồn không bị đốt.`.replace('{count}', String(count)),
+    sealsUnread: 'Chưa đọc được số lần niêm từ mạng. Đó không phải là số không.',
   },
   id: {
     intro: 'Tujuan akhirnya bukan menambang tanpa henti. Laboratorium menjadi sadar saat memegang model terlatih, lima cairan, dan wadah amber.',
@@ -96,6 +112,9 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'Segel ada di program baru. Jaringan ini masih memakai build lama, jadi langkah tidak dikirim.',
     workshop: 'Buka bengkel',
     lab: 'Buka laboratorium',
+    sealsNone: 'Belum ada segel. Segel pertama mencetak inti jiwa, dan inti itu tetap padamu.',
+    sealsHeld: (count) => `Segel laboratorium: {count}. Inti jiwa tidak dibakar.`.replace('{count}', String(count)),
+    sealsUnread: 'Jumlah segel tidak terbaca dari jaringan. Itu bukan nol.',
   },
   fil: {
     intro: 'Ang wakas ay hindi walang-hanggang pagmimina. Nagiging mulat ang laboratoryo kapag hawak nito ang isang sanay na modelo, ang limang fluid, at ang sisidlang amber.',
@@ -111,5 +130,8 @@ export const finaleCopy: Record<Language, Copy> = {
     programOld: 'Ang tatak ay nasa bagong programa. Ang network ay nasa lumang build pa, kaya hindi naipadala ang hakbang.',
     workshop: 'Buksan ang pagawaan',
     lab: 'Buksan ang laboratoryo',
+    sealsNone: 'Wala pang tatak. Ang unang tatak ay lumilikha ng soul core, at ito ay nananatili sa iyo.',
+    sealsHeld: (count) => `Mga tatak ng laboratoryo: {count}. Hindi sinusunog ang soul core.`.replace('{count}', String(count)),
+    sealsUnread: 'Hindi nabasa sa network ang bilang ng tatak. Hindi iyon sero.',
   },
 };

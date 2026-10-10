@@ -249,6 +249,7 @@ export const api = {
     rarityCounter: (idx: number) => get(`/query/rarity-counter/${idx}`),
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
     player: (owner: string) => get(`/query/player/${owner}`),
+    laboratoryFinale: (owner: string) => get(`/query/laboratory-finale/${owner}`),
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
     collector: (mint: string) => get(`/query/collector/${mint}`),
     weatherState: () => get("/query/weather-state"),
