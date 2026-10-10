@@ -404,18 +404,18 @@ async function inspectLoadedOracles(connection: Connection): Promise<{ inspectio
   const prog = await switchboardProgram(connection);
   const queue = new sb.Queue(prog, switchboard().queue as any);
   const queueData = await queue.loadData();
-  const keyCount = typeof queueData.oracleKeysLen?.toNumber === "function"
-    ? queueData.oracleKeysLen.toNumber()
-    : Number(queueData.oracleKeysLen);
+  const keyCount = Number(queueData.oracleKeysLen);
+  if (!Number.isInteger(keyCount) || keyCount < 0) throw new Error("Switchboard queue length is unreadable");
   const oracleKeys = queueData.oracleKeys.slice(0, keyCount);
   const loaded = await sb.Oracle.loadMany(prog, oracleKeys);
-  const present = oracleKeys
-    .map((oracleKey: PublicKey, index: number) => ({ oracleKey, data: loaded[index] }))
-    .filter((row: { data: unknown }) => row.data);
+  const present = oracleKeys.flatMap((oracleKey: PublicKey, index: number) => {
+    const data = loaded[index];
+    return data ? [{ oracleKey, data }] : [];
+  });
   if (!present.length) throw new Error("No Switchboard oracle account loaded");
   // Live health is optional here: the failed SDK pass already tried it. An oracle
   // that is verified and fresh on-chain remains eligible, matching the SDK fallback.
-  const raw = present.map((row: { oracleKey: PublicKey; data: unknown }) => sb.buildSolanaRandomnessOracleCandidate({
+  const raw = present.map((row: { oracleKey: PublicKey; data: any }) => sb.buildSolanaRandomnessOracleCandidate({
     oracle: new sb.Oracle(prog, row.oracleKey),
     data: row.data,
     queueData,
