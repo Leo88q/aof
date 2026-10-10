@@ -29,6 +29,8 @@ import { requireCircuitOpen, requireWalletLimits } from "../middleware/security"
 import { requireAdmin } from "../middleware/adminAuth";
 import { randomNonce, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
+import { craftBundleUnits, tokenNeeds } from "../lib/resourceShortage";
+import { FEE_PER_REROLL_MICROS } from "../lib/resourceShortageCore";
 
 const r = Router();
 
@@ -65,6 +67,11 @@ r.post("/fuse", async (req, res) => {
     const targetRarity = rarityOf(toolAccount.rarity) + 1;
     if (!(targetRarity >= 1 && targetRarity < RARITIES.length)) {
       throw new Error("Reroll target rarity is out of range");
+    }
+    const bundle = await craftBundleUnits(targetRarity - 1);
+    if (bundle) {
+      const gate = await tokenNeeds(user, bundle, undefined, FEE_PER_REROLL_MICROS);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
     }
     const [rarityCounter] = rarityCounterPda(targetRarity);
     const resourceMints = {

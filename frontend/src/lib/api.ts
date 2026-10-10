@@ -1,6 +1,7 @@
 import { humanizeVrfError } from "./vrfErrors";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
 import { humanizeApiError, isFailClosedCode } from "./availability";
+import { formatResourceShortage, sanitizeShortages } from "./resourceShortageMessage";
 import { apiErrorCopy } from "../i18n/apiErrorCopy";
 import { fetchApi } from "./apiFetch";
 
@@ -146,6 +147,13 @@ async function parseApiResponse(res: Response, options?: { allowNull?: boolean }
     // prose is not a trusted locale string (and may contain private diagnostics).
     // Preserve raw on error.code for diagnostics and fail-closed decisions.
     const raw = String(message);
+    if (raw === "INSUFFICIENT_RESOURCES") {
+      const missing = sanitizeShortages(data?.missing);
+      const error = new Error(formatResourceShortage(getApiErrorLanguage(), missing)) as Error & { code?: string; missing?: unknown };
+      error.code = raw;
+      error.missing = missing;
+      throw error;
+    }
     const localized = humanizeVrfError(humanizeApiError(raw, getApiErrorLanguage()), getApiErrorLanguage());
     const error = new Error(localized === raw
       ? apiErrorCopy[getApiErrorLanguage()].unexpected(res.status)

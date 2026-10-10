@@ -6,6 +6,7 @@ import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { getMintAsync } from "../../lib/mints";
 import { readEconomyBalances, economyResourceName } from "../../lib/economyBalances";
 import { WORKSHOP_RECIPES, canCraftRecipe } from "../../lib/workshopRecipes";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { useEconomyBalances } from "./useEconomyBalances";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { recipeWorkshopCopy } from "../../i18n/recipeWorkshopCopy";
@@ -57,7 +58,12 @@ export function Workshop() {
       // must not look like zero cost or zero balance.
       const fresh = readEconomyBalances(await api.query.balances(address));
       if (!fresh) { flash(copy.unavailable); return; }
-      if (!canCraftRecipe(recipe, fresh)) { flash(copy.insufficient); setRefreshKey(n => n + 1); return; }
+      if (!canCraftRecipe(recipe, fresh)) {
+        const missing = shortagesFromBalances(fresh, recipe.inputs.map(input => ({ resource: input.key, need: input.amount })));
+        flash(missing && missing.length > 0 ? formatResourceShortage(language, missing) : copy.insufficient);
+        setRefreshKey(n => n + 1);
+        return;
+      }
       const [input1Mint, input2Mint, outputMint] = await Promise.all([
         getMintAsync(recipe.inputs[0].key),
         getMintAsync((recipe.inputs[1] || recipe.inputs[0]).key),

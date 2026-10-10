@@ -12,6 +12,7 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { CRAFT_RESOURCES, readCraftBalances, readCraftMints, readCraftQuote, type CraftAmounts, type CraftMints } from "../../lib/craftReadings";
+import { formatAmount, formatResourceShortage } from "../../lib/resourceShortageMessage";
 import { resourceIcon, UI_ICONS, toolPlate, TOOL_RARITIES } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { ArtPlate } from "../../components/visual/ArtPlate";
@@ -193,7 +194,9 @@ export function CraftPage() {
       if (CRAFT_RESOURCES.some(({ key }) => latestBalances[key] < latest[key])) {
         setBalances(latestBalances);
         setBalanceFor(address);
-        flash(copy.insufficient.replace('{resource}', CRAFT_RESOURCES.filter(({ key }) => latestBalances[key] < latest[key]).map(({ key }) => resourceName(key)).join(', ')));
+        flash(formatResourceShortage(language, CRAFT_RESOURCES.filter(({ key }) => latestBalances[key] < latest[key]).map(({ key, chain }) => ({
+          resource: chain, have: formatAmount(latestBalances[key]) ?? '', need: formatAmount(latest[key]) ?? '',
+        }))));
         return;
       }
       flash(copy.forging);
@@ -300,7 +303,9 @@ export function CraftPage() {
           {!resMints && <p role="status" className="text-straw text-xs mt-2">{mintsStatus === "loading" ? copy.mintsLoading : copy.mintsUnavailable}</p>}
           {resMints && !activeBalances && <p role="status" className="text-straw text-xs mt-2">{balancesLoading || balanceFor !== address ? copy.balancesLoading : copy.balancesUnavailable}</p>}
           {!quoteForTarget && <p role="status" className="text-straw text-xs mt-2">{quoteLoading ? copy.quoteLoading : copy.quoteUnavailable}</p>}
-          {quoteForTarget && activeBalances && !sufficient && <p className="text-straw text-xs mt-2">{copy.insufficient.replace('{resource}', CRAFT_RESOURCES.filter(({key}) => activeBalances[key] < quoteForTarget[key]).map(({key}) => resourceName(key)).join(', '))}</p>}
+          {quoteForTarget && activeBalances && !sufficient && <p className="text-straw text-xs mt-2 [overflow-wrap:anywhere]">{formatResourceShortage(language, CRAFT_RESOURCES.filter(({ key }) => activeBalances[key] < quoteForTarget[key]).map(({ key, chain }) => ({
+            resource: chain, have: formatAmount(activeBalances[key]) ?? '', need: formatAmount(quoteForTarget[key]) ?? '',
+          })))}</p>}
         </Card>
       )}
 

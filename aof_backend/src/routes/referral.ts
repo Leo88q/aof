@@ -14,6 +14,8 @@ import {
   vaultPda,
 } from "../lib/pda";
 import { authorityOnly, coSign, pk } from "../lib/tx";
+import { tokenNeeds } from "../lib/resourceShortage";
+import { REFERRAL_UPGRADE } from "../lib/resourceShortageCore";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
 import { assertNoFraudHold, sendFraudHold } from "../security/fraudHold";
@@ -61,6 +63,21 @@ r.post("/upgrade", async (req, res) => {
     const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
     const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
     const userData = getAssociatedTokenAddressSync(dataMint, user);
+    try {
+      const link: any = await (program.account as any).referralLink.fetchNullable(referralLink);
+      const tier = Number(link?.tier);
+      const next = tier + 1;
+      if (link && Number.isInteger(tier) && next >= 1 && next <= 6) {
+        const referralGate = await tokenNeeds(user, [
+          ["CIRCUIT", REFERRAL_UPGRADE.CIRCUIT[next]],
+          ["SILICON", REFERRAL_UPGRADE.SILICON[next]],
+          ["DATA", REFERRAL_UPGRADE.DATA[next]],
+        ]);
+        if (referralGate.kind === "short") return res.status(400).json(referralGate.body);
+      }
+    } catch {
+      // An unreadable referral tier is not proof the player is short.
+    }
 
     const ix = await (program.methods as any)
       .referralUpgrade()

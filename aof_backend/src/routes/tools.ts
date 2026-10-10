@@ -43,6 +43,8 @@ import { criticalOperationGuard, requireCircuitOpen, requireWalletLimits } from 
 import { requireAdmin } from "../middleware/adminAuth";
 import { assertNoFraudHold, sendFraudHold } from "../security/fraudHold";
 import { materialMintField, validateSingleCanonicalResourceMint, type ResourceMintKey } from "../lib/resourceRegistry";
+import { atomicTokenNeeds, craftBundleUnits, craftFeeMicros, tokenNeeds } from "../lib/resourceShortage";
+import { REPAIR_CIRCUIT, REPAIR_SILICON } from "../lib/resourceShortageCore";
 
 /** flaskType (1..5) → канонический ключ ресурса флюида в `MaterialMints`. */
 const FLASK_KIND_BY_TYPE: Record<number, ResourceMintKey> = {
@@ -208,6 +210,12 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
     const skrMint = dataMint;
     const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
     const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
+    const bundle = Number.isInteger(rarityIdx) ? await craftBundleUnits(rarityIdx - 1) : null;
+    if (bundle) {
+      const fee = await craftFeeMicros();
+      const gate = await tokenNeeds(user, bundle, undefined, fee);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const ix = await (program.methods as any)
       .craft(toolType, rarity)
@@ -275,19 +283,14 @@ r.post("/repair-quote", async (req, res) => {
     const toolData: any = await fetchOne("toolData", tool);
     if (!toolData) return res.status(400).json({ error: "tool not found" });
     
-    // These values mirror Rarity::repair_*_cost_per_unit() in aof-core.
-    const siliconCosts: Record<string, number> = {
-      common: 2_000_000_000, uncommon: 4_000_000_000, rare: 9_000_000_000,
-      epic: 20_000_000_000, legendary: 45_000_000_000,
-    };
-    const circuitCosts: Record<string, number> = {
-      common: 3_000_000_000, uncommon: 6_000_000_000, rare: 14_000_000_000,
-      epic: 30_000_000_000, legendary: 70_000_000_000,
-    };
+    // Same per-unit costs as Rarity::repair_*_cost_per_unit() in aof-core.
     const rarQ = toolData.rarity;
-    const rkQ = typeof rarQ === "object" && rarQ ? Object.keys(rarQ)[0] : String(rarQ || "common");
-    const silicon = (siliconCosts[rkQ] || 0) * amount;
-    const circuit = (circuitCosts[rkQ] || 0) * amount;
+    const rkQ = typeof rarQ === "object" && rarQ ? Object.keys(rarQ)[0] : String(rarQ || "");
+    const siliconUnit = REPAIR_SILICON[rkQ];
+    const circuitUnit = REPAIR_CIRCUIT[rkQ];
+    if (!siliconUnit || !circuitUnit) return res.status(400).json({ error: "tool rarity is not a repair tier" });
+    const silicon = Number(siliconUnit) * amount;
+    const circuit = Number(circuitUnit) * amount;
 
     res.json({ silicon, circuit, amount });
   } catch (e: any) {
@@ -344,6 +347,18 @@ r.post("/repair", async (req, res) => {
     // токен. Стейк-путь берёт токен из общего vault, делегированный — из эскроу
     // листинга аренды; свободный инструмент чинит владелец со своего ATA.
     const toolData: any = await fetchOne("toolData", tool);
+    const rar = toolData?.rarity;
+    const rk = typeof rar === "object" && rar ? Object.keys(rar)[0] : String(rar || "");
+    const siliconUnit = REPAIR_SILICON[rk];
+    const circuitUnit = REPAIR_CIRCUIT[rk];
+    if (siliconUnit && circuitUnit) {
+      const units = BigInt(amount);
+      const gate = await atomicTokenNeeds(user, [
+        ["SILICON", siliconUnit * units],
+        ["CIRCUIT", circuitUnit * units],
+      ]);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
     const custody = await toolCustody(user, mint, toolData);
     const [vault] = vaultPda();
     const ownerToolAta = getAssociatedTokenAddressSync(mint, user, true);
@@ -756,6 +771,8 @@ r.post("/use-flask", requireCircuitOpen, requireWalletLimits("tools_use_flask"),
     }
 
     const userFlask = getAssociatedTokenAddressSync(flaskMint, user);
+    const gate = await tokenNeeds(user, [[flaskKind, 1n]]);
+    if (gate.kind === "short") return res.status(400).json(gate.body);
     const ix = await (program.methods as any)
       .useFlask(flaskType)
       .accounts({

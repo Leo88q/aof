@@ -18,6 +18,8 @@ import {
   issuanceCapPda,
 } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
+import { tokenNeeds } from "../lib/resourceShortage";
+import { ENERGY_COST_MODEL, ENERGY_COST_SIGNAL, ENERGY_COST_SYNTHESIS, MODEL_BATCH, RECIPE_INPUTS, SIGNAL_BATCH, asUint } from "../lib/resourceShortageCore";
 
 const r = Router();
 const RESOURCE_UNIT = new BN("1000000000");
@@ -36,6 +38,11 @@ r.post("/lab/plant-neuron", async (req, res) => {
     const [labTile] = labTilePda(user, tileIndex);
     const neuronMint = new PublicKey(req.body.neuronMint);
     const userNeuron = getAssociatedTokenAddressSync(neuronMint, user);
+    const neuronUnits = asUint(req.body.amount);
+    if (neuronUnits && neuronUnits > 0n && neuronUnits <= (1n << 64n) / 1_000_000_000n) {
+      const gate = await tokenNeeds(user, [["NEURON", neuronUnits]], ENERGY_COST_SYNTHESIS);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const ix = await (program.methods as any)
       .plantNeuron(tileIndex, amount)
@@ -112,6 +119,11 @@ r.post("/signal/start-processing", async (req, res) => {
     const siliconMint = new PublicKey(req.body.siliconMint);
     const userSynapse = getAssociatedTokenAddressSync(synapseMint, user);
     const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
+    const signalBatch = SIGNAL_BATCH[batchSize - 1];
+    if (signalBatch) {
+      const gate = await tokenNeeds(user, [["SYNAPSE", signalBatch.synapse], ["SILICON", signalBatch.silicon]], ENERGY_COST_SIGNAL);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const ix = await (program.methods as any)
       .startSignalProcessing(batchSize)
@@ -188,6 +200,18 @@ r.post("/model/start-training", async (req, res) => {
     const userPower = getAssociatedTokenAddressSync(powerMint, user);
     const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
     const userCompute = getAssociatedTokenAddressSync(computeMint, user);
+    const modelBatch = MODEL_BATCH[batchSize - 1];
+    if (modelBatch && (fuelKind === 0 || fuelKind === 1)) {
+      const fuel: readonly ["CIRCUIT" | "COMPUTE", bigint] = fuelKind === 0
+        ? ["CIRCUIT", modelBatch.circuit]
+        : ["COMPUTE", modelBatch.compute];
+      const gate = await tokenNeeds(
+        user,
+        [["SIGNAL", modelBatch.signal], ["POWER", modelBatch.power], fuel],
+        ENERGY_COST_MODEL,
+      );
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const ix = await (program.methods as any)
       .startModelTraining(batchSize, fuelKind)
@@ -333,6 +357,11 @@ r.post("/recipe/craft", async (req, res) => {
     const input1Acc = getAssociatedTokenAddressSync(input1Mint, user);
     const input2Acc = getAssociatedTokenAddressSync(input2Mint, user);
     const outputAcc = getAssociatedTokenAddressSync(outputMint, user);
+    const recipeInputs = RECIPE_INPUTS[recipeId];
+    if (recipeInputs) {
+      const gate = await tokenNeeds(user, recipeInputs);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const ix = await (program.methods as any)
       .craftRecipe(recipeId)

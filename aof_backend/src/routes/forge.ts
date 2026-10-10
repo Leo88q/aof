@@ -8,6 +8,8 @@ import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
+import { tokenNeeds } from "../lib/resourceShortage";
+import { ENCHANT_COST } from "../lib/resourceShortageCore";
 
 const r = Router();
 
@@ -28,6 +30,17 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
     const [forgeCommit] = forgeCommitPda(toolMint, slotType);
     const slot = await reservePoolSlot(program, connection);
     const vrf = await vrfCommitAccounts(program, connection, slot);
+    try {
+      const enchant: any = await (program.account as any).enchantSlot.fetchNullable(enchantSlotPda(toolMint, slotType)[0]);
+      const level = enchant ? Number(enchant.level) : 0;
+      const enchantCost = Number.isInteger(level) ? ENCHANT_COST[level] : undefined;
+      if (enchantCost) {
+        const forgeGate = await tokenNeeds(user, [["CIRCUIT", enchantCost], ["SILICON", enchantCost]]);
+        if (forgeGate.kind === "short") return res.status(400).json(forgeGate.body);
+      }
+    } catch {
+      // An unreadable enchant level is not proof the player is short.
+    }
 
     const ix = await (program.methods as any)
       .forgeAttemptCommit(slotType, useProtector)

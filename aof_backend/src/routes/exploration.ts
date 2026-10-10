@@ -9,6 +9,8 @@ import { coSignWithVrfLookupTable } from "../lib/vrfLookupTableTransactions";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
+import { tokenNeeds } from "../lib/resourceShortage";
+import { EXPLORATION_UPGRADE_COST, TRIP_COST } from "../lib/resourceShortageCore";
 
 const r = Router();
 
@@ -30,6 +32,13 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
     const [explorationCommit] = explorationCommitPda(toolMint);
     const slot = await reservePoolSlot(program, connection);
     const vrf = await vrfCommitAccounts(program, connection, slot);
+    const tripGate = await tokenNeeds(user, [
+      ["DATA", TRIP_COST.DATA],
+      ["CIRCUIT", TRIP_COST.CIRCUIT],
+      ["SILICON", TRIP_COST.SILICON],
+      ["DATASET", TRIP_COST.DATASET],
+    ]);
+    if (tripGate.kind === "short") return res.status(400).json(tripGate.body);
 
     const ix = await (program.methods as any)
       .startExplorationCommit()
@@ -123,6 +132,17 @@ r.post("/upgrade-tier", async (req, res) => {
     const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
     const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
     const userData = getAssociatedTokenAddressSync(dataMint, user);
+    try {
+      const state: any = await (program.account as any).explorationState.fetchNullable(explorationState);
+      const tier = Number(state?.tier);
+      const upgradeCost = Number.isInteger(tier) ? EXPLORATION_UPGRADE_COST[tier - 1] : undefined;
+      if (state && tier >= 1 && tier < 10 && upgradeCost) {
+        const upgradeGate = await tokenNeeds(user, [["CIRCUIT", upgradeCost], ["SILICON", upgradeCost], ["DATA", upgradeCost]]);
+        if (upgradeGate.kind === "short") return res.status(400).json(upgradeGate.body);
+      }
+    } catch {
+      // An unreadable tier is not proof the player is short.
+    }
 
     const ix = await (program.methods as any)
       .upgradeExplorationTier()

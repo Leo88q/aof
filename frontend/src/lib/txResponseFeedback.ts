@@ -3,6 +3,7 @@ import type { Language } from '../i18n/translations';
 import { walletRuntimeCopy } from '../i18n/walletRuntimeCopy';
 import { legacyVrfRussian, vrfCopy } from '../i18n/vrfCopy';
 import { humanizeVrfError } from './vrfErrors';
+import { formatResourceShortage } from './resourceShortageMessage';
 
 /** A JSON envelope can contain arbitrary server prose. Display only known
  * identifiers; keep unknown errors neutral, without inferring settlement. */
@@ -49,6 +50,9 @@ export function txExceptionFeedback(error: unknown, language: Language, fallback
 export function actionErrorFeedback(error: unknown, language: Language, fallback: string): string {
   if (error instanceof LocalTxFeedbackError) return error.message;
   const code = (error as { code?: unknown } | null)?.code;
+  if (code === 'INSUFFICIENT_RESOURCES') {
+    return formatResourceShortage(language, (error as { missing?: unknown }).missing);
+  }
   if (code === 'API_NETWORK_UNAVAILABLE') return apiErrorCopy[language].networkUnavailable;
   if (typeof code === 'string') return txResponseFeedback(code, language, fallback);
   return txExceptionFeedback(error, language, fallback);

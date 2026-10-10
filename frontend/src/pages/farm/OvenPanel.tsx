@@ -10,6 +10,8 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { getMintAsync } from "../../lib/mints";
+import { readEconomyBalances } from "../../lib/economyBalances";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
@@ -40,6 +42,7 @@ export function OvenPanel() {
   const [modelState, setModelState] = useState<ModelState | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [readStatus, setReadStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [shortage, setShortage] = useState<string | null>(null);
   const requestSeq = useRef(0);
   const inFlight = useRef<string | null>(null);
 
@@ -89,13 +92,57 @@ export function OvenPanel() {
     return () => clearInterval(interval);
   }, [modelState]);
 
+  useEffect(() => {
+    if (!walletAddr || readStatus !== 'ready' || modelState) {
+      setShortage(null);
+      return;
+    }
+    let alive = true;
+    const m = MODEL_SIZES[size];
+    const fuelNeed = fuel === 'circuit'
+      ? { resource: 'CIRCUIT', need: m.circuit }
+      : { resource: 'COMPUTE', need: m.compute };
+    Promise.all([
+      api.query.balances(walletAddr).catch(() => null),
+      api.energy.balance(walletAddr).catch(() => null),
+    ]).then(([raw, energy]) => {
+      if (!alive) return;
+      const balances = readEconomyBalances(raw);
+      const current = energy && typeof energy.amount === 'number' ? energy.amount : null;
+      const missing = shortagesFromBalances(
+        balances,
+        [{ resource: 'SIGNAL', need: m.signal }, { resource: 'POWER', need: m.power }, fuelNeed],
+        current === null ? null : { current, need: 2 },
+      );
+      setShortage(missing && missing.length > 0 ? formatResourceShortage(language, missing) : null);
+    });
+    return () => { alive = false; };
+  }, [walletAddr, readStatus, modelState, size, fuel, language]);
+
   async function startModelTraining() {
     if (!walletAddr) return;
     const m = MODEL_SIZES[size];
     const fuelKind = FUEL_KIND[fuel];
     const resultAmount = fuel === 'circuit' ? m.model : m.modelCompute;
+    const fuelNeed = fuel === 'circuit'
+      ? { resource: 'CIRCUIT', need: m.circuit }
+      : { resource: 'COMPUTE', need: m.compute };
     setBaking(true);
     try {
+      const balances = readEconomyBalances(await api.query.balances(walletAddr).catch(() => null));
+      const energy = await api.energy.balance(walletAddr).catch(() => null);
+      const current = energy && typeof energy.amount === 'number' ? energy.amount : null;
+      const missing = shortagesFromBalances(
+        balances,
+        [{ resource: 'SIGNAL', need: m.signal }, { resource: 'POWER', need: m.power }, fuelNeed],
+        current === null ? null : { current, need: 2 },
+      );
+      if (missing && missing.length > 0) {
+        const text = formatResourceShortage(language, missing);
+        setShortage(text);
+        toast.show(text, "error", language);
+        return;
+      }
       const [signalMint, powerMint, circuitMint, computeMint] = await Promise.all([
         getMintAsync("SIGNAL"),
         getMintAsync("POWER"),
@@ -202,6 +249,7 @@ export function OvenPanel() {
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.energy}:</span><span className="text-parchment">2</span></div>
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.duration}:</span><span className="text-parchment">{copy.hours(m.time / 3600)}</span></div>
           </div>
+          {shortage && <p role="alert" className="text-gold-400 text-xs [overflow-wrap:anywhere]">{shortage}</p>}
           <button type="button" onClick={startModelTraining} disabled={baking}
             className="w-full py-2 rounded-lg bg-gradient-to-r from-ember-600 to-gold-600 text-parchment font-bold text-sm disabled:opacity-50 [overflow-wrap:anywhere]">
             {baking ? copy.oven.starting : copy.oven.start}

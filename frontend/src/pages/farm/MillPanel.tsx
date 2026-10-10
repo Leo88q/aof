@@ -10,6 +10,8 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { getMintAsync } from "../../lib/mints";
+import { readEconomyBalances } from "../../lib/economyBalances";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
@@ -37,6 +39,7 @@ export function MillPanel() {
   const [signalState, setSignalState] = useState<SignalState | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [readStatus, setReadStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [shortage, setShortage] = useState<string | null>(null);
   const requestSeq = useRef(0);
   const inFlight = useRef<string | null>(null);
 
@@ -86,11 +89,49 @@ export function MillPanel() {
     return () => clearInterval(interval);
   }, [signalState]);
 
+  useEffect(() => {
+    if (!walletAddr || readStatus !== 'ready' || signalState) {
+      setShortage(null);
+      return;
+    }
+    let alive = true;
+    const m = SIGNAL_SIZES[size];
+    Promise.all([
+      api.query.balances(walletAddr).catch(() => null),
+      api.energy.balance(walletAddr).catch(() => null),
+    ]).then(([raw, energy]) => {
+      if (!alive) return;
+      const balances = readEconomyBalances(raw);
+      const current = energy && typeof energy.amount === 'number' ? energy.amount : null;
+      const missing = shortagesFromBalances(
+        balances,
+        [{ resource: 'SYNAPSE', need: m.synapse }, { resource: 'SILICON', need: m.silicon }],
+        current === null ? null : { current, need: 2 },
+      );
+      setShortage(missing && missing.length > 0 ? formatResourceShortage(language, missing) : null);
+    });
+    return () => { alive = false; };
+  }, [walletAddr, readStatus, signalState, size, language]);
+
   async function startSignalProcessing() {
     if (!walletAddr) return;
     const m = SIGNAL_SIZES[size];
     setMilling(true);
     try {
+      const balances = readEconomyBalances(await api.query.balances(walletAddr).catch(() => null));
+      const energy = await api.energy.balance(walletAddr).catch(() => null);
+      const current = energy && typeof energy.amount === 'number' ? energy.amount : null;
+      const missing = shortagesFromBalances(
+        balances,
+        [{ resource: 'SYNAPSE', need: m.synapse }, { resource: 'SILICON', need: m.silicon }],
+        current === null ? null : { current, need: 2 },
+      );
+      if (missing && missing.length > 0) {
+        const text = formatResourceShortage(language, missing);
+        setShortage(text);
+        toast.show(text, "error", language);
+        return;
+      }
       const [synapseMint, siliconMint] = await Promise.all([
         getMintAsync("SYNAPSE"),
         getMintAsync("SILICON"),
@@ -184,6 +225,7 @@ export function MillPanel() {
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.energy}:</span><span className="text-parchment">2</span></div>
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.duration}:</span><span className="text-parchment">{copy.hours(m.time / 3600)}</span></div>
           </div>
+          {shortage && <p role="alert" className="text-gold-400 text-xs [overflow-wrap:anywhere]">{shortage}</p>}
           <button type="button" onClick={startSignalProcessing} disabled={milling}
             className="w-full py-2 rounded-lg bg-gold-600 text-parchment font-bold text-sm disabled:opacity-50 [overflow-wrap:anywhere]">
             {milling ? copy.mill.starting : copy.mill.start}

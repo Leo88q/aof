@@ -3822,6 +3822,7 @@ test('unknown API prose and malformed success payloads never display raw server 
   assert.match(api, /if \(data === null\)[\s\S]+NON_JSON_RESPONSE_/);
   assert.match(api, /signalState: \(owner: string\) => get\(`\/query\/signal-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
   assert.match(api, /modelState: \(owner: string\) => get\(`\/query\/model-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /if \(raw === "INSUFFICIENT_RESOURCES"\)/);
   assert.match(api, /startSignalProcessing: \(v: any\) => post\("\/chain\/signal\/start-processing", v\)/);
   assert.match(api, /startModelTraining: \(v: any\) => post\("\/chain\/model\/start-training", v\)/);
   assert.ok(!/post\([\s\S]{0,80}allowNull/.test(api), 'action calls must not treat an empty body as success');
@@ -3831,6 +3832,32 @@ test('unknown API prose and malformed success payloads never display raw server 
     if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${language}: Russian fallback`);
     assert.ok(!/success|успешно|successful/i.test(text), `${language}: unverified result called successful`);
   }
+});
+
+test('a resource shortage names the measured resource and does not invent one', async () => {
+  const { formatResourceShortage, shortagesFromBalances } = await import('../src/lib/resourceShortageMessage.ts');
+  const { ALL_BALANCE_KEYS } = await import('../src/lib/economyBalances.ts');
+  const balances = Object.fromEntries(ALL_BALANCE_KEYS.map(key => [key, key === 'SYNAPSE' ? 1 : 40]));
+  const missing = shortagesFromBalances(balances, [
+    { resource: 'SYNAPSE', need: 6 },
+    { resource: 'SILICON', need: 1 },
+  ]);
+  assert.deepEqual(missing, [{ resource: 'SYNAPSE', have: '1', need: '6' }]);
+  assert.equal(shortagesFromBalances(null, [{ resource: 'SYNAPSE', need: 6 }]), null);
+  for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
+    const text = formatResourceShortage(language, missing);
+    assert.match(text, /1/);
+    assert.match(text, /6/);
+    assert.ok(!/SYNAPSE/.test(text), `${language}: raw key leaked`);
+    assert.ok(!/success|успешно/i.test(text), `${language}: shortage called successful`);
+    if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${language}: Russian fallback`);
+  }
+  const unnamed = formatResourceShortage('en', [{ resource: 'NOT_A_RESOURCE', have: '0', need: '1' }]);
+  assert.equal(unnamed, 'Not enough resources to start. The start was not sent.');
+  const feedback = code('src/lib/txResponseFeedback.ts');
+  assert.match(feedback, /code === 'INSUFFICIENT_RESOURCES'/);
+  assert.match(code('src/pages/farm/MillPanel.tsx'), /shortagesFromBalances\(/);
+  assert.match(code('src/pages/farm/OvenPanel.tsx'), /shortagesFromBalances\(/);
 });
 
 test('unlinked admin audit has seven-language labels without weakening failed-read handling', async () => {
