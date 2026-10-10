@@ -7,7 +7,7 @@ import { authPda, configPda, explorationCommitPda, explorationStatePda, material
 import { coSign, pk } from "../lib/tx";
 import { coSignWithVrfLookupTable } from "../lib/vrfLookupTableTransactions";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
-import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 import { tokenNeeds } from "../lib/resourceShortage";
 import { EXPLORATION_UPGRADE_COST, TRIP_COST } from "../lib/resourceShortageCore";
@@ -31,14 +31,19 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
     const ata = (mint: PublicKey) => getAssociatedTokenAddressSync(mint, user);
     const [explorationCommit] = explorationCommitPda(toolMint);
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
     const tripGate = await tokenNeeds(user, [
       ["DATA", TRIP_COST.DATA],
       ["CIRCUIT", TRIP_COST.CIRCUIT],
       ["SILICON", TRIP_COST.SILICON],
       ["DATASET", TRIP_COST.DATASET],
     ]);
-    if (tripGate.kind === "short") return res.status(400).json(tripGate.body);
+    if (tripGate.kind === "short") {
+      releasePoolSlot(slot);
+      return res.status(400).json(tripGate.body);
+    }
 
     const ix = await (program.methods as any)
       .startExplorationCommit()
@@ -71,6 +76,10 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
       .instruction();
     const tx = await coSignWithVrfLookupTable([ix], user);
     res.json({ tx, explorationCommit: explorationCommit.toBase58() });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
   }

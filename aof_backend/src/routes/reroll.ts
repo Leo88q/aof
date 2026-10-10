@@ -27,7 +27,7 @@ import {
 } from "../lib/accountSizes";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
-import { randomNonce, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { randomNonce, releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 import { craftBundleUnits, tokenNeeds } from "../lib/resourceShortage";
 import { FEE_PER_REROLL_MICROS } from "../lib/resourceShortageCore";
@@ -148,7 +148,9 @@ r.post("/random/commit", requireCircuitOpen, requireWalletLimits("reroll_commit"
     const nonce = randomNonce();
     const [rerollCommit] = rerollCommitPda(user, nonce);
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
 
     const ix = await (program.methods as any)
       .rerollRandomCommit(new BN(nonce))
@@ -169,6 +171,10 @@ r.post("/random/commit", requireCircuitOpen, requireWalletLimits("reroll_commit"
       .instruction();
     const tx = await coSign([ix], user);
     res.json({ tx, rerollCommit: rerollCommit.toBase58(), mint: rerollMintPda(rerollCommit)[0].toBase58(), nonce });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
   }

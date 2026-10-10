@@ -7,7 +7,7 @@ import { configPda, lotteryRoundPda, lotteryTicketPda, lotteryTicketCounterPda }
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireAdmin } from "../middleware/adminAuth";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, fetchPendingCommit, buildRevealInstructions } from "../lib/vrfSettlement";
 
 /**
@@ -148,7 +148,9 @@ r.post("/draw/commit", requireAdmin, async (req, res) => {
   try {
     const roundId = u64(req.body.roundId, "roundId");
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
     const ix = await (program.methods as any)
       .commitLotteryDraw()
       .accounts({
@@ -160,6 +162,10 @@ r.post("/draw/commit", requireAdmin, async (req, res) => {
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
   }

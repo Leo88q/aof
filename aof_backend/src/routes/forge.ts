@@ -6,7 +6,7 @@ import { program, connection } from "../provider";
 import { authPda, configPda, enchantSlotPda, forgeCommitPda, resourceEscrowAta, toolPda } from "../lib/pda";
 import { coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
-import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 import { tokenNeeds } from "../lib/resourceShortage";
 import { ENCHANT_COST } from "../lib/resourceShortageCore";
@@ -29,14 +29,19 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
     const cfg: any = await (program.account as any).config.fetch(config);
     const [forgeCommit] = forgeCommitPda(toolMint, slotType);
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
     try {
       const enchant: any = await (program.account as any).enchantSlot.fetchNullable(enchantSlotPda(toolMint, slotType)[0]);
       const level = enchant ? Number(enchant.level) : 0;
       const enchantCost = Number.isInteger(level) ? ENCHANT_COST[level] : undefined;
       if (enchantCost) {
         const forgeGate = await tokenNeeds(user, [["CIRCUIT", enchantCost], ["SILICON", enchantCost]]);
-        if (forgeGate.kind === "short") return res.status(400).json(forgeGate.body);
+        if (forgeGate.kind === "short") {
+          releasePoolSlot(slot);
+          return res.status(400).json(forgeGate.body);
+        }
       }
     } catch {
       // An unreadable enchant level is not proof the player is short.
@@ -66,6 +71,10 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async
       .instruction();
     const tx = await coSign([ix], user);
     res.json({ tx, forgeCommit: forgeCommit.toBase58() });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
   }
