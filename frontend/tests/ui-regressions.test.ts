@@ -1333,6 +1333,7 @@ test('сетевая станция и барограф переводят ре�
   assert.match(panel, /import \{ stationLastCollectedAt \} from \"\.\/wellReadings\"/);
   assert.match(panel, /import \{ WellHall \} from \"\.\/WellHall\"/);
   assert.match(panel, /weatherAccountPresent !== false/);
+  assert.match(panel, /state.exists !== false/);
   const hall = code('src/pages/farm/WellHall.tsx');
   assert.match(hall, /\/assets\/well\/station\.jpg/);
   assert.doesNotMatch(hall, /grid_accrual|powerBuffer/);
@@ -1366,6 +1367,8 @@ test('нейронная лаборатория переводит действ�
   assert.match(panel, /loadError \? \(/);
   assert.match(panel, /setLoadError\(true\)/);
   assert.match(panel, /!loadError && selectedCell !== null/);
+  assert.match(panel, /copy.retry/);
+  assert.match(panel, /resource: \"NEURON\", need: neuronAmount/);
   assert.match(panel, /copy\.started\(neuronAmount, selectedCell \+ 1\)/);
   assert.match(panel, /copy\.collected\(tileIndex \+ 1\)/);
   for (const language of languages) {
@@ -3822,6 +3825,7 @@ test('unknown API prose and malformed success payloads never display raw server 
   assert.match(api, /if \(data === null\)[\s\S]+NON_JSON_RESPONSE_/);
   assert.match(api, /signalState: \(owner: string\) => get\(`\/query\/signal-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
   assert.match(api, /modelState: \(owner: string\) => get\(`\/query\/model-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /gridState: \(owner: string\) => get\(`\/query\/grid-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
   assert.match(api, /if \(raw === "INSUFFICIENT_RESOURCES"\)/);
   assert.match(api, /startSignalProcessing: \(v: any\) => post\("\/chain\/signal\/start-processing", v\)/);
   assert.match(api, /startModelTraining: \(v: any\) => post\("\/chain\/model\/start-training", v\)/);
@@ -4256,7 +4260,7 @@ test('farm toasts are tied to the locale that produced their text', () => {
   assert.match(source, /show: \(message: string, type: "success" \| "error" \| "info", language: Language\)/);
   assert.match(source, /set\(\{ message, type, visible: true, messageLanguage: language \}\)/);
   assert.match(source, /visible && messageLanguage === language/);
-  for (const [file, expected] of [['NeuralLabPanel', 9], ['MillPanel', 8], ['OvenPanel', 8]] as const) {
+  for (const [file, expected] of [['NeuralLabPanel', 10], ['MillPanel', 9], ['OvenPanel', 9]] as const) {
     const panel = code(`src/pages/farm/${file}.tsx`);
     const calls = panel.match(/toast\.show\([^\n]+?\);/g) ?? [];
     assert.equal(calls.length, expected, file);

@@ -175,8 +175,9 @@ r.get("/weather-state", async (_req, res) => {
 r.get("/grid-state/:owner", async (req, res) => {
   const [addr] = gridStatePda(new PublicKey(req.params.owner));
   const state: any = await fetchOne("gridState", addr);
-  if (!state) return res.json(null);
-  res.json({ ...deep(state), powerBuffer: resourceDisplay(state.powerBuffer) });
+  // Нет счёта — станция не создана. Это не отказ чтения.
+  if (!state) return res.json({ exists: false });
+  res.json({ exists: true, ...deep(state), powerBuffer: resourceDisplay(state.powerBuffer) });
 });
 
 r.get("/signal-state/:owner", async (req, res) => {

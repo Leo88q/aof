@@ -57,7 +57,7 @@ export function WellPanel() {
     // больше не показывают разные состояния одного аккаунта.
     const [snap, gridState, mint] = await Promise.all([
       fetchWeatherSnapshot(),
-      api.query.gridState(walletAddr).catch(() => null),
+      api.query.gridState(walletAddr).then((state: any) => (state && state.exists !== false ? state : null)).catch(() => null),
       getMintAsync("POWER"),
     ]);
     // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
