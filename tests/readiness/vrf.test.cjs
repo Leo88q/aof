@@ -165,6 +165,8 @@ test('F-06 the backend reveal path never forwards its RPC URL to the oracle gate
   assert.match(body, /if \(rpc\) body\.rpc = rpc;/, 'rpc is opt-in');
   assert.doesNotMatch(backend, /revealRequestBody\([^)]*(\bRPC_URL\b|rpcEndpoint)/, 'never pass the backend RPC URL');
   assert.match(backend, /SWITCHBOARD_GATEWAY_RPC_URL/);
+  assert.match(backend, /reading oracles that loaded/, 'one unread queue member must not be the only inspection path');
+  assert.doesNotMatch(backend, /revealIx\s*\(/);
 });
 
 test('F-06 settlement instructions stay permissionless (the settler signs with a fee-only wallet)', () => {

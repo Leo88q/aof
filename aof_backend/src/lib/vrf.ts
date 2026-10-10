@@ -382,8 +382,12 @@ export function oracleCandidateFromInspection(c: any): OracleCandidate {
   };
 }
 
+function oracleErrorText(error: unknown): string {
+  return String((error as Error)?.message || error).replace(/\s+/g, " ").slice(0, 200);
+}
+
 /** The trusted queue's randomness oracles as the SDK inspects them (uncached). */
-export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+async function inspectOraclesFromSdk(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
   const sb = await sdk();
   const prog = await switchboardProgram(connection);
   const queue = new sb.Queue(prog, switchboard().queue as any);
@@ -391,8 +395,48 @@ export async function inspectOracles(connection: Connection): Promise<{ inspecti
   return { inspection, candidates: (inspection.candidates || []).map(oracleCandidateFromInspection) };
 }
 
+/**
+ * The SDK aborts the whole queue when one member account does not load.
+ * A pack must still open if another member is on-chain fresh. Live health is
+ * used when the SDK can read it; otherwise eligibility stays the on-chain rule.
+ */
+async function inspectLoadedOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+  const sb = await sdk();
+  const prog = await switchboardProgram(connection);
+  const queue = new sb.Queue(prog, switchboard().queue as any);
+  const queueData = await queue.loadData();
+  const keyCount = typeof queueData.oracleKeysLen?.toNumber === "function"
+    ? queueData.oracleKeysLen.toNumber()
+    : Number(queueData.oracleKeysLen);
+  const oracleKeys = queueData.oracleKeys.slice(0, keyCount);
+  const loaded = await sb.Oracle.loadMany(prog, oracleKeys);
+  const present = oracleKeys
+    .map((oracleKey: PublicKey, index: number) => ({ oracleKey, data: loaded[index] }))
+    .filter((row: { data: unknown }) => row.data);
+  if (!present.length) throw new Error("No Switchboard oracle account loaded");
+  // Live health is optional here: the failed SDK pass already tried it. An oracle
+  // that is verified and fresh on-chain remains eligible, matching the SDK fallback.
+  const raw = present.map((row: { oracleKey: PublicKey; data: unknown }) => sb.buildSolanaRandomnessOracleCandidate({
+    oracle: new sb.Oracle(prog, row.oracleKey),
+    data: row.data,
+    queueData,
+  }));
+  return { inspection: { candidates: raw, queueData }, candidates: raw.map(oracleCandidateFromInspection) };
+}
+
+export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+  try {
+    return await inspectOraclesFromSdk(connection);
+  } catch (error) {
+    console.error("[vrf] queue inspection failed, reading oracles that loaded:", oracleErrorText(error));
+    return inspectLoadedOracles(connection);
+  }
+}
+
 async function refreshOracles(connection: Connection): Promise<void> {
   const { candidates } = await inspectOracles(connection);
+  const eligible = candidates.filter(oracleEligible).length;
+  console.log(`[vrf] oracles loaded=${candidates.length} eligible=${eligible}`);
   oracleCache = { at: Date.now(), candidates };
 }
 
@@ -404,8 +448,9 @@ export async function selectOracle(connection: Connection): Promise<PublicKey> {
     try {
       await oracleRefresh;
     } catch (error) {
+      console.error("[vrf] oracle refresh failed:", oracleErrorText(error));
       if (!oracleCache || Date.now() - oracleCache.at > ORACLE_STALE_OK_MS) throw vrfUnavailable("VRF_ORACLE_UNAVAILABLE");
-      console.warn("[vrf] oracle refresh failed, using the cached list:", String((error as Error)?.message || error).slice(0, 200));
+      console.warn("[vrf] using the cached oracle list");
     }
   }
   return pickOracle(oracleCache!.candidates);
