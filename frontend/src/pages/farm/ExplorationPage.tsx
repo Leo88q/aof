@@ -10,6 +10,8 @@ import { UI_ICONS, resourceIcon, toolPlate } from '../../lib/visualAssets';
 import { ArtPlate } from '../../components/visual/ArtPlate';
 import { ResourceGlyph } from '../../components/visual/ResourceGlyph';
 import { actionErrorFeedback, LocalTxFeedbackError } from '../../lib/txResponseFeedback';
+import { readEconomyBalances } from '../../lib/economyBalances';
+import { formatResourceShortage, shortagesFromBalances } from '../../lib/resourceShortageMessage';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { explorationCopy } from '../../i18n/explorationCopy';
 import { homeResourceNames } from '../../i18n/homeDetail';
@@ -47,6 +49,8 @@ export function ExplorationPage() {
   const [notice, setNotice] = useState<Notice>(null);
   const [error, setError] = useState<{ language: typeof language; text: string } | null>(null);
   const [record, setRecord] = useState<{ recorded: boolean; tier: number | null } | null>(null);
+  const [shortage, setShortage] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +84,7 @@ export function ExplorationPage() {
       void read(true);
     }, 8000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [address]);
+  }, [address, reloadTick]);
 
   useEffect(() => {
     let active = true;
@@ -124,6 +128,28 @@ export function ExplorationPage() {
     return () => { active = false; clearInterval(timer); };
   }, [trip, transmitter, address]);
 
+  useEffect(() => {
+    if (!address || (trip !== 'ready' && trip !== 'closed' && trip !== 'missingTool')) {
+      setShortage(null);
+      return;
+    }
+    let alive = true;
+    api.query.balances(address).catch(() => null).then((raw) => {
+      if (!alive) return;
+      const missing = shortagesFromBalances(readEconomyBalances(raw), COST.map(item => ({ resource: item.symbol, need: item.amount })));
+      setShortage(missing && missing.length > 0 ? formatResourceShortage(language, missing) : null);
+    });
+    return () => { alive = false; };
+  }, [address, trip, language]);
+
+  async function tripShortage(owner: string): Promise<string | null> {
+    const missing = shortagesFromBalances(
+      readEconomyBalances(await api.query.balances(owner).catch(() => null)),
+      COST.map(item => ({ resource: item.symbol, need: item.amount })),
+    );
+    return missing && missing.length > 0 ? formatResourceShortage(language, missing) : null;
+  }
+
   function fail(e: unknown) {
     setError({ language, text: actionErrorFeedback(e, language, copy.uncertain) });
     setNotice('uncertain');
@@ -133,6 +159,13 @@ export function ExplorationPage() {
     if (!address || !transmitter || (trip !== 'ready' && trip !== 'closed') || busyRef.current) return;
     busyRef.current = true; setBusy(true); setError(null); setNotice(null);
     try {
+      const missing = await tripShortage(address);
+      if (walletRef.current !== address) return;
+      if (missing) {
+        setShortage(missing);
+        setError({ language, text: missing });
+        return;
+      }
       // Recheck the pending PDA immediately before asking for a wallet signature.
       const status: any = await api.exploration.status(transmitter.commit);
       if (walletRef.current !== address) return;
@@ -146,7 +179,11 @@ export function ExplorationPage() {
       if (!result.success) throw new LocalTxFeedbackError(result.error || copy.uncertain);
       setTrip('pending'); setNotice('waiting');
     } catch (e) {
-      if (walletRef.current === address) { setTrip('unavailable'); fail(e); }
+      if (walletRef.current === address) {
+        const code = e && typeof e === 'object' && 'code' in e ? String((e as { code?: unknown }).code) : '';
+        if (code !== 'INSUFFICIENT_RESOURCES') setTrip('unavailable');
+        fail(e);
+      }
     } finally { busyRef.current = false; setBusy(false); }
   }
 
@@ -201,11 +238,15 @@ export function ExplorationPage() {
             <li>✓ {copy.tool}</li><li>✓ {copy.resources}</li><li>✓ {copy.limits}</li>
           </ul>
         </div>
-        {(message || trip === 'checking' || trip === 'unavailable' || trip === 'pending') && (
+        {(message || shortage || trip === 'checking' || trip === 'unavailable' || trip === 'pending') && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} role="status" className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment mb-4 break-words">
-            {message || (trip === 'checking' ? copy.checking : trip === 'unavailable' ? copy.unavailable : copy.pending)}
+            {message || shortage || (trip === 'checking' ? copy.checking : trip === 'unavailable' ? copy.unavailable : copy.pending)}
           </motion.div>
         )}
+        {trip === 'unavailable' && <button type="button" onClick={() => setReloadTick(n => n + 1)} disabled={busy}
+          className="w-full min-w-0 mb-2 px-3 py-2 rounded-2xl bg-soil-800 border border-straw/20 text-parchment text-xs whitespace-normal break-words disabled:opacity-40">
+          {copy.retry}
+        </button>}
         <button onClick={startExploration} disabled={busy || !address || !transmitter || (trip !== 'ready' && trip !== 'closed')}
           className="w-full min-w-0 px-3 py-3.5 rounded-2xl bg-gradient-to-r from-nf-purple to-accent-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-transform whitespace-normal break-words">
           {busy ? copy.sending : !address ? copy.connect : trip === 'checking' ? copy.checking : trip === 'unavailable' ? copy.unavailable : trip === 'pending' ? copy.pending : !transmitter ? copy.missingTool : copy.send}

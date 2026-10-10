@@ -1064,6 +1064,7 @@ test("фляги обещают ровно тот эффект, который �
   assert.match(page, /copy\.exchangeSubmit/, "у обмена обязана быть подпись кнопки из каталога");
   assert.match(page, /copy\.useSubmit/, "у применения фляги обязана быть подпись кнопки из каталога");
   assert.match(page, /setEnergy\(null\)/, "неудачное чтение энергии обязано оставлять состояние неизвестным");
+  assert.match(page, /copy\.tankFull/);
 
   // Эффект копирайта обязан совпадать с таблицей программы, а не жить сам по себе.
   const constants = read("../aof-core/src/constants.rs");
@@ -1964,6 +1965,8 @@ test('экспедиция переведена и не выдаёт закры�
   assert.match(page, /api\.exploration\.status\(transmitter\.commit\)/);
   assert.match(page, /status\?\.state === 'pending'/);
   assert.match(page, /setTrip\('unavailable'\)/);
+  assert.match(page, /tripShortage/);
+  assert.match(page, /copy\.retry/);
   assert.match(page, /response\?\.explorationCommit !== transmitter\.commit/);
   assert.match(page, /typeof response\.tx !== 'string'/);
   assert.match(page, /typeof response\?\.tx !== 'string'/);

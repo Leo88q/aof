@@ -5,7 +5,7 @@ type Copy = {
   hotTitle: string; hotExplanation: string;
   energyTitle: string; energyUnavailable: string;
   exchangeTitle: string; exchangeHint: string; exchangeAmount: string; exchangeSubmit: string;
-  exchangeSuccess: (units: number) => string; exchangeFailed: string; exchangePending: string;
+  exchangeSuccess: (units: number) => string; exchangeFailed: string; exchangePending: string; tankFull: string;
   useSubmit: string; useSuccess: (gain: number) => string; useFailed: string; usePending: string;
 };
 export const marketDetailCopy: Record<Language, Copy> = {
@@ -22,6 +22,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Энергия пополнена: +${units}`,
     exchangeFailed: 'Обмен не выполнен',
     exchangePending: 'Обмен…',
+    tankFull: 'В баке нет места на эту энергию. DATA и фляга не сжигаются.',
     useSubmit: 'Применить',
     useSuccess: (gain) => `Фляга применена: +${gain} энергии`,
     useFailed: 'Флягу применить не удалось',
@@ -40,6 +41,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Energy topped up: +${units}`,
     exchangeFailed: 'The exchange did not go through',
     exchangePending: 'Exchanging…',
+    tankFull: 'The tank has no room for this energy. DATA and the vial are not burned.',
     useSubmit: 'Use',
     useSuccess: (gain) => `Vial used: +${gain} energy`,
     useFailed: 'The vial could not be used',
@@ -58,6 +60,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Energia reposta: +${units}`,
     exchangeFailed: 'A troca não foi concluída',
     exchangePending: 'Trocando…',
+    tankFull: 'O tanque não tem espaço para esta energia. DATA e o frasco não são queimados.',
     useSubmit: 'Usar',
     useSuccess: (gain) => `Frasco usado: +${gain} de energia`,
     useFailed: 'Não foi possível usar o frasco',
@@ -76,6 +79,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Energía recargada: +${units}`,
     exchangeFailed: 'El cambio no se realizó',
     exchangePending: 'Cambiando…',
+    tankFull: 'El tanque no tiene sitio para esta energía. El DATA y el frasco no se queman.',
     useSubmit: 'Usar',
     useSuccess: (gain) => `Frasco usado: +${gain} de energía`,
     useFailed: 'No se pudo usar el frasco',
@@ -94,6 +98,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Đã nạp năng lượng: +${units}`,
     exchangeFailed: 'Giao dịch đổi không thực hiện được',
     exchangePending: 'Đang đổi…',
+    tankFull: 'Bình chứa không còn chỗ cho năng lượng này. DATA và lọ không bị đốt.',
     useSubmit: 'Dùng',
     useSuccess: (gain) => `Đã dùng lọ: +${gain} năng lượng`,
     useFailed: 'Không dùng được lọ',
@@ -112,6 +117,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Energi terisi: +${units}`,
     exchangeFailed: 'Penukaran tidak berhasil',
     exchangePending: 'Menukar…',
+    tankFull: 'Tangki tidak muat untuk energi ini. DATA dan botol tidak dibakar.',
     useSubmit: 'Pakai',
     useSuccess: (gain) => `Botol dipakai: +${gain} energi`,
     useFailed: 'Botol tidak bisa dipakai',
@@ -130,6 +136,7 @@ export const marketDetailCopy: Record<Language, Copy> = {
     exchangeSuccess: (units) => `Napuno ang enerhiya: +${units}`,
     exchangeFailed: 'Hindi natuloy ang palitan',
     exchangePending: 'Pinapalitan…',
+    tankFull: 'Walang puwang sa tangke para sa enerhiyang ito. Hindi sinusunog ang DATA at ang bote.',
     useSubmit: 'Gamitin',
     useSuccess: (gain) => `Nagamit ang bote: +${gain} enerhiya`,
     useFailed: 'Hindi nagamit ang bote',

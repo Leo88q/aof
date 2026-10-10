@@ -9,6 +9,8 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { useWalletStr } from "../../lib/useWalletStr";
+import { readEconomyBalances } from "../../lib/economyBalances";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
@@ -83,6 +85,21 @@ export function FlaskMarketplace() {
     }
     setExchanging(true);
     try {
+      const [raw, energyNow] = await Promise.all([
+        api.query.balances(walletAddr).catch(() => null),
+        api.energy.balance(walletAddr).catch(() => null),
+      ]);
+      const current = energyNow && typeof energyNow.amount === "number" ? energyNow.amount : null;
+      const cap = energyNow && typeof energyNow.cap === "number" ? energyNow.cap : null;
+      if (current !== null && cap !== null && current + whole > cap) {
+        toast.show(copy.tankFull, "error", language);
+        return;
+      }
+      const missing = shortagesFromBalances(readEconomyBalances(raw), [{ resource: "DATA", need: whole }]);
+      if (missing && missing.length > 0) {
+        toast.show(formatResourceShortage(language, missing), "error", language);
+        return;
+      }
       const resp = await api.resources.exchangeEnergy({ user: walletAddr, dataAmount: whole });
       const r = await handleTxResponse(resp);
       if (r.success) {
@@ -98,13 +115,28 @@ export function FlaskMarketplace() {
     }
   }
 
-  async function handleUseFlask(flaskType: number, gain: number) {
+  async function handleUseFlask(flaskType: number, gain: number, flaskKey: string) {
     if (!walletAddr) {
       toast.show(walletRuntimeCopy[language].connectWallet, "error", language);
       return;
     }
     setUsingFlask(flaskType);
     try {
+      const [raw, energyNow] = await Promise.all([
+        api.query.balances(walletAddr).catch(() => null),
+        api.energy.balance(walletAddr).catch(() => null),
+      ]);
+      const current = energyNow && typeof energyNow.amount === "number" ? energyNow.amount : null;
+      const cap = energyNow && typeof energyNow.cap === "number" ? energyNow.cap : null;
+      if (current !== null && cap !== null && current + gain > cap) {
+        toast.show(copy.tankFull, "error", language);
+        return;
+      }
+      const missing = shortagesFromBalances(readEconomyBalances(raw), [{ resource: flaskKey, need: 1 }]);
+      if (missing && missing.length > 0) {
+        toast.show(formatResourceShortage(language, missing), "error", language);
+        return;
+      }
       const resp = await api.tools.useFlask({ user: walletAddr, flaskType });
       const r = await handleTxResponse(resp);
       if (r.success) {
@@ -181,7 +213,7 @@ export function FlaskMarketplace() {
                   <span className="text-straw text-xs max-w-[45%] break-words text-right">{copy.flaskNoPrice}</span>
                   <span className="text-sprout-500 text-xs font-bold">+{gain}</span>
                   <button
-                    onClick={() => handleUseFlask(flaskType, gain)}
+                    onClick={() => handleUseFlask(flaskType, gain, flask.key)}
                     disabled={usingFlask !== null}
                     className="btn btn-sm"
                   >

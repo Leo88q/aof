@@ -24,6 +24,7 @@ import { WellPanel } from "./WellPanel";
 import { DrumSpin } from "../../components/DrumSpin";
 import { NavHeader } from "../../components/NavHeader";
 import { LotteryPage } from "../market/LotteryPage";
+import { FlaskMarketplace } from "../market/FlaskMarketplace";
 import { ExplorationPage } from "./ExplorationPage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
@@ -182,6 +183,9 @@ export function FarmDashboard() {
               <>
                 <Key onClick={() => push("farm", "exploration", (<><NavHeader headerId="exploration" tabKey="farm" /><ExplorationPage /></>))}>
                   {labels.expedition}
+                </Key>
+                <Key onClick={() => push("farm", "fluids", (<><NavHeader headerId="fluids" tabKey="farm" /><FlaskMarketplace /></>))}>
+                  {labels.fluids}
                 </Key>
                 <Key onClick={() => push("farm", "drum", (<><NavHeader headerId="drum" tabKey="farm" /><DrumSpin /></>))}>
                   {labels.drum}
