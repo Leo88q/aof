@@ -65,7 +65,7 @@ export function OvenPanel() {
       setReadStatus('ready');
     } catch {
       if (request !== requestSeq.current) return;
-      // An RPC failure is not an empty training bench.
+      // Только сбой сети или битый счёт. Пустой PDA сюда больше не попадает.
       setModelState(null);
       setReadStatus('unavailable');
     } finally {

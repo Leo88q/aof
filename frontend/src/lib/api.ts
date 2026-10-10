@@ -121,7 +121,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/exploration/upgrade-tier", subject: "exploration_upgrade_tier", field: "user" },
 ];
 
-async function parseApiResponse(res: Response): Promise<any> {
+async function parseApiResponse(res: Response, options?: { allowNull?: boolean }): Promise<any> {
   const contentType = res.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
 
@@ -156,7 +156,9 @@ async function parseApiResponse(res: Response): Promise<any> {
   }
 
   if (data === null) {
-    // Even a 2xx with no usable JSON is not evidence of a successful action.
+    // A missing process PDA is valid empty state for the two reads that opt in.
+    // Every other 2xx with no usable JSON is still not a successful action.
+    if (options?.allowNull) return null;
     const error = new Error(apiErrorCopy[getApiErrorLanguage()].unexpected(res.status)) as Error & { code?: string };
     error.code = `NON_JSON_RESPONSE_${res.status}`;
     throw error;
@@ -209,9 +211,9 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
   return parseApiResponse(res);
 }
 
-async function get(path: string): Promise<any> {
+async function get(path: string, options?: { allowNull?: boolean }): Promise<any> {
   const res = await fetchApi(`${BASE}${path}`);
-  return parseApiResponse(res);
+  return parseApiResponse(res, options);
 }
 
 export const api = {
@@ -242,8 +244,8 @@ export const api = {
     collector: (mint: string) => get(`/query/collector/${mint}`),
     weatherState: () => get("/query/weather-state"),
     gridState: (owner: string) => get(`/query/grid-state/${owner}`),
-    signalState: (owner: string) => get(`/query/signal-state/${owner}`),
-    modelState: (owner: string) => get(`/query/model-state/${owner}`),
+    signalState: (owner: string) => get(`/query/signal-state/${owner}`, { allowNull: true }),
+    modelState: (owner: string) => get(`/query/model-state/${owner}`, { allowNull: true }),
     tool: (mint: string) => get(`/query/tool/${mint}`),
     myTools: (owner: string) => get(`/query/my-tools/${owner}`),
     friendFarm: (address: string) => get(`/query/friend-farm/${address}`),

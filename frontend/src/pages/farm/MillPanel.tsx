@@ -62,7 +62,7 @@ export function MillPanel() {
       setReadStatus('ready');
     } catch {
       if (request !== requestSeq.current) return;
-      // Missing PDA returns null. A failed RPC does not prove the mill is empty.
+      // Только сбой сети или битый счёт. Пустой PDA сюда больше не попадает.
       setSignalState(null);
       setReadStatus('unavailable');
     } finally {

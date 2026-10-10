@@ -182,14 +182,15 @@ r.get("/grid-state/:owner", async (req, res) => {
 r.get("/signal-state/:owner", async (req, res) => {
   const [addr] = signalStatePda(new PublicKey(req.params.owner));
   const state: any = await fetchOne("signalState", addr);
-  if (!state) return res.json(null);
+  // Нет счёта — процесс не начат. Это не отказ чтения и не выдуманный выход.
+  if (!state) return res.json({ inProgress: false });
   res.json({ ...deep(state), outputSignal: resourceDisplay(state.outputSignal) });
 });
 
 r.get("/model-state/:owner", async (req, res) => {
   const [addr] = modelStatePda(new PublicKey(req.params.owner));
   const state: any = await fetchOne("modelState", addr);
-  if (!state) return res.json(null);
+  if (!state) return res.json({ inProgress: false });
   res.json({ ...deep(state), outputModel: resourceDisplay(state.outputModel) });
 });
 

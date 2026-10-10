@@ -3820,6 +3820,11 @@ test('unknown API prose and malformed success payloads never display raw server 
   assert.match(api, /error\.code = raw/);
   assert.match(api, /error\.failClosed = isFailClosedCode\(raw\)/);
   assert.match(api, /if \(data === null\)[\s\S]+NON_JSON_RESPONSE_/);
+  assert.match(api, /signalState: \(owner: string\) => get\(`\/query\/signal-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /modelState: \(owner: string\) => get\(`\/query\/model-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /startSignalProcessing: \(v: any\) => post\("\/chain\/signal\/start-processing", v\)/);
+  assert.match(api, /startModelTraining: \(v: any\) => post\("\/chain\/model\/start-training", v\)/);
+  assert.ok(!/post\([\s\S]{0,80}allowNull/.test(api), 'action calls must not treat an empty body as success');
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     const text = apiErrorCopy[language].unexpected(503);
     assert.ok(text.includes('503'), `${language}: missing HTTP diagnostic`);
