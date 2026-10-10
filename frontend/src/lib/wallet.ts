@@ -14,9 +14,20 @@ import {
 
 const walletText = () => walletRuntimeCopy[getApiErrorLanguage()];
 
-const configuredRpc = (import.meta as any).env?.VITE_RPC_URL as string | undefined;
-
-// Safe fallback to public Solana RPC if VITE_RPC_URL is not explicitly configured
+const configuredRpc = typeof import.meta.env.VITE_RPC_URL === "string"
+  ? import.meta.env.VITE_RPC_URL.trim()
+  : "";
+// Dev server may omit the URL. A production bundle must not silently use devnet.
+if (import.meta.env.PROD && configuredRpc === "") {
+  throw new Error("VITE_RPC_URL is required in a production bundle");
+}
+if (import.meta.env.PROD && import.meta.env.VITE_CLUSTER === "mainnet"
+    && /devnet|testnet|localhost|127\.0\.0\.1|\[::1\]/i.test(configuredRpc)) {
+  throw new Error("mainnet bundle refuses a devnet, testnet, or local RPC");
+}
+if (import.meta.env.PROD && /api[-_]?key=|@/i.test(configuredRpc)) {
+  throw new Error("VITE_RPC_URL is public and must not contain credentials");
+}
 export const RPC = configuredRpc || "https://api.devnet.solana.com";
 export const connection = new Connection(RPC, "confirmed");
 

@@ -13,6 +13,10 @@
 # Retention: keeps BACKUP_KEEP (default 30) newest files. Cron example (daily 03:15):
 #   15 3 * * * cd /srv/aof && scripts/backup-db.sh backup /srv/aof/data/aof.db /srv/aof/backups >> /var/log/aof-backup.log 2>&1
 #
+# Offsite: set BACKUP_S3_URI (s3://bucket/aof/mainnet, or an rclone remote).
+# The upload is scripts/backup-offsite.sh. If the URI is set and neither aws
+# nor rclone is installed, the local file is kept and the script exits non-zero.
+#
 # When the project moves to PostgreSQL replace the sqlite3 calls with
 # pg_dump -Fc / pg_restore; keep the drill step.
 
@@ -26,6 +30,9 @@ need sqlite3
 backup() {
   local db="${1:-aof_backend/../data/aof.db}" dir="${2:-backups}"
   [[ -f "$db" ]] || { echo "db not found: $db" >&2; exit 2; }
+  case "$db$dir" in
+    *"'"*) echo "refusing a path that contains a quote" >&2; exit 2 ;;
+  esac
   mkdir -p "$dir"
   local out="$dir/aof-$(date -u +%Y%m%dT%H%M%SZ).db"
   sqlite3 "$db" ".backup '$out'"
@@ -33,6 +40,7 @@ backup() {
   gzip -f "$out"
   sha256sum "$out.gz" > "$out.gz.sha256"
   echo "backup written: $out.gz ($(stat -c %s "$out.gz") bytes)"
+  "$(cd "$(dirname "$0")" && pwd)/backup-offsite.sh" "$out.gz"
   # retention
   ls -1t "$dir"/aof-*.db.gz 2>/dev/null | tail -n +"$((KEEP+1))" | while read -r old; do rm -f "$old" "$old.sha256"; echo "pruned $old"; done
 }
@@ -50,7 +58,8 @@ restore() {
 drill() {
   local db="${1:-aof_backend/../data/aof.db}"
   local tmp; tmp="$(mktemp -d)"
-  backup "$db" "$tmp/b"
+  # A drill must not upload a throwaway copy to the offsite bucket.
+  BACKUP_S3_URI= backup "$db" "$tmp/b"
   local latest; latest="$(ls -1t "$tmp"/b/aof-*.db.gz | head -1)"
   restore "$latest" "$tmp/restored.db"
   # Schema must be at the same migration level as the code expects.

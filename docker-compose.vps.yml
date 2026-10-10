@@ -1,0 +1,38 @@
+# Product VPS overlay. Use with docker-compose.prod.yml only:
+#   ops/up.sh --check
+#   ops/up.sh --apply
+#
+# Do not add docker-compose.secrets.yml. That file mounts the operator key
+# into the API and the price cranker. This overlay mounts the settler fee
+# wallet and forces the API into read-only mode. Quoted empty strings clear
+# the operator key. The settler overrides are non-empty on purpose: Compose
+# can drop "" and then env_file would leak the real admin token into that process.
+# Project name is fixed so a second checkout does not create a second database.
+name: aof
+services:
+  backend:
+    environment:
+      AOF_PROCESS_ROLE: api
+      AUTHORITY_MODE: read-only
+      AUTHORITY_SECRET_KEY: ""
+      AUTHORITY_SECRET_KEY_FILE: ""
+      TRUST_PROXY_HOPS: "1"
+
+  vrf-settler:
+    environment:
+      AOF_PROCESS_ROLE: vrf-settler
+      AUTHORITY_MODE: read-only
+      AUTHORITY_SECRET_KEY: ""
+      AUTHORITY_SECRET_KEY_FILE: ""
+      # Non-empty so Compose cannot drop the override and let env_file leak the real values.
+      ADMIN_TOKEN: settler-does-not-hold-the-admin-token
+      ADMIN_READ_TOKEN: settler-does-not-hold-the-read-token
+      SESSION_KEYSTORE_KEY: settler-does-not-hold-the-keystore
+      SESSION_KEYSTORE_KEY_FILE: settler-does-not-hold-the-keystore
+      TRUST_PROXY_HOPS: "1"
+      VRF_SETTLER_SECRET_KEY_FILE: /run/secrets/vrf_settler_secret_key
+    secrets: [vrf_settler_secret_key]
+
+secrets:
+  vrf_settler_secret_key:
+    file: ./secrets/vrf_settler_secret_key

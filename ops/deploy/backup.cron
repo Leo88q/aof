@@ -1,0 +1,3 @@
+# Install on the VPS, not in this checkout's crontab, after BACKUP_S3_URI is set.
+# The database path is the mounted volume, not a guessed Docker volume name.
+# 15 3 * * * cd /srv/aof && BACKUP_S3_URI=s3://bucket/aof/mainnet scripts/backup-db.sh backup /srv/aof/data/aof.db /srv/aof/backups >> /var/log/aof-backup.log 2>&1

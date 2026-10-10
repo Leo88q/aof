@@ -63,6 +63,10 @@ Compose теперь отражает только поддерживаемый 
 
 Перед первым запуском: ревизия deployment blockers, backup, approved config, TLS reverse proxy. Node runtime — non-root, volume `/app/data`, read-only rootfs. Backend socket опубликован на loopback. Публичный доступ — только через TLS proxy; корректно ограничить proxy trust, иначе все клиенты разделят rate limit.
 
+Ящики, Cloudflare и бэкап в R2 — `docs/VPS_CLOUDFLARE_LAYOUT.md`. Это не сертификат mainnet и не замена проверок выше. Кран остаётся отдельным контейнером `vrf-settler` на том же ящике.
+
+Путь этого ящика — `ops/preflight.sh`, затем на самой VM `ops/up.sh --check`. Он подключает `docker-compose.vps.yml` и не подключает `docker-compose.secrets.yml`: тот override кладёт ключ operator в API. Совмещать их нельзя.
+
 ```bash
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d backend vrf-settler

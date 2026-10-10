@@ -138,3 +138,8 @@ out/
 !**/.env.example
 # Legacy reviewed Watchtower template (not a live environment file).
 !watchtower/config.example.env
+
+# Product VPS files filled on the box. Examples stay tracked.
+ops/deploy/frontend.env
+ops/deploy/release.sha
+ops/nginx/cloudflare-real-ip.conf
