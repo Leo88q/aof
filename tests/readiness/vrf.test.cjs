@@ -43,6 +43,7 @@ test('dedicated local-validator expiry run exercises the aged-out treasury-forfe
   assert.ok(localnet.includes('if (process.env.AOF_VRF_EXPIRY_ONLY !== "1" || process.env.AOF_TEST_VRF_EXPIRY !== "1")'));
   assert.ok(localnet.includes('const targetSlot = Number(commitSlot + BigInt(SLOT_HASH_LAST_OFFSET + SLOT_HASH_RETENTION + 1));'));
   assert.ok(localnet.includes('parseSlotHash(data, seedSlot) === null'));
+  assert.ok(localnet.includes('expect(treasuryBeforeForfeit).to.be.lessThan(Number.MAX_SAFE_INTEGER'));
   assert.ok(localnet.includes('expect(d(treasury)).to.equal(forfeitedLamports'));
   assert.ok(localnet.includes('expect(d(user.publicKey)).to.equal(commitRent'));
   assert.ok(runner.includes('--grep "pack timeout: aged-out SlotHashes"'));

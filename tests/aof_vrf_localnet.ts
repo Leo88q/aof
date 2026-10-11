@@ -290,9 +290,12 @@ describe("aof-core: VRF cycle on the local validator (legacy Switchboard cases)"
     }
     // The CI expiry-only invocation starts a fresh validator and runs only the
     // timeout case, so it cannot depend on aof_core.ts having seeded Config and
-    // pack_config first. The normal full-suite path already has these PDAs.
+    // pack_config first. Give its treasury a small balance so exact transaction
+    // deltas stay below JavaScript's 2^53 lamport precision boundary.
+    const expiryTreasury = Keypair.generate();
+    await airdrop(expiryTreasury, 1);
     if (!(await connection.getAccountInfo(configPda, "confirmed"))) {
-      await sendWithPayer(program.methods.initialize(authority).accounts({
+      await sendWithPayer(program.methods.initialize(expiryTreasury.publicKey).accounts({
         config: configPda, authority, auth: authPda, vault: vaultPda,
         programData: programDataPda, systemProgram: SystemProgram.programId,
       }), providerSigner);
@@ -569,6 +572,8 @@ describe("aof-core: VRF cycle on the local validator (legacy Switchboard cases)"
       });
       await expectError(expireBuilder().rpc(), "CommitNotExpired");
       const treasuryBeforeForfeit = await connection.getBalance(treasury, "confirmed");
+      expect(treasuryBeforeForfeit).to.be.lessThan(Number.MAX_SAFE_INTEGER,
+        "the dedicated test treasury keeps lamport deltas exactly representable");
 
       const commit = await program.account.packCommit.fetch(packCommit);
       const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
