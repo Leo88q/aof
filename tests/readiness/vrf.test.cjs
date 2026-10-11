@@ -37,6 +37,17 @@ test('expire classifies the outcome before releasing the lock', () => {
   }
 });
 
+test('dedicated local-validator expiry run exercises the aged-out treasury-forfeit path', () => {
+  const localnet = read('tests/aof_vrf_localnet.ts');
+  const runner = read('scripts/run-anchor-tests.sh');
+  assert.ok(localnet.includes('if (process.env.AOF_VRF_EXPIRY_ONLY !== "1" || process.env.AOF_TEST_VRF_EXPIRY !== "1")'));
+  assert.ok(localnet.includes('const targetSlot = Number(commitSlot + BigInt(SLOT_HASH_LAST_OFFSET + SLOT_HASH_RETENTION + 1));'));
+  assert.ok(localnet.includes('parseSlotHash(data, seedSlot) === null'));
+  assert.ok(localnet.includes('expect(d(treasury)).to.equal(forfeitedLamports'));
+  assert.ok(localnet.includes('expect(d(user.publicKey)).to.equal(commitRent'));
+  assert.ok(runner.includes('--grep "pack timeout: aged-out SlotHashes"'));
+});
+
 test('backend no longer treats switchboard as a live mode', () => {
   const src = read('aof_backend/src/lib/vrf.ts');
   assert.match(src, /AOF_RANDOMNESS=switchboard is not a randomness source/);

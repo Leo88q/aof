@@ -4,7 +4,7 @@ set -euo pipefail
 mocha=(npx tsx node_modules/mocha/bin/mocha.js -t 1000000)
 
 if [[ "${AOF_VRF_EXPIRY_ONLY:-0}" == "1" ]]; then
-  exec "${mocha[@]}" --grep "pack timeout refund" tests/aof_vrf_localnet.ts
+  exec "${mocha[@]}" --grep "pack timeout: aged-out SlotHashes" tests/aof_vrf_localnet.ts
 fi
 
 exec "${mocha[@]}" \
