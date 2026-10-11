@@ -2788,7 +2788,7 @@ fn transfer_matrix_zero_one_max_and_dust() {
     let maker_fee = gross * ORDERBOOK_MAKER_FEE_BPS as u64 / 10_000;
     assert_eq!(dust.cpis, 1, "один токен-перевод обменянной единицы");
     assert_eq!((dust.buy_remaining, dust.sell_remaining), (0, 0), "единица обмена исполнена");
-    assert_eq!(maker_fee, 0, "на одной единице комиссия мейкера округляется вниз до нуля");
+    assert_eq!(maker_fee, 18, "комиссия мейкера равна 2% от 900 лампортов");
     assert_eq!(dust.seller_wallet, WALLET_LAMPORTS + gross - maker_fee, "выдано = продано минус комиссия");
     assert_eq!(dust.treasury, WALLET_LAMPORTS + taker_fee + maker_fee, "казна берёт ровно свои bps");
     assert_eq!(
