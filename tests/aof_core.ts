@@ -593,7 +593,7 @@ describe("aof-core: security & core flows", () => {
     }
     expect(saleTx?.meta, "confirmed sale transaction metadata within 5 seconds").to.exist;
     expect(saleTx!.meta!.err).to.equal(null);
-    const fee = price.muln(300).divn(10_000).toNumber();
+    const fee = price.muln(800).divn(10_000).toNumber(); // MARKETPLACE_FEE_BPS
     expect(before - await provider.connection.getBalance(buyer.publicKey)).to.equal(price.toNumber());
     expect(await provider.connection.getBalance(seller.publicKey) - sellerBefore).to.equal(price.toNumber() - fee + returnedRent);
     // The validator's provider treasury may hold >2^53 lamports: JSON numeric
@@ -890,7 +890,7 @@ describe("aof-core: security & core flows", () => {
       treasury: authority, sellerToken, buyerToken, tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([seller]).rpc();
     const d = await txDeltas(signature);
-    const fee = Math.floor(PRICE * 250 / 10_000); // OFFER_FEE_BPS
+    const fee = Math.floor(PRICE * 800 / 10_000); // OFFER_FEE_BPS
     expect((await balance(buyerToken)).toString()).to.equal("1");
     expect((await balance(sellerToken)).toString()).to.equal("0");
     expect(await provider.connection.getAccountInfo(offer)).to.equal(null);
@@ -943,8 +943,8 @@ describe("aof-core: security & core flows", () => {
     const buyerCircuit = await ensureAta(circuitMint, buyer.publicKey);
     const atoms = 100;                       // атомы — та же единица, что в v1
     const pricePerWhole = new BN(100_000_000_000); // 100 SOL за ЦЕЛЫЙ ресурс
-    // ceil(1e11 × 100 / 1e9) = 10_000 лампор ровно; подушка тейкера ceil(×40/10⁴)=40.
-    const total = 10_000, deposit = 10_040;
+    // ceil(1e11 × 100 / 1e9) = 10_000 лампор ровно; подушка тейкера ceil(×600/10⁴)=600.
+    const total = 10_000, deposit = 10_600;
 
     const buyOrder = pda([B("resource_order_v2"), buyer.publicKey.toBuffer(), circuitMint.toBuffer()]);
     await program.methods.placeBuyOrderV2(1, pricePerWhole, new BN(atoms)).accounts({
@@ -1002,7 +1002,7 @@ describe("aof-core: security & core flows", () => {
       tokenProgram: TOKEN_PROGRAM_ID,
     }).rpc();
     const d = await txDeltas(signature);
-    const takerFee = Math.floor(total * 40 / 10_000), makerFee = Math.floor(total * 10 / 10_000);
+    const takerFee = Math.floor(total * 600 / 10_000), makerFee = Math.floor(total * 200 / 10_000);
     expect((await balance(buyerCircuit)).toString()).to.equal(String(atoms));
     expect(d(seller.publicKey)).to.equal(total - makerFee);
     expectFeePayerDelta(d(authority), takerFee + makerFee - d.fee);
@@ -1544,7 +1544,7 @@ describe("aof-core: security & core flows", () => {
         auctionVault, winnerToken, tool: toolPda(mint), tokenProgram: TOKEN_PROGRAM_ID,
       }).rpc();
       const d = await txDeltas(signature);
-      const fee = Math.floor(bid * 400 / 10_000); // AUCTION_FEE_BPS
+      const fee = Math.floor(bid * 1_000 / 10_000); // AUCTION_FEE_BPS
       expect((await balance(winnerToken)).toString()).to.equal("1");
       expect(await provider.connection.getAccountInfo(auctionPda)).to.equal(null);
       expect(await provider.connection.getAccountInfo(auctionVault)).to.equal(null);

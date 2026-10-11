@@ -542,7 +542,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
   });
 
   // ========== CRAFT ORDERS ==========
-  it("craft orders: premium escrowed, fulfill swaps exact resources for premium minus 2%, only the creator cancels", async () => {
+  it("craft orders: premium escrowed, fulfill swaps exact resources for premium minus 8%, only the creator cancels", async () => {
     const creator = Keypair.generate(); await airdrop(creator);
     const fulfiller = Keypair.generate(); await airdrop(fulfiller);
     const stranger = Keypair.generate(); await airdrop(stranger);
@@ -569,7 +569,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       config: configPda, fulfiller: fulfiller.publicKey, craftOrder, creatorRefund: creator.publicKey, treasury: authority,
       circuitMint, fulfillerCircuit, creatorCircuit, siliconMint, fulfillerSilicon, creatorSilicon, tokenProgram: TOKEN_PROGRAM_ID,
     }).signers([fulfiller]).rpc();
-    const fee = Math.floor(PREMIUM * 200 / 10_000); // CRAFT_ORDER_FEE_BPS
+    const fee = Math.floor(PREMIUM * 800 / 10_000); // CRAFT_ORDER_FEE_BPS
     expect(await lamports(fulfiller.publicKey) - fulfillerBefore).to.equal(PREMIUM - fee);
     expect(await lamports(creator.publicKey) - creatorBefore).to.equal(orderRent); // the closed order's rent
     expect((await balance(creatorCircuit)).sub(cw0).toString()).to.equal(CIRCUIT.toString());
