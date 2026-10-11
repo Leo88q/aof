@@ -3,7 +3,7 @@
 
 **Status:** active drift gates are zero; Step C remains open pending the separate acceptance items and Anchor-generated IDL validation.
 
-This report is regenerated from tracked and untracked, non-ignored text files. It includes active source, comments, copy, tests, scripts, and active docs. No active-code keep-list is applied. Exclusions are exact-path mapping descriptors, frozen history, and immutable database migration snapshots, each with a reason in `scripts/resource-drift.mjs`. A generic occurrence of Anchor's `seeds = [...]` syntax is not rewritten; the resource mapping is explicitly `seeds → neuron`.
+This report is regenerated from tracked and untracked, non-ignored text files. It includes active source, comments, copy, tests, scripts, and active docs. No active-code keep-list is applied. Exclusions are exact-path mapping descriptors, frozen history, and immutable database migration snapshots, each with a reason in `scripts/resource-drift.mjs`. A generic occurrence of Anchor's `seeds = [...]` syntax is not rewritten; the resource mapping is explicitly `seeds → neuron`. The existing `potato` lottery pool remains visible only as a separately classified, permanently sealed pool ID (its API status and no-charge/no-ticket copy are checked); `potato_mint` and resource-field uses still fail the gate.
 
 ## Required drift metrics
 
@@ -148,11 +148,11 @@ Old discriminator is `sha256("global:<old>")[0..8]`; new discriminator is recomp
 | `start_baking` | `start_model_training` | `61b3b5f01c68becd` | `c5eea5a7bfdb9ce6` | Yes | Yes | Yes |
 | `collect_bread` | `collect_model` | `2212354399dc043d` | `f54bc81ed5ee1162` | Yes | Yes | Yes |
 | `collect_well_water` | `collect_power` | `9ed806d43fa42218` | `91ca3dfb23e4a238` | Yes | Yes | Yes |
-| `init_potato_bank` | `init_mind_bank` | `93a8b2e7026b1251` | `f03c650a0d8be49d` | N/A — no caller in this layer | N/A — no caller in this layer | Yes |
-| `potato_spin_commit` | `mind_spin_commit` | `c505ff9eddcf6d1f` | `8a3243a8c459302f` | N/A — no caller in this layer | N/A — no caller in this layer | Yes |
-| `potato_spin_reveal` | `mind_spin_reveal` | `d6eb90141cd2404e` | `a6b7761098c03e7d` | N/A — no caller in this layer | N/A — no caller in this layer | Yes |
-| `potato_spin_expire` | `mind_spin_expire` | `188d22e09f324177` | `3e041979b227503a` | N/A — no caller in this layer | N/A — no caller in this layer | Yes |
-| `set_potato_bank_paused` | `set_mind_bank_paused` | `c73a68978a0c8286` | `cfd7e6bcbe7c7f56` | N/A — no caller in this layer | N/A — no caller in this layer | Yes |
+| `init_potato_bank` | `init_mind_bank` | `93a8b2e7026b1251` | `f03c650a0d8be49d` | N/A — no caller in this layer | N/A — no caller in this layer | N/A — no caller in this layer |
+| `potato_spin_commit` | `mind_spin_commit` | `c505ff9eddcf6d1f` | `8a3243a8c459302f` | N/A — no caller in this layer | N/A — no caller in this layer | N/A — no caller in this layer |
+| `potato_spin_reveal` | `mind_spin_reveal` | `d6eb90141cd2404e` | `a6b7761098c03e7d` | N/A — no caller in this layer | N/A — no caller in this layer | N/A — no caller in this layer |
+| `potato_spin_expire` | `mind_spin_expire` | `188d22e09f324177` | `3e041979b227503a` | N/A — no caller in this layer | N/A — no caller in this layer | N/A — no caller in this layer |
+| `set_potato_bank_paused` | `set_mind_bank_paused` | `c73a68978a0c8286` | `cfd7e6bcbe7c7f56` | N/A — no caller in this layer | N/A — no caller in this layer | N/A — no caller in this layer |
 
 ### Non-instruction helper check
 
@@ -170,8 +170,8 @@ Anchor account-constraint syntax `seeds = [...]` is unchanged. These are the res
 | `GridState` | `b"well_state"` | `b"grid_state"` | Yes | Yes | N/A — no derivation site | Yes |
 | `SignalState` | `b"mill_state"` | `b"signal_state"` | Yes | Yes | N/A — no derivation site | Yes |
 | `ModelState` | `b"oven_state"` | `b"model_state"` | Yes | Yes | N/A — no derivation site | Yes |
-| `MindBank` | `b"potato_bank"` | `b"mind_bank"` | Yes | Yes | N/A — no derivation site | Yes |
-| `MindCommit` | `b"potato_commit"` | `b"mind_commit"` | Yes | N/A — no derivation site | N/A — no derivation site | Yes |
+| `MindBank` | `b"potato_bank"` | `b"mind_bank"` | N/A — no derivation site | Yes | N/A — no derivation site | N/A — no derivation test |
+| `MindCommit` | `b"potato_commit"` | `b"mind_commit"` | N/A — no derivation site | N/A — no derivation site | N/A — no derivation site | N/A — no derivation test |
 
 ## Integrity failures and active hits
 

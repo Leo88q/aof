@@ -79,6 +79,17 @@ NEURON через `LIFETIME_CAP_CIRCUIT`, `LIFETIME_CAP_SILICON`, `LIFETIME_CAP_
 
 ## 5. Секреты
 
+Для локальных и Devnet-кошельков создавайте ключи только системным CSPRNG через `solana-keygen`; не
+пишите генератор ключей самостоятельно. Это не способ создать mainnet authority: для mainnet используйте
+hardware-backed ключи и multisig из раздела 1.
+
+```bash
+install -d -m 700 secrets
+(umask 077; solana-keygen new --no-bip39-passphrase --outfile secrets/keypair-devnet.json)
+chmod 600 secrets/keypair-devnet.json
+solana-keygen pubkey secrets/keypair-devnet.json
+```
+
 **Этап 1 (сейчас):**
 
 ```bash

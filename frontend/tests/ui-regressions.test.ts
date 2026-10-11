@@ -628,12 +628,8 @@ test("инструментальная палитра описывает все 
       assert.equal(entry[field], galleryCopy.ru.devices[entry.key][field], `${entry.key}: source and gallery diverged`);
     }
   }
-  const generated = readFileSync(join(root, '../docs/UI_DEVICE_MAP_2026-09-28.md'), 'utf8');
-  for (const entry of DEVICE_MAP) if (entry.key !== 'frame') {
-    assert.ok(generated.includes(`| ${entry.name} | ${entry.tab} | ${entry.sub} | ${entry.purpose} |`),
-      `${entry.key}: the generated documentation is stale`);
-  }
-  assert.ok(!generated.includes('96 лунок'), 'the live rack plate has 6 × 8 slots, not 96');
+  // The date-stamped historical audit was intentionally removed. The live
+  // DEVICE_MAP and gallery translations above are now the source of truth.
   assert.match(read("src/main.tsx"), /path="\/visual"/, "витрина приборов должна открываться по /visual");
 });
 
@@ -1049,7 +1045,7 @@ test("фляги обещают ровно тот эффект, который �
   const constants = read("../aof-core/src/constants.rs");
   assert.match(constants, /pub const FLASK_ENERGY_GAIN: \[u8; 5\] = \[5, 5, 8, 10, ENERGY_CAP\];/);
   // И та же лестница обязана стоять в UI: цифры на кнопке — не маркетинг.
-  const uiLadder = page.match(/FLASK_ENERGY_GAIN = \[([^\]]+)\]/);
+  const uiLadder = read("src/lib/chainMoments.ts").match(/export const FLASK_ENERGY_GAIN = \[([^\]]+)\]/);
   const rustLadder = constants.match(/pub const FLASK_ENERGY_GAIN: \[u8; 5\] = \[([^\]]+)\];/);
   assert.ok(uiLadder && rustLadder, "лестница тиров обязана существовать и в UI, и в программе");
   const norm = (value: string) => value.split(",").map((part) => part.trim().replace("ENERGY_CAP", "20")).join(",");
@@ -4015,7 +4011,8 @@ test('network-only API failures are localized while HTTP responses keep their st
     globalThis.fetch = async (_url, init) => { gotInit = init; return response; };
     const init = { method: 'POST', body: '{}' };
     assert.equal(await fetchApi('/api/tools/start-mining', init), response);
-    assert.equal(gotInit, init);
+    assert.deepEqual(gotInit, { ...init, cache: "no-store" });
+    assert.notEqual(gotInit, init, "the transport must add no-store without mutating the caller's options");
   } finally {
     globalThis.fetch = oldFetch;
     setApiErrorLanguage(oldLanguage);
@@ -4142,7 +4139,9 @@ test('listing and recipe workshop never echo an HTTP, RPC or wallet exception', 
   const listing = code('src/pages/market/ListingPage.tsx');
   const workshop = code('src/pages/economy/Workshop.tsx');
   assert.match(listing, /const fail = \(error: unknown\) => flash\(actionErrorFeedback\(error, language, walletRuntimeCopy\[language\]\.unconfirmedResponse\)\)/);
-  assert.match(workshop, /flash\(actionErrorFeedback\(error, language, walletRuntimeCopy\[language\]\.unconfirmedResponse\)\)/);
+  assert.match(workshop, /actionErrorFeedback\(error, language, walletRuntimeCopy\[language\]\.unconfirmedResponse\)/);
+  assert.match(workshop, /code === 'RECIPE_NOT_ON_THIS_PROGRAM' \? copy\.programOld/,
+    'the known old-program response should keep its localized explanation');
   assert.ok(!/error instanceof Error \? error\.message/.test(listing + workshop));
   assert.equal((listing.match(/flash\(result\.error \|\| walletRuntimeCopy\[language\]\.unconfirmedResponse\)/g) || []).length, 3);
   assert.match(workshop, /flash\(result\.error \|\| walletRuntimeCopy\[language\]\.unconfirmedResponse\)/);

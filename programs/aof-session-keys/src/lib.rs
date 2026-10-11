@@ -156,7 +156,8 @@ pub struct SessionCreate<'info> {
     pub authority: Signer<'info>,
     /// CHECK: ephemeral-ключ, приватник которого хранится только на бэкенде
     pub session_signer: UncheckedAccount<'info>,
-    /// CHECK: программа, на которую распространяются права (Marketplace/Auction/Orderbook/HotMarket)
+    /// CHECK: executable program id retained for the future reviewed binding path.
+    #[account(executable)]
     pub target_program: UncheckedAccount<'info>,
     #[account(seeds = [TRUST_SEED, authority.key().as_ref()], bump,
         constraint = trust.user == authority.key() @ SkError::Unauthorized)]
@@ -176,20 +177,16 @@ pub struct SessionRevoke<'info> {
     pub session: Account<'info, SessionToken>,
 }
 
-/// Вызывается бэкендом Farm-Trader от имени session_signer перед тем, как
-/// собрать реальную транзакцию в target_program — проверяет и резервирует
-/// дневной лимит атомарно, чтобы гонка параллельных срабатываний правил
-/// не могла превысить max_spend_per_day.
-/// [AUDIT F-25] The session account used to be located only by
-/// `session.session_signer == session_signer`, with no PDA derivation: any
-/// SessionToken that happens to name the same session signer could be
-/// substituted, and the `Account<SessionToken>` owner check does not bind the
-/// account to this authority's namespace. The `authority` is now an explicit
-/// account and the session is derived from it, exactly like SessionRevoke does.
+/// Legacy session-execution context retained in the IDL. The CPI entrypoint
+/// stays disabled until it can construct a reviewed target instruction and
+/// reserve spend atomically; the target account is still pinned to the session.
+/// [AUDIT F-25] The session PDA is derived from the stored authority, preventing
+/// substitution of another SessionToken that happens to name the same delegate.
 #[derive(Accounts)]
 pub struct SessionExecute<'info> {
     pub session_signer: Signer<'info>,
-    /// CHECK: the program the session was created for. The CPI target.
+    /// CHECK: target is pinned to the session record; execution remains disabled until audited.
+    #[account(address = session.target_program, executable)]
     pub target_program: UncheckedAccount<'info>,
     #[account(
         mut,
@@ -218,22 +215,6 @@ pub struct SessionCheckAndSpend<'info> {
         constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized
     )]
     pub session: Account<'info, SessionToken>,
-}
-
-fn apply_spend(s: &mut SessionToken, ix_bit: u64, amount: u64) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
-    require!(now <= s.valid_until, SkError::SessionExpired);
-    require!(s.allowed_ixs & ix_bit == ix_bit, SkError::IxNotAllowed);
-    require!(amount <= s.max_amount_per_tx, SkError::AmountExceedsLimit);
-    if now.saturating_sub(s.day_start) >= 86400 {
-        s.day_start = now;
-        s.spent_today = 0;
-    }
-    let daily_cap = s.max_amount_per_tx.checked_mul(1000).unwrap_or(u64::MAX);
-    let new_spent = s.spent_today.checked_add(amount).ok_or(SkError::MathOverflow)?;
-    require!(new_spent <= daily_cap, SkError::AmountExceedsLimit);
-    s.spent_today = new_spent;
-    Ok(())
 }
 
 #[event]
@@ -323,63 +304,25 @@ pub mod aof_session_keys {
         Ok(())
     }
 
-    /// Spend the session budget and CPI the target instruction in the same
-    /// instruction. A separate reservation cannot authorize a later spend.
+    /// Legacy ABI retained for client compatibility. `ix_data` is deliberately
+    /// unused: arbitrary caller-provided program IDs and instruction bytes are
+    /// not a reviewed CPI allowlist, so delegated execution fails before use.
+    #[allow(unused_variables)]
     pub fn session_execute<'info>(
         ctx: Context<'_, '_, 'info, 'info, SessionExecute<'info>>,
         ix_bit: u64,
         amount: u64,
         ix_data: Vec<u8>,
     ) -> Result<()> {
-        apply_spend(&mut ctx.accounts.session, ix_bit, amount)?;
-        require_keys_eq!(
-            ctx.accounts.target_program.key(),
-            ctx.accounts.session.target_program,
-            SkError::Unauthorized
-        );
-        let ix = anchor_lang::solana_program::instruction::Instruction {
-            program_id: ctx.accounts.target_program.key(),
-            accounts: ctx.remaining_accounts.iter().map(|a| {
-                anchor_lang::solana_program::instruction::AccountMeta {
-                    pubkey: *a.key,
-                    is_signer: a.is_signer,
-                    is_writable: a.is_writable,
-                }
-            }).collect(),
-            data: ix_data,
-        };
-        anchor_lang::solana_program::program::invoke(&ix, ctx.remaining_accounts)?;
-        emit!(SessionExecuted {
-            authority: ctx.accounts.session.authority,
-            session: ctx.accounts.session.key(),
-            amount,
-            ix_bit,
-        });
-        Ok(())
+        err!(SkError::AtomicBindingRequired)
     }
 
     pub fn session_check_and_spend(ctx: Context<SessionCheckAndSpend>, ix_bit: u64, amount: u64) -> Result<()> {
-        // A counter reservation is not the target instruction. The only spend
-        // path is `session_execute`, which CPIs the target in this instruction.
-        let _ = (ctx, ix_bit, amount);
-        require!(false, SkError::AtomicBindingRequired);
-        let s = &mut ctx.accounts.session;
-        require!(s.authority == ctx.accounts.authority.key(), SkError::Unauthorized);
-        require!(!s.revoked, SkError::SessionRevoked);
-        require!(!s.paused, SkError::SessionRevoked);
-        let now = Clock::get()?.unix_timestamp;
-        require!(now <= s.valid_until, SkError::SessionExpired);
-        require!(s.allowed_ixs & ix_bit == ix_bit, SkError::IxNotAllowed);
-        require!(amount <= s.max_amount_per_tx, SkError::AmountExceedsLimit);
-        if now.saturating_sub(s.day_start) >= 86400 {
-            s.day_start = now;
-            s.spent_today = 0;
-        }
-        let daily_cap = s.max_amount_per_tx.checked_mul(1000).unwrap_or(u64::MAX); // мягкий верхний предел на день
-        let new_spent = s.spent_today.checked_add(amount).ok_or(SkError::MathOverflow)?;
-        require!(new_spent <= daily_cap, SkError::AmountExceedsLimit);
-        s.spent_today = new_spent;
-        Ok(())
+        // A counter reservation cannot authorize spending. Both legacy session
+        // execution entrypoints stay fail-closed until the target instruction is
+        // locally constructed, allowlisted, and atomically bound to the budget.
+        let _ = (&ctx, ix_bit, amount);
+        err!(SkError::AtomicBindingRequired)
     }
 }
 

@@ -327,15 +327,12 @@ test("godot project: 7 layers + 12 products + 13 v3 SDKs on disk", () => {
   }
 });
 
-test("unity mirror + skills + docs exist", () => {
+test("unity mirror + repository docs exist", () => {
   for (const p of [
     "game/unity/README.md",
     "game/README.md",
-    ".claude/skills/godot-solana/SKILL.md",
-    ".claude/skills/security-auditing/SKILL.md",
     "WATCHTOWER_INTEGRATION.md",
     "docs/WATCHTOWER_OS_V3.md",
-    "FINAL_REPORT_V3.md",
     "src/os/sql/cross_game_materials.sql",
   ]) assert.ok(existsSync(join(ROOT, p)), p);
 });

@@ -57,6 +57,7 @@ pub(crate) fn enchant_slot_level<'info>(
     slot_type: u8,
     remaining: &[AccountInfo<'info>],
 ) -> Result<u8> {
+    require!(remaining.len() <= 1, AofError::InvalidAmount);
     let Some(info) = remaining.first() else {
         return Ok(0);
     };

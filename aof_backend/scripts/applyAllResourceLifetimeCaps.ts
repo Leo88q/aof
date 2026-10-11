@@ -82,7 +82,7 @@ async function main() {
   const [materialMintsAddress] = materialMintsPda();
   const cfg: any = await (program.account as any).config.fetch(config);
   const materials: any = await (program.account as any).materialMints.fetch(materialMintsAddress);
-  if (!cfg.authority.equals(authority.publicKey)) throw new Error("AUTHORITY is not the on-chain Config authority");
+  if (!cfg.authority.equals(authority.publicKey)) throw new Error("Configured signer is not the on-chain Config authority");
   const canonical = buildCanonicalResourceMints(cfg, materials);
   if (!canonical.mints || canonical.errors.length) {
     throw new Error(`canonical mints invalid: ${canonical.errors.join(",")}`);

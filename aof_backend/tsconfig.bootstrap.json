@@ -9,6 +9,7 @@
     "scripts/initIssuanceCaps.ts",
     "scripts/applyIssuanceBaselines.ts",
     "scripts/applyMiningLifetimeCaps.ts",
+    "scripts/applyAllResourceLifetimeCaps.ts",
     "scripts/scanResourceMintHistory.ts",
     "scripts/initResourceEscrows.ts",
     "scripts/initVrfAddressLookupTable.ts",

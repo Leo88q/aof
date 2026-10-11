@@ -375,7 +375,7 @@ function packCommitFixture(maxPrice = 100_000_000n, packType = 0) {
   const operator = Keypair.generate().publicKey;
   const keys = [
     PublicKey.findProgramAddressSync([Buffer.from("config")], core)[0], operator, user.publicKey,
-    ...Array.from({ length: 10 }, () => Keypair.generate().publicKey),
+    ...Array.from({ length: 5 }, () => Keypair.generate().publicKey),
   ];
   const data = Buffer.alloc(25);
   data.set(PACK_OPEN_COMMIT_DISCRIMINATOR);
