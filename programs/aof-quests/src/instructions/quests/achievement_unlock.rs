@@ -54,7 +54,7 @@ pub fn require_progress(user: &Pubkey, achievement_id: u32, proof: &AccountInfo)
         1 | 2 | 3 | 4 => {
             require_core_pda(proof, &[b"player", user.as_ref()])?;
             let body = read_exact(&data, 8, 32 + 8 + 1 + 4 + 4 + 1 + 1)?;
-            require!(body[..32] == user.as_ref(), QuestError::Unauthorized);
+            require!(&body[..32] == user.as_ref(), QuestError::Unauthorized);
             let has_tent = body[40] == 1;
             let villagers = u32::from_le_bytes(body[41..45].try_into().unwrap());
             let historian = body[49];
@@ -70,7 +70,7 @@ pub fn require_progress(user: &Pubkey, achievement_id: u32, proof: &AccountInfo)
         5 => {
             require_core_pda(proof, &[b"exploration_state", user.as_ref()])?;
             let body = read_exact(&data, 8, 33)?;
-            require!(body[..32] == user.as_ref(), QuestError::Unauthorized);
+            require!(&body[..32] == user.as_ref(), QuestError::Unauthorized);
             require!(body[32] >= 2, QuestError::QuestNotCompleted);
         }
         6 => {

@@ -45,8 +45,9 @@ async function main() {
     assert.equal(accountReads, 0);
   } finally { wrongCluster.close(); }
 
-  // Encode real Anchor layouts and classic SPL mint/vault layouts. This catches
-  // IDL field naming errors that a wrong-genesis test cannot exercise.
+  // Encode the committed Config/QuestConfig and classic SPL mint layouts.
+  // The current aof_quests IDL no longer defines MindBank: do not invent a
+  // client-side bank layout. Missing or unknown bank accounts must stay blocked.
   const mint = new PublicKey('So11111111111111111111111111111111111111112');
   const core = new PublicKey(coreIdl.address), quests = new PublicKey(questsIdl.address);
   const bank = PublicKey.findProgramAddressSync([Buffer.from('mind_bank')], quests)[0];
@@ -67,32 +68,24 @@ async function main() {
   } as any);
   const mintData = Buffer.alloc(82);
   mintData[44] = 9; mintData[45] = 1; // initialized classic SPL mint
-  const vaultData = Buffer.alloc(165);
-  mint.toBuffer().copy(vaultData, 0);
-  bank.toBuffer().copy(vaultData, 32);
-  vaultData.writeBigUInt64LE(55_000_000_000n, 64);
-  vaultData[108] = 1; // initialized classic SPL token account
   const account = (owner: PublicKey, data: Buffer) => ({
     data: [data.toString('base64'), 'base64'], executable: false,
     lamports: 2_000_000, owner: owner.toBase58(), rentEpoch: 0,
   });
-  let paused = true, bankMintCollidesWithMind = false, openSpins = 0;
+  let bankData: Buffer | null = null;
+  let bankMintCollidesWithMind = false;
   const coreWithMindCollision = Buffer.from(coreData);
   // Config's historical MIND field follows seven 32-byte pubkeys and the
-  // eight-byte account discriminator. The test additionally checks the
-  // inspector's on-chain core/external MIND mint distinctness gate.
+  // eight-byte account discriminator; retain the distinct-mint fail-closed check.
   mint.toBuffer().copy(coreWithMindCollision, 8 + 7 * 32);
   const mock = createServer(async (req, res) => {
     let input = '';
     for await (const chunk of req) input += String(chunk);
     const request = JSON.parse(input);
-    const bankData = await questCoder.encode('MindBank', {
-      mint, vault, reserved_atoms: new BN(openSpins * 50_000_000_000), open_spins: openSpins, paused, bump: 255,
-    } as any);
     const result = request.method === 'getGenesisHash' ? 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG' :
       { context: { slot: 1 }, value: [
-        account(core, bankMintCollidesWithMind ? coreWithMindCollision : coreData), account(quests, questData), account(TOKEN_PROGRAM_ID, mintData),
-        account(quests, bankData), account(TOKEN_PROGRAM_ID, vaultData),
+        account(core, bankMintCollidesWithMind ? coreWithMindCollision : coreData), account(quests, questData),
+        account(TOKEN_PROGRAM_ID, mintData), bankData ? account(quests, bankData) : null, null,
       ] };
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }));
@@ -101,23 +94,29 @@ async function main() {
   await once(mock, 'listening');
   try {
     for (const scenario of [
-      { paused: true, bankMintCollidesWithMind: false, openSpins: 0, blockers: [] },
-      { paused: false, bankMintCollidesWithMind: false, openSpins: 0, blockers: ['mind_bank_not_paused_for_preflight'] },
-      { paused: true, bankMintCollidesWithMind: true, openSpins: 0, blockers: ['mind_must_be_distinct_from_mind'] },
-      { paused: true, bankMintCollidesWithMind: false, openSpins: 1, blockers: ['mind_vault_below_existing_reserve_plus_one_maximum_prize'] },
-    ]) {
-      ({ paused, bankMintCollidesWithMind, openSpins } = scenario);
+      {
+        bankAccount: 'missing', bankMintCollidesWithMind: false,
+        blockers: ['mind_bank_missing_or_wrong_owner', 'mind_vault_ata_missing'],
+      },
+      {
+        bankAccount: 'missing', bankMintCollidesWithMind: true,
+        blockers: ['mind_must_be_distinct_from_mind', 'mind_bank_missing_or_wrong_owner', 'mind_vault_ata_missing'],
+      },
+      { bankAccount: 'unknown', bankMintCollidesWithMind: false, blockers: ['account_decode_or_rpc_failed'] },
+    ] as const) {
+      bankData = scenario.bankAccount === 'unknown' ? Buffer.alloc(64) : null;
+      bankMintCollidesWithMind = scenario.bankMintCollidesWithMind;
       const { status, report } = await runInspector(mock, mint.toBase58());
-      assert.equal(report.observations.bank?.mint, mint.toBase58());
-      assert.equal(report.observations.vaultAtoms, '55000000000');
+      assert.equal((report.observations.addresses as any)?.mindBank, bank.toBase58());
+      assert.equal((report.observations.addresses as any)?.requiredVaultAta, vault.toBase58());
+      assert.equal(report.observations.bank, undefined, 'unsupported bank state must never be fabricated');
+      assert.equal(report.observations.vaultAtoms, undefined);
       assert.equal(report.observations.mindMint, (bankMintCollidesWithMind ? mint : zero).toBase58());
-      assert.equal(report.observations.bank?.paused, paused);
-      assert.equal(report.observations.bank?.openSpins, String(openSpins));
-      assert.equal(status, scenario.blockers.length ? 1 : 0);
+      assert.equal(status, 1);
       assert.deepEqual(report.blockers, scenario.blockers);
-      assert.equal(report.status, scenario.blockers.length ? 'BLOCKED' : 'MINT_AND_CUSTODY_OBSERVED_NOT_PAYMENT_READY');
+      assert.equal(report.status, 'BLOCKED');
     }
   } finally { mock.close(); }
-  console.log('MIND inspector: foreign genesis, bank custody, MIND collision, reserves and pause checked without signing');
+  console.log('MIND inspector: foreign genesis, unsupported/missing bank, unknown account and mint collision fail closed without signing');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
