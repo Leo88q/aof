@@ -266,7 +266,6 @@ test("эмодзи не выводятся текстом: плашки вмес
     assert.ok(notice.includes(emoji), `нет маппинга для ${emoji}`);
   }
   for (const file of [
-    "src/components/DrumSpin.tsx",
     "src/components/animations/RewardBurst.tsx",
     "src/pages/quests/QuestsHome.tsx",
     "src/pages/tools/CraftPage.tsx",
@@ -299,25 +298,7 @@ test("закрытые механики объясняются единым те
   assert.match(mining, /flashMsg\(`⏸️ \${copy.disabledMining}`\)/, "flash-сообщение должно брать переведённую причину из общего словаря");
 });
 
-test("барабан показывает локализованные статусы, а ошибка чтения журнала не считается пустым списком", async () => {
-  const drum = read("src/components/DrumSpin.tsx");
-  assert.match(drum, /drumCopy\[language\]/);
-  assert.match(drum, /actionErrorFeedback\(error, currentLanguage, drumCopy\[currentLanguage\]\.uncertain\)/);
-  assert.match(drum, /walletRef\.current !== address/);
-  assert.match(drum, /Number\.isFinite\(s\.prize\)/);
-  assert.ok(!drum.includes('toLocaleString("ru-RU")'));
-  const { drumCopy } = await import("../src/i18n/drumCopy.ts");
-  for (const language of ["en", "pt", "es", "vi", "id", "fil", "ru"] as const) {
-    const copy = drumCopy[language];
-    for (const key of ['title', 'spin', 'reveal', 'uncertain', 'paid', 'oracle'] as const) {
-      assert.ok(copy[key]);
-      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(copy[key]));
-    }
-    for (const key of ['cost', 'revealed', 'refunded'] as const) {
-      assert.ok(copy[key]('7').includes('7'));
-      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(copy[key]('7')));
-    }
-  }
+test("ошибка чтения журнала не считается пустым списком", () => {
   const audit = read('src/pages/admin/AuditLogPage.tsx');
   assert.match(audit, /if \(readFailed\)/);
   assert.match(audit, /setReadFailed\(true\)/);
@@ -325,14 +306,12 @@ test("барабан показывает локализованные стат�
   assert.match(audit, /filteredLogs\.length === 0/);
 });
 
-test("барабан удачи называет ресурс канонически", () => {
-  const drum = read("src/components/DrumSpin.tsx");
-  assert.ok(!/MASCOT/.test(drum), "легаси-термин MASCOT вернулся в интерфейс");
-  assert.doesNotMatch(drum, /resourceIcon\("MIND"\)|[} ] MIND</, "MIND is not offered by the legacy drum UI");
-  assert.match(drum, /copy\.unavailable/);
-  assert.ok(!/🔻/.test(drum), "эмодзи-стрелка вернулась на барабан");
-  // ↩️ допустим только как префикс flash-сообщения — его разбирает NoticeMsg.
-  assert.ok(!/>\s*↩️/.test(drum), "↩️ снова рисуется как символ, а не плашкой");
+test("удалённый экран удачи не возвращается в клиент", () => {
+  assert.equal(existsSync(join(root, "src/components/DrumSpin.tsx")), false);
+  assert.equal(existsSync(join(root, "src/i18n/drumCopy.ts")), false);
+  assert.doesNotMatch(read("src/lib/api.ts"), /\bapi\.drum\b/);
+  assert.doesNotMatch(read("src/pages/farm/FarmDashboard.tsx"), /DrumSpin/);
+  assert.match(read("src/pages/farm/FarmDashboard.tsx"), /EngagementPage/);
 });
 
 test("UI узнаёт реальные fail-closed коды бэкенда", () => {
@@ -1891,7 +1870,7 @@ test("кошелёк и предупреждение перед подключе
 
 test('история мастерской переведена целиком: пролог, шесть глав, метаданные и переключение языка', async () => {
   const { siteLore } = await import('../src/i18n/siteLore');
-  const ids = ['founding', 'guilds', 'market', 'drum', 'rebirth', 'today'];
+  const ids = ['founding', 'guilds', 'market', 'seal', 'rebirth', 'today'];
   for (const language of ['en', 'pt', 'es', 'vi', 'id', 'fil', 'ru'] as const) {
     const copy = siteLore[language];
     assert.ok(copy.lead && copy.heading);
@@ -2138,7 +2117,7 @@ test('FAQ сайта целиком переведён: 30 вопросов в �
 test('локальный журнал сайта переведён на семь языков и не выдаёт отметки за игровые награды', async () => {
   const { siteJournalCopy } = await import('../src/i18n/siteJournalCopy.ts');
   const { parseSiteJournal, siteBadgeIds, readSiteJournal } = await import('../src/site/siteJournal.ts');
-  assert.deepEqual(siteBadgeIds, ['reader', 'resource', 'commit', 'pack', 'drum', 'chronicler']);
+  assert.deepEqual(siteBadgeIds, ['reader', 'resource', 'commit', 'pack', 'chronicler']);
   const keys = Object.keys(siteJournalCopy.ru);
   for (const lang of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     const copy = siteJournalCopy[lang];
@@ -2227,8 +2206,8 @@ test('сайт о капсулах и розыгрыше: семь полных 
     }
     assert.equal(copy.packDemo.sizes.length, 3);
     assert.equal(copy.packDemo.samples.length, 4);
-    assert.equal(copy.drumDemo.rhythms.length, 3);
-    for (const key of ['packDemo', 'drumDemo'] as const) {
+    assert.equal('drumDemo' in copy, false);
+    for (const key of ['packDemo'] as const) {
       assert.deepEqual(Object.keys(copy[key]), Object.keys(siteChanceCopy.ru[key]));
       const strings = Object.values(copy[key]).flatMap(v => Array.isArray(v) ? v : typeof v === 'function' ? [v('sample')] : [v]) as string[];
       assert.ok(strings.every(s => s.trim()), `${language}.${key}: пустая строка`);
@@ -2243,9 +2222,7 @@ test('сайт о капсулах и розыгрыше: семь полных 
   assert.ok(!/Билет 0\.0008 SOL|Три размера — честные шансы/.test(read('src/site/content/pages.ts')), 'устаревшая стоимость/гарантия шансов вернулась');
   for (const route of ['packs', 'lottery']) assert.match(layout, new RegExp(`'${route}'`));
   assert.match(demos, /siteChanceCopy\[language\]\.packDemo/);
-  assert.match(demos, /siteChanceCopy\[language\]\.drumDemo/);
   assert.match(demos, /sample === null \? copy\.sealed : copy\.opened\(copy\.samples\[sample\]\)/, 'смена языка не должна оставлять образец на старом языке');
-  assert.match(demos, /result === null \? copy\.idle : copy\.rhythms\[result\]/, 'ритм должен меняться вместе с языком');
   assert.match(demos, /<fieldset className="site-options">/, 'подписи размеров должны иметь доступную группу');
   const styles = read('src/site/styles/site.css');
   assert.match(styles, /\.site-ritual \{ grid-template-columns: minmax\(0, 1fr\); \}/, 'на телефоне демонстрация должна ужиматься в одну колонку');
@@ -4150,15 +4127,7 @@ test('craft and repair catch paths retain wallet-bound checks while hiding arbit
   }
 });
 
-test('drum and market actions show structured failures in the active locale, not a guessed final status', () => {
-  const drum = code('src/components/DrumSpin.tsx');
-  assert.match(drum, /useFlash\(language\)/);
-  assert.match(drum, /flashRef\.current\(currentCopy\.revealed/);
-  assert.match(drum, /flashRef\.current\(currentCopy\.refunded/);
-  assert.match(drum, /currentLanguage === language[\s\S]+actionErrorFeedback\(error, currentLanguage, drumCopy\[currentLanguage\]\.uncertain\)/);
-  assert.equal((drum.match(/new LocalTxFeedbackError\(r\.error \|\| copy\.uncertain\)/g) || []).length, 1);
-  assert.doesNotMatch(drum, /api\.drum\.commit\(/);
-  assert.ok(!/String\(error instanceof Error|humanizeVrfError\(raw, language\)/.test(drum));
+test('market actions show structured failures in the active locale, not a guessed final status', () => {
   for (const [file, actions] of [['OfferPage', 3], ['RentalPage', 4], ['AuctionPage', 3]] as const) {
     const source = code(`src/pages/market/${file}.tsx`);
     assert.match(source, /useFlash\(language\)/);
@@ -4324,7 +4293,7 @@ test('collection labels do not claim resource mining is available; Filipino titl
   assert.equal(homeResourceNames.fil.signal, 'Senyal');
   assert.equal(pageNames.fil.craft, 'Pandayang kuwantum');
   assert.equal(pageNames.fil.lottery, 'Bunutan ng kuwantum');
-  assert.equal(gameHeaders.fil.drum, 'Tambol na kuwantum');
+  assert.equal(gameHeaders.fil.lottery, 'Loterya');
 });
 
 test('Filipino player navigation, install-adjacent labels, and instrument examples avoid English fallbacks', async () => {

@@ -2,17 +2,18 @@
  * [F-06] The full VRF cycle on the real runtime: pool slot -> pack commit ->
  * permissionless reveal -> NFT settlement, through aof-core's actual CPIs.
  *
- * Pool init still CPIs the Switchboard test double (tests/mock-switchboard).
- * Commit and reveal do not: the outcome is the future slot hash. What this
- * proves on the real runtime:
+ * The Switchboard test double was deleted. This suite still names the old
+ * account list, so it skips until it is rewritten for the slot-hash contexts.
+ * Source settlement rules are pinned by tests/readiness/vrf.test.cjs. What a
+ * rewritten run must prove on the real runtime:
  *   - the signer seeds and account list of the init CPI;
  *   - commit stores seed_slot = commit_slot + SLOT_HASH_DELAY and locks the slot;
  *   - reveal reads the real SlotHashes sysvar and ignores the caller's bytes;
  *   - the slot lock and its release, the escrow release and the settler reimbursement;
  *   - the compute units of the VRF instructions (tests/aof_cu_report.ts).
  *
- * Without the test double (a plain local `anchor test`) the suite is skipped;
- * CI sets AOF_REQUIRE_SWITCHBOARD_MOCK so that it can never be skipped there.
+ * Until the account list matches aof-core, the suite skips instead of loading
+ * a deleted oracle double.
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
@@ -282,14 +283,8 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   }
 
   before(async function () {
-    const sb = await connection.getAccountInfo(SB_PROGRAM);
-    if (!sb?.executable) {
-      if (process.env.AOF_REQUIRE_SWITCHBOARD_MOCK) {
-        throw new Error(`the Switchboard test double is not loaded at ${SB_PROGRAM.toBase58()}`);
-      }
-      console.log("      skipped: no Switchboard program on this validator (CI loads tests/mock-switchboard)");
-      this.skip();
-    }
+    console.log("      skipped: slot-hash localnet suite is not rewritten; the Switchboard double stays deleted");
+    this.skip();
     // The CI expiry-only invocation starts a fresh validator and runs only the
     // timeout case, so it cannot depend on aof_core.ts having seeded Config and
     // pack_config first. The normal full-suite path already has these PDAs.

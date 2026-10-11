@@ -415,6 +415,17 @@ export function validatePayerQuoteForIntent(intent: TransactionIntent, user: Pub
  * compromised) backend could swap the discriminator, append an instruction, or
  * move the player into the counterparty's account slot.
  */
+export function enchantSlotPda(toolMint: PublicKey, slotType: number): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode("enchant_slot"), toolMint.toBytes(), Uint8Array.from([slotType])],
+    new PublicKey(CORE_PROGRAM_ID),
+  )[0];
+}
+
+export function durabilityEnchantPda(toolMint: PublicKey): PublicKey {
+  return enchantSlotPda(toolMint, 1);
+}
+
 export function validateCoreInstructions(
   instructions: Instruction[],
   user: PublicKey,
@@ -426,13 +437,30 @@ export function validateCoreInstructions(
     if (spec.authorityOnly && !allowedAuthorityInstructions.includes(spec.name)) {
       throw new Error(`Authority-only instruction ${spec.name} cannot be signed by a player wallet`);
     }
-    // `trailingAccounts: "pairs"` (reset_for_rebirth) — единственный случай,
-    // когда программа читает `ctx.remaining_accounts`. Их состав не описывает
-    // IDL, поэтому здесь проверяется только форма: пары после фиксированного
-    // префикса. Что именно за пары — знает валидатор намерения перерождения.
-    const allowedExtra = spec.trailingAccounts === "pairs" ? ix.keys.length - spec.accounts.length : 0;
-    if (allowedExtra < 0 || allowedExtra % 2 !== 0 || (allowedExtra === 0 && ix.keys.length !== spec.accounts.length)) {
-      throw new Error(`Unexpected account count for ${spec.name}`);
+    // `trailingAccounts: "pairs"` (reset_for_rebirth) — программа читает
+    // `ctx.remaining_accounts`. Состав не описывает IDL, поэтому здесь
+    // проверяется только форма: пары после фиксированного префикса.
+    // collect_mining may append one durability enchant PDA. Omitting it is
+    // the unenchanted path. Any other extra account is rejected.
+    const extra = ix.keys.length - spec.accounts.length;
+    const enchantSlot = spec.name.startsWith("collect_mining")
+      ? 1
+      : spec.name.startsWith("start_mining")
+        ? 0
+        : null;
+    if (enchantSlot !== null) {
+      if (extra !== 0 && extra !== 1) throw new Error(`Unexpected account count for ${spec.name}`);
+      if (extra === 1) {
+        const mint = ix.keys[spec.accounts.indexOf("mint")];
+        if (!mint || !ix.keys[spec.accounts.length]?.equals(enchantSlotPda(mint, enchantSlot))) {
+          throw new Error(`Unexpected enchant account for ${spec.name}`);
+        }
+      }
+    } else {
+      const allowedExtra = spec.trailingAccounts === "pairs" ? extra : 0;
+      if (allowedExtra < 0 || allowedExtra % 2 !== 0 || (allowedExtra === 0 && extra !== 0)) {
+        throw new Error(`Unexpected account count for ${spec.name}`);
+      }
     }
     // Every party slot the program requires a signature from must be the
     // connected wallet. Non-signer party slots (the payee of an auction settle,

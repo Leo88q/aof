@@ -41,7 +41,7 @@ import { resourcePlate } from '../../lib/visualAssets';
 import { Lamp, Rocker } from '../ui/Controls';
 import {
   PageTitle, Section, Button, Counter, ParchmentCard, StatusBadge,
-  CommitReveal, PackOpener, DrumInteract,
+  CommitReveal, PackOpener,
 } from '../ui/Components';
 
 export function ContentPage({ id }: { id: string }) {
@@ -168,7 +168,7 @@ export function ContentPage({ id }: { id: string }) {
       {id === 'packs' && <Section title={chance!.demoTitle}><PackOpener /></Section>}
       {id === 'lottery' && (
         <>
-          <Section title={chance!.demoTitle}><DrumInteract /></Section>
+
           <Section title={commitLabels[language].section}><CommitReveal /></Section>
         </>
       )}

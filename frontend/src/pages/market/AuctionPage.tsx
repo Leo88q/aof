@@ -21,6 +21,7 @@ import {
   fmtSol, shortAddr, toNum, useNow, useTreasury, useFlash,
 } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { MarketFeeNote } from "../../components/MarketFeeNote";
 
 const SYSTEM_KEY = "11111111111111111111111111111111";
 
@@ -150,6 +151,7 @@ export function AuctionPage() {
 
   return (
     <div className="p-4 pt-6 pb-24 space-y-4">
+      <MarketFeeNote />
       {/* К6 · сонар аукционов: отметка — лот, радиус — текущая ставка отн.
           самой крупной. Свежие ставки горят лампами, выдуманных чисел нет. */}
       <Panel

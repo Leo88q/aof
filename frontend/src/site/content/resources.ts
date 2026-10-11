@@ -53,7 +53,7 @@ export const resources: Resource[] = [
 
   { id: 'purpleCore', slug: 'purple-core', name: homeResourceNames.ru.purpleCore, category: 'rare', status: 'live',
     lead: resourceLeads.ru.purpleCore,
-    relatedMechanics: ['mine', 'craft', 'drum'], relatedResources: ['quantumFluid'] },
+    relatedMechanics: ['mine', 'craft', 'lottery'], relatedResources: ['quantumFluid'] },
 
   { id: 'redCore', slug: 'red-core', name: homeResourceNames.ru.redCore, category: 'rare', status: 'live',
     lead: resourceLeads.ru.redCore,

@@ -37,8 +37,8 @@ pub enum QuestError {
     #[msg("Already initialized")]
     AlreadyInitialized,
 
-    // ===== [F-06] Switchboard On-Demand pool (appended: codes must not move) =====
-    #[msg("Not a Switchboard randomness account of the trusted program")]
+    // Appended codes must not move.
+    #[msg("Not a randomness account of the trusted program")]
     InvalidRandomnessAccount,
     #[msg("Randomness is not freshly committed")]
     RandomnessNotFresh,

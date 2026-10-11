@@ -597,7 +597,7 @@ pub struct LotteryTicketCounter {
 }
 
 /// [F-06] One Switchboard randomness account of the program-owned pool.
-/// seeds = [VRF_SLOT_SEED, randomness]. `lock` names the commit PDA that is
+/// seeds = [VRF_SLOT_SEED, index_le]. `lock` names the commit PDA that is
 /// waiting for this account's reveal; a slot serves one commit at a time.
 #[account]
 #[derive(InitSpace)]

@@ -13,6 +13,7 @@ import { getMintAsync } from "../../lib/mints";
 import { readEconomyBalances } from "../../lib/economyBalances";
 import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
+import { ChainClocks } from "../../components/ChainClocks";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
 // Must match aof-core/src/instructions/start_model_training.rs and constants.rs.
@@ -250,6 +251,7 @@ export function OvenPanel() {
             <div className="flex flex-wrap justify-between gap-1"><span className="text-straw">{copy.duration}:</span><span className="text-parchment">{copy.hours(m.time / 3600)}</span></div>
           </div>
           {shortage && <p role="alert" className="text-gold-400 text-xs [overflow-wrap:anywhere]">{shortage}</p>}
+          <ChainClocks />
           <button type="button" onClick={startModelTraining} disabled={baking}
             className="w-full py-2 rounded-lg bg-gradient-to-r from-ember-600 to-gold-600 text-parchment font-bold text-sm disabled:opacity-50 [overflow-wrap:anywhere]">
             {baking ? copy.oven.starting : copy.oven.start}

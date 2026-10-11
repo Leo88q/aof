@@ -382,6 +382,46 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "session_execute",
+      "discriminator": [
+        48,
+        90,
+        135,
+        165,
+        130,
+        230,
+        46,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "session_signer",
+          "signer": true
+        },
+        {
+          "name": "target_program"
+        },
+        {
+          "name": "session",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "ix_bit",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "ix_data",
+          "type": "bytes"
+        }
+      ]
     }
   ],
   "accounts": [

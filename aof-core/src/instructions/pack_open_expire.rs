@@ -1,19 +1,30 @@
 use anchor_lang::prelude::*;
+use crate::errors::AofError;
 use crate::PackOpenExpire;
 use crate::events::{VrfCommitRefunded, VRF_MECHANIC_PACK};
 use crate::vrf;
 
-/// [F-06] Refund of a pack opening the oracle never revealed.
+/// [F-06] Close a pack opening that has no readable roll.
 ///
-/// Permissionless and only from `commit_slot + VRF_REFUND_AFTER_SLOTS` — the
-/// slot at which `pack_open_reveal` stops accepting a reveal — so refund and
-/// settlement are never available at the same time. Frees the pool slot;
-/// `close = user` returns the price, the unused deposit and the rent.
+/// Permissionless. `vrf::unsettled` refuses while a complete roll is still
+/// readable, refunds the player only for a skipped hash, and sends an aged-out
+/// hash to the treasury before the commit account is closed.
 pub fn handler(ctx: Context<PackOpenExpire>) -> Result<()> {
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.pack_commit.key();
     let commit_slot = ctx.accounts.pack_commit.commit_slot;
-    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
+    let seed_slot = ctx.accounts.pack_commit.seed_slot;
+    let path = vrf::unsettled(&ctx.accounts.recent_slothashes.to_account_info(), commit_slot, clock.slot)?;
+    require!(seed_slot == commit_slot.saturating_add(vrf::SLOT_HASH_DELAY), AofError::RandomnessNotFresh);
+    vrf::release_lock(&mut ctx.accounts.vrf_slot, &commit_key)?;
+    if path == vrf::Unsettled::TreasuryForfeit {
+        let paid = ctx.accounts.pack_commit.paid_lamports.saturating_add(ctx.accounts.pack_commit.deposit_lamports);
+        vrf::transfer_lamports(
+            &ctx.accounts.pack_commit.to_account_info(),
+            &ctx.accounts.treasury.to_account_info(),
+            paid,
+        )?;
+    }
 
     let pc = &ctx.accounts.pack_commit;
     emit!(VrfCommitRefunded {

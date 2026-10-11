@@ -13,6 +13,8 @@ import { readEconomyBalances } from "../../lib/economyBalances";
 import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { chainMomentCopy } from "../../i18n/chainMomentCopy";
+import { FLASK_ENERGY_GAIN as SEAL_FLASK_GAIN } from "../../lib/chainMoments";
 
 /**
  * Фляги и энергия.
@@ -39,7 +41,7 @@ const FLASKS = [
 ] as const;
 
 /** Тир-лестница обязана совпадать с aof-core/constants.rs FLASK_ENERGY_GAIN. */
-const FLASK_ENERGY_GAIN = [5, 5, 8, 10, 20] as const;
+const FLASK_ENERGY_GAIN = SEAL_FLASK_GAIN;
 
 export function FlaskMarketplace() {
   const { language } = useLocale();
@@ -198,6 +200,7 @@ export function FlaskMarketplace() {
 
       <Card className="p-4">
         <h3 className="text-parchment font-bold text-sm mb-3">{copy.flaskCatalog}</h3>
+        <p className="text-straw text-xs break-words mb-3">{chainMomentCopy[language].drinkOrSeal}</p>
         <div className="space-y-2">
           {FLASKS.map((flask, index) => {
             const gain = FLASK_ENERGY_GAIN[index];
@@ -211,7 +214,7 @@ export function FlaskMarketplace() {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-straw text-xs max-w-[45%] break-words text-right">{copy.flaskNoPrice}</span>
-                  <span className="text-sprout-500 text-xs font-bold">+{gain}</span>
+                  <span className="text-sprout-500 text-xs font-bold">{chainMomentCopy[language].flaskLeavesSeal(gain)}</span>
                   <button
                     onClick={() => handleUseFlask(flaskType, gain, flask.key)}
                     disabled={usingFlask !== null}

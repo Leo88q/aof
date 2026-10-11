@@ -62,39 +62,38 @@ r.post("/quest/claim", requireCircuitOpen, requireWalletLimits("quests_claim"), 
   }
 });
 
-// Disabled until the contract verifies achievement criteria instead of accepting
-// an arbitrary self-attested id. The on-chain instruction is fail-closed too.
-r.post("/achievement/unlock", requireCircuitOpen, requireWalletLimits("quests_achievement"), (_req, res) => {
-  res.status(503).json({
-    error: "ACHIEVEMENT_UNLOCK_DISABLED_UNTIL_CRITERIA_VERIFIED",
-  });
-});
-
-/*
 r.post("/achievement/unlock", requireCircuitOpen, requireWalletLimits("quests_achievement"), async (req, res) => {
   try {
     const user = pk(req.body.user);
     const achievementId = Number(req.body.achievementId);
-
+    const { PublicKey } = await import("@solana/web3.js");
+    const { playerPda, explorationStatePda, seasonPassPda, achievementRecordPda } = await import("../lib/pda");
+    const proof = achievementId >= 1 && achievementId <= 4
+      ? playerPda(user)[0]
+      : achievementId === 5
+        ? explorationStatePda(user)[0]
+        : seasonPassPda(user, Number(req.body.seasonId))[0];
+    if (achievementId === 6 && !Number.isInteger(Number(req.body.seasonId))) {
+      return res.status(400).json({ error: "seasonId required" });
+    }
     const [questConfig] = questConfigPda();
     const [achievementRecord] = achievementRecordPda(user, achievementId);
-
     const ix = await (questsProgram.methods as any)
       .achievementUnlock(achievementId)
       .accounts({
         questConfig,
         achievementRecord,
         user,
+        proof,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
     const tx = await coSign([ix], user);
-    res.json({ tx });
+    res.json({ tx, proof: proof.toBase58(), program: new PublicKey(questsProgram.programId).toBase58() });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
-*/
 
 // Daily quests, progress and achievement state are not currently indexed from
 // the quests program. Do not return template/demo rows with zero progress as

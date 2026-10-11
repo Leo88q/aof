@@ -1,9 +1,7 @@
-# [F-06] Real-network check of the Switchboard On-Demand path the game relies
-# on (aof_backend/scripts/vrfDevnetProbe.ts): oracle selection against the live
-# devnet queue, then commit -> gateway reveal WITHOUT an RPC URL -> on-chain
-# reveal, once per eligible oracle. Push/schedule runs are fail-closed: they
-# never invoke the transaction probe. A manual run must set the explicit boolean
-# input and provide a funded DEVNET_PROBE_KEYPAIR secret.
+# [F-06] The game settles from SlotHashes, not an oracle. This workflow only
+# runs aof_backend/scripts/vrfDevnetProbe.ts when a person explicitly opts in.
+# Push and schedule runs are fail-closed and never submit a devnet transaction.
+# A manual run must set the boolean input and provide a funded DEVNET_PROBE_KEYPAIR secret.
 #
 # The opted-in probe mutates devnet: it may request an airdrop, creates a
 # randomness account, submits commit/reveal transactions, then closes it. Do not
@@ -34,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   probe:
-    name: Switchboard devnet probe
+    name: VRF devnet probe
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -97,7 +95,7 @@ jobs:
             *) echo "::notice title=VRF devnet probe::$title" ;;
           esac
           job_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
-            --jq '.jobs[] | select(.name == "Switchboard devnet probe") | .id' 2>/dev/null | head -1)
+            --jq '.jobs[] | select(.name == "VRF devnet probe") | .id' 2>/dev/null | head -1)
           [ -n "$job_id" ] || exit 0
           jq -n --arg title "$title" --arg summary "aof_backend/scripts/vrfDevnetProbe.ts against the live devnet queue." \
             --rawfile text "$REPORT" '{output: {title: $title, summary: $summary, text: $text}}' > "$RUNNER_TEMP/probe-payload.json"

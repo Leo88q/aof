@@ -51,16 +51,23 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   const { commitPhase } = require("../src/lib/vrfSettlement") as typeof import("../src/lib/vrfSettlement");
   assert.equal(vrf.VRF_REFUND_AFTER_SLOTS, 432);
   assert.equal(vrf.SLOT_HASH_DELAY + vrf.SLOT_HASH_REVEAL_SLOTS, vrf.VRF_REFUND_AFTER_SLOTS);
-  assert.equal(vrf.randomnessMode({} as NodeJS.ProcessEnv), "switchboard");
-  assert.equal(vrf.randomnessMode({ AOF_RANDOMNESS: "slot-hash" } as NodeJS.ProcessEnv), "slot-hash");
-  assert.throws(() => vrf.randomnessMode({ AOF_RANDOMNESS: "orao" } as NodeJS.ProcessEnv));
+  assert.equal(vrf.randomnessMode({} as NodeJS.ProcessEnv), "slot-hash");
+  assert.throws(() => vrf.randomnessMode({ AOF_RANDOMNESS: "switchboard" } as NodeJS.ProcessEnv), /not a randomness source/);
+  const packProgram = { programId: k(3) };
+  const packSlot = { vrfSlot: k(1), randomness: k(2), index: 0, lock: PublicKey.default, lockedAtSlot: 0, retired: false };
+  const packCommit = vrf.packPathCommitAccounts(packProgram, packSlot);
+  assert.equal(packCommit.vrfSlot.toBase58(), packSlot.vrfSlot.toBase58());
+  assert.equal(packCommit.recentSlothashes.toBase58(), "SysvarS1otHashes111111111111111111111111111");
+  const packReveal = vrf.packPathReveal(packProgram, packSlot.vrfSlot);
+  assert.equal(packReveal.accounts.recentSlothashes.toBase58(), "SysvarS1otHashes111111111111111111111111111");
+  assert.equal(packReveal.params.signature.length, 64);
+  assert.equal(packReveal.params.value.length, 32);
   const commit = 1_000;
-  const seed = commit + vrf.SLOT_HASH_DELAY;
-  assert.equal(commitPhase(commit, commit, seed), "waiting");
-  assert.equal(commitPhase(commit, seed, seed), "waiting");
-  assert.equal(commitPhase(commit, seed + 1, seed), "revealable");
-  assert.equal(commitPhase(commit, commit + vrf.VRF_REFUND_AFTER_SLOTS - 1, seed), "revealable");
-  assert.equal(commitPhase(commit, commit + vrf.VRF_REFUND_AFTER_SLOTS, seed), "refundable");
+  assert.equal(commitPhase(commit, commit), "waiting");
+  assert.equal(commitPhase(commit, commit + 128), "waiting");
+  assert.equal(commitPhase(commit, commit + 129), "revealable");
+  assert.equal(commitPhase(commit, commit + 128 + 511), "revealable");
+  assert.equal(commitPhase(commit, commit + 128 + 512), "refundable");
 }
 
 // ---- cluster selection must match the program build
@@ -103,7 +110,7 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   const le = Buffer.alloc(4);
   le.writeUInt32LE(3, 0);
   assert.ok(rnd.equals(PublicKey.findProgramAddressSync([Buffer.from("vrf_randomness"), le], core)[0]));
-  assert.ok(vrf.vrfSlotPda(core, rnd).equals(PublicKey.findProgramAddressSync([Buffer.from("vrf_slot"), rnd.toBuffer()], core)[0]));
+  assert.ok(vrf.vrfSlotPda(core, 3).equals(PublicKey.findProgramAddressSync([Buffer.from("vrf_slot"), le], core)[0]));
   assert.ok(vrf.vrfAuthorityPda(core).equals(PublicKey.findProgramAddressSync([Buffer.from("vrf_authority")], core)[0]));
   const env = { SWITCHBOARD_CLUSTER: "mainnet" } as NodeJS.ProcessEnv;
   const oracle = k(5);
@@ -136,41 +143,17 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   assert.deepEqual(parse({ VRF_PRIORITY_MICROLAMPORTS: "junk" }), [{ op: 2, value: 400_000, len: 5 }]);
 }
 
-// ---- drum outcome from the program events (the drum mints no NFT to look up)
+// Drum events left with the mechanic. Settlement must not decode them.
 {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { drumOutcomeFromLogs } = require("../src/lib/vrfSettlement") as typeof import("../src/lib/vrfSettlement");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { questsProgram } = require("../src/provider");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { EventParser } = require("@coral-xyz/anchor");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const idl = require("../src/idl/aof_quests.json");
-  const parser = new EventParser(questsProgram.programId, questsProgram.coder);
-  const pid = questsProgram.programId.toBase58();
-  const u64 = (n: number) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
-  const disc = (name: string) => Buffer.from(idl.events.find((e: any) => e.name === name).discriminator);
-  const logs = (data: Buffer) => [
-    `Program ${pid} invoke [1]`, "Program log: Instruction: X", `Program data: ${data.toString("base64")}`,
-    `Program ${pid} consumed 1000 of 400000 compute units`, `Program ${pid} success`,
-  ];
-  const revealed = Buffer.concat([disc("DrumRevealed"), k(1).toBuffer(), u64(20), k(2).toBuffer(), u64(99), Buffer.alloc(32, 7), k(3).toBuffer()]);
-  assert.deepEqual(drumOutcomeFromLogs(logs(revealed), "sig1", parser), { state: "settled", prize: 20, signature: "sig1", value: "07".repeat(32) });
-  const refunded = Buffer.concat([disc("DrumRefunded"), k(1).toBuffer(), u64(5)]);
-  assert.deepEqual(drumOutcomeFromLogs(logs(refunded), "sig2", parser), { state: "refunded", amount: 5, signature: "sig2" });
-  const committed = Buffer.concat([disc("DrumCommitted"), k(1).toBuffer(), k(2).toBuffer(), u64(99)]);
-  assert.equal(drumOutcomeFromLogs(logs(committed), "sig3", parser), "committed");
-  assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program ${pid} success`], "sig4", parser), null);
-  // [nf-mutate] an unrelated event ahead of the outcome must be skipped, not
-  // reported as a fresh commit; the first drum event decides.
-  const u32 = (n: number) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
-  const unlocked = Buffer.concat([disc("AchievementUnlocked"), k(1).toBuffer(), u32(3)]);
-  const both = [
-    `Program ${pid} invoke [1]`, `Program data: ${unlocked.toString("base64")}`, `Program data: ${refunded.toString("base64")}`,
-    `Program data: ${committed.toString("base64")}`, `Program ${pid} success`,
-  ];
-  assert.deepEqual(drumOutcomeFromLogs(both, "sig5", parser), { state: "refunded", amount: 5, signature: "sig5" });
-  assert.equal(drumOutcomeFromLogs([`Program ${pid} invoke [1]`, `Program data: ${unlocked.toString("base64")}`, `Program ${pid} success`], "sig6", parser), null);
+  const names = idl.events.map((event: { name: string }) => event.name);
+  for (const name of ["DrumRevealed", "DrumRefunded", "DrumCommitted", "MindSpinRevealed"]) {
+    assert.equal(names.includes(name), false, `${name} returned to the quests IDL`);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const settlement = require("../src/lib/vrfSettlement") as Record<string, unknown>;
+  assert.equal(settlement.drumOutcomeFromLogs, undefined);
 }
 
 // ---- oracle selection: only eligible oracles, live-healthy first, load spread
@@ -340,4 +323,4 @@ const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
   assert.throws(() => settler.settlerStandbySlots({ VRF_SETTLER_STANDBY_SLOTS: "-1" } as NodeJS.ProcessEnv), /non-negative/);
 }
 
-console.log("vrf self-test: pool circuit breaker, phase split, cluster pins, account parsing, PDAs, compute budget, drum outcome, oracle selection, gateway protocol, pool slot choice, settler signer passed");
+console.log("vrf self-test: pool circuit breaker, phase split, cluster pins, account parsing, PDAs, compute budget, oracle selection, gateway protocol, pool slot choice, settler signer passed");

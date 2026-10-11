@@ -39,9 +39,8 @@ const HEADROOM_LIMIT = 150_000;
  * Разброс между прогонами — состояние и варианты исполнения (в тех же прогонах
  * BurnNft 21 503↔15 503, InitSeason 21 812↔11 312), поэтому порог VRF-класса —
  * 175 000. Это защита от регрессий, а не доказательство, что инструкция влезает в
- * дефолтные 200 000: двойник Switchboard не проверяет secp256k1-подпись оракула,
- * так что замер — нижняя оценка настоящего раскрытия, и продовые клиенты обязаны
- * задавать бюджет явно. Бэкенд так и делает: 400 000 CU
+ * дефолтные 200 000. Раскрытие читает SlotHashes, отдельной подписи оракула нет.
+ * Продовые клиенты всё равно задают бюджет явно. Бэкенд так и делает: 400 000 CU
  * (`aof_backend/src/lib/vrf.ts`, `VRF_COMPUTE_UNITS`).
  */
 const VRF_HEADROOM_LIMIT = 175_000;
@@ -137,10 +136,8 @@ describe("aof-core: compute units per instruction (SECURITY_CHECKLIST #27)", () 
       ``,
       ...(rows.some((r) => VRF_INSTRUCTION.test(r.name))
         ? [
-          `VRF instructions (VrfPoolAdd, *Commit, *Reveal) ran against the Switchboard test double ` +
-            `(tests/mock-switchboard). The real randomness_reveal also recovers the oracle's secp256k1 signature, ` +
-            `so production consumption of the reveals is higher; the backend sends VRF transactions with an ` +
-            `explicit 400,000 CU budget.`,
+          `VRF instructions (VrfPoolAdd, *Commit, *Reveal) settle from SlotHashes, not an oracle double. ` +
+            `The backend sends those transactions with an explicit 400,000 CU budget.`,
           ``,
         ]
         : []),

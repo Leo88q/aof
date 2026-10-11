@@ -60,7 +60,7 @@ pub fn list_handler(
             && min_duration <= max_duration,
         AofError::InvalidRentalDuration
     );
-    // [SECURITY_CHECKLIST_REVIEW F-H] the platform keeps >= RENTAL_FEE_BPS.
+    // [SECURITY_CHECKLIST_REVIEW F-H] the treasury keeps >= RENTAL_FEE_BPS.
     require!(owner_split_bps <= RENTAL_MAX_OWNER_SPLIT_BPS, AofError::InvalidAmount);
     // [SECURITY_CHECKLIST_REVIEW F-H] The NFT is escrowed for as long as the
     // listing exists: a listed tool can no longer be sold, auctioned, burned or

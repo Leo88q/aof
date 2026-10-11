@@ -2,9 +2,8 @@
 /*
  * Локальный прогон `make test` должен видеть тот же валидатор, что и CI:
  * историю транзакций целиком (иначе `tests/aof_cu_report.ts` читает обрезанный
- * ledger) и тестовый двойник Switchboard в genesis (иначе VRF-набор молча
- * помечается skipped). Порог CU для VRF-раскрытий живёт в трёх местах и обязан
- * совпадать, иначе отчёт, инвентарь и бенчмарк профиля разойдутся.
+ * ledger). Двойник Switchboard удалён и не должен возвращаться в genesis.
+ * Порог CU для VRF-раскрытий живёт в трёх местах и обязан совпадать.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,15 +24,17 @@ test('Anchor.toml удерживает историю локального ва�
   assert.doesNotMatch(toml, /\[\[test\.genesis\]\]/, 'genesis-запись двойника не постоянная: её добавляет прогон, файла .so в свежем клоне нет');
 });
 
-test('make test идёт через обёртку, которая возвращает Anchor.toml', () => {
+test('make test идёт через обёртку, которая не возвращает двойник Switchboard', () => {
   const makefile = read('Makefile');
   assert.match(makefile, /^test: ensure-env\n\t@echo .*\n\tbash scripts\/anchor-test\.sh$/m);
   const wrapper = read('scripts/anchor-test.sh');
   assert.match(wrapper, new RegExp(SWITCHBOARD));
-  assert.match(wrapper, /AOF_REQUIRE_SWITCHBOARD_MOCK=1 anchor test --skip-build/);
-  assert.match(wrapper, /cp "\$backup" "\$TOML"/, 'обёртка обязана вернуть Anchor.toml после прогона');
-  assert.match(wrapper, /SKIP_SWITCHBOARD_MOCK/);
+  assert.match(wrapper, /must not pin a Switchboard genesis program/);
+  assert.match(wrapper, /tests\/mock-switchboard must stay deleted/);
+  assert.doesNotMatch(wrapper, /AOF_REQUIRE_SWITCHBOARD_MOCK/);
+  assert.match(wrapper, /exec anchor test --skip-build/);
   assert.equal(fs.statSync(path.join(root, 'scripts/anchor-test.sh')).mode & 0o111, 0o111);
+  assert.equal(fs.existsSync(path.join(root, 'tests/mock-switchboard')), false);
 });
 
 test('порог CU для VRF-раскрытий один и тот же в отчёте, инвентаре и бенчмарке', () => {
@@ -50,20 +51,15 @@ test('порог CU для VRF-раскрытий один и тот же в о�
   }
 });
 
-test('обёртка добавляет genesis только на время прогона и пробрасывает код anchor', () => {
+test('обёртка не меняет Anchor.toml и пробрасывает код anchor', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aof-anchor-test-'));
   const bin = path.join(tmp, 'bin');
   const repo = path.join(tmp, 'repo');
   fs.mkdirSync(bin);
   fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
-  fs.mkdirSync(path.join(repo, 'tests/mock-switchboard'), { recursive: true });
   fs.copyFileSync(path.join(root, 'scripts/anchor-test.sh'), path.join(repo, 'scripts/anchor-test.sh'));
   fs.copyFileSync(path.join(root, 'Anchor.toml'), path.join(repo, 'Anchor.toml'));
-  fs.writeFileSync(path.join(repo, 'Cargo.lock'), '[workspace]\n');
-  fs.writeFileSync(path.join(repo, 'tests/mock-switchboard/Cargo.toml'), '[package]\nname = "mock-switchboard"\n');
-  fs.writeFileSync(path.join(bin, 'cargo-build-sbf'), '#!/bin/sh\nmkdir -p target/mock\nprintf FAKE > target/mock/mock_switchboard.so\n');
-  fs.writeFileSync(path.join(bin, 'anchor'), '#!/bin/sh\nif ! grep -q SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv Anchor.toml; then echo "genesis missing" >&2; exit 9; fi\nexit "${FAKE_ANCHOR_EXIT:-0}"\n');
-  fs.chmodSync(path.join(bin, 'cargo-build-sbf'), 0o755);
+  fs.writeFileSync(path.join(bin, 'anchor'), '#!/bin/sh\nif grep -q SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv Anchor.toml; then echo "switchboard genesis returned" >&2; exit 9; fi\nexit "${FAKE_ANCHOR_EXIT:-0}"\n');
   fs.chmodSync(path.join(bin, 'anchor'), 0o755);
   const before = fs.readFileSync(path.join(repo, 'Anchor.toml'));
   const run = (extraEnv) => spawnSync('bash', ['scripts/anchor-test.sh'], {
@@ -74,10 +70,10 @@ test('обёртка добавляет genesis только на время п�
   try {
     const ok = run({});
     assert.equal(ok.status, 0, `${ok.stdout}\n${ok.stderr}`);
-    assert.deepEqual(fs.readFileSync(path.join(repo, 'Anchor.toml')), before, 'после успешного прогона Anchor.toml изменён');
+    assert.deepEqual(fs.readFileSync(path.join(repo, 'Anchor.toml')), before, 'прогон изменил Anchor.toml');
     const failed = run({ FAKE_ANCHOR_EXIT: '3' });
     assert.equal(failed.status, 3, 'код выхода anchor должен дойти до вызывающего');
-    assert.deepEqual(fs.readFileSync(path.join(repo, 'Anchor.toml')), before, 'после падения anchor Anchor.toml изменён');
+    assert.deepEqual(fs.readFileSync(path.join(repo, 'Anchor.toml')), before, 'падение anchor изменило Anchor.toml');
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 
+pub mod constants;
 pub mod state;
 pub mod errors;
 pub mod events;
@@ -260,7 +261,7 @@ pub mod aof_market {
             .upgrade_authority_address
             .ok_or(MarketError::Unauthorized)?;
         require_keys_eq!(upgrade_authority, ctx.accounts.authority.key(), MarketError::Unauthorized);
-        require!(fee_bps <= 1_000, MarketError::InvalidFee);
+        crate::tools::require_treasury_fee(fee_bps)?;
         let c = &mut ctx.accounts.config;
         c.authority = ctx.accounts.authority.key();
         c.treasury = ctx.accounts.treasury.key();
@@ -316,7 +317,7 @@ pub mod aof_market {
     }
 
     pub fn set_fees(ctx: Context<SetFees>, fee_bps: u16) -> Result<()> {
-        require!(fee_bps <= 1_000, MarketError::InvalidFee);
+        crate::tools::require_treasury_fee(fee_bps)?;
         ctx.accounts.config.fee_bps = fee_bps;
         emit!(GlobalFeesUpdated { authority: ctx.accounts.authority.key(), fee_bps });
         Ok(())
@@ -340,7 +341,7 @@ pub mod aof_market {
     ) -> Result<()> {
         rarity_index_ok(rarity)?;
         require!(target_price_core > 0 && target_price_gem > 0, MarketError::ZeroPrice);
-        require!(fee_bps <= 1_000, MarketError::InvalidFee);
+        crate::tools::require_treasury_fee(fee_bps)?;
         require!(decay_bps_per_hour <= 10_000, MarketError::InvalidRate);
         require!(growth_bps_per_sale <= 10_000, MarketError::InvalidRate);
         let now = Clock::get()?.unix_timestamp;

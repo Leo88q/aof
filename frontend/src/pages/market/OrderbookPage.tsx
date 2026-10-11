@@ -14,6 +14,7 @@ import { readOrderbookV2, comparePriceV2, formatResourceUnits, lamportsPerWholeT
   type Orderbook, type OrderbookV2, type ResourceOrder, type ResourceOrderV2 } from '../../lib/orderbookReadings';
 import { lamportsToSol } from '../../lib/amounts';
 import { ResourceGlyph } from '../../components/visual/ResourceGlyph';
+import { MarketFeeNote } from '../../components/MarketFeeNote';
 import { UI_ICONS } from '../../lib/visualAssets';
 
 // v1 remains read/cancel-only: its contract price is lamports PER ATOMIC token,
@@ -231,6 +232,7 @@ export function OrderbookPage() {
         className="text-xs text-straw px-3 py-1.5 rounded-lg bg-soil-800 border border-straw/20 whitespace-normal break-words disabled:opacity-40">{copy.refresh}</button>
     </header>
     <p className="text-straw text-xs break-words">{copy.intro}</p>
+    <MarketFeeNote />
     <Card className="border border-accent-600/40">
       <p className="text-accent-500 text-sm font-semibold break-words">{copy.v2Badge}</p>
       <p className="text-straw text-xs mt-2 break-words">{copy.pausedWhatWorks}</p>

@@ -48,6 +48,9 @@ r.post("/config/init", requireAdmin, async (req, res) => {
     const gemMint = pk(req.body.gemMint);
     const treasury = pk(req.body.treasury);
     const feeBps = Number(req.body.feeBps);
+    if (!Number.isInteger(feeBps) || feeBps < 800 || feeBps > 1_000) {
+      return res.status(400).json({ error: "MARKET_FEE_OUTSIDE_TREASURY_BAND" });
+    }
     const [config] = marketConfigPda();
     const [programData] = marketProgramDataPda();
 
@@ -80,6 +83,9 @@ r.post("/pool/init", requireAdmin, async (req, res) => {
     const decayBpsPerHour = Number(req.body.decayBpsPerHour ?? req.body.decayPerHourBps);
     const growthBpsPerSale = Number(req.body.growthBpsPerSale ?? req.body.growthPerPurchaseBps);
     const feeBps = Number(req.body.feeBps);
+    if (!Number.isInteger(feeBps) || feeBps < 800 || feeBps > 1_000) {
+      return res.status(400).json({ error: "MARKET_FEE_OUTSIDE_TREASURY_BAND" });
+    }
     const [config] = marketConfigPda();
     const [pool] = hotMarketPoolPda(rarity);
     const marketConfig: any = await (marketProgram.account as any).marketConfig.fetch(config);

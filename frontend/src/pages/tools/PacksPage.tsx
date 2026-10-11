@@ -13,6 +13,8 @@ import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { PackPlate } from "../../components/visual/PackPlate";
 import { PackReveal } from "../../components/visual/PackReveal";
+import { chainMomentCopy } from "../../i18n/chainMomentCopy";
+import { toolLineKey } from "../../lib/chainMoments";
 import { useFlash } from "../../lib/marketUtils";
 import type { PackOpenIntent } from "../../lib/transactionIntent";
 import { actionErrorFeedback, LocalTxFeedbackError } from "../../lib/txResponseFeedback";
@@ -20,17 +22,18 @@ import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 /**
- * [F-06] Capsule openings settled by Switchboard On-Demand.
+ * [F-06] Capsule openings. The program settles the roll from a future slot hash.
  *
  * 1. commit  — one wallet signature: the price is escrowed on-chain, the odds
- *    are snapshotted and a Switchboard randomness account owned by the game
- *    program is committed in the same transaction (the operator co-signs as
- *    the backend gate; the wallet guard checks type and price ceiling).
+ *    are snapshotted and a pool slot is locked in the same transaction (the
+ *    operator co-signs as the backend gate; the wallet guard checks type and
+ *    price ceiling).
  * 2. settle  — the settler service reveals within seconds. If it does not,
  *    the player can settle it personally ("Раскрыть самостоятельно"): the
- *    reveal is permissionless and the oracle signature is verified on-chain.
- * 3. refund  — if the oracle never answers inside the ~2 h window, the same
- *    button returns the price (settlement and refund are never both open).
+ *    reveal is permissionless. The program reads the future slot hash and
+ *    ignores the passed signature.
+ * 3. refund  — if that slot produces no hash before the window closes, the
+ *    same button returns the price (settlement and refund are never both open).
  */
 const PACKS = [
   { id: "small", index: 0 },
@@ -208,6 +211,7 @@ export function PacksPage() {
       <p className="text-straw text-xs">
         {copy.intro}
       </p>
+      <p className="text-straw text-xs break-words">{chainMomentCopy[language].capsuleOnly}</p>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -232,7 +236,7 @@ export function PacksPage() {
         <Card className="text-center py-5">
           {opening.state === "pending" && (
             <>
-              {/* Витрина размера, пока оракул считает: раньше здесь дрожала
+              {/* Витрина размера, пока программа ждёт слот: раньше здесь дрожала
                   одна и та же иконка, и по картинке нельзя было понять,
                   какую капсулу открываешь. */}
               {lastPack && (
@@ -261,6 +265,7 @@ export function PacksPage() {
                 {rarities[TOOL_RARITIES.indexOf(rarityKey(opening.tool.rarity) as typeof TOOL_RARITIES[number])] || toolsCopy[language].card.unknownRarity}
               </p>
               <p className="text-parchment text-sm">{toolName(language, opening.tool.toolType)}</p>
+              <p className="text-straw text-xs break-words">{(() => { const line = toolLineKey(String(opening.tool.toolType)); return line ? chainMomentCopy[language].toolLine[line] : chainMomentCopy[language].unknownLine; })()}</p>
             </>
           )}
           {opening.state === "settled" && !opening.tool && <p className="text-parchment text-sm">{copy.settledUnknown}</p>}

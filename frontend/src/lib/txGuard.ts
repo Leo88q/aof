@@ -68,10 +68,10 @@ const AOF_PROGRAMS = [
   "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx", // core
 ];
 
-// [F-06] Switchboard On-Demand (mainnet, devnet). The game programs CPI it to
-// commit/reveal their own randomness accounts, so it shows up in simulation
-// logs; a TOP-LEVEL Switchboard instruction is never built for a player and is
-// rejected by the instruction policy below.
+// [F-06] Switchboard program ids. Pack-path commit and reveal do not CPI them.
+// Pool init still does, and the instruction account lists still name the
+// program, so it can show up in simulation logs. A top-level Switchboard
+// instruction is never built for a player and is rejected below.
 export const SWITCHBOARD_PROGRAMS = [
   "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv",
   "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2",

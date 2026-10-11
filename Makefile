@@ -16,7 +16,7 @@ build: ensure-env
 no-idl: build
 
 test: ensure-env
-	@echo "anchor test через scripts/anchor-test.sh: собирает тестовый двойник Switchboard и подкладывает его в genesis (иначе VRF-набор молча помечается skipped)"
+	@echo "anchor test через scripts/anchor-test.sh: двойник оракула не собирается и не возвращается в genesis"
 	bash scripts/anchor-test.sh
 
 test-mocha: ensure-env

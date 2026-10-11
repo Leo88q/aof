@@ -198,7 +198,6 @@ export const UI_ICONS = {
   epochs: "/assets/icons/ui/epochs.png",
   economyOverview: "/assets/icons/ui/economy-overview.png",
   economyWorkshop: "/assets/icons/ui/economy-workshop.png",
-  drum: "/assets/icons/ui/drum.png",
   lottery: "/assets/icons/ui/lottery.png",
   questsDaily: "/assets/icons/ui/quests-daily.png",
   challenges: "/assets/icons/ui/challenges.png",

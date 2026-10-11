@@ -11,8 +11,8 @@ import { publicErrorBody, randomNonce, releasePoolSlot, reservePoolSlot, vrfComm
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 
 /**
- * [F-06] Paid packs, settled by Switchboard On-Demand through the program's
- * own randomness pool (docs/VRF_SWITCHBOARD.md):
+ * [F-06] Paid packs. The program settles the roll from a future slot hash.
+ * Lottery, exploration reveal, forge and random reroll use this same commit.
  *
  *   POST /packs/commit   player + operator co-signed commit (price escrowed,
  *                        odds snapshotted, randomness committed, slot locked)

@@ -1,18 +1,17 @@
 /**
- * [F-06] Switchboard On-Demand settlement — backend side.
+ * [F-06] Randomness settlement — backend side.
  *
- * The on-chain programs own their randomness accounts (authority = program
- * PDA "vrf_authority"), so this module never signs anything for Switchboard.
- * It only:
- *   - picks a free pool slot and a live oracle for a commit transaction;
- *   - fetches the oracle's signed reveal from the Switchboard gateway (without
- *     forwarding this backend's RPC URL) and turns it into the accounts +
- *     params of a program reveal instruction;
- *   - reports pool health (the commit routes refuse new commits while any
- *     commit is stuck — the circuit breaker of docs/VRF_SWITCHBOARD.md).
+ * Packs, lottery, exploration reveal, forge and random reroll call the same
+ * program commit and reveal as pack opening. That path locks a pool slot and
+ * settles from a future slot hash. The oracle signature is ignored. This
+ * module does not ask an oracle for those five rooms and does not read
+ * `AOF_RANDOMNESS` for them.
  *
- * Anyone can settle a commit with the same data, so the backend being slow or
- * down never blocks a player: the player can fetch the reveal and settle.
+ * Drum was not moved onto that path. Its reveal still has the old gateway
+ * branch, and that flag must stay unset.
+ *
+ * Pool health is unchanged: commit routes refuse new commits while any commit
+ * is stuck.
  */
 import {
   ComputeBudgetProgram,
@@ -41,7 +40,7 @@ export const SWITCHBOARD: Record<SwitchboardCluster, { programId: PublicKey; que
 };
 export const ADDRESS_LOOKUP_TABLE_PROGRAM_ID = new PublicKey("AddressLookupTab1e1111111111111111111111111");
 
-/** aof-core/src/constants.rs::VRF_REFUND_AFTER_SLOTS (reveal window / refund threshold). */
+/** Retained constant. Live phase uses the last seed offset plus SlotHashes retention, not this boundary. */
 export const VRF_REFUND_AFTER_SLOTS = 432;
 /** aof-core/src/vrf.rs. The refund boundary is delay + reveal slots. */
 export const SLOT_HASH_DELAY = 32;
@@ -50,15 +49,13 @@ export const SLOT_HASH_REVEAL_SLOTS = 400;
 export type RandomnessMode = "slot-hash" | "switchboard";
 
 /**
- * `slot-hash` matches the upgraded program: commit does not ask an oracle.
- * The default stays `switchboard` so a restart before that upgrade still
- * refuses the commit instead of sending a transaction the old program rejects.
+ * Slot-hash is the only mode. `AOF_RANDOMNESS=switchboard` is rejected.
+ * Any other value, including an empty one, stays on the slot-hash path.
  */
 export function randomnessMode(env: NodeJS.ProcessEnv = process.env): RandomnessMode {
   const raw = (env.AOF_RANDOMNESS || "").trim().toLowerCase();
-  if (raw === "slot-hash" || raw === "slothash") return "slot-hash";
-  if (raw === "" || raw === "switchboard") return "switchboard";
-  throw new Error("AOF_RANDOMNESS must be slot-hash or switchboard");
+  if (raw === "switchboard") throw new Error("AOF_RANDOMNESS=switchboard is not a randomness source");
+  return "slot-hash";
 }
 
 /**
@@ -91,8 +88,10 @@ export function vrfRandomnessPda(programId: PublicKey, index: number): PublicKey
   return PublicKey.findProgramAddressSync([enc("vrf_randomness"), le], programId)[0];
 }
 
-export function vrfSlotPda(programId: PublicKey, randomness: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync([enc("vrf_slot"), randomness.toBuffer()], programId)[0];
+export function vrfSlotPda(programId: PublicKey, index: number): PublicKey {
+  const le = Buffer.alloc(4);
+  le.writeUInt32LE(index);
+  return PublicKey.findProgramAddressSync([enc("vrf_slot"), le], programId)[0];
 }
 
 export function statsPda(oracle: PublicKey, env: NodeJS.ProcessEnv = process.env): PublicKey {
@@ -680,34 +679,23 @@ export async function selectOracle(connection: Connection): Promise<PublicKey> {
   return chooseOracle(oracleCache!.candidates);
 }
 
-let randomnessModeAnnounced = false;
-
-function announceRandomnessMode(): void {
-  if (randomnessModeAnnounced) return;
-  randomnessModeAnnounced = true;
-  const mode = randomnessMode();
-  console.log(`[vrf] randomness=${mode}`);
-  if (mode === "switchboard") {
-    console.warn("[vrf] AOF_RANDOMNESS is switchboard. Set AOF_RANDOMNESS=slot-hash only after the program upgrade; until then commits stay refused instead of charging a failed transaction.");
-  }
-}
-
-/** Accounts every VRF commit instruction takes after its own accounts. */
-export async function vrfCommitAccounts(program: any, connection: Connection, slot: PoolSlot) {
-  announceRandomnessMode();
-  const sbc = switchboard();
-  // Slot-hash commit ignores the oracle. The queue account already exists and
-  // the instruction still requires a writable pubkey in that position.
-  const oracle = randomnessMode() === "slot-hash" ? sbc.queue : await selectOracle(connection);
+/**
+ * Accounts a pack-opening commit takes after its own accounts. Lottery,
+ * exploration, forge and random reroll pass this same set into the same
+ * program commit. The instruction still has an oracle position; the program
+ * does not read it. The queue account already exists, so it fills that
+ * position. No oracle is selected and `AOF_RANDOMNESS` is not consulted.
+ */
+export function packPathCommitAccounts(_program: { programId: PublicKey }, slot: PoolSlot) {
   return {
     vrfSlot: slot.vrfSlot,
-    randomness: slot.randomness,
-    vrfAuthority: vrfAuthorityPda(program.programId),
-    queue: sbc.queue,
-    oracle,
     recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
-    switchboardProgram: sbc.programId,
   };
+}
+
+/** Accounts every pack-path VRF commit instruction takes after its own accounts. */
+export async function vrfCommitAccounts(program: any, _connection: Connection, slot: PoolSlot) {
+  return packPathCommitAccounts(program, slot);
 }
 
 export type RevealParams = { signature: number[]; recoveryId: number; value: number[] };
@@ -760,102 +748,28 @@ export function parseRevealResponse(json: any): RevealParams {
 
 const GATEWAY_TIMEOUT_MS = 10_000;
 
-/**
- * The oracle's signed reveal for `randomness`, as program reveal params plus
- * the Switchboard accounts of the reveal CPI. Asks the gateway of the oracle
- * Switchboard assigned at commit directly (no fixed delay: the settler waits
- * VRF_SETTLER_MIN_AGE_SLOTS, and a gateway that has not seen the seed slot yet
- * just fails the attempt, which is retried).
- */
-function slotHashReveal(program: any, randomness: PublicKey) {
-  const sbc = switchboard();
-  const oracle = sbc.queue;
+/** Reveal params for the five rooms. The program reads SlotHashes and ignores this signature. */
+export function packPathReveal(_program: any, vrfSlot: PublicKey) {
   return {
     params: { signature: Array(64).fill(0), recoveryId: 0, value: Array(32).fill(0) },
     accounts: {
-      vrfSlot: vrfSlotPda(program.programId, randomness),
-      randomness,
-      vrfAuthority: vrfAuthorityPda(program.programId),
-      oracle,
-      queue: sbc.queue,
-      stats: statsPda(oracle),
+      vrfSlot,
       recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
-      rewardEscrow: rewardEscrowAddress(randomness),
-      wrappedSolMint: NATIVE_MINT,
-      programState: sbc.state,
-      switchboardProgram: sbc.programId,
     },
   };
 }
 
-export async function vrfReveal(program: any, connection: Connection, randomness: PublicKey, _payer: PublicKey) {
-  if (randomnessMode() === "slot-hash") return slotHashReveal(program, randomness);
-  const sbc = switchboard();
-  const info = await connection.getAccountInfo(randomness, "confirmed");
-  if (!info || !info.owner.equals(sbc.programId)) throw new Error("Randomness account not found");
-  const r = parseRandomness(info.data);
-  if (!r.queue.equals(sbc.queue)) throw new Error("Randomness account is not on the trusted queue");
-  if (r.revealSlot !== 0n) throw new Error("Randomness already revealed");
-  if (r.oracle.equals(PublicKey.default)) throw new Error("Randomness has no committed oracle");
-
-  const sb = await sdk();
-  const prog = await switchboardProgram(connection);
-  const oracleData: any = await new sb.Oracle(prog, r.oracle as any).loadData();
-  if (new PublicKey(oracleData.queue.toBase58()).toBase58() !== sbc.queue.toBase58()) {
-    throw new Error("Committed oracle serves another queue");
-  }
-  const gateway = gatewayUrlFromBytes(oracleData.gatewayUri);
-  const response = await fetch(`${gateway}/gateway/api/v1/randomness_reveal`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(revealRequestBody(randomness, r.seedSlothash, r.seedSlot, process.env.SWITCHBOARD_GATEWAY_RPC_URL || undefined)),
-    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Switchboard gateway ${new URL(gateway).host} HTTP ${response.status}: ${text.slice(0, 200)}`);
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error("Switchboard gateway: response is not JSON");
-  }
-  const params = parseRevealResponse(json);
-  const accounts = {
-    vrfSlot: vrfSlotPda(program.programId, randomness),
-    randomness,
-    vrfAuthority: vrfAuthorityPda(program.programId),
-    oracle: r.oracle,
-    queue: sbc.queue,
-    stats: statsPda(r.oracle),
-    recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
-    rewardEscrow: rewardEscrowAddress(randomness),
-    wrappedSolMint: NATIVE_MINT,
-    programState: sbc.state,
-    switchboardProgram: sbc.programId,
-  };
-  return { params, accounts };
+export async function vrfReveal(program: any, _connection: Connection, vrfSlot: PublicKey, _payer: PublicKey) {
+  return packPathReveal(program, vrfSlot);
 }
 
 /** Accounts + args of `vrf_pool_add` for pool index `index` (core or quests program). */
 export async function vrfPoolAddAccounts(program: any, connection: Connection, index: number) {
-  const sbc = switchboard();
-  const randomness = vrfRandomnessPda(program.programId, index);
   const recentSlot = await connection.getSlot("finalized");
-  const lutSigner = lutSignerPda(randomness);
   return {
     recentSlot,
     accounts: {
-      vrfAuthority: vrfAuthorityPda(program.programId),
-      randomness,
-      vrfSlot: vrfSlotPda(program.programId, randomness),
-      rewardEscrow: rewardEscrowAddress(randomness),
-      queue: sbc.queue,
-      programState: sbc.state,
-      lutSigner,
-      lut: lutAddress(lutSigner, recentSlot),
-      wrappedSolMint: NATIVE_MINT,
-      switchboardProgram: sbc.programId,
-      addressLookupTableProgram: ADDRESS_LOOKUP_TABLE_PROGRAM_ID,
+      vrfSlot: vrfSlotPda(program.programId, index),
     },
   };
 }

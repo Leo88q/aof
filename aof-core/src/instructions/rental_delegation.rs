@@ -80,8 +80,14 @@ pub fn start_handler(ctx: Context<StartMiningDelegated>, hours: u8) -> Result<()
         AofError::HoursExceedRarityCap
     );
 
+    let speed = crate::instructions::collect_mining::enchant_slot_level(
+        &ctx.accounts.mint.key(),
+        crate::instructions::collect_mining::SPEED_ENCHANT_SLOT,
+        &ctx.remaining_accounts,
+    )?;
+    let wait = crate::instructions::collect_mining::mining_wait_hours(hours, speed)?;
     let end = now
-        .checked_add((hours as i64) * 3600)
+        .checked_add((wait as i64) * 3600)
         .ok_or(AofError::MathOverflow)?;
     require!(
         end <= ctx.accounts.rental_agreement.end,
@@ -177,11 +183,16 @@ pub fn collect_handler(ctx: Context<CollectMiningDelegated>) -> Result<()> {
         amount,
     )?;
 
+    let level = crate::instructions::collect_mining::durability_enchant_level(
+        &ctx.accounts.mint.key(),
+        &ctx.remaining_accounts,
+    )?;
+    let loss = crate::instructions::collect_mining::durability_loss(hours, level)?;
     let durability = ctx
         .accounts
         .tool
         .durability
-        .checked_sub(hours)
+        .checked_sub(loss)
         .ok_or(AofError::InsufficientDurability)?;
     let tool = &mut ctx.accounts.tool;
     tool.durability = durability;

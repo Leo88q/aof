@@ -116,8 +116,11 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/liquidity/withdraw", subject: "liquidity_withdraw", field: "user" },
   { path: "/forge/commit", subject: "forge_commit", field: "user" },
   { path: "/forge/reveal", subject: "forge_reveal", field: "user" },
-  { path: "/drum/commit", subject: "drum_commit", field: "user" },
-  { path: "/drum/reveal", subject: "drum_reveal", field: "user" },
+  { path: "/engagement/daily", subject: "engagement_daily", field: "user" },
+  { path: "/engagement/comeback", subject: "engagement_comeback", field: "user" },
+  { path: "/engagement/neighbor", subject: "engagement_neighbor", field: "user" },
+  { path: "/engagement/guild", subject: "engagement_guild", field: "user" },
+  { path: "/engagement/quest-progress", subject: "engagement_quest", field: "user" },
   { path: "/exploration/start/commit", subject: "exploration_commit", field: "user" },
   { path: "/exploration/reveal", subject: "exploration_reveal", field: "user" },
   { path: "/exploration/upgrade-tier", subject: "exploration_upgrade_tier", field: "user" },
@@ -250,6 +253,7 @@ export const api = {
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
     player: (owner: string) => get(`/query/player/${owner}`),
     laboratoryFinale: (owner: string) => get(`/query/laboratory-finale/${owner}`),
+    soulCoreSupply: () => get(`/query/soul-core-supply`),
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
     collector: (mint: string) => get(`/query/collector/${mint}`),
     weatherState: () => get("/query/weather-state"),
@@ -406,14 +410,16 @@ export const api = {
     claim: (v: any) => post("/lottery/claim", v),
   },
 
-  // === [F-06] Барабан удачи (Switchboard) ===
-  drum: {
-    commit: (v: any) => post("/drum/commit", v),
-    status: (user: string) => get(`/drum/status/${user}`),
-    reveal: (v: any) => post("/drum/reveal", v),
+  engagement: {
+    summary: (user: string) => get(`/engagement/summary/${user}`),
+    daily: (v: any) => post("/engagement/daily", v),
+    comeback: (v: any) => post("/engagement/comeback", v),
+    neighbor: (v: any) => post("/engagement/neighbor", v),
+    guild: (v: any) => post("/engagement/guild", v),
+    questProgress: (v: any) => post("/engagement/quest-progress", v),
   },
 
-  // === [F-06] Switchboard pool / pending commits ===
+  // Pending slot-hash commits.
   vrf: {
     health: () => get("/vrf/health"),
     pending: (user: string) => get(`/vrf/pending?user=${encodeURIComponent(user)}`),

@@ -183,9 +183,6 @@ export const challengeRoundPda = (weekNumber: number) =>
   findQuests([enc("challenge_round"), u32le(weekNumber)]);
 export const challengeContributionPda = (user: PublicKey, weekNumber: number) =>
   findQuests([enc("challenge_contrib"), user.toBuffer(), u32le(weekNumber)]);
-export const drumCommitPda = (user: PublicKey) =>
-  findQuests([enc("drum_commit"), user.toBuffer()]);
-
 // ============================================================
 // PDA для программы aof-rebirth
 // ============================================================

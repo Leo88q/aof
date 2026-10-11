@@ -16,7 +16,7 @@ const r = Router();
 
 /**
  * [F-06] Start an exploration trip: the trip cost is burned, the tier is
- * snapshotted and a Switchboard commit locks a pool slot (operator co-signs as
+ * snapshotted and the same commit pack opening uses locks a pool slot (operator co-signs as
  * the backend gate). The vrf-settler reveals it; POST /reveal lets the player
  * do it (or refund after the window) without the backend.
  */

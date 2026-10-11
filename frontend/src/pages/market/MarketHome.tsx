@@ -14,6 +14,7 @@ import { OrderbookPage } from "./OrderbookPage";
 import { FlaskMarketplace } from "./FlaskMarketplace";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { Note, Panel, Sticker } from "../../ui/forge/kit";
+import { MarketFeeNote } from "../../components/MarketFeeNote";
 import { SonarPPI } from "../../ui/forge/devices";
 
 type MarketDetailId = 'listing' | 'auction' | 'offer' | 'rental' | 'orderbook' | 'flasks' | 'hot';
@@ -52,6 +53,7 @@ export function MarketHome() {
     <div lang={language} className="p-4 pt-6 pb-24 min-w-0">
       <h1 className="text-2xl font-bold mb-1 text-parchment">{copy.title}</h1>
       <p className="text-straw text-xs mb-4">{copy.intro}</p>
+      <div className="mb-4"><MarketFeeNote /></div>
 
       {/* The sonar is decorative until this screen loads listings. */}
       <div className="mb-3">

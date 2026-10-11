@@ -46,12 +46,12 @@ fail-closed. A property test passing is NOT permission to enable those mechanics
 Not proven: economic market value of one tool vs six resources, all eight recipe
 combinations, every legacy forge/lottery account state in SVM, total
 protocol solvency or lossless replay of an independently verified devnet history.
-VRF: odds, expected values and sink/RTP bounds of all six RNG mechanics are
-derived from the Rust constants and enforced in CI (`docs/ECONOMY_RNG_EV.md`,
-`tests/readiness/rng-economy.test.cjs`). Outcome functions are pure and
-distribution-tested on the host, and a cross-language vector pins them. Oracle
-honesty itself is Switchboard's (TEE) assumption, not something this repository
-can prove.
+Randomness: odds, expected values and sink bounds of the live slot-hash
+mechanics are derived from the Rust constants and enforced in CI
+(`docs/ECONOMY_RNG_EV.md`, `tests/readiness/rng-economy.test.cjs`). The roll is
+four future slot hashes mixed with the commit address. A player cannot refund
+a roll that is still readable. Drum is not one of these mechanics. The residual
+risk is a later leader trying a few blockhashes, not an external oracle.
 A burn/mint transformation conserves quantities according to its recipe; it does
 not conserve monetary value without an explicit pricing model.
 

@@ -49,9 +49,7 @@ pub const COLLECTOR_SEED: &[u8] = b"collector";
 // [ИЗМЕНЕНО]: +2 байта (historian_count:u8, medallion_count:u8) относительно
 // присланного PLAYER_SPACE — см. state::Player, комментарий у новых полей.
 // [НОВОЕ]
-// ===== [НОВОЕ] SKR-привилегия =====
-pub const SKR_MIN_BALANCE: u64 = 3_000_000_000_000; // 3000 SKR (с 9 decimals)
-pub const SKR_CRAFT_DISCOUNT_BPS: u16 = 1500; // 15% скидка на MIND
+
  // 6 ресурсов // 4 массива по 4 x u64 + bump
 
 /// Fee constants (in micros, 1 SOL = 1e6 micros)
@@ -285,10 +283,15 @@ pub const LOTTERY_DEV_BPS: u16 = 3_000;    // 30% разработчику
 pub const LOTTERY_MAX_TICKETS_PER_DAY: u8 = 10;
 
 // ----- Рынок -----
-pub const MARKETPLACE_FEE_BPS: u16 = 300;   // 3%
-pub const AUCTION_FEE_BPS: u16 = 400;       // 3% + 1%
-pub const OFFER_FEE_BPS: u16 = 250;         // 2.5%
-pub const RENTAL_FEE_BPS: u16 = 500;        // 5%
+/// Treasury cut on a settled market trade. Listing, cancel and a losing bid
+/// still take nothing. The percent is charged only when the trade settles,
+/// and `split_bps` floors the treasury share.
+/// Ordinary books sit at 8%. Auction and rental sit at 10%: they were already
+/// the higher cuts, and both ends of the owner's 8–10% band stay with the treasury.
+pub const MARKETPLACE_FEE_BPS: u16 = 800;   // 8%
+pub const AUCTION_FEE_BPS: u16 = 1_000;     // 10%
+pub const OFFER_FEE_BPS: u16 = 800;         // 8%
+pub const RENTAL_FEE_BPS: u16 = 1_000;      // 10%, the floor the treasury keeps
 pub const AUCTION_ANTI_SNIPE_WINDOW_SECONDS: i64 = 5 * 60;
 pub const AUCTION_ANTI_SNIPE_EXTENSION_SECONDS: i64 = 5 * 60;
 pub const RENTAL_MIN_DURATION_SECONDS: i64 = 24 * 3600;
@@ -307,8 +310,9 @@ pub const AUCTION_MAX_DURATION_SECONDS: i64 = 14 * 86_400;
 pub const RENTAL_MAX_OWNER_SPLIT_BPS: u16 = 10_000 - RENTAL_FEE_BPS;
 
 // ----- Ордербук ресурсов -----
-pub const ORDERBOOK_MAKER_FEE_BPS: u16 = 10;  // 0.1%
-pub const ORDERBOOK_TAKER_FEE_BPS: u16 = 40;  // 0.4%
+/// 2% maker + 6% taker = 8% to the treasury. The old 1:4 split is kept.
+pub const ORDERBOOK_MAKER_FEE_BPS: u16 = 200;
+pub const ORDERBOOK_TAKER_FEE_BPS: u16 = 600;
 /// One whole resource unit in atomic SPL units (all resource mints use 9
 /// decimals). v2 prices are quoted **per whole resource** and every lamport
 /// amount is rounded UP, so a price like 0.001 SOL per resource is expressible
@@ -322,7 +326,8 @@ pub const RESOURCE_ATOMS_PER_UNIT: u128 = 1_000_000_000;
 pub const REBIRTH_RESET_MAX_RESOURCE_ACCOUNTS: usize = 16;
 
 // ----- Крафт под заказ -----
-pub const CRAFT_ORDER_FEE_BPS: u16 = 200; // 2%
+/// 8% of the craft-order premium, not of the resource price. Treasury only.
+pub const CRAFT_ORDER_FEE_BPS: u16 = 800;
 
 // ----- Сезонный пасс -----
 pub const SEASON_LENGTH_SECONDS: i64 = 42 * 86400; // 42 дня
@@ -536,12 +541,10 @@ pub const COLLECTOR_ALLOW_SPACE: usize = 8 + CollectorAllowEntry::INIT_SPACE;
 
 pub const VRF_SLOT_SPACE: usize = 8 + VrfSlot::INIT_SPACE;
 
-// ===== [F-06 / #36 #37] Switchboard On-Demand randomness (see vrf.rs) =====
-/// PDA that is the Switchboard `authority` of every pool randomness account.
-/// Switchboard lets only the authority commit or reveal, so only this program
-/// (signing with this seed) can ever re-seed or reveal a pool account.
+// ===== [F-06] Program-owned slot-hash pool (see vrf.rs) =====
+/// PDA that signs pool bookkeeping. Only this program can lock or release a slot.
 pub const VRF_AUTHORITY_SEED: &[u8] = b"vrf_authority";
-/// Pool bookkeeping: seeds = [VRF_SLOT_SEED, randomness.key()].
+/// Pool bookkeeping: seeds = [VRF_SLOT_SEED, index_le].
 pub const VRF_SLOT_SEED: &[u8] = b"vrf_slot";
 /// Address of pool randomness account #index: seeds = [VRF_RANDOMNESS_SEED, index_le].
 pub const VRF_RANDOMNESS_SEED: &[u8] = b"vrf_randomness";
@@ -551,12 +554,10 @@ pub const VRF_RANDOMNESS_SEED: &[u8] = b"vrf_randomness";
 pub const PACK_MINT_SEED: &[u8] = b"pack_mint";
 /// seeds = [REROLL_MINT_SEED, reroll_commit.key()] (reveal OR refund, never both).
 pub const REROLL_MINT_SEED: &[u8] = b"reroll_mint";
-/// Reveal window and refund threshold of every VRF commit, in slots
-/// (~3 min at 400 ms). Must equal `vrf::SLOT_HASH_DELAY + vrf::SLOT_HASH_REVEAL_SLOTS`
-/// (32 + 400). A reveal is accepted only BEFORE this boundary, and only after
-/// the future seed slot, and a refund only FROM this boundary on. The two
-/// paths are never open together. The boundary stays inside SlotHashes
-/// retention (~512 slots) so a skipped seed slot can still be refunded.
+/// Retained name. Live settlement does not open a player refund at this
+/// boundary. Reveal stays open while every required hash is readable, and
+/// `vrf::unsettled` pays the treasury once a hash ages out of SlotHashes.
+/// Do not treat 432 as a refund the player can take.
 pub const VRF_REFUND_AFTER_SLOTS: u64 = 432;
 /// Ticket sales window of a lottery round. After it anyone (not only the
 /// operator) may close sales by committing the draw, so a round cannot be

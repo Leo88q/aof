@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::metadata::Metadata as TokenMetadataProgram;
 use anchor_spl::token::{Token, TokenAccount, Mint};
-use crate::vrf::{AddressLookupTableProgram, SwitchboardOnDemand, VrfRevealParams};
+use crate::vrf::VrfRevealParams;
 
 pub mod constants;
 pub mod errors;
@@ -927,11 +927,7 @@ pub struct Craft<'info> {
     pub mind_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint = user_mind.mint == mind_mint.key(), constraint = user_mind.owner == user.key())]
     pub user_mind: Box<Account<'info, TokenAccount>>,
-    // ===== [НОВОЕ] SKR для скидки 15% на MIND =====
-    #[account(mut)]
-    pub skr_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint = user_skr.mint == skr_mint.key(), constraint = user_skr.owner == user.key())]
-    pub user_skr: Box<Account<'info, TokenAccount>>,
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     #[account(seeds = [TOOL_METADATA_REGISTRY_SEED], bump = tool_metadata_registry.bump)]
@@ -1633,7 +1629,7 @@ pub struct SetPackConfig<'info> {
     pub pack_config: Account<'info, PackConfig>,
 }
 
-/// [F-06] Operator-only: add one Switchboard randomness account to the
+/// [F-06] Operator-only: add one pool randomness account to the
 /// program-owned pool (see vrf.rs / instructions::vrf_pool).
 #[derive(Accounts)]
 #[instruction(index: u32, recent_slot: u64)]
@@ -1642,34 +1638,8 @@ pub struct VrfPoolAdd<'info> {
     pub config: Box<Account<'info, Config>>,
     #[account(mut)]
     pub operator: Signer<'info>,
-    /// CHECK: PDA that becomes the Switchboard authority of the new account.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: created by Switchboard's randomness_init at this program's PDA.
-    #[account(mut, seeds = [VRF_RANDOMNESS_SEED, &index.to_le_bytes()], bump)]
-    pub randomness: UncheckedAccount<'info>,
-    #[account(init, payer = operator, space = VRF_SLOT_SPACE, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump)]
+    #[account(init, payer = operator, space = VRF_SLOT_SPACE, seeds = [VRF_SLOT_SEED, &index.to_le_bytes()], bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: wSOL ATA of the randomness account, created by Switchboard.
-    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub reward_escrow: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(mut, address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: Switchboard program state PDA ["STATE"].
-    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
-    pub program_state: UncheckedAccount<'info>,
-    /// CHECK: Switchboard LUT signer PDA ["LutSigner", randomness].
-    #[account(constraint = lut_signer.key() == crate::vrf::lut_signer_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub lut_signer: UncheckedAccount<'info>,
-    /// CHECK: address lookup table Switchboard creates for (lut_signer, recent_slot).
-    #[account(mut, constraint = lut.key() == crate::vrf::lut_address(&lut_signer.key(), recent_slot) @ AofError::InvalidRandomnessAccount)]
-    pub lut: UncheckedAccount<'info>,
-    /// CHECK: native SOL mint.
-    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
-    pub wrapped_sol_mint: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
-    pub address_lookup_table_program: Program<'info, AddressLookupTableProgram>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -1680,7 +1650,7 @@ pub struct VrfPoolSetRetired<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = operator.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub operator: Signer<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, vrf_slot.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Account<'info, VrfSlot>,
 }
 
@@ -1689,14 +1659,14 @@ pub struct VrfSlotRecover<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = operator.key() == config.operator @ AofError::Unauthorized)]
     pub config: Account<'info, Config>,
     pub operator: Signer<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, vrf_slot.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Account<'info, VrfSlot>,
     /// CHECK: the account named by the lock; must no longer exist.
     #[account(address = vrf_slot.lock)]
     pub holder: UncheckedAccount<'info>,
 }
 
-/// [F-06] Paid pack opening: escrow + odds snapshot + Switchboard commit in one
+/// [F-06] Paid pack opening: escrow + odds snapshot + pool-slot commit in one
 /// instruction. The operator co-signs as the backend gate.
 #[derive(Accounts)]
 #[instruction(pack_type: PackType, nonce: u64)]
@@ -1713,24 +1683,11 @@ pub struct PackOpenCommit<'info> {
         seeds = [PACK_COMMIT_SEED, user.key().as_ref(), &nonce.to_le_bytes()], bump
     )]
     pub pack_commit: Box<Account<'info, PackCommit>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
-    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
-    #[account(mut)]
-    pub oracle: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1772,36 +1729,11 @@ pub struct PackOpenReveal<'info> {
     /// CHECK: auth PDA, mint authority of tool NFTs.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, pack_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == pack_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
-    #[account(mut, address = pack_commit.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
-    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub oracle: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
-    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub stats: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
-    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub reward_escrow: UncheckedAccount<'info>,
-    /// CHECK: native SOL mint.
-    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
-    pub wrapped_sol_mint: UncheckedAccount<'info>,
-    /// CHECK: Switchboard program state PDA ["STATE"].
-    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
-    pub program_state: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -1813,8 +1745,8 @@ pub struct PackOpenReveal<'info> {
     pub token_metadata_program: Program<'info, TokenMetadataProgram>,
 }
 
-/// [F-06] Refund of a pack opening the oracle never revealed. Permissionless;
-/// only once the reveal window has closed; everything goes to `pack_commit.user`.
+/// [F-06] Close a pack opening with no readable roll. A skipped hash returns
+/// the price to the player. An aged-out hash pays the treasury first.
 #[derive(Accounts)]
 pub struct PackOpenExpire<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
@@ -1826,11 +1758,17 @@ pub struct PackOpenExpire<'info> {
         bump = pack_commit.bump
     )]
     pub pack_commit: Box<Account<'info, PackCommit>>,
-    /// CHECK: receives the escrow and the rent — the same user that committed.
+    /// CHECK: receives the rent. A knowable roll does not return the price here.
     #[account(mut, address = pack_commit.user)]
     pub user: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, pack_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    /// CHECK: receives the price only when the required slot hashes aged out.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == pack_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: SlotHashes sysvar.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
 }
 
 // ----- Reroll (честный) -----
@@ -1885,24 +1823,11 @@ pub struct RerollRandomCommit<'info> {
         seeds = [REROLL_COMMIT_SEED, user.key().as_ref(), &nonce.to_le_bytes()], bump
     )]
     pub reroll_commit: Box<Account<'info, RerollCommit>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
-    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
-    #[account(mut)]
-    pub oracle: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -1939,36 +1864,11 @@ pub struct RerollRandomReveal<'info> {
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, reroll_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == reroll_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
-    #[account(mut, address = reroll_commit.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
-    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub oracle: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
-    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub stats: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
-    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub reward_escrow: UncheckedAccount<'info>,
-    /// CHECK: native SOL mint.
-    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
-    pub wrapped_sol_mint: UncheckedAccount<'info>,
-    /// CHECK: Switchboard program state PDA ["STATE"].
-    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
-    pub program_state: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -1999,8 +1899,14 @@ pub struct RerollRandomExpire<'info> {
     /// CHECK: the committing player.
     #[account(mut, address = reroll_commit.user)]
     pub user: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, reroll_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    /// CHECK: receives the fee only when the required hashes aged out.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == reroll_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: SlotHashes sysvar. Distinguishes a skipped slot from a knowable roll.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
     #[account(
         init, payer = cranker,
         seeds = [REROLL_MINT_SEED, reroll_commit.key().as_ref()], bump,
@@ -2094,24 +2000,11 @@ pub struct StartExplorationCommit<'info> {
     pub escrow_silicon: Box<Account<'info, TokenAccount>>,
     #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = auth)]
     pub escrow_dataset: Box<Account<'info, TokenAccount>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
-    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
-    #[account(mut)]
-    pub oracle: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2159,36 +2052,11 @@ pub struct ExploreReveal<'info> {
     pub escrow_silicon: Box<Account<'info, TokenAccount>>,
     #[account(mut, associated_token::mint = dataset_mint, associated_token::authority = auth)]
     pub escrow_dataset: Box<Account<'info, TokenAccount>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, exploration_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == exploration_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
-    #[account(mut, address = exploration_commit.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
-    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub oracle: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
-    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub stats: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
-    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub reward_escrow: UncheckedAccount<'info>,
-    /// CHECK: native SOL mint.
-    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
-    pub wrapped_sol_mint: UncheckedAccount<'info>,
-    /// CHECK: Switchboard program state PDA ["STATE"].
-    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
-    pub program_state: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -2218,8 +2086,11 @@ pub struct ExploreExpire<'info> {
     /// CHECK: the committing player.
     #[account(mut, address = exploration_commit.user)]
     pub user: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, exploration_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == exploration_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: SlotHashes sysvar. Distinguishes a skipped slot from a knowable roll.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
     /// CHECK: auth PDA — mint authority of the resources.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
@@ -2413,24 +2284,11 @@ pub struct ForgeAttemptCommit<'info> {
     pub escrow_circuit: Box<Account<'info, TokenAccount>>,
     #[account(mut, associated_token::mint = silicon_mint, associated_token::authority = auth)]
     pub escrow_silicon: Box<Account<'info, TokenAccount>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
-    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
-    #[account(mut)]
-    pub oracle: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2467,36 +2325,11 @@ pub struct ForgeAttemptReveal<'info> {
     /// CHECK: казна получает escrow-fee только здесь, когда исход известен.
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, forge_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == forge_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
-    #[account(mut, address = forge_commit.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
-    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub oracle: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
-    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub stats: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
-    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub reward_escrow: UncheckedAccount<'info>,
-    /// CHECK: native SOL mint.
-    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
-    pub wrapped_sol_mint: UncheckedAccount<'info>,
-    /// CHECK: Switchboard program state PDA ["STATE"].
-    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
-    pub program_state: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2518,8 +2351,14 @@ pub struct ForgeAttemptExpire<'info> {
     /// CHECK: получатель escrow + ренты — тот же user, что делал commit.
     #[account(mut, address = forge_commit.user)]
     pub user: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, forge_commit.randomness.as_ref()], bump = vrf_slot.bump)]
+    /// CHECK: receives the fee only when the required hashes aged out.
+    #[account(mut, address = config.treasury)]
+    pub treasury: UncheckedAccount<'info>,
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == forge_commit.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: SlotHashes sysvar. Distinguishes a skipped slot from a knowable roll.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
     /// CHECK: auth PDA — mint authority ресурсов.
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
@@ -2579,7 +2418,7 @@ pub struct BuyLotteryTicket<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// [F-06] Permissionless draw settlement (Switchboard reveal via CPI).
+/// [F-06] Permissionless draw settlement (pool reveal via CPI).
 #[derive(Accounts)]
 pub struct DrawLottery<'info> {
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
@@ -2591,36 +2430,11 @@ pub struct DrawLottery<'info> {
     /// CHECK: receives the house share of the pool at the draw.
     #[account(mut, address = config.treasury)]
     pub treasury: UncheckedAccount<'info>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, lottery_round.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == lottery_round.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: the randomness account locked by this commit; verified by vrf::reveal.
-    #[account(mut, address = lottery_round.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: must be the oracle Switchboard assigned to the randomness at commit.
-    #[account(constraint = crate::vrf::assigned_oracle_is(&randomness, &oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub oracle: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: Switchboard oracle stats PDA ["OracleRandomnessStats", oracle].
-    #[account(mut, constraint = stats.key() == crate::vrf::stats_address(&oracle.key()) @ AofError::InvalidRandomnessAccount)]
-    pub stats: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    /// CHECK: wSOL reward escrow of the randomness account (its ATA).
-    #[account(mut, constraint = reward_escrow.key() == crate::vrf::reward_escrow_address(&randomness.key()) @ AofError::InvalidRandomnessAccount)]
-    pub reward_escrow: UncheckedAccount<'info>,
-    /// CHECK: native SOL mint.
-    #[account(address = anchor_spl::token::spl_token::native_mint::ID)]
-    pub wrapped_sol_mint: UncheckedAccount<'info>,
-    /// CHECK: Switchboard program state PDA ["STATE"].
-    #[account(address = crate::vrf::SWITCHBOARD_STATE @ AofError::InvalidRandomnessAccount)]
-    pub program_state: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -2634,24 +2448,11 @@ pub struct CommitLotteryDraw<'info> {
     pub cranker: Signer<'info>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
     pub lottery_round: Box<Account<'info, LotteryRound>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, randomness.key().as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
-    /// CHECK: pool randomness account; owner, authority and queue are verified by vrf::commit.
-    #[account(mut, address = vrf_slot.randomness @ AofError::InvalidRandomnessAccount)]
-    pub randomness: UncheckedAccount<'info>,
-    /// CHECK: PDA that signs the Switchboard CPI as the randomness authority.
-    #[account(seeds = [VRF_AUTHORITY_SEED], bump)]
-    pub vrf_authority: UncheckedAccount<'info>,
-    /// CHECK: the trusted Switchboard queue.
-    #[account(address = crate::vrf::SWITCHBOARD_QUEUE @ AofError::InvalidRandomnessAccount)]
-    pub queue: UncheckedAccount<'info>,
-    /// CHECK: oracle picked from the queue by the client; Switchboard validates it.
-    #[account(mut)]
-    pub oracle: UncheckedAccount<'info>,
     /// CHECK: SlotHashes sysvar.
     #[account(address = SLOT_HASHES_ID)]
     pub recent_slothashes: UncheckedAccount<'info>,
-    pub switchboard_program: Program<'info, SwitchboardOnDemand>,
 }
 
 /// [F-06] Expire a draw the oracle never revealed; the round can draw again.
@@ -2661,8 +2462,11 @@ pub struct ExpireLotteryDraw<'info> {
     pub config: Account<'info, Config>,
     #[account(mut, seeds = [LOTTERY_ROUND_SEED, &lottery_round.round_id.to_le_bytes()], bump = lottery_round.bump)]
     pub lottery_round: Box<Account<'info, LotteryRound>>,
-    #[account(mut, seeds = [VRF_SLOT_SEED, lottery_round.randomness.as_ref()], bump = vrf_slot.bump)]
+    #[account(mut, seeds = [VRF_SLOT_SEED, &vrf_slot.index.to_le_bytes()], constraint = vrf_slot.key() == lottery_round.randomness, bump = vrf_slot.bump)]
     pub vrf_slot: Box<Account<'info, VrfSlot>>,
+    /// CHECK: SlotHashes sysvar. Distinguishes a skipped slot from a knowable roll.
+    #[account(address = SLOT_HASHES_ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
 }
 
 /// [F-06] Full refund of one ticket of an undrawn round after the timeout.
@@ -4112,16 +3916,16 @@ pub struct ClaimPremiumSeasonReward<'info> {
         constraint = premium_claims.season_id == season.season_id @ AofError::SeasonMismatch
     )]
     pub premium_claims: Account<'info, SeasonPremiumClaims>,
-    #[account(mut, address = config.circuit_mint)]
-    pub circuit_mint: Account<'info, Mint>,
-    #[account(mut, constraint = user_circuit.mint == circuit_mint.key(), constraint = user_circuit.owner == season_pass.owner)]
-    pub user_circuit: Account<'info, TokenAccount>,
+    #[account(mut, address = config.silicon_mint)]
+    pub silicon_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_silicon.mint == silicon_mint.key(), constraint = user_silicon.owner == season_pass.owner)]
+    pub user_silicon: Account<'info, TokenAccount>,
     /// CHECK: auth PDA
     #[account(seeds = [AUTH_SEED], bump)]
     pub auth: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
-    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Circuit as u8]], bump = issuance_cap_circuit.bump)]
-    pub issuance_cap_circuit: Box<Account<'info, IssuanceCap>>,
+    #[account(mut, seeds = [ISSUANCE_CAP_SEED, &[ResourceKind::Silicon as u8]], bump = issuance_cap_silicon.bump)]
+    pub issuance_cap_silicon: Box<Account<'info, IssuanceCap>>,
 }
 
 /// [§3.4] Полный сброс прогресса перерождения. Отдельные инструкции
@@ -4528,7 +4332,7 @@ pub mod aof_core {
     pub fn set_pack_config(ctx: Context<SetPackConfig>, price_lamports: u64, odds_bps: [u16;5]) -> Result<()> {
         instructions::pack_config::set_handler(ctx, price_lamports, odds_bps)
     }
-    /// [F-06] Paid pack opening: escrow + odds snapshot + Switchboard commit.
+    /// [F-06] Paid pack opening: escrow + odds snapshot + pool-slot commit.
     pub fn pack_open_commit(ctx: Context<PackOpenCommit>, pack_type: PackType, nonce: u64, max_price_lamports: u64) -> Result<()> {
         instructions::pack_open_commit::handler(ctx, pack_type, nonce, max_price_lamports)
     }
@@ -4758,7 +4562,7 @@ pub mod aof_core {
         instructions::season::claim_premium_reward_handler(ctx, level)
     }
 
-    // ===== [F-06] Switchboard On-Demand: program-owned randomness pool =====
+    // ===== [F-06] the program pool: program-owned randomness pool =====
     /// Operator: add pool randomness account #index (authority = this program's PDA).
     pub fn vrf_pool_add(ctx: Context<VrfPoolAdd>, index: u32, recent_slot: u64) -> Result<()> {
         instructions::vrf_pool::add_handler(ctx, index, recent_slot)

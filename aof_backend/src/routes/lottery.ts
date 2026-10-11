@@ -11,7 +11,7 @@ import { releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf"
 import { commitStatus, fetchPendingCommit, buildRevealInstructions } from "../lib/vrfSettlement";
 
 /**
- * [F-06] Lottery with a player-funded pool and a Switchboard draw:
+ * [F-06] Lottery with a player-funded pool and a slot-hash draw:
  *   - tickets escrow the full price on the round (nothing reaches the treasury
  *     before the draw; an undrawn round refunds every ticket in full);
  *   - the operator closes sales by committing the draw (anyone may after the
@@ -143,7 +143,7 @@ r.post("/ticket/buy", requireCircuitOpen, requireWalletLimits("lottery_buy"), re
   }
 });
 
-/** Operator closes sales and commits the draw to a Switchboard pool slot. */
+/** Operator closes sales and commits the draw on the same path as pack opening. */
 r.post("/draw/commit", requireAdmin, async (req, res) => {
   try {
     const roundId = u64(req.body.roundId, "roundId");

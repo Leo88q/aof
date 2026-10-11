@@ -99,6 +99,9 @@
           "signer": true
         },
         {
+          "name": "proof"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -206,6 +209,18 @@
           "signer": true
         },
         {
+          "name": "user_mascot",
+          "writable": true
+        },
+        {
+          "name": "escrow_mascot",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -284,475 +299,6 @@
       ]
     },
     {
-      "name": "drum_commit",
-      "discriminator": [
-        43,
-        226,
-        137,
-        170,
-        29,
-        82,
-        145,
-        199
-      ],
-      "accounts": [
-        {
-          "name": "drum_commit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  114,
-                  117,
-                  109,
-                  95,
-                  99,
-                  111,
-                  109,
-                  109,
-                  105,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
-        },
-        {
-          "name": "quest_config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "user",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "treasury_mascot",
-          "writable": true
-        },
-        {
-          "name": "user_mascot",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
-          "writable": true
-        },
-        {
-          "name": "recent_slothashes",
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "drum_expire",
-      "discriminator": [
-        147,
-        129,
-        210,
-        85,
-        203,
-        34,
-        245,
-        25
-      ],
-      "accounts": [
-        {
-          "name": "drum_commit",
-          "writable": true
-        },
-        {
-          "name": "quest_config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "user",
-          "writable": true
-        },
-        {
-          "name": "treasury_mascot",
-          "writable": true
-        },
-        {
-          "name": "mascot_mint"
-        },
-        {
-          "name": "user_mascot",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "drum_reveal",
-      "discriminator": [
-        12,
-        249,
-        95,
-        135,
-        214,
-        246,
-        31,
-        119
-      ],
-      "accounts": [
-        {
-          "name": "drum_commit",
-          "writable": true
-        },
-        {
-          "name": "quest_config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "user",
-          "writable": true
-        },
-        {
-          "name": "treasury_mascot",
-          "writable": true
-        },
-        {
-          "name": "mascot_mint"
-        },
-        {
-          "name": "user_mascot",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
-          "name": "recent_slothashes",
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "params",
-          "type": {
-            "defined": {
-              "name": "VrfRevealParams"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "init_mind_bank",
-      "discriminator": [
-        240,
-        60,
-        101,
-        10,
-        13,
-        139,
-        228,
-        157
-      ],
-      "accounts": [
-        {
-          "name": "quest_config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  115,
-                  116,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "mind_mint"
-        },
-        {
-          "name": "mind_bank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  100,
-                  95,
-                  98,
-                  97,
-                  110,
-                  107
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "mind_vault",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "init_quest_config",
       "discriminator": [
         40,
@@ -811,359 +357,6 @@
         {
           "name": "treasury_mascot",
           "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "mind_spin_commit",
-      "discriminator": [
-        138,
-        50,
-        67,
-        168,
-        196,
-        89,
-        48,
-        47
-      ],
-      "accounts": [
-        {
-          "name": "mind_commit",
-          "writable": true
-        },
-        {
-          "name": "mind_bank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  100,
-                  95,
-                  98,
-                  97,
-                  110,
-                  107
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "mind_vault",
-          "writable": true
-        },
-        {
-          "name": "user",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "user_mind",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
-          "writable": true
-        },
-        {
-          "name": "recent_slothashes",
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "mind_spin_expire",
-      "discriminator": [
-        62,
-        4,
-        25,
-        121,
-        178,
-        39,
-        80,
-        58
-      ],
-      "accounts": [
-        {
-          "name": "mind_commit",
-          "writable": true
-        },
-        {
-          "name": "mind_bank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  100,
-                  95,
-                  98,
-                  97,
-                  110,
-                  107
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "user",
-          "writable": true
-        },
-        {
-          "name": "mind_vault",
-          "writable": true
-        },
-        {
-          "name": "mind_mint"
-        },
-        {
-          "name": "user_mind",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "mind_spin_reveal",
-      "discriminator": [
-        166,
-        183,
-        118,
-        16,
-        152,
-        192,
-        62,
-        125
-      ],
-      "accounts": [
-        {
-          "name": "mind_commit",
-          "writable": true
-        },
-        {
-          "name": "mind_bank",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  100,
-                  95,
-                  98,
-                  97,
-                  110,
-                  107
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "cranker",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "user",
-          "writable": true
-        },
-        {
-          "name": "mind_vault",
-          "writable": true
-        },
-        {
-          "name": "mind_mint"
-        },
-        {
-          "name": "user_mind",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
-          "name": "recent_slothashes",
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "params",
-          "type": {
-            "defined": {
-              "name": "VrfRevealParams"
-            }
-          }
         }
       ]
     },
@@ -1353,16 +546,16 @@
       ]
     },
     {
-      "name": "set_mind_bank_paused",
+      "name": "claim_daily",
       "discriminator": [
-        207,
-        215,
-        230,
-        188,
-        190,
-        124,
-        127,
-        86
+        13,
+        226,
+        153,
+        154,
+        27,
+        168,
+        111,
+        103
       ],
       "accounts": [
         {
@@ -1390,197 +583,154 @@
           }
         },
         {
-          "name": "authority",
-          "signer": true
-        },
-        {
-          "name": "mind_bank",
+          "name": "engagement",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  101,
+                  110,
+                  103,
+                  97,
+                  103,
+                  101,
                   109,
-                  105,
-                  110,
-                  100,
-                  95,
-                  98,
-                  97,
-                  110,
-                  107
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      "args": [
-        {
-          "name": "paused",
-          "type": "bool"
-        }
-      ]
-    },
-    {
-      "name": "vrf_pool_add",
-      "discriminator": [
-        234,
-        143,
-        61,
-        230,
-        212,
-        57,
-        8,
-        234
-      ],
-      "accounts": [
-        {
-          "name": "quest_config",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
                   101,
-                  115,
-                  116,
-                  95,
-                  99,
-                  111,
                   110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
                   116
                 ]
               },
               {
                 "kind": "account",
-                "path": "randomness"
+                "path": "user"
               }
             ]
           }
         },
         {
-          "name": "reward_escrow",
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury_mascot",
           "writable": true
         },
         {
-          "name": "queue",
+          "name": "user_mascot",
           "writable": true
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "lut_signer"
-        },
-        {
-          "name": "lut",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "switchboard_program"
-        },
-        {
-          "name": "address_lookup_table_program"
         },
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_comeback",
+      "discriminator": [
+        7,
+        192,
+        98,
+        39,
+        123,
+        241,
+        64,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "engagement",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  103,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury_mascot",
+          "writable": true
+        },
+        {
+          "name": "user_mascot",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "index",
-          "type": "u32"
-        },
-        {
-          "name": "recent_slot",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
-      "name": "vrf_pool_set_retired",
+      "name": "visit_neighbor",
       "discriminator": [
-        145,
-        60,
-        229,
-        148,
-        74,
-        247,
-        213,
+        122,
+        47,
+        156,
+        160,
+        52,
+        248,
+        155,
         200
       ],
       "accounts": [
@@ -1609,18 +759,320 @@
           }
         },
         {
+          "name": "engagement",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  103,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "neighbor_engagement"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "guild_deposit",
+      "discriminator": [
+        155,
+        18,
+        157,
+        145,
+        78,
+        138,
+        211,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "engagement",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  103,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury_mascot",
+          "writable": true
+        },
+        {
+          "name": "user_mascot",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "prove_quest_progress",
+      "discriminator": [
+        45,
+        167,
+        155,
+        117,
+        253,
+        33,
+        37,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quest_progress",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "proof"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "quest_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "challenge_close",
+      "discriminator": [
+        72,
+        217,
+        39,
+        225,
+        155,
+        75,
+        245,
+        64
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "authority",
           "signer": true
         },
         {
-          "name": "vrf_slot",
+          "name": "challenge_round",
           "writable": true
         }
       ],
       "args": [
         {
-          "name": "retired",
-          "type": "bool"
+          "name": "week_number",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "challenge_claim",
+      "discriminator": [
+        231,
+        213,
+        62,
+        171,
+        50,
+        56,
+        168,
+        63
+      ],
+      "accounts": [
+        {
+          "name": "quest_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenge_round"
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow_mascot",
+          "writable": true
+        },
+        {
+          "name": "user_mascot",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "week_number",
+          "type": "u32"
         }
       ]
     }
@@ -1666,45 +1118,6 @@
       ]
     },
     {
-      "name": "DrumCommit",
-      "discriminator": [
-        35,
-        182,
-        92,
-        2,
-        116,
-        24,
-        150,
-        10
-      ]
-    },
-    {
-      "name": "MindBank",
-      "discriminator": [
-        71,
-        3,
-        202,
-        95,
-        211,
-        191,
-        174,
-        214
-      ]
-    },
-    {
-      "name": "MindCommit",
-      "discriminator": [
-        176,
-        162,
-        46,
-        233,
-        225,
-        112,
-        1,
-        166
-      ]
-    },
-    {
       "name": "QuestConfig",
       "discriminator": [
         181,
@@ -1744,16 +1157,16 @@
       ]
     },
     {
-      "name": "VrfSlot",
+      "name": "PlayerEngagement",
       "discriminator": [
-        95,
-        178,
-        139,
-        58,
-        220,
-        18,
-        96,
-        242
+        78,
+        230,
+        120,
+        25,
+        166,
+        192,
+        1,
+        238
       ]
     }
   ],
@@ -1837,84 +1250,6 @@
       ]
     },
     {
-      "name": "DrumCommitted",
-      "discriminator": [
-        164,
-        214,
-        144,
-        51,
-        36,
-        207,
-        245,
-        215
-      ]
-    },
-    {
-      "name": "DrumRefunded",
-      "discriminator": [
-        156,
-        184,
-        40,
-        128,
-        133,
-        159,
-        97,
-        55
-      ]
-    },
-    {
-      "name": "DrumRevealed",
-      "discriminator": [
-        150,
-        169,
-        125,
-        76,
-        157,
-        251,
-        71,
-        251
-      ]
-    },
-    {
-      "name": "MindSpinCommitted",
-      "discriminator": [
-        232,
-        11,
-        238,
-        26,
-        149,
-        202,
-        183,
-        117
-      ]
-    },
-    {
-      "name": "MindSpinRefunded",
-      "discriminator": [
-        21,
-        79,
-        19,
-        148,
-        84,
-        217,
-        91,
-        206
-      ]
-    },
-    {
-      "name": "MindSpinRevealed",
-      "discriminator": [
-        253,
-        48,
-        15,
-        19,
-        135,
-        49,
-        176,
-        209
-      ]
-    },
-    {
       "name": "QuestConfigInitialized",
       "discriminator": [
         99,
@@ -1954,29 +1289,81 @@
       ]
     },
     {
-      "name": "VrfSlotAdded",
+      "name": "DailyClaimed",
       "discriminator": [
-        78,
-        57,
-        54,
-        86,
-        1,
-        127,
-        94,
-        9
+        153,
+        95,
+        244,
+        10,
+        116,
+        138,
+        87,
+        164
       ]
     },
     {
-      "name": "VrfSlotRetiredChanged",
+      "name": "ComebackClaimed",
       "discriminator": [
-        119,
-        52,
-        96,
-        81,
-        118,
-        131,
-        75,
-        251
+        204,
+        73,
+        72,
+        49,
+        132,
+        193,
+        138,
+        127
+      ]
+    },
+    {
+      "name": "NeighborVisited",
+      "discriminator": [
+        82,
+        111,
+        79,
+        17,
+        20,
+        224,
+        183,
+        14
+      ]
+    },
+    {
+      "name": "GuildDeposited",
+      "discriminator": [
+        61,
+        189,
+        246,
+        162,
+        144,
+        246,
+        196,
+        70
+      ]
+    },
+    {
+      "name": "QuestProgressProven",
+      "discriminator": [
+        201,
+        162,
+        36,
+        250,
+        173,
+        23,
+        11,
+        159
+      ]
+    },
+    {
+      "name": "ChallengePayoutClaimed",
+      "discriminator": [
+        142,
+        49,
+        132,
+        201,
+        183,
+        23,
+        165,
+        131
       ]
     }
   ],
@@ -2312,284 +1699,6 @@
       }
     },
     {
-      "name": "DrumCommit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          },
-          {
-            "name": "commit_slot",
-            "type": "u64"
-          },
-          {
-            "name": "created_at",
-            "type": "i64"
-          },
-          {
-            "name": "cost",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DrumCommitted",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DrumRefunded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DrumRevealed",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "prize",
-            "type": "u64"
-          },
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          },
-          {
-            "name": "value",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "cranker",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MindBank",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "vault",
-            "type": "pubkey"
-          },
-          {
-            "name": "reserved_atoms",
-            "type": "u64"
-          },
-          {
-            "name": "open_spins",
-            "type": "u32"
-          },
-          {
-            "name": "paused",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MindCommit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          },
-          {
-            "name": "commit_slot",
-            "type": "u64"
-          },
-          {
-            "name": "created_at",
-            "type": "i64"
-          },
-          {
-            "name": "cost",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MindSpinCommitted",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "commit",
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "price_atoms",
-            "type": "u64"
-          },
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MindSpinRefunded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "commit",
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount_atoms",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MindSpinRevealed",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "commit",
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "prize_atoms",
-            "type": "u64"
-          },
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          },
-          {
-            "name": "value",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "cranker",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "QuestConfig",
       "type": {
         "kind": "struct",
@@ -2730,66 +1839,40 @@
       }
     },
     {
-      "name": "VrfRevealParams",
+      "name": "PlayerEngagement",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "signature",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
+            "name": "user",
+            "type": "pubkey"
           },
           {
-            "name": "recovery_id",
+            "name": "last_daily_day",
+            "type": "i64"
+          },
+          {
+            "name": "streak",
+            "type": "u16"
+          },
+          {
+            "name": "best_streak",
+            "type": "u16"
+          },
+          {
+            "name": "last_comeback_day",
+            "type": "i64"
+          },
+          {
+            "name": "neighbor_day",
+            "type": "i64"
+          },
+          {
+            "name": "neighbor_visits",
             "type": "u8"
           },
           {
-            "name": "value",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "VrfSlot",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "randomness",
-            "type": "pubkey"
-          },
-          {
-            "name": "index",
-            "type": "u32"
-          },
-          {
-            "name": "lock",
-            "type": "pubkey"
-          },
-          {
-            "name": "locked_at_slot",
-            "type": "u64"
-          },
-          {
-            "name": "retired",
-            "type": "bool"
-          },
-          {
-            "name": "commits",
-            "type": "u64"
-          },
-          {
-            "name": "reveals",
+            "name": "guild_deposited",
             "type": "u64"
           },
           {
@@ -2800,37 +1883,121 @@
       }
     },
     {
-      "name": "VrfSlotAdded",
+      "name": "DailyClaimed",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "index",
-            "type": "u32"
-          },
-          {
-            "name": "randomness",
+            "name": "user",
             "type": "pubkey"
           },
           {
-            "name": "vrf_slot",
-            "type": "pubkey"
+            "name": "day",
+            "type": "i64"
+          },
+          {
+            "name": "streak",
+            "type": "u16"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "VrfSlotRetiredChanged",
+      "name": "ComebackClaimed",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "vrf_slot",
+            "name": "user",
             "type": "pubkey"
           },
           {
-            "name": "retired",
-            "type": "bool"
+            "name": "day",
+            "type": "i64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NeighborVisited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "neighbor",
+            "type": "pubkey"
+          },
+          {
+            "name": "day",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GuildDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuestProgressProven",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "quest_id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengePayoutClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "week_number",
+            "type": "u32"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
           }
         ]
       }

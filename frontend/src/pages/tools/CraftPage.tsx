@@ -21,6 +21,8 @@ import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { shortAddr, useFlash } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { ChainClocks } from "../../components/ChainClocks";
+import { SeederFuse } from "../../components/SeederFuse";
 
 export function CraftPage() {
   const { language } = useLocale();
@@ -242,6 +244,7 @@ export function CraftPage() {
   return (
     <div lang={language} className="p-4 pt-2 pb-24 space-y-4 min-w-0">
       <p className="text-straw text-xs">{copy.intro}</p>
+      <ChainClocks />
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
@@ -355,6 +358,8 @@ export function CraftPage() {
           </button>
         </Card>
       )}
+
+      <SeederFuse tools={knownTools} address={address} />
 
       {craftReceipt?.address === address && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}

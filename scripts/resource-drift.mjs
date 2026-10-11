@@ -99,7 +99,6 @@ const HISTORICAL_DOCS = {
   'docs/HISTORICAL_MIND_DEVNET_SETUP.md': 'pre-canonical read-only devnet setup note',
   'reports/AOF_FINDINGS.md': 'external baseline findings review snapshot',
   'reports/aof-audit.json': 'external audit report snapshot',
-  'frontend/phase1_context.txt': 'frozen design/config context snapshot, not imported by the frontend',
 };
 
 function trackedFiles() {

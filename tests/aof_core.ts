@@ -267,21 +267,15 @@ describe("aof-core: security & core flows", () => {
     throw new Error(`expected ${code} on ${account}, but call succeeded`);
   }
 
-  // [F-06] Switchboard On-Demand accounts of a VRF commit (default = mainnet
-  // build). The local validator has neither Switchboard nor a pool slot, which
-  // is exactly the production "pool empty" state.
-  const SWITCHBOARD_PROGRAM = new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv");
-  const SWITCHBOARD_QUEUE = new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w");
+  // [F-06] Slot-hash commit accounts. The local validator has no pool slot,
+  // which is the production "pool empty" state: the commit fails while Anchor
+  // loads vrf_slot, before any charge.
   const u32le = (n: number) => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
   const u64le = (n: BN) => n.toArrayLike(Buffer, "le", 8);
-  const vrfCommitAccounts = () => {
-    const randomness = pda([B("vrf_randomness"), u32le(0)]);
-    return {
-      vrfSlot: pda([B("vrf_slot"), randomness.toBuffer()]), randomness,
-      vrfAuthority: pda([B("vrf_authority")]), queue: SWITCHBOARD_QUEUE, oracle: Keypair.generate().publicKey,
-      recentSlothashes: SLOT_HASHES, switchboardProgram: SWITCHBOARD_PROGRAM,
-    };
-  };
+  const vrfCommitAccounts = () => ({
+    vrfSlot: pda([B("vrf_slot"), u32le(0)]),
+    recentSlothashes: SLOT_HASHES,
+  });
 
   async function mintTool(to: PublicKey, toolType = "plasma_cutter") {
     const mint = await createMint(provider.connection, setupPayer, authPda, authPda, 0);
@@ -770,9 +764,9 @@ describe("aof-core: security & core flows", () => {
 
     const rentalListing = pda([B("rental_listing"), mint.toBuffer()]);
     // [SECURITY_CHECKLIST_REVIEW F-H] a listed NFT sits in escrow (an ATA of
-    // the listing PDA); the owner split is capped at 95% (5% platform fee).
+    // the listing PDA); the owner split is capped at 90% (10% treasury fee).
     const rentalVault = await ensureAta(mint, rentalListing);
-    await program.methods.rentalList(9_500, new BN(24 * 3600), new BN(24 * 3600), new BN(0)).accounts({
+    await program.methods.rentalList(9_000, new BN(24 * 3600), new BN(24 * 3600), new BN(0)).accounts({
       config: configPda, owner: owner.publicKey, mint, tool: toolPda(mint), rentalListing,
       ownerToken: tokenAccount, rentalVault, tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
@@ -1037,13 +1031,11 @@ describe("aof-core: security & core flows", () => {
     expect((await balance(sellerCircuit)).toNumber()).to.be.greaterThan(0);
   });
 
-  // [F-06] Paid randomness mechanics commit through Switchboard On-Demand. With
-  // no pool slot (no Switchboard on this validator) a commit must fail while
-  // Anchor loads the accounts, before any lamport, token or PDA changes. The
-  // full commit/reveal/refund cycle runs in the host tests
-  // (aof-core/src/security_checklist_tests.rs, emulated Switchboard) and on
-  // devnet (scripts/vrf/devnet-smoke.mjs).
-  it("VRF pack commit: an empty Switchboard pool fails the commit before any charge", async () => {
+  // [F-06] Paid randomness commits through the program-owned slot-hash pool.
+  // With no pool slot on this validator a commit must fail while Anchor loads
+  // the accounts, before any lamport, token or PDA changes. The full cycle
+  // runs in aof-core/src/security_checklist_tests.rs and scripts/vrf/devnet-smoke.mjs.
+  it("VRF pack commit: an empty slot-hash pool fails the commit before any charge", async () => {
     const packConfig = pda([B("pack_config"), Buffer.from([0])]);
     const PRICE = 100_000_000;
     try {
@@ -1066,11 +1058,11 @@ describe("aof-core: security & core flows", () => {
     expect(await provider.connection.getAccountInfo(packCommit)).to.equal(null);
   });
 
-  it("VRF forge commit: an empty Switchboard pool fails the commit and burns nothing", async () => {
+  it("VRF forge commit: an empty slot-hash pool fails the commit and burns nothing", async () => {
     const user = Keypair.generate(); await airdrop(user);
     // Forge uses shared auth-PDA escrow ATAs. Devnet bootstrap creates these,
     // but the local validator fixture must create them before it can reach the
-    // deliberately missing Switchboard vrf_slot account.
+    // deliberately missing slot-hash vrf_slot account.
     await ensureAta(circuitMint, authPda);
     await ensureAta(siliconMint, authPda);
     // [AUDIT F-17] mint_tool only accepts canonical tool kinds.
@@ -1095,7 +1087,7 @@ describe("aof-core: security & core flows", () => {
     expect(await provider.connection.getAccountInfo(enchantSlot)).to.equal(null);
   });
 
-  it("VRF reroll commit: an empty Switchboard pool fails the commit and keeps the tool", async () => {
+  it("VRF reroll commit: an empty slot-hash pool fails the commit and keeps the tool", async () => {
     const rerollConfig = pda([B("reroll_config")]);
     if (!(await provider.connection.getAccountInfo(rerollConfig))) {
       await program.methods.initRerollConfig([5500, 3000, 1100, 400, 0])

@@ -148,6 +148,23 @@ test('смена типа/порядка поля или дискриминан�
   });
 });
 
+test('удалённые барабан и mind-spin закреплены и не могут вернуться незаметно', () => {
+  const baseline = JSON.parse(read(BASELINE));
+  const removed = baseline.approvedRemovals.aof_quests;
+  for (const name of ['drum_commit', 'drum_reveal', 'drum_expire', 'potato_spin_commit', 'vrf_pool_add']) {
+    assert.ok(removed.instructions.includes(name), name);
+  }
+  assert.deepEqual(removed.accounts, ['DrumCommit', 'VrfSlot', 'PotatoCommit', 'PotatoBank']);
+  withRoot((tmp) => {
+    const p = path.join(tmp, 'programs/aof-quests/src/lib.rs');
+    const before = fs.readFileSync(p, 'utf8');
+    fs.writeFileSync(p, before.replace('pub fn set_pending_authority(', 'pub fn drum_commit() -> Result<()> { Ok(()) }\n    pub fn set_pending_authority('));
+    const result = run(['--check', '--root', tmp]);
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /drum_commit: удалённая инструкция вернулась/);
+  });
+});
+
 test('Anchor program root re-exports generated client/CPI accounts modules for the nested metadata instruction', () => {
   const lib = read('aof-core/src/lib.rs');
   assert.match(lib, /pub\(crate\) use instructions::tool_metadata::\{\s*__client_accounts_set_tool_metadata_uris,\s*__cpi_client_accounts_set_tool_metadata_uris,\s*SetToolMetadataUris,\s*\};/);

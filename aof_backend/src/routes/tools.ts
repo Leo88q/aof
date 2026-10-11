@@ -19,6 +19,7 @@ import {
   vaultGuardPda,
   rentalListingPda,
   rentalAgreementPda,
+  enchantSlotPda,
   toolMetadataRegistryPda,
   tokenMetadataPda,
   TOKEN_METADATA_PROGRAM_ID,
@@ -519,8 +520,14 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
     if (!custody) {
       return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
     }
+    const speedSlot = enchantSlotPda(mint, 0)[0];
+    const speedInfo = await connection.getAccountInfo(speedSlot, "confirmed");
+    const withSpeed = (builder: { remainingAccounts: (accounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[]) => { instruction: () => Promise<unknown> }; instruction: () => Promise<unknown> }) =>
+      speedInfo
+        ? builder.remainingAccounts([{ pubkey: speedSlot, isWritable: false, isSigner: false }]).instruction()
+        : builder.instruction();
     const ix = custody.kind === "delegated"
-      ? await (program.methods as any)
+      ? await withSpeed((program.methods as any)
           .startMiningDelegated(hours)
           .accounts({
             config,
@@ -532,9 +539,8 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
             rentalAgreement: custody.rentalAgreement,
             rentalVault: custody.rentalVault,
             systemProgram: SystemProgram.programId,
-          })
-          .instruction()
-      : await (program.methods as any)
+          }))
+      : await withSpeed((program.methods as any)
           .startMining(hours)
           .accounts({
             config,
@@ -547,8 +553,7 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
             vault,
             vaultToken,
             systemProgram: SystemProgram.programId,
-          })
-          .instruction();
+          }));
 
     const tx = await coSign([ix], user);
     res.json({ tx });
@@ -598,8 +603,14 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
     if (!custody) {
       return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
     }
+    const durabilitySlot = enchantSlotPda(mint, 1)[0];
+    const durabilityInfo = await connection.getAccountInfo(durabilitySlot, "confirmed");
+    const withDurability = (builder: { remainingAccounts: (accounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[]) => { instruction: () => Promise<unknown> }; instruction: () => Promise<unknown> }) =>
+      durabilityInfo
+        ? builder.remainingAccounts([{ pubkey: durabilitySlot, isWritable: false, isSigner: false }]).instruction()
+        : builder.instruction();
     const ix = custody.kind === "delegated"
-      ? await (program.methods as any)
+      ? await withDurability((program.methods as any)
           .collectMiningDelegated()
           .accounts({
             config,
@@ -616,9 +627,8 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
             rentalAgreement: custody.rentalAgreement,
             rentalVault: custody.rentalVault,
             tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .instruction()
-      : await (program.methods as any)
+          }))
+      : await withDurability((program.methods as any)
           .collectMining()
           .accounts({
             config,
@@ -635,8 +645,7 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
             vault,
             vaultToken,
             tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .instruction();
+          }));
 
     // The ATA creation and the settlement are one wallet-signed transaction.
     const createPayoutAta = createAssociatedTokenAccountIdempotentInstruction(

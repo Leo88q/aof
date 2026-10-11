@@ -59,7 +59,7 @@
       "source": "programs/aof-quests/src/lib.rs",
       "idl": "aof_backend/src/idl/aof_quests.json",
       "status": "active",
-      "purpose": "Квесты, достижения, барабан удачи, VRF-коммиты (копия vrf.rs, сверяется sync-quests-vrf.py)",
+      "purpose": "Квесты, достижения и вклад гильдии. Барабан удалён. Случайность только в aof-core; вторая копия vrf.rs запрещена.",
       "upgradeAuthorityPlan": "Squads v4, 3-из-5, time lock >= 48 ч — действие владельца до mainnet",
       "deprecation": null,
       "monitoring": [
@@ -191,7 +191,7 @@
       "address": "AddressLookupTab1e1111111111111111111111111",
       "kind": "cpi-target",
       "status": "active",
-      "why": "Switchboard-раскрытия ссылаются на lookup-таблицы; константа зашита в vrf.rs",
+      "why": "v0-транзакции могут ссылаться на lookup-таблицы; константа есть в aof_backend/src/lib/vrf.ts",
       "pin": "n/a (ядро Solana)",
       "monitoring": [
         "upstream-release"
@@ -202,9 +202,9 @@
       "name": "switchboard_on_demand_mainnet",
       "address": "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv",
       "kind": "oracle",
-      "status": "active",
-      "why": "VRF: commit/reveal в шести механиках; раскрытие проверяет подпись оракула (docs/VRF_SWITCHBOARD.md)",
-      "pin": "aof-core/src/vrf.rs (без --features devnet)",
+      "status": "deprecated",
+      "why": "Оракул выведен. Программа больше не делает в него CPI. Запись остаётся, пока npm-пакет ещё в lock-файле; это не источник случайности.",
+      "pin": "aof_backend/package-lock.json (@switchboard-xyz/on-demand); не адрес в vrf.rs",
       "relatedAddresses": [
         "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w",
         "7Gs9n5FQMeC9XcEhg281bRZ6VHRrCvqp5Yq1j78HkvNa",
@@ -212,8 +212,7 @@
       ],
       "monitoring": [
         "security-advisories",
-        "upstream-release",
-        "oracle-health"
+        "upstream-release"
       ],
       "upstreamId": "switchboard-on-demand"
     },
@@ -221,9 +220,9 @@
       "name": "switchboard_on_demand_devnet",
       "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2",
       "kind": "oracle",
-      "status": "devnet-only",
-      "why": "VRF на devnet (--features devnet)",
-      "pin": "aof-core/src/vrf.rs (--features devnet)",
+      "status": "deprecated",
+      "why": "Devnet-очередь выведенного оракула. В сборке больше нет --features devnet для этой программы.",
+      "pin": "aof_backend/package-lock.json (@switchboard-xyz/on-demand); не адрес в vrf.rs",
       "relatedAddresses": [
         "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7",
         "4UFmCebEmzESoDTtHrmaftXj7YAsAH4HMios3yMWyVUT",
@@ -231,8 +230,7 @@
       ],
       "monitoring": [
         "security-advisories",
-        "upstream-release",
-        "oracle-health"
+        "upstream-release"
       ],
       "upstreamId": "switchboard-on-demand"
     }
@@ -241,11 +239,11 @@
     {
       "name": "ronin_firestore_functions",
       "kind": "offchain-legacy",
-      "source": "functions/index.js",
+      "source": "removed",
       "retiredAt": "2026-09-20",
       "successor": "aof_backend (Solana)",
       "authority": "none (не деплоится из этого репозитория)",
-      "evidence": "docs/REVIEW_DB_TESTS_LOAD_AI_2026-09-28.md §1.1 (Firestore — наследие), AUDIT_2026-09-20.md п. 8",
+      "evidence": "Ronin/Firebase functions tree removed; successor is aof_backend",
       "drained": true,
       "monitoring": [
         "reintroduced-deploy-config"
@@ -258,7 +256,7 @@
       "retiredAt": "2026-09-26",
       "successor": "simulation-only (реальные ордера не подписываются)",
       "authority": "none",
-      "evidence": "SECURITY_CHECKLIST_GAMES_2026-09-26.md #65/#73; tests/readiness/ai-agent-surface.test.cjs",
+      "evidence": "tests/readiness/ai-agent-surface.test.cjs keeps farm-trader simulation-only",
       "drained": true,
       "monitoring": [
         "reintroduced-live-signing"

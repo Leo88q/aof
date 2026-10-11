@@ -145,7 +145,7 @@ fi
 step "4/6 Решение"
 if [ "${#blockers[@]}" -gt 0 ]; then
   printf '   закрыто: %s\n' "${blockers[@]}"
-  die "выплаты не готовы, тумблер НЕ включаем: иначе сбор добычи сожжёт прочность инструмента без выплаты. Закройте пункты §1.3–1.5 плана (docs/UNBLOCK_PLAN_2026-09-30.md) и повторите"
+  die "выплаты не готовы, тумблер НЕ включаем: иначе сбор добычи сожжёт прочность инструмента без выплаты. Сначала закройте четыре выплаты из шагов выше и повторите"
 fi
 if [ "$MINING_ENABLED" = "true" ]; then
   ok "добыча уже включена — делать нечего"
@@ -175,7 +175,7 @@ else
   [ "$(echo "$AFTER" | jq -r '.miningEnabled')" = "true" ] || die "флаг не читается как true после включения: $AFTER"
   ok "miningEnabled=true"
   echo
-  echo "Дальше (порядок из docs/UNBLOCK_PLAN_2026-09-30.md §1):"
+  echo "Дальше:"
   echo "  1) игрок: start_mining, затем collect_mining — выплата приходит на минт из шага 3;"
   echo "  2) ремонт: POST /tools/repair должен отвечать 200 (Config.siliconMint/circuitMint уже заданы);"
   echo "  3) выключить обратно: POST /admin/config/mining {\"enabled\":false}"

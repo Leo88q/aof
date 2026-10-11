@@ -130,14 +130,12 @@ anchor build --no-idl
 anchor test --skip-build
 ```
 
-Для прогона **полного** набора (включая VRF-цикл `tests/aof_vrf_localnet.ts`) используйте `make test`:
-он идёт через `scripts/anchor-test.sh`, который собирает тестовый двойник Switchboard
-(`tests/mock-switchboard`) и подкладывает его в genesis локального валидатора — ту же запись, что CI
-добавляет перед `anchor test`. Без двойника VRF-набор молча помечается `skipped`, и «зелёный прогон»
-ничего не говорит о VRF-инструкциях; с `SKIP_SWITCHBOARD_MOCK=1` обёртка запускает `anchor test` как есть.
-Отчёт по compute units (`tests/aof_cu_report.ts`) читает историю транзакций валидатора и опирается на
-`[test.validator] limit_ledger_size` в `Anchor.toml` — по умолчанию Agave держит только 10 000 shreds и
-история длинного прогона до отчёта не доживает.
+`make test` идёт через `scripts/anchor-test.sh` и больше не собирает тестовый двойник оракула:
+каталог `tests/mock-switchboard` удалён и не должен возвращаться. VRF-цикл `tests/aof_vrf_localnet.ts`
+без локального оракула остаётся `skipped`; это не зелёный прогон расчёта. Живой расчёт читает SlotHashes,
+а не подпись оракула. Отчёт по compute units (`tests/aof_cu_report.ts`) читает историю транзакций
+валидатора и опирается на `[test.validator] limit_ledger_size` в `Anchor.toml` — по умолчанию Agave
+держит только 10 000 shreds и история длинного прогона до отчёта не доживает.
 
 ## Порт 8080 занят чужим сервисом: `{"detail":"Not Found"}` вместо ответа backend
 

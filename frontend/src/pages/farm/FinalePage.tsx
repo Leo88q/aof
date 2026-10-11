@@ -14,6 +14,9 @@ import { NavHeader } from "../../components/NavHeader";
 import { Workshop } from "../economy/Workshop";
 import { useEconomyBalances } from "../economy/useEconomyBalances";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { ChainClocks } from "../../components/ChainClocks";
+import { chainMomentCopy } from "../../i18n/chainMomentCopy";
+import { FLASK_ENERGY_GAIN } from "../../lib/chainMoments";
 
 const FINALE_NEED = [
   { key: "MODEL", amount: 1 },
@@ -55,6 +58,47 @@ export function FinalePage() {
     return () => { cancelled = true; };
   }, [address, refreshKey]);
 
+  const [clocks, setClocks] = useState({ energy: "", signal: "", model: "", soul: "" });
+  useEffect(() => {
+    let cancelled = false;
+    const moment = chainMomentCopy[language];
+    const when = (value: unknown) => {
+      const seconds = Number(value);
+      if (!Number.isFinite(seconds) || seconds <= 0) return null;
+      return new Date(seconds * 1000).toLocaleString(language);
+    };
+    setClocks({ energy: moment.energyMissing, signal: moment.clocksUnread, model: moment.clocksUnread, soul: moment.soulUnread });
+    const energy = address
+      ? api.energy.balance(address).then((read: any) => {
+          const amount = Number(read?.amount);
+          const cap = Number(read?.cap);
+          return Number.isFinite(amount) && Number.isFinite(cap) ? moment.energyLine(amount, cap) : moment.energyMissing;
+        }).catch(() => moment.energyMissing)
+      : Promise.resolve(moment.energyMissing);
+    const signal = address
+      ? api.query.signalState(address).then((read: any) => {
+          if (!read || read.inProgress === false && read.readyAt == null && read.ready_at == null) return moment.signalIdle;
+          const ready = when(read.readyAt ?? read.ready_at);
+          return ready ? moment.signalReady(ready) : moment.clocksUnread;
+        }).catch(() => moment.clocksUnread)
+      : Promise.resolve(moment.clocksUnread);
+    const model = address
+      ? api.query.modelState(address).then((read: any) => {
+          if (!read || read.inProgress === false && read.readyAt == null && read.ready_at == null) return moment.modelIdle;
+          const ready = when(read.readyAt ?? read.ready_at);
+          return ready ? moment.modelReady(ready) : moment.clocksUnread;
+        }).catch(() => moment.clocksUnread)
+      : Promise.resolve(moment.clocksUnread);
+    const soul = api.query.soulCoreSupply().then((read: any) => {
+      const cores = Number(read?.cores);
+      return Number.isInteger(cores) && cores >= 0 ? moment.soulSupply(cores) : moment.soulUnread;
+    }).catch(() => moment.soulUnread);
+    Promise.all([energy, signal, model, soul]).then(([energyText, signalText, modelText, soulText]) => {
+      if (!cancelled) setClocks({ energy: energyText, signal: signalText, model: modelText, soul: soulText });
+    });
+    return () => { cancelled = true; };
+  }, [address, language, refreshKey]);
+
   async function seal() {
     if (running.current) return;
     if (!address) return setMessage(copy.connect);
@@ -92,16 +136,25 @@ export function FinalePage() {
     }
   }
 
+  const moment = chainMomentCopy[language];
   const lines = FINALE_NEED.map(item => {
     const have = balances ? balances[item.key] : null;
     const name = economyResourceName(language, item.key);
-    return `${name}: ${have === null || have === undefined ? "—" : have} / ${item.amount}`;
+    const fluidIndex = ["CRYO_FLUID", "VOLT_FLUID", "BIO_FLUID", "NANO_FLUID", "QUANTUM_FLUID"].indexOf(item.key);
+    const drink = fluidIndex >= 0 ? ` · ${moment.flaskLeavesSeal(FLASK_ENERGY_GAIN[fluidIndex])}` : "";
+    return `${name}: ${have === null || have === undefined ? "—" : have} / ${item.amount}${drink}`;
   });
 
   return (
     <div lang={language} className="p-4 pt-2 pb-24 space-y-4 min-w-0">
       <p className="text-straw text-xs">{copy.intro}</p>
       <p className="text-parchment text-xs">{copy.goal}</p>
+      <ChainClocks />
+      <p className="text-straw text-xs break-words">{moment.drinkOrSeal}</p>
+      <p className="text-parchment text-xs break-words">{clocks.energy}</p>
+      <p className="text-parchment text-xs break-words">{clocks.signal}</p>
+      <p className="text-parchment text-xs break-words">{clocks.model}</p>
+      <p className="text-parchment text-xs break-words">{clocks.soul}</p>
       {address && seals.status !== "loading" && <p className="text-parchment text-xs">{seals.status === "unread" || seals.count === null ? copy.sealsUnread : seals.count === 0 ? copy.sealsNone : copy.sealsHeld(seals.count)}</p>}
       <p className="text-straw text-xs">{copy.chain}</p>
       <div className="text-xs text-parchment space-y-1">

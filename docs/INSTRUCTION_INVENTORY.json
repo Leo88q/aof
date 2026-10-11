@@ -5,19 +5,19 @@
   "registries": [
     {
       "file": "aof_backend/src/security/walletProof.ts",
-      "distinctInstructions": 23
+      "distinctInstructions": 21
     },
     {
       "file": "frontend/src/lib/api.ts",
-      "distinctInstructions": 23
+      "distinctInstructions": 21
     },
     {
       "file": "frontend/src/lib/coreInstructions.ts",
-      "distinctInstructions": 128
+      "distinctInstructions": 129
     },
     {
       "file": "frontend/src/lib/transactionIntent.ts",
-      "distinctInstructions": 23
+      "distinctInstructions": 25
     },
     {
       "file": "scripts/gen-core-instruction-table.py",
@@ -25,22 +25,22 @@
     }
   ],
   "totals": {
-    "instructions": 177,
+    "instructions": 175,
     "byRole": {
-      "gameplay": 105,
-      "admin": 42,
-      "emergency": 8,
+      "gameplay": 107,
+      "admin": 40,
+      "emergency": 7,
       "migration": 1,
-      "initialization": 16,
+      "initialization": 15,
       "compatibility": 5,
       "deprecated": 0,
       "candidate-dead-code": 0
     },
-    "disabledOnChain": 7,
+    "disabledOnChain": 1,
     "validatorTested": 101,
-    "sharedNames": 23,
-    "withoutAnyCallSite": 19,
-    "withoutCallSiteAndTest": 3
+    "sharedNames": 19,
+    "withoutAnyCallSite": 20,
+    "withoutCallSiteAndTest": 4
   },
   "programs": {
     "aof_core": {
@@ -55,9 +55,9 @@
         "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 1,
+      "disabledOnChain": 0,
       "validatorTested": 95,
-      "sharedNames": 7,
+      "sharedNames": 5,
       "withoutAnyCallSite": 13,
       "withoutCallSiteAndTest": 1
     },
@@ -80,20 +80,20 @@
       "withoutCallSiteAndTest": 0
     },
     "aof_quests": {
-      "instructions": 19,
+      "instructions": 16,
       "byRole": {
-        "gameplay": 9,
-        "admin": 7,
-        "emergency": 1,
+        "gameplay": 10,
+        "admin": 5,
+        "emergency": 0,
         "migration": 0,
-        "initialization": 2,
+        "initialization": 1,
         "compatibility": 0,
         "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 4,
+      "disabledOnChain": 0,
       "validatorTested": 0,
-      "sharedNames": 5,
+      "sharedNames": 3,
       "withoutAnyCallSite": 2,
       "withoutCallSiteAndTest": 2
     },
@@ -134,9 +134,9 @@
       "withoutCallSiteAndTest": 0
     },
     "aof_session_keys": {
-      "instructions": 6,
+      "instructions": 7,
       "byRole": {
-        "gameplay": 4,
+        "gameplay": 5,
         "admin": 1,
         "emergency": 0,
         "migration": 0,
@@ -145,11 +145,11 @@
         "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 2,
+      "disabledOnChain": 1,
       "validatorTested": 0,
       "sharedNames": 0,
-      "withoutAnyCallSite": 4,
-      "withoutCallSiteAndTest": 0
+      "withoutAnyCallSite": 5,
+      "withoutCallSiteAndTest": 1
     }
   },
   "instructions": [
@@ -711,7 +711,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::claim_prize_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 273
+        "line": 251
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -781,7 +781,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 169
+        "line": 168
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -985,7 +985,7 @@
         "kind": "delegate",
         "path": "instructions::collect_mining::handler",
         "file": "aof-core/src/instructions/collect_mining.rs",
-        "line": 45
+        "line": 106
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1010,7 +1010,8 @@
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [
         "scripts/enable-mining-devnet.sh"
@@ -1033,9 +1034,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 5,
           "files": [
             "tests/readiness/attacks-2026-h2.test.cjs",
+            "tests/readiness/chain-moments.test.cjs",
             "tests/readiness/devnet-release-guards.test.cjs",
             "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
@@ -1265,7 +1267,7 @@
       "role": "gameplay",
       "status": "active",
       "replacedBy": null,
-      "note": "Commit розыгрыша лотереи через VRF (Switchboard).",
+      "note": "Commit розыгрыша лотереи через slot-hash пул, без оракула.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -1366,11 +1368,10 @@
         },
         "platform": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "src/os/infra-configs.js",
-            "src/os/sdk-configs.js",
-            "functions/index.solana.js"
+            "src/os/sdk-configs.js"
           ]
         }
       },
@@ -1403,7 +1404,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 25,
+        "callSiteCount": 24,
         "validatorTested": false,
         "anyTest": true
       }
@@ -1708,7 +1709,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::draw_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 140
+        "line": 133
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1740,11 +1741,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -1764,7 +1764,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::reveal_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 133
+        "line": 125
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1795,11 +1795,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -1880,7 +1879,7 @@
         "kind": "delegate",
         "path": "instructions::forge::reveal_handler",
         "file": "aof-core/src/instructions/forge.rs",
-        "line": 121
+        "line": 113
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1912,11 +1911,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -1936,7 +1934,7 @@
         "kind": "delegate",
         "path": "instructions::forge::expire_handler",
         "file": "aof-core/src/instructions/forge.rs",
-        "line": 262
+        "line": 236
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1968,11 +1966,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -1992,7 +1989,7 @@
         "kind": "delegate",
         "path": "instructions::season::grant_xp_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 97
+        "line": 96
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -2832,14 +2829,6 @@
             "aof_backend/src/routes/admin.ts",
             "aof_backend/src/routes/tools.ts"
           ]
-        },
-        "platform": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "functions/index.js",
-            "functions/index.solana.js"
-          ]
         }
       },
       "registries": [
@@ -2890,7 +2879,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -3094,13 +3083,6 @@
             "tests/readiness/security-checklist.test.cjs",
             "tests/readiness/vrf-tx-size.test.cjs"
           ]
-        },
-        "rust": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "aof-core/src/security_checklist_tests.rs"
-          ]
         }
       },
       "summary": {
@@ -3165,19 +3147,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 3,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
             "tests/readiness/vrf-smoke.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
-          ]
-        },
-        "rust": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "aof-core/src/security_checklist_tests.rs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -3247,13 +3221,6 @@
           "files": [
             "tests/readiness/security-checklist.test.cjs",
             "tests/readiness/vrf.test.cjs"
-          ]
-        },
-        "rust": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "aof-core/src/security_checklist_tests.rs"
           ]
         }
       },
@@ -3543,11 +3510,11 @@
         "file": "aof-core/src/instructions/season.rs",
         "line": 40
       },
-      "disabledOnChain": true,
+      "disabledOnChain": false,
       "role": "gameplay",
-      "status": "disabled-on-chain",
+      "status": "active",
       "replacedBy": null,
-      "note": "Fail-closed до Devnet acceptance: on-chain guard возвращает SeasonPremiumRequired до SOL transfer; HTTP sales gate и UI также закрыты.",
+      "note": "Покупка пропуска внутри сезона, один раз. Продажа в интерфейсе остаётся за PAID_PASS_READY, это не заглушка require!(false).",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -3897,9 +3864,8 @@
         },
         "platform": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "functions/index.js",
             "watchtower/src/event-normalizer.ts"
           ]
         }
@@ -3926,7 +3892,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 8,
+        "callSiteCount": 7,
         "validatorTested": true,
         "anyTest": true
       }
@@ -3987,7 +3953,7 @@
         "kind": "delegate",
         "path": "instructions::rental_delegation::collect_handler",
         "file": "aof-core/src/instructions/rental_delegation.rs",
-        "line": 111
+        "line": 117
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -4015,6 +3981,13 @@
           "files": [
             "tests/aof_tool_ownership.ts"
           ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/chain-moments.test.cjs"
+          ]
         }
       },
       "summary": {
@@ -4033,7 +4006,7 @@
         "kind": "delegate",
         "path": "instructions::rental_delegation::repair_handler",
         "file": "aof-core/src/instructions/rental_delegation.rs",
-        "line": 214
+        "line": 225
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -4113,9 +4086,8 @@
         },
         "platform": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "functions/index.js",
             "watchtower/src/event-normalizer.ts"
           ]
         }
@@ -4156,17 +4128,10 @@
             "tests/readiness/security-checklist.test.cjs",
             "tests/readiness/tool-mint-tx-size.test.cjs"
           ]
-        },
-        "rust": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "aof-core/src/security_checklist_tests.rs"
-          ]
         }
       },
       "summary": {
-        "callSiteCount": 7,
+        "callSiteCount": 6,
         "validatorTested": true,
         "anyTest": true
       }
@@ -4238,7 +4203,7 @@
         "kind": "delegate",
         "path": "instructions::reroll_random::reveal_handler",
         "file": "aof-core/src/instructions/reroll_random.rs",
-        "line": 149
+        "line": 141
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -4277,12 +4242,11 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 4,
+          "mentions": 3,
           "files": [
             "tests/readiness/sbf-profile-benchmark.test.cjs",
             "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -4615,13 +4579,6 @@
             "frontend/src/components/CollectorsPanel.tsx",
             "frontend/src/components/ToolMiningCard.tsx"
           ]
-        },
-        "platform": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "functions/index.solana.js"
-          ]
         }
       },
       "registries": [
@@ -4654,7 +4611,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 3,
         "validatorTested": true,
         "anyTest": true
       }
@@ -4872,17 +4829,11 @@
           "files": [
             "scripts/enable-mining-devnet.sh"
           ]
-        },
-        "platform": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "functions/index.js"
-          ]
         }
       },
       "registries": [
-        "frontend/src/lib/coreInstructions.ts"
+        "frontend/src/lib/coreInstructions.ts",
+        "frontend/src/lib/transactionIntent.ts"
       ],
       "bringup": [
         "scripts/enable-mining-devnet.sh"
@@ -4907,7 +4858,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 3,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -5053,7 +5004,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::upgrade_tier_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 246
+        "line": 228
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -5975,7 +5926,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::refund_round_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 295
+        "line": 273
       },
       "disabledOnChain": false,
       "role": "emergency",
@@ -6343,24 +6294,25 @@
       "name": "vrf_pool_add",
       "camel": "vrfPoolAdd",
       "inIdl": true,
-      "sharedName": true,
+      "sharedName": false,
       "handler": {
         "kind": "delegate",
         "path": "instructions::vrf_pool::add_handler",
         "file": "aof-core/src/instructions/vrf_pool.rs",
-        "line": 13
+        "line": 8
       },
       "disabledOnChain": false,
       "role": "admin",
       "status": "active",
       "replacedBy": null,
-      "note": "Добавление randomness-аккаунта Switchboard в пул (имя общее с aof_quests).",
+      "note": "Добавление слота slot-hash пула. В квестах этой инструкции больше нет.",
       "evidence": null,
       "callSites": {
         "backend": {
           "calls": 1,
-          "mentions": 0,
+          "mentions": 1,
           "files": [
+            "aof_backend/src/lib/vrf.ts",
             "aof_backend/src/routes/vrf.ts"
           ]
         }
@@ -6377,10 +6329,20 @@
           "files": [
             "tests/aof_vrf_localnet.ts"
           ]
+        },
+        "readiness": {
+          "calls": 0,
+          "mentions": 4,
+          "files": [
+            "tests/readiness/layout-baseline.test.cjs",
+            "tests/readiness/local-validator-infra.test.cjs",
+            "tests/readiness/security-checklist.test.cjs",
+            "tests/readiness/vrf-tx-size.test.cjs"
+          ]
         }
       },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 2,
         "validatorTested": true,
         "anyTest": true
       }
@@ -6390,12 +6352,12 @@
       "name": "vrf_pool_set_retired",
       "camel": "vrfPoolSetRetired",
       "inIdl": true,
-      "sharedName": true,
+      "sharedName": false,
       "handler": {
         "kind": "delegate",
         "path": "instructions::vrf_pool::set_retired_handler",
         "file": "aof-core/src/instructions/vrf_pool.rs",
-        "line": 58
+        "line": 29
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -6417,11 +6379,19 @@
         "scripts/gen-core-instruction-table.py"
       ],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/security-checklist.test.cjs"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 1,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     },
     {
@@ -6434,7 +6404,7 @@
         "kind": "delegate",
         "path": "instructions::vrf_pool::recover_handler",
         "file": "aof-core/src/instructions/vrf_pool.rs",
-        "line": 73
+        "line": 41
       },
       "disabledOnChain": false,
       "role": "emergency",
@@ -6473,7 +6443,7 @@
         "kind": "delegate",
         "path": "instructions::reroll_random::expire_handler",
         "file": "aof-core/src/instructions/reroll_random.rs",
-        "line": 239
+        "line": 213
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6504,10 +6474,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
@@ -6527,7 +6496,7 @@
         "kind": "delegate",
         "path": "instructions::exploration::expire_handler",
         "file": "aof-core/src/instructions/exploration.rs",
-        "line": 223
+        "line": 197
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6558,11 +6527,10 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 3,
+          "mentions": 2,
           "files": [
             "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/vrf-tx-size.test.cjs"
           ]
         }
       },
@@ -6582,7 +6550,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::expire_draw_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 218
+        "line": 193
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6613,10 +6581,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf.test.cjs"
+            "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
@@ -6636,7 +6603,7 @@
         "kind": "delegate",
         "path": "instructions::lottery::refund_ticket_handler",
         "file": "aof-core/src/instructions/lottery.rs",
-        "line": 245
+        "line": 223
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -6687,13 +6654,6 @@
           "mentions": 1,
           "files": [
             "tests/readiness/security-checklist.test.cjs"
-          ]
-        },
-        "rust": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "aof-core/src/security_checklist_tests.rs"
           ]
         }
       },
@@ -7107,13 +7067,6 @@
           "files": [
             "tests/aof_tool_ownership.ts"
           ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs"
-          ]
         }
       },
       "summary": {
@@ -7275,13 +7228,6 @@
           "files": [
             "scripts/devnet-program-probe.py"
           ]
-        },
-        "platform": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "functions/index.js"
-          ]
         }
       },
       "registries": [
@@ -7306,7 +7252,7 @@
         }
       },
       "summary": {
-        "callSiteCount": 4,
+        "callSiteCount": 3,
         "validatorTested": false,
         "anyTest": true
       }
@@ -7486,7 +7432,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_premium_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 230
+        "line": 229
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7547,7 +7493,9 @@
       "note": "Печать лаборатории: сжигает модель, пять флюидов и янтарный сосуд, выпускает ядро души.",
       "evidence": null,
       "callSites": {},
-      "registries": [],
+      "registries": [
+        "frontend/src/lib/coreInstructions.ts"
+      ],
       "bringup": [],
       "tests": {
         "readiness": {
@@ -7575,7 +7523,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 571
+        "line": 572
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7585,10 +7533,11 @@
       "evidence": null,
       "callSites": {
         "backend": {
-          "calls": 1,
+          "calls": 2,
           "mentions": 0,
           "files": [
-            "aof_backend/src/routes/hotMarket.ts"
+            "aof_backend/src/routes/hotMarket.ts",
+            "aof_backend/services/price-cranker/index.ts"
           ]
         }
       },
@@ -7596,11 +7545,19 @@
       "bringup": [
         "aof_backend/src/routes/hotMarket.ts"
       ],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/hot-market-price.test.cjs"
+          ]
+        }
+      },
       "summary": {
-        "callSiteCount": 1,
+        "callSiteCount": 2,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     },
     {
@@ -7613,7 +7570,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 371
+        "line": 372
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7674,7 +7631,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 469
+        "line": 470
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7734,7 +7691,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 589
+        "line": 590
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -7783,7 +7740,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 256
+        "line": 257
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -7829,7 +7786,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 331
+        "line": 332
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -7875,7 +7832,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 318
+        "line": 319
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7906,7 +7863,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 325
+        "line": 326
       },
       "disabledOnChain": false,
       "role": "emergency",
@@ -7937,7 +7894,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 559
+        "line": 560
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -7975,7 +7932,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 279
+        "line": 280
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -8006,7 +7963,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 292
+        "line": 293
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -8037,7 +7994,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-market/src/lib.rs",
-        "line": 305
+        "line": 306
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -8099,13 +8056,13 @@
         "kind": "delegate",
         "path": "instructions::quests::achievement_unlock::handler",
         "file": "programs/aof-quests/src/instructions/quests/achievement_unlock.rs",
-        "line": 29
+        "line": 96
       },
-      "disabledOnChain": true,
+      "disabledOnChain": false,
       "role": "gameplay",
-      "status": "disabled-on-chain",
+      "status": "active",
       "replacedBy": null,
-      "note": "disabled / product decision pending — Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора.",
+      "note": "Открытие достижения только после проверки proof-аккаунта программы ядра, не самозаявление.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -8123,7 +8080,7 @@
           "calls": 0,
           "mentions": 1,
           "files": [
-            "tests/readiness/dead-code-evidence.test.cjs"
+            "tests/readiness/security-checklist.test.cjs"
           ]
         }
       },
@@ -8174,13 +8131,13 @@
         "kind": "delegate",
         "path": "instructions::challenges::challenge_contribute::handler",
         "file": "programs/aof-quests/src/instructions/challenges/challenge_contribute.rs",
-        "line": 38
+        "line": 57
       },
-      "disabledOnChain": true,
+      "disabledOnChain": false,
       "role": "gameplay",
-      "status": "disabled-on-chain",
+      "status": "active",
       "replacedBy": null,
-      "note": "disabled / product decision pending — Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации.",
+      "note": "Вклад в челлендж списывает маскоты игрока в эскроу раунда и учитывает сумму.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -8193,19 +8150,11 @@
       },
       "registries": [],
       "bringup": [],
-      "tests": {
-        "readiness": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs"
-          ]
-        }
-      },
+      "tests": {},
       "summary": {
         "callSiteCount": 1,
         "validatorTested": false,
-        "anyTest": true
+        "anyTest": false
       }
     },
     {
@@ -8246,214 +8195,6 @@
     },
     {
       "program": "aof_quests",
-      "name": "drum_commit",
-      "camel": "drumCommit",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::drum_commit::handler",
-        "file": "programs/aof-quests/src/instructions/drum/drum_commit.rs",
-        "line": 72
-      },
-      "disabledOnChain": true,
-      "role": "gameplay",
-      "status": "disabled-on-chain",
-      "replacedBy": null,
-      "note": "disabled / product decision pending — Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного MIND mint.",
-      "evidence": null,
-      "callSites": {
-        "backend": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "aof_backend/src/lib/pda.ts",
-            "aof_backend/src/lib/vrfSettlement.ts"
-          ]
-        }
-      },
-      "registries": [
-        "aof_backend/src/security/walletProof.ts",
-        "frontend/src/lib/api.ts"
-      ],
-      "bringup": [],
-      "tests": {
-        "selfTests": {
-          "calls": 0,
-          "mentions": 3,
-          "files": [
-            "aof_backend/scripts/securityInvariantSelfTest.ts",
-            "aof_backend/scripts/vrfSettlementSelfTest.ts",
-            "scripts/test-p0-security.py"
-          ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 4,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs",
-            "tests/readiness/devnet-release-guards.test.cjs",
-            "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 2,
-        "validatorTested": false,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_quests",
-      "name": "drum_expire",
-      "camel": "drumExpire",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::drum_expire::handler",
-        "file": "programs/aof-quests/src/instructions/drum/drum_expire.rs",
-        "line": 54
-      },
-      "disabledOnChain": false,
-      "role": "gameplay",
-      "status": "active",
-      "replacedBy": null,
-      "note": "Permissionless: возврат за спин барабана без reveal.",
-      "evidence": null,
-      "callSites": {
-        "backend": {
-          "calls": 1,
-          "mentions": 0,
-          "files": [
-            "aof_backend/src/lib/vrfSettlement.ts"
-          ]
-        }
-      },
-      "registries": [],
-      "bringup": [],
-      "tests": {
-        "selfTests": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "aof_backend/scripts/securityInvariantSelfTest.ts",
-            "aof_backend/scripts/vrfSettlementSelfTest.ts"
-          ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 1,
-        "validatorTested": false,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_quests",
-      "name": "drum_reveal",
-      "camel": "drumReveal",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::drum_reveal::handler",
-        "file": "programs/aof-quests/src/instructions/drum/drum_reveal.rs",
-        "line": 118
-      },
-      "disabledOnChain": false,
-      "role": "gameplay",
-      "status": "active",
-      "replacedBy": null,
-      "note": "Reveal спина барабана с подписью оракула.",
-      "evidence": null,
-      "callSites": {
-        "backend": {
-          "calls": 1,
-          "mentions": 1,
-          "files": [
-            "aof_backend/src/lib/vrfSettlement.ts",
-            "aof_backend/src/routes/drum.ts"
-          ]
-        }
-      },
-      "registries": [
-        "aof_backend/src/security/walletProof.ts",
-        "frontend/src/lib/api.ts"
-      ],
-      "bringup": [],
-      "tests": {
-        "selfTests": {
-          "calls": 0,
-          "mentions": 3,
-          "files": [
-            "aof_backend/scripts/securityInvariantSelfTest.ts",
-            "aof_backend/scripts/vrfSettlementSelfTest.ts",
-            "scripts/test-p0-security.py"
-          ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 3,
-          "files": [
-            "tests/readiness/security-checklist.test.cjs",
-            "tests/readiness/vrf-tx-size.test.cjs",
-            "tests/readiness/vrf.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 2,
-        "validatorTested": false,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_quests",
-      "name": "init_mind_bank",
-      "camel": "initMindBank",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::mind_bank::init_handler",
-        "file": "programs/aof-quests/src/instructions/drum/mind_bank.rs",
-        "line": 26
-      },
-      "disabledOnChain": false,
-      "role": "initialization",
-      "status": "active",
-      "replacedBy": null,
-      "note": "Изолированная казна MIND spin V2, изначально на паузе.",
-      "evidence": null,
-      "callSites": {
-        "adminScripts": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "scripts/layout-baseline.mjs"
-          ]
-        }
-      },
-      "registries": [],
-      "bringup": [],
-      "tests": {},
-      "summary": {
-        "callSiteCount": 1,
-        "validatorTested": false,
-        "anyTest": false
-      }
-    },
-    {
-      "program": "aof_quests",
       "name": "init_quest_config",
       "camel": "initQuestConfig",
       "inIdl": true,
@@ -8476,123 +8217,6 @@
       "tests": {},
       "summary": {
         "callSiteCount": 0,
-        "validatorTested": false,
-        "anyTest": false
-      }
-    },
-    {
-      "program": "aof_quests",
-      "name": "mind_spin_commit",
-      "camel": "mindSpinCommit",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::mind_spin::commit_handler",
-        "file": "programs/aof-quests/src/instructions/drum/mind_spin.rs",
-        "line": 54
-      },
-      "disabledOnChain": true,
-      "role": "gameplay",
-      "status": "disabled-on-chain",
-      "replacedBy": null,
-      "note": "disabled / product decision pending — Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза.",
-      "evidence": null,
-      "callSites": {
-        "adminScripts": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "scripts/layout-baseline.mjs"
-          ]
-        }
-      },
-      "registries": [],
-      "bringup": [],
-      "tests": {
-        "readiness": {
-          "calls": 0,
-          "mentions": 2,
-          "files": [
-            "tests/readiness/dead-code-evidence.test.cjs",
-            "tests/readiness/security-checklist.test.cjs"
-          ]
-        }
-      },
-      "summary": {
-        "callSiteCount": 1,
-        "validatorTested": false,
-        "anyTest": true
-      }
-    },
-    {
-      "program": "aof_quests",
-      "name": "mind_spin_expire",
-      "camel": "mindSpinExpire",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::mind_spin::expire_handler",
-        "file": "programs/aof-quests/src/instructions/drum/mind_spin.rs",
-        "line": 217
-      },
-      "disabledOnChain": false,
-      "role": "gameplay",
-      "status": "active",
-      "replacedBy": null,
-      "note": "Permissionless: возврат за спин MIND spin V2; достижим только после включения mind_spin_commit.",
-      "evidence": null,
-      "callSites": {
-        "adminScripts": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "scripts/layout-baseline.mjs"
-          ]
-        }
-      },
-      "registries": [],
-      "bringup": [],
-      "tests": {},
-      "summary": {
-        "callSiteCount": 1,
-        "validatorTested": false,
-        "anyTest": false
-      }
-    },
-    {
-      "program": "aof_quests",
-      "name": "mind_spin_reveal",
-      "camel": "mindSpinReveal",
-      "inIdl": true,
-      "sharedName": false,
-      "handler": {
-        "kind": "delegate",
-        "path": "instructions::drum::mind_spin::reveal_handler",
-        "file": "programs/aof-quests/src/instructions/drum/mind_spin.rs",
-        "line": 154
-      },
-      "disabledOnChain": false,
-      "role": "gameplay",
-      "status": "active",
-      "replacedBy": null,
-      "note": "Расчёт спина MIND V2 (работает и при паузе банка); достижим только после включения mind_spin_commit.",
-      "evidence": null,
-      "callSites": {
-        "adminScripts": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "scripts/layout-baseline.mjs"
-          ]
-        }
-      },
-      "registries": [],
-      "bringup": [],
-      "tests": {},
-      "summary": {
-        "callSiteCount": 1,
         "validatorTested": false,
         "anyTest": false
       }
@@ -8702,28 +8326,28 @@
     },
     {
       "program": "aof_quests",
-      "name": "set_mind_bank_paused",
-      "camel": "setMindBankPaused",
+      "name": "claim_daily",
+      "camel": "claimDaily",
       "inIdl": true,
       "sharedName": false,
       "handler": {
         "kind": "delegate",
-        "path": "instructions::drum::mind_bank::set_paused_handler",
-        "file": "programs/aof-quests/src/instructions/drum/mind_bank.rs",
-        "line": 47
+        "path": "instructions::engagement::claim_daily",
+        "file": "programs/aof-quests/src/instructions/engagement.rs",
+        "line": 99
       },
       "disabledOnChain": false,
-      "role": "emergency",
+      "role": "gameplay",
       "status": "active",
       "replacedBy": null,
-      "note": "Пауза будущих коммитов MIND V2; расчёты и возвраты остаются доступны.",
+      "note": "Ежедневная награда: серия и выплата из казны маскотов, повтор в тот же день закрыт.",
       "evidence": null,
       "callSites": {
-        "adminScripts": {
-          "calls": 0,
-          "mentions": 1,
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
           "files": [
-            "scripts/layout-baseline.mjs"
+            "aof_backend/src/routes/engagement.ts"
           ]
         }
       },
@@ -8738,35 +8362,32 @@
     },
     {
       "program": "aof_quests",
-      "name": "vrf_pool_add",
-      "camel": "vrfPoolAdd",
+      "name": "claim_comeback",
+      "camel": "claimComeback",
       "inIdl": true,
-      "sharedName": true,
+      "sharedName": false,
       "handler": {
         "kind": "delegate",
-        "path": "instructions::drum::vrf_pool::add_handler",
-        "file": "programs/aof-quests/src/instructions/drum/vrf_pool.rs",
-        "line": 60
+        "path": "instructions::engagement::claim_comeback",
+        "file": "programs/aof-quests/src/instructions/engagement.rs",
+        "line": 133
       },
       "disabledOnChain": false,
-      "role": "admin",
+      "role": "gameplay",
       "status": "active",
       "replacedBy": null,
-      "note": "Добавление randomness-аккаунта Switchboard в пул (имя общее с aof_core).",
+      "note": "Награда за возвращение после паузы, не чаще одного раза в день.",
       "evidence": null,
       "callSites": {
         "backend": {
           "calls": 1,
           "mentions": 0,
           "files": [
-            "aof_backend/src/routes/vrf.ts"
+            "aof_backend/src/routes/engagement.ts"
           ]
         }
       },
-      "registries": [
-        "frontend/src/lib/coreInstructions.ts",
-        "scripts/gen-core-instruction-table.py"
-      ],
+      "registries": [],
       "bringup": [],
       "tests": {},
       "summary": {
@@ -8777,35 +8398,192 @@
     },
     {
       "program": "aof_quests",
-      "name": "vrf_pool_set_retired",
-      "camel": "vrfPoolSetRetired",
+      "name": "visit_neighbor",
+      "camel": "visitNeighbor",
       "inIdl": true,
-      "sharedName": true,
+      "sharedName": false,
       "handler": {
         "kind": "delegate",
-        "path": "instructions::drum::vrf_pool::set_retired_handler",
-        "file": "programs/aof-quests/src/instructions/drum/vrf_pool.rs",
-        "line": 95
+        "path": "instructions::engagement::visit_neighbor",
+        "file": "programs/aof-quests/src/instructions/engagement.rs",
+        "line": 175
       },
       "disabledOnChain": false,
-      "role": "admin",
+      "role": "gameplay",
       "status": "active",
       "replacedBy": null,
-      "note": "Вывод randomness-аккаунта из пула (имя общее с aof_core).",
+      "note": "Визит к чужому engagement PDA; свой аккаунт и пустой сосед отвергаются.",
       "evidence": null,
       "callSites": {
         "backend": {
           "calls": 1,
           "mentions": 0,
           "files": [
-            "aof_backend/src/routes/vrf.ts"
+            "aof_backend/src/routes/engagement.ts"
           ]
         }
       },
-      "registries": [
-        "frontend/src/lib/coreInstructions.ts",
-        "scripts/gen-core-instruction-table.py"
-      ],
+      "registries": [],
+      "bringup": [],
+      "tests": {},
+      "summary": {
+        "callSiteCount": 1,
+        "validatorTested": false,
+        "anyTest": false
+      }
+    },
+    {
+      "program": "aof_quests",
+      "name": "guild_deposit",
+      "camel": "guildDeposit",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::engagement::guild_deposit",
+        "file": "programs/aof-quests/src/instructions/engagement.rs",
+        "line": 195
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Вклад в гильдию списывает маскоты игрока и увеличивает накопленный вклад.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 1,
+          "files": [
+            "aof_backend/src/lib/economySimulatorV2.ts",
+            "aof_backend/src/routes/engagement.ts"
+          ]
+        },
+        "platform": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "watchtower/src/event-normalizer.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {},
+      "summary": {
+        "callSiteCount": 3,
+        "validatorTested": false,
+        "anyTest": false
+      }
+    },
+    {
+      "program": "aof_quests",
+      "name": "prove_quest_progress",
+      "camel": "proveQuestProgress",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::engagement::prove_quest",
+        "file": "programs/aof-quests/src/instructions/engagement.rs",
+        "line": 236
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Отметка прогресса квеста только после той же проверки proof, что и достижение.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/engagement.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/security-checklist.test.cjs"
+          ]
+        }
+      },
+      "summary": {
+        "callSiteCount": 1,
+        "validatorTested": false,
+        "anyTest": true
+      }
+    },
+    {
+      "program": "aof_quests",
+      "name": "challenge_close",
+      "camel": "challengeClose",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::challenges::challenge_claim::close_handler",
+        "file": "programs/aof-quests/src/instructions/challenges/challenge_claim.rs",
+        "line": 71
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Закрытие раунда челленджа authority после окна вклада.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/challenges.ts"
+          ]
+        }
+      },
+      "registries": [],
+      "bringup": [],
+      "tests": {},
+      "summary": {
+        "callSiteCount": 1,
+        "validatorTested": false,
+        "anyTest": false
+      }
+    },
+    {
+      "program": "aof_quests",
+      "name": "challenge_claim",
+      "camel": "challengeClaim",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::challenges::challenge_claim::claim_handler",
+        "file": "programs/aof-quests/src/instructions/challenges/challenge_claim.rs",
+        "line": 78
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Получение доли закрытого челленджа по вкладу игрока, повторно закрыто.",
+      "evidence": null,
+      "callSites": {
+        "backend": {
+          "calls": 1,
+          "mentions": 0,
+          "files": [
+            "aof_backend/src/routes/challenges.ts"
+          ]
+        }
+      },
+      "registries": [],
       "bringup": [],
       "tests": {},
       "summary": {
@@ -9240,7 +9018,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 211
+        "line": 251
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -9296,7 +9074,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 290
+        "line": 361
       },
       "disabledOnChain": true,
       "role": "gameplay",
@@ -9339,13 +9117,13 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 241
+        "line": 281
       },
-      "disabledOnChain": true,
+      "disabledOnChain": false,
       "role": "gameplay",
-      "status": "disabled-on-chain",
+      "status": "active",
       "replacedBy": null,
-      "note": "disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам.",
+      "note": "Создание сессии владельцем. Трата остаётся в session_check_and_spend, не в произвольном вызове.",
       "evidence": null,
       "callSites": {},
       "registries": [],
@@ -9353,9 +9131,8 @@
       "tests": {
         "readiness": {
           "calls": 0,
-          "mentions": 2,
+          "mentions": 1,
           "files": [
-            "tests/readiness/dead-code-evidence.test.cjs",
             "tests/readiness/security-checklist.test.cjs"
           ]
         }
@@ -9376,7 +9153,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 280
+        "line": 316
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9412,7 +9189,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 270
+        "line": 306
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9448,7 +9225,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 226
+        "line": 266
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -9470,6 +9247,34 @@
       "tests": {},
       "summary": {
         "callSiteCount": 1,
+        "validatorTested": false,
+        "anyTest": false
+      }
+    },
+    {
+      "program": "aof_session_keys",
+      "name": "session_execute",
+      "camel": "sessionExecute",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "inline",
+        "path": null,
+        "file": "programs/aof-session-keys/src/lib.rs",
+        "line": 328
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "Живой внешний вызов сессии. Программа цели не должна приходить от вызывающего как произвольный CPI; это открытая проверка #114, не заглушка.",
+      "evidence": null,
+      "callSites": {},
+      "registries": [],
+      "bringup": [],
+      "tests": {},
+      "summary": {
+        "callSiteCount": 0,
         "validatorTested": false,
         "anyTest": false
       }

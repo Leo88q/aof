@@ -105,7 +105,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d
 
 ## 7. DNS и домен
 
-См. чек-лист в `SECURITY_ACTIONS_PROPOSALS_2026-09-26.md`, раздел 7: DNSSEC, registrar lock, FIDO2 на всех аккаунтах, CAA, мониторинг DNS и CT.
+См. `docs/DOMAIN_AND_DNS_SECURITY.md`: DNSSEC, registrar lock, FIDO2 на всех аккаунтах, CAA, мониторинг DNS и CT.
 
 ## 8. Аварийные действия
 
@@ -116,30 +116,18 @@ docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d
 | Критическая ошибка в логике | `emergency_stop(pause_game = true)` → hotfix через upgrade | guardian → Upgrade multisig |
 | Снятие заморозки | `set_cashout_frozen(false)` / `set_paused(false)` | Admin multisig |
 | `vrf-settler` не работает | резервный экземпляр (`VRF_SETTLER_STANDBY_SLOTS=120`, другой хост) подхватывает коммиты сам; иначе поднять реплику. Новые коммиты уже остановлены circuit breaker'ом (`503 VRF_SETTLEMENT_DEGRADED`) | эксплуатация |
-| Сбой оракула Switchboard дольше часа | ждать: через ~2 ч средства вернутся автоматически; барабан — `set_paused` квестов | эксплуатация / guardian |
-| Нет годных оракулов / Crossbar недоступен (`503 VRF_ORACLE_UNAVAILABLE`) | ждать: новые коммиты не принимаются, деньги не списываются, уже сделанные коммиты раскрываются напрямую через gateway | эксплуатация |
+| Коммит без раскрытия, пока хеши ещё читаются | раскрыть через `vrf-settler` или кошельком игрока; известный исход игроку не возвращается | эксплуатация |
+| Хеш выпал из SlotHashes до раскрытия | казна получает ставку, не игрок | эксплуатация |
 
-## 9. Случайность (Switchboard On-Demand)
+## 9. Случайность (хеш будущего слота)
 
-Паки, случайный reroll, экспедиции, кузница, лотерея и барабан удачи работают на Switchboard On-Demand. Дизайн, модель угроз и полный порядок запуска — в `docs/VRF_SWITCHBOARD.md`, экономика — в `docs/ECONOMY_RNG_EV.md`.
+Паки, случайный reroll, экспедиции, кузница и лотерея считают исход так же, как открытие пака: четыре будущих хеша слотов, которые программа читает из SlotHashes. Отдельного оракула нет. Барабан удалён. Экономика — в `docs/ECONOMY_RNG_EV.md`.
 
 До открытия механик:
 
-1. **Сборка под кластер.** Devnet: `anchor build -- --features devnet`. Mainnet — без флага. В бэкенде `SWITCHBOARD_CLUSTER` должен совпадать со сборкой.
-2. **Пул аккаунтов случайности** (≈0,009 SOL за слот, платит operator):
-   - `POST /vrf/pool/add`: дважды `{"program":"core","count":16}` (не больше 16 за запрос) и один раз `{"program":"quests","count":4}`;
-   - проверить `GET /vrf/health`.
-3. **Сервис раскрытия.** `vrf-settler` запускается по умолчанию в `docker-compose.prod.yml` и обязателен. Он подписывает отдельным кошельком только для комиссий (`secrets/vrf_settler_secret_key`), ключ operator ему не передаётся. На кошельке settler держать ≥ 1 SOL. Резерв: второй экземпляр на другом хосте с `VRF_SETTLER_STANDBY_SLOTS=120`, своим кошельком и RPC.
-4. **Барабан.** Пополнить казну маскотов квестов, не меньше 50 × число одновременных спинов.
-5. **Смоук-тест на devnet** — `node scripts/vrf/devnet-smoke.mjs`.
-6. **Devnet-проба в CI** (workflow «VRF devnet probe», еженедельно после слияния в основную ветку). Без devnet SOL она проверяет только выбор оракула, а круговую часть (commit → gateway без `rpc` → reveal) пропускает: faucet отказывает CI-раннерам. Чтобы включить её, выполните один раз:
-   ```bash
-   solana-keygen new --no-bip39-passphrase -o devnet-probe.json
-   solana-keygen pubkey devnet-probe.json    # пополнить на https://faucet.solana.com (0,5–1 SOL)
-   gh secret set DEVNET_PROBE_KEYPAIR --repo Leo88q/aof < devnet-probe.json
-   rm devnet-probe.json
-   ```
-   Это отдельный кошелёк только для devnet, к боевым ключам он отношения не имеет. Одного пополнения хватает на сотни прогонов.
-7. **Алерты:**
+1. **Пул слотов** (ренту слота платит operator): `POST /vrf/pool/add` для программы `core`, затем `GET /vrf/health`.
+2. **Сервис раскрытия.** `vrf-settler` запускается по умолчанию в `docker-compose.prod.yml` и обязателен. Он подписывает отдельным кошельком только для комиссий (`secrets/vrf_settler_secret_key`), ключ operator ему не передаётся. На кошельке settler держать ≥ 1 SOL. Резерв: второй экземпляр на другом хосте с `VRF_SETTLER_STANDBY_SLOTS=120`, своим кошельком и RPC.
+3. **Не возвращать известный исход.** Пока все четыре хеша читаются, путь только раскрытие. Если хеш выпал из sysvar до раскрытия, ставка уходит в казну.
+4. **Алерты:**
    - `/vrf/health` вернул `healthy=false`;
-   - коммит без раскрытия дольше 5 мин.
+   - коммит без раскрытия, пока хеши ещё читаются.

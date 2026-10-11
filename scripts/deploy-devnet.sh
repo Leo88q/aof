@@ -347,7 +347,7 @@ echo "Дальше можно одной командой (Config → минты
 echo "  AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh              # сухой прогон (политику $POLICY_LABEL задайте теми же PROGRAM_MAX_LEN_* переменными)"
 echo "  AOF_DEPLOY_TARGET=devnet scripts/devnet-bringup.sh --apply      # включить"
 echo
-echo "Тот же порядок вручную (docs/UNBLOCK_PLAN_2026-09-30.md §0):"
+echo "Тот же порядок вручную:"
 echo "  1) инициализация Config:            cd aof_backend && npx ts-node scripts/initConfig.ts"
 echo "  2) минты ресурсов:                  npx ts-node scripts/initMintsV2.ts"
 echo "  3) потолки выпуска:                 npm run caps:init"

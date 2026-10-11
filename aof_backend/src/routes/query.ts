@@ -677,6 +677,26 @@ r.get("/material-mints", async (_req, res) => {
   }
 });
 
+// Cores in circulation. Admin mint can also create them, so this is not a
+// claim that supply equals player seal counters. Unreadable is not zero.
+r.get("/soul-core-supply", async (_req, res) => {
+  try {
+    const [address] = materialMintsPda();
+    const materials: any = await fetchOne("materialMints", address);
+    const raw = materials?.soulCore ?? materials?.soul_core;
+    if (!raw) return res.status(503).json({ error: "SOUL_CORE_MINT_UNAVAILABLE" });
+    const mint = new PublicKey(raw);
+    const supply = await connection.getTokenSupply(mint, "confirmed");
+    if (supply.value.decimals !== 9) return res.status(503).json({ error: "SOUL_CORE_DECIMALS_UNEXPECTED" });
+    const atoms = BigInt(supply.value.amount);
+    const whole = atoms / 1_000_000_000n;
+    if (whole > BigInt(Number.MAX_SAFE_INTEGER)) return res.status(503).json({ error: "SOUL_CORE_SUPPLY_UNREADABLE" });
+    return res.json({ cores: Number(whole), mint: mint.toBase58(), amount: supply.value.amount });
+  } catch {
+    return res.status(503).json({ error: "SOUL_CORE_SUPPLY_UNREADABLE" });
+  }
+});
+
 // Счётчик печатей. Отсутствующий счёт — честный ноль. Чужой или битый счёт — не ноль.
 r.get("/laboratory-finale/:owner", async (req, res) => {
   let owner: PublicKey;

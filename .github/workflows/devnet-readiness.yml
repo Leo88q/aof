@@ -96,7 +96,7 @@ jobs:
             echo "кросс-программная смена владельца ToolData), сессионные ключи (атомарная"
             echo "привязка резерва к целевой инструкции), платный сезон-пропуск V2, MIND spin V2."
             echo "Обмен «инструмент в SOL» одним действием уже работает через листинги и офферы"
-            echo "aof_core. Разбор: docs/UNBLOCK_PLAN_2026-09-30.md §3."
+            echo "aof_core."
           } > /tmp/devnet-report.md
           cat /tmp/devnet-report.md
       - name: Publish to the pull request (and to the run summary)

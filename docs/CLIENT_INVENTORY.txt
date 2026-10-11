@@ -8,8 +8,8 @@
 Пересобрать явно: `node scripts/client-inventory.mjs --write`; проверить: `--check`.
 `--check` ничего не переписывает; после `--write` baseline нужно отдельно просмотреть и закоммитить.
 
-Файлов: 607 (frontend: 531, game: 76).
-sha256: 6cc50684b820502348b447f2772c58a5a37b918c20bbef25c4acbb746b8ed187
+Файлов: 604 (frontend: 528, game: 76).
+sha256: 892d38c78fb7554fa2cce057f71fd7645871dc73a316799eb5033f519e76fcfa
 
 ```
 frontend/.env.example
@@ -19,7 +19,6 @@ frontend/.storybook/preview.tsx
 frontend/index.html
 frontend/package-lock.json
 frontend/package.json
-frontend/phase1_context.txt
 frontend/postcss.config.js
 frontend/public/_headers
 frontend/public/_routes.json
@@ -90,7 +89,6 @@ frontend/public/assets/icons/ui/building-silicon.png
 frontend/public/assets/icons/ui/catalog.png
 frontend/public/assets/icons/ui/challenges.png
 frontend/public/assets/icons/ui/craft.png
-frontend/public/assets/icons/ui/drum.png
 frontend/public/assets/icons/ui/economy-overview.png
 frontend/public/assets/icons/ui/economy-workshop.png
 frontend/public/assets/icons/ui/epoch-infer.png
@@ -421,7 +419,6 @@ frontend/src/lib/confirmation.ts
 frontend/src/lib/coreInstructions.ts
 frontend/src/lib/craftReadings.ts
 frontend/src/lib/currentSeasonReadings.ts
-frontend/src/lib/drumTable.ts
 frontend/src/lib/economyBalances.ts
 frontend/src/lib/formatLamports.ts
 frontend/src/lib/gasTank.ts

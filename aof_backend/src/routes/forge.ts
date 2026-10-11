@@ -15,7 +15,7 @@ const r = Router();
 
 /**
  * [F-06] Forge attempt: circuit/silicon burned, fee (+protector) escrowed, level
- * snapshotted, Switchboard commit on a pool slot (operator co-signs as the
+ * snapshotted, then the same commit pack opening uses (operator co-signs as the
  * backend gate). Settled by the vrf-settler or by the player (POST /reveal).
  */
 r.post("/commit", requireCircuitOpen, requireWalletLimits("forge_commit"), async (req, res) => {

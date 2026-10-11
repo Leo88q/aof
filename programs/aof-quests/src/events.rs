@@ -39,75 +39,48 @@ pub struct ChallengeContributed {
 }
 
 #[event]
-pub struct DrumCommitted {
+pub struct ChallengePayoutClaimed {
     pub user: Pubkey,
-    pub randomness: Pubkey,
-    pub seed_slot: u64,
+    pub week_number: u32,
+    pub payout: u64,
 }
 
-/// [F-06] The oracle value and the prize it produced (anyone can recompute
-/// `drum_prize(value, drum_commit)`).
 #[event]
-pub struct DrumRevealed {
+pub struct DailyClaimed {
     pub user: Pubkey,
-    pub prize: u64,
-    pub randomness: Pubkey,
-    pub seed_slot: u64,
-    pub value: [u8; 32],
-    pub cranker: Pubkey,
-}
-
-/// [F-06] Refund of a spin the oracle never revealed.
-#[event]
-pub struct DrumRefunded {
-    pub user: Pubkey,
+    pub day: i64,
+    pub streak: u16,
     pub amount: u64,
 }
 
-/// Versioned events: legacy drum indexers must never treat whole-MIND V2
-/// payouts as historical raw-atom mascot payouts (or vice versa).
 #[event]
-pub struct MindSpinCommitted {
+pub struct ComebackClaimed {
     pub user: Pubkey,
-    pub commit: Pubkey,
-    pub mint: Pubkey,
-    pub price_atoms: u64,
-    pub randomness: Pubkey,
-    pub seed_slot: u64,
+    pub day: i64,
+    pub amount: u64,
 }
 
 #[event]
-pub struct MindSpinRevealed {
+pub struct NeighborVisited {
     pub user: Pubkey,
-    pub commit: Pubkey,
-    pub mint: Pubkey,
-    pub prize_atoms: u64,
-    pub randomness: Pubkey,
-    pub seed_slot: u64,
-    pub value: [u8; 32],
-    pub cranker: Pubkey,
+    pub neighbor: Pubkey,
+    pub day: i64,
 }
 
 #[event]
-pub struct MindSpinRefunded {
+pub struct GuildDeposited {
     pub user: Pubkey,
-    pub commit: Pubkey,
-    pub mint: Pubkey,
-    pub amount_atoms: u64,
+    pub amount: u64,
+    pub total: u64,
 }
 
 #[event]
-pub struct VrfSlotAdded {
-    pub index: u32,
-    pub randomness: Pubkey,
-    pub vrf_slot: Pubkey,
+pub struct QuestProgressProven {
+    pub user: Pubkey,
+    pub quest_id: u32,
 }
 
-#[event]
-pub struct VrfSlotRetiredChanged {
-    pub vrf_slot: Pubkey,
-    pub retired: bool,
-}
+
 
 /// [AUDIT F-02] Authority rotation, both steps.
 #[event]

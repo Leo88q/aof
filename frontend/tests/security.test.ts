@@ -197,7 +197,7 @@ test("legacy unbounded purchase, trailing bytes, extra accounts and cosigners fa
 // ---------------------------------------------------------------------------
 // [AUDIT F-32] generic aof-core instruction policy
 // ---------------------------------------------------------------------------
-import { validateCoreInstructions, CORE_PROGRAM_ID } from "../src/lib/transactionIntent";
+import { validateCoreInstructions, durabilityEnchantPda, CORE_PROGRAM_ID } from "../src/lib/transactionIntent";
 import { CORE_INSTRUCTIONS } from "../src/lib/coreInstructions";
 
 function specOf(name: string) {
@@ -247,6 +247,17 @@ test("core instruction policy names every instruction and rejects authority-only
   const unknown = { programId: CORE_PROGRAM_ID, data: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]), keys: [] };
   assert.doesNotThrow(() => validateCoreInstructions([unknown], user.publicKey),
     "unrecognised instructions are left to the program allowlist check in txGuard");
+});
+
+test("collect mining accepts only the durability enchant PDA as an extra account", () => {
+  const spec = specOf("collect_mining");
+  const keys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
+  keys[spec.actorIndexes[0]] = user.publicKey;
+  const mint = keys[spec.accounts.indexOf("mint")];
+  assert.doesNotThrow(() => validateCoreInstructions([ixFor("collect_mining", keys)], user.publicKey));
+  assert.doesNotThrow(() => validateCoreInstructions([ixFor("collect_mining", [...keys, durabilityEnchantPda(mint)])], user.publicKey));
+  assert.throws(() => validateCoreInstructions([ixFor("collect_mining", [...keys, Keypair.generate().publicKey])], user.publicKey), /enchant/);
+  assert.throws(() => validateCoreInstructions([ixFor("collect_mining", [...keys, durabilityEnchantPda(mint), durabilityEnchantPda(mint)])], user.publicKey), /account count/);
 });
 
 test("core instruction table covers the committed IDL", () => {

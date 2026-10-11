@@ -19,6 +19,7 @@ import { toolPlate, TOOL_NFTS, TOOL_RARITIES, UI_ICONS, type ToolRarity } from "
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { RARITY_COLOR, rarityKey, shortAddr } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { MarketFeeNote } from "../../components/MarketFeeNote";
 
 function knownRarity(value: unknown): ToolRarity | null {
   if (value == null) return null;
@@ -218,6 +219,7 @@ export function ListingPage() {
         </button>
       </div>
       <p className="text-straw text-xs leading-relaxed">{copy.intro}</p>
+      <MarketFeeNote />
       {notice?.language === language && (
         <motion.div role="status" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment break-words">

@@ -1,7 +1,7 @@
 'use strict';
 /*
  * Ответ на сводку атак июня–сентября 2026 (пункты #94–#130):
- * SECURITY_CHECKLIST_ATTACKS_2026-09-28.md.
+ * Source-level tripwires for the 2026 attack checklist. The dated write-up is gone.
  *
  * Здесь только то, что можно держать статически на каждом коммите, офлайн, без
  * ноды и без сети: реестр программ/апстримов/ключей, кворум RPC в подписи,
@@ -233,7 +233,7 @@ test('#130 навыки и плагины ИИ-агентов: опасные и
   assert.equal(r.status, 0, `check-agent-skills провален:\n${r.stdout}${r.stderr}`);
   const lock = JSON.parse(read('security/agent-config.lock.json'));
   const skills = Object.keys(lock.files).filter((f) => f.includes('/skills/'));
-  assert.ok(skills.length >= 2, 'внутренние навыки .claude/skills/** должны быть запинованы по SHA-256 (#130)');
+  assert.deepEqual(skills, [], 'промпты и навыки агентов удалены; новый навык обязан попасть в lock отдельным ревью (#130)');
   assert.ok(read('security/agent-skills.allow.json').includes('"allow"'), 'исключения навыков живут в security/agent-skills.allow.json');
   const policy = read('docs/AI_AGENT_SECURITY_POLICY.md');
   assert.match(policy, /341–386|341-386/, 'политика должна описывать инцидент с реестром навыков (#130)');
@@ -272,7 +272,6 @@ test('#110 предохранители проверяются состязат�
 test('#111 нулевые и пылевые значения: guard-ы на путях ценности и идемпотентность клеймов', () => {
   // Каждый путь, двигающий ценность, обязан отклонять нулевую/некорректную
   // сумму до вызова SPL. Матрица 0/1/max/dust в host-тестах — следующий шаг
-  // (см. SECURITY_CHECKLIST_ATTACKS_2026-09-28.md §«Следующие шаги»).
   const valuePaths = [
     'burn_resource', 'mint_resource', 'deposit_gas', 'craft_order', 'marketplace', 'offer',
     'orderbook', 'collect_mining', 'collect_model', 'collect_signal', 'collect_power',
@@ -353,7 +352,7 @@ test('#114 произвольный внешний вызов: CPI только 
   const guard = read('frontend/src/lib/txGuard.ts');
   assert.match(guard, /AOF_PROGRAMS/, 'allowlist программ обязателен на клиенте');
   assert.match(guard, /Only idempotent ATA creation is permitted/);
-  assert.match(read('SECURITY_CHECKLIST_ATTACKS_2026-09-28.md'), /Approve/, 'документ обязан зафиксировать отказ от бессрочных Approve (#114)');
+  assert.match(guard, /Approve/, 'клиент обязан отказывать бессрочному Approve, а не пропускать его из-за allowlist программы (#114)');
 });
 
 test('#115 переполнение: overflow-checks в release и checked-арифметика', () => {
@@ -365,7 +364,7 @@ test('#115 переполнение: overflow-checks в release и checked-ар�
 
 test('#116/#129 версия общей программы и «зачистка класса»: форки и выведенные компоненты под контролем', () => {
   const ci = read('.github/workflows/aof-readiness.yml');
-  assert.match(ci, /sync-quests-vrf\.py --check/, 'копия vrf.rs в aof-quests обязана сверяться с источником (#116)');
+  assert.match(ci, /sync-quests-vrf\.py --check/, 'вторая копия vrf.rs в aof-quests обязана отсутствовать (#116)');
   const registry = JSON.parse(read('security/program-registry.json'));
   assert.ok(registry.retired.length >= 2, 'реестр должен помнить выведенные компоненты (Ronin, farm-trader live)');
   assert.match(read('docs/UPSTREAM_AND_PROGRAM_LIFECYCLE.md'), /Зачистка класса|зачистка класса/i, 'процедура «зачистки класса» после инцидента (#129)');
@@ -378,7 +377,7 @@ test('#117/#118 цена и оракул: конфигурация провер�
     assert.match(doc, anchor, `изменение конфигурации цены: ${anchor} (#117)`);
   }
   const rustAll = rustSources().map((f) => read(f)).join('\n');
-  assert.doesNotMatch(rustAll, /pyth|chainlink|reflector|price_oracle|band_oracle/i, 'внешних ценовых оракулов быть не должно: единственный оракул — Switchboard для случайности (#118)');
+  assert.doesNotMatch(rustAll, /pyth|chainlink|reflector|price_oracle|band_oracle/i, 'внешних ценовых оракулов быть не должно (#118)');
   const market = fs.existsSync(path.join(ROOT, 'aof_backend/src/lib/marketData.ts')) ? read('aof_backend/src/lib/marketData.ts') : '';
   assert.doesNotMatch(market, /collateral|залог/i, 'цены графиков не должны использоваться как залог/оценка (#95/#118)');
 });
@@ -436,11 +435,7 @@ test('#127 решение о выводе принимает независим�
 // AA. Governance и цена (#94–#97) — правила на случай появления
 // ======================================================================
 
-test('#94 в репозитории нет захватываемого голосования, и правила на будущее записаны', () => {
-  const doc = read('docs/UPSTREAM_AND_PROGRAM_LIFECYCLE.md') + read('SECURITY_CHECKLIST_ATTACKS_2026-09-28.md');
-  for (const anchor of [/снимок голосов/i, /voting delay/i, /кворум/i, /create-vote-execute/i]) {
-    assert.match(doc, anchor, `правила DAO-захвата должны быть записаны на будущее: ${anchor} (#94)`);
-  }
+test('#94 в репозитории нет захватываемого голосования', () => {
   // В коде не должно быть исполнения предложения в той же транзакции, что и голосование.
   for (const file of rustSources()) {
     assert.doesNotMatch(read(file), /create_proposal[\s\S]{0,200}execute_proposal/, `${file}: create/execute в одной инструкции (#94)`);
@@ -448,10 +443,6 @@ test('#94 в репозитории нет захватываемого голо
 });
 
 test('#95/#96/#97 оценка токена не берётся из спот-цены тонкого пула; неизвестный минт не имеет цены', () => {
-  const doc = read('SECURITY_CHECKLIST_ATTACKS_2026-09-28.md');
-  for (const anchor of [/Tectonic/, /глубин[а-яё]* ликвидности/i, /TWAP/]) {
-    assert.match(doc, anchor, `правило против pump-and-borrow: ${anchor} (#95)`);
-  }
   const validator = read('aof_backend/src/security/mintValidator.ts');
   assert.match(validator, /assertMintAllowed/, 'любая работа с минтом начинается с allowlist (#97)');
   assert.match(read('docs/UPSTREAM_AND_PROGRAM_LIFECYCLE.md'), /таймлок|time lock/i, 'новый листинг — через таймлок и период остывания (#97)');

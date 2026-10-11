@@ -99,6 +99,7 @@ pub fn commit_draw_handler(ctx: Context<CommitLotteryDraw>) -> Result<()> {
     let round = &ctx.accounts.lottery_round;
     require!(!round.drawn, AofError::LotteryRoundClosed);
     require!(!round.draw_committed, AofError::LotteryDrawAlreadyCommitted);
+    require!(round.seed_slot != u64::MAX, AofError::LotteryRoundClosed);
     require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
     let sales_over = clock.unix_timestamp >= round.created_at.saturating_add(LOTTERY_SALES_SECONDS);
     require!(
@@ -107,21 +108,13 @@ pub fn commit_draw_handler(ctx: Context<CommitLotteryDraw>) -> Result<()> {
     );
 
     let commit_key = ctx.accounts.lottery_round.key();
-    let accounts = vrf::CommitAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-    };
-    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, clock.slot)?;
 
     let round = &mut ctx.accounts.lottery_round;
     round.draw_committed = true;
     round.draw_commit_slot = clock.slot;
     round.seed_slot = seed_slot;
-    round.randomness = ctx.accounts.randomness.key();
+    round.randomness = ctx.accounts.vrf_slot.key();
 
     emit!(VrfCommitted {
         mechanic: VRF_MECHANIC_LOTTERY,
@@ -135,7 +128,7 @@ pub fn commit_draw_handler(ctx: Context<CommitLotteryDraw>) -> Result<()> {
     Ok(())
 }
 
-/// [F-06] Permissionless draw: Switchboard reveal via CPI, winning ticket from
+/// [F-06] Permissionless draw: four future slot hashes, winning ticket from
 /// the verified value, the house share (LOTTERY_DEV_BPS) to the treasury.
 pub fn draw_handler(ctx: Context<DrawLottery>, params: VrfRevealParams) -> Result<()> {
     let clock = Clock::get()?;
@@ -146,30 +139,12 @@ pub fn draw_handler(ctx: Context<DrawLottery>, params: VrfRevealParams) -> Resul
     require!(round.tickets_sold > 0, AofError::LotteryRoundClosed);
     let (randomness, seed_slot, commit_slot) = (round.randomness, round.seed_slot, round.draw_commit_slot);
 
-    let accounts = vrf::RevealAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        stats: ctx.accounts.stats.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-        payer: ctx.accounts.cranker.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
-        program_state: ctx.accounts.program_state.to_account_info(),
-    };
     let value = vrf::reveal(
         &mut ctx.accounts.vrf_slot,
         &round_key,
-        &randomness,
         seed_slot,
         commit_slot,
-        &accounts,
-        &params,
-        ctx.bumps.vrf_authority,
+        &ctx.accounts.recent_slothashes.to_account_info(),
         clock.slot,
     )?;
 
@@ -222,12 +197,15 @@ pub fn expire_draw_handler(ctx: Context<ExpireLotteryDraw>) -> Result<()> {
     require!(!round.drawn, AofError::LotteryAlreadyDrawn);
     require!(round.draw_committed, AofError::LotteryDrawNotCommitted);
     let commit_slot = round.draw_commit_slot;
-    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &round_key, commit_slot, clock.slot)?;
-
+    let path = vrf::unsettled(&ctx.accounts.recent_slothashes.to_account_info(), commit_slot, clock.slot)?;
+    vrf::release_lock(&mut ctx.accounts.vrf_slot, &round_key)?;
     let round = &mut ctx.accounts.lottery_round;
     round.draw_committed = false;
     round.draw_commit_slot = 0;
-    round.seed_slot = 0;
+    // A skipped slot never had an outcome, so the round may draw again.
+    // An aged-out hash may already have been seen: tickets can be refunded,
+    // but seed_slot = u64::MAX blocks a second draw of the same pot.
+    round.seed_slot = if path == vrf::Unsettled::TreasuryForfeit { u64::MAX } else { 0 };
     round.randomness = Pubkey::default();
     emit!(VrfCommitRefunded {
         mechanic: VRF_MECHANIC_LOTTERY,

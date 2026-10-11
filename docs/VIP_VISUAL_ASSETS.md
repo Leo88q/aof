@@ -6,4 +6,4 @@ Two generated instrument-plate icons in the existing NeuroForge dark-laboratory 
 | --- | --- |
 | ![Copper VIP theme: engraved circuit rosette on a dark instrument plate](../frontend/public/assets/icons/ui/vip-copper.png) | ![Orchid VIP theme: violet glass aperture on a dark instrument plate](../frontend/public/assets/icons/ui/vip-orchid.png) |
 
-Used in `frontend/src/pages/profile/SeasonPassPage.tsx` and registered in `frontend/src/lib/visualAssets.ts`. The palette selection is wallet- and season-scoped; it applies only after an active on-chain premium pass is verified and is removed on disconnect, season expiry or unavailable RPC. These assets **do not make the paid pass or MIND spin sale-ready**.
+Used in `frontend/src/pages/profile/SeasonPassPage.tsx` and registered in `frontend/src/lib/visualAssets.ts`. The palette selection is wallet- and season-scoped; it applies only after an active on-chain premium pass is verified and is removed on disconnect, season expiry or unavailable RPC. These assets do not enable a paid pass purchase. Paid sales stay behind `PAID_PASS_READY`. Mind-spin is not a mechanic.

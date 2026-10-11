@@ -10,6 +10,7 @@ import { UI_ICONS, resourceIcon, toolPlate } from '../../lib/visualAssets';
 import { ArtPlate } from '../../components/visual/ArtPlate';
 import { ResourceGlyph } from '../../components/visual/ResourceGlyph';
 import { actionErrorFeedback, LocalTxFeedbackError } from '../../lib/txResponseFeedback';
+import { chainMomentCopy } from '../../i18n/chainMomentCopy';
 import { readEconomyBalances } from '../../lib/economyBalances';
 import { formatResourceShortage, shortagesFromBalances } from '../../lib/resourceShortageMessage';
 import { useLocale } from '../../i18n/LocaleProvider';
@@ -258,7 +259,7 @@ export function ExplorationPage() {
       </Card>
       <Card>
         <h3 className="text-parchment font-semibold text-sm mb-3">{copy.how}</h3>
-        <div className="space-y-2 text-xs text-straw break-words"><p>1. {copy.commit}</p><p>2. {copy.reveal}</p><p>3. {copy.outcome}</p></div>
+        <div className="space-y-2 text-xs text-straw break-words"><p>1. {copy.commit}</p><p>2. {copy.reveal}</p><p>3. {copy.outcome}</p><p>{chainMomentCopy[language].explorationBet}</p></div>
       </Card>
     </div>
   );

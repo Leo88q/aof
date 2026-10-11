@@ -18,7 +18,6 @@ PATHS = {
     'deposit': 'programs/aof-liquidity/src/instructions/lp_deposit.rs',
     'rebirth': 'programs/aof-rebirth/src/instructions/do_rebirth.rs',
     'rebirth_reset': 'aof-core/src/instructions/rebirth_reset.rs',
-    'drum': 'programs/aof-quests/src/instructions/drum/drum_reveal.rs',
 }
 
 
@@ -42,7 +41,6 @@ def check(s):
     assert 'session.authority == authority.key()' in spend, 'SW013'
     assert 'seeds = [SESSION_SEED, authority.key().as_ref()]' in spend, 'SW013'
     assert 'owner = anchor_lang::system_program::ID' in s['session'], 'SW013'
-    assert 'address = drum_commit.user' in s['drum'], 'SW013'
     # SW008 was originally about the retired market::cancel_limit_order path.
     # The active implementation lives in aof-core and closes its escrow vault
     # after returning every remaining token, so there is no post-CPI balance read
@@ -97,7 +95,7 @@ class SecurityTripwires(unittest.TestCase):
         mutations = [
             ('SW001', 'session', "pub authority: Signer<'info>", "pub authority: UncheckedAccount<'info>"),
             ('SW008', 'orderbook', 'to: ctx.accounts.maker_token.to_account_info()', 'to: ctx.accounts.order_vault.to_account_info()'),
-            ('SW013', 'drum', 'address = drum_commit.user', 'address = user.key()'),
+            ('SW013', 'session', 'seeds = [SESSION_SEED, authority.key().as_ref()]', 'seeds = [SESSION_SEED, user.key().as_ref()]'),
             ('SW016', 'session', 'init, payer = authority, space = SESSION_SPACE', 'init_if_needed, payer = authority, space = SESSION_SPACE'),
             ('SW016', 'rebirth_reset', 'get_associated_token_address(&user_key, &mint_info.key())', 'mint_info.key()'),
             ('SW024', 'lp', '.checked_div(assets)', '.checked_div(1)'),

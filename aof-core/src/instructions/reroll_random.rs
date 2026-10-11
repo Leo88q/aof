@@ -8,7 +8,7 @@ use crate::instructions::settlement;
 use crate::vrf::{self, VrfRevealParams};
 
 /// Random reroll: burn one tool, receive a tool of random rarity/type drawn
-/// from the reroll odds table. Settled by Switchboard On-Demand exactly like
+/// from the reroll odds table. Settled like pack opening: four future slot hashes,
 /// the packs (see vrf.rs); the deterministic fuse keeps the name `reroll`.
 pub fn init_config_handler(ctx: Context<InitRerollConfig>, odds_bps: [u16; 5]) -> Result<()> {
     let sum: u32 = odds_bps.iter().map(|x| *x as u32).sum();
@@ -96,15 +96,7 @@ pub fn commit_handler(ctx: Context<RerollRandomCommit>, nonce: u64) -> Result<()
 
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.reroll_commit.key();
-    let accounts = vrf::CommitAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-    };
-    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, clock.slot)?;
 
     // [RUNTIME LAMPORT RULE] Direct lamport moves only after the last CPI: at
     // every CPI the runtime re-checks this instruction's lamport sum from the
@@ -128,7 +120,7 @@ pub fn commit_handler(ctx: Context<RerollRandomCommit>, nonce: u64) -> Result<()
     rc.odds_bps = ctx.accounts.reroll_config.odds_bps;
     rc.fee_lamports = fee_lamports;
     rc.deposit_lamports = deposit;
-    rc.randomness = ctx.accounts.randomness.key();
+    rc.randomness = ctx.accounts.vrf_slot.key();
     rc.seed_slot = seed_slot;
     rc.commit_slot = clock.slot;
     rc.bump = ctx.bumps.reroll_commit;
@@ -154,30 +146,12 @@ pub fn reveal_handler(ctx: Context<RerollRandomReveal>, params: VrfRevealParams)
         ctx.accounts.reroll_commit.seed_slot,
         ctx.accounts.reroll_commit.commit_slot,
     );
-    let accounts = vrf::RevealAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        stats: ctx.accounts.stats.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-        payer: ctx.accounts.cranker.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
-        program_state: ctx.accounts.program_state.to_account_info(),
-    };
     let value = vrf::reveal(
         &mut ctx.accounts.vrf_slot,
         &commit_key,
-        &randomness,
         seed_slot,
         commit_slot,
-        &accounts,
-        &params,
-        ctx.bumps.vrf_authority,
+        &ctx.accounts.recent_slothashes.to_account_info(),
         clock.slot,
     )?;
 
@@ -240,10 +214,19 @@ pub fn expire_handler(ctx: Context<RerollRandomExpire>) -> Result<()> {
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.reroll_commit.key();
     let commit_slot = ctx.accounts.reroll_commit.commit_slot;
-    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
+    let path = vrf::unsettled(&ctx.accounts.recent_slothashes.to_account_info(), commit_slot, clock.slot)?;
+    vrf::release_lock(&mut ctx.accounts.vrf_slot, &commit_key)?;
 
     let rc = &ctx.accounts.reroll_commit;
     let (user, tool_type, rarity, durability) = (rc.user, rc.burned_tool_type.clone(), rc.burned_rarity, rc.burned_durability);
+    let forfeit = path == vrf::Unsettled::TreasuryForfeit;
+    if forfeit {
+        vrf::transfer_lamports(
+            &ctx.accounts.reroll_commit.to_account_info(),
+            &ctx.accounts.treasury.to_account_info(),
+            ctx.accounts.reroll_commit.fee_lamports,
+        )?;
+    } else {
     settlement::mint_tool_nft(
         &ctx.accounts.token_program.to_account_info(),
         &ctx.accounts.new_mint.to_account_info(),
@@ -259,6 +242,7 @@ pub fn expire_handler(ctx: Context<RerollRandomExpire>) -> Result<()> {
         rarity,
     )?;
     settlement::write_tool(&mut ctx.accounts.new_tool_data, ctx.accounts.new_mint.key(), user, tool_type, rarity, durability);
+    }
 
     // The fee stays on the commit and reaches the user through `close = user`;
     // only the fronted NFT rent goes back to the settler.

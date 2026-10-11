@@ -262,7 +262,7 @@ cmd_anchor_test() {
   fi
   log "on-chain: cargo test --workspace --lib (unit-тесты программ, без валидатора)"
   (cd "$ROOT" && cargo test --workspace --lib)
-  log "on-chain: make test → scripts/anchor-test.sh (двойник Switchboard в genesis, затем anchor test --skip-build)"
+  log "on-chain: make test → scripts/anchor-test.sh (двойник оракула удалён, затем anchor test --skip-build)"
   (cd "$ROOT" && make test)
 }
 

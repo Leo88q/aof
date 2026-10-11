@@ -2037,71 +2037,11 @@ export type AofCore = {
         },
         {
           "name": "vrfSlot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboardProgram"
         }
       ],
       "args": []
@@ -2322,14 +2262,6 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "skrMint",
-          "writable": true
-        },
-        {
-          "name": "userSkr",
-          "writable": true
-        },
-        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -2373,106 +2305,10 @@ export type AofCore = {
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "newMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "tokenMetadataProgram",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "tokenMetadataProgram"
         }
       ],
       "args": [
@@ -2960,61 +2796,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "rewardEscrow",
-          "writable": true
-        },
-        {
-          "name": "wrappedSolMint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "programState"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -3167,61 +2950,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "rewardEscrow",
-          "writable": true
-        },
-        {
-          "name": "wrappedSolMint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "programState"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -3237,65 +2967,11 @@ export type AofCore = {
         },
         {
           "name": "issuanceCapCircuit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  1
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "issuanceCapSilicon",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  2
-                ]
-              }
-            ]
-          }
+          "writable": true
         }
       ],
       "args": [
@@ -3422,71 +3098,11 @@ export type AofCore = {
         },
         {
           "name": "vrfSlot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -3597,61 +3213,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "rewardEscrow",
-          "writable": true
-        },
-        {
-          "name": "wrappedSolMint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "programState"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -3713,8 +3276,16 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "vrfSlot",
           "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "auth",
@@ -5599,71 +5170,11 @@ export type AofCore = {
         },
         {
           "name": "vrfSlot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "systemProgram",
@@ -5809,61 +5320,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "rewardEscrow",
-          "writable": true
-        },
-        {
-          "name": "wrappedSolMint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "programState"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -5913,106 +5371,10 @@ export type AofCore = {
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "tokenMetadataProgram",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "tokenMetadataProgram"
         }
       ],
       "args": [
@@ -6066,8 +5428,16 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "vrfSlot",
           "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
       "args": []
@@ -8502,71 +7872,11 @@ export type AofCore = {
         },
         {
           "name": "vrfSlot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -8706,61 +8016,8 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "rewardEscrow",
-          "writable": true
-        },
-        {
-          "name": "wrappedSolMint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "programState"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -8810,106 +8067,10 @@ export type AofCore = {
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "newMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "tokenMetadataProgram",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "tokenMetadataProgram"
         }
       ],
       "args": [
@@ -9808,71 +8969,11 @@ export type AofCore = {
         },
         {
           "name": "vrfSlot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recentSlothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboardProgram"
         },
         {
           "name": "tokenProgram",
@@ -12138,86 +11239,8 @@ export type AofCore = {
           "signer": true
         },
         {
-          "name": "vrfAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
           "name": "vrfSlot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "rewardEscrow",
           "writable": true
-        },
-        {
-          "name": "queue",
-          "writable": true
-        },
-        {
-          "name": "programState"
-        },
-        {
-          "name": "lutSigner"
-        },
-        {
-          "name": "lut",
-          "writable": true
-        },
-        {
-          "name": "wrappedSolMint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "switchboardProgram"
-        },
-        {
-          "name": "addressLookupTableProgram"
         },
         {
           "name": "tokenProgram",
@@ -12380,8 +11403,16 @@ export type AofCore = {
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "vrfSlot",
           "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "newMint",
@@ -12500,106 +11531,10 @@ export type AofCore = {
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "newMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "tokenMetadataProgram",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "tokenMetadataProgram"
         }
       ],
       "args": []
@@ -12672,6 +11607,10 @@ export type AofCore = {
         {
           "name": "vrfSlot",
           "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "auth",
@@ -12782,6 +11721,10 @@ export type AofCore = {
         {
           "name": "vrfSlot",
           "writable": true
+        },
+        {
+          "name": "recentSlothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
       "args": []
@@ -14133,11 +13076,11 @@ export type AofCore = {
           "writable": true
         },
         {
-          "name": "circuitMint",
+          "name": "siliconMint",
           "writable": true
         },
         {
-          "name": "userCircuit",
+          "name": "userSilicon",
           "writable": true
         },
         {
@@ -14161,35 +13104,8 @@ export type AofCore = {
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "issuanceCapCircuit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  1
-                ]
-              }
-            ]
-          }
+          "name": "issuanceCapSilicon",
+          "writable": true
         }
       ],
       "args": [
@@ -16634,7 +15550,7 @@ export type AofCore = {
     {
       "code": 6122,
       "name": "InvalidRandomnessAccount",
-      "msg": "Not a Switchboard randomness account of the trusted program"
+      "msg": "Not the SlotHashes sysvar"
     },
     {
       "code": 6123,
@@ -16649,7 +15565,7 @@ export type AofCore = {
     {
       "code": 6125,
       "name": "RandomnessCommitMissing",
-      "msg": "Switchboard randomness commit must precede this instruction in the same transaction"
+      "msg": "Randomness commit is missing from this transaction"
     },
     {
       "code": 6126,

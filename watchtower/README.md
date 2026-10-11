@@ -151,7 +151,7 @@ fresh `IndexerCursor` (`WATCHTOWER_STALE_CURSOR_MS`, default 10 min).
   its soft limit to avoid splitting one source row).
 - `test:quality` checks route registration and coverage logic, **not 14 live endpoint
   acceptances**. Hub accepted/duplicate acceptance and authenticated ingestion remain
-  blocked until a real deployment/RPC is available. See `reports/AOF_READINESS.md`.
+  blocked until a real deployment/RPC is available.
 
 ## Issuance accounting (partial b-09)
 

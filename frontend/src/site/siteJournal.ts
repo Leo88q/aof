@@ -3,7 +3,7 @@ import { pages } from './content/pages';
 
 /** Site-only reading marks, never quest progress or a claimable game reward. */
 export const SITE_JOURNAL_KEY = 'aof:site:journal:v1';
-export const siteBadgeIds = ['reader', 'resource', 'commit', 'pack', 'drum', 'chronicler'] as const;
+export const siteBadgeIds = ['reader', 'resource', 'commit', 'pack', 'chronicler'] as const;
 export type SiteBadgeId = typeof siteBadgeIds[number];
 export type SiteJournal = { visits: string[]; badges: SiteBadgeId[] };
 const pageIds = new Set(pages.map(page => page.id));

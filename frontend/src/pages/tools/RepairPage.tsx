@@ -165,6 +165,7 @@ export function RepairPage() {
   return (
     <div lang={language} className="p-4 pt-2 pb-24 space-y-4 min-w-0">
       <p className="text-straw text-xs">{copy.intro}</p>
+      <p className="text-straw text-xs break-words">{chainMomentCopy[language].durabilityNote}</p>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}

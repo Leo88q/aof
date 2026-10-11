@@ -136,7 +136,7 @@ r.post("/fuse", async (req, res) => {
 /**
  * [F-06] Random reroll: burn one tool, receive a random one. Operator
  * co-signed commit (fee escrowed from the gas tank, odds snapshotted,
- * Switchboard commit on a pool slot); the vrf-settler reveals it, or the
+ * the same pool-slot commit pack opening uses); the vrf-settler reveals it, or the
  * player can with POST /random/reveal. The new NFT is the PDA mint
  * [reroll_mint, rerollCommit].
  */

@@ -18,7 +18,7 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'лаб.', consumables: 'топл.', cores: 'ядра', quartz: 'кварц', chips: 'чипы', fluids: 'флю.' },
     labHint: 'Добывается на участке и показано также в обзоре лаборатории',
     pantry: { raw: 'Сырьё', materials: 'Материалы', flasks: 'Флюиды', special: 'Особое' },
-    vialNotice: 'Флюиды собираются в мастерской и сгорают в печати лаборатории. Отдельных эффектов у них нет.',
+    vialNotice: 'Флюиды собираются в мастерской. Их можно выпить: +5, +5, +8, +10 или +20 энергии. Оставленные пять сгорают в печати.',
   },
   en: {
     connect: 'Connect a wallet to see your resources', loading: 'Loading on-chain balances…', unavailable: 'Resource balances unavailable from the network',
@@ -28,7 +28,7 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'lab', consumables: 'fuel', cores: 'cores', quartz: 'quartz', chips: 'chips', fluids: 'fluids' },
     labHint: 'Produced on your plot and also shown in the lab overview',
     pantry: { raw: 'Raw materials', materials: 'Components', flasks: 'Fluids', special: 'Special' },
-    vialNotice: 'Fluids are crafted in the workshop and burned when the laboratory is sealed. They have no separate effect.',
+    vialNotice: 'Fluids are crafted in the workshop. Drink one for +5, +5, +8, +10 or +20 energy. The five that are kept burn in the seal.',
   },
   pt: {
     connect: 'Conecte a carteira para ver seus recursos', loading: 'Carregando saldos da rede…', unavailable: 'Saldos de recursos indisponíveis na rede',
@@ -38,7 +38,7 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'lab.', consumables: 'comb.', cores: 'núcl.', quartz: 'quart.', chips: 'chips', fluids: 'fluid.' },
     labHint: 'Produzido no terreno e exibido também no resumo do laboratório',
     pantry: { raw: 'Matérias-primas', materials: 'Componentes', flasks: 'Fluidos', special: 'Especial' },
-    vialNotice: 'Os fluidos são criados na oficina e queimados ao selar o laboratório. Não têm efeito separado.',
+    vialNotice: 'Os fluidos são criados na oficina. Beber um dá +5, +5, +8, +10 ou +20 de energia. Os cinco guardados queimam no selo.',
   },
   es: {
     connect: 'Conecta una cartera para ver tus recursos', loading: 'Cargando saldos de la red…', unavailable: 'Saldos de recursos no disponibles en la red',
@@ -48,7 +48,7 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'lab.', consumables: 'comb.', cores: 'núcl.', quartz: 'cuar.', chips: 'chips', fluids: 'fluid.' },
     labHint: 'Producido en la parcela y mostrado también en el resumen del laboratorio',
     pantry: { raw: 'Materias primas', materials: 'Componentes', flasks: 'Fluidos', special: 'Especial' },
-    vialNotice: 'Los fluidos se crean en el taller y se queman al sellar el laboratorio. No tienen un efecto aparte.',
+    vialNotice: 'Los fluidos se crean en el taller. Beber uno da +5, +5, +8, +10 o +20 de energía. Los cinco que se guardan se queman en el sello.',
   },
   vi: {
     connect: 'Kết nối ví để xem tài nguyên', loading: 'Đang tải số dư trên chuỗi…', unavailable: 'Không thể tải số dư tài nguyên từ mạng',
@@ -58,7 +58,7 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'PTN', consumables: 'NL', cores: 'lõi', quartz: 'th.anh', chips: 'chip', fluids: 'dịch' },
     labHint: 'Được tạo trên khu đất và cũng hiển thị trong tổng quan phòng thí nghiệm',
     pantry: { raw: 'Nguyên liệu', materials: 'Linh kiện', flasks: 'Dung dịch', special: 'Đặc biệt' },
-    vialNotice: 'Dung dịch được tạo trong xưởng và bị đốt khi niêm phong phòng thí nghiệm. Chúng không có tác dụng riêng.',
+    vialNotice: 'Dung dịch được tạo trong xưởng. Uống một lọ được +5, +5, +8, +10 hoặc +20 năng lượng. Năm loại giữ lại sẽ bị đốt khi niêm phong.',
   },
   id: {
     connect: 'Hubungkan dompet untuk melihat sumber daya', loading: 'Memuat saldo dari blockchain…', unavailable: 'Saldo sumber daya tidak tersedia dari jaringan',
@@ -68,7 +68,7 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'lab', consumables: 'bakar', cores: 'inti', quartz: 'kuarsa', chips: 'chip', fluids: 'cairan' },
     labHint: 'Diproduksi di lahan dan juga ditampilkan di ringkasan laboratorium',
     pantry: { raw: 'Bahan mentah', materials: 'Komponen', flasks: 'Cairan', special: 'Khusus' },
-    vialNotice: 'Cairan dibuat di bengkel dan dibakar saat laboratorium disegel. Cairan tidak punya efek terpisah.',
+    vialNotice: 'Cairan dibuat di bengkel. Meminumnya memberi +5, +5, +8, +10 atau +20 energi. Lima yang disimpan terbakar di segel.',
   },
   fil: {
     connect: 'Ikonekta ang wallet para makita ang mga yaman', loading: 'Kinukuha ang mga balanse sa blockchain…', unavailable: 'Hindi makuha sa network ang mga balanse ng yaman',
@@ -78,6 +78,6 @@ export const economyDetailCopy: Record<Language, Copy> = {
     lanes: { lab: 'lab', consumables: 'gatong', cores: 'core', quartz: 'kuwarts', chips: 'chip', fluids: 'fluid' },
     labHint: 'Ginagawa sa lote at ipinapakita rin sa pangkalahatang tala ng laboratoryo',
     pantry: { raw: 'Hilaw na materyales', materials: 'Mga bahagi', flasks: 'Mga fluid', special: 'Natatangi' },
-    vialNotice: 'Ginagawa ang mga fluid sa workshop at sinusunog kapag tinatakan ang laboratoryo. Wala silang hiwalay na epekto.',
+    vialNotice: 'Ginagawa ang mga fluid sa workshop. Ang pag-inom ay nagbibigay ng +5, +5, +8, +10 o +20 na enerhiya. Ang limang itinago ay nasusunog sa tatak.',
   },
 };

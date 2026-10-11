@@ -227,7 +227,7 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
       config: configPda, owner: owner.publicKey, mint, tool, rentalListing, ownerToken, rentalVault,
       tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).signers([owner]).rpc();
-    await expectError(list(10_000, DAY), "InvalidAmount");                 // the platform keeps >= 5%
+    await expectError(list(10_000, DAY), "InvalidAmount");                 // the treasury keeps >= 10%
     await expectError(list(9_000, new BN(3600)), "InvalidRentalDuration"); // at least 24 h
     await list(9_000, DAY);
     expect((await balance(rentalVault)).toString()).to.equal("1");
@@ -487,10 +487,10 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
 
   // ========== LOTTERY / QUANTUM DRAW ==========
   // [F-06] Every ticket is escrowed in full on the round; the draw commits
-  // through a Switchboard pool slot (none on this validator = production
+  // through a slot-hash pool slot (none on this validator = production
   // "pool empty"); before a draw nothing can be claimed and refunds wait for
-  // the 14-day timeout. The drawn/claimed path runs in the host tests with an
-  // emulated Switchboard (aof-core/src/security_checklist_tests.rs).
+  // the 14-day timeout. The drawn/claimed path runs in
+  // aof-core/src/security_checklist_tests.rs.
   it("lottery: tickets escrowed on the round, draw needs a VRF slot, no claim or early refund", async () => {
     const le = (n: BN) => n.toArrayLike(Buffer, "le", 8);
     const roundId = new BN(Date.now());
@@ -523,13 +523,12 @@ describe("aof-extended: rental, referral, collectors, season, lottery, craft ord
     expect(await provider.connection.getBalance(lotteryRound)).to.equal(roundBefore + 2 * TICKET);
     expect((await program.account.lotteryTicket.fetch(ticket(1))).buyer.toString()).to.equal(buyer.publicKey.toString());
 
-    // Switchboard On-Demand (mainnet build), pool slot #0 that does not exist.
-    const randomness = pda([B("vrf_randomness"), Buffer.alloc(4)]);
+    // Pool slot #0 does not exist on this validator.
+    const index = Buffer.alloc(4);
     await expectError(program.methods.commitLotteryDraw().accountsStrict({
       config: configPda, cranker: authority, lotteryRound,
-      vrfSlot: pda([B("vrf_slot"), randomness.toBuffer()]), randomness, vrfAuthority: pda([B("vrf_authority")]),
-      queue: new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"), oracle: Keypair.generate().publicKey,
-      recentSlothashes: SLOT_HASHES, switchboardProgram: new PublicKey("SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"),
+      vrfSlot: pda([B("vrf_slot"), index]),
+      recentSlothashes: SLOT_HASHES,
     }).rpc(), "AccountNotInitialized");
     expect((await program.account.lotteryRound.fetch(lotteryRound)).drawCommitted).to.equal(false);
 

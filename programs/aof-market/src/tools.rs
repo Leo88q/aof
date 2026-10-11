@@ -95,6 +95,16 @@ pub fn pool_price(pool: &HotMarketPool, currency: Currency, now: i64) -> Result<
 }
 
 /// `(выплата продавцу, комиссия казны)` — комиссия не может превысить цену.
+/// Treasury keeps 8–10% of a hot-market fill. Zero and the old 2% default are rejected.
+pub fn require_treasury_fee(fee_bps: u16) -> Result<()> {
+    require!(
+        (crate::constants::MARKET_TREASURY_FEE_MIN_BPS..=crate::constants::MARKET_TREASURY_FEE_MAX_BPS)
+            .contains(&fee_bps),
+        crate::errors::MarketError::InvalidFee
+    );
+    Ok(())
+}
+
 pub fn fee_split(price: u64, fee_bps: u16) -> Result<(u64, u64)> {
     let fee = (price as u128)
         .checked_mul(fee_bps as u128)
@@ -145,6 +155,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn treasury_fee_band_is_eight_to_ten_percent() {
+        assert!(require_treasury_fee(799).is_err());
+        assert!(require_treasury_fee(800).is_ok());
+        assert!(require_treasury_fee(1_000).is_ok());
+        assert!(require_treasury_fee(1_001).is_err());
+    }
+
+    #[test]
     fn fee_split_keeps_the_whole_price() {
         assert_eq!(fee_split(1_000_000, 250).unwrap(), (975_000, 25_000));
         assert_eq!(fee_split(100, 0).unwrap(), (100, 0));
@@ -162,7 +180,7 @@ mod tests {
             treasury: Pubkey::new_unique(),
             core_mint: Pubkey::new_unique(),
             gem_mint: Pubkey::new_unique(),
-            fee_bps: 200,
+            fee_bps: 800,
             paused: false,
             bump: 255,
             pending_authority: Pubkey::default(),

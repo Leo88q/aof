@@ -166,7 +166,6 @@ test('документы: раздел §3.8 живёт в активном до
   assert.ok(!probe.includes('UNBLOCK_PLAN_2026-09-30.md §3.8'),
     'зонд не должен ссылаться на раздел, которого нет в historical-документе');
 
-  const historical = read('docs/UNBLOCK_PLAN_2026-09-30.md');
-  assert.ok(historical.startsWith('<!-- HISTORICAL'),
-    'исторический план обязан остаться помеченным: он больше не источник указаний');
+  assert.equal(fs.existsSync(path.join(root, 'docs/UNBLOCK_PLAN_2026-09-30.md')), false,
+    'устаревший план разблокировки удалён и не должен снова стать источником указаний');
 });

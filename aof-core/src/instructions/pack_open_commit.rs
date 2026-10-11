@@ -6,7 +6,7 @@ use crate::events::{VrfCommitted, VRF_MECHANIC_PACK};
 use crate::state::PackType;
 use crate::vrf;
 
-/// [F-06] Paid pack opening, settled by Switchboard On-Demand.
+/// [F-06] Paid pack opening. The roll is four future slot hashes.
 ///
 /// In ONE instruction: the price and the settlement deposit move into the
 /// commit PDA, the odds are snapshotted, and a free pool randomness account is
@@ -40,15 +40,7 @@ pub fn handler(
 
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.pack_commit.key();
-    let accounts = vrf::CommitAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-    };
-    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, clock.slot)?;
 
     let pc = &mut ctx.accounts.pack_commit;
     pc.user = ctx.accounts.user.key();
@@ -57,7 +49,7 @@ pub fn handler(
     pc.odds_bps = ctx.accounts.pack_config.odds_bps;
     pc.paid_lamports = price;
     pc.deposit_lamports = deposit;
-    pc.randomness = ctx.accounts.randomness.key();
+    pc.randomness = ctx.accounts.vrf_slot.key();
     pc.seed_slot = seed_slot;
     pc.commit_slot = clock.slot;
     pc.bump = ctx.bumps.pack_commit;
