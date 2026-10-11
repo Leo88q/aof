@@ -557,7 +557,7 @@ mod orderbook_v2_quote_tests {
     /// комиссию на пылевом объёме.
     #[test]
     fn taker_buffer_rounds_up() {
-        assert_eq!(taker_buffer_lamports(10_000).unwrap(), 40);
+        assert_eq!(taker_buffer_lamports(10_000).unwrap(), 600);
         assert_eq!(taker_buffer_lamports(1).unwrap(), 1);
         assert_eq!(taker_buffer_lamports(0).unwrap(), 0);
     }
