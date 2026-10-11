@@ -138,8 +138,9 @@ describe("aof-core: VRF cycle on the local validator (legacy Switchboard cases)"
   }
 
   // Lamport change of each account inside one transaction (its pre/post
-  // balances), plus the fee its payer was charged. Exact even for the provider
-  // wallet, which is the treasury here and pays every fee of the suite.
+  // balances), plus the fee its payer was charged. RPC exposes balances as JS
+  // numbers, so exact deltas require both balances to stay below 2^53; the
+  // expiry test uses a dedicated, minimally funded treasury for that reason.
   async function txDeltas(signature: string) {
     await connection.confirmTransaction(signature, "confirmed");
     const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
